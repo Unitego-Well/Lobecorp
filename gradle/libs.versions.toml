@@ -4,9 +4,12 @@ minecraft = "26.1.2"
 neoforge = "26.1.2.82"
 geckolib = "5.5.2"
 curios = "15.0.0-beta.2+26.1.2"
+mixinsquared = "0.3.7-beta.2"
+
 [libraries]
 geckolib = { group = "com.geckolib", name = "geckolib-neoforge-26.1.2", version.ref = "geckolib" }
 curios = { group = "top.theillusivec4.curios", name = "curios-neoforge", version.ref = "curios" }
+
 [bundles]
 
 [plugins]

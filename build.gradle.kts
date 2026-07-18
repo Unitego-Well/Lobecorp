@@ -9,10 +9,13 @@ tasks.wrapper {
 }
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
+val mixinsquaredVersion = libs.versions.mixinsquared.get()
 val modId = property("mod_id").toString()
 val modVersion = property("mod_version").toString()
+
 version = modVersion
 group = "org.unitego.lobecorp"
+
 sourceSets.main {
     resources {
         srcDir("src/generated/resources")
@@ -20,6 +23,13 @@ sourceSets.main {
     }
 }
 repositories {
+    mavenLocal()
+    // NeoForge
+    maven { url = uri("https://neoforged.forgecdn.net/releases") }
+
+    mavenCentral()
+
+    // geckolib
     exclusiveContent {
         forRepository {
             maven {
@@ -30,6 +40,8 @@ repositories {
             includeGroup("com.geckolib")
         }
     }
+
+    // curios
     exclusiveContent {
         forRepository {
             maven {
@@ -40,8 +52,22 @@ repositories {
             includeGroup("top.theillusivec4.curios")
         }
     }
+
+    // mixinsquared
+    exclusiveContent {
+        forRepository {
+            maven {
+                url = uri("https://maven.bawnorton.com/releases")
+            }
+        }
+        filter {
+            includeGroup("com.github.bawnorton.mixinsquared")
+        }
+    }
 }
 dependencies {
+    compileOnly(annotationProcessor("com.github.bawnorton.mixinsquared:mixinsquared-common:$mixinsquaredVersion")!!)
+    implementation(jarJar("com.github.bawnorton.mixinsquared:mixinsquared-neoforge:$mixinsquaredVersion")!!)
     implementation(libs.geckolib)
     implementation(libs.curios)
 }
@@ -76,7 +102,13 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
             logLevel = org.slf4j.event.Level.DEBUG
-            jvmArgument("-Dterminal.ansi=true")
+            jvmArguments.addAll(
+                "-Dterminal.ansi=true",
+                // 忽略无效指令，避免有的人没安装 JetBrain Runtime 无法启动游戏
+                "-XX:+IgnoreUnrecognizedVMOptions",
+                // 启用 JetBrain Runtime 热重载功能
+                "-XX:+AllowEnhancedClassRedefinition"
+            )
         }
     }
     mods {

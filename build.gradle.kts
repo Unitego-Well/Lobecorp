@@ -12,10 +12,8 @@ val neoforgeVersion = libs.versions.neoforge.get()
 val mixinsquaredVersion = libs.versions.mixinsquared.get()
 val modId = property("mod_id").toString()
 val modVersion = property("mod_version").toString()
-
 version = modVersion
 group = "org.unitego.lobecorp"
-
 sourceSets.main {
     resources {
         srcDir("src/generated/resources")
@@ -23,51 +21,21 @@ sourceSets.main {
     }
 }
 repositories {
-    mavenLocal()
-    // NeoForge
-    maven { url = uri("https://neoforged.forgecdn.net/releases") }
-
-    mavenCentral()
-
-    // geckolib
     exclusiveContent {
-        forRepository {
-            maven {
-                url = uri("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
-            }
-        }
-        filter {
-            includeGroup("com.geckolib")
-        }
+        forRepository { maven { url = uri("https://maven.bawnorton.com/releases") } }
+        filter { includeGroup("com.github.bawnorton.mixinsquared") }
     }
-
-    // curios
     exclusiveContent {
-        forRepository {
-            maven {
-                url = uri("https://maven.theillusivec4.top/")
-            }
-        }
-        filter {
-            includeGroup("top.theillusivec4.curios")
-        }
+        forRepository { maven { url = uri("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/") } }
+        filter { includeGroup("com.geckolib") }
     }
-
-    // mixinsquared
     exclusiveContent {
-        forRepository {
-            maven {
-                url = uri("https://maven.bawnorton.com/releases")
-            }
-        }
-        filter {
-            includeGroup("com.github.bawnorton.mixinsquared")
-        }
+        forRepository { maven { url = uri("https://maven.theillusivec4.top/") } }
+        filter { includeGroup("top.theillusivec4.curios") }
     }
 }
 dependencies {
-    compileOnly(annotationProcessor("com.github.bawnorton.mixinsquared:mixinsquared-common:$mixinsquaredVersion")!!)
-    implementation(jarJar("com.github.bawnorton.mixinsquared:mixinsquared-neoforge:$mixinsquaredVersion")!!)
+    jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
     implementation(libs.curios)
 }
@@ -104,9 +72,7 @@ neoForge {
             logLevel = org.slf4j.event.Level.DEBUG
             jvmArguments.addAll(
                 "-Dterminal.ansi=true",
-                // 忽略无效指令，避免有的人没安装 JetBrain Runtime 无法启动游戏
                 "-XX:+IgnoreUnrecognizedVMOptions",
-                // 启用 JetBrain Runtime 热重载功能
                 "-XX:+AllowEnhancedClassRedefinition"
             )
         }

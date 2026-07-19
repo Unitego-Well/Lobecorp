@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface LanguageProviderAccessor {
     @Accessor
     String getLocale();
+
     @Accessor
     PackOutput getOutput();
 }

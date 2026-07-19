@@ -8,6 +8,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.entity.EntityCorpse;
+import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.resource.generator.lang.EnUsLangGenerator;
 import org.unitego.lobecorp.resource.generator.lang.ZhCnLangGenerator;
 
@@ -15,6 +17,10 @@ import java.util.function.UnaryOperator;
 
 public class LcEntityTypes {
     public static final DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
+
+    public static final DeferredHolder<EntityType<?>, EntityType<EntityCorpse>> ENTITY_CORPSE = LcEntityTypes.register(REGISTER,
+            "entity_corpse", "Entity Corpse", "实体尸体", EntityCorpse::new, MobCategory.MISC
+    );
 
     @ApiStatus.Internal
     public static void init(IEventBus iEventBus) {

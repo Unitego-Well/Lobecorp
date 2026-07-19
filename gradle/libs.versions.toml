@@ -4,13 +4,14 @@ minecraft = "26.1.2"
 neoforge = "26.1.2.82"
 
 mixinsquared = "0.3.7-beta.3"
+anvilcraftlib = "2.0.0+snapshot.485"
 
 geckolib = "5.5.2"
 curios = "15.0.0-beta.2+26.1.2"
 
 [libraries]
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
-
+anvilcraftlib = { module = "dev.anvilcraft.lib:anvillib-neoforge-26.1", version.ref = "anvilcraftlib" }
 geckolib = { module = "com.geckolib:geckolib-neoforge-26.1.2", version.ref = "geckolib" }
 curios = { module = "top.theillusivec4.curios:curios-neoforge", version.ref = "curios" }
 

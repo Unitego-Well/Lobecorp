@@ -4,9 +4,11 @@ plugins {
     idea
     alias(libs.plugins.moddev)
 }
+
 tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
+
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
 val mixinsquaredVersion = libs.versions.mixinsquared.get()
@@ -20,7 +22,10 @@ sourceSets.main {
         exclude("src/generated/**/.cache")
     }
 }
+
 repositories {
+    mavenLocal()
+    mavenCentral()
     exclusiveContent {
         forRepository { maven { url = uri("https://maven.bawnorton.com/releases") } }
         filter { includeGroup("com.github.bawnorton.mixinsquared") }
@@ -34,15 +39,20 @@ repositories {
         filter { includeGroup("top.theillusivec4.curios") }
     }
 }
+
 dependencies {
+    implementation(libs.anvilcraftlib)
     jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
     implementation(libs.curios)
 }
+
 base {
     archivesName = "$modId-$minecraftVersion"
 }
+
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
 neoForge {
     version = neoforgeVersion
     setAccessTransformers("src/main/resources/META-INF/accesstransformer.cfg")
@@ -83,6 +93,7 @@ neoForge {
         }
     }
 }
+
 tasks.processResources {
     val replaceProperties = mapOf(
         "minecraft_version" to minecraftVersion,
@@ -97,6 +108,7 @@ tasks.processResources {
         expand(replaceProperties)
     }
 }
+
 publishing {
     publications.register<MavenPublication>("mavenJava") {
         from(components["java"])
@@ -105,9 +117,11 @@ publishing {
         url = uri(layout.projectDirectory.dir("repo"))
     }
 }
+
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
+
 idea.module {
     isDownloadSources = true
     isDownloadJavadoc = true

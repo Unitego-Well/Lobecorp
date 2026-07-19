@@ -6,6 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
+import org.unitego.lobecorp.init.LcEntityDataSerializers;
 import org.unitego.lobecorp.init.LcEntityTypes;
 
 @Mod(Lobecorp.NAMESPACE)
@@ -16,6 +17,7 @@ public class Lobecorp {
     public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
         LOGGER.info("Unitego.");
 
+        LcEntityDataSerializers.REGISTER.register(iEventBus);
         LcEntityTypes.init(iEventBus);
     }
 

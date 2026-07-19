@@ -7,7 +7,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
 public class OrdealEntityTypes {
     public static final DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);

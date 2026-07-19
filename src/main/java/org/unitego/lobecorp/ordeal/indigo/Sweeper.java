@@ -7,7 +7,6 @@ import com.geckolib.util.GeckoLibUtil;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.NonNull;
@@ -19,13 +18,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
         super(type, level);
     }
 
+    public static AttributeSupplier.Builder createAttributes() {
+        return createMobAttributes();
+    }
+
     @Override
     public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
 
-    }
-
-    public static AttributeSupplier.Builder createAttributes() {
-        return createMobAttributes();
     }
 
     @Override

@@ -6,7 +6,6 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.data.loading.DatagenModLoader;
 import org.unitego.lobecorp.Lobecorp;
 
@@ -14,16 +13,52 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class ZhCnLang extends BasicGeneratorLang {
-    private static final Map<Supplier<? extends SoundEvent>, String> SOUND_EVENT = new HashMap<>();
-    private static final Map<Supplier<? extends Item>, String> ITEMS = new HashMap<>();
+public class ZhCnLangGenerator extends BasicLangGenerator {
     private static final Map<Supplier<? extends MobEffect>, String> MOB_EFFECT = new HashMap<>();
     private static final Map<Supplier<? extends Attribute>, String> ATTRIBUTE = new HashMap<>();
+    private static final Map<Supplier<? extends SoundEvent>, String> SOUND_EVENT = new HashMap<>();
+    private static final Map<Supplier<? extends Item>, String> ITEMS = new HashMap<>();
     private static final Map<Supplier<? extends EntityType<?>>, String> ENTITY_TYPES = new HashMap<>();
     private static final Map<String, String> MAP = new HashMap<>();
 
-    public ZhCnLang(PackOutput output) {
+    public ZhCnLangGenerator(PackOutput output) {
         super(output, Lobecorp.NAMESPACE, "zh_cn");
+    }
+
+    public static void addI18nText(String key, String zhCn) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            MAP.put(key, zhCn);
+        }
+    }
+
+    public static void addI18nSoundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            SOUND_EVENT.put(supplier, txt);
+        }
+    }
+
+    public static void addI18nAttributeText(Supplier<? extends Attribute> supplier, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            ATTRIBUTE.put(supplier, txt);
+        }
+    }
+
+    public static void addI18nMobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            MOB_EFFECT.put(supplier, txt);
+        }
+    }
+
+    public static void addI18nItemText(Supplier<? extends Item> deferredItem, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            ITEMS.put(deferredItem, txt);
+        }
+    }
+
+    public static void addI18nEntityTypeText(Supplier<? extends EntityType<?>> supplier, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            ENTITY_TYPES.put(supplier, txt);
+        }
     }
 
     @Override
@@ -43,41 +78,5 @@ public class ZhCnLang extends BasicGeneratorLang {
         ITEMS.clear();
         ENTITY_TYPES.clear();
         MAP.clear();
-    }
-
-    public static void addI18nText(String key, String zhCn) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            MAP.put(key, zhCn);
-        }
-    }
-
-    public static void addI18nItemText(Supplier<? extends Item> deferredItem, String txt) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            ITEMS.put(deferredItem, txt);
-        }
-    }
-
-    public static void addI18nMobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            MOB_EFFECT.put(supplier, txt);
-        }
-    }
-
-    public static void addI18nAttributeText(Supplier<? extends Attribute> supplier, String txt) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            ATTRIBUTE.put(supplier, txt);
-        }
-    }
-
-    public static void addI18nSoundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            SOUND_EVENT.put(supplier, txt);
-        }
-    }
-
-    public static void addI18nEntityTypeText(Supplier<? extends EntityType<?>> supplier, String txt) {
-        if (DatagenModLoader.isRunningDataGen()) {
-            ENTITY_TYPES.put(supplier, txt);
-        }
     }
 }

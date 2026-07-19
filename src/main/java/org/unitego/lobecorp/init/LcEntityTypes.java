@@ -8,9 +8,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.resource.generator.lang.EnUsLang;
-import org.unitego.lobecorp.resource.generator.lang.ZhCnLang;
+import org.unitego.lobecorp.resource.generator.lang.EnUsLangGenerator;
+import org.unitego.lobecorp.resource.generator.lang.ZhCnLangGenerator;
 
 import java.util.function.UnaryOperator;
 
@@ -26,19 +25,19 @@ public class LcEntityTypes {
     @ApiStatus.Internal
     public static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
             DeferredRegister.Entities register,
-            String name, String zhCn, String enUs, EntityType.EntityFactory<T> factory,
+            String name, String enUs, String zhCn, EntityType.EntityFactory<T> factory,
             MobCategory category, UnaryOperator<EntityType.Builder<T>> builder
     ) {
         var deferredHolder = register.registerEntityType(name, factory, category, builder);
-        ZhCnLang.addI18nEntityTypeText(deferredHolder, zhCn);
-        EnUsLang.addI18nEntityTypeText(deferredHolder, enUs);
+        EnUsLangGenerator.addI18nEntityTypeText(deferredHolder, enUs);
+        ZhCnLangGenerator.addI18nEntityTypeText(deferredHolder, zhCn);
         return deferredHolder;
     }
 
     @ApiStatus.Internal
     public static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
             DeferredRegister.Entities register,
-            String name, String zhCn, String enUs, EntityType.EntityFactory<T> factory,
+            String name, String enUs, String zhCn, EntityType.EntityFactory<T> factory,
             MobCategory category
     ) {
         return register(register, name, zhCn, enUs, factory, category, UnaryOperator.identity());

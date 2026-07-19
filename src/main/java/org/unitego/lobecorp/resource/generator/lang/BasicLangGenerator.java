@@ -24,12 +24,33 @@ import java.nio.file.Paths;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class BasicGeneratorLang extends LanguageProvider {
+public class BasicLangGenerator extends LanguageProvider {
     protected final String modId;
 
-    public BasicGeneratorLang(PackOutput output, String modId, String locale) {
+    public BasicLangGenerator(PackOutput output, String modId, String locale) {
         super(output, modId, locale);
         this.modId = modId;
+    }
+
+    public static String getFormattedKey(String... key) {
+        StringBuilder builder = new StringBuilder(Lobecorp.NAMESPACE);
+        builder.append(".commands");
+        for (String s : key) {
+            builder.append(".").append(s);
+        }
+        return builder.toString();
+    }
+
+    public static String getConfigTranslation(String modId, String... keys) {
+        if (keys.length == 0) {
+            return modId + ".config";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (String key : keys) {
+            builder.append(".");
+            builder.append(key);
+        }
+        return modId + ".config" + builder;
     }
 
     @Override
@@ -100,13 +121,6 @@ public class BasicGeneratorLang extends LanguageProvider {
     }
 
     /**
-     * 死亡消息翻译
-     */
-    protected void addDeathMessage(ResourceKey<DamageType> damageType, String name) {
-        add("death.attack." + damageType.identifier().getPath(), name);
-    }
-
-    /**
      * 声音字幕翻译
      */
     protected void addSoundEvent(Holder<SoundEvent> holder, String name) {
@@ -118,30 +132,16 @@ public class BasicGeneratorLang extends LanguageProvider {
     }
 
     /**
+     * 死亡消息翻译
+     */
+    protected void addDeathMessage(ResourceKey<DamageType> damageType, String name) {
+        add("death.attack." + damageType.identifier().getPath(), name);
+    }
+
+    /**
      * 玩家死亡消息翻译
      */
     protected void addPlayerDeathMessage(ResourceKey<DamageType> damageType, String name) {
         add("death.attack." + damageType.identifier().getPath() + ".player", name);
-    }
-
-    public static String getFormattedKey(String... key) {
-        StringBuilder builder = new StringBuilder(Lobecorp.NAMESPACE);
-        builder.append(".commands");
-        for (String s : key) {
-            builder.append(".").append(s);
-        }
-        return builder.toString();
-    }
-
-    public static String getConfigTranslation(String modId, String... keys) {
-        if (keys.length == 0) {
-            return modId + ".config";
-        }
-        StringBuilder builder = new StringBuilder();
-        for (String key : keys) {
-            builder.append(".");
-            builder.append(key);
-        }
-        return modId + ".config" + builder;
     }
 }

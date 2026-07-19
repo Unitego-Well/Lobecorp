@@ -1,10 +1,7 @@
-pluginManagement {
-    repositories {
-        mavenLocal()
-        gradlePluginPortal()
-        maven { url = uri("https://neoforged.forgecdn.net/releases") }
-        maven { url = uri("https://maven.neoforged.net/releases") }
-    }
+pluginManagement.repositories {
+    mavenLocal()
+    gradlePluginPortal()
+    maven { url = uri("https://maven.neoforged.net/releases") }
 }
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"

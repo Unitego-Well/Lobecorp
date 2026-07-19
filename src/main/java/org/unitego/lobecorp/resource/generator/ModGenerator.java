@@ -5,16 +5,16 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.resource.generator.lang.EnUsLang;
-import org.unitego.lobecorp.resource.generator.lang.ZhCnLang;
+import org.unitego.lobecorp.resource.generator.lang.EnUsLangGenerator;
+import org.unitego.lobecorp.resource.generator.lang.ZhCnLangGenerator;
 
 @SuppressWarnings("UnusedReturnValue")
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ModGenerator {
     @SubscribeEvent
     public static void gatherData(GatherDataEvent.Client event) {
-        buildFactory(event, ZhCnLang::new);
-        buildFactory(event, EnUsLang::new);
+        buildFactory(event, EnUsLangGenerator::new);
+        buildFactory(event, ZhCnLangGenerator::new);
     }
 
     @SubscribeEvent

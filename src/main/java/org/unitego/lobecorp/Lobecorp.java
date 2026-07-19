@@ -16,7 +16,7 @@ public class Lobecorp {
     public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
         LOGGER.info("Unitego.");
 
-        LcEntityTypes.REGISTER.register(iEventBus);
+        LcEntityTypes.init(iEventBus);
     }
 
     public static Identifier id(String path) {

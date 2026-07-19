@@ -1,19 +1,19 @@
-package org.unitego.lobecorp.registry;
+package org.unitego.lobecorp.registry.client;
 
 import com.geckolib.renderer.GeoEntityRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import org.unitego.lobecorp.init.LcEntityTypes;
+import org.unitego.lobecorp.init.OrdealEntityTypes;
 
 @EventBusSubscriber(Dist.CLIENT)
-public class EntityRenderers {
+public class EntityRegisterRenderers {
     @SubscribeEvent
-    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+    public static void registry(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(
-                LcEntityTypes.SWEEPER.get(),
-                context -> new GeoEntityRenderer<>(context, LcEntityTypes.SWEEPER.get())
+                OrdealEntityTypes.SWEEPER.get(),
+                context -> new GeoEntityRenderer<>(context, OrdealEntityTypes.SWEEPER.get())
         );
     }
 }

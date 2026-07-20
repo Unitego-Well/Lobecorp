@@ -16,54 +16,71 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.init.LcEntityDataSerializers;
 import org.unitego.lobecorp.init.LcEntityTypes;
 
-public class EntityCorpse extends Mob {
+public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final AABB INITIAL_AABB = new AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-    private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY = SynchedEntityData.defineId(
-            EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get()
-    );
+    private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
+            EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
 
+    // 缓存存储实体 不使用final是因为同步等因素会导致变换
     @Nullable
-    public Entity ownerEntity;
+    private T ownerEntity;
     @Nullable
     private AABB fluidInteractionBox;
 
-    public EntityCorpse(EntityType<? extends Mob> type, Level level) {
+    public EntityCorpse(EntityType<? extends EntityCorpse<?>> type, Level level) {
         super(type, level);
-        updateOwnerEntity(null);
+        reset();
     }
 
-    public EntityCorpse(Level level, @Nullable Entity ownerEntity) {
-        super(LcEntityTypes.ENTITY_CORPSE.get(), level);
-        updateOwnerEntity(ownerEntity);
+    public static <T extends LivingEntity> EntityCorpse<T> createCorpse(T entity) {
+        EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
+        entityCorpse.updateOwnerEntity(entity);
+        entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
+        return entityCorpse;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
-        return createMobAttributes();
+        return createLivingAttributes();
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
-        entityData.set(DATA_OWNER_ENTITY, input.read("OwnerEntity", CompoundTag.CODEC).orElseGet(CompoundTag::new));
+        CompoundTag compoundTag = input.read("OwnerEntity", CompoundTag.CODEC).orElseGet(CompoundTag::new);
+        setOwnerEntityTag(compoundTag);
+        updateOwnerEntity(createOwnerEntity(compoundTag));
     }
 
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
-        if (ownerEntity != null) {
-            output.store("OwnerEntity", CompoundTag.CODEC, getOwnerEntityTag());
-        }
+        output.store("OwnerEntity", CompoundTag.CODEC, getOwnerEntityTag());
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder entityData) {
         super.defineSynchedData(entityData);
-        entityData.define(DATA_OWNER_ENTITY, new CompoundTag());
+        entityData.define(DATA_OWNER_ENTITY_TAG, new CompoundTag());
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (!level().isClientSide() && tickCount % 20 == 0) {
+            if (ownerEntity == null) {
+                remove(RemovalReason.DISCARDED);
+            }
+        }
+    }
+
+    @Override
+    public HumanoidArm getMainArm() {
+        return HumanoidArm.RIGHT;
     }
 
     @Override
@@ -77,51 +94,72 @@ public class EntityCorpse extends Mob {
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> accessor) {
         super.onSyncedDataUpdated(accessor);
-        if (accessor == DATA_OWNER_ENTITY) {
-            entityData.set(DATA_OWNER_ENTITY, getOwnerEntityTag());
-//            updateOwnerEntity(createOwnerEntity(getOwnerEntityTag()));
+        if (accessor == DATA_OWNER_ENTITY_TAG) {
+            updateOwnerEntity(createOwnerEntity(getOwnerEntityTag()));
         }
     }
 
-    public void updateOwnerEntity(@Nullable Entity newOwnerEntity) {
-        ownerEntity = newOwnerEntity;
+    protected void updateOwnerEntity(@Nullable T newOwnerEntity) {
         if (newOwnerEntity == null) {
-            setBoundingBox(INITIAL_AABB);
-            fluidInteractionBox = null;
+            reset();
             return;
         }
-        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(newOwnerEntity.problemPath(), LOGGER)) {
-            TagValueOutput tagOutput = TagValueOutput.createWithContext(reporter, newOwnerEntity.registryAccess());
-            newOwnerEntity.save(tagOutput);
-            entityData.set(DATA_OWNER_ENTITY, tagOutput.buildResult());
-            setBoundingBox(newOwnerEntity.getBoundingBox());
-            fluidInteractionBox = newOwnerEntity.getFluidInteractionBox();
+        this.ownerEntity = newOwnerEntity;
+        CompoundTag tag = getEntityCompoundTag(ownerEntity);
+        setOwnerEntityTag(tag);
+        fluidInteractionBox = ownerEntity.getFluidInteractionBox();
+        float health = (float) (newOwnerEntity.getAttributeValue(Attributes.MAX_HEALTH) / 4);
+        getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+        setHealth(health);
+        refreshDimensions();
+    }
+
+    @Override
+    protected EntityDimensions getDefaultDimensions(Pose pose) {
+        if (ownerEntity != null) {
+            return ownerEntity.getDimensions(pose);
         }
-        if (newOwnerEntity instanceof LivingEntity livingEntity) {
-            setHealth((float) livingEntity.getAttributeValue(Attributes.MAX_HEALTH));
+        return super.getDefaultDimensions(pose);
+    }
+
+    protected @NonNull CompoundTag getEntityCompoundTag(@Nullable LivingEntity entity) {
+        if (entity == null) {
+            return new CompoundTag();
+        }
+
+        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
+            TagValueOutput tagOutput = TagValueOutput.createWithContext(reporter, entity.registryAccess());
+            entity.saveWithoutId(tagOutput);
+            tagOutput.putString("id", entity.getEncodeId());
+            return tagOutput.buildResult();
         }
     }
 
-    public void setOwnerEntityTag(CompoundTag tag) {
-        entityData.set(DATA_OWNER_ENTITY, tag);
+    protected void reset() {
         ownerEntity = null;
-//        updateOwnerEntity(createOwnerEntity(tag));
+        setOwnerEntityTag(new CompoundTag());
+        fluidInteractionBox = null;
+        float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue() / 4);
+        getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+        setHealth(health);
+        refreshDimensions();
     }
 
-    public CompoundTag getOwnerEntityTag() {
-        return entityData.get(DATA_OWNER_ENTITY);
+    protected void setOwnerEntityTag(CompoundTag tag) {
+        entityData.set(DATA_OWNER_ENTITY_TAG, tag);
+    }
+
+    protected CompoundTag getOwnerEntityTag() {
+        return entityData.get(DATA_OWNER_ENTITY_TAG);
     }
 
     @Nullable
-    public Entity getOwnerEntity() {
-        if (ownerEntity == null) {
-            updateOwnerEntity(createOwnerEntity(getOwnerEntityTag()));
-        }
+    public T getOwnerEntity() {
         return ownerEntity;
     }
 
     @Nullable
-    public Entity createOwnerEntity(CompoundTag tag) {
+    public T createOwnerEntity(CompoundTag tag) {
         if (tag.isEmpty()) {
             return null;
         }
@@ -130,12 +168,13 @@ public class EntityCorpse extends Mob {
             Level level = level();
             ValueInput input = TagValueInput.create(reporterx.forChild(() -> ""),
                     level.registryAccess(), tag);
-            return EntityType.create(input, level, EntitySpawnReason.LOAD).orElse(null);
+            return (T) EntityType.create(input, level, EntitySpawnReason.LOAD).orElse(null);
         }
     }
 
     @Override
     public Component getName() {
+        // TODO 应该带上原生物的名称
         return super.getName();
     }
 }

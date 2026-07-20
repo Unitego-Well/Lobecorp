@@ -54,3 +54,5 @@ repo/
 /src/generated/*/*
 /src/generated/*
 /src/generated/
+/.cursor/
+/.claude/

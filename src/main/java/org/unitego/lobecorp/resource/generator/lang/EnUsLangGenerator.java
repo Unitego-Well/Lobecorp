@@ -71,6 +71,7 @@ public class EnUsLangGenerator extends BasicLangGenerator {
         addItemList(ITEMS);
         addEntityList(ENTITY_TYPES);
         MAP.forEach(this::add);
+        add("entity.entity_corpse.display_name","%sCorpse");
 
         MOB_EFFECT.clear();
         ATTRIBUTE.clear();

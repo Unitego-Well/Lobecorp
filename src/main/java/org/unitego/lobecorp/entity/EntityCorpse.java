@@ -5,7 +5,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -14,14 +18,14 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.init.LcEntityDataSerializers;
 import org.unitego.lobecorp.init.LcEntityTypes;
 
-public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
+public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
             EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
@@ -30,16 +34,17 @@ public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
     @Nullable
     private T ownerEntity;
     @Nullable
-    private AABB fluidInteractionBox;
+    private EntityDimensions cachedDimensions;
 
     public EntityCorpse(EntityType<? extends EntityCorpse<?>> type, Level level) {
         super(type, level);
         reset();
     }
 
-    public static <T extends LivingEntity> EntityCorpse<T> createCorpse(T entity) {
+    public static <T extends Entity> EntityCorpse<T> createCorpse(T entity) {
         EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
         entityCorpse.updateOwnerEntity(entity);
+        entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
         entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
         return entityCorpse;
     }
@@ -76,19 +81,68 @@ public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
                 remove(RemovalReason.DISCARDED);
             }
         }
+        if (this.isInWater()) {
+            this.setUnderwaterMovement();
+        } else if (this.isInLava()) {
+            this.setUnderLavaMovement();
+        } else {
+            this.applyGravity();
+        }
+    }
+
+    private void setUnderwaterMovement() {
+        Vec3 movement = this.getDeltaMovement();
+        double newY = movement.y + (movement.y < 0.06F ? 0.015 : 0.0);
+        this.setDeltaMovement(movement.x * 0.99, Math.min(newY, 0.1), movement.z * 0.99);
+    }
+
+    private void setUnderLavaMovement() {
+        Vec3 movement = this.getDeltaMovement();
+        this.setDeltaMovement(movement.x * 0.95, movement.y + 0.015, movement.z * 0.95);
+    }
+
+    @Override
+    public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
+        if (source.is(DamageTypeTags.IS_PROJECTILE)
+            || source.is(DamageTypes.DROWN)
+            || source.is(DamageTypes.IN_WALL)
+            || source.is(DamageTypes.MAGIC)
+            || source.is(DamageTypes.INDIRECT_MAGIC)
+            || source.is(DamageTypes.WITHER)
+            || source.is(DamageTypes.WITHER_SKULL)
+            || source.is(DamageTypes.HOT_FLOOR)
+            || source.is(DamageTypes.CACTUS)) {
+            return true;
+        }
+        return super.isInvulnerableTo(level, source);
+    }
+
+    @Override
+    protected double getDefaultGravity() {
+        return 0.04;
+    }
+
+    @Override
+    public void knockback(double strength, double x, double z) {
+    }
+
+    @Override
+    protected void pushEntities() {
+    }
+
+    @Override
+    public boolean isPushable() {
+        return false;
+    }
+
+    @Override
+    protected boolean canRide(Entity vehicle) {
+        return false;
     }
 
     @Override
     public HumanoidArm getMainArm() {
         return HumanoidArm.RIGHT;
-    }
-
-    @Override
-    public @Nullable AABB getFluidInteractionBox() {
-        if (fluidInteractionBox != null) {
-            return fluidInteractionBox;
-        }
-        return super.getFluidInteractionBox();
     }
 
     @Override
@@ -105,24 +159,42 @@ public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
             return;
         }
         this.ownerEntity = newOwnerEntity;
-        CompoundTag tag = getEntityCompoundTag(ownerEntity);
-        setOwnerEntityTag(tag);
-        fluidInteractionBox = ownerEntity.getFluidInteractionBox();
-        float health = (float) (newOwnerEntity.getAttributeValue(Attributes.MAX_HEALTH) / 4);
-        getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
-        setHealth(health);
+        ownerEntity.setOldPosAndRot();
+        if (newOwnerEntity instanceof LivingEntity livingEntity) {
+            livingEntity.yBodyRotO = livingEntity.yBodyRot;
+            livingEntity.yHeadRotO = livingEntity.yHeadRot;
+            float health = (float) (livingEntity.getAttributeValue(Attributes.MAX_HEALTH) / 4);
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+            setHealth(health);
+        } else {
+            float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue() / 4);
+            getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+            setHealth(health);
+        }
+        updateCachedDimensions();
         refreshDimensions();
     }
 
     @Override
     protected EntityDimensions getDefaultDimensions(Pose pose) {
-        if (ownerEntity != null) {
-            return ownerEntity.getDimensions(pose);
+        if (cachedDimensions != null) {
+            return cachedDimensions;
         }
         return super.getDefaultDimensions(pose);
     }
 
-    protected @NonNull CompoundTag getEntityCompoundTag(@Nullable LivingEntity entity) {
+    protected void updateCachedDimensions() {
+        if (ownerEntity == null) {
+            cachedDimensions = null;
+            return;
+        }
+        EntityDimensions original = ownerEntity.getDimensions(Pose.STANDING);
+        float newHeight = original.width() / 2.0F;
+        float newWidth = original.height();
+        cachedDimensions = EntityDimensions.fixed(newWidth, newHeight);
+    }
+
+    protected @NonNull CompoundTag getEntityCompoundTag(@Nullable T entity) {
         if (entity == null) {
             return new CompoundTag();
         }
@@ -137,12 +209,18 @@ public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
 
     protected void reset() {
         ownerEntity = null;
+        cachedDimensions = null;
         setOwnerEntityTag(new CompoundTag());
-        fluidInteractionBox = null;
         float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue() / 4);
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
         setHealth(health);
         refreshDimensions();
+    }
+
+    @Override
+    protected void tickDeath() {
+        deathTime = 20;
+        super.tickDeath();
     }
 
     protected void setOwnerEntityTag(CompoundTag tag) {
@@ -173,8 +251,10 @@ public class EntityCorpse<T extends LivingEntity> extends LivingEntity {
     }
 
     @Override
-    public Component getName() {
-        // TODO 应该带上原生物的名称
-        return super.getName();
+    public Component getDisplayName() {
+        if (ownerEntity != null) {
+            return Component.translatable("entity.entity_corpse.display_name", ownerEntity.getDisplayName());
+        }
+        return super.getDisplayName();
     }
 }

@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.violet;
 
-public class GodDelusionBlackShrine {
+public class GodDelusionBlackShrine implements IVioletOrdeal{
 }

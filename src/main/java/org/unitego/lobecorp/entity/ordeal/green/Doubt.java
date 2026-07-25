@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.green;
 
-public class Doubt {
+public class Doubt implements IGreenOrdeal {
 }

@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.violet;
 
-public class GrantUsLove {
+public class GrantUsLove implements IVioletOrdeal{
 }

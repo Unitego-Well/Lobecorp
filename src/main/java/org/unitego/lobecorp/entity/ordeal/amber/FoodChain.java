@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.amber;
 
-public class FoodChain {
+public class FoodChain implements IAmberOrdeal {
 }

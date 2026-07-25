@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.green;
 
-public class WhereWeMustReach {
+public class WhereWeMustReach implements IGreenOrdeal {
 }

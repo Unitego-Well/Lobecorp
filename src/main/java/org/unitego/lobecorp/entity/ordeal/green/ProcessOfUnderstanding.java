@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.green;
 
-public class ProcessOfUnderstanding {
+public class ProcessOfUnderstanding implements IGreenOrdeal {
 }

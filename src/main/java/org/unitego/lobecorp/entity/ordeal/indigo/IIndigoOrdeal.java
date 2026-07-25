@@ -1,11 +1,13 @@
 package org.unitego.lobecorp.entity.ordeal.indigo;
 
-import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.Entity;
+import org.unitego.lobecorp.entity.ai.goal.target.HurtByTargetGoal;
 import org.unitego.lobecorp.entity.ordeal.IOrdeal;
+import org.unitego.lobecorp.init.tag.LcEntityTypeTags;
 
 public interface IIndigoOrdeal extends IOrdeal {
-    default void addTargetSelector() {
-        GoalSelector targetSelector = getMob().targetSelector;
-//        targetSelector.addGoal();
+    @Override
+    default boolean isCamp(Entity entity) {
+        return IOrdeal.super.isCamp(entity) || entity.is(LcEntityTypeTags.ORDEAL_INDIGO) || entity instanceof IIndigoOrdeal;
     }
 }

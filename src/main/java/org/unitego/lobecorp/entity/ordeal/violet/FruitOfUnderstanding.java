@@ -1,4 +1,4 @@
 package org.unitego.lobecorp.entity.ordeal.violet;
 
-public class FruitOfUnderstanding {
+public class FruitOfUnderstanding implements IVioletOrdeal {
 }

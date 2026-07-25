@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 public class LcEntityDataSerializers {
-    public static final DeferredRegister<EntityDataSerializer<?>> REGISTER = DeferredRegister.create(NeoForgeRegistries.ENTITY_DATA_SERIALIZERS, Lobecorp.NAMESPACE);
+    public static final DeferredRegister<EntityDataSerializer<?>> REGISTER = Lobecorp.register(NeoForgeRegistries.ENTITY_DATA_SERIALIZERS);
 
     public static final DeferredHolder<EntityDataSerializer<?>, EntityDataSerializer<CompoundTag>> COMPOUND_TAG =
             register("compound_tag", () -> EntityDataSerializer.forValueType(LcStreamCodecs.COMPOUND_TAG));

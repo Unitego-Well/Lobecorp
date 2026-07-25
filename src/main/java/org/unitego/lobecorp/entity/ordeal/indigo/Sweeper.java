@@ -23,6 +23,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     }
 
     @Override
+    protected void registerGoals() {
+        super.registerGoals();
+//        goalSelector.addGoal();
+//        targetSelector.addGoal();
+    }
+
+    @Override
     public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
 
     }

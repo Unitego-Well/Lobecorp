@@ -5,10 +5,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.client.renderer.EntityCorpseRenderer;
-import org.unitego.lobecorp.init.LcEntityTypes;
-import org.unitego.lobecorp.init.OrdealEntityTypes;
+import org.unitego.lobecorp.init.entity.LcEntityTypes;
+import org.unitego.lobecorp.init.entity.OrdealEntityTypes;
 
 @EventBusSubscriber(Dist.CLIENT)
 public class EntityRenderers {

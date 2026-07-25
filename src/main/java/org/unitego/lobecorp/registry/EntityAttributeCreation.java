@@ -5,8 +5,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.init.LcEntityTypes;
-import org.unitego.lobecorp.init.OrdealEntityTypes;
+import org.unitego.lobecorp.init.entity.LcEntityTypes;
+import org.unitego.lobecorp.init.entity.OrdealEntityTypes;
 
 @EventBusSubscriber
 public class EntityAttributeCreation {

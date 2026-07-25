@@ -2,6 +2,7 @@ package org.unitego.lobecorp.resource.generator.lang;
 
 import net.minecraft.data.PackOutput;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -14,38 +15,45 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class EnUsLangGenerator extends BasicLangGenerator {
-    private static final Map<Supplier<? extends MobEffect>, String> MOB_EFFECT = new HashMap<>();
-    private static final Map<Supplier<? extends Attribute>, String> ATTRIBUTE = new HashMap<>();
-    private static final Map<Supplier<? extends SoundEvent>, String> SOUND_EVENT = new HashMap<>();
+    private static final Map<Supplier<? extends MobEffect>, String> MOB_EFFECTS = new HashMap<>();
+    private static final Map<Supplier<? extends Attribute>, String> ATTRIBUTES = new HashMap<>();
+    private static final Map<Supplier<? extends SoundEvent>, String> SOUND_EVENTS = new HashMap<>();
     private static final Map<Supplier<? extends Item>, String> ITEMS = new HashMap<>();
     private static final Map<Supplier<? extends EntityType<?>>, String> ENTITY_TYPES = new HashMap<>();
+    private static final Map<TagKey<?>, String> TAG_KEYS = new HashMap<>();
     private static final Map<String, String> MAP = new HashMap<>();
 
     public EnUsLangGenerator(PackOutput output) {
         super(output, Lobecorp.NAMESPACE, "en_us");
     }
 
-    public static void addI18nText(String key, String zhCn) {
+    public static void addI18nText(String key, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            MAP.put(key, zhCn);
+            MAP.put(key, txt);
+        }
+    }
+
+    public static void addI18nTagKey(TagKey<?> key, String txt) {
+        if (DatagenModLoader.isRunningDataGen()) {
+            TAG_KEYS.put(key, txt);
         }
     }
 
     public static void addI18nMobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            MOB_EFFECT.put(supplier, txt);
+            MOB_EFFECTS.put(supplier, txt);
         }
     }
 
     public static void addI18nAttributeText(Supplier<? extends Attribute> supplier, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            ATTRIBUTE.put(supplier, txt);
+            ATTRIBUTES.put(supplier, txt);
         }
     }
 
     public static void addI18nSoundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            SOUND_EVENT.put(supplier, txt);
+            SOUND_EVENTS.put(supplier, txt);
         }
     }
 
@@ -65,19 +73,13 @@ public class EnUsLangGenerator extends BasicLangGenerator {
     public void addTranslations() {
         super.addTranslations();
         addPackDescription(Lobecorp.NAMESPACE, "Lobotomy Corporation");
-        addMobEffectList(MOB_EFFECT);
-        addAttributeList(ATTRIBUTE);
-        addSoundEventList(SOUND_EVENT);
-        addItemList(ITEMS);
-        addEntityList(ENTITY_TYPES);
+        addMobEffectMap(MOB_EFFECTS);
+        addAttributeMap(ATTRIBUTES);
+        addSoundEventMap(SOUND_EVENTS);
+        addItemMap(ITEMS);
+        addEntityMap(ENTITY_TYPES);
+        addTagKeyMap(TAG_KEYS);
         MAP.forEach(this::add);
-        add("entity.entity_corpse.display_name","%sCorpse");
-
-        MOB_EFFECT.clear();
-        ATTRIBUTE.clear();
-        SOUND_EVENT.clear();
-        ITEMS.clear();
-        ENTITY_TYPES.clear();
-        MAP.clear();
+        add("entity.entity_corpse.display_name", "%s Corpse");
     }
 }

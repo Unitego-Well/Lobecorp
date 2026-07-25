@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init;
+package org.unitego.lobecorp.init.entity;
 
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;

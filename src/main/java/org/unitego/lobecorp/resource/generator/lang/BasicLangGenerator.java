@@ -7,6 +7,7 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
@@ -80,20 +81,24 @@ public class BasicLangGenerator extends LanguageProvider {
         add("pack." + a + ".description", description);
     }
 
-    protected void addItemList(Map<Supplier<? extends Item>, String> map) {
+    protected void addItemMap(Map<Supplier<? extends Item>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
     }
 
-    protected void addEntityList(Map<Supplier<? extends EntityType<?>>, String> map) {
+    protected void addEntityMap(Map<Supplier<? extends EntityType<?>>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
     }
 
-    protected void addMobEffectList(Map<Supplier<? extends MobEffect>, String> map) {
+    protected void addMobEffectMap(Map<Supplier<? extends MobEffect>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
     }
 
-    protected void addAttributeList(Map<Supplier<? extends Attribute>, String> map) {
+    protected void addAttributeMap(Map<Supplier<? extends Attribute>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
+    }
+
+    protected void addTagKeyMap(Map<TagKey<?>, String> map) {
+        map.forEach(this::add);
     }
 
     /**
@@ -103,7 +108,7 @@ public class BasicLangGenerator extends LanguageProvider {
         add(attribute.getDescriptionId(), name);
     }
 
-    protected void addSoundEventList(Map<Supplier<? extends SoundEvent>, String> map) {
+    protected void addSoundEventMap(Map<Supplier<? extends SoundEvent>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
     }
 

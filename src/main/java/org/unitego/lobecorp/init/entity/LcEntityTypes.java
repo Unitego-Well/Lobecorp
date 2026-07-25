@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init;
+package org.unitego.lobecorp.init.entity;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -44,6 +44,6 @@ public class LcEntityTypes {
             String name, String enUs, String zhCn, EntityType.EntityFactory<T> factory,
             MobCategory category
     ) {
-        return register(register, name, zhCn, enUs, factory, category, UnaryOperator.identity());
+        return register(register, name, enUs, zhCn, factory, category, UnaryOperator.identity());
     }
 }

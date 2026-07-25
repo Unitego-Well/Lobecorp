@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.init.LcEntityDataSerializers;
-import org.unitego.lobecorp.init.LcEntityTypes;
+import org.unitego.lobecorp.init.entity.LcEntityTypes;
 
 public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();

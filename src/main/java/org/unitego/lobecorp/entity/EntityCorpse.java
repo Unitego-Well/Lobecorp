@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.init.LcEntityDataSerializers;
 import org.unitego.lobecorp.init.entity.LcEntityTypes;
 
@@ -29,6 +30,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
             EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
+    public static final String DISPLAY_NAME_KEY = "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name";
 
     // 缓存存储实体 不使用final是因为同步等因素会导致变换
     @Nullable
@@ -104,14 +106,14 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     @Override
     public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
         if (source.is(DamageTypeTags.IS_PROJECTILE)
-            || source.is(DamageTypes.DROWN)
-            || source.is(DamageTypes.IN_WALL)
-            || source.is(DamageTypes.MAGIC)
-            || source.is(DamageTypes.INDIRECT_MAGIC)
-            || source.is(DamageTypes.WITHER)
-            || source.is(DamageTypes.WITHER_SKULL)
-            || source.is(DamageTypes.HOT_FLOOR)
-            || source.is(DamageTypes.CACTUS)) {
+                || source.is(DamageTypes.DROWN)
+                || source.is(DamageTypes.IN_WALL)
+                || source.is(DamageTypes.MAGIC)
+                || source.is(DamageTypes.INDIRECT_MAGIC)
+                || source.is(DamageTypes.WITHER)
+                || source.is(DamageTypes.WITHER_SKULL)
+                || source.is(DamageTypes.HOT_FLOOR)
+                || source.is(DamageTypes.CACTUS)) {
             return true;
         }
         return super.isInvulnerableTo(level, source);
@@ -253,7 +255,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     @Override
     public Component getDisplayName() {
         if (ownerEntity != null) {
-            return Component.translatable("entity.entity_corpse.display_name", ownerEntity.getDisplayName());
+            return Component.translatable(DISPLAY_NAME_KEY, ownerEntity.getDisplayName());
         }
         return super.getDisplayName();
     }

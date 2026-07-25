@@ -9,6 +9,7 @@ import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.data.loading.DatagenModLoader;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.entity.EntityCorpse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -80,6 +81,6 @@ public class ZhCnLangGenerator extends BasicLangGenerator {
         addEntityMap(ENTITY_TYPES);
         addTagKeyMap(TAG_KEYS);
         MAP.forEach(this::add);
-        add("entity.entity_corpse.display_name", "%s尸体");
+        add(EntityCorpse.DISPLAY_NAME_KEY, "%s尸体");
     }
 }

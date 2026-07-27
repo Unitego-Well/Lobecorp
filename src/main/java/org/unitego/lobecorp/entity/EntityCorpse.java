@@ -133,6 +133,16 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     }
 
     @Override
+    public boolean attackable() {
+        return false;
+    }
+
+//    @Override
+//    public boolean isAttackable() {
+//        return false;
+//    }
+
+    @Override
     public boolean isPushable() {
         return false;
     }

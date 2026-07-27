@@ -1,17 +1,21 @@
 package org.unitego.lobecorp.event;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
+import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
-public class LicingEntityEvents {
+public class LivingEntityEvents {
 
     @SubscribeEvent
     public static void onLivingDeath(EntityLeaveLevelEvent event) {

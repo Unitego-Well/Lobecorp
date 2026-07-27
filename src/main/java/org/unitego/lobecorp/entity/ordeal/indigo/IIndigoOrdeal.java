@@ -1,7 +1,6 @@
 package org.unitego.lobecorp.entity.ordeal.indigo;
 
 import net.minecraft.world.entity.Entity;
-import org.unitego.lobecorp.entity.ai.goal.target.HurtByTargetGoal;
 import org.unitego.lobecorp.entity.ordeal.IOrdeal;
 import org.unitego.lobecorp.init.tag.LcEntityTypeTags;
 

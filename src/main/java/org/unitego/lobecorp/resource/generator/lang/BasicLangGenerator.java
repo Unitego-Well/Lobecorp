@@ -59,10 +59,8 @@ public class BasicLangGenerator extends LanguageProvider {
         mergeManualEntries();
     }
 
-    /**
-     * 读取并合并现有的手动维护的 json 条目。
-     * 这样手动文件只需保留到下次 datagen 运行，之后可安全删除。
-     */
+    /// 读取并合并现有的手动维护的 json 条目。
+    /// 这样手动文件只需保留到下次 datagen 运行，之后可安全删除。
     public void mergeManualEntries() {
         Path manualPath = Paths.get(System.getProperty("user.dir")).getParent()
                 .resolve("lang/" + ((LanguageProviderAccessor) this).getLocale() + ".json");
@@ -101,9 +99,7 @@ public class BasicLangGenerator extends LanguageProvider {
         map.forEach(this::add);
     }
 
-    /**
-     * 生物属性翻译
-     */
+    /// 生物属性翻译
     protected void add(Attribute attribute, String name) {
         add(attribute.getDescriptionId(), name);
     }
@@ -125,9 +121,7 @@ public class BasicLangGenerator extends LanguageProvider {
         add(dataComponentType.toString(), name);
     }
 
-    /**
-     * 声音字幕翻译
-     */
+    /// 声音字幕翻译
     protected void addSoundEvent(Holder<SoundEvent> holder, String name) {
         add(holder.value(), name);
     }
@@ -136,16 +130,12 @@ public class BasicLangGenerator extends LanguageProvider {
         add("sound." + damageType.location().toLanguageKey(), name);
     }
 
-    /**
-     * 死亡消息翻译
-     */
+    /// 死亡消息翻译
     protected void addDeathMessage(ResourceKey<DamageType> damageType, String name) {
         add("death.attack." + damageType.identifier().getPath(), name);
     }
 
-    /**
-     * 玩家死亡消息翻译
-     */
+    /// 玩家死亡消息翻译
     protected void addPlayerDeathMessage(ResourceKey<DamageType> damageType, String name) {
         add("death.attack." + damageType.identifier().getPath() + ".player", name);
     }

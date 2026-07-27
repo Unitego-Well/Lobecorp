@@ -1,5 +1,6 @@
 [versions]
 moddev = "2.0.142"
+mixinmcpdecompile = "0.9.0"
 minecraft = "26.1.2"
 neoforge = "26.1.2.82"
 
@@ -8,14 +9,24 @@ anvilcraftlib = "2.0.0+snapshot.485"
 
 geckolib = "5.5.2"
 curios = "15.0.0-beta.2+26.1.2"
+jei = "29.19.0.51"
+jade = "26.1.8+neoforge"
+reretrodamageindicators = "ldSJzzoV"
 
 [libraries]
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
 anvilcraftlib = { module = "dev.anvilcraft.lib:anvillib-neoforge-26.1", version.ref = "anvilcraftlib" }
 geckolib = { module = "com.geckolib:geckolib-neoforge-26.1.2", version.ref = "geckolib" }
 curios = { module = "top.theillusivec4.curios:curios-neoforge", version.ref = "curios" }
+jeiapi = { module = "mezz.jei:jei-26.1.2-neoforge-api", version.ref = "jei" }
+jei = { module = "mezz.jei:jei-26.1.2-neoforge", version.ref = "jei" }
+jade = { module = "maven.modrinth:jade", version.ref = "jade" }
+# 伤害血量显示
+reretrodamageindicators = { module = "maven.modrinth:re-retro-damage-indicators", version.ref = "reretrodamageindicators" }
 
 [bundles]
 
 [plugins]
 moddev = { id = "net.neoforged.moddev", version.ref = "moddev" }
+# 让AI或外界获取更详细的mixin数据
+mixinmcpdecompile = { id = "dev.mixinmcp.decompile", version.ref = "mixinmcpdecompile" }

@@ -13,7 +13,9 @@ public class OrdealEntityTypes {
     public static final DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
 
     public static final DeferredHolder<EntityType<?>, EntityType<Sweeper>> SWEEPER = LcEntityTypes.register(REGISTER,
-            "sweeper", "Sweeper", "清道夫", Sweeper::new, MobCategory.MONSTER);
+            "sweeper", "Sweeper", "清道夫", Sweeper::new, MobCategory.MONSTER, sweeperBuilder -> sweeperBuilder
+                    .sized(0.625f, 2.938f)
+                    .eyeHeight(2.4375f));
 
     @ApiStatus.Internal
     static void init(IEventBus iEventBus) {

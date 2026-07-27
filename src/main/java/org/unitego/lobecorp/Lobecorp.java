@@ -10,6 +10,9 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.init.LcEntityDataSerializers;
+import org.unitego.lobecorp.init.LcMemoryModuleTypes;
+import org.unitego.lobecorp.init.LcParticleTypes;
+import org.unitego.lobecorp.init.LcSensorTypes;
 import org.unitego.lobecorp.init.entity.LcEntityTypes;
 import org.unitego.lobecorp.init.tag.LcTags;
 
@@ -22,6 +25,9 @@ public class Lobecorp {
         LOGGER.info("Unitego.");
 
         LcTags.init();
+        LcMemoryModuleTypes.REGISTER.register(iEventBus);
+        LcSensorTypes.REGISTER.register(iEventBus);
+        LcParticleTypes.REGISTER.register(iEventBus);
         LcEntityDataSerializers.REGISTER.register(iEventBus);
         LcEntityTypes.init(iEventBus);
     }

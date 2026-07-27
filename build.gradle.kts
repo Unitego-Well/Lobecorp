@@ -3,6 +3,7 @@ plugins {
     `maven-publish`
     idea
     alias(libs.plugins.moddev)
+    alias(libs.plugins.mixinmcpdecompile)
 }
 
 tasks.wrapper {
@@ -38,6 +39,10 @@ repositories {
         forRepository { maven { url = uri("https://maven.theillusivec4.top/") } }
         filter { includeGroup("top.theillusivec4.curios") }
     }
+    // jie
+    maven { url = uri("https://modmaven.dev") }
+    // jade reretrodamageindicators
+    maven { url = uri("https://api.modrinth.com/maven") }
 }
 
 dependencies {
@@ -45,6 +50,10 @@ dependencies {
     jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
     implementation(libs.curios)
+    implementation(libs.jeiapi)
+    implementation(libs.jei)
+    implementation(libs.jade)
+    implementation(libs.reretrodamageindicators)
 }
 
 base {

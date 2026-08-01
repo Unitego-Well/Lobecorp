@@ -5,6 +5,7 @@ import net.minecraft.client.particle.*;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.RandomSource;
 
+// TODO 要引入旋转
 /// 清道夫打击粒子
 public class SweeperStrikeParticle extends SingleQuadParticle {
     private final SpriteSet sprites;
@@ -47,6 +48,7 @@ public class SweeperStrikeParticle extends SingleQuadParticle {
         public Particle createParticle(SimpleParticleType options, ClientLevel level,
                                        double x, double y, double z,
                                        double xAux, double yAux, double zAux, RandomSource random) {
+            // TODO 要引入旋转 将 xAux yAux zAux 改成对应的旋转角度
             return new SweeperStrikeParticle(level, x, y, z, this.sprites);
         }
     }

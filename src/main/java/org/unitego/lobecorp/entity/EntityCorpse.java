@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.init.LcEntityDataSerializers;
+import org.unitego.lobecorp.init.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.init.entity.LcEntityTypes;
 
 public class EntityCorpse<T extends Entity> extends LivingEntity {
@@ -31,6 +31,8 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
             EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
     public static final String DISPLAY_NAME_KEY = "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name";
+    /// 最大腐烂tick
+    public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
 
     // 缓存存储实体 不使用final是因为同步等因素会导致变换
     @Nullable
@@ -78,11 +80,18 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     @Override
     public void tick() {
         super.tick();
-        if (!level().isClientSide() && tickCount % 20 == 0) {
-            if (ownerEntity == null) {
+        if (!level().isClientSide()) {
+            if (tickCount >= MAX_ROT_REMOVED_TICK) {
                 remove(RemovalReason.DISCARDED);
+                return;
+            }
+
+            if (tickCount % 20 == 0 && ownerEntity == null) {
+                remove(RemovalReason.DISCARDED);
+                return;
             }
         }
+
         if (this.isInWater()) {
             this.setUnderwaterMovement();
         } else if (this.isInLava()) {
@@ -137,11 +146,6 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
         return false;
     }
 
-//    @Override
-//    public boolean isAttackable() {
-//        return false;
-//    }
-
     @Override
     public boolean isPushable() {
         return false;
@@ -175,11 +179,11 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
         if (newOwnerEntity instanceof LivingEntity livingEntity) {
             livingEntity.yBodyRotO = livingEntity.yBodyRot;
             livingEntity.yHeadRotO = livingEntity.yHeadRot;
-            float health = (float) (livingEntity.getAttributeValue(Attributes.MAX_HEALTH) / 4);
+            float health = (float) (livingEntity.getAttributeValue(Attributes.MAX_HEALTH));
             getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
             setHealth(health);
         } else {
-            float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue() / 4);
+            float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
             getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
             setHealth(health);
         }
@@ -223,7 +227,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
         ownerEntity = null;
         cachedDimensions = null;
         setOwnerEntityTag(new CompoundTag());
-        float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue() / 4);
+        float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
         setHealth(health);
         refreshDimensions();

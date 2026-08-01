@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.resource.generator;
+package org.unitego.lobecorp.generator;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.DataGenerator;
@@ -8,9 +8,10 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.resource.generator.lang.EnUsLangGenerator;
-import org.unitego.lobecorp.resource.generator.lang.ZhCnLangGenerator;
-import org.unitego.lobecorp.resource.generator.tag.EntityTypeTagGenerator;
+import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
+import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
+import org.unitego.lobecorp.generator.tag.DamageTypeTagGenerator;
+import org.unitego.lobecorp.generator.tag.EntityTypeTagGenerator;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -19,9 +20,9 @@ import java.util.concurrent.CompletableFuture;
 public class ModGenerator {
     @SubscribeEvent
     public static void gatherData(GatherDataEvent.Client event) {
-        buildFactory(event, EnUsLangGenerator::new);
-        buildFactory(event, ZhCnLangGenerator::new);
-        buildFactory(event, ParticleGenerator::new);
+        build(event, EnUsLangGenerator::new);
+        build(event, ZhCnLangGenerator::new);
+        build(event, ParticleGenerator::new);
     }
 
     @SubscribeEvent
@@ -30,13 +31,14 @@ public class ModGenerator {
         DataGenerator generator = event.getGenerator();
         PackOutput packOutput = generator.getPackOutput();
         build(event, new EntityTypeTagGenerator(packOutput, lookupProvider));
+        build(event, new DamageTypeTagGenerator(packOutput, lookupProvider));
     }
 
-    public static <T extends DataProvider> T build(GatherDataEvent event, T provider) {
-        return event.getGenerator().addProvider(true, provider);
+    public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider provider) {
+        return event.getGenerator().addProvider(true, (T) provider);
     }
 
-    public static <T extends DataProvider> T buildFactory(GatherDataEvent event, DataProvider.Factory<T> provider) {
+    public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider.Factory<T> provider) {
         return event.getGenerator().addProvider(true, provider);
     }
 }

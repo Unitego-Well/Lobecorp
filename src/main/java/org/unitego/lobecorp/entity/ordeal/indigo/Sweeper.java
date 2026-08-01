@@ -13,8 +13,10 @@ import com.google.common.collect.Sets;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -38,7 +40,6 @@ import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.PathType;
-import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
@@ -46,9 +47,10 @@ import org.unitego.lobecorp.entity.IEntityTarget;
 import org.unitego.lobecorp.entity.ai.behavior.AttackEntity;
 import org.unitego.lobecorp.entity.ai.behavior.WalkToEntity;
 import org.unitego.lobecorp.entity.ai.util.BrainUtil;
-import org.unitego.lobecorp.init.LcMemoryModuleTypes;
+import org.unitego.lobecorp.init.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.init.LcParticleTypes;
-import org.unitego.lobecorp.init.LcSensorTypes;
+import org.unitego.lobecorp.entity.util.EntityUtil;
+import org.unitego.lobecorp.init.brain.LcSensorTypes;
 
 import java.util.List;
 
@@ -61,6 +63,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                     SensorType.NEAREST_ITEMS,
                     LcSensorTypes.ORDEAL_ATTACKABLES.get(),
                     LcSensorTypes.NEAREST_CORPSE.get(),
+                    LcSensorTypes.NEARBY_CORPSES.get(),
                     SensorType.HURT_BY).build();
     private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
     @Nullable
@@ -77,8 +80,9 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     public static AttributeSupplier.Builder createAttributes() {
         return createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 200)
-                .add(Attributes.ATTACK_DAMAGE, 10)
-                .add(Attributes.MOVEMENT_SPEED, 0.2);
+                .add(Attributes.ATTACK_DAMAGE, 5)
+                .add(Attributes.MOVEMENT_SPEED, 0.2)
+                .add(Attributes.ATTACK_KNOCKBACK, 1.0);
     }
 
     @Override
@@ -138,8 +142,8 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                                 .getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
                                 .orElse(NearestVisibleLivingEntities.empty())
                                 .findClosest(mob::isValidTarget)),
-                        WalkToEntity.create(LcMemoryModuleTypes.NEAREST_CORPSE.get(), 3f, 2),
-                        WalkToEntity.create(MemoryModuleType.NEAREST_VISIBLE_WANTED_ITEM, 3f, 2),
+                        WalkToEntity.create(LcMemoryModuleTypes.NEAREST_CORPSE.get(), 3f, 1),
+                        WalkToEntity.create(MemoryModuleType.NEAREST_VISIBLE_WANTED_ITEM, 3f, 1),
                         disposeCorpse(),
                         disposeItem(),
                         new RunOne<>(ImmutableList.of(
@@ -153,20 +157,11 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                                 Pair.of(5, AttackEntity.create(MemoryModuleType.ATTACK_TARGET,
                                         MELEE_COOLDOWN,
                                         Mob::isWithinMeleeAttackRange,
-                                        (level, mob, target) -> mob.doHurtTarget(level, target, 0.5f),
-                                        (level, mob, target, hit) -> {
-                                            var bb = target.getBoundingBox();
-                                            Vec3 dir = mob.position().subtract(target.getX(), 0, target.getZ()).normalize();
-                                            double px = dir.x > 0 ? bb.maxX : bb.minX;
-                                            double pz = dir.z > 0 ? bb.maxZ : bb.minZ;
-                                            if (Math.abs(dir.x) > Math.abs(dir.z)) {
-                                                pz = target.getZ();
-                                            } else {
-                                                px = target.getX();
-                                            }
-                                            double py = bb.minY + bb.getYsize() / 2;
-                                            level.sendParticles(LcParticleTypes.SIMPLE_LONG_SLASH.get(), px, py, pz, 1, 0, 0, 0, 0);
-                                        }))
+                                        (level, mob, target) -> mob.doHurtTarget(level, target, 1f),
+                                        (level, mob, target, hit) ->
+                                                EntityUtil.getHitPosOnAABB(mob, target).ifPresent(hitPos ->
+                                                        level.sendParticles(LcParticleTypes.SIMPLE_LONG_SLASH.get(), hitPos.x, hitPos.y, hitPos.z, 1, 0, 0, 0, 0)
+                                                )))
                         ),
                         Sets.newHashSet(
                                 Pair.of(MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT)),
@@ -185,9 +180,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 i.absent(MemoryModuleType.ATTACK_COOLING_DOWN)
         ).apply(i, (nearestCorpse, cool) -> (level, body, time) -> {
             LivingEntity corpse = i.get(nearestCorpse);
-            if (!body.isWithinMeleeAttackRange(corpse)) return false;
-            body.doHurtTarget(level, corpse, 2.0f);
-            body.getBrain().setMemoryWithExpiry(MemoryModuleType.ATTACK_COOLING_DOWN, true, MELEE_COOLDOWN);
+            // TODO 引入前摇计时 需要在 LcMemoryModuleTypes 注册
+            if (!body.isWithinMeleeAttackRange(corpse)) {
+                return false;
+            }
+            corpse.setHealth(corpse.getHealth() - 2);
+            body.heal(2);
+            // TODO 播放粒子和特殊动画
             return true;
         }));
     }

@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.resource.generator.lang;
+package org.unitego.lobecorp.generator.lang;
 
 import net.minecraft.data.PackOutput;
 import net.minecraft.sounds.SoundEvent;
@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class EnUsLangGenerator extends BasicLangGenerator {
+public class ZhCnLangGenerator extends BasicLangGenerator {
     private static final Map<Supplier<? extends MobEffect>, String> MOB_EFFECTS = new HashMap<>();
     private static final Map<Supplier<? extends Attribute>, String> ATTRIBUTES = new HashMap<>();
     private static final Map<Supplier<? extends SoundEvent>, String> SOUND_EVENTS = new HashMap<>();
@@ -24,8 +24,8 @@ public class EnUsLangGenerator extends BasicLangGenerator {
     private static final Map<TagKey<?>, String> TAG_KEYS = new HashMap<>();
     private static final Map<String, String> MAP = new HashMap<>();
 
-    public EnUsLangGenerator(PackOutput output) {
-        super(output, Lobecorp.NAMESPACE, "en_us");
+    public ZhCnLangGenerator(PackOutput output) {
+        super(output, Lobecorp.NAMESPACE, "zh_cn");
     }
 
     public static void addI18nText(String key, String txt) {
@@ -40,9 +40,9 @@ public class EnUsLangGenerator extends BasicLangGenerator {
         }
     }
 
-    public static void addI18nMobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
+    public static void addI18nSoundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            MOB_EFFECTS.put(supplier, txt);
+            SOUND_EVENTS.put(supplier, txt);
         }
     }
 
@@ -52,9 +52,9 @@ public class EnUsLangGenerator extends BasicLangGenerator {
         }
     }
 
-    public static void addI18nSoundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
+    public static void addI18nMobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
         if (DatagenModLoader.isRunningDataGen()) {
-            SOUND_EVENTS.put(supplier, txt);
+            MOB_EFFECTS.put(supplier, txt);
         }
     }
 
@@ -73,7 +73,7 @@ public class EnUsLangGenerator extends BasicLangGenerator {
     @Override
     public void addTranslations() {
         super.addTranslations();
-        addPackDescription(Lobecorp.NAMESPACE, "Lobotomy Corporation");
+        addPackDescription(Lobecorp.NAMESPACE, "脑叶公司");
         addMobEffectMap(MOB_EFFECTS);
         addAttributeMap(ATTRIBUTES);
         addSoundEventMap(SOUND_EVENTS);
@@ -81,6 +81,6 @@ public class EnUsLangGenerator extends BasicLangGenerator {
         addEntityMap(ENTITY_TYPES);
         addTagKeyMap(TAG_KEYS);
         MAP.forEach(this::add);
-        add(EntityCorpse.DISPLAY_NAME_KEY, "%s Corpse");
+        add(EntityCorpse.DISPLAY_NAME_KEY, "%s尸体");
     }
 }

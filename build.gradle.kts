@@ -64,6 +64,7 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 neoForge {
     version = neoforgeVersion
+    interfaceInjectionData.from("src/main/resources/META-INF/interfaces.json")
     setAccessTransformers("src/main/resources/META-INF/accesstransformer.cfg")
     runs {
         register("client") {

@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.resource.generator;
+package org.unitego.lobecorp.generator;
 
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.data.PackOutput;

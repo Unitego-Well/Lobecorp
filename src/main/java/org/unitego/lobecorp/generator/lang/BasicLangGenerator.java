@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.resource.generator.lang;
+package org.unitego.lobecorp.generator.lang;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

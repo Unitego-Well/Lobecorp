@@ -9,8 +9,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.resource.generator.lang.EnUsLangGenerator;
-import org.unitego.lobecorp.resource.generator.lang.ZhCnLangGenerator;
+import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
+import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 
 import java.util.function.UnaryOperator;
 

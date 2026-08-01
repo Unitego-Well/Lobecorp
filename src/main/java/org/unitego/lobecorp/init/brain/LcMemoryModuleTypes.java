@@ -1,23 +1,26 @@
-package org.unitego.lobecorp.init;
+package org.unitego.lobecorp.init.brain;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
+import org.unitego.lobecorp.entity.ai.memory.NearestVisibleEntities;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/// 实体 brain 系统的存储器
 public class LcMemoryModuleTypes {
     public static final DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
 
     public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleLivingEntities>> NEAREST_VISIBLE_CORPSES = register("visible_nearest_corpse");
+    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<EntityCorpse<?>>>> NEAREST_CORPSES = register("nearest_corpses");
+    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleEntities<EntityCorpse<?>>>> NEAREST_VISIBLE_CORPSES = register("nearest_visible_corpses");
 
     private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
         return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));

@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init;
+package org.unitego.lobecorp.init.entity;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataSerializer;

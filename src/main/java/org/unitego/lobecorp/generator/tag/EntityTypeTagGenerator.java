@@ -1,10 +1,9 @@
-package org.unitego.lobecorp.resource.generator.tag;
+package org.unitego.lobecorp.generator.tag;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.EntityTypeTagsProvider;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.api.LcCodecs;
 import org.unitego.lobecorp.init.tag.LcEntityTypeTags;
 
 import java.util.concurrent.CompletableFuture;

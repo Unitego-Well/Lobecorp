@@ -11,9 +11,12 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.unitego.lobecorp.api.IDamageSourceExpand;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 @Mixin(DamageSource.class)
@@ -21,25 +24,24 @@ public abstract class DamageSourceMixin implements IDamageSourceExpand {
     @Shadow
     @Final
     private Holder<DamageType> type;
+
     @Unique
-    private final Set<TagKey<DamageType>> lobecorp$modifiableTags = Sets.newHashSet();
+    private final Set<TagKey<DamageType>> lobecorp$modifiableTags = new HashSet<>();
 
     /// 使用于抵消原始 tag
     @Unique
-    private final Set<TagKey<DamageType>> lobecorp$eliminateTags = Sets.newHashSet();
+    private final Set<TagKey<DamageType>> lobecorp$eliminateTags = new HashSet<>();
 
     @Override
     public Set<TagKey<DamageType>> lobecorp$getModifiableTags() {
-        Set<TagKey<DamageType>> hashSet = Sets.newHashSet();
-        hashSet.addAll(lobecorp$modifiableTags);
+        Set<TagKey<DamageType>> hashSet = new HashSet<>(lobecorp$modifiableTags);
         hashSet.removeAll(lobecorp$eliminateTags);
         return Collections.unmodifiableSet(hashSet);
     }
 
     @Override
     public Set<TagKey<DamageType>> lobecorp$getAllTags() {
-        Set<TagKey<DamageType>> hashSet = Sets.newHashSet();
-        hashSet.addAll(lobecorp$modifiableTags);
+        Set<TagKey<DamageType>> hashSet = new HashSet<>(lobecorp$modifiableTags);
         hashSet.addAll(type.tags().toList());
         hashSet.removeAll(lobecorp$eliminateTags);
         return Collections.unmodifiableSet(hashSet);
@@ -48,7 +50,7 @@ public abstract class DamageSourceMixin implements IDamageSourceExpand {
     @Override
     public boolean lobecorp$remove(TagKey<DamageType> tag) {
         // 这里使用 | 是因为我想要让俩个set集合都进行操作
-        return lobecorp$modifiableTags.remove(tag) | lobecorp$eliminateTags.add(tag);
+        return (!lobecorp$modifiableTags.isEmpty() && lobecorp$modifiableTags.remove(tag)) | lobecorp$eliminateTags.add(tag);
     }
 
     @Override
@@ -59,6 +61,6 @@ public abstract class DamageSourceMixin implements IDamageSourceExpand {
 
     @WrapMethod(method = "is(Lnet/minecraft/tags/TagKey;)Z")
     private boolean lobecorp$is(TagKey<DamageType> tag, Operation<Boolean> original) {
-        return !lobecorp$eliminateTags.contains(tag) && (lobecorp$modifiableTags.contains(tag) || original.call(tag));
+        return !lobecorp$eliminateTags.contains(tag) && ((!lobecorp$modifiableTags.isEmpty() && lobecorp$modifiableTags.contains(tag)) || original.call(tag));
     }
 }

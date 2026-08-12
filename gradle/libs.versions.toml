@@ -12,6 +12,9 @@ curios = "15.0.0-beta.2+26.1.2"
 jei = "29.19.0.51"
 jade = "26.1.8+neoforge"
 reretrodamageindicators = "ldSJzzoV"
+# photon 依赖
+ldlib2 = "26.1.2.31"
+kilagraph = "26.1.0.8"
 
 [libraries]
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
@@ -23,6 +26,8 @@ jei = { module = "mezz.jei:jei-26.1.2-neoforge", version.ref = "jei" }
 jade = { module = "maven.modrinth:jade", version.ref = "jade" }
 # 伤害血量显示
 reretrodamageindicators = { module = "maven.modrinth:re-retro-damage-indicators", version.ref = "reretrodamageindicators" }
+ldlib2 = { module = "com.lowdragmc.ldlib2:ldlib2-neoforge-26.1", version.ref = "ldlib2" }
+kilagraph = { module = "com.lowdragmc.kilagraph:kilagraph-neoforge-26.1", version.ref = "kilagraph" }
 
 [bundles]
 

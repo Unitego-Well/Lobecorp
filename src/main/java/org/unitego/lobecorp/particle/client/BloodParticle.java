@@ -1,23 +1,27 @@
 package org.unitego.lobecorp.particle.client;
 
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.particle.*;
+import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.ParticleProvider;
+import net.minecraft.client.particle.SingleQuadParticle;
+import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.core.particles.SimpleParticleType;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.RandomSource;
 
-// TODO 要引入旋转
-/// 清道夫打击粒子
-public class SweeperStrikeParticle extends SingleQuadParticle {
+/// 血粒子，带重力下落。
+public class BloodParticle extends SingleQuadParticle {
     private final SpriteSet sprites;
 
-    public SweeperStrikeParticle(ClientLevel level, double x, double y, double z, SpriteSet sprite) {
+    public BloodParticle(ClientLevel level, double x, double y, double z, SpriteSet sprite) {
         super(level, x, y, z, sprite.first());
         this.sprites = sprite;
         this.setSpriteFromAge(sprites);
-        this.lifetime = 8;
-        this.quadSize = 0.5F;
-        this.setSize(1.0F, 1.0F);
+        // TODO 未指定的参数（颜色/寿命/尺寸）后续调整
+        this.lifetime = 30;
+        this.gravity = 1.0F;
+        this.quadSize = 0.2F;
+        this.setSize(0.1F, 0.1F);
+        this.setColor(0.8F, 0.1F, 0.1F);
     }
 
     @Override
@@ -26,17 +30,12 @@ public class SweeperStrikeParticle extends SingleQuadParticle {
     }
 
     @Override
-    public int getLightCoords(float a) {
-        return LightCoordsUtil.FULL_BRIGHT;
-    }
-
-    @Override
     public void tick() {
-        if (this.age++ >= this.lifetime) {
-            this.remove();
-        } else {
-            this.setSpriteFromAge(this.sprites);
+        super.tick();
+        if (this.removed) {
+            return;
         }
+        this.setSpriteFromAge(this.sprites);
     }
 
     public static class Provider implements ParticleProvider<SimpleParticleType> {
@@ -49,8 +48,9 @@ public class SweeperStrikeParticle extends SingleQuadParticle {
         public Particle createParticle(SimpleParticleType options, ClientLevel level,
                                        double x, double y, double z,
                                        double xAux, double yAux, double zAux, RandomSource random) {
-            // TODO 要引入旋转 将 xAux yAux zAux 改成对应的旋转角度
-            return new SweeperStrikeParticle(level, x, y, z, this.sprites);
+            BloodParticle particle = new BloodParticle(level, x, y, z, this.sprites);
+            particle.setParticleSpeed(xAux, yAux, zAux);
+            return particle;
         }
     }
 }

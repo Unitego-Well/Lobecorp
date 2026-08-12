@@ -18,6 +18,7 @@ public class LcParticleTypes {
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_SHORT_SLASH = register("simple_short_slash", true);
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_LONG_SLASH = register("simple_long_slash", true);
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_DOUBLE_SLASH = register("simple_double_slash", true);
+    public static final DeferredHolder<ParticleType<?>, SimpleParticleType> BLOOD = register("blood", true);
 
     private static DeferredHolder<ParticleType<?>, SimpleParticleType> register(String name, boolean overrideLimiter) {
         return REGISTER.register(name, () -> new SimpleParticleType(overrideLimiter));

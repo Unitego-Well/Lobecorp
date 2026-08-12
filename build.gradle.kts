@@ -1,3 +1,5 @@
+@file:Suppress("AvoidDuplicateDependencies")
+
 plugins {
     `java-library`
     `maven-publish`
@@ -43,6 +45,8 @@ repositories {
     maven { url = uri("https://modmaven.dev") }
     // jade reretrodamageindicators
     maven { url = uri("https://api.modrinth.com/maven") }
+    // photon 依赖 (LDLib2 / KilaGraph)
+    maven { url = uri("https://maven.firstdark.dev/snapshots") }
 }
 
 dependencies {
@@ -54,6 +58,12 @@ dependencies {
     implementation(libs.jei)
     implementation(libs.jade)
     implementation(libs.reretrodamageindicators)
+    // photon 依赖
+    implementation(libs.ldlib2)
+    implementation(libs.kilagraph)
+    // lib/ 下的本地 jar (Photon) 打包进 mod 并加入 dev classpath
+//    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
+    implementation(fileTree("lib") { include("*.jar") })
 }
 
 base {

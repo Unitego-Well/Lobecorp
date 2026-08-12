@@ -15,7 +15,7 @@ public class EntityRenderers {
     @SubscribeEvent
     public static void registry(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(OrdealEntityTypes.SWEEPER.get(),
-                context -> new SweeperRenderer<>(context, OrdealEntityTypes.SWEEPER.get()));
+                context -> new SweeperRenderer(context, OrdealEntityTypes.SWEEPER.get()));
         event.registerEntityRenderer(LcEntityTypes.ENTITY_CORPSE.get(),
                 EntityCorpseRenderer::new);
     }

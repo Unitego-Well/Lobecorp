@@ -17,6 +17,8 @@ public class ParticleGenerator extends ParticleDescriptionProvider {
         spriteSet(LcParticleTypes.SIMPLE_SHORT_SLASH.get(), Lobecorp.id("simple/short_slash"), 6, false);
         spriteSet(LcParticleTypes.SIMPLE_LONG_SLASH.get(), Lobecorp.id("simple/long_slash"), 6, false);
         spriteSet(LcParticleTypes.SIMPLE_DOUBLE_SLASH.get(), Lobecorp.id("simple/double_slash"), 6, false);
+        // TODO 纹理资源未就绪，路径/帧数待定
+        spriteSet(LcParticleTypes.BLOOD.get(), Lobecorp.id("blood"), 1, false);
     }
 
     protected void spriteSet(DeferredHolder<ParticleType<?>, ParticleType<?>> type, int numOfTextures, boolean reverse) {

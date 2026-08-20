@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init.tag;
+package org.unitego.lobecorp.registry.tag;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;

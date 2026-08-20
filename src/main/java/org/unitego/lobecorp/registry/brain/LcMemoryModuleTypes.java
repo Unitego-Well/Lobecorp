@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init.brain;
+package org.unitego.lobecorp.registry.brain;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;

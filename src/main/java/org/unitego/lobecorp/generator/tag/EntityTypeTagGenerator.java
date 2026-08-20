@@ -4,7 +4,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.tags.EntityTypeTagsProvider;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.init.tag.LcEntityTypeTags;
+import org.unitego.lobecorp.registry.tag.LcEntityTypeTags;
 
 import java.util.concurrent.CompletableFuture;
 

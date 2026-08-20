@@ -4,7 +4,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import org.unitego.lobecorp.init.brain.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 
 import java.util.HashMap;
 import java.util.Map;

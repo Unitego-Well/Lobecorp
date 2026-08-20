@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init;
+package org.unitego.lobecorp.registry;
 
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.particles.ParticleOptions;

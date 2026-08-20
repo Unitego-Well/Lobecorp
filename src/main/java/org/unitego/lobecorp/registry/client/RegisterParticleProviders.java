@@ -5,7 +5,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.init.LcParticleTypes;
+import org.unitego.lobecorp.registry.LcParticleTypes;
 import org.unitego.lobecorp.particle.client.BloodParticle;
 import org.unitego.lobecorp.particle.client.SweeperStrikeParticle;
 

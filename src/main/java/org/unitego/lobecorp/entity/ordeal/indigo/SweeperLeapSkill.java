@@ -9,7 +9,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.entity.ai.skill.Skill;
 import org.unitego.lobecorp.entity.ai.skill.SkillRuntime;
-import org.unitego.lobecorp.init.LcParticleTypes;
+import org.unitego.lobecorp.registry.LcParticleTypes;
 
 /// 清道夫飞扑技能：起跳 leap 冲向目标，落地 leap2 时对落点周围造成范围伤害。
 public class SweeperLeapSkill implements Skill {

@@ -1,6 +1,5 @@
 package org.unitego.lobecorp.entity.ordeal.indigo;
 
-import com.geckolib.animatable.GeoAnimatable;
 import com.geckolib.animatable.GeoEntity;
 import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
@@ -16,16 +15,13 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.ai.ActivityData;
@@ -59,10 +55,8 @@ import org.unitego.lobecorp.entity.ai.skill.SkillBrain;
 import org.unitego.lobecorp.entity.ai.skill.SkillController;
 import org.unitego.lobecorp.entity.ai.skill.SkillHolder;
 import org.unitego.lobecorp.entity.ai.util.BrainUtil;
-import org.unitego.lobecorp.entity.util.EntityUtil;
-import org.unitego.lobecorp.init.LcParticleTypes;
-import org.unitego.lobecorp.init.brain.LcMemoryModuleTypes;
-import org.unitego.lobecorp.init.brain.LcSensorTypes;
+import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.brain.LcSensorTypes;
 
 import java.util.Collection;
 import java.util.List;

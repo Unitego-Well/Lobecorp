@@ -5,7 +5,7 @@ import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.client.data.ParticleDescriptionProvider;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.init.LcParticleTypes;
+import org.unitego.lobecorp.registry.LcParticleTypes;
 
 public class ParticleGenerator extends ParticleDescriptionProvider {
     public ParticleGenerator(PackOutput output) {

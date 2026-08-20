@@ -7,8 +7,8 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.client.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.entity.client.renderer.ordeal.SweeperRenderer;
-import org.unitego.lobecorp.init.entity.LcEntityTypes;
-import org.unitego.lobecorp.init.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.registry.entity.LcEntityTypes;
+import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class EntityRenderers {

@@ -9,7 +9,7 @@ import org.unitego.lobecorp.entity.ai.skill.Skill;
 import org.unitego.lobecorp.entity.ai.skill.SkillBrain;
 import org.unitego.lobecorp.entity.ai.skill.SkillRuntime;
 import org.unitego.lobecorp.entity.util.EntityUtil;
-import org.unitego.lobecorp.init.LcParticleTypes;
+import org.unitego.lobecorp.registry.LcParticleTypes;
 
 /// 清道夫 3 段攻击技能：attack → attack2 → attack3 → attack 循环。
 /// <p>

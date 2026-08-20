@@ -2,8 +2,7 @@ package org.unitego.lobecorp.entity.ordeal.crimson;
 
 import net.minecraft.world.entity.Entity;
 import org.unitego.lobecorp.entity.ordeal.IOrdeal;
-import org.unitego.lobecorp.entity.ordeal.violet.IVioletOrdeal;
-import org.unitego.lobecorp.init.tag.LcEntityTypeTags;
+import org.unitego.lobecorp.registry.tag.LcEntityTypeTags;
 
 public interface ICrimsonOrdeal extends IOrdeal {
     @Override

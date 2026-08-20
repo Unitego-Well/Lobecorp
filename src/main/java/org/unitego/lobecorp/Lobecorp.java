@@ -9,12 +9,12 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
-import org.unitego.lobecorp.init.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.init.brain.LcMemoryModuleTypes;
-import org.unitego.lobecorp.init.LcParticleTypes;
-import org.unitego.lobecorp.init.brain.LcSensorTypes;
-import org.unitego.lobecorp.init.entity.LcEntityTypes;
-import org.unitego.lobecorp.init.tag.LcTags;
+import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.LcParticleTypes;
+import org.unitego.lobecorp.registry.brain.LcSensorTypes;
+import org.unitego.lobecorp.registry.entity.LcEntityTypes;
+import org.unitego.lobecorp.registry.tag.LcTags;
 
 @Mod(Lobecorp.NAMESPACE)
 public class Lobecorp {

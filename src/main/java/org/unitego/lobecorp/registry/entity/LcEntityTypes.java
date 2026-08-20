@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init.entity;
+package org.unitego.lobecorp.registry.entity;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;

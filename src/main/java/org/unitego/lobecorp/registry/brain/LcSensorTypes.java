@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.init.brain;
+package org.unitego.lobecorp.registry.brain;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.ai.sensing.Sensor;

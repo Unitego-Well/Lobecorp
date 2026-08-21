@@ -17,16 +17,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 /// 实体 brain 系统的存储器
-public class LcMemoryModuleTypes {
-    public static final DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
+public interface LcMemoryModuleTypes {
+    DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
 
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<EntityCorpse<?>>>> NEAREST_CORPSES = register("nearest_corpses");
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleEntities<EntityCorpse<?>>>> NEAREST_VISIBLE_CORPSES = register("nearest_visible_corpses");
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> DISPOSE_CORPSE_WIND_UP_TICKS = register("dispose_corpse_wind_up_ticks");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<EntityCorpse<?>>>> NEAREST_CORPSES = register("nearest_corpses");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleEntities<EntityCorpse<?>>>> NEAREST_VISIBLE_CORPSES = register("nearest_visible_corpses");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> DISPOSE_CORPSE_WIND_UP_TICKS = register("dispose_corpse_wind_up_ticks");
     // 技能系统
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<SkillRuntime>> SKILL_ACTIVE = register("skill_active");
-    public static final DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<String, Long>>> SKILL_COOLDOWNS = register("skill_cooldowns");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<SkillRuntime>> SKILL_ACTIVE = register("skill_active");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<String, Long>>> SKILL_COOLDOWNS = register("skill_cooldowns");
 
     private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
         return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));

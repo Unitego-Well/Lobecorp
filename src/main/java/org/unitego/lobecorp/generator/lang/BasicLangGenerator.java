@@ -13,9 +13,9 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.data.LanguageProvider;
-import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.mixin.accessor.LanguageProviderAccessor;
 
 import java.io.BufferedReader;
@@ -27,14 +27,16 @@ import java.util.function.Supplier;
 
 public class BasicLangGenerator extends LanguageProvider {
     protected final String modId;
+    private final LangHandler.LangSet langSet;
 
     public BasicLangGenerator(PackOutput output, String modId, String locale) {
         super(output, modId, locale);
         this.modId = modId;
+        this.langSet = LangHandler.getLang(modId, locale);
     }
 
-    public static String getFormattedKey(String... key) {
-        StringBuilder builder = new StringBuilder(Lobecorp.NAMESPACE);
+    public static String getFormattedKey(String namespace, String... key) {
+        StringBuilder builder = new StringBuilder(namespace);
         builder.append(".commands");
         for (String s : key) {
             builder.append(".").append(s);
@@ -57,22 +59,40 @@ public class BasicLangGenerator extends LanguageProvider {
     @Override
     public void addTranslations() {
         mergeManualEntries();
+        LangHandler.LangSet lang = getLang();
+        lang.map.forEach(this::add);
+        addMobEffectMap(lang.mobEffects);
+        addAttributeMap(lang.attributes);
+        addSoundEventMap(lang.soundEvents);
+        addItemMap(lang.items);
+        addBlockMap(lang.blocks);
+        addEntityMap(lang.entityTypes);
+        addTagKeyMap(lang.tagKeys);
+    }
+
+    public LangHandler.LangSet getLang() {
+        return langSet;
     }
 
     /// 读取并合并现有的手动维护的 json 条目。
     /// 这样手动文件只需保留到下次 datagen 运行，之后可安全删除。
     public void mergeManualEntries() {
+        String locale = getLocale();
         Path manualPath = Paths.get(System.getProperty("user.dir")).getParent()
-                .resolve("lang/" + ((LanguageProviderAccessor) this).getLocale() + ".json");
-        if (!Files.exists(manualPath)) {
+                .resolve("lang/" + locale + ".json");
+        if (!Files.isRegularFile(manualPath)) {
             return;
         }
         try (BufferedReader reader = Files.newBufferedReader(manualPath)) {
             JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
             json.entrySet().forEach(entry -> add(entry.getKey(), entry.getValue().getAsString()));
         } catch (Exception e) {
-            Lobecorp.LOGGER.warn("无法合并手动 {} 翻译文件: {}", ((LanguageProviderAccessor) this).getLocale(), e.getMessage());
+            LOGGER.warn("无法合并手动 {} 翻译文件: {}", locale, e.getMessage());
         }
+    }
+
+    public String getLocale() {
+        return ((LanguageProviderAccessor) this).lobecorp$getLocale();
     }
 
     protected void addPackDescription(String a, String description) {
@@ -80,6 +100,10 @@ public class BasicLangGenerator extends LanguageProvider {
     }
 
     protected void addItemMap(Map<Supplier<? extends Item>, String> map) {
+        map.forEach((holder, txt) -> add(holder.get(), txt));
+    }
+
+    protected void addBlockMap(Map<Supplier<? extends Block>, String> map) {
         map.forEach((holder, txt) -> add(holder.get(), txt));
     }
 

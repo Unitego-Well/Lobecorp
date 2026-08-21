@@ -9,7 +9,7 @@ import net.minecraft.world.entity.EntityType;
 
 import java.util.Optional;
 
-public class LcStreamCodecs {
-    public static final StreamCodec<ByteBuf, CompoundTag> COMPOUND_TAG = ByteBufCodecs.fromCodecTrusted(CompoundTag.CODEC);
-    public static final StreamCodec<RegistryFriendlyByteBuf, Optional<EntityType<?>>> OPTIONAL_ENTITY_TYPE = ByteBufCodecs.optional(EntityType.STREAM_CODEC);
+public interface LcStreamCodecs {
+    StreamCodec<ByteBuf, CompoundTag> COMPOUND_TAG = ByteBufCodecs.fromCodecTrusted(CompoundTag.CODEC);
+    StreamCodec<RegistryFriendlyByteBuf, Optional<EntityType<?>>> OPTIONAL_ENTITY_TYPE = ByteBufCodecs.optional(EntityType.STREAM_CODEC);
 }

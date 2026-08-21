@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 
@@ -30,7 +31,8 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
             EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
-    public static final String DISPLAY_NAME_KEY = "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name";
+    public static final String DISPLAY_NAME_KEY = LangHandler.createTranslationKeyEnUsAndZhCn(Lobecorp.NAMESPACE,
+            "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
     /// 最大腐烂tick
     public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
 

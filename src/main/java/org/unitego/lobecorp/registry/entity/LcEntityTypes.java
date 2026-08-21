@@ -10,39 +10,36 @@ import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
+import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 
 import java.util.function.UnaryOperator;
 
-public class LcEntityTypes {
-    public static final DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
+public interface LcEntityTypes {
+    DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
 
-    public static final DeferredHolder<EntityType<?>, EntityType<EntityCorpse<?>>> ENTITY_CORPSE = LcEntityTypes.register(REGISTER,
+    DeferredHolder<EntityType<?>, EntityType<EntityCorpse<?>>> ENTITY_CORPSE = LcEntityTypes.register(REGISTER,
             "entity_corpse", "Entity Corpse", "实体尸体", EntityCorpse::new, MobCategory.MISC);
 
-    @ApiStatus.Internal
-    public static void init(IEventBus iEventBus) {
-        REGISTER.register(iEventBus);
-        OrdealEntityTypes.init(iEventBus);
+    static void init(IEventBus iEventBus) {
     }
 
-    @ApiStatus.Internal
-    public static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
+    static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
             DeferredRegister.Entities register,
-            String name, String enUs, String zhCn, EntityType.EntityFactory<T> factory,
+            String name, String enUs, String zhCn,
+            EntityType.EntityFactory<T> factory,
             MobCategory category, UnaryOperator<EntityType.Builder<T>> builder
     ) {
-        var deferredHolder = register.registerEntityType(name, factory, category, builder);
-        EnUsLangGenerator.addI18nEntityTypeText(deferredHolder, enUs);
-        ZhCnLangGenerator.addI18nEntityTypeText(deferredHolder, zhCn);
-        return deferredHolder;
+        DeferredHolder<EntityType<?>, EntityType<T>> holder = register.registerEntityType(name, factory, category, builder);
+        LangHandler.addLangEnUsAndZhCnTxt(register.getNamespace(), enUs, zhCn,
+                (langSet, txt) -> langSet.entityTypeText(holder, txt));
+        return holder;
     }
 
-    @ApiStatus.Internal
-    public static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
+    static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(
             DeferredRegister.Entities register,
-            String name, String enUs, String zhCn, EntityType.EntityFactory<T> factory,
-            MobCategory category
+            String name, String enUs, String zhCn,
+            EntityType.EntityFactory<T> factory, MobCategory category
     ) {
         return register(register, name, enUs, zhCn, factory, category, UnaryOperator.identity());
     }

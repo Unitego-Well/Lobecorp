@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.registry.client;
+package org.unitego.lobecorp.registry.entity.clent;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;

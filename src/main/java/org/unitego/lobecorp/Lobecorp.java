@@ -2,6 +2,7 @@ package org.unitego.lobecorp;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.Registry;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.neoforged.bus.api.IEventBus;
@@ -11,7 +12,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.LcParticleTypes;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.registry.brain.LcSensorTypes;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 import org.unitego.lobecorp.registry.tag.LcTags;
@@ -42,5 +43,9 @@ public class Lobecorp {
 
     public static <T> DeferredRegister<T> register(ResourceKey<Registry<T>> registry) {
         return DeferredRegister.create(registry, NAMESPACE);
+    }
+
+    public static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String identifier) {
+        return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(NAMESPACE, identifier));
     }
 }

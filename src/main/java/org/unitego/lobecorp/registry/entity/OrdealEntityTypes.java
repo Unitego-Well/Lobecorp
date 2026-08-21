@@ -9,10 +9,10 @@ import org.jetbrains.annotations.ApiStatus;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
-public class OrdealEntityTypes {
-    public static final DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
+public interface OrdealEntityTypes {
+    DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
 
-    public static final DeferredHolder<EntityType<?>, EntityType<Sweeper>> SWEEPER = LcEntityTypes.register(REGISTER,
+    DeferredHolder<EntityType<?>, EntityType<Sweeper>> SWEEPER = LcEntityTypes.register(REGISTER,
             "sweeper", "Sweeper", "清道夫", Sweeper::new, MobCategory.MONSTER, sweeperBuilder -> sweeperBuilder
                     .sized(0.625f, 2.938f)
                     .eyeHeight(2.4375f));

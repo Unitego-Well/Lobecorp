@@ -1,11 +1,11 @@
-package org.unitego.lobecorp.registry.client;
+package org.unitego.lobecorp.registry.particle.client;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.LcParticleTypes;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.particle.client.BloodParticle;
 import org.unitego.lobecorp.particle.client.SweeperStrikeParticle;
 

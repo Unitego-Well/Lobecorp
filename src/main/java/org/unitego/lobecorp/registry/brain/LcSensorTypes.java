@@ -14,19 +14,19 @@ import org.unitego.lobecorp.entity.ai.sensing.OrdealAttackablesSensor;
 import java.util.function.Supplier;
 
 /// 实体 brain 系统的传感器
-public class LcSensorTypes {
-    public static final DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
+public interface LcSensorTypes {
+    DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
     /// 考验最近目标
-    public static final DeferredHolder<SensorType<?>, SensorType<OrdealAttackablesSensor>> ORDEAL_ATTACKABLES = register("ordeal_attackables", OrdealAttackablesSensor::new);
+    DeferredHolder<SensorType<?>, SensorType<OrdealAttackablesSensor>> ORDEAL_ATTACKABLES = register("ordeal_attackables", OrdealAttackablesSensor::new);
 
     /// 最近尸体（单个）
-    public static final DeferredHolder<SensorType<?>, SensorType<NearestEntitySensor<EntityCorpse<?>>>> NEAREST_CORPSE = register("nearest_corpse", () ->
+    DeferredHolder<SensorType<?>, SensorType<NearestEntitySensor<EntityCorpse<?>>>> NEAREST_CORPSE = register("nearest_corpse", () ->
             NearestEntitySensor.create(
                     entity -> entity instanceof EntityCorpse && entity.isAlive(), 32, 16,
                     LcMemoryModuleTypes.NEAREST_CORPSE.get()));
 
     /// 附近尸体（列表 + 可见包装器）
-    public static final DeferredHolder<SensorType<?>, SensorType<NearbyEntitiesSensor<EntityCorpse<?>>>> NEARBY_CORPSES = register("nearby_corpses", () ->
+    DeferredHolder<SensorType<?>, SensorType<NearbyEntitiesSensor<EntityCorpse<?>>>> NEARBY_CORPSES = register("nearby_corpses", () ->
             NearbyEntitiesSensor.create(
                     entity -> entity instanceof EntityCorpse && entity.isAlive(), 32,
                     LcMemoryModuleTypes.NEAREST_CORPSES.get(),

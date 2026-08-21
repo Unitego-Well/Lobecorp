@@ -5,7 +5,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EntityType;
 import org.jetbrains.annotations.ApiStatus;
 
-public class LcDamageTypeTags {
+public interface LcDamageTypeTags {
     @ApiStatus.Internal
     static void init() {
     }

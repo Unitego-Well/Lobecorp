@@ -29,10 +29,13 @@ import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 
 public class EntityCorpse<T extends Entity> extends LivingEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
-            EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
+
     public static final String DISPLAY_NAME_KEY = LangHandler.createTranslationKeyEnUsAndZhCn(Lobecorp.NAMESPACE,
             "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
+
+    private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
+            EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
+
     /// 最大腐烂tick
     public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
 

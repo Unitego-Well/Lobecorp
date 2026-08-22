@@ -20,8 +20,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
     }
 
     @Override
-    public void captureDefaultRenderState(Sweeper animatable, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
-        super.captureDefaultRenderState(animatable, relatedObject, renderState, partialTick);
+    public void addRenderData(Sweeper animatable, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
         if (renderState instanceof GeoRenderState geoRenderState) {
             geoRenderState.addGeckolibData(VARIANT, animatable.getVariant());
         }

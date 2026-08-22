@@ -23,10 +23,6 @@ public class ModGenerator {
         build(event, EnUsLangGenerator::new);
         build(event, ZhCnLangGenerator::new);
         build(event, ParticleGenerator::new);
-    }
-
-    @SubscribeEvent
-    public static void gatherData(GatherDataEvent.Server event) {
         CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
         DataGenerator generator = event.getGenerator();
         PackOutput packOutput = generator.getPackOutput();

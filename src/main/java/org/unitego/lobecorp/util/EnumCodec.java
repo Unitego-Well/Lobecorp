@@ -6,10 +6,6 @@ import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
 
 public class EnumCodec {
-	public static <T extends Enum<T>> Codec<T> create(KClass<T> enumClass) {
-		return create(JvmClassMappingKt.getJavaClass(enumClass));
-	}
-
 	public static <T extends Enum<T>> Codec<T> create(Class<T> enumClass) {
 		return Codec.STRING.flatXmap(
 			name -> {

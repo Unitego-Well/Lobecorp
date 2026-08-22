@@ -2,10 +2,8 @@ package org.unitego.lobecorp.util;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import kotlin.jvm.JvmClassMappingKt;
-import kotlin.reflect.KClass;
 
-public class EnumCodec {
+public class EnumCodecUtil {
 	public static <T extends Enum<T>> Codec<T> create(Class<T> enumClass) {
 		return Codec.STRING.flatXmap(
 			name -> {
@@ -16,10 +14,7 @@ public class EnumCodec {
 					return DataResult.error(() -> "Unknown enum name: '" + name + "' for enum class: " + enumClass);
 				}
 			},
-			e -> {
-				String name = e.name();
-				return DataResult.success(name);
-			}
+			e -> DataResult.success(e.name())
 		);
 	}
 }

@@ -50,20 +50,21 @@ import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.IEntityTarget;
 import org.unitego.lobecorp.entity.ai.behavior.WalkToEntity;
-import org.unitego.lobecorp.entity.ai.skill.Skill;
-import org.unitego.lobecorp.entity.ai.skill.SkillBrain;
-import org.unitego.lobecorp.entity.ai.skill.SkillController;
-import org.unitego.lobecorp.entity.ai.skill.SkillHolder;
+import org.unitego.lobecorp.entity.ai.skill.IEntitySkill;
+import org.unitego.lobecorp.entity.ai.skill.EntitySkillBrain;
+import org.unitego.lobecorp.entity.ai.skill.EntitySkillController;
+import org.unitego.lobecorp.entity.ai.skill.EntitySkillHolder;
 import org.unitego.lobecorp.entity.ai.util.BrainUtil;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.brain.LcSensorTypes;
+import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 /// 清道夫
-public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoOrdeal, IEntityTarget, SkillHolder {
+public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoOrdeal, IEntityTarget, EntitySkillHolder {
     public static final Identifier ATTACK_MULTIPLIER = Lobecorp.id("attack_multiplier");
     private static final EntityDataAccessor<Integer> DATA_VARIANT = SynchedEntityData.defineId(Sweeper.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ANIM = SynchedEntityData.defineId(Sweeper.class, EntityDataSerializers.INT);
@@ -98,15 +99,15 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                     SensorType.HURT_BY
             ).addMemoryTypes(
                     LcMemoryModuleTypes.DISPOSE_CORPSE_WIND_UP_TICKS.get(),
-                    SkillBrain.SKILL_ACTIVE,
-                    SkillBrain.SKILL_COOLDOWNS
+                    EntitySkillBrain.SKILL_ACTIVE,
+                    EntitySkillBrain.SKILL_COOLDOWNS
             ).build();
 
     private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
     /// 攻击技能（3 段连击）
-    private final SweeperAttackSkill attackSkill = new SweeperAttackSkill();
+    private final IEntitySkill attackSkill = SweeperSkills.ATTACK.get();
     /// 飞扑技能
-    private final SweeperLeapSkill leapSkill = new SweeperLeapSkill();
+    private final IEntitySkill leapSkill = SweeperSkills.LEAP.get();
     /// 攻击连击计数（0/1/2，服务端）
     private int attackCombo;
     /// 清理进行中的 tick 计数（服务端，用于超时保底）
@@ -187,8 +188,12 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     /// 每 tick 更新基础动画（待机/移动/奔跑）。技能或清理进行时不覆盖动作动画。
     private void updateBaseAnim() {
         Brain<Sweeper> brain = getBrain();
-        if (brain.getMemory(SkillBrain.SKILL_ACTIVE).isPresent()) return;
-        if (brain.getMemory(LcMemoryModuleTypes.DISPOSE_CORPSE_WIND_UP_TICKS.get()).isPresent()) return;
+        if (brain.getMemory(EntitySkillBrain.SKILL_ACTIVE).isPresent()) {
+            return;
+        }
+        if (brain.getMemory(LcMemoryModuleTypes.DISPOSE_CORPSE_WIND_UP_TICKS.get()).isPresent()) {
+            return;
+        }
 
         // 无动作时标记为基础状态，由客户端按移动速度播放 idle/move/run
         setAnim(SweeperAnim.IDLE);
@@ -197,7 +202,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     /// 保底：防止技能/清理状态卡死，确保动画与状态最终能恢复。
     private void safeguardState() {
         Brain<Sweeper> brain = getBrain();
-        boolean inSkill = brain.getMemory(SkillBrain.SKILL_ACTIVE).isPresent();
+        boolean inSkill = brain.getMemory(EntitySkillBrain.SKILL_ACTIVE).isPresent();
         boolean inClear = brain.getMemory(LcMemoryModuleTypes.DISPOSE_CORPSE_WIND_UP_TICKS.get()).isPresent();
 
         // 保底 1：动作动画仍在播放，但技能/清理都已结束 → 强制恢复基础动画
@@ -287,9 +292,8 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     protected List<ActivityData<Sweeper>> getActivities() {
         return List.of(
                 ActivityData.create(Activity.CORE, 0, ImmutableList.of(
-                        new SkillController<>(), new LookAtTargetSink(45, 90), new MoveToTargetSink())
-                ),
-                ActivityData.create(Activity.IDLE, 5, ImmutableList.of(
+                        new EntitySkillController(), new LookAtTargetSink(45, 90), new MoveToTargetSink())
+                ), ActivityData.create(Activity.IDLE, 5, ImmutableList.of(
                         StartAttacking.create((level, mob) -> mob.getBrain()
                                 .getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
                                 .orElse(NearestVisibleLivingEntities.empty())
@@ -301,8 +305,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                         new RunOne<>(ImmutableList.of(
                                 Pair.of(new DoNothing(20, 40), 1),
                                 Pair.of(RandomStroll.stroll(1f), 2)))
-                )),
-                ActivityData.create(Activity.FIGHT,
+                )), ActivityData.create(Activity.FIGHT,
                         ImmutableList.of(
                                 Pair.of(5, WalkToEntity.create(MemoryModuleType.ATTACK_TARGET, 3f, 1)),
                                 Pair.of(5, StopAttackingIfTargetInvalid.create()),
@@ -323,8 +326,10 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 i.present(MemoryModuleType.ATTACK_TARGET)
         ).apply(i, (target) -> (level, body, time) -> {
             LivingEntity t = i.get(target);
-            if (!body.isWithinMeleeAttackRange(t)) return false;
-            return SkillBrain.cast(body, attackSkill);
+            if (!body.isWithinMeleeAttackRange(t)) {
+                return false;
+            }
+            return EntitySkillBrain.cast(body, attackSkill);
         }));
     }
 
@@ -334,8 +339,10 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 i.present(MemoryModuleType.ATTACK_TARGET)
         ).apply(i, (target) -> (level, body, time) -> {
             LivingEntity t = i.get(target);
-            if (body.isWithinMeleeAttackRange(t)) return false;
-            return SkillBrain.cast(body, leapSkill);
+            if (body.isWithinMeleeAttackRange(t)) {
+                return false;
+            }
+            return EntitySkillBrain.cast(body, leapSkill);
         }));
     }
 
@@ -368,6 +375,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 brain.setMemory(LcMemoryModuleTypes.DISPOSE_CORPSE_WIND_UP_TICKS.get(), stage - 1);
                 return true;
             }
+
             if (stage < 0) {
                 // 结束阶段：clear3 动画倒计时（不依赖 NEAREST_CORPSE）
                 if (stage == -CLEAR_END_TICKS) {
@@ -380,6 +388,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 }
                 return true;
             }
+
             // 处理阶段
             LivingEntity corpse = brain.getMemory(LcMemoryModuleTypes.NEAREST_CORPSE.get()).orElse(null);
             if (corpse != null && corpse.isAlive()) {
@@ -388,6 +397,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 body.heal(CLEAR_PROCESS_HEAL);
                 return true;
             }
+
             // 尸体已死：移除尸体，决定进入结束动画还是直接开始下一次
             if (corpse != null) {
                 corpse.discard();
@@ -415,7 +425,9 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
                 i.present(MemoryModuleType.NEAREST_VISIBLE_WANTED_ITEM)
         ).apply(i, (nearestItem) -> (level, body, time) -> {
             ItemEntity itemEntity = i.get(nearestItem);
-            if (body.distanceToSqr(itemEntity) > 4.0) return false;
+            if (body.distanceToSqr(itemEntity) > 4.0) {
+	            return false;
+            }
             ItemStack stack = itemEntity.getItem();
             if (!stack.isEmpty()) {
                 body.heal(stack.getCount() * 2);
@@ -437,7 +449,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
     // ===================== SkillHolder =====================
 
     @Override
-    public Collection<Skill> skills() {
+    public Collection<IEntitySkill> skills() {
         return List.of(attackSkill, leapSkill);
     }
 
@@ -445,7 +457,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
 
     @Override
     public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
-        AnimationController<Sweeper> controller = new AnimationController<>("main", 0, state -> {
+        AnimationController<Sweeper> controller = new AnimationController<>("main", 3, state -> {
             Sweeper sweeper = state.animatable();
             return switch (sweeper.getAnim()) {
                 case ATTACK1 -> state.setAndContinue(ANIM_ATTACK1);

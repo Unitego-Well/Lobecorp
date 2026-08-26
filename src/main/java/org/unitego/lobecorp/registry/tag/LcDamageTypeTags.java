@@ -6,7 +6,7 @@ import net.minecraft.world.entity.EntityType;
 import org.jetbrains.annotations.ApiStatus;
 
 public interface LcDamageTypeTags {
-    @ApiStatus.Internal
+
     static void init() {
     }
 

@@ -10,7 +10,6 @@ import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 
 public interface LcTags {
-    @ApiStatus.Internal
     static void init() {
         LcEntityTypeTags.init();
         LcDamageTypeTags.init();

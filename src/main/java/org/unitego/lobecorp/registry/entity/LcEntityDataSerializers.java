@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
@@ -29,5 +30,9 @@ public interface LcEntityDataSerializers {
             String id, Supplier<EntityDataSerializer<T>> supplier
     ) {
         return REGISTER.register(id, supplier);
+    }
+
+    static void init(IEventBus iEventBus) {
+        REGISTER.register(iEventBus);
     }
 }

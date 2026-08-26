@@ -14,7 +14,7 @@ public interface LcEntityTypeTags {
     TagKey<EntityType<?>> ORDEAL_VIOLET = create("ordeal/violet", "Violet Ordeal", "紫罗兰的考验");
     TagKey<EntityType<?>> ORDEAL_WHITE = create("ordeal/white", "White Ordeal", "惨白的考验");
 
-    @ApiStatus.Internal
+
     static void init() {
     }
 

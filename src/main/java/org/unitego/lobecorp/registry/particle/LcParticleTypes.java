@@ -7,6 +7,7 @@ import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
@@ -33,5 +34,9 @@ public interface LcParticleTypes {
             Function<ParticleType<T>, StreamCodec<? super RegistryFriendlyByteBuf, T>> streamCodec
     ) {
         return REGISTER.register(name, () -> new ParticleOptionsParticleType<>(overrideLimiter, codec, streamCodec));
+    }
+
+    static void init(IEventBus iEventBus) {
+        REGISTER.register(iEventBus);
     }
 }

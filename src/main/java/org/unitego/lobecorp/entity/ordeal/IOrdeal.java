@@ -20,7 +20,9 @@ public interface IOrdeal {
 
     /// 判断是否是可以攻击目标
     default boolean isValidTarget(Entity entity) {
-        if (entity == this) return false;
+        if (entity == this) {
+	        return false;
+        }
 
         if (!entity.isAlive() || !entity.isAttackable()) {
             return false;

@@ -3,6 +3,7 @@ package org.unitego.lobecorp.registry.brain;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 import net.minecraft.world.entity.ai.sensing.SensorType;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
@@ -34,5 +35,9 @@ public interface LcSensorTypes {
 
     private static <U extends Sensor<?>> DeferredHolder<SensorType<?>, SensorType<U>> register(String name, Supplier<U> factory) {
         return REGISTER.register(name, () -> new SensorType<>(factory));
+    }
+
+    static void init(IEventBus iEventBus) {
+        REGISTER.register(iEventBus);
     }
 }

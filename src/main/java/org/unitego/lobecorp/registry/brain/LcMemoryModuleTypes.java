@@ -3,13 +3,15 @@ package org.unitego.lobecorp.registry.brain;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ai.memory.NearestVisibleEntities;
-import org.unitego.lobecorp.entity.ai.skill.SkillRuntime;
+import org.unitego.lobecorp.entity.ai.skill.EntitySkillRuntime;
 
 import java.util.List;
 import java.util.Map;
@@ -24,9 +26,8 @@ public interface LcMemoryModuleTypes {
     DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<EntityCorpse<?>>>> NEAREST_CORPSES = register("nearest_corpses");
     DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleEntities<EntityCorpse<?>>>> NEAREST_VISIBLE_CORPSES = register("nearest_visible_corpses");
     DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> DISPOSE_CORPSE_WIND_UP_TICKS = register("dispose_corpse_wind_up_ticks");
-    // 技能系统
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<SkillRuntime>> SKILL_ACTIVE = register("skill_active");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<String, Long>>> SKILL_COOLDOWNS = register("skill_cooldowns");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntitySkillRuntime>> SKILL_ACTIVE = register("skill_active");
+    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<Identifier, Long>>> SKILL_COOLDOWNS = register("skill_cooldowns");
 
     private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
         return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));
@@ -50,5 +51,9 @@ public interface LcMemoryModuleTypes {
 
     private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<UUID>> registerUUID(String name) {
         return register(name, UUIDUtil.CODEC);
+    }
+
+    static void init(IEventBus iEventBus) {
+        REGISTER.register(iEventBus);
     }
 }

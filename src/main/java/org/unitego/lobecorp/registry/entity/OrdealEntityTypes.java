@@ -17,7 +17,7 @@ public interface OrdealEntityTypes {
                     .sized(0.625f, 2.938f)
                     .eyeHeight(2.4375f));
 
-    @ApiStatus.Internal
+
     static void init(IEventBus iEventBus) {
         REGISTER.register(iEventBus);
     }

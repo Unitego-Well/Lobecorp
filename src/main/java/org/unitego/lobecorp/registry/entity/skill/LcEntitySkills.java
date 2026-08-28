@@ -11,11 +11,11 @@ import org.unitego.lobecorp.registry.LcRegistrys;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-public interface EntitySkills {
+public interface LcEntitySkills {
     DeferredRegister<IEntitySkill> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_KEY);
 
     static void init(IEventBus iEventBus) {
-        SweeperSkills.init();
+        SweeperSkills.init(iEventBus);
         REGISTER.register(iEventBus);
     }
 

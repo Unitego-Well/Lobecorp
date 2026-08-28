@@ -104,10 +104,6 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
             ).build();
 
     private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-    /// 攻击技能（3 段连击）
-    private final IEntitySkill attackSkill = SweeperSkills.ATTACK.get();
-    /// 飞扑技能
-    private final IEntitySkill leapSkill = SweeperSkills.LEAP.get();
     /// 攻击连击计数（0/1/2，服务端）
     private int attackCombo;
     /// 清理进行中的 tick 计数（服务端，用于超时保底）
@@ -329,7 +325,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
             if (!body.isWithinMeleeAttackRange(t)) {
                 return false;
             }
-            return EntitySkillBrain.cast(body, attackSkill);
+            return EntitySkillBrain.cast(body, SweeperSkills.ATTACK.get());
         }));
     }
 
@@ -342,7 +338,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
             if (body.isWithinMeleeAttackRange(t)) {
                 return false;
             }
-            return EntitySkillBrain.cast(body, leapSkill);
+            return EntitySkillBrain.cast(body, SweeperSkills.LEAP.get());
         }));
     }
 
@@ -450,7 +446,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
 
     @Override
     public Collection<IEntitySkill> skills() {
-        return List.of(attackSkill, leapSkill);
+        return List.of(SweeperSkills.ATTACK.get(), SweeperSkills.LEAP.get());
     }
 
     // ===================== GeoEntity =====================

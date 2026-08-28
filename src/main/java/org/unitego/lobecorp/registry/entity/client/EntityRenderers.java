@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.registry.entity.clent;
+package org.unitego.lobecorp.registry.entity.client;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -13,10 +13,8 @@ import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class EntityRenderers {
     @SubscribeEvent
-    public static void registry(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(OrdealEntityTypes.SWEEPER.get(),
-                context -> new SweeperRenderer(context, OrdealEntityTypes.SWEEPER.get()));
-        event.registerEntityRenderer(LcEntityTypes.ENTITY_CORPSE.get(),
-                EntityCorpseRenderer::new);
+    public static void onRegister(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerEntityRenderer(OrdealEntityTypes.SWEEPER.get(), SweeperRenderer::new);
+        event.registerEntityRenderer(LcEntityTypes.ENTITY_CORPSE.get(), EntityCorpseRenderer::new);
     }
 }

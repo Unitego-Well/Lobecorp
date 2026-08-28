@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.anvilcraftlib)
     jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
+    interfaceInjectionData (libs.geckolib)
     implementation(libs.curios)
     implementation(libs.jeiapi)
     implementation(libs.jei)

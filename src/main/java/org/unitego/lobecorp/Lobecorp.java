@@ -15,7 +15,7 @@ import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.registry.brain.LcSensorTypes;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
-import org.unitego.lobecorp.registry.entity.skill.EntitySkills;
+import org.unitego.lobecorp.registry.entity.skill.LcEntitySkills;
 import org.unitego.lobecorp.registry.tag.LcTags;
 
 @Mod(Lobecorp.NAMESPACE)
@@ -32,7 +32,7 @@ public class Lobecorp {
         LcParticleTypes.init(iEventBus);
         LcEntityDataSerializers.init(iEventBus);
         LcEntityTypes.init(iEventBus);
-        EntitySkills.init(iEventBus);
+        LcEntitySkills.init(iEventBus);
     }
 
     public static Identifier id(String path) {

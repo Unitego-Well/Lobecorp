@@ -22,6 +22,8 @@ public interface LcEntityTypes {
             "entity_corpse", "Entity Corpse", "实体尸体", EntityCorpse::new, MobCategory.MISC);
 
     static void init(IEventBus iEventBus) {
+        REGISTER.register(iEventBus);
+        OrdealEntityTypes.init(iEventBus);
     }
 
     static <T extends Entity> DeferredHolder<EntityType<?>, EntityType<T>> register(

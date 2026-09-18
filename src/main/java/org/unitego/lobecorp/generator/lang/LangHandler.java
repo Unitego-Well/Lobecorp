@@ -9,6 +9,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.data.loading.DatagenModLoader;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.unitego.lobecorp.Lobecorp;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,107 +17,120 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class LangHandler {
-    public static final Map<String, Map<String, LangSet>> MOD_LANG_MAP = new HashMap<>();
-    public static final String EN_US = "en_us";
-    public static final String ZH_CN = "zh_cn";
+	public static final Map<String, Map<String, LangSet>> MOD_LANG_MAP = new HashMap<>();
+	public static final String EN_US = "en_us";
+	public static final String ZH_CN = "zh_cn";
 
-    public static LangSet getLang(String namespace, String lang) {
-        return MOD_LANG_MAP.computeIfAbsent(namespace, k -> new HashMap<>()).computeIfAbsent(lang, k -> new LangSet());
-    }
+	public static String getConfigTranslation(String modId, String... keys) {
+		StringBuilder builder = new StringBuilder(modId + ".configuration");
+		for (String key : keys) {
+			builder.append(".").append(key);
+		}
+		return builder.toString();
+	}
 
-    public static void addLangEnUsAndZhCnTxt(String namespace, String enUs, String zhCn, BiConsumer<LangSet, String> unaryOperator) {
-        addLangTxt(namespace, EN_US, enUs, unaryOperator);
-        addLangTxt(namespace, ZH_CN, zhCn, unaryOperator);
-    }
+	public static String translationKey(String prefix, String... suffix) {
+		return prefix + "." + Lobecorp.NAMESPACE
+				+ (suffix.length > 0 ? "." + String.join(".", suffix) : "");
+	}
 
-    public static void addLangEnUsAndZhCnTxt(DeferredRegister<?> register, String enUs, String zhCn, BiConsumer<LangSet, String> unaryOperator) {
-        addLangEnUsAndZhCnTxt(register.getNamespace(), enUs, zhCn, unaryOperator);
-    }
+	public static LangSet getLang(String namespace, String lang) {
+		return MOD_LANG_MAP.computeIfAbsent(namespace, k -> new HashMap<>()).computeIfAbsent(lang, k -> new LangSet());
+	}
 
-    public static void addLangTxt(DeferredRegister<?> register, String lang, String txt, BiConsumer<LangSet, String> unaryOperator) {
-        addLangTxt(register.getNamespace(), lang, txt, unaryOperator);
-    }
+	public static void creates(String namespace, String enUs, String zhCn, BiConsumer<LangSet, String> unaryOperator) {
+		create(namespace, EN_US, enUs, unaryOperator);
+		create(namespace, ZH_CN, zhCn, unaryOperator);
+	}
 
-    public static void addLangTxt(String namespace, String lang, String txt, BiConsumer<LangSet, String> unaryOperator) {
-        if (LangHandler.isDataGen()) {
-            unaryOperator.accept(LangHandler.getLang(namespace, lang), txt);
-        }
-    }
+	public static void creates(DeferredRegister<?> register, String enUs, String zhCn, BiConsumer<LangSet, String> unaryOperator) {
+		creates(register.getNamespace(), enUs, zhCn, unaryOperator);
+	}
 
-    public static String createTranslationKey(String namespace, String lang, String key) {
-        addLangTxt(namespace, lang, key, (langSet, txt) -> langSet.add(key, txt));
-        return key;
-    }
+	public static void create(DeferredRegister<?> register, String lang, String txt, BiConsumer<LangSet, String> unaryOperator) {
+		create(register.getNamespace(), lang, txt, unaryOperator);
+	}
 
-    public static String createTranslationKeyEnUsAndZhCn(String namespace, String key, String enUs, String zhCn) {
-        addLangEnUsAndZhCnTxt(namespace, enUs, zhCn, (langSet, txt) -> langSet.add(key, txt));
-        return key;
-    }
+	public static String create(String namespace, String lang, String key) {
+		create(namespace, lang, key, (langSet, txt) -> langSet.add(key, txt));
+		return key;
+	}
 
-    public static LangSet getEnUsLang(String namespace) {
-        return getLang(namespace, EN_US);
-    }
+	public static String creates(String namespace, String key, String enUs, String zhCn) {
+		creates(namespace, enUs, zhCn, (langSet, txt) -> langSet.add(key, txt));
+		return key;
+	}
 
-    public static LangSet getZhCnLang(String namespace) {
-        return getLang(namespace, ZH_CN);
-    }
+	public static void create(String namespace, String lang, String txt, BiConsumer<LangSet, String> unaryOperator) {
+		if (LangHandler.isDataGen()) {
+			unaryOperator.accept(LangHandler.getLang(namespace, lang), txt);
+		}
+	}
 
-    public static boolean isDataGen() {
-        return DatagenModLoader.isRunningDataGen();
-    }
+	public static LangSet getEnUsLang(String namespace) {
+		return getLang(namespace, EN_US);
+	}
 
-    public static class LangSet {
-        public final Map<Supplier<? extends MobEffect>, String> mobEffects = new HashMap<>();
-        public final Map<Supplier<? extends Attribute>, String> attributes = new HashMap<>();
-        public final Map<Supplier<? extends SoundEvent>, String> soundEvents = new HashMap<>();
-        public final Map<Supplier<? extends Item>, String> items = new HashMap<>();
-        public final Map<Supplier<? extends Block>, String> blocks = new HashMap<>();
-        public final Map<Supplier<? extends EntityType<?>>, String> entityTypes = new HashMap<>();
-        public final Map<TagKey<?>, String> tagKeys = new HashMap<>();
-        public final Map<String, String> map = new HashMap<>();
+	public static LangSet getZhCnLang(String namespace) {
+		return getLang(namespace, ZH_CN);
+	}
 
-        public void add(String key, String txt) {
-            map.put(key, txt);
-        }
+	public static boolean isDataGen() {
+		return DatagenModLoader.isRunningDataGen();
+	}
 
-        public void tagKey(TagKey<?> key, String txt) {
-            tagKeys.put(key, txt);
-        }
+	public static class LangSet {
+		public final Map<Supplier<? extends MobEffect>, String> mobEffects = new HashMap<>();
+		public final Map<Supplier<? extends Attribute>, String> attributes = new HashMap<>();
+		public final Map<Supplier<? extends SoundEvent>, String> soundEvents = new HashMap<>();
+		public final Map<Supplier<? extends Item>, String> items = new HashMap<>();
+		public final Map<Supplier<? extends Block>, String> blocks = new HashMap<>();
+		public final Map<Supplier<? extends EntityType<?>>, String> entityTypes = new HashMap<>();
+		public final Map<TagKey<?>, String> tagKeys = new HashMap<>();
+		public final Map<String, String> map = new HashMap<>();
 
-        public void mobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
-            mobEffects.put(supplier, txt);
-        }
+		public void add(String key, String txt) {
+			map.put(key, txt);
+		}
 
-        public void attributeText(Supplier<? extends Attribute> supplier, String txt) {
-            attributes.put(supplier, txt);
-        }
+		public void tagKey(TagKey<?> key, String txt) {
+			tagKeys.put(key, txt);
+		}
 
-        public void soundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
-            soundEvents.put(supplier, txt);
-        }
+		public void mobEffectText(Supplier<? extends MobEffect> supplier, String txt) {
+			mobEffects.put(supplier, txt);
+		}
 
-        public void itemText(Supplier<? extends Item> supplier, String txt) {
-            items.put(supplier, txt);
-        }
+		public void attributeText(Supplier<? extends Attribute> supplier, String txt) {
+			attributes.put(supplier, txt);
+		}
 
-        public void blockText(Supplier<? extends Block> supplier, String txt) {
-            blocks.put(supplier, txt);
-        }
+		public void soundEventText(Supplier<? extends SoundEvent> supplier, String txt) {
+			soundEvents.put(supplier, txt);
+		}
 
-        public void entityTypeText(Supplier<? extends EntityType<?>> supplier, String txt) {
-            entityTypes.put(supplier, txt);
-        }
+		public void itemText(Supplier<? extends Item> supplier, String txt) {
+			items.put(supplier, txt);
+		}
 
-        @Override
-        public String toString() {
-            return mobEffects + "\n"
-                    + attributes + "\n"
-                    + soundEvents + "\n"
-                    + items + "\n"
-                    + blocks + "\n"
-                    + entityTypes + "\n"
-                    + tagKeys + "\n"
-                    + map;
-        }
-    }
+		public void blockText(Supplier<? extends Block> supplier, String txt) {
+			blocks.put(supplier, txt);
+		}
+
+		public void entityTypeText(Supplier<? extends EntityType<?>> supplier, String txt) {
+			entityTypes.put(supplier, txt);
+		}
+
+		@Override
+		public String toString() {
+			return mobEffects + "\n"
+					+ attributes + "\n"
+					+ soundEvents + "\n"
+					+ items + "\n"
+					+ blocks + "\n"
+					+ entityTypes + "\n"
+					+ tagKeys + "\n"
+					+ map;
+		}
+	}
 }

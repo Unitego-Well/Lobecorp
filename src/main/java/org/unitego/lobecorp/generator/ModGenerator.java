@@ -18,23 +18,24 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings("UnusedReturnValue")
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ModGenerator {
-    @SubscribeEvent
-    public static void gatherData(GatherDataEvent.Client event) {
-        build(event, EnUsLangGenerator::new);
-        build(event, ZhCnLangGenerator::new);
-        build(event, ParticleGenerator::new);
-        CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
-        DataGenerator generator = event.getGenerator();
-        PackOutput packOutput = generator.getPackOutput();
-        build(event, new EntityTypeTagGenerator(packOutput, lookupProvider));
-        build(event, new DamageTypeTagGenerator(packOutput, lookupProvider));
-    }
+	@SubscribeEvent
+	public static void gatherData(GatherDataEvent.Client event) {
+		build(event, EnUsLangGenerator::new);
+		build(event, ZhCnLangGenerator::new);
+		build(event, ParticleGenerator::new);
+		build(event, ItemModelProvider::new);
+		CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
+		DataGenerator generator = event.getGenerator();
+		PackOutput packOutput = generator.getPackOutput();
+		build(event, new EntityTypeTagGenerator(packOutput, lookupProvider));
+		build(event, new DamageTypeTagGenerator(packOutput, lookupProvider));
+	}
 
-    public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider provider) {
-        return event.getGenerator().addProvider(true, (T) provider);
-    }
+	public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider provider) {
+		return event.getGenerator().addProvider(true, (T) provider);
+	}
 
-    public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider.Factory<T> provider) {
-        return event.getGenerator().addProvider(true, provider);
-    }
+	public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider.Factory<T> provider) {
+		return event.getGenerator().addProvider(true, provider);
+	}
 }

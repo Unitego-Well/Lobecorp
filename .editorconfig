@@ -2,7 +2,7 @@
 charset = utf-8
 end_of_line = crlf
 indent_size = 4
-indent_style = space
+indent_style = tab
 insert_final_newline = false
 max_line_length = 120
 tab_width = 4
@@ -10,11 +10,13 @@ ij_continuation_indent_size = 8
 ij_formatter_off_tag = @formatter:off
 ij_formatter_on_tag = @formatter:on
 ij_formatter_tags_enabled = true
-ij_smart_tabs = false
+ij_smart_tabs = true
 ij_visual_guides =
 ij_wrap_on_typing = false
 
 [*.css]
+indent_style = space
+ij_smart_tabs = false
 ij_css_align_closing_brace_with_properties = false
 ij_css_blank_lines_around_nested_selector = 1
 ij_css_blank_lines_between_blocks = 1
@@ -35,7 +37,48 @@ ij_css_use_double_quotes = true
 ij_css_value_alignment = do_not_align
 
 [*.dcl]
+indent_style = space
+ij_smart_tabs = false
 ij_declarative_keep_indents_on_empty_lines = false
+
+[*.gdshader]
+indent_style = space
+ij_gdshader_keep_blank_lines_in_code = 2
+ij_gdshader_keep_indents_on_empty_lines = false
+ij_gdshader_space_after_comma = true
+ij_gdshader_space_after_for_semicolon = true
+ij_gdshader_space_after_quest = true
+ij_gdshader_space_before_class_left_brace = true
+ij_gdshader_space_before_do_left_brace = true
+ij_gdshader_space_before_else_keyword = true
+ij_gdshader_space_before_else_left_brace = true
+ij_gdshader_space_before_for_left_brace = true
+ij_gdshader_space_before_for_parentheses = true
+ij_gdshader_space_before_if_left_brace = true
+ij_gdshader_space_before_if_parentheses = true
+ij_gdshader_space_before_method_left_brace = true
+ij_gdshader_space_before_quest = true
+ij_gdshader_space_before_switch_left_brace = true
+ij_gdshader_space_before_switch_parentheses = true
+ij_gdshader_space_before_while_keyword = true
+ij_gdshader_space_before_while_left_brace = true
+ij_gdshader_space_before_while_parentheses = true
+ij_gdshader_spaceafterforsemicolon = true
+ij_gdshader_spaceafterhintcolon = true
+ij_gdshader_spaceafterternarycolon = true
+ij_gdshader_spacebeforecasecolon = false
+ij_gdshader_spacebeforeforsemicolon = false
+ij_gdshader_spacebeforehintcolon = true
+ij_gdshader_spacebeforeternarycolon = true
+ij_gdshader_spaces_around_additive_operators = true
+ij_gdshader_spaces_around_assignment_operators = true
+ij_gdshader_spaces_around_bitwise_operators = true
+ij_gdshader_spaces_around_equality_operators = true
+ij_gdshader_spaces_around_logical_operators = true
+ij_gdshader_spaces_around_multiplicative_operators = true
+ij_gdshader_spaces_around_relational_operators = true
+ij_gdshader_spaces_around_shift_operators = true
+ij_gdshader_spaces_within_braces = true
 
 [*.java]
 ij_java_align_consecutive_assignments = false
@@ -124,6 +167,7 @@ ij_java_doc_keep_invalid_tags = true
 ij_java_doc_param_description_on_new_line = false
 ij_java_doc_preserve_line_breaks = false
 ij_java_doc_use_throws_not_exception_tag = true
+ij_java_documentation_line_comment_preferred = true
 ij_java_else_on_new_line = false
 ij_java_enum_constants_wrap = off
 ij_java_enum_field_annotation_wrap = off
@@ -286,6 +330,7 @@ ij_java_spaces_within_while_parentheses = false
 ij_java_special_else_if_treatment = true
 ij_java_static_field_name_prefix =
 ij_java_static_field_name_suffix =
+ij_java_strip_whitespace_from_blank_lines_in_text_blocks = false
 ij_java_subclass_name_prefix =
 ij_java_subclass_name_suffix = Impl
 ij_java_switch_expressions_wrap = normal
@@ -309,9 +354,9 @@ ij_java_wrap_long_lines = false
 ij_java_wrap_semicolon_after_call_chain = false
 
 [*.nbtt]
-indent_style = tab
 max_line_length = 150
 ij_continuation_indent_size = 4
+ij_smart_tabs = false
 ij_nbtt_array_wrapping = 1
 ij_nbtt_keep_indents_on_empty_lines = false
 ij_nbtt_list_wrapping = 1
@@ -322,16 +367,12 @@ ij_nbtt_space_before_comma = false
 ij_nbtt_spaces_within_brackets = false
 ij_nbtt_spaces_within_parentheses = false
 
-[*.properties]
-ij_properties_align_group_field_declarations = false
-ij_properties_keep_blank_lines = false
-ij_properties_key_value_delimiter = equals
-ij_properties_spaces_around_key_value_delimiter = false
-
 [*.proto]
 indent_size = 2
+indent_style = space
 tab_width = 2
 ij_continuation_indent_size = 4
+ij_smart_tabs = false
 ij_protobuf_keep_blank_lines_in_code = 2
 ij_protobuf_keep_indents_on_empty_lines = false
 ij_protobuf_keep_line_breaks = true
@@ -350,6 +391,8 @@ ij_editorconfig_space_before_comma = false
 ij_editorconfig_spaces_around_assignment_operators = true
 
 [{*.ant,*.fxml,*.jhm,*.jnlp,*.jrxml,*.pom,*.rng,*.tld,*.wsdl,*.xml,*.xsd,*.xsl,*.xslt,*.xul}]
+indent_style = space
+ij_smart_tabs = false
 ij_xml_align_attributes = true
 ij_xml_align_text = false
 ij_xml_attribute_wrap = normal
@@ -369,7 +412,9 @@ ij_xml_space_inside_empty_tag = false
 ij_xml_text_wrap = normal
 
 [{*.ats,*.cts,*.mts,*.ts}]
+indent_style = space
 ij_continuation_indent_size = 4
+ij_smart_tabs = false
 ij_typescript_align_imports = false
 ij_typescript_align_multiline_array_initializer_expression = false
 ij_typescript_align_multiline_binary_operation = false
@@ -548,6 +593,7 @@ ij_typescript_wrap_comments = false
 
 [{*.bash,*.sh,*.zsh}]
 indent_size = 2
+indent_style = space
 tab_width = 2
 ij_shell_binary_ops_start_line = false
 ij_shell_keep_column_alignment_padding = false
@@ -557,7 +603,9 @@ ij_shell_switch_cases_indented = false
 ij_shell_use_unix_line_separator = true
 
 [{*.cjs,*.es6,*.js,*.mjs}]
+indent_style = space
 ij_continuation_indent_size = 4
+ij_smart_tabs = false
 ij_javascript_align_imports = false
 ij_javascript_align_multiline_array_initializer_expression = false
 ij_javascript_align_multiline_binary_operation = false
@@ -730,27 +778,14 @@ ij_javascript_while_brace_force = never
 ij_javascript_while_on_new_line = false
 ij_javascript_wrap_comments = false
 
-[{*.comp,*.frag,*.fsh,*.geom,*.glsl,*.gsh,*.tesc,*.tese,*.vert,*.vsh}]
-ij_glsl_space_after_colon = true
-ij_glsl_space_after_comma = true
-ij_glsl_space_after_for_semicolon = true
-ij_glsl_space_after_quest = true
-ij_glsl_space_before_colon = true
-ij_glsl_space_before_comma = false
-ij_glsl_space_before_for_semicolon = false
-ij_glsl_space_before_quest = true
-ij_glsl_spaces_around_additive_operators = true
-ij_glsl_spaces_around_assignment_operators = true
-ij_glsl_spaces_around_bitwise_operators = true
-ij_glsl_spaces_around_equality_operators = true
-ij_glsl_spaces_around_logical_operators = true
-ij_glsl_spaces_around_multiplicative_operators = true
-ij_glsl_spaces_around_relational_operators = true
-ij_glsl_spaces_around_shift_operators = true
-ij_glsl_spaces_within_brackets = false
-ij_glsl_spaces_within_parentheses = false
+[{*.comp,*.frag,*.fsh,*.geom,*.glsl,*.tesc,*.tese,*.vert,*.vsh}]
+indent_style = space
+ij_smart_tabs = false
+ij_glsl_keep_indents_on_empty_lines = false
 
 [{*.gant,*.groovy,*.gy}]
+indent_style = space
+ij_smart_tabs = false
 ij_groovy_align_group_field_declarations = false
 ij_groovy_align_multiline_array_initializer_expression = false
 ij_groovy_align_multiline_assignment = false
@@ -942,7 +977,6 @@ ij_groovy_wrap_chain_calls_after_dot = false
 ij_groovy_wrap_long_lines = false
 
 [{*.har,*.json,*.jsonc,*.png.mcmeta,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.prettierrc,.stylelintrc,mcmod.info,pack.mcmeta}]
-indent_size = 2
 ij_json_array_wrapping = split_into_lines
 ij_json_keep_blank_lines_in_code = 0
 ij_json_keep_indents_on_empty_lines = false
@@ -959,6 +993,8 @@ ij_json_spaces_within_brackets = false
 ij_json_wrap_long_lines = false
 
 [{*.htm,*.html,*.sht,*.shtm,*.shtml}]
+indent_style = space
+ij_smart_tabs = false
 ij_html_add_new_line_before_tags = body, div, p, form, h1, h2, h3
 ij_html_align_attributes = true
 ij_html_align_text = false
@@ -994,6 +1030,8 @@ ij_http-request_space_before_comma = true
 ij_http-request_spaces_around_assignment_operators = true
 
 [{*.kt,*.kts}]
+indent_style = space
+ij_smart_tabs = false
 ij_kotlin_align_in_columns_case_branch = false
 ij_kotlin_align_multiline_binary_operation = false
 ij_kotlin_align_multiline_extends_list = false
@@ -1026,6 +1064,7 @@ ij_kotlin_class_annotation_wrap = split_into_lines
 ij_kotlin_continuation_indent_for_chained_calls = false
 ij_kotlin_continuation_indent_for_expression_bodies = false
 ij_kotlin_continuation_indent_in_argument_lists = false
+ij_kotlin_continuation_indent_in_context_parameter_lists = false
 ij_kotlin_continuation_indent_in_elvis = false
 ij_kotlin_continuation_indent_in_if_conditions = false
 ij_kotlin_continuation_indent_in_parameter_lists = false
@@ -1063,6 +1102,7 @@ ij_kotlin_packages_to_use_import_on_demand = java.util.*, kotlinx.android.synthe
 ij_kotlin_parameter_annotation_wrap = off
 ij_kotlin_property_context_parameters_wrap = split_into_lines
 ij_kotlin_space_after_comma = true
+ij_kotlin_space_after_context_parameter_list_in_function_type = true
 ij_kotlin_space_after_extend_colon = true
 ij_kotlin_space_after_type_colon = true
 ij_kotlin_space_before_catch_parentheses = true
@@ -1092,6 +1132,8 @@ ij_kotlin_wrap_expression_body_functions = 1
 ij_kotlin_wrap_first_method_in_call_chain = false
 
 [{*.markdown,*.md}]
+indent_style = space
+ij_smart_tabs = false
 ij_markdown_force_one_space_after_blockquote_symbol = true
 ij_markdown_force_one_space_after_header_symbol = true
 ij_markdown_force_one_space_after_list_bullet = true
@@ -1109,10 +1151,49 @@ ij_markdown_min_lines_between_paragraphs = 1
 ij_markdown_wrap_text_if_long = true
 ij_markdown_wrap_text_inside_blockquotes = true
 
+[{*.mermaid,*.mmd}]
+indent_style = space
+ij_smart_tabs = false
+ij_mermaid_after_arrow_text_within_sep = false
+ij_mermaid_after_colon = true
+ij_mermaid_after_comma = true
+ij_mermaid_around_arrow = true
+ij_mermaid_around_equality = false
+ij_mermaid_around_inline_arrow_text = true
+ij_mermaid_around_style_separator = false
+ij_mermaid_beetween_line_type_and_relation_type = false
+ij_mermaid_before_arrow_text_within_sep = false
+ij_mermaid_before_colon = false
+ij_mermaid_before_comma = false
+ij_mermaid_before_generic = false
+ij_mermaid_before_open_curly = true
+ij_mermaid_before_open_round = false
+ij_mermaid_before_semicolon = false
+ij_mermaid_between_node_id_and_node_shape = false
+ij_mermaid_between_state_and_annotation = true
+ij_mermaid_force_one_space_between_words = true
+ij_mermaid_keep_indents_on_empty_lines = false
+ij_mermaid_keep_lines_around_structured_statements = 1
+ij_mermaid_keep_lines_between_other_statements = 0
+ij_mermaid_keep_lines_between_structured_statements = 1
+ij_mermaid_keep_lines_within_structures = 0
+ij_mermaid_min_lines_around_structured_statements = 0
+ij_mermaid_min_lines_between_other_statements = 0
+ij_mermaid_min_lines_between_structured_statements = 0
+ij_mermaid_min_lines_within_structures = 0
+ij_mermaid_within_annotation_braces = false
+ij_mermaid_within_arrow_text_sep = false
+ij_mermaid_within_curly = true
+ij_mermaid_within_node_shapes = false
+ij_mermaid_within_round = false
+ij_mermaid_within_square = false
+
 [{*.pb,*.textproto,*.txtpb}]
 indent_size = 2
+indent_style = space
 tab_width = 2
 ij_continuation_indent_size = 4
+ij_smart_tabs = false
 ij_prototext_keep_blank_lines_in_code = 2
 ij_prototext_keep_indents_on_empty_lines = false
 ij_prototext_keep_line_breaks = true
@@ -1122,6 +1203,12 @@ ij_prototext_space_before_colon = false
 ij_prototext_space_before_comma = false
 ij_prototext_spaces_within_braces = true
 ij_prototext_spaces_within_brackets = false
+
+[{*.properties,flyway.conf}]
+ij_properties_align_group_field_declarations = false
+ij_properties_keep_blank_lines = false
+ij_properties_key_value_delimiter = equals
+ij_properties_spaces_around_key_value_delimiter = false
 
 [{*.ps1,*.psd1,*.psm1}]
 max_line_length = 115

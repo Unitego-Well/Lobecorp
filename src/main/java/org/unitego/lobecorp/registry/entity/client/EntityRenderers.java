@@ -12,9 +12,9 @@ import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class EntityRenderers {
-    @SubscribeEvent
-    public static void onRegister(EntityRenderersEvent.RegisterRenderers event) {
-        event.registerEntityRenderer(OrdealEntityTypes.SWEEPER.get(), SweeperRenderer::new);
-        event.registerEntityRenderer(LcEntityTypes.ENTITY_CORPSE.get(), EntityCorpseRenderer::new);
-    }
+	@SubscribeEvent
+	public static void onRegister(EntityRenderersEvent.RegisterRenderers event) {
+		event.registerEntityRenderer(OrdealEntityTypes.SWEEPER.get(), SweeperRenderer::new);
+		event.registerEntityRenderer(LcEntityTypes.ENTITY_CORPSE.get(), EntityCorpseRenderer::new);
+	}
 }

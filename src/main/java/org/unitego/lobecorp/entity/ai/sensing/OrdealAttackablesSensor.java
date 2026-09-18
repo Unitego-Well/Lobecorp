@@ -12,21 +12,21 @@ import java.util.Set;
 
 public class OrdealAttackablesSensor extends NearestVisibleLivingEntitySensor {
 
-    @Override
-    protected boolean isMatchingEntity(ServerLevel level, LivingEntity body, LivingEntity mob) {
-        if (body instanceof IOrdeal iOrdeal) {
-            return iOrdeal.isValidTarget(mob) && Sensor.isEntityAttackable(level, body, mob);
-        }
-        return Sensor.isEntityAttackable(level, body, mob);
-    }
+	@Override
+	protected boolean isMatchingEntity(ServerLevel level, LivingEntity body, LivingEntity mob) {
+		if (body instanceof IOrdeal iOrdeal) {
+			return iOrdeal.isValidTarget(mob) && Sensor.isEntityAttackable(level, body, mob);
+		}
+		return Sensor.isEntityAttackable(level, body, mob);
+	}
 
-    @Override
-    protected MemoryModuleType<LivingEntity> getMemoryToSet() {
-        return MemoryModuleType.NEAREST_ATTACKABLE;
-    }
+	@Override
+	protected MemoryModuleType<LivingEntity> getMemoryToSet() {
+		return MemoryModuleType.NEAREST_ATTACKABLE;
+	}
 
-    @Override
-    public Set<MemoryModuleType<?>> requires() {
-        return Sets.union(super.requires(), Set.of(MemoryModuleType.HAS_HUNTING_COOLDOWN));
-    }
+	@Override
+	public Set<MemoryModuleType<?>> requires() {
+		return Sets.union(super.requires(), Set.of(MemoryModuleType.HAS_HUNTING_COOLDOWN));
+	}
 }

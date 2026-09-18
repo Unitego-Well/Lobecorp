@@ -9,9 +9,9 @@ import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class EntityAttributeCreation {
-    @SubscribeEvent
-    public static void registry(EntityAttributeCreationEvent event) {
-        event.put(LcEntityTypes.ENTITY_CORPSE.get(), EntityCorpse.createAttributes().build());
-        event.put(OrdealEntityTypes.SWEEPER.get(), Sweeper.createAttributes().build());
-    }
+	@SubscribeEvent
+	public static void registry(EntityAttributeCreationEvent event) {
+		event.put(LcEntityTypes.ENTITY_CORPSE.get(), EntityCorpse.createAttributes().build());
+		event.put(OrdealEntityTypes.SWEEPER.get(), Sweeper.createAttributes().build());
+	}
 }

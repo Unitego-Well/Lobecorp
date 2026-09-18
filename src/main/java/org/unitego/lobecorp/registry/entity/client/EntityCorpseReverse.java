@@ -9,8 +9,8 @@ import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class EntityCorpseReverse {
-    @SubscribeEvent
-    public static void onRegister(EntityCorpseReverseEvent event) {
-        event.register(OrdealEntityTypes.SWEEPER.get());
-    }
+	@SubscribeEvent
+	public static void onRegister(EntityCorpseReverseEvent event) {
+		event.register(OrdealEntityTypes.SWEEPER.get());
+	}
 }

@@ -53,7 +53,7 @@ dependencies {
     implementation(libs.anvilcraftlib)
     jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
-    interfaceInjectionData (libs.geckolib)
+    interfaceInjectionData(libs.geckolib)
     implementation(libs.curios)
     implementation(libs.jeiapi)
     implementation(libs.jei)
@@ -62,6 +62,9 @@ dependencies {
     // photon 依赖
     implementation(libs.ldlib2)
     implementation(libs.kilagraph)
+    implementation(libs.photon){
+        isTransitive = false
+    }
     // lib/ 下的本地 jar (Photon) 打包进 mod 并加入 dev classpath
 //    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
     implementation(fileTree("lib") { include("*.jar") })
@@ -103,6 +106,12 @@ neoForge {
             logLevel = org.slf4j.event.Level.DEBUG
             jvmArguments.addAll(
                 "-Dterminal.ansi=true",
+                "-DMC_DEBUG_ENABLED=true",
+                "-DMC_DEBUG_PATHFINDING=true",
+                "-DMC_DEBUG_GOAL_SELECTOR=true",
+                "-DMC_DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES=true",
+                "-DMC_DEBUG_SHAPES=true",
+                "-DMC_DEBUG_MONITOR_TICK_TIMES=true",
                 "-XX:+IgnoreUnrecognizedVMOptions",
                 "-XX:+AllowEnhancedClassRedefinition"
             )

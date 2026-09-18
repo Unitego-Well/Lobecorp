@@ -2,19 +2,20 @@
 moddev = "2.0.142"
 mixinmcpdecompile = "0.9.0"
 minecraft = "26.1.2"
-neoforge = "26.1.2.82"
+neoforge = "26.1.2.100"
 
 mixinsquared = "0.3.7-beta.3"
 anvilcraftlib = "2.0.0+snapshot.485"
 
 geckolib = "5.5.2"
 curios = "15.0.0-beta.2+26.1.2"
-jei = "29.19.0.51"
+jei = "29.34.0.90"
 jade = "26.1.8+neoforge"
 reretrodamageindicators = "ldSJzzoV"
+photon = "26.1.2.2"
 # photon 依赖
-ldlib2 = "26.1.2.31"
-kilagraph = "26.1.0.8"
+ldlib2 = "26.1.2.36"
+kilagraph = "26.1.0.14"
 
 [libraries]
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
@@ -28,6 +29,7 @@ jade = { module = "maven.modrinth:jade", version.ref = "jade" }
 reretrodamageindicators = { module = "maven.modrinth:re-retro-damage-indicators", version.ref = "reretrodamageindicators" }
 ldlib2 = { module = "com.lowdragmc.ldlib2:ldlib2-neoforge-26.1", version.ref = "ldlib2" }
 kilagraph = { module = "com.lowdragmc.kilagraph:kilagraph-neoforge-26.1", version.ref = "kilagraph" }
+photon = { module = "com.lowdragmc.photon:photon-neoforge-26.1", version.ref = "photon" }
 
 [bundles]
 

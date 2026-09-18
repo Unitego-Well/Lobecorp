@@ -5,8 +5,8 @@ import org.unitego.lobecorp.entity.ordeal.IOrdeal;
 import org.unitego.lobecorp.registry.tag.LcEntityTypeTags;
 
 public interface IWhiteOrdeal extends IOrdeal {
-    @Override
-    default boolean isCamp(Entity entity) {
-        return IOrdeal.super.isCamp(entity) || entity.is(LcEntityTypeTags.ORDEAL_WHITE) || entity instanceof IWhiteOrdeal;
-    }
+	@Override
+	default boolean isCamp(Entity entity) {
+		return IOrdeal.super.isCamp(entity) || entity.is(LcEntityTypeTags.ORDEAL_WHITE) || entity instanceof IWhiteOrdeal;
+	}
 }

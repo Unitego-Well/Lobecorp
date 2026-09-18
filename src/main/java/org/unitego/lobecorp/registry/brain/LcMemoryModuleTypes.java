@@ -4,56 +4,86 @@ import com.mojang.serialization.Codec;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.ai.memory.NearestVisibleEntities;
-import org.unitego.lobecorp.entity.ai.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.registry.LcCodecs;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
 
 /// 实体 brain 系统的存储器
 public interface LcMemoryModuleTypes {
-    DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
+	DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
 
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<EntityCorpse<?>>>> NEAREST_CORPSES = register("nearest_corpses");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<NearestVisibleEntities<EntityCorpse<?>>>> NEAREST_VISIBLE_CORPSES = register("nearest_visible_corpses");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> DISPOSE_CORPSE_WIND_UP_TICKS = register("dispose_corpse_wind_up_ticks");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntitySkillRuntime>> SKILL_ACTIVE = register("skill_active");
-    DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<Identifier, Long>>> SKILL_COOLDOWNS = register("skill_cooldowns");
+	//region 尸体
+	/// 最近的尸体
+	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
+	/// 最近的清理目标
+	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Entity>> NEAREST_CLEANUP_TARGET = register("nearest_cleanup_target");
+	//endregion
 
-    private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
-        return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));
-    }
+	//region 技能
+	/// 当前激活技能的状态（运行时，不持久化）
+	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntitySkillRuntime<?>>> SKILL_ACTIVE = register("skill_active");
+	/// 技能冷却表
+	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<Identifier, Long>>> SKILL_COOLDOWNS = registerMap("skill_cooldowns", Identifier.CODEC, Codec.LONG);
+	/// 连击计数
+	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> ATTACK_COMBO = register("attack_combo");
+	//endregion
 
-    private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name) {
-        return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.empty()));
-    }
+	static void init(IEventBus iEventBus) {
+		REGISTER.register(iEventBus);
+	}
 
-    private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Boolean>> registerBoolean(String name) {
-        return register(name, Codec.BOOL);
-    }
+	// 非持久化
+	private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name) {
+		return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.empty()));
+	}
 
-    private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> registerInt(String name) {
-        return register(name, Codec.INT);
-    }
+	// 持久化
+	private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
+		return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));
+	}
 
-    private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Long>> registerLong(String name) {
-        return register(name, Codec.LONG);
-    }
+	private static <T> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<List<T>>> registerList(String name, Codec<T> codec) {
+		return register(name, Codec.list(codec));
+	}
 
-    private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<UUID>> registerUUID(String name) {
-        return register(name, UUIDUtil.CODEC);
-    }
+	private static <T> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Set<T>>> registerSet(String name, Codec<T> codec) {
+		return register(name, LcCodecs.set(codec));
+	}
 
-    static void init(IEventBus iEventBus) {
-        REGISTER.register(iEventBus);
-    }
+	private static <K, V> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<K, V>>> registerMap(String name, Codec<K> codecK, Function<K, Codec<? extends V>> valueCodecFunction) {
+		return register(name, Codec.dispatchedMap(codecK, valueCodecFunction));
+	}
+
+	private static <K, V> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<K, V>>> registerMap(String name, Codec<K> codecK, Codec<V> codecV) {
+		return registerMap(name, codecK, v -> codecV);
+	}
+
+	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Boolean>> registerBoolean(String name) {
+		return register(name, Codec.BOOL);
+	}
+
+	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> registerInt(String name) {
+		return register(name, Codec.INT);
+	}
+
+	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Long>> registerLong(String name) {
+		return register(name, Codec.LONG);
+	}
+
+	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<UUID>> registerUUID(String name) {
+		return register(name, UUIDUtil.CODEC);
+	}
+
+	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Identifier>> registerIdentifier(String name) {
+		return register(name, Identifier.CODEC);
+	}
 }

@@ -13,17 +13,17 @@ import org.unitego.lobecorp.event.client.EntityCorpseReverseEvent;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class RegisterRenderStateModifiers {
-    @SubscribeEvent
-    public static void onRegister(RegisterRenderStateModifiersEvent event) {
-        event.registerEntityModifier(new TypeToken<EntityCorpseRenderer<EntityCorpse<?>>>(EntityCorpseRenderer.class) {
-        }, (entity, renderState) -> {
-            Entity ownerEntity = entity.getOwnerEntity();
-            if (ownerEntity == null) {
-                return;
-            }
-            if (EntityCorpseReverseEvent.contains(ownerEntity.getType())) {
-                renderState.setRenderData(EntityCorpseRenderer.IS_REVERSE, false);
-            }
-        });
-    }
+	@SubscribeEvent
+	public static void onRegister(RegisterRenderStateModifiersEvent event) {
+		event.registerEntityModifier(new TypeToken<EntityCorpseRenderer<EntityCorpse<?>>>(EntityCorpseRenderer.class) {
+		}, (entity, renderState) -> {
+			Entity ownerEntity = entity.getOwnerEntity();
+			if (ownerEntity == null) {
+				return;
+			}
+			if (EntityCorpseReverseEvent.contains(ownerEntity.getType())) {
+				renderState.setRenderData(EntityCorpseRenderer.IS_REVERSE, false);
+			}
+		});
+	}
 }

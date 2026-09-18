@@ -4,7 +4,15 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"DamageSourceMixin",
-		"accessor.LanguageProviderAccessor"
+		"SingleTickProfilerMixin",
+		"accessor.LanguageProviderAccessor",
+		"item.SpawnEggItemMixin"
+	],
+	"client": [
+		"client.DebugRendererMixin",
+		"client.DebugScreenEntryListMixin",
+		"client.EntityHitboxDebugRendererMixin",
+		"client.LevelRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

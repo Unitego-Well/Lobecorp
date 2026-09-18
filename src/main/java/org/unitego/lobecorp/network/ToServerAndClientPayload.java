@@ -7,17 +7,17 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public interface ToServerAndClientPayload extends ToPayload {
 
-    @Override
-    default void work(IPayloadContext context) {
-        Player player = context.player();
-        if (player instanceof AbstractClientPlayer abstractClientPlayer) {
-            toClient(context, abstractClientPlayer);
-        } else if (player instanceof ServerPlayer serverPlayer) {
-            toServer(context, serverPlayer);
-        }
-    }
+	@Override
+	default void work(IPayloadContext context) {
+		Player player = context.player();
+		if (player instanceof AbstractClientPlayer abstractClientPlayer) {
+			toClient(context, abstractClientPlayer);
+		} else if (player instanceof ServerPlayer serverPlayer) {
+			toServer(context, serverPlayer);
+		}
+	}
 
-    void toServer(IPayloadContext context, ServerPlayer player);
+	void toServer(IPayloadContext context, ServerPlayer player);
 
-    void toClient(IPayloadContext context, AbstractClientPlayer player);
+	void toClient(IPayloadContext context, AbstractClientPlayer player);
 }

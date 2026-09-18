@@ -28,254 +28,271 @@ import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 
 public class EntityCorpse<T extends Entity> extends LivingEntity {
-    private static final Logger LOGGER = LogUtils.getLogger();
+	private static final Logger LOGGER = LogUtils.getLogger();
 
-    public static final String DISPLAY_NAME_KEY = LangHandler.createTranslationKeyEnUsAndZhCn(Lobecorp.NAMESPACE,
-            "entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
+	public static final String DISPLAY_NAME_KEY = LangHandler.creates(Lobecorp.NAMESPACE,
+			"entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
 
-    private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
-            EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
+	private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
+			EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
 
-    /// 最大腐烂tick
-    public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
+	/// 最大腐烂tick
+	public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
 
-    // 缓存存储实体 不使用final是因为同步等因素会导致变换
-    @Nullable
-    private T ownerEntity;
-    @Nullable
-    private EntityDimensions cachedDimensions;
+	// 缓存存储实体 不使用final是因为同步等因素会导致变换
+	@Nullable
+	private T ownerEntity;
+	@Nullable
+	private EntityDimensions cachedDimensions;
 
-    public EntityCorpse(EntityType<? extends EntityCorpse<?>> type, Level level) {
-        super(type, level);
-        reset();
-    }
+	public EntityCorpse(EntityType<? extends EntityCorpse<?>> type, Level level) {
+		super(type, level);
+		reset();
+	}
 
-    public static <T extends Entity> EntityCorpse<T> createCorpse(T entity) {
-        EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
-        entityCorpse.updateOwnerEntity(entity);
-        entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
-        entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
-        return entityCorpse;
-    }
+	public static <T extends Entity> EntityCorpse<T> createCorpse(T entity) {
+		EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
+		entityCorpse.updateOwnerEntity(entity);
+		entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
+		entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
+		return entityCorpse;
+	}
 
-    public static AttributeSupplier.Builder createAttributes() {
-        return createLivingAttributes();
-    }
+	public static AttributeSupplier.Builder createAttributes() {
+		return createLivingAttributes();
+	}
 
-    @Override
-    protected void readAdditionalSaveData(ValueInput input) {
-        super.readAdditionalSaveData(input);
-        CompoundTag compoundTag = input.read("OwnerEntity", CompoundTag.CODEC).orElseGet(CompoundTag::new);
-        setOwnerEntityTag(compoundTag);
-        updateOwnerEntity(createOwnerEntity(compoundTag));
-    }
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		CompoundTag compoundTag = input.read("OwnerEntity", CompoundTag.CODEC).orElseGet(CompoundTag::new);
+		setOwnerEntityTag(compoundTag);
+		updateOwnerEntity(createOwnerEntity(compoundTag));
+	}
 
-    @Override
-    protected void addAdditionalSaveData(ValueOutput output) {
-        super.addAdditionalSaveData(output);
-        output.store("OwnerEntity", CompoundTag.CODEC, getOwnerEntityTag());
-    }
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.store("OwnerEntity", CompoundTag.CODEC, getOwnerEntityTag());
+	}
 
-    @Override
-    protected void defineSynchedData(SynchedEntityData.Builder entityData) {
-        super.defineSynchedData(entityData);
-        entityData.define(DATA_OWNER_ENTITY_TAG, new CompoundTag());
-    }
+	@Override
+	protected void defineSynchedData(SynchedEntityData.Builder entityData) {
+		super.defineSynchedData(entityData);
+		entityData.define(DATA_OWNER_ENTITY_TAG, new CompoundTag());
+	}
 
-    @Override
-    public void tick() {
-        super.tick();
-        if (!level().isClientSide()) {
-            if (tickCount >= MAX_ROT_REMOVED_TICK) {
-                remove(RemovalReason.DISCARDED);
-                return;
-            }
+	@Override
+	public void tick() {
+		super.tick();
 
-            if (tickCount % 20 == 0 && ownerEntity == null) {
-                remove(RemovalReason.DISCARDED);
-                return;
-            }
-        }
+		if (!level().isClientSide()) {
+			if (tickCount >= MAX_ROT_REMOVED_TICK) {
+				remove(RemovalReason.DISCARDED);
+				return;
+			}
 
-        if (this.isInWater()) {
-            this.setUnderwaterMovement();
-        } else if (this.isInLava()) {
-            this.setUnderLavaMovement();
-        } else {
-            this.applyGravity();
-        }
-    }
+			if (tickCount % 20 == 0 && ownerEntity == null) {
+				remove(RemovalReason.DISCARDED);
+				return;
+			}
+		}
 
-    private void setUnderwaterMovement() {
-        Vec3 movement = this.getDeltaMovement();
-        double newY = movement.y + (movement.y < 0.06F ? 0.015 : 0.0);
-        this.setDeltaMovement(movement.x * 0.99, Math.min(newY, 0.1), movement.z * 0.99);
-    }
+		if (this.isInWater()) {
+			this.setUnderwaterMovement();
+		} else if (this.isInLava()) {
+			this.setUnderLavaMovement();
+		} else {
+			this.applyGravity();
+		}
+	}
 
-    private void setUnderLavaMovement() {
-        Vec3 movement = this.getDeltaMovement();
-        this.setDeltaMovement(movement.x * 0.95, movement.y + 0.015, movement.z * 0.95);
-    }
+	private void setUnderwaterMovement() {
+		Vec3 movement = this.getDeltaMovement();
+		double newY = movement.y + (movement.y < 0.06F ? 0.015 : 0.0);
+		this.setDeltaMovement(movement.x * 0.99, Math.min(newY, 0.1), movement.z * 0.99);
+	}
 
-    @Override
-    public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
-        if (source.is(DamageTypeTags.IS_PROJECTILE)
-                || source.is(DamageTypes.DROWN)
-                || source.is(DamageTypes.IN_WALL)
-                || source.is(DamageTypes.MAGIC)
-                || source.is(DamageTypes.INDIRECT_MAGIC)
-                || source.is(DamageTypes.WITHER)
-                || source.is(DamageTypes.WITHER_SKULL)
-                || source.is(DamageTypes.HOT_FLOOR)
-                || source.is(DamageTypes.CACTUS)) {
-            return true;
-        }
-        return super.isInvulnerableTo(level, source);
-    }
+	private void setUnderLavaMovement() {
+		Vec3 movement = this.getDeltaMovement();
+		this.setDeltaMovement(movement.x * 0.95, movement.y + 0.015, movement.z * 0.95);
+	}
 
-    @Override
-    protected double getDefaultGravity() {
-        return 0.04;
-    }
+	@Override
+	public boolean isInvulnerableTo(ServerLevel level, DamageSource source) {
+		if (source.is(DamageTypeTags.IS_PROJECTILE)) {
+			return true;
+		}
+		if (source.is(DamageTypes.DROWN)) {
+			return true;
+		}
+		if (source.is(DamageTypes.IN_WALL)) {
+			return true;
+		}
+		if (source.is(DamageTypes.MAGIC)) {
+			return true;
+		}
+		if (source.is(DamageTypes.INDIRECT_MAGIC)) {
+			return true;
+		}
+		if (source.is(DamageTypes.WITHER)) {
+			return true;
+		}
+		if (source.is(DamageTypes.WITHER_SKULL)) {
+			return true;
+		}
+		if (source.is(DamageTypes.HOT_FLOOR)) {
+			return true;
+		}
+		if (source.is(DamageTypes.CACTUS)) {
+			return true;
+		}
+		return super.isInvulnerableTo(level, source);
+	}
 
-    @Override
-    public void knockback(double strength, double x, double z) {
-    }
+	@Override
+	protected double getDefaultGravity() {
+		return 0.04;
+	}
 
-    @Override
-    protected void pushEntities() {
-    }
+	@Override
+	public void knockback(double strength, double x, double z) {
+	}
 
-    @Override
-    public boolean attackable() {
-        return false;
-    }
+	@Override
+	protected void pushEntities() {
+	}
 
-    @Override
-    public boolean isPushable() {
-        return false;
-    }
+	@Override
+	public boolean attackable() {
+		return false;
+	}
 
-    @Override
-    protected boolean canRide(Entity vehicle) {
-        return false;
-    }
+	@Override
+	public boolean isPushable() {
+		return false;
+	}
 
-    @Override
-    public HumanoidArm getMainArm() {
-        return HumanoidArm.RIGHT;
-    }
+	@Override
+	protected boolean canRide(Entity vehicle) {
+		return false;
+	}
 
-    @Override
-    public void onSyncedDataUpdated(EntityDataAccessor<?> accessor) {
-        super.onSyncedDataUpdated(accessor);
-        if (accessor == DATA_OWNER_ENTITY_TAG) {
-            updateOwnerEntity(createOwnerEntity(getOwnerEntityTag()));
-        }
-    }
+	@Override
+	public HumanoidArm getMainArm() {
+		return HumanoidArm.RIGHT;
+	}
 
-    protected void updateOwnerEntity(@Nullable T newOwnerEntity) {
-        if (newOwnerEntity == null) {
-            reset();
-            return;
-        }
-        this.ownerEntity = newOwnerEntity;
-        ownerEntity.setOldPosAndRot();
-        if (newOwnerEntity instanceof LivingEntity livingEntity) {
-            livingEntity.yBodyRotO = livingEntity.yBodyRot;
-            livingEntity.yHeadRotO = livingEntity.yHeadRot;
-            float health = (float) (livingEntity.getAttributeValue(Attributes.MAX_HEALTH));
-            getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
-            setHealth(health);
-        } else {
-            float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
-            getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
-            setHealth(health);
-        }
-        updateCachedDimensions();
-        refreshDimensions();
-    }
+	@Override
+	public void onSyncedDataUpdated(EntityDataAccessor<?> accessor) {
+		super.onSyncedDataUpdated(accessor);
+		if (accessor == DATA_OWNER_ENTITY_TAG) {
+			updateOwnerEntity(createOwnerEntity(getOwnerEntityTag()));
+		}
+	}
 
-    @Override
-    protected EntityDimensions getDefaultDimensions(Pose pose) {
-        if (cachedDimensions != null) {
-            return cachedDimensions;
-        }
-        return super.getDefaultDimensions(pose);
-    }
+	protected void updateOwnerEntity(@Nullable T newOwnerEntity) {
+		if (newOwnerEntity == null) {
+			reset();
+			return;
+		}
+		this.ownerEntity = newOwnerEntity;
+		ownerEntity.setOldPosAndRot();
+		if (newOwnerEntity instanceof LivingEntity livingEntity) {
+			livingEntity.yBodyRotO = livingEntity.yBodyRot;
+			livingEntity.yHeadRotO = livingEntity.yHeadRot;
+			float health = (float) (livingEntity.getAttributeValue(Attributes.MAX_HEALTH));
+			getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+			setHealth(health);
+		} else {
+			float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
+			getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+			setHealth(health);
+		}
+		updateCachedDimensions();
+		refreshDimensions();
+	}
 
-    protected void updateCachedDimensions() {
-        if (ownerEntity == null) {
-            cachedDimensions = null;
-            return;
-        }
-        EntityDimensions original = ownerEntity.getDimensions(Pose.STANDING);
-        float newHeight = original.width() / 2.0F;
-        float newWidth = original.height();
-        cachedDimensions = EntityDimensions.fixed(newWidth, newHeight);
-    }
+	@Override
+	protected EntityDimensions getDefaultDimensions(Pose pose) {
+		if (cachedDimensions != null) {
+			return cachedDimensions;
+		}
+		return super.getDefaultDimensions(pose);
+	}
 
-    protected @NonNull CompoundTag getEntityCompoundTag(@Nullable T entity) {
-        if (entity == null) {
-            return new CompoundTag();
-        }
+	protected void updateCachedDimensions() {
+		if (ownerEntity == null) {
+			cachedDimensions = null;
+			return;
+		}
+		EntityDimensions original = ownerEntity.getDimensions(Pose.STANDING);
+		float newHeight = original.width() / 2.0F;
+		float newWidth = original.height();
+		cachedDimensions = EntityDimensions.fixed(newWidth, newHeight);
+	}
 
-        try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
-            TagValueOutput tagOutput = TagValueOutput.createWithContext(reporter, entity.registryAccess());
-            entity.saveWithoutId(tagOutput);
-            tagOutput.putString("id", entity.getEncodeId());
-            return tagOutput.buildResult();
-        }
-    }
+	protected @NonNull CompoundTag getEntityCompoundTag(@Nullable T entity) {
+		if (entity == null) {
+			return new CompoundTag();
+		}
 
-    protected void reset() {
-        ownerEntity = null;
-        cachedDimensions = null;
-        setOwnerEntityTag(new CompoundTag());
-        float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
-        getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
-        setHealth(health);
-        refreshDimensions();
-    }
+		try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
+			TagValueOutput tagOutput = TagValueOutput.createWithContext(reporter, entity.registryAccess());
+			entity.saveWithoutId(tagOutput);
+			tagOutput.putString("id", entity.getEncodeId());
+			return tagOutput.buildResult();
+		}
+	}
 
-    @Override
-    protected void tickDeath() {
-        deathTime = 20;
-        super.tickDeath();
-    }
+	protected void reset() {
+		ownerEntity = null;
+		cachedDimensions = null;
+		setOwnerEntityTag(new CompoundTag());
+		float health = (float) (Attributes.MAX_HEALTH.value().getDefaultValue());
+		getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+		setHealth(health);
+		refreshDimensions();
+	}
 
-    protected void setOwnerEntityTag(CompoundTag tag) {
-        entityData.set(DATA_OWNER_ENTITY_TAG, tag);
-    }
+	@Override
+	protected void tickDeath() {
+		deathTime = 20;
+		super.tickDeath();
+	}
 
-    protected CompoundTag getOwnerEntityTag() {
-        return entityData.get(DATA_OWNER_ENTITY_TAG);
-    }
+	protected void setOwnerEntityTag(CompoundTag tag) {
+		entityData.set(DATA_OWNER_ENTITY_TAG, tag);
+	}
 
-    @Nullable
-    public T getOwnerEntity() {
-        return ownerEntity;
-    }
+	protected CompoundTag getOwnerEntityTag() {
+		return entityData.get(DATA_OWNER_ENTITY_TAG);
+	}
 
-    @Nullable
-    public T createOwnerEntity(CompoundTag tag) {
-        if (tag.isEmpty()) {
-            return null;
-        }
+	@Nullable
+	public T getOwnerEntity() {
+		return ownerEntity;
+	}
 
-        try (ProblemReporter.ScopedCollector reporterx = new ProblemReporter.ScopedCollector(this.problemPath(), LOGGER)) {
-            Level level = level();
-            ValueInput input = TagValueInput.create(reporterx.forChild(() -> ""),
-                    level.registryAccess(), tag);
-            return (T) EntityType.create(input, level, EntitySpawnReason.LOAD).orElse(null);
-        }
-    }
+	@Nullable
+	public T createOwnerEntity(CompoundTag tag) {
+		if (tag.isEmpty()) {
+			return null;
+		}
 
-    @Override
-    public Component getDisplayName() {
-        if (ownerEntity != null) {
-            return Component.translatable(DISPLAY_NAME_KEY, ownerEntity.getDisplayName());
-        }
-        return super.getDisplayName();
-    }
+		try (ProblemReporter.ScopedCollector reporterx = new ProblemReporter.ScopedCollector(this.problemPath(), LOGGER)) {
+			Level level = level();
+			ValueInput input = TagValueInput.create(reporterx.forChild(() -> ""),
+					level.registryAccess(), tag);
+			return (T) EntityType.create(input, level, EntitySpawnReason.LOAD).orElse(null);
+		}
+	}
+
+	@Override
+	public Component getDisplayName() {
+		if (ownerEntity != null) {
+			return Component.translatable(DISPLAY_NAME_KEY, ownerEntity.getDisplayName());
+		}
+		return super.getDisplayName();
+	}
 }

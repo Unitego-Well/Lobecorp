@@ -4,8 +4,8 @@ import net.minecraft.world.entity.Entity;
 import org.jspecify.annotations.Nullable;
 
 public interface IEntityTarget {
-    @Nullable
-    Entity getEntityTarget();
+	@Nullable
+	Entity getEntityTarget();
 
-    void setEntityTarget(@Nullable Entity entity);
+	void setEntityTarget(@Nullable Entity entity);
 }

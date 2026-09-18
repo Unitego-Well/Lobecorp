@@ -1,12 +1,10 @@
 package org.unitego.lobecorp.entity.ai.behavior;
 
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.behavior.BehaviorControl;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
-import net.minecraft.world.entity.ai.behavior.OneShot;
 import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 
@@ -23,44 +21,44 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 /// }</pre>
 public class WalkToEntity {
 
-    /// 适用于任意 {@link Entity} 子类的通用版本（ItemEntity、LivingEntity 等）。<br>
-    /// 目标记忆存在且目标存活时持续走向目标；目标死亡或记忆被擦除时自动跳过。
-    ///
-    /// @param targetMemory     存储目标的记忆模块
-    /// @param speedModifier    移动速度倍率（1.0 为正常速度）
-    /// @param closeEnoughDist  视为"到达"的距离（方块）
-    public static <E extends PathfinderMob, T extends Entity> BehaviorControl<E> create(
-            MemoryModuleType<T> targetMemory, float speedModifier, int closeEnoughDist) {
-        return BehaviorBuilder.create(i -> i.group(
-                i.present(targetMemory)
-        ).apply(i, (target) -> (level, body, time) -> {
-            T entity = i.get(target);
-            if (!entity.isAlive()) {
-                return false;
-            }
-            BehaviorUtils.setWalkAndLookTargetMemories(body, entity, speedModifier, closeEnoughDist);
-            return true;
-        }));
-    }
+	/// 适用于任意 {@link Entity} 子类的通用版本（ItemEntity、LivingEntity 等）。<br>
+	/// 目标记忆存在且目标存活时持续走向目标；目标死亡或记忆被擦除时自动跳过。
+	///
+	/// @param targetMemory    存储目标的记忆模块
+	/// @param speedModifier   移动速度倍率（1.0 为正常速度）
+	/// @param closeEnoughDist 视为"到达"的距离（方块）
+	public static <E extends PathfinderMob, T extends Entity> BehaviorControl<E> create(
+			MemoryModuleType<T> targetMemory, float speedModifier, int closeEnoughDist) {
+		return BehaviorBuilder.create(i -> i.group(
+				i.present(targetMemory)
+		).apply(i, (target) -> (level, body, time) -> {
+			T entity = i.get(target);
+			if (!entity.isAlive()) {
+				return false;
+			}
+			BehaviorUtils.setWalkAndLookTargetMemories(body, entity, speedModifier, closeEnoughDist);
+			return true;
+		}));
+	}
 
-    /// {@link LivingEntity} 专用版本。与 {@link #create} 行为相同，额外逻辑：<br>
-    /// 目标死亡时自动擦除 {@code targetMemory}，避免僵尸记忆导致 AI 持续尝试走向已死实体。
-    ///
-    /// @param targetMemory     存储活体目标的记忆模块
-    /// @param speedModifier    移动速度倍率
-    /// @param closeEnoughDist  视为"到达"的距离（方块）
-    public static <E extends PathfinderMob, T extends LivingEntity> BehaviorControl<E> createLiving(
-            MemoryModuleType<T> targetMemory, float speedModifier, int closeEnoughDist) {
-        return BehaviorBuilder.create(i -> i.group(
-                i.present(targetMemory)
-        ).apply(i, (target) -> (level, body, time) -> {
-            T entity = i.get(target);
-            if (!entity.isAlive()) {
-                body.getBrain().eraseMemory(targetMemory);
-                return false;
-            }
-            BehaviorUtils.setWalkAndLookTargetMemories(body, entity, speedModifier, closeEnoughDist);
-            return true;
-        }));
-    }
+	/// {@link LivingEntity} 专用版本。与 {@link #create} 行为相同，额外逻辑：<br>
+	/// 目标死亡时自动擦除 {@code targetMemory}，避免僵尸记忆导致 AI 持续尝试走向已死实体。
+	///
+	/// @param targetMemory    存储活体目标的记忆模块
+	/// @param speedModifier   移动速度倍率
+	/// @param closeEnoughDist 视为"到达"的距离（方块）
+	public static <E extends PathfinderMob, T extends LivingEntity> BehaviorControl<E> createLiving(
+			MemoryModuleType<T> targetMemory, float speedModifier, int closeEnoughDist) {
+		return BehaviorBuilder.create(i -> i.group(
+				i.present(targetMemory)
+		).apply(i, (target) -> (level, body, time) -> {
+			T entity = i.get(target);
+			if (!entity.isAlive()) {
+				body.getBrain().eraseMemory(targetMemory);
+				return false;
+			}
+			BehaviorUtils.setWalkAndLookTargetMemories(body, entity, speedModifier, closeEnoughDist);
+			return true;
+		}));
+	}
 }

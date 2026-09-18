@@ -97,7 +97,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, IIndigoO
 	/// 生物质存档字段名称
 	private static final String BIOMASS_SAVE_KEY = "Biomass";
 	/// 生物质上限相对最大生命值的倍率
-	private static final float BIOMASS_CAPACITY_MULTIPLIER = 2.0F;
+	private static final float BIOMASS_CAPACITY_MULTIPLIER = 1.0F;
 	/// 治疗溢出转换为生物质的比例分母
 	private static final float OVERHEAL_TO_BIOMASS_DIVISOR = 5.0F;
 	/// 空闲时每 tick 可恢复的最大生命比例

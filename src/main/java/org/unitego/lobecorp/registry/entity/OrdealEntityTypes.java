@@ -11,7 +11,7 @@ import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 public interface OrdealEntityTypes {
 	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
 
-	//region 紫罗兰
+	//region 靛蓝色
 
 	DeferredHolder<EntityType<?>, EntityType<Sweeper>> SWEEPER = LcEntityTypes.register(REGISTER,
 			"sweeper", "Sweeper", "清道夫", Sweeper::new, MobCategory.MONSTER, sweeperBuilder -> sweeperBuilder

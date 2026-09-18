@@ -45,7 +45,7 @@ public interface SpawnEggItems {
 
 	//region 考验
 
-	//region 紫罗兰
+	//region 靛蓝色
 
 	DeferredItem<LcSpawnEggItem> SWEEPER = register("sweeper", "Sweeper", "清道夫", OrdealEntityTypes.SWEEPER);
 

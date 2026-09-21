@@ -17,6 +17,11 @@ val neoforgeVersion = libs.versions.neoforge.get()
 val mixinsquaredVersion = libs.versions.mixinsquared.get()
 val modId = property("mod_id").toString()
 val modVersion = property("mod_version").toString()
+val internalTestMods = configurations.create("internalTestMods") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
 version = modVersion
 group = "org.unitego.lobecorp"
 sourceSets.main {
@@ -68,6 +73,17 @@ dependencies {
     // lib/ 下的本地 jar (Photon) 打包进 mod 并加入 dev classpath
 //    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
     implementation(fileTree("lib") { include("*.jar") })
+
+    internalTestMods(libs.anvilcraftlib)
+    internalTestMods(libs.geckolib)
+    internalTestMods(libs.curios)
+    internalTestMods(libs.jei)
+    internalTestMods(libs.jade)
+    internalTestMods(libs.reretrodamageindicators)
+    internalTestMods(libs.ldlib2)
+    internalTestMods(libs.kilagraph)
+    internalTestMods(libs.photon)
+    internalTestMods(fileTree("lib") { include("*.jar") })
 }
 
 base {
@@ -150,6 +166,31 @@ publishing {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
+}
+
+tasks.register<org.gradle.api.tasks.bundling.Zip>("internalTestBundle") {
+    group = "distribution"
+    description = "Builds the internal-test mod bundle with all runtime mod dependencies"
+    dependsOn(tasks.named("jar"))
+    archiveFileName = "$modId-$minecraftVersion-$modVersion-internal-test.zip"
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    into("mods") {
+        from(tasks.named<Jar>("jar").flatMap { it.archiveFile })
+        from(internalTestMods)
+    }
+    from(resources.text.fromString(
+        """Lobotomy Corporation internal test bundle
+Minecraft: $minecraftVersion
+NeoForge: $neoforgeVersion
+Mod version: $modVersion
+
+Install Minecraft $minecraftVersion with NeoForge $neoforgeVersion, then copy every file from mods into the instance mods directory.
+"""
+    )) {
+        rename { "README.txt" }
+    }
 }
 
 idea.module {

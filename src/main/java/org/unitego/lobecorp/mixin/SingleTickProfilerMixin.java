@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.debug.LcDebugRuntimeOptions;
 
 @Mixin(SingleTickProfiler.class)
-public class SingleTickProfilerMixin {
+public abstract class SingleTickProfilerMixin {
 	@ModifyExpressionValue(
 			method = "createTickProfiler",
 			at = @At(value = "FIELD", target = "Lnet/minecraft/SharedConstants;DEBUG_MONITOR_TICK_TIMES:Z", opcode = Opcodes.GETSTATIC)

@@ -17,8 +17,11 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class LangHandler {
+	/// 按模组命名空间和语言代码保存的数据生成翻译集。
 	public static final Map<String, Map<String, LangSet>> MOD_LANG_MAP = new HashMap<>();
+	/// 美式英语语言代码。
 	public static final String EN_US = "en_us";
+	/// 简体中文语言代码。
 	public static final String ZH_CN = "zh_cn";
 
 	public static String getConfigTranslation(String modId, String... keys) {

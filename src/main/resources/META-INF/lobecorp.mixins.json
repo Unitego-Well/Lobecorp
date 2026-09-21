@@ -4,6 +4,7 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"DamageSourceMixin",
+		"LivingEntityMixin",
 		"SingleTickProfilerMixin",
 		"accessor.LanguageProviderAccessor",
 		"item.SpawnEggItemMixin"
@@ -12,7 +13,8 @@
 		"client.DebugRendererMixin",
 		"client.DebugScreenEntryListMixin",
 		"client.EntityHitboxDebugRendererMixin",
-		"client.LevelRendererMixin"
+		"client.LevelRendererMixin",
+		"client.RenderPassInfoMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

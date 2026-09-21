@@ -14,44 +14,15 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public interface SpawnEggItems {
+	/// 生物生成蛋延迟注册器。
 	DeferredRegister.Items REGISTER = DeferredRegister.createItems(Lobecorp.NAMESPACE);
 
-	//region 异想体
-
-	//region ZAYIN
-
-	//endregion
-
-	//region TETH
-
-	//endregion
-
-	//region HE
-
-	//endregion
-
-	//region WAW
-
+	/// 憎恶皇后生成蛋。
 	DeferredItem<LcSpawnEggItem> THE_QUEEN_OF_HATRED = register("the_queen_of_hatred", "The Queen Of Hatred", "憎恶皇后",
 			AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED);
 
-	//endregion
-
-	//region ALEPH
-
-	//endregion
-
-	//endregion
-
-	//region 考验
-
-	//region 靛蓝色
-
+	/// 清道夫生成蛋。
 	DeferredItem<LcSpawnEggItem> SWEEPER = register("sweeper", "Sweeper", "清道夫", OrdealEntityTypes.SWEEPER);
-
-	//endregion
-
-	//endregion
 
 	static void init(IEventBus iEventBus) {
 		REGISTER.register(iEventBus);

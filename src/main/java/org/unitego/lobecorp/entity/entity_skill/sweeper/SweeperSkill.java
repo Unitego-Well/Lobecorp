@@ -6,6 +6,9 @@ import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
 public abstract class SweeperSkill extends EntitySkill<Sweeper> {
+	/// 重组每 tick 处理的尸体生命值
+	protected static final float PROCESS_HEALTH = 2.0F;
+
 	public SweeperSkill(Properties properties) {
 		super(properties);
 	}

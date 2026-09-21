@@ -16,7 +16,6 @@ public class BloodParticle extends SingleQuadParticle {
 		super(level, x, y, z, sprite.first());
 		this.sprites = sprite;
 		this.setSpriteFromAge(sprites);
-		// TODO 未指定的参数（颜色/寿命/尺寸）后续调整
 		this.lifetime = 30;
 		this.gravity = 1.0F;
 		this.quadSize = 0.05F;

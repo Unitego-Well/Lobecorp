@@ -10,5 +10,6 @@ public interface SweeperStates {
 
 	EntityState ATTACK = new EntityState(id("sweeper/attack"), ACTION);
 	EntityState LEAP = new EntityState(id("sweeper/leap"), ACTION);
-	EntityState DISPOSE_CORPSE = new EntityState(id("sweeper/dispose_corpse"), ACTION);
+	EntityState SWEEP = new EntityState(id("sweeper/sweep"), ACTION);
+	EntityState REASSEMBLE = new EntityState(id("sweeper/reassemble"), ACTION);
 }

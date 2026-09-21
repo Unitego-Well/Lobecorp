@@ -5,13 +5,15 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkillBrain;
+import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.entity.util.EntityUtil;
 import org.unitego.lobecorp.registry.entity_state.SweeperStates;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫 3 段攻击技能：attack → attack2 → attack3 → attack 循环。
 /// <p>
@@ -20,7 +22,7 @@ import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 /// 战斗行为持续施放即可自动打出下一段。
 public class SweeperAttackSkill extends SweeperSkill {
 	/// 一套连击（3 段）完成后进入的冷却
-	private static final int COMBO_COOLDOWN = 40;
+	private static final int COMBO_COOLDOWN = 2 * TICKS_PER_SECOND;
 	/// 普通攻击的总连击段数
 	private static final int COMBO_LENGTH = 3;
 	/// 第一段攻击相对基础攻击伤害增加的倍率
@@ -37,8 +39,19 @@ public class SweeperAttackSkill extends SweeperSkill {
 	@Override
 	public boolean canUse(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		LivingEntity target = entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-		if (target == null || !target.isAlive() || !entity.isValidTarget(target)
-				|| !entity.hasLineOfSight(target) || !entity.isWithinMeleeAttackRange(target)) {
+		if (target == null) {
+			return false;
+		}
+		if (!target.isAlive()) {
+			return false;
+		}
+		if (!entity.isValidTarget(target)) {
+			return false;
+		}
+		if (!entity.hasLineOfSight(target)) {
+			return false;
+		}
+		if (!entity.isWithinMeleeAttackRange(target)) {
 			return false;
 		}
 		runtime.setTarget(target);
@@ -50,7 +63,7 @@ public class SweeperAttackSkill extends SweeperSkill {
 		entity.addEntityState(SweeperStates.ATTACK);
 		int combo = entity.getAttackCombo() % 3;
 		SweeperAnim animation = SweeperAnim.values()[SweeperAnim.ATTACK1.ordinal() + combo];
-		entity.triggerAnim(Sweeper.ACTION_ANIMATION_CONTROLLER, animation.getId());
+		entity.playActionAnimation(animation);
 	}
 
 	@Override
@@ -60,8 +73,20 @@ public class SweeperAttackSkill extends SweeperSkill {
 		}
 
 		LivingEntity target = getTarget(runtime);
-		if (target == null || !target.isAlive() || !entity.isValidTarget(target) || !entity.isWithinMeleeAttackRange(target)) {
-			EntitySkillBrain.cancelSkill(entity);
+		if (target == null) {
+			EntitySkillManager.cancelSkill(entity, this);
+			return;
+		}
+		if (!target.isAlive()) {
+			EntitySkillManager.cancelSkill(entity, this);
+			return;
+		}
+		if (!entity.isValidTarget(target)) {
+			EntitySkillManager.cancelSkill(entity, this);
+			return;
+		}
+		if (!entity.isWithinMeleeAttackRange(target)) {
+			EntitySkillManager.cancelSkill(entity, this);
 			return;
 		}
 
@@ -89,6 +114,7 @@ public class SweeperAttackSkill extends SweeperSkill {
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		entity.stopActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
 		if (!runtime.isSuccessful()) {
 			return;
@@ -96,13 +122,13 @@ public class SweeperAttackSkill extends SweeperSkill {
 		int combo = (entity.getAttackCombo() + 1) % 3;
 		entity.setAttackCombo(combo);
 		if (combo == 0) {
-			// 第 3 段完成：一套连击结束，进入冷却并恢复待机
-			EntitySkillBrain.setCooldown(entity, this, COMBO_COOLDOWN);
+			EntitySkillManager.setCooldown(entity, this, COMBO_COOLDOWN);
 		}
 	}
 
 	@Override
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		entity.stopActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
 	}
 

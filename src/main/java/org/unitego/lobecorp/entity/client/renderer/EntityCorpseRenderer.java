@@ -18,6 +18,7 @@ import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.registry.client.LcDataTickets;
 
 public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRenderer<T, EntityCorpseRenderer.RenderState> {
+	/// 控制原实体模型是否旋转为尸体姿态的渲染数据键。
 	public static final ContextKey<Boolean> IS_REVERSE = new ContextKey<>(Lobecorp.id("is_reverse"));
 
 	public EntityCorpseRenderer(EntityRendererProvider.Context context) {
@@ -42,7 +43,7 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 
 		ownerState.addGeckolibData(LcDataTickets.IS_CORPSE, true);
 
-		// 清除死亡/受伤导致的红色闪白叠加层和死亡翻转，尸体不应显示伤害效果
+		// 尸体渲染不继承原实体的受伤叠加层和死亡翻转。
 		if (ownerState instanceof LivingEntityRenderState livingState) {
 			livingState.hasRedOverlay = false;
 			livingState.deathTime = 0;

@@ -11,17 +11,24 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.state.BlockState;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkillBrain;
+import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
+import org.unitego.lobecorp.hitbox.HitboxInstance;
+import org.unitego.lobecorp.hitbox.HitboxManager;
+import org.unitego.lobecorp.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.hitbox.SphereSize;
 import org.unitego.lobecorp.registry.effect.LcMobEffects;
 import org.unitego.lobecorp.registry.entity_state.SweeperStates;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+import org.unitego.lobecorp.util.TypedDataKey;
+
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
+import static org.unitego.lobecorp.hitbox.HitboxManager.CURRENT_TICK_DURATION;
 
 /// 清道夫飞扑技能：起跳 leap 冲向目标，落地 leap2 时对落点周围造成范围伤害。
 public class SweeperLeapSkill extends SweeperSkill {
@@ -30,7 +37,7 @@ public class SweeperLeapSkill extends SweeperSkill {
 	/// 落地命中目标时的击飞强度
 	private static final double LANDING_KNOCKBACK_POWER = 1.0;
 	/// 落地命中施加的眩晕持续时间
-	private static final int LANDING_STUN_DURATION_TICKS = 3 * 20;
+	private static final int LANDING_STUN_DURATION_TICKS = 3 * TICKS_PER_SECOND;
 	/// 落地命中施加的眩晕增幅等级，对应游戏内一级效果
 	private static final int LANDING_STUN_AMPLIFIER = 0;
 	/// 允许开始飞扑的最大水平距离
@@ -40,11 +47,13 @@ public class SweeperLeapSkill extends SweeperSkill {
 	/// 自动弹道允许使用的最大水平初速度
 	private static final double MAX_HORIZONTAL_SPEED = 1.8;
 	/// 自动弹道允许使用的最大垂直初速度
-	private static final double MAX_VERTICAL_SPEED = 0.85;
+	private static final double MAX_VERTICAL_SPEED = 1.4;
 	/// 自动弹道允许使用的最大仰角
-	private static final double MAX_LAUNCH_ANGLE = 50.0 * Mth.DEG_TO_RAD;
+	private static final double MAX_LAUNCH_ANGLE = 70.0 * Mth.DEG_TO_RAD;
 	/// 计算预计飞行时间时使用的每 tick 目标水平距离
 	private static final double TARGET_HORIZONTAL_DISTANCE_PER_TICK = 1.2;
+	/// 计算预计飞行时间时使用的每 tick 目标上升距离
+	private static final double TARGET_VERTICAL_DISTANCE_PER_TICK = 0.75;
 	/// 实体在空中每 tick 的水平速度保留比例
 	private static final double HORIZONTAL_MOVEMENT_DRAG = 0.91;
 	/// 实体在空中每 tick 的垂直速度保留比例
@@ -64,7 +73,11 @@ public class SweeperLeapSkill extends SweeperSkill {
 	/// 飞扑安全掉落高度临时属性的唯一标识
 	private static final Identifier SAFE_FALL_DISTANCE_MODIFIER = Lobecorp.id("sweeper_leap_safe_fall_distance");
 	/// 飞扑未落地时的最大持续时间
-	private static final int MAX_LEAP_TICKS = 40;
+	private static final int MAX_LEAP_TICKS = 2 * TICKS_PER_SECOND;
+	/// 飞扑超时后每 tick 保留的水平速度比例
+	private static final double FORCED_DESCENT_HORIZONTAL_DRAG = 0.5;
+	/// 飞扑超时后保证采用的最大向下速度
+	private static final double FORCED_DESCENT_SPEED = -0.5;
 	/// 至少经过该 tick 数后才判断落地，避免起跳当 tick 被当作落地
 	private static final int MIN_LANDING_CHECK_TICKS = 2;
 	/// 起跳时生成的普通烟雾数量
@@ -101,6 +114,29 @@ public class SweeperLeapSkill extends SweeperSkill {
 	private static final double LANDING_DUST_SPEED = 0.02;
 	/// 落地方块碎屑的初始扩散速度
 	private static final double LANDING_BLOCK_DEBRIS_SPEED = 0.1;
+	/// 本次飞扑创建的落地判断框编号。
+	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
+	/// 飞扑落地范围判断框共享模板。
+	private static final HitboxTemplate HITBOX_TEMPLATE = new HitboxTemplate(
+			new SphereSize(DAMAGE_RADIUS),
+			target -> target instanceof LivingEntity,
+			context -> {
+				if (!(context.source() instanceof Sweeper entity)) {
+					return false;
+				}
+				if (!(context.target() instanceof LivingEntity target)) {
+					return false;
+				}
+				if (!entity.doHurtTarget(context.level(), target, 1.0F)) {
+					return false;
+				}
+				target.knockback(LANDING_KNOCKBACK_POWER,
+						entity.getX() - target.getX(), entity.getZ() - target.getZ());
+				target.addEffect(new MobEffectInstance(LcMobEffects.STUN,
+						LANDING_STUN_DURATION_TICKS, LANDING_STUN_AMPLIFIER), entity);
+				return true;
+			}
+	);
 
 	public SweeperLeapSkill(Properties properties) {
 		super(properties);
@@ -109,9 +145,22 @@ public class SweeperLeapSkill extends SweeperSkill {
 	@Override
 	public boolean canUse(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		LivingEntity target = entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-		if (!entity.onGround() || target == null || !target.isAlive() || !entity.isValidTarget(target)
-				|| entity.isWithinMeleeAttackRange(target)
-				|| horizontalDistanceSqr(entity, target) > MAX_LEAP_DISTANCE_SQUARED) {
+		if (!entity.onGround()) {
+			return false;
+		}
+		if (target == null) {
+			return false;
+		}
+		if (!target.isAlive()) {
+			return false;
+		}
+		if (!entity.isValidTarget(target)) {
+			return false;
+		}
+		if (entity.isWithinMeleeAttackRange(target)) {
+			return false;
+		}
+		if (horizontalDistanceSqr(entity, target) > MAX_LEAP_DISTANCE_SQUARED) {
 			return false;
 		}
 		runtime.setTarget(target);
@@ -121,15 +170,30 @@ public class SweeperLeapSkill extends SweeperSkill {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.LEAP);
-		entity.triggerAnim(Sweeper.ACTION_ANIMATION_CONTROLLER, SweeperAnim.LEAP.getId());
+		entity.playActionAnimation(SweeperAnim.LEAP);
 		updateLaunchSolution(entity, runtime);
+		if (entity.level() instanceof ServerLevel level) {
+			int lifetime = windupTicks() + MAX_LEAP_TICKS + recoveryTicks() + CURRENT_TICK_DURATION;
+			HitboxInstance hitbox = HitboxManager.create(HITBOX_TEMPLATE, level, entity.position(), lifetime);
+			hitbox.follow(entity, Vec3.ZERO, false);
+			hitbox.appendTargetFilter(entity::isValidTarget);
+			runtime.setData(HITBOX_ID, hitbox.id());
+		}
 	}
 
 	@Override
 	public void onWindupTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		LivingEntity target = getTarget(runtime);
-		if (target == null || !target.isAlive() || target.isRemoved()) {
-			EntitySkillBrain.forceCancelSkill(entity);
+		if (target == null) {
+			EntitySkillManager.forceCancelSkill(entity, this);
+			return;
+		}
+		if (!target.isAlive()) {
+			EntitySkillManager.forceCancelSkill(entity, this);
+			return;
+		}
+		if (target.isRemoved()) {
+			EntitySkillManager.forceCancelSkill(entity, this);
 			return;
 		}
 		updateLaunchSolution(entity, runtime);
@@ -143,8 +207,16 @@ public class SweeperLeapSkill extends SweeperSkill {
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		LivingEntity target = getTarget(runtime);
-		if (target == null || !target.isAlive() || !entity.isValidTarget(target)) {
-			EntitySkillBrain.forceCancelSkill(entity);
+		if (target == null) {
+			EntitySkillManager.forceCancelSkill(entity, this);
+			return;
+		}
+		if (!target.isAlive()) {
+			EntitySkillManager.forceCancelSkill(entity, this);
+			return;
+		}
+		if (!entity.isValidTarget(target)) {
+			EntitySkillManager.forceCancelSkill(entity, this);
 			return;
 		}
 		if (!(entity.level() instanceof ServerLevel level)) {
@@ -167,13 +239,17 @@ public class SweeperLeapSkill extends SweeperSkill {
 			lockFacingToMovement(entity, entity.getDeltaMovement());
 			return;
 		}
-		if (runtime.activeTicks() >= MAX_LEAP_TICKS
-				|| (runtime.activeTicks() >= MIN_LANDING_CHECK_TICKS && entity.onGround())) {
-			EntitySkillBrain.endSkill(entity);
+		if (runtime.activeTicks() >= MIN_LANDING_CHECK_TICKS && entity.onGround()) {
+			EntitySkillManager.endSkill(entity, this);
 			return;
 		}
 
 		Vec3 v = entity.getDeltaMovement();
+		if (runtime.activeTicks() >= MAX_LEAP_TICKS) {
+			v = new Vec3(v.x * FORCED_DESCENT_HORIZONTAL_DRAG,
+					Math.min(v.y, FORCED_DESCENT_SPEED), v.z * FORCED_DESCENT_HORIZONTAL_DRAG);
+			entity.setDeltaMovement(v);
+		}
 		lockFacingToMovement(entity, v);
 	}
 
@@ -181,27 +257,16 @@ public class SweeperLeapSkill extends SweeperSkill {
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		removeKnockbackResistance(entity);
 		removeSafeFallDistance(entity);
+		entity.playActionAnimation(SweeperAnim.LEAP2);
 		if (!(entity.level() instanceof ServerLevel level)) {
-			AABB box = entity.getBoundingBox().inflate(DAMAGE_RADIUS);
-			entity.level().getEntitiesOfClass(LivingEntity.class, box,
-					target -> target != entity && target.isAlive() && entity.isValidTarget(target))
-					.forEach(target -> knockbackTarget(entity, target));
-			entity.stopTriggeredAnim(Sweeper.ACTION_ANIMATION_CONTROLLER, null);
 			return;
 		}
-		entity.triggerAnim(Sweeper.ACTION_ANIMATION_CONTROLLER, SweeperAnim.LEAP2.getId());
 
-		// 落地范围伤害
-		AABB box = entity.getBoundingBox().inflate(DAMAGE_RADIUS);
-		level.getEntitiesOfClass(LivingEntity.class, box, e -> e != entity && e.isAlive() && entity.isValidTarget(e))
-				.forEach(target -> {
-					if (!entity.doHurtTarget(level, target, 1f)) {
-						return;
-					}
-					knockbackTarget(entity, target);
-					target.addEffect(new MobEffectInstance(LcMobEffects.STUN,
-							LANDING_STUN_DURATION_TICKS, LANDING_STUN_AMPLIFIER), entity);
-				});
+		HitboxInstance hitbox = getHitbox(level, runtime);
+		if (hitbox != null) {
+			hitbox.activate();
+			hitbox.setRemainingTicks(CURRENT_TICK_DURATION);
+		}
 
 		Vec3 pos = entity.position();
 		double particleY = pos.y + LANDING_PARTICLE_Y_OFFSET;
@@ -225,7 +290,9 @@ public class SweeperLeapSkill extends SweeperSkill {
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		entity.stopActionAnimation();
 		entity.removeEntityState(SweeperStates.LEAP);
+		removeHitbox(entity, runtime);
 	}
 
 	@Override
@@ -233,12 +300,16 @@ public class SweeperLeapSkill extends SweeperSkill {
 		removeKnockbackResistance(entity);
 		removeSafeFallDistance(entity);
 		entity.removeEntityState(SweeperStates.LEAP);
-		entity.stopTriggeredAnim(Sweeper.ACTION_ANIMATION_CONTROLLER, null);
+		entity.stopActionAnimation();
+		removeHitbox(entity, runtime);
 	}
 
 	private void updateLaunchSolution(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		LivingEntity target = getTarget(runtime);
-		if (target == null || !target.isAlive()) {
+		if (target == null) {
+			return;
+		}
+		if (!target.isAlive()) {
 			return;
 		}
 		Vec3 movement = calculateLaunchMovement(entity, target);
@@ -250,14 +321,18 @@ public class SweeperLeapSkill extends SweeperSkill {
 		double dx = target.getX() - entity.getX();
 		double dz = target.getZ() - entity.getZ();
 		double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-		int flightTicks = Mth.clamp(Mth.ceil(horizontalDistance / TARGET_HORIZONTAL_DISTANCE_PER_TICK),
+		double verticalDistance = target.getBoundingBox().getCenter().y
+				- entity.getBoundingBox().getCenter().y;
+		int horizontalFlightTicks = Mth.ceil(horizontalDistance / TARGET_HORIZONTAL_DISTANCE_PER_TICK);
+		int verticalFlightTicks = Mth.ceil(Math.max(verticalDistance, 0.0) / TARGET_VERTICAL_DISTANCE_PER_TICK);
+		int flightTicks = Mth.clamp(Math.max(horizontalFlightTicks, verticalFlightTicks),
 				MIN_FLIGHT_TICKS, MAX_FLIGHT_TICKS);
 		double horizontalMovementFactor = (1.0 - Math.pow(HORIZONTAL_MOVEMENT_DRAG, flightTicks))
 				/ (1.0 - HORIZONTAL_MOVEMENT_DRAG);
 		double verticalMovementFactor = (1.0 - Math.pow(VERTICAL_MOVEMENT_DRAG, flightTicks))
 				/ (1.0 - VERTICAL_MOVEMENT_DRAG);
 		double horizontalSpeed = Math.min(horizontalDistance / horizontalMovementFactor, MAX_HORIZONTAL_SPEED);
-		double verticalSpeed = (target.getY() - entity.getY()
+		double verticalSpeed = (verticalDistance
 				+ GRAVITY * VERTICAL_MOVEMENT_DRAG / (1.0 - VERTICAL_MOVEMENT_DRAG)
 				* (flightTicks - verticalMovementFactor)) / verticalMovementFactor;
 		double maximumVerticalSpeedByAngle = horizontalSpeed * Math.tan(MAX_LAUNCH_ANGLE);
@@ -305,9 +380,22 @@ public class SweeperLeapSkill extends SweeperSkill {
 		setFacing(entity, yaw);
 	}
 
-	private void knockbackTarget(Sweeper entity, LivingEntity target) {
-		target.knockback(LANDING_KNOCKBACK_POWER,
-				entity.getX() - target.getX(), entity.getZ() - target.getZ());
+	private HitboxInstance getHitbox(ServerLevel level, EntitySkillRuntime<Sweeper> runtime) {
+		Integer id = runtime.getData(HITBOX_ID);
+		if (id == null) {
+			return null;
+		}
+		return HitboxManager.get(level, id);
+	}
+
+	private void removeHitbox(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		Integer id = runtime.removeData(HITBOX_ID);
+		if (id == null) {
+			return;
+		}
+		if (entity.level() instanceof ServerLevel level) {
+			HitboxManager.remove(level, id);
+		}
 	}
 
 	private void setFacing(Sweeper entity, float yaw) {

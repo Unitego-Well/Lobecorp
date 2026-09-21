@@ -12,16 +12,21 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ai.sensing.NearestEntitySensor;
 import org.unitego.lobecorp.entity.ai.sensing.OrdealAttackablesSensor;
+import org.unitego.lobecorp.entity.ai.sensing.TheQueenOfHatredAttackablesSensor;
+import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperReassembleSkill;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
 import java.util.function.Supplier;
 
 /// 实体 brain 系统的传感器
 public interface LcSensorTypes {
-	int CLEANUP_TARGET_SCAN_RATE = 1;
+    int CLEANUP_TARGET_SCAN_RATE = 10;
 	DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
 	/// 考验最近目标
 	DeferredHolder<SensorType<?>, SensorType<OrdealAttackablesSensor>> ORDEAL_ATTACKABLES = register("ordeal_attackables", OrdealAttackablesSensor::new);
+	/// 憎恶皇后最近的有效敌对目标。
+	DeferredHolder<SensorType<?>, SensorType<TheQueenOfHatredAttackablesSensor>> THE_QUEEN_OF_HATRED_ATTACKABLES =
+			register("the_queen_of_hatred_attackables", TheQueenOfHatredAttackablesSensor::new);
 
 	/// 最近尸体（单个）
 	DeferredHolder<SensorType<?>, SensorType<NearestEntitySensor<EntityCorpse<?>>>> NEAREST_CORPSE = register("nearest_corpse", () ->
@@ -34,7 +39,7 @@ public interface LcSensorTypes {
 			NearestEntitySensor.create(
 					(body, entity) -> entity.isAlive() && (entity instanceof EntityCorpse<?> corpse
 							&& (!(corpse.getOwnerEntity() instanceof Sweeper)
-							|| body instanceof Sweeper sweeper && sweeper.getBiomass() > 0.0F)
+							|| body instanceof Sweeper sweeper && SweeperReassembleSkill.canReassemble(sweeper, corpse))
 							|| entity instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty()), 32, 16,
 					LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get(), CLEANUP_TARGET_SCAN_RATE));
 

@@ -10,6 +10,7 @@ public interface LcTags {
 	static void init() {
 		LcEntityTypeTags.init();
 		LcDamageTypeTags.init();
+		LcEntitySkillTags.init();
 	}
 
 	static <T> TagKey<T> create(ResourceKey<? extends Registry<T>> registry, String name, String enUs, String zhCn) {

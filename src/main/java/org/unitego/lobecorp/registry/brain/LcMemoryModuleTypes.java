@@ -11,7 +11,6 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.registry.LcCodecs;
 
 import java.util.*;
@@ -21,32 +20,21 @@ import java.util.function.Function;
 public interface LcMemoryModuleTypes {
 	DeferredRegister<MemoryModuleType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.MEMORY_MODULE_TYPE);
 
-	//region 尸体
-	/// 最近的尸体
+	/// 最近的尸体。
 	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntityCorpse<?>>> NEAREST_CORPSE = register("nearest_corpse");
-	/// 最近的清理目标
+	/// 最近的清理目标。
 	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Entity>> NEAREST_CLEANUP_TARGET = register("nearest_cleanup_target");
-	//endregion
-
-	//region 技能
-	/// 当前激活技能的状态（运行时，不持久化）
-	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<EntitySkillRuntime<?>>> SKILL_ACTIVE = register("skill_active");
-	/// 技能冷却表
-	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<Identifier, Long>>> SKILL_COOLDOWNS = registerMap("skill_cooldowns", Identifier.CODEC, Codec.LONG);
-	/// 连击计数
-	DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Integer>> ATTACK_COMBO = register("attack_combo");
-	//endregion
 
 	static void init(IEventBus iEventBus) {
 		REGISTER.register(iEventBus);
 	}
 
-	// 非持久化
+	/// 注册非持久化记忆模块。
 	private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name) {
 		return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.empty()));
 	}
 
-	// 持久化
+	/// 注册持久化记忆模块。
 	private static <U> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<U>> register(String name, Codec<U> codec) {
 		return REGISTER.register(name, () -> new MemoryModuleType<>(Optional.of(codec)));
 	}

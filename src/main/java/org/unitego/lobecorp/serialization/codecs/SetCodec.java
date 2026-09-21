@@ -53,6 +53,7 @@ public record SetCodec<E>(Codec<E> elementCodec, int minSize, int maxSize) imple
 	}
 
 	private class DecoderState<T> {
+		/// 解码开始前的稳定成功结果。
 		private static final DataResult<Unit> INITIAL_RESULT = DataResult.success(Unit.INSTANCE, Lifecycle.stable());
 
 		private final DynamicOps<T> ops;

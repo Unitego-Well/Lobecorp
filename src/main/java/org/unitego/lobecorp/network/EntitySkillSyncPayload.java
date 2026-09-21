@@ -5,13 +5,13 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkillHolder;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.entity.util.EntitySkillManager;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
@@ -25,8 +25,11 @@ public record EntitySkillSyncPayload(
 		boolean successful,
 		int targetId
 ) implements ToPayload {
+	/// 表示运行态没有目标实体的网络值。
 	private static final int NO_TARGET = -1;
+	/// 实体技能运行态同步载荷类型。
 	public static final CustomPacketPayload.Type<EntitySkillSyncPayload> TYPE = new CustomPacketPayload.Type<>(id("entity_skill_sync"));
+	/// 实体技能运行态同步载荷编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillSyncPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull EntitySkillSyncPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -77,10 +80,10 @@ public record EntitySkillSyncPayload(
 	@Override
 	public void work(IPayloadContext context) {
 		Entity entity = context.player().level().getEntity(ownerId);
-		if (!(entity instanceof Mob owner) || !(entity instanceof EntitySkillHolder holder)) {
+		if (!(entity instanceof LivingEntity owner)) {
 			return;
 		}
-		IEntitySkill<?> skill = holder.skills().stream()
+		IEntitySkill<?> skill = EntitySkillManager.getSkills(owner).stream()
 				.filter(candidate -> candidate.id().equals(skillId))
 				.findFirst()
 				.orElse(null);
@@ -91,7 +94,7 @@ public record EntitySkillSyncPayload(
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T extends Mob> void runCallback(T owner, IEntitySkill<?> skill) {
+	private <T extends LivingEntity> void runCallback(T owner, IEntitySkill<?> skill) {
 		EntitySkillRuntime<T> runtime = new EntitySkillRuntime<>(owner, (IEntitySkill<T>) skill, state, ticksLeft);
 		runtime.setActiveTicks(activeTicks);
 		if (successful) {
@@ -105,9 +108,7 @@ public record EntitySkillSyncPayload(
 
 	public enum Callback {
 		WINDUP_START(EntitySkillRuntime::onWindupStart),
-		WINDUP_TICK(EntitySkillRuntime::onWindupTick),
 		ACTIVATE(EntitySkillRuntime::onActivate),
-		TICK(EntitySkillRuntime::onTick),
 		END(EntitySkillRuntime::onEnd),
 		RECOVERY_END(EntitySkillRuntime::onRecoveryEnd),
 		CANCEL(EntitySkillRuntime::onCancel);

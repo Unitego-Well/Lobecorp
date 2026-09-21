@@ -12,12 +12,10 @@ public interface OrdealEntityTypes {
 	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
 
 	//region 靛蓝色
-
 	DeferredHolder<EntityType<?>, EntityType<Sweeper>> SWEEPER = LcEntityTypes.register(REGISTER,
 			"sweeper", "Sweeper", "清道夫", Sweeper::new, MobCategory.MONSTER, sweeperBuilder -> sweeperBuilder
 					.sized(0.6F, 1.8F)
 					.eyeHeight(1.62F));
-
 	//endregion
 
 	static void init(IEventBus iEventBus) {

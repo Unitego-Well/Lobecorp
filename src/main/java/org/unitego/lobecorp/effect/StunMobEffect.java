@@ -6,7 +6,10 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import org.jspecify.annotations.NullMarked;
+import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
 
 import java.util.Collections;
 import java.util.Set;
@@ -24,9 +27,24 @@ public class StunMobEffect extends MobEffect {
 		super(category, color);
 	}
 
+	/// 状态效果属性仅在效果存续期间生效，不写入实体的永久属性数据。
+	@Override
+	public void addAttributeModifiers(AttributeMap attributes, int amplifier) {
+		createModifiers(amplifier, (attribute, modifier) -> {
+			AttributeInstance instance = attributes.getInstance(attribute);
+			if (instance != null) {
+				instance.removeModifier(modifier.id());
+				instance.addTransientModifier(modifier);
+			}
+		});
+	}
+
 	@Override
 	public boolean applyEffectTick(ServerLevel level, LivingEntity entity, int amplifier) {
 		if (amplifier >= AI_DISABLE_AMPLIFIER && entity instanceof Mob mob && !mob.isNoAi()) {
+			if (mob instanceof TheQueenOfHatred queen) {
+				queen.beginUncontrolledFall();
+			}
 			aiDisabledMobs.add(mob);
 			mob.setNoAi(true);
 		}

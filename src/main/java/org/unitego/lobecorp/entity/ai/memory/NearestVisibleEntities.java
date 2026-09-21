@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 /// {@link net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities} 的泛型版本。<br>
 /// 缓存视线检测结果，提供按条件查找最近/所有可见实体的方法。
 public class NearestVisibleEntities<E extends Entity> {
+	/// 无实体的共享只读实例。
 	private static final NearestVisibleEntities<?> EMPTY = new NearestVisibleEntities<>();
 
 	private final List<E> entities;

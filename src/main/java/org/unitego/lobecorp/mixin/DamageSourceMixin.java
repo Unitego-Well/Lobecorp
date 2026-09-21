@@ -25,7 +25,7 @@ public abstract class DamageSourceMixin implements IDamageSourceExpand {
 	@Unique
 	private final Set<TagKey<DamageType>> lobecorp$modifiableTags = new HashSet<>();
 
-	/// 使用于抵消原始 tag
+	/// 需要从原始及动态伤害标签中排除的标签。
 	@Unique
 	private final Set<TagKey<DamageType>> lobecorp$eliminateTags = new HashSet<>();
 
@@ -46,13 +46,13 @@ public abstract class DamageSourceMixin implements IDamageSourceExpand {
 
 	@Override
 	public boolean lobecorp$remove(TagKey<DamageType> tag) {
-		// 这里使用 | 是因为我想要让俩个set集合都进行操作
+		// 非短路运算确保两个标签集合均完成更新。
 		return (!lobecorp$modifiableTags.isEmpty() && lobecorp$modifiableTags.remove(tag)) | lobecorp$eliminateTags.add(tag);
 	}
 
 	@Override
 	public boolean lobecorp$add(TagKey<DamageType> tag) {
-		// 这里使用 | 是因为我想要让俩个set集合都进行操作
+		// 非短路运算确保两个标签集合均完成更新。
 		return lobecorp$modifiableTags.add(tag) | lobecorp$eliminateTags.remove(tag);
 	}
 

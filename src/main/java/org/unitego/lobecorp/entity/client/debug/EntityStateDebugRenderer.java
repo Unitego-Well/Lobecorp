@@ -16,9 +16,13 @@ import org.unitego.lobecorp.entity.entity_state.EntityStateHolder;
 import java.util.stream.Collectors;
 
 public class EntityStateDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
+	/// 调试状态文本的最大渲染距离平方。
 	private static final double MAX_RENDER_DISTANCE_SQUARED = 64.0 * 64.0;
+	/// 调试状态文本高于实体碰撞箱的偏移量。
 	private static final double TEXT_HEIGHT_OFFSET = 0.5;
+	/// 调试状态文本颜色。
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
+	/// 状态列表文本前缀。
 	private static final String STATE_PREFIX = "states: ";
 
 	private final Minecraft minecraft;
@@ -36,8 +40,13 @@ public class EntityStateDebugRenderer implements DebugRenderer.SimpleDebugRender
 
 		Vec3 cameraPosition = new Vec3(camX, camY, camZ);
 		for (Entity entity : minecraft.level.entitiesForRendering()) {
-			if (!(entity instanceof EntityStateHolder holder) || holder.getEntityStates().isEmpty()
-					|| entity.position().distanceToSqr(cameraPosition) > MAX_RENDER_DISTANCE_SQUARED) {
+			if (!(entity instanceof EntityStateHolder holder)) {
+				continue;
+			}
+			if (holder.getEntityStates().isEmpty()) {
+				continue;
+			}
+			if (entity.position().distanceToSqr(cameraPosition) > MAX_RENDER_DISTANCE_SQUARED) {
 				continue;
 			}
 

@@ -7,7 +7,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.sensing.Sensor;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiPredicate;
@@ -91,13 +90,16 @@ public class NearestEntitySensor<E extends Entity> extends Sensor<Mob> {
 	protected void doTick(ServerLevel level, Mob body) {
 		List<E> entities = (List<E>) level.getEntities(body, body.getBoundingBox().inflate(xzRange, yRange, xzRange),
 				entity -> filter.test(body, entity));
-		entities.sort(Comparator.comparingDouble(body::distanceToSqr));
-
-		E nearest = entities.stream()
-				.filter(e -> e.closerThan(body, Math.max(xzRange, yRange)))
-				.filter(body::hasLineOfSight)
-				.findFirst()
-				.orElse(null);
+		E nearest = null;
+		double nearestDistanceSqr = Double.MAX_VALUE;
+		double range = Math.max(xzRange, yRange);
+		for (E entity : entities) {
+			double distanceSqr = body.distanceToSqr(entity);
+			if (distanceSqr < nearestDistanceSqr && entity.closerThan(body, range) && body.hasLineOfSight(entity)) {
+				nearest = entity;
+				nearestDistanceSqr = distanceSqr;
+			}
+		}
 
 		body.getBrain().setMemory(targetMemory, nearest);
 	}

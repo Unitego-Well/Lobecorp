@@ -11,8 +11,12 @@ import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -23,23 +27,33 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.entity.util.EntitySkillManager;
+import org.unitego.lobecorp.entity.entity_state.EntityStateHolder;
 import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 
+import java.util.List;
+
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
+
 public class EntityCorpse<T extends Entity> extends LivingEntity {
+	/// 尸体序列化错误日志记录器。
 	private static final Logger LOGGER = LogUtils.getLogger();
 
+	/// 尸体显示名称翻译键。
 	public static final String DISPLAY_NAME_KEY = LangHandler.creates(Lobecorp.NAMESPACE,
 			"entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
 
+	/// 原实体序列化数据的同步字段。
 	private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
 			EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
 
-	/// 最大腐烂tick
-	public static final int MAX_ROT_REMOVED_TICK = 20 * 120;
+	/// 尸体自动腐烂前的最大存续 tick。
+	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
 
-	// 缓存存储实体 不使用final是因为同步等因素会导致变换
+	/// 由同步数据重建的原实体缓存。
 	@Nullable
 	private T ownerEntity;
 	@Nullable
@@ -52,14 +66,16 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 
 	public static <T extends Entity> EntityCorpse<T> createCorpse(T entity) {
 		EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
-		entityCorpse.updateOwnerEntity(entity);
+		clearTemporaryState(entity);
 		entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
+		entityCorpse.updateOwnerEntity(entityCorpse.createOwnerEntity(entityCorpse.getOwnerEntityTag()));
 		entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
 		return entityCorpse;
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
-		return createLivingAttributes();
+		return createLivingAttributes()
+				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER);
 	}
 
 	@Override
@@ -86,16 +102,14 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	public void tick() {
 		super.tick();
 
-		if (!level().isClientSide()) {
-			if (tickCount >= MAX_ROT_REMOVED_TICK) {
-				remove(RemovalReason.DISCARDED);
-				return;
-			}
+		if (!level().isClientSide() && tickCount >= MAX_ROT_REMOVED_TICK) {
+			remove(RemovalReason.DISCARDED);
+			return;
+		}
 
-			if (tickCount % 20 == 0 && ownerEntity == null) {
-				remove(RemovalReason.DISCARDED);
-				return;
-			}
+		if (!level().isClientSide() && tickCount % 20 == 0 && ownerEntity == null) {
+			remove(RemovalReason.DISCARDED);
+			return;
 		}
 
 		if (this.isInWater()) {
@@ -272,6 +286,64 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	@Nullable
 	public T getOwnerEntity() {
 		return ownerEntity;
+	}
+
+	@Nullable
+	public T createRevivedOwnerEntity() {
+		T ownerEntity = createOwnerEntity(getOwnerEntityTag());
+		if (ownerEntity == null) {
+			return null;
+		}
+		T revivedEntity = (T) ownerEntity.getType().create(level(), EntitySpawnReason.LOAD);
+		if (revivedEntity == null) {
+			return null;
+		}
+		revivedEntity.restoreFrom(ownerEntity);
+		clearTemporaryState(revivedEntity);
+		return revivedEntity;
+	}
+
+	private static void clearTemporaryState(@Nullable Entity entity) {
+		if (entity == null) {
+			return;
+		}
+		entity.setDeltaMovement(Vec3.ZERO);
+		entity.fallDistance = 0.0F;
+		entity.clearFire();
+		entity.setAirSupply(entity.getMaxAirSupply());
+		entity.setTicksFrozen(0);
+		if (!(entity instanceof LivingEntity livingEntity)) {
+			return;
+		}
+		livingEntity.removeAllEffects();
+		for (AttributeInstance.Packed packedAttribute : livingEntity.getAttributes().pack()) {
+			AttributeInstance attribute = livingEntity.getAttribute(packedAttribute.attribute());
+			if (attribute == null) {
+				continue;
+			}
+			for (AttributeModifier modifier : attribute.getModifiers()) {
+				if (!attribute.getPermanentModifiers().contains(modifier)) {
+					attribute.removeModifier(modifier);
+				}
+			}
+		}
+		if (entity instanceof EntityStateHolder stateHolder) {
+			stateHolder.setEntityStates(List.of());
+		}
+		if (!(entity instanceof Mob mob)) {
+			return;
+		}
+		Brain<?> brain = mob.getBrain();
+		brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+		brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+		brain.eraseMemory(MemoryModuleType.PATH);
+		brain.eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+		brain.eraseMemory(MemoryModuleType.HURT_BY);
+		brain.eraseMemory(MemoryModuleType.HURT_BY_ENTITY);
+		EntitySkillManager.clearTemporaryState(livingEntity);
+		mob.setTarget(null);
+		mob.getNavigation().stop();
 	}
 
 	@Nullable

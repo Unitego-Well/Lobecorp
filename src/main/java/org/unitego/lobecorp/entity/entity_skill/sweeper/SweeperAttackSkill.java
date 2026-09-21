@@ -5,13 +5,21 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.entity.util.EntityUtil;
+import org.unitego.lobecorp.hitbox.HitboxHitMode;
+import org.unitego.lobecorp.hitbox.HitboxHitPolicy;
+import org.unitego.lobecorp.hitbox.HitboxInstance;
+import org.unitego.lobecorp.hitbox.HitboxManager;
+import org.unitego.lobecorp.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.hitbox.SectorCylinderSize;
 import org.unitego.lobecorp.registry.entity_state.SweeperStates;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+import org.unitego.lobecorp.util.TypedDataKey;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
@@ -31,6 +39,46 @@ public class SweeperAttackSkill extends SweeperSkill {
 	private static final float SECOND_ATTACK_DAMAGE_MODIFIER = 1.0F;
 	/// 第三段攻击相对基础攻击伤害增加的倍率
 	private static final float THIRD_ATTACK_DAMAGE_MODIFIER = 1.5F;
+	/// 普通攻击距离，同时作为扇形判断框半径
+	private static final double ATTACK_RANGE = 2.0;
+	/// 普通攻击扇形的完整角度，与女皇横扫一致
+	private static final double ATTACK_ANGLE_DEGREES = 120.0;
+	/// 普通攻击扇形的高度，与女皇横扫一致
+	private static final double ATTACK_HEIGHT = 3.0;
+	/// 每段普通攻击最多命中的目标数量
+	private static final int MAXIMUM_TARGET_COUNT = 2;
+	/// 本次攻击创建的判断框编号
+	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
+	/// 判断框使用的连击段数
+	private static final TypedDataKey<Integer> HITBOX_COMBO = TypedDataKey.create();
+	/// 判断框所属的技能运行态
+	private static final TypedDataKey<EntitySkillRuntime<Sweeper>> HITBOX_RUNTIME = TypedDataKey.create();
+	/// 普通攻击扇形判断框共享模板
+	private static final HitboxTemplate HITBOX_TEMPLATE = new HitboxTemplate(
+			new SectorCylinderSize(ATTACK_RANGE, ATTACK_HEIGHT, ATTACK_ANGLE_DEGREES),
+			target -> target instanceof LivingEntity,
+			context -> {
+				if (!(context.source() instanceof Sweeper entity)) {
+					return false;
+				}
+				if (!(context.target() instanceof LivingEntity target)) {
+					return false;
+				}
+				Integer combo = context.instance().getData(HITBOX_COMBO);
+				if (combo == null || !entity.doHurtTarget(context.level(), target, getAttackDamageModifier(combo))) {
+					return false;
+				}
+				EntitySkillRuntime<Sweeper> runtime = context.instance().getData(HITBOX_RUNTIME);
+				if (runtime != null) {
+					runtime.markSuccessful();
+				}
+				SimpleParticleType strikeParticle = getStrikeParticle(combo);
+				EntityUtil.getHitPosOnAABB(entity, target).ifPresent(hitPos ->
+						context.level().sendParticles(strikeParticle, hitPos.x, hitPos.y, hitPos.z,
+								1, 0, 0, 0, 0));
+				return true;
+			}
+	);
 
 	public SweeperAttackSkill(Properties properties) {
 		super(properties);
@@ -51,7 +99,7 @@ public class SweeperAttackSkill extends SweeperSkill {
 		if (!entity.hasLineOfSight(target)) {
 			return false;
 		}
-		if (!entity.isWithinMeleeAttackRange(target)) {
+		if (!isWithinAttackRange(entity, target)) {
 			return false;
 		}
 		runtime.setTarget(target);
@@ -61,9 +109,19 @@ public class SweeperAttackSkill extends SweeperSkill {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.ATTACK);
-		int combo = entity.getAttackCombo() % 3;
+		int combo = entity.getAttackCombo() % COMBO_LENGTH;
 		SweeperAnim animation = SweeperAnim.values()[SweeperAnim.ATTACK1.ordinal() + combo];
 		entity.playActionAnimation(animation);
+		if (entity.level() instanceof ServerLevel level) {
+			int lifetime = windupTicks() + durationTicks() + recoveryTicks();
+			HitboxInstance hitbox = HitboxManager.create(HITBOX_TEMPLATE, level, entity.position(), lifetime);
+			hitbox.follow(entity, new Vec3(0.0, ATTACK_HEIGHT / 2.0, 0.0), true);
+			hitbox.appendTargetFilter(entity::isValidTarget);
+			hitbox.setHitPolicy(new HitboxHitPolicy(HitboxHitMode.ONCE, 0, 1, MAXIMUM_TARGET_COUNT));
+			hitbox.setData(HITBOX_COMBO, combo);
+			hitbox.setData(HITBOX_RUNTIME, runtime);
+			runtime.setData(HITBOX_ID, hitbox.id());
+		}
 	}
 
 	@Override
@@ -85,21 +143,16 @@ public class SweeperAttackSkill extends SweeperSkill {
 			EntitySkillManager.cancelSkill(entity, this);
 			return;
 		}
-		if (!entity.isWithinMeleeAttackRange(target)) {
+		if (!isWithinAttackRange(entity, target)) {
 			EntitySkillManager.cancelSkill(entity, this);
 			return;
 		}
 
 		entity.swing(InteractionHand.MAIN_HAND);
-		int combo = Math.floorMod(entity.getAttackCombo(), COMBO_LENGTH);
-		boolean hit = entity.doHurtTarget(level, target, getAttackDamageModifier(combo));
-		if (!hit) {
-			return;
+		HitboxInstance hitbox = getHitbox(level, runtime);
+		if (hitbox != null) {
+			hitbox.activate();
 		}
-		runtime.markSuccessful();
-		SimpleParticleType strikeParticle = getStrikeParticle(combo);
-		EntityUtil.getHitPosOnAABB(entity, target).ifPresent(hitPos ->
-				level.sendParticles(strikeParticle, hitPos.x, hitPos.y, hitPos.z, 1, 0, 0, 0, 0));
 	}
 
 	@Override
@@ -116,10 +169,11 @@ public class SweeperAttackSkill extends SweeperSkill {
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.stopActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
+		removeHitbox(entity, runtime);
 		if (!runtime.isSuccessful()) {
 			return;
 		}
-		int combo = (entity.getAttackCombo() + 1) % 3;
+		int combo = (entity.getAttackCombo() + 1) % COMBO_LENGTH;
 		entity.setAttackCombo(combo);
 		if (combo == 0) {
 			EntitySkillManager.setCooldown(entity, this, COMBO_COOLDOWN);
@@ -130,9 +184,22 @@ public class SweeperAttackSkill extends SweeperSkill {
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.stopActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
+		removeHitbox(entity, runtime);
 	}
 
-	private SimpleParticleType getStrikeParticle(int combo) {
+	private HitboxInstance getHitbox(ServerLevel level, EntitySkillRuntime<Sweeper> runtime) {
+		Integer id = runtime.getData(HITBOX_ID);
+		return id == null ? null : HitboxManager.get(level, id);
+	}
+
+	private void removeHitbox(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		Integer id = runtime.removeData(HITBOX_ID);
+		if (id != null && entity.level() instanceof ServerLevel level) {
+			HitboxManager.remove(level, id);
+		}
+	}
+
+	private static SimpleParticleType getStrikeParticle(int combo) {
 		return switch (combo) {
 			case 0 -> LcParticleTypes.SIMPLE_SHORT_SLASH.get();
 			case 1 -> LcParticleTypes.SIMPLE_LONG_SLASH.get();
@@ -141,12 +208,16 @@ public class SweeperAttackSkill extends SweeperSkill {
 		};
 	}
 
-	private float getAttackDamageModifier(int combo) {
+	private static float getAttackDamageModifier(int combo) {
 		return switch (combo) {
 			case 0 -> FIRST_ATTACK_DAMAGE_MODIFIER;
 			case 1 -> SECOND_ATTACK_DAMAGE_MODIFIER;
 			case 2 -> THIRD_ATTACK_DAMAGE_MODIFIER;
 			default -> throw new IllegalStateException();
 		};
+	}
+
+	private static boolean isWithinAttackRange(Sweeper entity, LivingEntity target) {
+		return entity.distanceToSqr(target) <= ATTACK_RANGE * ATTACK_RANGE;
 	}
 }

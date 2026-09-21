@@ -30,21 +30,21 @@ side = "BOTH"
 [[dependencies.${ mod_id }]]
 modId = "neoforge"
 type = "required"
-versionRange = "[${neoforge_version}]"
+versionRange = "[${neoforge_version},)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.${ mod_id }]]
 modId = "geckolib"
 type = "required"
-versionRange = "[${geckolib_version}]"
+versionRange = "[${geckolib_version},)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.${ mod_id }]]
 modId = "curios"
 type = "required"
-versionRange = "[${curios_version}]"
+versionRange = "[${curios_version},)"
 ordering = "NONE"
 side = "BOTH"
 

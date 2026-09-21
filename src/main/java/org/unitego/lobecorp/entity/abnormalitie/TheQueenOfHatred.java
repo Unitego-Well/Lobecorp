@@ -59,6 +59,7 @@ import org.unitego.lobecorp.registry.tag.LcEntitySkillTags;
 
 import java.util.Set;
 
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 import static org.unitego.lobecorp.Lobecorp.id;
 
 public class TheQueenOfHatred extends PathfinderMob implements LcAnimatable, IEntitySkillHolder, IAbnormalitie {
@@ -75,15 +76,17 @@ public class TheQueenOfHatred extends PathfinderMob implements LcAnimatable, IEn
 	/// 憎恶女皇模型的全身骨骼遮罩。
 	private static final LcBoneMask FULL_BODY_ANIMATION_MASK = LcBoneMask.builder().includeRoot("root").build();
 	/// 基础最大生命值。
-	private static final double BASE_MAX_HEALTH = 1200.0;
+	private static final double BASE_MAX_HEALTH = 400.0;
 	/// 基础攻击伤害。
-	private static final double BASE_ATTACK_DAMAGE = 10.0;
+	private static final double BASE_ATTACK_DAMAGE = 8.0;
 	/// 基础移动速度。
 	private static final double BASE_MOVEMENT_SPEED = 0.2;
 	/// 远程攻击预测目标位置时允许外推的最大 tick。
 	private static final double MAXIMUM_ATTACK_PREDICTION_TICKS = 12.0;
 	/// 悬浮飞行速度相对普通移动速度的倍率。
-	private static final double HOVER_FLYING_SPEED_MULTIPLIER = 4.0;
+	private static final double HOVER_FLYING_SPEED_MULTIPLIER = 3.0;
+	/// 基础击退抗性。
+	private static final double BASE_KNOCKBACK_RESISTANCE = 0.8;
 	/// 将飞行速度转换为普通空中移动加速度的比例。
 	private static final float HOVER_AIR_ACCELERATION_MULTIPLIER = 0.1F;
 	/// 移动和位移技能应尽量与每个有效敌对目标保持的最小距离。
@@ -109,7 +112,7 @@ public class TheQueenOfHatred extends PathfinderMob implements LcAnimatable, IEn
 	/// 二阶段技能结束后允许尝试落地的最长时间，单位为 tick。
 	private static final int SECOND_PHASE_LANDING_TIMEOUT_TICKS = 5 * 20;
 	/// 二阶段每次技能结束后的落地休息时间，单位为 tick。
-	private static final int SECOND_PHASE_REST_TICKS = 5 * 20;
+	private static final int SECOND_PHASE_REST_TICKS = 3 * TICKS_PER_SECOND;
 	/// 二阶段休息结束后强制传送选择目标点的距离，单位为格。
 	private static final double SECOND_PHASE_TELEPORT_DISTANCE = 24.0;
 	/// 二阶段强制落地搜索安全地面的水平半径，单位为格。
@@ -274,6 +277,7 @@ public class TheQueenOfHatred extends PathfinderMob implements LcAnimatable, IEn
 				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER)
 				.add(Attributes.MOVEMENT_SPEED, BASE_MOVEMENT_SPEED)
 				.add(Attributes.FLYING_SPEED, BASE_MOVEMENT_SPEED * HOVER_FLYING_SPEED_MULTIPLIER)
+				.add(Attributes.KNOCKBACK_RESISTANCE, BASE_KNOCKBACK_RESISTANCE)
 				.add(LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER, 1.0)
 				.add(Attributes.FOLLOW_RANGE, TheQueenOfHatredAi.TARGET_SEARCH_RANGE);
 	}

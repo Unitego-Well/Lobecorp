@@ -9,8 +9,12 @@ import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.registry.tag.LcEntitySkillTags;
 
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
+
 /// 柔光：原地持续恢复生命，受到实际伤害时中断。
 public class TheQueenOfHatredHealSkill extends TheQueenOfHatredSkill {
+	/// 柔光的持续治疗时间。
+	public static final int DURATION_TICKS = 5 * TICKS_PER_SECOND;
 	/// 客户端生成柔光治疗粒子的实体事件编号。
 	private static final byte HEALING_PARTICLE_EVENT = 61;
 	/// 柔光尘埃的淡粉色 ARGB 颜色。
@@ -21,8 +25,10 @@ public class TheQueenOfHatredHealSkill extends TheQueenOfHatredSkill {
 	private static final int HEALING_DUST_COUNT = 2;
 	/// AI 开始治疗的生命比例。
 	private static final float USE_HEALTH_RATIO = 0.5F;
+	/// 一次完整治疗恢复的最大生命比例。
+	private static final float TOTAL_HEAL_RATIO = 0.15F;
 	/// 每 tick 恢复的最大生命比例。
-	private static final float HEAL_RATIO_PER_TICK = 0.0025F;
+	private static final float HEAL_RATIO_PER_TICK = TOTAL_HEAL_RATIO / DURATION_TICKS;
 
 	/// @param properties 柔光的基础技能配置
 	public TheQueenOfHatredHealSkill(Properties properties) {

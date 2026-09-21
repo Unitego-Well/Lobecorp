@@ -52,9 +52,17 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 /// 清道夫
 public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
 	/// 清道夫基础最大生命值
-	public static final float BASE_MAX_HEALTH = 200.0F;
+	public static final float BASE_MAX_HEALTH = 25.0F;
+	/// 清道夫基础护甲值
+	private static final double BASE_ARMOR = 8.0;
+	/// 清道夫基础护甲韧性
+	private static final double BASE_ARMOR_TOUGHNESS = 2.0;
+	/// 清道夫基础攻击伤害
+	private static final double BASE_ATTACK_DAMAGE = 6.0;
+	/// 清道夫基础移动速度
+	private static final double BASE_MOVEMENT_SPEED = 0.23;
 	/// 清道夫基础击退抗性
-	private static final double BASE_KNOCKBACK_RESISTANCE = 0.3;
+	private static final double BASE_KNOCKBACK_RESISTANCE = 0.4;
 	/// 普通攻击临时伤害倍率属性的唯一标识
 	public static final Identifier ATTACK_MULTIPLIER = Lobecorp.id("attack_multiplier");
 	/// 基础移动动画层名称
@@ -179,10 +187,12 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 	public static AttributeSupplier.Builder createAttributes() {
 		return createMobAttributes()
 				.add(Attributes.MAX_HEALTH, BASE_MAX_HEALTH)
-				.add(Attributes.ATTACK_DAMAGE, 5)
+				.add(Attributes.ARMOR, BASE_ARMOR)
+				.add(Attributes.ARMOR_TOUGHNESS, BASE_ARMOR_TOUGHNESS)
+				.add(Attributes.ATTACK_DAMAGE, BASE_ATTACK_DAMAGE)
 				.add(LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER, 1.0)
 				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER)
-				.add(Attributes.MOVEMENT_SPEED, 0.2)
+				.add(Attributes.MOVEMENT_SPEED, BASE_MOVEMENT_SPEED)
 				.add(Attributes.ATTACK_KNOCKBACK, 1.0)
 				.add(Attributes.KNOCKBACK_RESISTANCE, BASE_KNOCKBACK_RESISTANCE);
 	}

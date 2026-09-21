@@ -89,7 +89,7 @@ public interface TheQueenOfHatredSkills {
 			LcEntitySkills.REGISTER, "the_queen_of_hatred_heal", "Soft Light", "柔光",
 			TheQueenOfHatredHealSkill::new, properties -> properties
 					.windupTicks(TICKS_PER_SECOND)
-					.durationTicks(5 * TICKS_PER_SECOND)
+					.durationTicks(TheQueenOfHatredHealSkill.DURATION_TICKS)
 					.recoveryTicks(TICKS_PER_SECOND)
 					.cooldownTicks(30 * TICKS_PER_SECOND));
 

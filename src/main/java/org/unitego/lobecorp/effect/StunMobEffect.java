@@ -9,7 +9,6 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
 
 import java.util.Collections;
 import java.util.Set;
@@ -42,9 +41,6 @@ public class StunMobEffect extends MobEffect {
 	@Override
 	public boolean applyEffectTick(ServerLevel level, LivingEntity entity, int amplifier) {
 		if (amplifier >= AI_DISABLE_AMPLIFIER && entity instanceof Mob mob && !mob.isNoAi()) {
-			if (mob instanceof TheQueenOfHatred queen) {
-				queen.beginUncontrolledFall();
-			}
 			aiDisabledMobs.add(mob);
 			mob.setNoAi(true);
 		}

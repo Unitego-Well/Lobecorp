@@ -2,35 +2,36 @@ package org.unitego.lobecorp.entity.abnormalitie;
 
 import com.geckolib.animation.RawAnimation;
 import com.geckolib.animation.object.LoopType;
+import org.unitego.lobecorp.animation.LcBoneMask;
 
-/// 憎恶皇后的基础与移动技能动画定义。
+/// 憎恶皇后的待机与姿态动画定义。
 public enum TheQueenOfHatredAnim {
 	/// 空闲悬浮动作。
 	IDLE(RawAnimation.begin().thenLoop("idle")),
 	/// 普通行走动作。
 	WALK(RawAnimation.begin().thenLoop("walk")),
-	/// 瞬步动作，实际冲刺结束后继续播放至原始动画完成。
-	BLINK(RawAnimation.begin().then("blink", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 传送准备与完成动作。
-	TELEPORT(RawAnimation.begin().then("teleport", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 法杖向前横扫动作。
-	SWEEP(RawAnimation.begin().then("sweep", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 法杖砸地并击退周围敌人的退散动作。
-	DISPEL(RawAnimation.begin().then("dispel", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 旋转法杖并连续发射追踪星星。
-	SPIN(RawAnimation.begin().then("spin", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 持续瞄准并发射激光。
-	AIM(RawAnimation.begin().then("aim", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 激光释放完成后的收势动作。
-	AIM_RECOVERY(RawAnimation.begin().then("aim2", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 原地持续恢复生命。
-	HEAL(RawAnimation.begin().then("heal", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 高举法杖的通用施法前摇动作。
-	SPELL(RawAnimation.begin().then("spell", LoopType.HOLD_ON_LAST_FRAME)),
-	/// 保持施法姿势的通用持续动作。
-	SPELL_ACTIVE(RawAnimation.begin().thenLoop("spell2")),
-	/// 收起法杖的通用施法后摇动作。
-	SPELL_RECOVERY(RawAnimation.begin().then("spell3", LoopType.HOLD_ON_LAST_FRAME));
+	/// 面向玩家的姿态。
+	POSE(RawAnimation.begin().thenLoop("pose")),
+	/// 面向玩家的姿态二。
+	POSE2(RawAnimation.begin().thenLoop("pose2")),
+	/// 面向玩家的姿态三。
+	POSE3(RawAnimation.begin().thenLoop("pose3")),
+	/// 面向玩家的循环动作。
+	POSE4(RawAnimation.begin().thenLoop("pose4")),
+	/// 退散动作。
+	DISPEL(RawAnimation.begin().then("dispel", LoopType.HOLD_ON_LAST_FRAME));
+
+	static final String LOCOMOTION_ANIMATION_LAYER = "locomotion";
+	static final String IDLE_POSE_ANIMATION_LAYER = "idle_pose";
+	static final String ACTION_ANIMATION_LAYER = "action";
+	/// 动画状态切换时长，单位为游戏刻。
+	static final int ANIMATION_TRANSITION_TICKS = 3;
+	/// 行走动画速度判定阈值。
+	/// 行走动画速度阈值，单位为动画速度。
+	static final float WALK_ANIMATION_SPEED_THRESHOLD = 0.1F;
+	/// 已进入行走动画后的退出速度阈值，单位为动画速度。
+	static final float WALK_ANIMATION_EXIT_SPEED_THRESHOLD = 0.05F;
+	static final LcBoneMask FULL_BODY_ANIMATION_MASK = LcBoneMask.builder().includeRoot("root").build();
 
 	private final RawAnimation animation;
 

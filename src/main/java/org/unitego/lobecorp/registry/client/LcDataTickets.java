@@ -12,9 +12,6 @@ public interface LcDataTickets {
 	DataTicket<Float> SWEEPER_BIOMASS_RATIO = createFloat("sweeper_biomass_ratio");
 	/// 清道夫发光强度
 	DataTicket<Float> SWEEPER_GLOW_STRENGTH = createFloat("sweeper_glow_strength");
-	/// 憎恶皇后是否进入第二阶段
-	DataTicket<Boolean> THE_QUEEN_OF_HATRED_SECOND_PHASE =
-			createFloatBoolean("the_queen_of_hatred_second_phase");
 	/// 最大生命值
 	DataTicket<Float> HEALTHY = createFloat("healthy");
 	/// 是否是尸体

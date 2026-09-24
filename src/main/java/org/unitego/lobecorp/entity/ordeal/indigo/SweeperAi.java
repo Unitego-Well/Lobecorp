@@ -9,6 +9,7 @@ import net.minecraft.world.entity.ai.ActivityData;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
 import net.minecraft.world.entity.ai.behavior.DoNothing;
+import net.minecraft.world.entity.ai.behavior.EntityTracker;
 import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
 import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
 import net.minecraft.world.entity.ai.behavior.OneShot;
@@ -38,7 +39,7 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫的 Brain 配置、活动切换与恢复清理工具。
 public final class SweeperAi {
-	// 活动与行为优先级
+	// Brain 活动与行为优先级
 
 	/// 核心活动的优先级。
 	private static final int CORE_ACTIVITY_PRIORITY = 0;
@@ -49,21 +50,30 @@ public final class SweeperAi {
 	/// 飞扑行为的优先级。
 	private static final int LEAP_BEHAVIOR_PRIORITY = 3;
 
-	// 核心与闲置行为参数
+	// 注视角度参数
 
 	/// LookTarget 每 tick 允许的最小转向角。
 	private static final int MINIMUM_LOOK_ANGLE = 45;
 	/// LookTarget 每 tick 允许的最大转向角。
 	private static final int MAXIMUM_LOOK_ANGLE = 90;
+
+	// 闲置行为参数
+
 	/// 闲置游走使用的速度倍率。
 	private static final float IDLE_STROLL_SPEED = 1.0F;
 	/// 闲置游走行为的随机权重。
-	private static final int IDLE_STROLL_WEIGHT = 2;
+	private static final int IDLE_STROLL_WEIGHT = 14;
 	/// 原地等待行为的随机权重。
-	private static final int IDLE_WAIT_WEIGHT = 1;
-	/// 原地等待的最短 tick。
+	private static final int IDLE_WAIT_WEIGHT = 7;
+	/// 随机观察附近生物行为的随机权重。
+	private static final int IDLE_LOOK_WEIGHT = 9;
+	/// 随机观察附近生物的最大距离。
+	private static final double IDLE_LOOK_RANGE = 5.0;
+	/// 随机观察附近生物的最大距离平方。
+	private static final double IDLE_LOOK_RANGE_SQUARED = IDLE_LOOK_RANGE * IDLE_LOOK_RANGE;
+	/// 闲置等待或观察的最短持续时间，单位为游戏刻。
 	private static final int MINIMUM_IDLE_WAIT_TICKS = 20;
-	/// 原地等待的最长 tick。
+	/// 闲置等待或观察的最长持续时间，单位为游戏刻。
 	private static final int MAXIMUM_IDLE_WAIT_TICKS = 40;
 
 	// 目标移动参数
@@ -94,8 +104,17 @@ public final class SweeperAi {
 					LcSensorTypes.NEAREST_CLEANUP_TARGET.get(),
 					SensorType.HURT_BY
 			).build();
+	private final Sweeper sweeper;
+	private boolean recoveryCleanup;
+	private boolean recoveryCleanupDecisionMade;
+	private long recoveryCleanupRetryGameTime;
 
-	private SweeperAi() {
+	private SweeperAi(Sweeper sweeper) {
+		this.sweeper = sweeper;
+	}
+
+	static SweeperAi create(Sweeper sweeper) {
+		return new SweeperAi(sweeper);
 	}
 
 	/// 创建并初始化清道夫的 Brain。
@@ -104,8 +123,8 @@ public final class SweeperAi {
 	}
 
 	/// 根据当前生命、目标和技能状态更新恢复清理与活动。
-	public static void updateActivity(Sweeper sweeper) {
-		updateRecoveryCleanup(sweeper);
+	void updateActivity() {
+		updateRecoveryCleanup();
 		if (sweeper.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()
 				&& (EntitySkillManager.isCasting(sweeper, SweeperSkills.SWEEP.get())
 				|| EntitySkillManager.isCasting(sweeper, SweeperSkills.REASSEMBLE.get()))) {
@@ -115,17 +134,16 @@ public final class SweeperAi {
 	}
 
 	/// 恢复清理状态下受击时按概率恢复战斗。
-	public static boolean onHurt(Sweeper sweeper) {
-		if (!sweeper.isRecoveryCleanup()) {
+	boolean onHurt() {
+		if (!recoveryCleanup) {
 			return true;
 		}
 		if (sweeper.getRandom().nextFloat() >= RECOVERY_CLEANUP_INTERRUPTION_CHANCE) {
 			return false;
 		}
-		sweeper.setRecoveryCleanup(false);
-		sweeper.setRecoveryCleanupDecisionMade(true);
-		sweeper.setRecoveryCleanupRetryGameTime(
-				sweeper.level().getGameTime() + RECOVERY_CLEANUP_RETRY_TICKS);
+		recoveryCleanup = false;
+		recoveryCleanupDecisionMade = true;
+		recoveryCleanupRetryGameTime = sweeper.level().getGameTime() + RECOVERY_CLEANUP_RETRY_TICKS;
 		EntitySkillManager.cancelSkill(sweeper);
 		sweeper.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		return true;
@@ -136,7 +154,7 @@ public final class SweeperAi {
 				ActivityData.create(Activity.CORE, CORE_ACTIVITY_PRIORITY, ImmutableList.of(
 						new LookAtTargetSink(MINIMUM_LOOK_ANGLE, MAXIMUM_LOOK_ANGLE), new MoveToTargetSink())
 				), ActivityData.create(Activity.IDLE, IDLE_ACTIVITY_PRIORITY, ImmutableList.of(
-						StartAttacking.create((level, sweeper) -> sweeper.isRecoveryCleanup()
+						StartAttacking.create((level, sweeper) -> sweeper.ai().isRecoveryCleanup()
 								&& sweeper.getBrain().getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get())
 										.filter(SweeperAi::isValidCleanupTarget).isPresent()
 								? Optional.empty()
@@ -149,7 +167,8 @@ public final class SweeperAi {
 						new RunOne<>(ImmutableList.of(
 								Pair.of(new DoNothing(MINIMUM_IDLE_WAIT_TICKS, MAXIMUM_IDLE_WAIT_TICKS),
 										IDLE_WAIT_WEIGHT),
-								Pair.of(RandomStroll.stroll(IDLE_STROLL_SPEED), IDLE_STROLL_WEIGHT)))
+								Pair.of(RandomStroll.stroll(IDLE_STROLL_SPEED), IDLE_STROLL_WEIGHT),
+								Pair.of(lookAtRandomNearbyLiving(), IDLE_LOOK_WEIGHT)))
 				)), ActivityData.create(Activity.FIGHT,
 						ImmutableList.of(
 								Pair.of(FIGHT_BEHAVIOR_PRIORITY, walkToAttackTarget()),
@@ -165,6 +184,28 @@ public final class SweeperAi {
 		);
 	}
 
+	private static OneShot<Sweeper> lookAtRandomNearbyLiving() {
+		return BehaviorBuilder.create(instance -> instance.group(
+				instance.absent(MemoryModuleType.LOOK_TARGET),
+				instance.present(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
+		).apply(instance, (lookTarget, nearestEntities) -> (level, sweeper, time) -> {
+			List<LivingEntity> candidates = instance.get(nearestEntities)
+					.find(candidate -> candidate != sweeper && candidate.isAlive()
+							&& sweeper.distanceToSqr(candidate) <= IDLE_LOOK_RANGE_SQUARED)
+					.toList();
+
+			if (candidates.isEmpty()) {
+				return false;
+			}
+
+			LivingEntity target = candidates.get(sweeper.getRandom().nextInt(candidates.size()));
+			int duration = MINIMUM_IDLE_WAIT_TICKS + sweeper.getRandom().nextInt(
+					MAXIMUM_IDLE_WAIT_TICKS - MINIMUM_IDLE_WAIT_TICKS + 1);
+			lookTarget.setWithExpiry(new EntityTracker(target, true), duration);
+			return true;
+		}));
+	}
+
 	/// 没有技能占用时走向战斗目标。
 	private static OneShot<Sweeper> walkToAttackTarget() {
 		return BehaviorBuilder.create(instance -> instance.group(
@@ -174,6 +215,7 @@ public final class SweeperAi {
 				stopMovementForSkill(sweeper);
 				return false;
 			}
+
 			BehaviorUtils.setWalkAndLookTargetMemories(sweeper, instance.get(target),
 					TARGET_WALK_SPEED, TARGET_CLOSE_ENOUGH_DISTANCE);
 			return true;
@@ -188,13 +230,16 @@ public final class SweeperAi {
 			if (EntitySkillManager.hasActiveSkills(sweeper)) {
 				return false;
 			}
+
 			LivingEntity attackTarget = instance.get(target);
 			if (!sweeper.isWithinMeleeAttackRange(attackTarget)) {
 				return false;
 			}
+
 			if (!EntitySkillManager.cast(sweeper, SweeperSkills.ATTACK.get())) {
 				return false;
 			}
+
 			stopMovementForSkill(sweeper);
 			return true;
 		}));
@@ -208,13 +253,16 @@ public final class SweeperAi {
 			if (EntitySkillManager.hasActiveSkills(sweeper)) {
 				return false;
 			}
+
 			LivingEntity attackTarget = instance.get(target);
 			if (sweeper.isWithinMeleeAttackRange(attackTarget)) {
 				return false;
 			}
+
 			if (!EntitySkillManager.cast(sweeper, SweeperSkills.LEAP.get())) {
 				return false;
 			}
+
 			stopMovementForSkill(sweeper);
 			return true;
 		}));
@@ -235,12 +283,14 @@ public final class SweeperAi {
 			if (EntitySkillManager.hasActiveSkills(sweeper)) {
 				return false;
 			}
+
 			Entity target = instance.get(nearestCleanupTarget);
 			if (!isValidCleanupTarget(target) || isWithinCleanupRange(sweeper, target)) {
 				sweeper.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 				sweeper.getNavigation().stop();
 				return false;
 			}
+
 			BehaviorUtils.setWalkAndLookTargetMemories(sweeper, target,
 					TARGET_WALK_SPEED, TARGET_CLOSE_ENOUGH_DISTANCE);
 			return true;
@@ -256,18 +306,24 @@ public final class SweeperAi {
 			if (EntitySkillManager.hasActiveSkills(sweeper)) {
 				return false;
 			}
+
 			Entity target = instance.get(nearestCleanupTarget);
 			if (!isValidCleanupTarget(target) || !isWithinCleanupRange(sweeper, target)) {
 				return false;
 			}
-			if (target instanceof EntityCorpse<?> corpse) {
-				if (EntitySkillManager.cast(sweeper, SweeperSkills.REASSEMBLE.get())) {
-					return true;
-				}
-				if (corpse.getOwnerEntity() instanceof Sweeper) {
-					return false;
-				}
+
+			if (!(target instanceof EntityCorpse<?> corpse)) {
+				return EntitySkillManager.cast(sweeper, SweeperSkills.SWEEP.get());
 			}
+
+			if (EntitySkillManager.cast(sweeper, SweeperSkills.REASSEMBLE.get())) {
+				return true;
+			}
+
+			if (corpse.getOwnerEntity() instanceof Sweeper) {
+				return false;
+			}
+
 			return EntitySkillManager.cast(sweeper, SweeperSkills.SWEEP.get());
 		}));
 	}
@@ -281,44 +337,54 @@ public final class SweeperAi {
 		return SweeperSweepSkill.isWithinRange(sweeper, target);
 	}
 
-	private static void updateRecoveryCleanup(Sweeper sweeper) {
+	private void updateRecoveryCleanup() {
 		float healthRatio = sweeper.getHealth() / sweeper.getMaxHealth();
 		if (healthRatio >= RECOVERY_CLEANUP_END_HEALTH_THRESHOLD) {
-			sweeper.setRecoveryCleanup(false);
-			sweeper.setRecoveryCleanupDecisionMade(false);
-			sweeper.setRecoveryCleanupRetryGameTime(0L);
+			recoveryCleanup = false;
+			recoveryCleanupDecisionMade = false;
+			recoveryCleanupRetryGameTime = 0L;
 			return;
 		}
-		if (!sweeper.isRecoveryCleanup() && healthRatio >= RECOVERY_CLEANUP_HEALTH_THRESHOLD) {
-			sweeper.setRecoveryCleanupDecisionMade(false);
-			sweeper.setRecoveryCleanupRetryGameTime(0L);
+
+		if (!recoveryCleanup && healthRatio >= RECOVERY_CLEANUP_HEALTH_THRESHOLD) {
+			recoveryCleanupDecisionMade = false;
+			recoveryCleanupRetryGameTime = 0L;
 			return;
 		}
+
 		long gameTime = sweeper.level().getGameTime();
-		if (!sweeper.isRecoveryCleanup() && sweeper.isRecoveryCleanupDecisionMade()
-				&& gameTime >= sweeper.getRecoveryCleanupRetryGameTime()) {
-			sweeper.setRecoveryCleanupDecisionMade(false);
+		if (!recoveryCleanup && recoveryCleanupDecisionMade
+				&& gameTime >= recoveryCleanupRetryGameTime) {
+			recoveryCleanupDecisionMade = false;
 		}
+
 		boolean hasCleanupTarget = sweeper.getBrain()
 				.getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get())
 				.filter(SweeperAi::isValidCleanupTarget)
 				.isPresent();
-		if (!sweeper.isRecoveryCleanup() && !sweeper.isRecoveryCleanupDecisionMade() && hasCleanupTarget) {
-			sweeper.setRecoveryCleanupDecisionMade(true);
+
+		if (!recoveryCleanup && !recoveryCleanupDecisionMade && hasCleanupTarget) {
+			recoveryCleanupDecisionMade = true;
 			boolean startCleanup = sweeper.getRandom().nextFloat() < RECOVERY_CLEANUP_START_CHANCE;
-			sweeper.setRecoveryCleanup(startCleanup);
+			recoveryCleanup = startCleanup;
 			if (!startCleanup) {
-				sweeper.setRecoveryCleanupRetryGameTime(gameTime + RECOVERY_CLEANUP_RETRY_TICKS);
+				recoveryCleanupRetryGameTime = gameTime + RECOVERY_CLEANUP_RETRY_TICKS;
 			}
 		}
-		if (!sweeper.isRecoveryCleanup() || !hasCleanupTarget) {
+
+		if (!recoveryCleanup || !hasCleanupTarget) {
 			return;
 		}
+
 		if (!EntitySkillManager.isCasting(sweeper, SweeperSkills.SWEEP.get())
 				&& !EntitySkillManager.isCasting(sweeper, SweeperSkills.REASSEMBLE.get())) {
 			EntitySkillManager.cancelSkill(sweeper);
 		}
+
 		sweeper.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
-		// 恢复清理仍需由 IDLE 的 walkToCleanupTarget 驱动；这里只清除战斗目标，不能删除其清理路径。
+	}
+
+	private boolean isRecoveryCleanup() {
+		return recoveryCleanup;
 	}
 }

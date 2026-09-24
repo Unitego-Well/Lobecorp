@@ -1,5 +1,9 @@
 @file:Suppress("AvoidDuplicateDependencies")
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Properties
+
 plugins {
     `java-library`
     `maven-publish`
@@ -17,6 +21,32 @@ val neoforgeVersion = libs.versions.neoforge.get()
 val mixinsquaredVersion = libs.versions.mixinsquared.get()
 val modId = property("mod_id").toString()
 val modVersion = property("mod_version").toString()
+val buildDate: String = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+val buildCounterFile = layout.projectDirectory.file(".gradle/lobecorp-build-counter.properties").asFile
+val previousBuildCounter = Properties().apply {
+    if (buildCounterFile.isFile) {
+        buildCounterFile.inputStream().use(::load)
+    }
+}
+val buildCount = if (previousBuildCounter.getProperty("date") == buildDate) {
+    previousBuildCounter.getProperty("count")?.toIntOrNull()?.plus(1) ?: 1
+} else {
+    1
+}
+val buildVersion = "$modVersion-$buildDate-$buildCount"
+val reserveBuildIdentity = tasks.register("reserveBuildIdentity") {
+    description = "Reserves the next local daily artifact build number"
+    notCompatibleWithConfigurationCache("The daily build number is reserved in local persistent state")
+    outputs.upToDateWhen { false }
+    doLast {
+        buildCounterFile.parentFile.mkdirs()
+        val currentBuildCounter = Properties().apply {
+            setProperty("date", buildDate)
+            setProperty("count", buildCount.toString())
+        }
+        buildCounterFile.outputStream().use { currentBuildCounter.store(it, null) }
+    }
+}
 val internalTestMods = configurations.create("internalTestMods") {
     isCanBeConsumed = false
     isCanBeResolved = true
@@ -88,6 +118,12 @@ dependencies {
 
 base {
     archivesName = "$modId-$minecraftVersion"
+}
+
+tasks.named<Jar>("jar") {
+    dependsOn(reserveBuildIdentity)
+    archiveFileName = "$modId-$minecraftVersion-$buildVersion.jar"
+    notCompatibleWithConfigurationCache("The archive name contains a local daily build number")
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
@@ -172,7 +208,8 @@ tasks.register<org.gradle.api.tasks.bundling.Zip>("internalTestBundle") {
     group = "distribution"
     description = "Builds the internal-test mod bundle with all runtime mod dependencies"
     dependsOn(tasks.named("jar"))
-    archiveFileName = "$modId-$minecraftVersion-$modVersion-internal-test.zip"
+    archiveFileName = "$modId-$minecraftVersion-$buildVersion-internal-test.zip"
+    notCompatibleWithConfigurationCache("The archive name contains a local daily build number")
     destinationDirectory = layout.buildDirectory.dir("distributions")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 

@@ -6,7 +6,6 @@ import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.AnimationProcessor;
 import com.geckolib.animation.RawAnimation;
 import com.geckolib.animation.object.EasingType;
-import com.geckolib.animation.object.LoopType;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.animation.state.AnimationTimeline;
 import com.geckolib.animation.state.ControllerState;
@@ -21,8 +20,6 @@ import com.geckolib.loading.math.MolangQueries;
 import com.geckolib.loading.math.MathValue;
 import com.geckolib.model.GeoModel;
 import com.geckolib.renderer.base.GeoRenderState;
-import com.geckolib.util.ClientUtil;
-import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -31,14 +28,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-public final class LcAnimationController<T extends GeoAnimatable> extends AnimationController<T> {
+public class LcAnimationController<T extends GeoAnimatable> extends AnimationController<T> {
 	public static final String CONTROLLER_NAME = "lobecorp_layered_animation";
 	public static final double DEFAULT_SPEED = 1.0;
-	private static long resourceReloadRevision;
+	public static long resourceReloadRevision;
 
 	private final Map<String, LayerRuntime<T>> layers;
+	private final Map<String, TriggerableAnimation> triggerableAnimations = new LinkedHashMap<>();
+	private final Map<String, List<String>> outputSuppressors = new LinkedHashMap<>();
+	@Nullable
+	private String activeTriggerLayer;
 
 	public LcAnimationController(Consumer<LcAnimationLayerRegistrar> layerRegistration) {
 		super(CONTROLLER_NAME, ignored -> PlayState.STOP);
@@ -49,6 +49,50 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 
 	public static void onAnimationResourcesReloaded() {
 		resourceReloadRevision++;
+	}
+
+	public LcAnimationController<T> triggerableAnim(String layerName, String triggerName,
+			RawAnimation animation) {
+		layer(layerName);
+		super.triggerableAnim(triggerName, animation);
+		triggerableAnimations.put(triggerName, new TriggerableAnimation(layerName, animation));
+		return this;
+	}
+
+	public LcAnimationController<T> suppressLayerOutputWhilePlaying(String layerName,
+			String suppressingLayerName) {
+		layer(layerName);
+		layer(suppressingLayerName);
+		List<String> suppressors = outputSuppressors.computeIfAbsent(layerName, ignored -> new ArrayList<>());
+		if (!suppressors.contains(suppressingLayerName)) {
+			suppressors.add(suppressingLayerName);
+		}
+		return this;
+	}
+
+	@Override
+	public boolean triggerAnimation(String triggerName) {
+		TriggerableAnimation trigger = triggerableAnimations.get(triggerName);
+		if (trigger == null || !super.triggerAnimation(triggerName)) {
+			return false;
+		}
+		LayerRuntime<T> layer = layer(trigger.layerName());
+		layer.play(new Playback(trigger.animation(), DEFAULT_SPEED, false,
+				layer.definition.transitionTicks(), layer.definition.transitionMode()));
+		activeTriggerLayer = trigger.layerName();
+		return true;
+	}
+
+	@Override
+	public boolean stopTriggeredAnimation() {
+		if (!super.stopTriggeredAnimation()) {
+			return false;
+		}
+		if (activeTriggerLayer != null) {
+			layer(activeTriggerLayer).end(null);
+			activeTriggerLayer = null;
+		}
+		return true;
 	}
 
 	public void play(String layerName, RawAnimation animation) {
@@ -111,6 +155,13 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 		layer(layerName).setWeight(weight);
 	}
 
+	public void setSpeed(String layerName, double speed) {
+		if (speed < 0.0) {
+			throw new IllegalArgumentException("Animation speed cannot be negative");
+		}
+		layer(layerName).setSpeed(speed);
+	}
+
 	public void setSoundKeyframeHandler(String layerName,
 			AnimationController.KeyframeEventHandler<T, SoundKeyframeData> handler) {
 		layer(layerName).controller.setSoundKeyframeHandler(Objects.requireNonNull(handler));
@@ -118,7 +169,7 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 
 	public void setParticleKeyframeHandler(String layerName,
 			AnimationController.KeyframeEventHandler<T, ParticleKeyframeData> handler) {
-		layer(layerName).controller.setParticleKeyframeHandler(Objects.requireNonNull(handler));
+		layer(layerName).setParticleKeyframeHandler(Objects.requireNonNull(handler));
 	}
 
 	public void setCustomInstructionKeyframeHandler(String layerName,
@@ -126,16 +177,37 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 		layer(layerName).controller.setCustomInstructionKeyframeHandler(Objects.requireNonNull(handler));
 	}
 
+	public void setAnimationStateHandler(String layerName, AnimationController.AnimationStateHandler<T> handler) {
+		layer(layerName).setAnimationStateHandler(Objects.requireNonNull(handler));
+	}
+
+	public @Nullable RawAnimation currentAnimation(String layerName) {
+		return layer(layerName).controller.currentAnimation();
+	}
+
+	public void clearAnimationStateHandler(String layerName) {
+		layer(layerName).clearAnimationStateHandler();
+	}
+
 	@Override
 	public @Nullable ControllerState extractControllerState(T animatable, GeoRenderState renderState,
 			AnimatableManager<T> manager, MolangQueries.Actor<T> ignoredActor, GeoModel<T> geoModel) {
-		List<LcAnimationFrame.Layer> frameLayers = new ArrayList<>(layers.size());
-		double renderTime = manager.getFirstRenderTick() - renderState.getAnimatableAge();
+		Map<String, @Nullable ControllerState> controllerStates = new LinkedHashMap<>();
 		for (LayerRuntime<T> layer : layers.values()) {
-			ControllerState state = layer.extract(animatable, renderState, manager, geoModel, renderTime);
-			if (layer.hasPose() && layer.displayWeight > 0.0F) {
-				frameLayers.add(new LcAnimationFrame.Layer(layer.definition, state, layer.poseState,
-						layer.poseTransitionProgress(), layer.displayWeight));
+			controllerStates.put(layer.definition.name(),
+					layer.extract(animatable, renderState, manager, geoModel,
+							manager.getFirstRenderTick() - renderState.getAnimatableAge()));
+		}
+		List<LcAnimationFrame.Layer> frameLayers = new ArrayList<>(layers.size());
+		for (LayerRuntime<T> layer : layers.values()) {
+			float outputWeight = layer.displayWeight;
+			for (String suppressor : outputSuppressors.getOrDefault(layer.definition.name(), List.of())) {
+				outputWeight *= 1.0F - layer(suppressor).displayWeight;
+			}
+			if (layer.hasPose() && outputWeight > 0.0F) {
+				frameLayers.add(new LcAnimationFrame.Layer(layer.definition,
+						controllerStates.get(layer.definition.name()), layer.poseState,
+						layer.poseTransitionProgress(), outputWeight));
 			}
 		}
 		renderState.addGeckolibData(LcAnimationDataTickets.ANIMATION_FRAME, new LcAnimationFrame(frameLayers));
@@ -150,217 +222,7 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 		return layer;
 	}
 
-	private static final class LayerCollector implements LcAnimationLayerRegistrar {
-		private final Map<String, LcLayerDefinition> definitions = new LinkedHashMap<>();
-
-		@Override
-		public void add(LcLayerDefinition definition) {
-			Objects.requireNonNull(definition);
-			if (definitions.putIfAbsent(definition.name(), definition) != null) {
-				throw new IllegalArgumentException("Duplicate animation layer: " + definition.name());
-			}
-		}
-
-		private <A extends GeoAnimatable> Map<String, LayerRuntime<A>> build() {
-			Map<String, LayerRuntime<A>> result = new LinkedHashMap<>(definitions.size());
-			for (LcLayerDefinition definition : definitions.values()) {
-				result.put(definition.name(), new LayerRuntime<>(definition));
-			}
-			return result;
-		}
-	}
-
-	private static final class LayerRuntime<A extends GeoAnimatable> {
-		private final LcLayerDefinition definition;
-		private final LayerController<A> controller;
-		private final LcAnimationFrame.PoseState poseState = new LcAnimationFrame.PoseState();
-		private @Nullable Playback playback;
-		private float requestedWeight = 1.0F;
-		private float displayWeight;
-		private float transitionFromWeight;
-		private float transitionTargetWeight;
-		private int weightTransitionTicks;
-		private double weightTransitionElapsed;
-		private double poseTransitionElapsed;
-		private double lastAnimationAge = Double.NaN;
-		private boolean paused;
-		private boolean stopping;
-		private long observedResourceReloadRevision = resourceReloadRevision;
-
-		private LayerRuntime(LcLayerDefinition definition) {
-			this.definition = definition;
-			this.controller = new LayerController<>(CONTROLLER_NAME + "/" + definition.name(),
-					() -> playback);
-		}
-
-		private void play(Playback playback) {
-			boolean wasEmpty = this.playback == null;
-			boolean wasStopping = stopping;
-			if (!wasEmpty) {
-				poseState.beginTransition();
-			}
-			this.playback = playback;
-			this.paused = false;
-			this.stopping = false;
-			this.poseTransitionElapsed = wasEmpty ? playback.transitionTicks() : 0.0;
-			controller.setTransitionTicks(0);
-			controller.prepareRestart();
-			if (wasEmpty || wasStopping) {
-				beginWeightTransition(requestedWeight, playback.transitionTicks());
-			}
-		}
-
-		private void stop() {
-			if (playback != null && !stopping) {
-				paused = true;
-			}
-		}
-
-		private void resume() {
-			if (playback != null && !stopping) {
-				paused = false;
-			}
-		}
-
-		private void end(@Nullable Integer transitionTicks) {
-			if (playback == null) {
-				return;
-			}
-			paused = false;
-			stopping = true;
-			beginWeightTransition(0.0F,
-					transitionTicks == null ? playback.transitionTicks() : transitionTicks);
-		}
-
-		private void setWeight(float weight) {
-			requestedWeight = Mth.clamp(weight, 0.0F, 1.0F);
-			if (!stopping) {
-				beginWeightTransition(requestedWeight, transitionTicks());
-			}
-		}
-
-		private @Nullable ControllerState extract(A animatable, GeoRenderState renderState,
-				AnimatableManager<A> manager, GeoModel<A> geoModel, double renderTime) {
-			refreshAnimationResources();
-			advanceTransitions(renderState.getAnimatableAge());
-			if (playback == null) {
-				return null;
-			}
-			if (stopping && displayWeight <= 0.0F) {
-				playback = null;
-				paused = false;
-				stopping = false;
-				controller.reset();
-				poseState.clear();
-				return null;
-			}
-			boolean sequentialTransition = playback.transitionMode() == LcTransitionMode.SEQUENTIAL
-					&& (poseTransitionProgress() < 1.0F || displayWeight != transitionTargetWeight);
-			controller.setAnimationSpeed(paused || sequentialTransition ? 0.0 : playback.speed());
-			MolangQueries.Actor<A> actor = new MolangQueries.Actor<>(animatable, renderState, controller,
-					renderTime, renderState.getPartialTick(), Objects.requireNonNull(ClientUtil.getLevel()),
-					Objects.requireNonNull(ClientUtil.getClientPlayer()), ClientUtil.getCameraPos());
-			ControllerState state = controller.extractControllerState(animatable, renderState, manager, actor, geoModel);
-			if (!paused && !stopping && playback.autoEnds() && controller.hasAnimationFinished()) {
-				end(null);
-			}
-			return state;
-		}
-
-		private boolean hasPose() {
-			return playback != null;
-		}
-
-		private void refreshAnimationResources() {
-			if (observedResourceReloadRevision == resourceReloadRevision) {
-				return;
-			}
-			observedResourceReloadRevision = resourceReloadRevision;
-			if (playback != null) {
-				controller.reset();
-			}
-		}
-
-		private void beginWeightTransition(float targetWeight, int transitionTicks) {
-			transitionFromWeight = displayWeight;
-			transitionTargetWeight = targetWeight;
-			weightTransitionTicks = transitionTicks;
-			weightTransitionElapsed = 0.0;
-			if (transitionTicks == 0) {
-				displayWeight = targetWeight;
-			}
-		}
-
-		private void advanceTransitions(double animationAge) {
-			double ageDelta = Double.isNaN(lastAnimationAge) ? 0.0 : Math.max(0.0, animationAge - lastAnimationAge);
-			lastAnimationAge = animationAge;
-			if (paused && !stopping) {
-				return;
-			}
-			boolean poseTransitioning = !stopping && poseTransitionProgress() < 1.0F;
-			advanceWeightTransition(ageDelta);
-			if (poseTransitioning) {
-				poseTransitionElapsed += ageDelta;
-			}
-		}
-
-		private void advanceWeightTransition(double ageDelta) {
-			if (displayWeight == transitionTargetWeight) {
-				return;
-			}
-			int transitionTicks = weightTransitionTicks;
-			if (transitionTicks == 0) {
-				displayWeight = transitionTargetWeight;
-				return;
-			}
-			weightTransitionElapsed += ageDelta;
-			float progress = (float)Mth.clamp(weightTransitionElapsed / transitionTicks, 0.0, 1.0);
-			displayWeight = Mth.lerp(progress, transitionFromWeight, transitionTargetWeight);
-		}
-
-		private float poseTransitionProgress() {
-			if (playback == null || playback.transitionTicks() == 0) {
-				return 1.0F;
-			}
-			return (float)Mth.clamp(poseTransitionElapsed / playback.transitionTicks(), 0.0, 1.0);
-		}
-
-		private int transitionTicks() {
-			return playback == null ? definition.transitionTicks() : playback.transitionTicks();
-		}
-	}
-
-	private static final class LayerController<A extends GeoAnimatable> extends AnimationController<A> {
-		private final Supplier<@Nullable Playback> playback;
-
-		private LayerController(String name, Supplier<@Nullable Playback> playback) {
-			super(name, 0, test -> {
-				Playback current = playback.get();
-				return current == null ? PlayState.STOP : test.setAndContinue(current.animation());
-			});
-			this.playback = playback;
-		}
-
-		private void prepareRestart() {
-			this.currentRawAnimation = null;
-		}
-
-		@Override
-		protected void initializeNewAnimation(A animatable, GeoRenderState renderState, GeoModel<A> geoModel,
-				double previousAnimationSpeed, int previousTransitionTicks) {
-			super.initializeNewAnimation(animatable, renderState, geoModel, previousAnimationSpeed,
-					previousTransitionTicks);
-			Playback current = playback.get();
-			if (current != null && current.reversed() && currentRawAnimation != null) {
-				this.timeline = createReversedTimeline(currentRawAnimation, animatable, geoModel,
-						triggeredAnimTime > 0 ? previousTransitionTicks : transitionTicks);
-				this.animationPoint = timeline == null ? null
-						: timeline.createAnimationPoint(timelineTime, null, easingOverride);
-			}
-		}
-	}
-
-	private static <A extends GeoAnimatable> @Nullable AnimationTimeline createReversedTimeline(
+	public static <A extends GeoAnimatable> @Nullable AnimationTimeline createReversedTimeline(
 			RawAnimation rawAnimation, A animatable, GeoModel<A> geoModel, int transitionTicks) {
 		List<RawAnimation.Stage> rawStages = rawAnimation.getAnimationStages();
 		List<AnimationTimeline.Stage> stages = new ArrayList<>(rawStages.size());
@@ -477,11 +339,4 @@ public final class LcAnimationController<T extends GeoAnimatable> extends Animat
 		return reversed;
 	}
 
-	private record Playback(RawAnimation animation, double speed, boolean reversed, int transitionTicks,
-			LcTransitionMode transitionMode) {
-		private boolean autoEnds() {
-			List<RawAnimation.Stage> stages = animation.getAnimationStages();
-			return !stages.isEmpty() && stages.getLast().loopType() == LoopType.PLAY_ONCE;
-		}
-	}
 }

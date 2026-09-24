@@ -2,6 +2,7 @@ package org.unitego.lobecorp.hitbox;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.util.TypedDataKey;
@@ -33,6 +34,7 @@ public class HitboxInstance {
 	private int successfulHits;
 	private boolean followsSource;
 	private boolean inheritsSourceRotation;
+	private boolean followsHeadYaw;
 	private boolean active;
 	private boolean exhausted;
 	private boolean removed;
@@ -138,6 +140,17 @@ public class HitboxInstance {
 		this.localOffset = localOffset;
 		this.followsSource = true;
 		this.inheritsSourceRotation = inheritRotation;
+		this.followsHeadYaw = false;
+		updateFollowTransform();
+	}
+
+	/// 绑定来源生物并在每 tick 使用头部偏航更新实例旋转。
+	///
+	/// @param source 来源生物
+	/// @param localOffset 随来源身体朝向旋转的局部偏移
+	public void followHead(LivingEntity source, Vec3 localOffset) {
+		follow(source, localOffset, true);
+		followsHeadYaw = true;
 		updateFollowTransform();
 	}
 
@@ -247,9 +260,11 @@ public class HitboxInstance {
 		position = pivot.add(HitboxGeometry.rotate(basePosition.subtract(pivot),
 				localRotation.x, localRotation.y, localRotation.z));
 		if (inheritsSourceRotation) {
+			float sourceYaw = followsHeadYaw && source instanceof LivingEntity livingEntity
+					? livingEntity.getYHeadRot() : source.getYRot();
 			rotation = new Vec3(
 					localRotation.x + source.getXRot(),
-					localRotation.y - source.getYRot(),
+					localRotation.y - sourceYaw,
 					localRotation.z
 			);
 		} else {

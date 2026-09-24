@@ -40,7 +40,7 @@ public class SweeperReassembleSkill extends SweeperSkill {
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.REASSEMBLE);
 		faceTarget(entity, runtime.target(EntityCorpse.class));
-		entity.playActionAnimation(SweeperAnim.CLEAR1);
+		entity.triggerActionAnimation(SweeperAnim.CLEAR1);
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class SweeperReassembleSkill extends SweeperSkill {
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		faceTarget(entity, runtime.target(EntityCorpse.class));
-		entity.playActionAnimation(SweeperAnim.CLEAR2);
+		entity.triggerActionAnimation(SweeperAnim.CLEAR2);
 	}
 
 	@Override
@@ -87,7 +87,7 @@ public class SweeperReassembleSkill extends SweeperSkill {
 			}
 			return;
 		}
-		if (!reviveSweeper(level, corpse)) {
+		if (!reviveSweeper(level, entity, corpse)) {
 			EntitySkillManager.endSkill(entity, this);
 			return;
 		}
@@ -96,13 +96,21 @@ public class SweeperReassembleSkill extends SweeperSkill {
 		EntitySkillManager.endSkill(entity, this);
 	}
 
-	private boolean reviveSweeper(ServerLevel level, EntityCorpse<?> corpse) {
+	private boolean reviveSweeper(ServerLevel level, Sweeper entity, EntityCorpse<?> corpse) {
 		if (!(corpse.createRevivedOwnerEntity() instanceof Sweeper corpseSweeper)) {
 			return false;
 		}
+		float reviveHealth = corpseSweeper.getMaxHealth() * REVIVE_HEALTH_RATIO;
+		if (entity.getBiomass() < reviveHealth) {
+			return false;
+		}
 		corpseSweeper.absSnapTo(corpse.getX(), corpse.getY(), corpse.getZ(), corpse.getYRot(), corpse.getXRot());
-		corpseSweeper.setHealth(corpseSweeper.getMaxHealth() * REVIVE_HEALTH_RATIO);
-		return level.addFreshEntity(corpseSweeper);
+		corpseSweeper.setHealth(reviveHealth);
+		if (!level.addFreshEntity(corpseSweeper)) {
+			return false;
+		}
+		entity.setBiomass(entity.getBiomass() - reviveHealth);
+		return true;
 	}
 
 	private void faceTarget(Sweeper entity, EntityCorpse<?> corpse) {
@@ -120,32 +128,33 @@ public class SweeperReassembleSkill extends SweeperSkill {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.playActionAnimation(SweeperAnim.CLEAR3);
+		entity.triggerActionAnimation(SweeperAnim.CLEAR3);
 	}
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopActionAnimation();
+		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.REASSEMBLE);
 	}
 
 	@Override
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.removeEntityState(SweeperStates.REASSEMBLE);
-		entity.stopActionAnimation();
+		entity.stopTriggeredActionAnimation();
 	}
 
 	private EntityCorpse<?> getCorpse(Sweeper entity) {
 		return entity.getBrain().getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get())
 				.filter(EntityCorpse.class::isInstance)
 				.map(EntityCorpse.class::cast)
-				.filter(corpse -> corpse.isAlive() && corpse.getOwnerEntity() instanceof Sweeper
+				.filter(corpse -> canReassemble(entity, corpse)
 						&& entity.isWithinMeleeAttackRange(corpse))
 				.orElse(null);
 	}
 
 	public static boolean canReassemble(Sweeper entity, EntityCorpse<?> corpse) {
-		return corpse.isAlive() && corpse.getOwnerEntity() instanceof Sweeper;
+		return corpse.isAlive() && corpse.getOwnerEntity() instanceof Sweeper corpseSweeper
+				&& entity.getBiomass() >= corpseSweeper.getMaxHealth() * REVIVE_HEALTH_RATIO;
 	}
 
 }

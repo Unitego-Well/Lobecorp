@@ -51,7 +51,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 		LivingEntityRenderState renderState = renderPassInfo.renderState();
 		snapshots.ifPresent(HEAD_BONE_NAME, snapshot -> {
 			snapshot.setRotX(snapshot.getRotX() + -renderState.xRot * Mth.DEG_TO_RAD);
-			snapshot.setRotY(snapshot.getRotY() + renderState.yRot * Mth.DEG_TO_RAD);
+			snapshot.setRotY(snapshot.getRotY() + -renderState.yRot * Mth.DEG_TO_RAD);
 		});
 	}
 }

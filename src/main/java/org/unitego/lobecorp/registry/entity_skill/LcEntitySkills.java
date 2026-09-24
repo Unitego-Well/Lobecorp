@@ -17,8 +17,8 @@ public interface LcEntitySkills {
 
 	static void init(IEventBus iEventBus) {
 		LcEntitySkillGroups.init(iEventBus);
-		TheQueenOfHatredSkills.init();
 		REGISTER.register(iEventBus);
+		TheQueenOfHatredSkills.init(iEventBus);
 		SweeperSkills.init(iEventBus);
 	}
 

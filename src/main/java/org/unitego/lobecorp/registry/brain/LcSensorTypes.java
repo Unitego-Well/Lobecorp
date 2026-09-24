@@ -12,7 +12,6 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ai.sensing.NearestEntitySensor;
 import org.unitego.lobecorp.entity.ai.sensing.OrdealAttackablesSensor;
-import org.unitego.lobecorp.entity.ai.sensing.TheQueenOfHatredAttackablesSensor;
 import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperReassembleSkill;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 
@@ -24,9 +23,6 @@ public interface LcSensorTypes {
 	DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
 	/// 考验最近目标
 	DeferredHolder<SensorType<?>, SensorType<OrdealAttackablesSensor>> ORDEAL_ATTACKABLES = register("ordeal_attackables", OrdealAttackablesSensor::new);
-	/// 憎恶皇后最近的有效敌对目标。
-	DeferredHolder<SensorType<?>, SensorType<TheQueenOfHatredAttackablesSensor>> THE_QUEEN_OF_HATRED_ATTACKABLES =
-			register("the_queen_of_hatred_attackables", TheQueenOfHatredAttackablesSensor::new);
 
 	/// 最近尸体（单个）
 	DeferredHolder<SensorType<?>, SensorType<NearestEntitySensor<EntityCorpse<?>>>> NEAREST_CORPSE = register("nearest_corpse", () ->

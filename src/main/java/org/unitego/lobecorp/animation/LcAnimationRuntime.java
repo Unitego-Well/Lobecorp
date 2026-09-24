@@ -79,8 +79,7 @@ public final class LcAnimationRuntime {
 		if (additive) {
 			target = new Quaternionf().slerp(target, weight);
 			base.mul(target);
-		}
-		else {
+		} else {
 			base.slerp(target, weight);
 		}
 		Vector3f rotation = base.getEulerAnglesZYX(new Vector3f());

@@ -10,6 +10,8 @@ public interface LcEntitySkillTags {
 	TagKey<IEntitySkill<?>> MOVEMENT = create("movement", "Movement", "位移");
 	/// 包含近身攻击效果的技能。
 	TagKey<IEntitySkill<?>> MELEE = create("melee", "Melee", "近战");
+	/// 以防守、反击或阻止接近为主要效果的技能。
+	TagKey<IEntitySkill<?>> DEFENSE = create("defense", "Defense", "防御");
 	/// 不包含远程攻击效果的近战技能。
 	TagKey<IEntitySkill<?>> PURE_MELEE = create("pure_melee", "Pure Melee", "纯近战");
 	/// 包含远程攻击效果的技能。

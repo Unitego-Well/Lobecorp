@@ -2,6 +2,8 @@ package org.unitego.lobecorp.entity.ordeal.indigo;
 
 import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
 import com.mojang.serialization.Codec;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -30,19 +32,14 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.animation.LcAnimatable;
-import org.unitego.lobecorp.animation.LcAnimationController;
-import org.unitego.lobecorp.animation.LcAnimationLayerRegistrar;
-import org.unitego.lobecorp.animation.LcBlendMode;
-import org.unitego.lobecorp.animation.LcBoneMask;
-import org.unitego.lobecorp.animation.LcLayerDefinition;
+import org.unitego.lobecorp.animation.*;
 import org.unitego.lobecorp.entity.IEntityTarget;
-import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkillHolder;
 import org.unitego.lobecorp.entity.entity_state.EntityState;
 import org.unitego.lobecorp.entity.entity_state.EntityStateHolder;
-import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
+import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
 
 import java.util.List;
@@ -50,21 +47,14 @@ import java.util.List;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫
-public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
-	/// 清道夫基础最大生命值
-	public static final float BASE_MAX_HEALTH = 25.0F;
-	/// 清道夫基础护甲值
-	private static final double BASE_ARMOR = 8.0;
-	/// 清道夫基础护甲韧性
-	private static final double BASE_ARMOR_TOUGHNESS = 2.0;
-	/// 清道夫基础攻击伤害
-	private static final double BASE_ATTACK_DAMAGE = 6.0;
-	/// 清道夫基础移动速度
-	private static final double BASE_MOVEMENT_SPEED = 0.23;
-	/// 清道夫基础击退抗性
-	private static final double BASE_KNOCKBACK_RESISTANCE = 0.4;
+public class Sweeper extends PathfinderMob implements Enemy, LcGeoEntity, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
+	// 攻击属性标识
+
 	/// 普通攻击临时伤害倍率属性的唯一标识
 	public static final Identifier ATTACK_MULTIPLIER = Lobecorp.id("attack_multiplier");
+
+	// 动画层与移动动画参数
+
 	/// 基础移动动画层名称
 	private static final String LOCOMOTION_ANIMATION_LAYER = "locomotion";
 	/// 技能动作动画层名称
@@ -74,15 +64,24 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 	/// 技能动作动画层过渡时间
 	private static final int ACTION_TRANSITION_TICKS = 3;
 	/// 切换到奔跑动画所需的移动动画速度
-	private static final float RUN_ANIMATION_SPEED_THRESHOLD = 0.5F;
+	private static final float RUN_ANIMATION_SPEED_THRESHOLD = 0.65F;
 	/// 从奔跑动画退出所需的移动动画速度
-	private static final float RUN_ANIMATION_EXIT_SPEED_THRESHOLD = 0.4F;
+	private static final float RUN_ANIMATION_EXIT_SPEED_THRESHOLD = 0.55F;
 	/// 切换到移动动画所需的移动动画速度
 	private static final float MOVE_ANIMATION_SPEED_THRESHOLD = 0.1F;
 	/// 从移动动画退出所需的移动动画速度
 	private static final float MOVE_ANIMATION_EXIT_SPEED_THRESHOLD = 0.05F;
+	/// 移动动画以正常倍率播放时对应的移动动画速度
+	private static final float LOCOMOTION_ANIMATION_BASE_SPEED = 0.5F;
+	/// 移动动画允许的最小播放倍率
+	private static final double MINIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED = 0.5;
+	/// 移动动画允许的最大播放倍率
+	private static final double MAXIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED = 2.0;
 	/// 清道夫模型的全身骨骼遮罩
 	private static final LcBoneMask FULL_BODY_ANIMATION_MASK = LcBoneMask.builder().includeRoot("root").build();
+
+	// 同步数据与存档字段
+
 	/// 同步清道夫外观变种的数据字段
 	private static final EntityDataAccessor<Integer> DATA_VARIANT = SynchedEntityData.defineId(Sweeper.class, EntityDataSerializers.INT);
 	/// 同步清道夫当前生物质的数据字段
@@ -92,6 +91,9 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 			SynchedEntityData.defineId(Sweeper.class, LcEntityDataSerializers.ENTITY_STATES.get());
 	/// 生物质存档字段名称
 	private static final String BIOMASS_SAVE_KEY = "Biomass";
+
+	// 生物质数值参数
+
 	/// 生物质上限相对最大生命值的倍率
 	private static final float BIOMASS_CAPACITY_MULTIPLIER = 1.0F;
 	/// 治疗溢出转换为生物质的比例分母
@@ -103,11 +105,8 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 	private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 	private final LcAnimationController<Sweeper> animationController =
 			new LcAnimationController<>(this::registerLcAnimationLayers);
-	private @Nullable SweeperAnim locomotionAnimation;
 	private long lastCombatGameTime;
-	private boolean recoveryCleanup;
-	private boolean recoveryCleanupDecisionMade;
-	private long recoveryCleanupRetryGameTime;
+	private final SweeperAi ai = SweeperAi.create(this);
 	@Nullable
 	private Entity entityTarget;
 
@@ -186,15 +185,15 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 
 	public static AttributeSupplier.Builder createAttributes() {
 		return createMobAttributes()
-				.add(Attributes.MAX_HEALTH, BASE_MAX_HEALTH)
-				.add(Attributes.ARMOR, BASE_ARMOR)
-				.add(Attributes.ARMOR_TOUGHNESS, BASE_ARMOR_TOUGHNESS)
-				.add(Attributes.ATTACK_DAMAGE, BASE_ATTACK_DAMAGE)
+				.add(Attributes.MAX_HEALTH, 25.0F)
+				.add(Attributes.ARMOR, 8.0)
+				.add(Attributes.ARMOR_TOUGHNESS, 2.0)
+				.add(Attributes.ATTACK_DAMAGE, 6.0)
 				.add(LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER, 1.0)
 				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER)
-				.add(Attributes.MOVEMENT_SPEED, BASE_MOVEMENT_SPEED)
+				.add(Attributes.MOVEMENT_SPEED, 0.23)
 				.add(Attributes.ATTACK_KNOCKBACK, 1.0)
-				.add(Attributes.KNOCKBACK_RESISTANCE, BASE_KNOCKBACK_RESISTANCE);
+				.add(Attributes.KNOCKBACK_RESISTANCE, 0.4);
 	}
 
 	@Override
@@ -205,57 +204,52 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 		getBrain().tick(level, this);
 		profiler.pop();
 		profiler.push("sweeperActivityUpdate");
-		SweeperAi.updateActivity(this);
+		ai.updateActivity();
 		profiler.pop();
 		super.customServerAiStep(level);
 	}
 
-	@Override
-	public void tick() {
-		super.tick();
-		if (level().isClientSide()) {
-			tickLocomotionAnimation();
+	private double getLocomotionAnimationPlaybackSpeed(SweeperAnim animation, float speed) {
+		if (animation == SweeperAnim.IDLE) {
+			return LcAnimationController.DEFAULT_SPEED;
 		}
-	}
-
-	private void tickLocomotionAnimation() {
-		if (isRemoved() || isDeadOrDying()) {
-			if (locomotionAnimation != null) {
-				animationController.end(LOCOMOTION_ANIMATION_LAYER);
-				animationController.end(ACTION_ANIMATION_LAYER);
-				locomotionAnimation = null;
-			}
-			return;
-		}
-		float speed = walkAnimation.speed();
-		SweeperAnim animation = selectLocomotionAnimation(speed);
-		if (animation != locomotionAnimation) {
-			animationController.play(LOCOMOTION_ANIMATION_LAYER, animation.getAnimation());
-			locomotionAnimation = animation;
-		}
+		return Mth.clamp(speed / LOCOMOTION_ANIMATION_BASE_SPEED,
+				MINIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED, MAXIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED);
 	}
 
 	private SweeperAnim selectLocomotionAnimation(float speed) {
+		RawAnimation currentRawAnimation = animationController.currentAnimation(LOCOMOTION_ANIMATION_LAYER);
+		SweeperAnim currentAnimation = currentRawAnimation == null
+				? SweeperAnim.IDLE : findLocomotionAnimation(currentRawAnimation);
 		if (speed > RUN_ANIMATION_SPEED_THRESHOLD
-				|| locomotionAnimation == SweeperAnim.RUN && speed > RUN_ANIMATION_EXIT_SPEED_THRESHOLD) {
+				|| currentAnimation == SweeperAnim.RUN && speed > RUN_ANIMATION_EXIT_SPEED_THRESHOLD) {
 			return SweeperAnim.RUN;
 		}
 		if (speed > MOVE_ANIMATION_SPEED_THRESHOLD
-				|| locomotionAnimation == SweeperAnim.MOVE && speed > MOVE_ANIMATION_EXIT_SPEED_THRESHOLD) {
+				|| currentAnimation == SweeperAnim.MOVE && speed > MOVE_ANIMATION_EXIT_SPEED_THRESHOLD) {
 			return SweeperAnim.MOVE;
 		}
 		return SweeperAnim.IDLE;
 	}
 
-	public void playActionAnimation(SweeperAnim animation) {
-		if (level().isClientSide()) {
-			animationController.play(ACTION_ANIMATION_LAYER, animation.getAnimation());
+	private SweeperAnim findLocomotionAnimation(RawAnimation animation) {
+		for (SweeperAnim locomotionAnimation : List.of(SweeperAnim.IDLE, SweeperAnim.MOVE, SweeperAnim.RUN)) {
+			if (locomotionAnimation.getAnimation() == animation) {
+				return locomotionAnimation;
+			}
+		}
+		return SweeperAnim.IDLE;
+	}
+
+	public void triggerActionAnimation(SweeperAnim animation) {
+		if (!level().isClientSide()) {
+			triggerAnimation(LcAnimationController.CONTROLLER_NAME, animation.name());
 		}
 	}
 
-	public void stopActionAnimation() {
-		if (level().isClientSide()) {
-			animationController.end(ACTION_ANIMATION_LAYER);
+	public void stopTriggeredActionAnimation() {
+		if (!level().isClientSide()) {
+			stopTriggeredAnimation(LcAnimationController.CONTROLLER_NAME, null);
 		}
 	}
 
@@ -305,9 +299,15 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 		return hurt;
 	}
 
+	@Override
+	public void die(DamageSource damageSource) {
+		setBiomass(0.0F);
+		super.die(damageSource);
+	}
+
 	/// 尝试把造成伤害的有效实体设为攻击目标；完全由生物质吸收的伤害也可调用。
 	public void trySetAttackTargetFromDamage(LivingEntity attacker) {
-		if (!isValidTarget(attacker) || !SweeperAi.onHurt(this)) {
+		if (!isValidTarget(attacker) || !ai.onHurt()) {
 			return;
 		}
 		getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, attacker);
@@ -350,28 +350,8 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 		return doHurtTarget(level, target, new AttributeModifier(ATTACK_MULTIPLIER, multiplier, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 	}
 
-	boolean isRecoveryCleanup() {
-		return recoveryCleanup;
-	}
-
-	void setRecoveryCleanup(boolean recoveryCleanup) {
-		this.recoveryCleanup = recoveryCleanup;
-	}
-
-	boolean isRecoveryCleanupDecisionMade() {
-		return recoveryCleanupDecisionMade;
-	}
-
-	void setRecoveryCleanupDecisionMade(boolean recoveryCleanupDecisionMade) {
-		this.recoveryCleanupDecisionMade = recoveryCleanupDecisionMade;
-	}
-
-	long getRecoveryCleanupRetryGameTime() {
-		return recoveryCleanupRetryGameTime;
-	}
-
-	void setRecoveryCleanupRetryGameTime(long recoveryCleanupRetryGameTime) {
-		this.recoveryCleanupRetryGameTime = recoveryCleanupRetryGameTime;
+	SweeperAi ai() {
+		return ai;
 	}
 
 	@Override
@@ -386,6 +366,21 @@ public class Sweeper extends PathfinderMob implements Enemy, LcAnimatable, IIndi
 
 	@Override
 	public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
+		animationController.setAnimationStateHandler(LOCOMOTION_ANIMATION_LAYER, test -> {
+			if (isRemoved() || isDeadOrDying()) {
+				stopAnimation(ACTION_ANIMATION_LAYER);
+				return PlayState.STOP;
+			}
+			float speed = walkAnimation.speed();
+			SweeperAnim animation = selectLocomotionAnimation(speed);
+			animationController.setSpeed(LOCOMOTION_ANIMATION_LAYER,
+					getLocomotionAnimationPlaybackSpeed(animation, speed));
+			return test.setAndContinue(animation.getAnimation());
+		});
+		for (SweeperAnim animation : List.of(SweeperAnim.ATTACK1, SweeperAnim.ATTACK2, SweeperAnim.ATTACK3,
+				SweeperAnim.LEAP, SweeperAnim.LEAP2, SweeperAnim.CLEAR1, SweeperAnim.CLEAR2, SweeperAnim.CLEAR3)) {
+			animationController.triggerableAnim(ACTION_ANIMATION_LAYER, animation.name(), animation.getAnimation());
+		}
 		controllers.add(animationController);
 	}
 

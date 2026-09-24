@@ -1,171 +1,333 @@
 package org.unitego.lobecorp.entity.abnormalitie;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.ActivityData;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.behavior.DoNothing;
+import net.minecraft.world.entity.ai.behavior.Behavior;
+import net.minecraft.world.entity.ai.behavior.BlockPosTracker;
+import net.minecraft.world.entity.ai.behavior.EntityTracker;
+import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
+import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
 import net.minecraft.world.entity.ai.behavior.OneShot;
-import net.minecraft.world.entity.ai.behavior.RandomStroll;
 import net.minecraft.world.entity.ai.behavior.RunOne;
 import net.minecraft.world.entity.ai.behavior.StartAttacking;
 import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
 import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
+import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
+import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.ai.sensing.SensorType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.schedule.Activity;
-import org.unitego.lobecorp.entity.ai.movement.TheQueenOfHatredMovementMode;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.entity.ai.util.BrainUtil;
 import org.unitego.lobecorp.entity.util.EntitySkillManager;
-import org.unitego.lobecorp.registry.brain.LcSensorTypes;
+import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
 
-import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-/// 憎恶皇后的 Brain 配置、活动切换与目标刷新工具。
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
+
+/// 憎恶皇后的 Brain 活动与闲置行为。
 public final class TheQueenOfHatredAi {
-	// 目标感知
-
-	/// Brain 搜索目标的最大距离。
-	public static final double TARGET_SEARCH_RANGE = 32.0;
-	/// 目标搜索距离的平方缓存。
-	private static final double TARGET_SEARCH_RANGE_SQUARED = TARGET_SEARCH_RANGE * TARGET_SEARCH_RANGE;
-
-	// 活动与行为优先级
-
-	/// 核心活动的优先级。
+	/// Brain 活动优先级。
+	/// Brain 核心活动的调度优先级。
 	private static final int CORE_ACTIVITY_PRIORITY = 0;
-	/// 闲置活动的优先级。
+	/// Brain 闲置活动的调度优先级。
 	private static final int IDLE_ACTIVITY_PRIORITY = 5;
-	/// 战斗控制行为的优先级。
-	private static final int COMBAT_BEHAVIOR_PRIORITY = 0;
-	/// 无效目标清理行为的优先级。
-	private static final int STOP_INVALID_TARGET_PRIORITY = 1;
-	/// 战斗移动意图提交行为的优先级。
-	private static final int COMBAT_MOVEMENT_PRIORITY = 2;
+	/// 战斗活动中目标检查行为的优先级。
+	private static final int FIGHT_TARGET_CHECK_PRIORITY = 0;
+	/// 战斗活动中技能施放行为的优先级。
+	private static final int FIGHT_SKILL_PRIORITY = 1;
 
-	// 核心与闲置行为参数
-
-	/// LookTarget 每 tick 允许的最小转向角。
-	private static final int MINIMUM_LOOK_ANGLE = 45;
-	/// LookTarget 每 tick 允许的最大转向角。
-	private static final int MAXIMUM_LOOK_ANGLE = 90;
-	/// 闲置游走使用的速度倍率。
+	/// 闲置随机游走参数。
+	/// 随机游走的速度倍率。
 	private static final float IDLE_STROLL_SPEED = 1.0F;
-	/// 闲置游走行为的随机权重。
-	private static final int IDLE_STROLL_WEIGHT = 2;
-	/// 原地等待行为的随机权重。
-	private static final int IDLE_WAIT_WEIGHT = 1;
-	/// 原地等待的最短 tick。
-	private static final int MINIMUM_IDLE_WAIT_TICKS = 20;
-	/// 原地等待的最长 tick。
-	private static final int MAXIMUM_IDLE_WAIT_TICKS = 40;
+	/// 随机游走目的地的最小水平距离，单位为格。
+	private static final int MINIMUM_IDLE_STROLL_DISTANCE = 2;
+	/// 随机游走目的地的最大水平距离，单位为格。
+	private static final int MAXIMUM_IDLE_STROLL_DISTANCE = 6;
+	/// 随机游走目的地搜索允许的垂直距离，单位为格。
+	private static final int IDLE_STROLL_VERTICAL_DISTANCE = 1;
+	/// 单次随机游走最多尝试生成目的地的次数。
+	private static final int IDLE_STROLL_DESTINATION_ATTEMPTS = 8;
+	/// 随机游走目的地的最小水平距离平方。
+	private static final double MINIMUM_IDLE_STROLL_DISTANCE_SQUARED =
+			MINIMUM_IDLE_STROLL_DISTANCE * MINIMUM_IDLE_STROLL_DISTANCE;
+	/// 随机游走目的地的最大水平距离平方。
+	private static final double MAXIMUM_IDLE_STROLL_DISTANCE_SQUARED =
+			MAXIMUM_IDLE_STROLL_DISTANCE * MAXIMUM_IDLE_STROLL_DISTANCE;
 
-	/// 憎恶皇后的 Brain 记忆与 Sensor 配置。
+	/// 闲置注视参数。
+	/// 注视目标允许的最小转向角度。
+	private static final int MINIMUM_LOOK_ANGLE = 45;
+	/// 注视目标允许的最大转向角度。
+	private static final int MAXIMUM_LOOK_ANGLE = 90;
+	/// 闲置注视行为的最短持续时间，单位为游戏刻。
+	private static final int MINIMUM_IDLE_LOOK_TICKS = TICKS_PER_SECOND;
+	/// 闲置注视行为的最长持续时间，单位为游戏刻。
+	private static final int MAXIMUM_IDLE_LOOK_TICKS = 2 * TICKS_PER_SECOND;
+	/// 随机转向时允许的最大水平偏转角度。
+	private static final float RANDOM_LOOK_MAXIMUM_YAW = 180.0F;
+	/// 随机转向时允许的最小俯仰角度。
+	private static final float RANDOM_LOOK_MINIMUM_PITCH = -30.0F;
+	/// 随机转向时允许的最大俯仰角度。
+	private static final float RANDOM_LOOK_MAXIMUM_PITCH = 30.0F;
+
+	/// 闲置停止参数。
+	/// 闲置停止行为的最短持续时间，单位为游戏刻。
+	private static final int MINIMUM_IDLE_WAIT_TICKS = TICKS_PER_SECOND;
+	/// 闲置停止行为的最长持续时间，单位为游戏刻。
+	private static final int MAXIMUM_IDLE_WAIT_TICKS = 2 * TICKS_PER_SECOND;
+
+	/// 闲置姿态参数。
+	/// 普通闲置姿态的最短播放时间，单位为游戏刻。
+	private static final int MINIMUM_IDLE_POSE_TICKS = TICKS_PER_SECOND;
+	/// 普通闲置姿态的最长播放时间，单位为游戏刻。
+	private static final int MAXIMUM_IDLE_POSE_TICKS = 2 * TICKS_PER_SECOND;
+	/// POSE4 循环动画的最短播放时间，单位为游戏刻。
+	private static final int MINIMUM_POSE4_TICKS = 2 * TICKS_PER_SECOND;
+	/// POSE4 循环动画的最长播放时间，单位为游戏刻。
+	private static final int MAXIMUM_POSE4_TICKS = 4 * TICKS_PER_SECOND;
+	/// 触发闲置姿态时可选择玩家的最大距离，单位为格。
+	private static final double IDLE_POSE_PLAYER_RANGE = 5.0;
+	/// 随机闲置姿态行为允许持续的最长时间，单位为游戏刻。
+	private static final int MAXIMUM_IDLE_POSE_DURATION_TICKS = MAXIMUM_POSE4_TICKS;
+
+	/// 闲置行为选择权重。
+	/// 随机游走行为在 RunOne 中的选择权重。
+	private static final int IDLE_STROLL_WEIGHT = 4;
+	/// 注视生物行为在 RunOne 中的选择权重。
+	private static final int IDLE_LOOK_ENTITY_WEIGHT = 1;
+	/// 随机看向方向行为在 RunOne 中的选择权重。
+	private static final int IDLE_LOOK_DIRECTION_WEIGHT = 1;
+	/// 停止行为在 RunOne 中的选择权重。
+	private static final int IDLE_STOP_WEIGHT = 1;
+	/// 姿态行为在 RunOne 中的选择权重。
+	private static final int IDLE_POSE_WEIGHT = 1;
+
+	private static final List<TheQueenOfHatredAnim> IDLE_POSE_ANIMATIONS = List.of(
+			TheQueenOfHatredAnim.POSE,
+			TheQueenOfHatredAnim.POSE2,
+			TheQueenOfHatredAnim.POSE3,
+			TheQueenOfHatredAnim.POSE4
+	);
 	private static final Brain.Provider<TheQueenOfHatred> BRAIN_PROVIDER =
 			BrainUtil.provider(TheQueenOfHatredAi::getActivities)
-					.addSensorTypes(SensorType.NEAREST_LIVING_ENTITIES,
-							LcSensorTypes.THE_QUEEN_OF_HATRED_ATTACKABLES.get(), SensorType.HURT_BY)
+					.addMemoryTypes(
+							MemoryModuleType.LOOK_TARGET,
+							MemoryModuleType.WALK_TARGET,
+							MemoryModuleType.ATTACK_TARGET,
+							MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE,
+							MemoryModuleType.HURT_BY
+					)
+					.addSensorTypes(SensorType.NEAREST_LIVING_ENTITIES, SensorType.HURT_BY)
 					.build();
 
 	private TheQueenOfHatredAi() {
 	}
 
-	/// 创建并初始化憎恶皇后的 Brain。
+	/// 创建并初始化女皇的 Brain。
 	public static Brain<TheQueenOfHatred> makeBrain(TheQueenOfHatred queen, Brain.Packed packedBrain) {
 		return BRAIN_PROVIDER.makeBrain(queen, packedBrain);
 	}
 
-	/// 在 Brain tick 前刷新动态攻击目标。
-	public static void updateDynamicAttackTarget(TheQueenOfHatred queen) {
-		LivingEntity currentTarget = queen.getAttackTarget();
-		if (currentTarget != null && queen.isValidTarget(currentTarget)
-				&& !queen.shouldRefreshCombatTarget()) {
-			return;
-		}
-		queen.retaliationTargets().removeIf(target -> !queen.isValidTarget(target) || target.isRemoved()
-				|| queen.distanceToSqr(target) > TARGET_SEARCH_RANGE_SQUARED);
-		LivingEntity target = queen.retaliationTargets().stream()
-				.min(Comparator.comparingDouble(queen::distanceToSqr))
-				.orElseGet(() -> queen.getBrain().getMemory(MemoryModuleType.NEAREST_ATTACKABLE)
-						.filter(queen::isValidTarget)
-						.orElse(null));
-		if (target == null) {
-			queen.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
-		} else {
-			queen.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
-		}
-	}
-
-	/// 根据当前记忆切换战斗或闲置活动。
-	public static void updateActivity(TheQueenOfHatred queen) {
-		queen.getBrain().setActiveActivityToFirstValid(ImmutableList.of(Activity.FIGHT, Activity.IDLE));
+	static void updateActivity(TheQueenOfHatred queen) {
+		queen.getBrain().setActiveActivityToFirstValid(List.of(Activity.FIGHT, Activity.IDLE));
 	}
 
 	private static List<ActivityData<TheQueenOfHatred>> getActivities(TheQueenOfHatred owner) {
 		return List.of(
 				ActivityData.create(Activity.CORE, CORE_ACTIVITY_PRIORITY, ImmutableList.of(
-						new LookAtTargetSink(MINIMUM_LOOK_ANGLE, MAXIMUM_LOOK_ANGLE))),
+						new LookAtTargetSink(MINIMUM_LOOK_ANGLE, MAXIMUM_LOOK_ANGLE),
+						new MoveToTargetSink()
+				)), 
 				ActivityData.create(Activity.IDLE, IDLE_ACTIVITY_PRIORITY, ImmutableList.of(
-						submitIdleMovement(),
 						StartAttacking.create((level, queen) -> queen.getBrain()
-								.getMemory(MemoryModuleType.NEAREST_ATTACKABLE)
-								.filter(queen::isValidTarget)),
+								.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
+								.orElse(NearestVisibleLivingEntities.empty())
+								.findClosest(queen::isHatedTarget)),
 						new RunOne<>(ImmutableList.of(
-								Pair.of(RandomStroll.stroll(IDLE_STROLL_SPEED), IDLE_STROLL_WEIGHT),
-								Pair.of(new DoNothing(MINIMUM_IDLE_WAIT_TICKS, MAXIMUM_IDLE_WAIT_TICKS),
-										IDLE_WAIT_WEIGHT))))),
+								Pair.of(walkToRandomDestination(), IDLE_STROLL_WEIGHT),
+								Pair.of(lookAtRandomLivingEntity(), IDLE_LOOK_ENTITY_WEIGHT),
+								Pair.of(lookInRandomDirection(), IDLE_LOOK_DIRECTION_WEIGHT),
+								Pair.of(new RandomStopAndWaitBehavior(), IDLE_STOP_WEIGHT),
+								Pair.of(new RandomIdlePoseBehavior(), IDLE_POSE_WEIGHT)
+						))
+				)),
 				ActivityData.create(Activity.FIGHT, ImmutableList.of(
-								Pair.of(COMBAT_BEHAVIOR_PRIORITY, performPlannedAttack()),
-								Pair.of(STOP_INVALID_TARGET_PRIORITY, StopAttackingIfTargetInvalid.create()),
-								Pair.of(COMBAT_MOVEMENT_PRIORITY, submitCombatMovement())),
-						Sets.newHashSet(Pair.of(MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT)),
-						Sets.newHashSet(MemoryModuleType.ATTACK_TARGET))
+						Pair.of(FIGHT_TARGET_CHECK_PRIORITY, StopAttackingIfTargetInvalid.create()),
+						Pair.of(FIGHT_SKILL_PRIORITY, performRepel())
+					), Set.of(Pair.of(MemoryModuleType.ATTACK_TARGET, MemoryStatus.VALUE_PRESENT)),
+						Set.of(MemoryModuleType.ATTACK_TARGET))
 		);
 	}
 
-	private static OneShot<TheQueenOfHatred> performPlannedAttack() {
-		return BehaviorBuilder.create(instance -> instance.point((level, queen, time) ->
-				queen.tickCombatController()));
-	}
-
-	private static OneShot<TheQueenOfHatred> submitCombatMovement() {
+	private static OneShot<TheQueenOfHatred> performRepel() {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, queen, time) -> {
-			LivingEntity attackTarget = instance.get(target);
-			if (!queen.isValidTarget(attackTarget)) {
+			if (EntitySkillManager.hasActiveSkills(queen) || !queen.canCastSkillNow()) {
 				return false;
 			}
-			if (queen.isDispelLanding() || EntitySkillManager.isMovementLocked(queen)) {
-				return true;
+			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			queen.getNavigation().stop();
+			return EntitySkillManager.cast(queen, TheQueenOfHatredSkills.REPEL.get());
+		}));
+	}
+
+	private static OneShot<TheQueenOfHatred> walkToRandomDestination() {
+		return BehaviorBuilder.create(instance -> instance.group(
+				instance.absent(MemoryModuleType.WALK_TARGET)
+		).apply(instance, walkTarget -> (level, queen, time) -> {
+			Vec3 destination = null;
+			for (int attempt = 0; attempt < IDLE_STROLL_DESTINATION_ATTEMPTS; attempt++) {
+				Vec3 candidate = LandRandomPos.getPos(
+						queen, MAXIMUM_IDLE_STROLL_DISTANCE, IDLE_STROLL_VERTICAL_DISTANCE);
+				if (candidate == null) {
+					continue;
+				}
+				double distanceSquared = queen.position().subtract(candidate).horizontalDistanceSqr();
+				if (distanceSquared >= MINIMUM_IDLE_STROLL_DISTANCE_SQUARED
+						&& distanceSquared <= MAXIMUM_IDLE_STROLL_DISTANCE_SQUARED) {
+					destination = candidate;
+					break;
+				}
 			}
-			queen.requestCombatMovement(attackTarget);
+			if (destination == null) {
+				return false;
+			}
+			walkTarget.set(new WalkTarget(destination, IDLE_STROLL_SPEED, 0));
 			return true;
 		}));
 	}
 
-	private static OneShot<TheQueenOfHatred> submitIdleMovement() {
-		return BehaviorBuilder.create(instance -> instance.point((level, queen, time) -> {
-			if (queen.isDispelLanding()) {
-				return true;
+	private static OneShot<TheQueenOfHatred> lookAtRandomLivingEntity() {
+		return BehaviorBuilder.create(instance -> instance.group(
+				instance.absent(MemoryModuleType.LOOK_TARGET),
+				instance.present(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
+		).apply(instance, (lookTarget, nearestEntities) -> (level, queen, time) -> {
+			List<LivingEntity> candidates = instance.get(nearestEntities)
+					.find(candidate -> candidate != queen && candidate.isAlive())
+					.toList();
+			if (candidates.isEmpty()) {
+				return false;
 			}
-			if (EntitySkillManager.isMovementLocked(queen)) {
-				return true;
-			}
-			if (queen.movementMode() != TheQueenOfHatredMovementMode.GROUND) {
-				queen.requestIdleLanding();
-				return true;
-			}
-			queen.getBrain().getMemory(MemoryModuleType.WALK_TARGET).ifPresent(walkTarget -> {
-				queen.requestIdleMovement(walkTarget.getTarget().currentPosition());
-				queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-			});
+			LivingEntity target = candidates.get(queen.getRandom().nextInt(candidates.size()));
+			int duration = Mth.nextInt(queen.getRandom(), MINIMUM_IDLE_LOOK_TICKS, MAXIMUM_IDLE_LOOK_TICKS);
+			lookTarget.setWithExpiry(new EntityTracker(target, true), duration);
 			return true;
 		}));
+	}
+
+	private static OneShot<TheQueenOfHatred> lookInRandomDirection() {
+		return BehaviorBuilder.create(instance -> instance.group(
+				instance.absent(MemoryModuleType.LOOK_TARGET)
+		).apply(instance, lookTarget -> (level, queen, time) -> {
+			float pitch = Mth.nextFloat(queen.getRandom(),
+					RANDOM_LOOK_MINIMUM_PITCH, RANDOM_LOOK_MAXIMUM_PITCH);
+			float yaw = Mth.wrapDegrees(queen.getYRot()
+					+ Mth.nextFloat(queen.getRandom(), -RANDOM_LOOK_MAXIMUM_YAW, RANDOM_LOOK_MAXIMUM_YAW));
+			Vec3 direction = Vec3.directionFromRotation(pitch, yaw);
+			int duration = Mth.nextInt(queen.getRandom(), MINIMUM_IDLE_LOOK_TICKS, MAXIMUM_IDLE_LOOK_TICKS);
+			lookTarget.setWithExpiry(new BlockPosTracker(queen.getEyePosition().add(direction)), duration);
+			return true;
+		}));
+	}
+
+	private static final class RandomStopAndWaitBehavior extends Behavior<TheQueenOfHatred> {
+		private long waitEndTimestamp;
+
+		private RandomStopAndWaitBehavior() {
+			super(Map.of(MemoryModuleType.WALK_TARGET, MemoryStatus.VALUE_ABSENT), MAXIMUM_IDLE_WAIT_TICKS);
+		}
+
+		@Override
+		protected void start(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
+			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			queen.getNavigation().stop();
+			int duration = Mth.nextInt(queen.getRandom(), MINIMUM_IDLE_WAIT_TICKS, MAXIMUM_IDLE_WAIT_TICKS);
+			waitEndTimestamp = timestamp + duration;
+		}
+
+		@Override
+		protected boolean canStillUse(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
+			return timestamp < waitEndTimestamp;
+		}
+	}
+
+	private static final class RandomIdlePoseBehavior extends Behavior<TheQueenOfHatred> {
+		@Nullable
+		private Player poseTarget;
+		@Nullable
+		private TheQueenOfHatredAnim poseAnimation;
+		private long poseEndTimestamp;
+
+		private RandomIdlePoseBehavior() {
+			super(Map.of(
+					MemoryModuleType.LOOK_TARGET, MemoryStatus.VALUE_ABSENT,
+					MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
+			), MAXIMUM_IDLE_POSE_DURATION_TICKS);
+		}
+
+		@Override
+		protected boolean checkExtraStartConditions(ServerLevel level, TheQueenOfHatred queen) {
+			List<Player> players = queen.getBrain()
+					.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
+					.orElse(NearestVisibleLivingEntities.empty())
+					.find(candidate -> candidate instanceof Player
+							&& queen.distanceToSqr(candidate) <= IDLE_POSE_PLAYER_RANGE * IDLE_POSE_PLAYER_RANGE)
+					.map(Player.class::cast)
+					.toList();
+			if (players.isEmpty()) {
+				return false;
+			}
+			poseTarget = players.get(queen.getRandom().nextInt(players.size()));
+			poseAnimation = IDLE_POSE_ANIMATIONS.get(queen.getRandom().nextInt(IDLE_POSE_ANIMATIONS.size()));
+			return true;
+		}
+
+		@Override
+		protected void start(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
+			Player target = poseTarget;
+			TheQueenOfHatredAnim animation = poseAnimation;
+			if (target == null || animation == null) {
+				return;
+			}
+			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			queen.getNavigation().stop();
+			int minimumDuration = animation == TheQueenOfHatredAnim.POSE4
+					? MINIMUM_POSE4_TICKS : MINIMUM_IDLE_POSE_TICKS;
+			int maximumDuration = animation == TheQueenOfHatredAnim.POSE4
+					? MAXIMUM_POSE4_TICKS : MAXIMUM_IDLE_POSE_TICKS;
+			int duration = Mth.nextInt(queen.getRandom(), minimumDuration, maximumDuration);
+			poseEndTimestamp = timestamp + duration;
+			queen.getBrain().setMemoryWithExpiry(MemoryModuleType.LOOK_TARGET,
+					new EntityTracker(target, true), duration);
+			queen.playAnimation(TheQueenOfHatredAnim.IDLE_POSE_ANIMATION_LAYER, animation.getAnimation());
+		}
+
+		@Override
+		protected boolean canStillUse(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
+			return timestamp < poseEndTimestamp;
+		}
+
+		@Override
+		protected void stop(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
+			queen.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
+			queen.stopAnimation(TheQueenOfHatredAnim.IDLE_POSE_ANIMATION_LAYER,
+					TheQueenOfHatredAnim.ANIMATION_TRANSITION_TICKS);
+			poseTarget = null;
+			poseAnimation = null;
+		}
 	}
 }

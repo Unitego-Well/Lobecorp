@@ -111,11 +111,11 @@ public class SweeperAttackSkill extends SweeperSkill {
 		entity.addEntityState(SweeperStates.ATTACK);
 		int combo = entity.getAttackCombo() % COMBO_LENGTH;
 		SweeperAnim animation = SweeperAnim.values()[SweeperAnim.ATTACK1.ordinal() + combo];
-		entity.playActionAnimation(animation);
+		entity.triggerActionAnimation(animation);
 		if (entity.level() instanceof ServerLevel level) {
 			int lifetime = windupTicks() + durationTicks() + recoveryTicks();
 			HitboxInstance hitbox = HitboxManager.create(HITBOX_TEMPLATE, level, entity.position(), lifetime);
-			hitbox.follow(entity, new Vec3(0.0, ATTACK_HEIGHT / 2.0, 0.0), true);
+			hitbox.followHead(entity, new Vec3(0.0, ATTACK_HEIGHT / 2.0, 0.0));
 			hitbox.appendTargetFilter(entity::isValidTarget);
 			hitbox.setHitPolicy(new HitboxHitPolicy(HitboxHitMode.ONCE, 0, 1, MAXIMUM_TARGET_COUNT));
 			hitbox.setData(HITBOX_COMBO, combo);
@@ -167,7 +167,7 @@ public class SweeperAttackSkill extends SweeperSkill {
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopActionAnimation();
+		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
 		removeHitbox(entity, runtime);
 		if (!runtime.isSuccessful()) {
@@ -182,7 +182,7 @@ public class SweeperAttackSkill extends SweeperSkill {
 
 	@Override
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopActionAnimation();
+		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.ATTACK);
 		removeHitbox(entity, runtime);
 	}

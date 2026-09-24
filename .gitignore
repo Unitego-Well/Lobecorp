@@ -57,3 +57,6 @@ repo/
 /.cursor/
 /.claude/
 /memory/
+/.codex/
+/.backups/
+/.cherry-assistant/

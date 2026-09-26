@@ -48,6 +48,8 @@ public interface LcAnimationControllerTransitions<T extends GeoAnimatable> {
 
 	void lc$setControllerTransitionPaused(boolean paused);
 
+	int lc$getAnimationTriggerRevision();
+
 	@SuppressWarnings("unchecked")
 	static <T extends GeoAnimatable> LcAnimationControllerTransitions<T> of(AnimationController<T> controller) {
 		return (LcAnimationControllerTransitions<T>)controller;

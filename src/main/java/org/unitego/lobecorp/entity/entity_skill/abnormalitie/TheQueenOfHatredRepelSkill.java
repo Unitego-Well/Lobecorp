@@ -10,7 +10,7 @@ import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectManager;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 憎恶皇后的环形退散冲击波。
-public final class TheQueenOfHatredRepelSkill extends EntitySkill<TheQueenOfHatred> {
+public class TheQueenOfHatredRepelSkill extends EntitySkill<TheQueenOfHatred> {
 	/// 技能运行结束后再次施放前的等待时间，单位为游戏刻。
 	private static final int REUSE_DELAY_TICKS = TICKS_PER_SECOND;
 	public TheQueenOfHatredRepelSkill(Properties properties) {

@@ -18,9 +18,9 @@ public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred
 	public void adjustModelBonesForRender(RenderPassInfo<LivingEntityRenderState> renderPassInfo, BoneSnapshots snapshots) {
 		LivingEntityRenderState renderState = renderPassInfo.renderState();
 		Vector2f rot = new Vector2f();
-		snapshots.ifPresent("up_body", snapshot -> {
-			rot.add(snapshot.getRotX(), snapshot.getRotY());
-		});
+//		snapshots.ifPresent("up_body", snapshot -> {
+//			rot.add(snapshot.getRotX(), snapshot.getRotY());
+//		});
 		snapshots.ifPresent("Head", snapshot -> {
 			snapshot.setRotX(snapshot.getRotX() + -renderState.xRot * Mth.DEG_TO_RAD);
 			snapshot.setRotY(snapshot.getRotY() + -renderState.yRot * Mth.DEG_TO_RAD);

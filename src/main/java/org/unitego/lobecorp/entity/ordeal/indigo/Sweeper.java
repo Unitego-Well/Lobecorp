@@ -331,13 +331,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 
 	public void playActionAnimation(SweeperAnim animation) {
 		if (level().isClientSide()) {
-			triggerAnim("action", animation.name());
+			playCustomAnimation("action", animation.name());
 		}
 	}
 
 	public void stopActionAnimation() {
 		if (level().isClientSide()) {
-			stopTriggeredAnim("action", null);
+			stopCustomAnimation("action", null);
 		}
 	}
 

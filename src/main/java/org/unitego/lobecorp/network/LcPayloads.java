@@ -20,6 +20,10 @@ public final class LcPayloads {
 				EntitySkillSyncPayload.STREAM_CODEC,
 				EntitySkillSyncPayload::work
 		).playToClient(
+				LcCustomAnimationSettingsSyncPayload.TYPE,
+				LcCustomAnimationSettingsSyncPayload.STREAM_CODEC,
+				LcCustomAnimationSettingsSyncPayload::handle
+		).playToClient(
 				HitboxCreatePayload.TYPE,
 				HitboxCreatePayload.STREAM_CODEC,
 				HitboxCreatePayload::work

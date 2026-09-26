@@ -58,6 +58,8 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 	private boolean lobecorp$controllerTransitionPaused;
 	@Unique
 	private RawAnimation lobecorp$previousRawAnimation;
+	@Unique
+	private int lobecorp$animationTriggerRevision;
 
 	@Inject(method = "setAnimation", at = @At("HEAD"))
 	private void lobecorp$capturePreviousAnimation(RawAnimation rawAnimation, CallbackInfo ci) {
@@ -93,10 +95,11 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 
 	@Inject(method = "triggerAnimation", at = @At("RETURN"))
 	private void lobecorp$pauseSequentialTriggeredAnimation(String animName, CallbackInfoReturnable<Boolean> cir) {
-		if (cir.getReturnValue() && this.lobecorp$previousRawAnimation != null
-				&& this.lobecorp$previousRawAnimation != this.currentRawAnimation
-				&& this.lobecorp$animationTransitionMode == LcTransitionMode.SEQUENTIAL) {
-			this.lobecorp$animationTransitionPaused = true;
+		if (cir.getReturnValue()) {
+			this.lobecorp$animationTriggerRevision++;
+			if (this.lobecorp$animationTransitionMode == LcTransitionMode.SEQUENTIAL) {
+				this.lobecorp$animationTransitionPaused = true;
+			}
 		}
 	}
 
@@ -270,6 +273,11 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 	@Override
 	public void lc$setControllerTransitionPaused(boolean paused) {
 		this.lobecorp$controllerTransitionPaused = paused;
+	}
+
+	@Override
+	public int lc$getAnimationTriggerRevision() {
+		return this.lobecorp$animationTriggerRevision;
 	}
 
 	@Unique

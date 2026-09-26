@@ -36,6 +36,7 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 	private static final EntityDataAccessor<List<EntityState>> DATA_ENTITY_STATES =
 			SynchedEntityData.defineId(TheQueenOfHatred.class, LcEntityDataSerializers.ENTITY_STATES.get());
 	private static final float SITTING_COLLISION_HEIGHT = 1.4F;
+	private static final int LOCOMOTION_ANIMATION_TRANSITION_TICKS = 2;
 	static final int SITTING_FADE_OUT_TICKS = 23;
 	private final Set<UUID> attackers = new HashSet<>();
 	private float skillLockedYRot;
@@ -212,10 +213,16 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 
 	@Override
 	public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-		controllers.add(new LcAnimationControllerBuilder<TheQueenOfHatred>("locomotion", 2, state -> {
+		controllers.add(new LcAnimationControllerBuilder<TheQueenOfHatred>("locomotion",
+				LOCOMOTION_ANIMATION_TRANSITION_TICKS, state -> {
 			if (isSittingFadeOut()) {
 				return PlayState.STOP;
 			}
+			boolean cancelledSittingAnimation = !isSitting()
+					&& (state.controller().getCurrentRawAnimation() == TheQueenOfHatredAnim.SIT_SEQUENCE.getAnimation()
+							|| state.controller().getCurrentRawAnimation() == TheQueenOfHatredAnim.SIT_SEQUENCE_2.getAnimation());
+			state.controller().setTransitionTicks(
+					cancelledSittingAnimation ? 0 : LOCOMOTION_ANIMATION_TRANSITION_TICKS);
 			if (isSitting()) {
 				state.setControllerSpeed(1);
 				return state.setAndContinue((isSittingEdge()
@@ -256,15 +263,11 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 	}
 
 	public void playActionAnimation(TheQueenOfHatredAnim animation) {
-		if (level().isClientSide()) {
-			triggerAnim("action", animation.name());
-		}
+		playCustomAnimation("action", animation.name());
 	}
 
 	public void stopActionAnimation() {
-		if (level().isClientSide()) {
-			stopTriggeredAnim("action", null);
-		}
+		stopCustomAnimation("action", null);
 	}
 
 	@Override

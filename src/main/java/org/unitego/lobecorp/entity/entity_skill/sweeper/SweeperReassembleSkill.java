@@ -39,8 +39,8 @@ public class SweeperReassembleSkill extends SweeperSkill {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.REASSEMBLE);
+		entity.playActionAnimation(SweeperAnim.CLEAR1);
 		faceTarget(entity, runtime.target(EntityCorpse.class));
-		entity.triggerActionAnimation(SweeperAnim.CLEAR1);
 	}
 
 	@Override
@@ -50,8 +50,8 @@ public class SweeperReassembleSkill extends SweeperSkill {
 
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		entity.playActionAnimation(SweeperAnim.CLEAR2);
 		faceTarget(entity, runtime.target(EntityCorpse.class));
-		entity.triggerActionAnimation(SweeperAnim.CLEAR2);
 	}
 
 	@Override
@@ -128,19 +128,18 @@ public class SweeperReassembleSkill extends SweeperSkill {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.triggerActionAnimation(SweeperAnim.CLEAR3);
+		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.REASSEMBLE);
 	}
 
 	@Override
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.removeEntityState(SweeperStates.REASSEMBLE);
-		entity.stopTriggeredActionAnimation();
+		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 
 	private EntityCorpse<?> getCorpse(Sweeper entity) {

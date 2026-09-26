@@ -12,6 +12,7 @@ import org.unitego.lobecorp.entity.entity_skill.EntitySkillGroup;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkillHolder;
+import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectLevelData;
 import org.unitego.lobecorp.hitbox.HitboxLevelData;
 
 import java.util.ArrayList;
@@ -32,6 +33,10 @@ public interface LcAttachmentTypes {
 	/// Level 中不持久化的服务端判断框和客户端调试镜像。
 	DeferredHolder<AttachmentType<?>, AttachmentType<HitboxLevelData>> HITBOX_LEVEL_DATA =
 			REGISTER.register("hitbox_level_data", () -> AttachmentType.builder(HitboxLevelData::new).build());
+
+	/// Level 中不持久化的服务端实体技能效果。
+	DeferredHolder<AttachmentType<?>, AttachmentType<EntitySkillEffectLevelData>> ENTITY_SKILL_EFFECT_LEVEL_DATA =
+			REGISTER.register("entity_skill_effect_level_data", () -> AttachmentType.builder(EntitySkillEffectLevelData::new).build());
 
 	/// 实体拥有的技能，持久化并同步。
 	DeferredHolder<AttachmentType<?>, AttachmentType<Set<IEntitySkill<?>>>> ENTITY_SKILLS = REGISTER.register(

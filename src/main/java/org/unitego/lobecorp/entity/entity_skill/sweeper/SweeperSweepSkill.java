@@ -55,12 +55,12 @@ public class SweeperSweepSkill extends SweeperSkill {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.SWEEP);
-		entity.triggerActionAnimation(SweeperAnim.CLEAR1);
+		entity.playActionAnimation(SweeperAnim.CLEAR1);
 	}
 
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.triggerActionAnimation(SweeperAnim.CLEAR2);
+		entity.playActionAnimation(SweeperAnim.CLEAR2);
 	}
 
 	@Override
@@ -145,19 +145,18 @@ public class SweeperSweepSkill extends SweeperSkill {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.triggerActionAnimation(SweeperAnim.CLEAR3);
+		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.SWEEP);
 	}
 
 	@Override
 	public void onCancel(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.removeEntityState(SweeperStates.SWEEP);
-		entity.stopTriggeredActionAnimation();
+		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 
 	private Entity getCleanupTarget(Sweeper entity) {

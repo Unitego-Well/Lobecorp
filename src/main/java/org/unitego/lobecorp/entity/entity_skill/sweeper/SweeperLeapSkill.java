@@ -170,7 +170,7 @@ public class SweeperLeapSkill extends SweeperSkill {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.LEAP);
-		entity.triggerActionAnimation(SweeperAnim.LEAP);
+		entity.playActionAnimation(SweeperAnim.LEAP);
 		updateLaunchSolution(entity, runtime);
 		if (entity.level() instanceof ServerLevel level) {
 			int lifetime = windupTicks() + MAX_LEAP_TICKS + recoveryTicks() + CURRENT_TICK_DURATION;
@@ -255,9 +255,9 @@ public class SweeperLeapSkill extends SweeperSkill {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		entity.playActionAnimation(SweeperAnim.LEAP2);
 		removeKnockbackResistance(entity);
 		removeSafeFallDistance(entity);
-		entity.triggerActionAnimation(SweeperAnim.LEAP2);
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
@@ -290,7 +290,6 @@ public class SweeperLeapSkill extends SweeperSkill {
 
 	@Override
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		entity.stopTriggeredActionAnimation();
 		entity.removeEntityState(SweeperStates.LEAP);
 		removeHitbox(entity, runtime);
 	}
@@ -300,7 +299,7 @@ public class SweeperLeapSkill extends SweeperSkill {
 		removeKnockbackResistance(entity);
 		removeSafeFallDistance(entity);
 		entity.removeEntityState(SweeperStates.LEAP);
-		entity.stopTriggeredActionAnimation();
+		entity.stopActionAnimation();
 		removeHitbox(entity, runtime);
 	}
 

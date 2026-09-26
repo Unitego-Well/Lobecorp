@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.entity.ordeal.indigo;
 
+import com.geckolib.animatable.GeoEntity;
 import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
-import com.geckolib.animation.RawAnimation;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
 import com.mojang.serialization.Codec;
@@ -32,7 +32,10 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.animation.LcAnimationControllerBuilder;
+import org.unitego.lobecorp.animation.LcControllerBlendType;
+import org.unitego.lobecorp.animation.LcCustomAnimatable;
+import org.unitego.lobecorp.animation.LcRotationTransitionMode;
 import org.unitego.lobecorp.entity.IEntityTarget;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkillHolder;
 import org.unitego.lobecorp.entity.entity_state.EntityState;
@@ -47,38 +50,11 @@ import java.util.List;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫
-public class Sweeper extends PathfinderMob implements Enemy, LcGeoEntity, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
+public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustomAnimatable, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
 	// 攻击属性标识
 
 	/// 普通攻击临时伤害倍率属性的唯一标识
 	public static final Identifier ATTACK_MULTIPLIER = Lobecorp.id("attack_multiplier");
-
-	// 动画层与移动动画参数
-
-	/// 基础移动动画层名称
-	private static final String LOCOMOTION_ANIMATION_LAYER = "locomotion";
-	/// 技能动作动画层名称
-	private static final String ACTION_ANIMATION_LAYER = "action";
-	/// 基础移动动画层过渡时间
-	private static final int LOCOMOTION_TRANSITION_TICKS = 3;
-	/// 技能动作动画层过渡时间
-	private static final int ACTION_TRANSITION_TICKS = 3;
-	/// 切换到奔跑动画所需的移动动画速度
-	private static final float RUN_ANIMATION_SPEED_THRESHOLD = 0.65F;
-	/// 从奔跑动画退出所需的移动动画速度
-	private static final float RUN_ANIMATION_EXIT_SPEED_THRESHOLD = 0.55F;
-	/// 切换到移动动画所需的移动动画速度
-	private static final float MOVE_ANIMATION_SPEED_THRESHOLD = 0.1F;
-	/// 从移动动画退出所需的移动动画速度
-	private static final float MOVE_ANIMATION_EXIT_SPEED_THRESHOLD = 0.05F;
-	/// 移动动画以正常倍率播放时对应的移动动画速度
-	private static final float LOCOMOTION_ANIMATION_BASE_SPEED = 0.5F;
-	/// 移动动画允许的最小播放倍率
-	private static final double MINIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED = 0.5;
-	/// 移动动画允许的最大播放倍率
-	private static final double MAXIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED = 2.0;
-	/// 清道夫模型的全身骨骼遮罩
-	private static final LcBoneMask FULL_BODY_ANIMATION_MASK = LcBoneMask.builder().includeRoot("root").build();
 
 	// 同步数据与存档字段
 
@@ -103,8 +79,6 @@ public class Sweeper extends PathfinderMob implements Enemy, LcGeoEntity, IIndig
 	/// 脱离战斗后开始使用生物质回血的延迟 tick
 	private static final int BIOMASS_HEAL_COMBAT_DELAY_TICKS = 2 * TICKS_PER_SECOND;
 	private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-	private final LcAnimationController<Sweeper> animationController =
-			new LcAnimationController<>(this::registerLcAnimationLayers);
 	private long lastCombatGameTime;
 	private final SweeperAi ai = SweeperAi.create(this);
 	@Nullable
@@ -207,50 +181,6 @@ public class Sweeper extends PathfinderMob implements Enemy, LcGeoEntity, IIndig
 		ai.updateActivity();
 		profiler.pop();
 		super.customServerAiStep(level);
-	}
-
-	private double getLocomotionAnimationPlaybackSpeed(SweeperAnim animation, float speed) {
-		if (animation == SweeperAnim.IDLE) {
-			return LcAnimationController.DEFAULT_SPEED;
-		}
-		return Mth.clamp(speed / LOCOMOTION_ANIMATION_BASE_SPEED,
-				MINIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED, MAXIMUM_LOCOMOTION_ANIMATION_PLAYBACK_SPEED);
-	}
-
-	private SweeperAnim selectLocomotionAnimation(float speed) {
-		RawAnimation currentRawAnimation = animationController.currentAnimation(LOCOMOTION_ANIMATION_LAYER);
-		SweeperAnim currentAnimation = currentRawAnimation == null
-				? SweeperAnim.IDLE : findLocomotionAnimation(currentRawAnimation);
-		if (speed > RUN_ANIMATION_SPEED_THRESHOLD
-				|| currentAnimation == SweeperAnim.RUN && speed > RUN_ANIMATION_EXIT_SPEED_THRESHOLD) {
-			return SweeperAnim.RUN;
-		}
-		if (speed > MOVE_ANIMATION_SPEED_THRESHOLD
-				|| currentAnimation == SweeperAnim.MOVE && speed > MOVE_ANIMATION_EXIT_SPEED_THRESHOLD) {
-			return SweeperAnim.MOVE;
-		}
-		return SweeperAnim.IDLE;
-	}
-
-	private SweeperAnim findLocomotionAnimation(RawAnimation animation) {
-		for (SweeperAnim locomotionAnimation : List.of(SweeperAnim.IDLE, SweeperAnim.MOVE, SweeperAnim.RUN)) {
-			if (locomotionAnimation.getAnimation() == animation) {
-				return locomotionAnimation;
-			}
-		}
-		return SweeperAnim.IDLE;
-	}
-
-	public void triggerActionAnimation(SweeperAnim animation) {
-		if (!level().isClientSide()) {
-			triggerAnimation(LcAnimationController.CONTROLLER_NAME, animation.name());
-		}
-	}
-
-	public void stopTriggeredActionAnimation() {
-		if (!level().isClientSide()) {
-			stopTriggeredAnimation(LcAnimationController.CONTROLLER_NAME, null);
-		}
 	}
 
 	@Override
@@ -366,30 +296,49 @@ public class Sweeper extends PathfinderMob implements Enemy, LcGeoEntity, IIndig
 
 	@Override
 	public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
-		animationController.setAnimationStateHandler(LOCOMOTION_ANIMATION_LAYER, test -> {
-			if (isRemoved() || isDeadOrDying()) {
-				stopAnimation(ACTION_ANIMATION_LAYER);
-				return PlayState.STOP;
+		controllers.add(new LcAnimationControllerBuilder<Sweeper>("locomotion", 2, state -> {
+			if (!walkAnimation.isMoving() || !state.isMoving()) {
+				state.setControllerSpeed(1);
+				return state.setAndContinue(SweeperAnim.IDLE.getAnimation());
 			}
-			float speed = walkAnimation.speed();
-			SweeperAnim animation = selectLocomotionAnimation(speed);
-			animationController.setSpeed(LOCOMOTION_ANIMATION_LAYER,
-					getLocomotionAnimationPlaybackSpeed(animation, speed));
-			return test.setAndContinue(animation.getAnimation());
-		});
-		for (SweeperAnim animation : List.of(SweeperAnim.ATTACK1, SweeperAnim.ATTACK2, SweeperAnim.ATTACK3,
-				SweeperAnim.LEAP, SweeperAnim.LEAP2, SweeperAnim.CLEAR1, SweeperAnim.CLEAR2, SweeperAnim.CLEAR3)) {
-			animationController.triggerableAnim(ACTION_ANIMATION_LAYER, animation.name(), animation.getAnimation());
-		}
-		controllers.add(animationController);
+
+			double v = getAttributeBaseValue(Attributes.MOVEMENT_SPEED) * 1.5;
+			if (getDeltaMovement().lengthSqr() > v * v) {
+				state.setControllerSpeed(0.5f + walkAnimation.speed());
+				return state.setAndContinue(SweeperAnim.RUN.getAnimation());
+			}
+
+			float speed = (float) (getAttributeBaseValue(Attributes.MOVEMENT_SPEED) + walkAnimation.speed());
+			state.setControllerSpeed(0.5f + speed);
+			return state.setAndContinue(SweeperAnim.MOVE.getAnimation());
+		})
+				.blendType(LcControllerBlendType.ADDITIVE)
+				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
+				.build());
+		controllers.add(new LcAnimationControllerBuilder<Sweeper>("action", 2, state -> PlayState.STOP)
+				.blendType(LcControllerBlendType.OVERRIDE)
+				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
+				.triggerableAnim(SweeperAnim.ATTACK1.name(), SweeperAnim.ATTACK1.getAnimation())
+				.triggerableAnim(SweeperAnim.ATTACK2.name(), SweeperAnim.ATTACK2.getAnimation())
+				.triggerableAnim(SweeperAnim.ATTACK3.name(), SweeperAnim.ATTACK3.getAnimation())
+				.triggerableAnim(SweeperAnim.LEAP.name(), SweeperAnim.LEAP.getAnimation())
+				.triggerableAnim(SweeperAnim.LEAP2.name(), SweeperAnim.LEAP2.getAnimation())
+				.triggerableAnim(SweeperAnim.CLEAR1.name(), SweeperAnim.CLEAR1.getAnimation())
+				.triggerableAnim(SweeperAnim.CLEAR2.name(), SweeperAnim.CLEAR2.getAnimation())
+				.triggerableAnim(SweeperAnim.CLEAR3.name(), SweeperAnim.CLEAR3.getAnimation())
+				.build());
 	}
 
-	@Override
-	public void registerLcAnimationLayers(LcAnimationLayerRegistrar registrar) {
-		registrar.add(new LcLayerDefinition(LOCOMOTION_ANIMATION_LAYER, LcBlendMode.OVERRIDE,
-				FULL_BODY_ANIMATION_MASK, LOCOMOTION_TRANSITION_TICKS));
-		registrar.add(new LcLayerDefinition(ACTION_ANIMATION_LAYER, LcBlendMode.OVERRIDE,
-				FULL_BODY_ANIMATION_MASK, ACTION_TRANSITION_TICKS));
+	public void playActionAnimation(SweeperAnim animation) {
+		if (level().isClientSide()) {
+			triggerAnim("action", animation.name());
+		}
+	}
+
+	public void stopActionAnimation() {
+		if (level().isClientSide()) {
+			stopTriggeredAnim("action", null);
+		}
 	}
 
 	@Override

@@ -23,10 +23,8 @@ import net.minecraft.world.entity.ai.memory.MemoryStatus;
 import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.ai.memory.WalkTarget;
 import net.minecraft.world.entity.ai.sensing.SensorType;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.schedule.Activity;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.entity.ai.util.BrainUtil;
 import org.unitego.lobecorp.entity.util.EntitySkillManager;
 import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
@@ -52,6 +50,18 @@ public final class TheQueenOfHatredAi {
 	/// 闲置随机游走参数。
 	/// 随机游走的速度倍率。
 	private static final float IDLE_STROLL_SPEED = 1.0F;
+	/// 闲置随机游走的最短触发间隔，单位为游戏刻。
+	private static final int IDLE_STROLL_INTERVAL_TICKS = 10 * TICKS_PER_SECOND;
+	/// 女皇随机动作选择的最短间隔，单位为游戏刻。
+	private static final int MINIMUM_IDLE_ACTION_INTERVAL_TICKS = 20 * TICKS_PER_SECOND;
+	/// 女皇随机动作选择的最长间隔，单位为游戏刻。
+	private static final int MAXIMUM_IDLE_ACTION_INTERVAL_TICKS = 40 * TICKS_PER_SECOND;
+	/// 坐下动作的最短持续时间，单位为游戏刻。
+	private static final int MINIMUM_SITTING_DURATION_TICKS = 60 * TICKS_PER_SECOND;
+	/// 坐下动作的最长持续时间，单位为游戏刻。
+	private static final int MAXIMUM_SITTING_DURATION_TICKS = 120 * TICKS_PER_SECOND;
+	/// 坐下动作结束后的淡出时间，单位为游戏刻。
+	static final int SITTING_FADE_OUT_TICKS = 23;
 	/// 随机游走目的地的最小水平距离，单位为格。
 	private static final int MINIMUM_IDLE_STROLL_DISTANCE = 2;
 	/// 随机游走目的地的最大水平距离，单位为格。
@@ -89,20 +99,6 @@ public final class TheQueenOfHatredAi {
 	/// 闲置停止行为的最长持续时间，单位为游戏刻。
 	private static final int MAXIMUM_IDLE_WAIT_TICKS = 2 * TICKS_PER_SECOND;
 
-	/// 闲置姿态参数。
-	/// 普通闲置姿态的最短播放时间，单位为游戏刻。
-	private static final int MINIMUM_IDLE_POSE_TICKS = TICKS_PER_SECOND;
-	/// 普通闲置姿态的最长播放时间，单位为游戏刻。
-	private static final int MAXIMUM_IDLE_POSE_TICKS = 2 * TICKS_PER_SECOND;
-	/// POSE4 循环动画的最短播放时间，单位为游戏刻。
-	private static final int MINIMUM_POSE4_TICKS = 2 * TICKS_PER_SECOND;
-	/// POSE4 循环动画的最长播放时间，单位为游戏刻。
-	private static final int MAXIMUM_POSE4_TICKS = 4 * TICKS_PER_SECOND;
-	/// 触发闲置姿态时可选择玩家的最大距离，单位为格。
-	private static final double IDLE_POSE_PLAYER_RANGE = 5.0;
-	/// 随机闲置姿态行为允许持续的最长时间，单位为游戏刻。
-	private static final int MAXIMUM_IDLE_POSE_DURATION_TICKS = MAXIMUM_POSE4_TICKS;
-
 	/// 闲置行为选择权重。
 	/// 随机游走行为在 RunOne 中的选择权重。
 	private static final int IDLE_STROLL_WEIGHT = 4;
@@ -112,15 +108,6 @@ public final class TheQueenOfHatredAi {
 	private static final int IDLE_LOOK_DIRECTION_WEIGHT = 1;
 	/// 停止行为在 RunOne 中的选择权重。
 	private static final int IDLE_STOP_WEIGHT = 1;
-	/// 姿态行为在 RunOne 中的选择权重。
-	private static final int IDLE_POSE_WEIGHT = 1;
-
-	private static final List<TheQueenOfHatredAnim> IDLE_POSE_ANIMATIONS = List.of(
-			TheQueenOfHatredAnim.POSE,
-			TheQueenOfHatredAnim.POSE2,
-			TheQueenOfHatredAnim.POSE3,
-			TheQueenOfHatredAnim.POSE4
-	);
 	private static final Brain.Provider<TheQueenOfHatred> BRAIN_PROVIDER =
 			BrainUtil.provider(TheQueenOfHatredAi::getActivities)
 					.addMemoryTypes(
@@ -143,6 +130,62 @@ public final class TheQueenOfHatredAi {
 
 	static void updateActivity(TheQueenOfHatred queen) {
 		queen.getBrain().setActiveActivityToFirstValid(List.of(Activity.FIGHT, Activity.IDLE));
+		if (queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
+			queen.cancelSitting();
+			queen.cancelSittingEdgeApproach();
+		}
+		if (queen.isSittingOrFadingOut()) {
+			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			queen.getNavigation().stop();
+		}
+	}
+
+	static void tick(TheQueenOfHatred queen) {
+		long gameTime = queen.level().getGameTime();
+		if (queen.tickSitting(gameTime, SITTING_FADE_OUT_TICKS)) {
+			queen.scheduleNextIdleAction(Mth.nextInt(queen.getRandom(),
+					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+			return;
+		}
+		if (queen.isSittingOrFadingOut()
+				|| queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
+			return;
+		}
+		if (queen.isApproachingSittingEdge()) {
+			if (queen.getSittingGround() == TheQueenOfHatred.SittingGround.EDGE) {
+				queen.startSitting(Mth.nextInt(queen.getRandom(),
+						MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS), true);
+			} else if (!queen.tickSittingEdgeApproach()) {
+				queen.scheduleNextIdleAction(Mth.nextInt(queen.getRandom(),
+						MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+			}
+			return;
+		}
+		if (queen.nextIdleActionGameTime() == 0) {
+			queen.scheduleNextIdleAction(Mth.nextInt(queen.getRandom(),
+					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+			return;
+		}
+		if (gameTime < queen.nextIdleActionGameTime()) {
+			return;
+		}
+		TheQueenOfHatred.SittingGround sittingGround = queen.getSittingGround();
+		if (sittingGround == TheQueenOfHatred.SittingGround.UNSAFE) {
+			queen.scheduleNextIdleAction(Mth.nextInt(queen.getRandom(),
+					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+			return;
+		}
+		if (sittingGround == TheQueenOfHatred.SittingGround.EDGE) {
+			queen.startSitting(Mth.nextInt(queen.getRandom(),
+					MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS), true);
+			return;
+		}
+		if (queen.tryApproachNearbySittingEdge(MAXIMUM_IDLE_STROLL_DISTANCE, IDLE_STROLL_SPEED)) {
+			return;
+		}
+		queen.startSitting(Mth.nextInt(queen.getRandom(),
+				MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS),
+				false);
 	}
 
 	private static List<ActivityData<TheQueenOfHatred>> getActivities(TheQueenOfHatred owner) {
@@ -160,8 +203,7 @@ public final class TheQueenOfHatredAi {
 								Pair.of(walkToRandomDestination(), IDLE_STROLL_WEIGHT),
 								Pair.of(lookAtRandomLivingEntity(), IDLE_LOOK_ENTITY_WEIGHT),
 								Pair.of(lookInRandomDirection(), IDLE_LOOK_DIRECTION_WEIGHT),
-								Pair.of(new RandomStopAndWaitBehavior(), IDLE_STOP_WEIGHT),
-								Pair.of(new RandomIdlePoseBehavior(), IDLE_POSE_WEIGHT)
+								Pair.of(new RandomStopAndWaitBehavior(), IDLE_STOP_WEIGHT)
 						))
 				)),
 				ActivityData.create(Activity.FIGHT, ImmutableList.of(
@@ -189,6 +231,10 @@ public final class TheQueenOfHatredAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.absent(MemoryModuleType.WALK_TARGET)
 		).apply(instance, walkTarget -> (level, queen, time) -> {
+			if (queen.isSittingOrFadingOut() || queen.isApproachingSittingEdge()
+					|| !queen.canStartIdleStroll()) {
+				return false;
+			}
 			Vec3 destination = null;
 			for (int attempt = 0; attempt < IDLE_STROLL_DESTINATION_ATTEMPTS; attempt++) {
 				Vec3 candidate = LandRandomPos.getPos(
@@ -207,6 +253,7 @@ public final class TheQueenOfHatredAi {
 				return false;
 			}
 			walkTarget.set(new WalkTarget(destination, IDLE_STROLL_SPEED, 0));
+			queen.delayNextIdleStroll(IDLE_STROLL_INTERVAL_TICKS);
 			return true;
 		}));
 	}
@@ -262,72 +309,6 @@ public final class TheQueenOfHatredAi {
 		@Override
 		protected boolean canStillUse(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
 			return timestamp < waitEndTimestamp;
-		}
-	}
-
-	private static final class RandomIdlePoseBehavior extends Behavior<TheQueenOfHatred> {
-		@Nullable
-		private Player poseTarget;
-		@Nullable
-		private TheQueenOfHatredAnim poseAnimation;
-		private long poseEndTimestamp;
-
-		private RandomIdlePoseBehavior() {
-			super(Map.of(
-					MemoryModuleType.LOOK_TARGET, MemoryStatus.VALUE_ABSENT,
-					MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES, MemoryStatus.VALUE_PRESENT
-			), MAXIMUM_IDLE_POSE_DURATION_TICKS);
-		}
-
-		@Override
-		protected boolean checkExtraStartConditions(ServerLevel level, TheQueenOfHatred queen) {
-			List<Player> players = queen.getBrain()
-					.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
-					.orElse(NearestVisibleLivingEntities.empty())
-					.find(candidate -> candidate instanceof Player
-							&& queen.distanceToSqr(candidate) <= IDLE_POSE_PLAYER_RANGE * IDLE_POSE_PLAYER_RANGE)
-					.map(Player.class::cast)
-					.toList();
-			if (players.isEmpty()) {
-				return false;
-			}
-			poseTarget = players.get(queen.getRandom().nextInt(players.size()));
-			poseAnimation = IDLE_POSE_ANIMATIONS.get(queen.getRandom().nextInt(IDLE_POSE_ANIMATIONS.size()));
-			return true;
-		}
-
-		@Override
-		protected void start(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
-			Player target = poseTarget;
-			TheQueenOfHatredAnim animation = poseAnimation;
-			if (target == null || animation == null) {
-				return;
-			}
-			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-			queen.getNavigation().stop();
-			int minimumDuration = animation == TheQueenOfHatredAnim.POSE4
-					? MINIMUM_POSE4_TICKS : MINIMUM_IDLE_POSE_TICKS;
-			int maximumDuration = animation == TheQueenOfHatredAnim.POSE4
-					? MAXIMUM_POSE4_TICKS : MAXIMUM_IDLE_POSE_TICKS;
-			int duration = Mth.nextInt(queen.getRandom(), minimumDuration, maximumDuration);
-			poseEndTimestamp = timestamp + duration;
-			queen.getBrain().setMemoryWithExpiry(MemoryModuleType.LOOK_TARGET,
-					new EntityTracker(target, true), duration);
-			queen.playAnimation(TheQueenOfHatredAnim.IDLE_POSE_ANIMATION_LAYER, animation.getAnimation());
-		}
-
-		@Override
-		protected boolean canStillUse(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
-			return timestamp < poseEndTimestamp;
-		}
-
-		@Override
-		protected void stop(ServerLevel level, TheQueenOfHatred queen, long timestamp) {
-			queen.getBrain().eraseMemory(MemoryModuleType.LOOK_TARGET);
-			queen.stopAnimation(TheQueenOfHatredAnim.IDLE_POSE_ANIMATION_LAYER,
-					TheQueenOfHatredAnim.ANIMATION_TRANSITION_TICKS);
-			poseTarget = null;
-			poseAnimation = null;
 		}
 	}
 }

@@ -16,10 +16,6 @@ public final class LcPayloads {
 	@SubscribeEvent
 	public static void register(RegisterPayloadHandlersEvent event) {
 		event.registrar(NETWORK_VERSION).playToClient(
-				LcAnimationSyncPayload.TYPE,
-				LcAnimationSyncPayload.STREAM_CODEC,
-				LcAnimationSyncPayload::work
-		).playToClient(
 				EntitySkillSyncPayload.TYPE,
 				EntitySkillSyncPayload.STREAM_CODEC,
 				EntitySkillSyncPayload::work

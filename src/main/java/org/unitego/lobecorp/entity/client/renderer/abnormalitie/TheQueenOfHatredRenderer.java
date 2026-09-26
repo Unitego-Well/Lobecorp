@@ -6,12 +6,10 @@ import com.geckolib.renderer.base.RenderPassInfo;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.util.Mth;
+import org.joml.Vector2f;
 import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
 
 public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred, LivingEntityRenderState> {
-	/// 头部旋转对应的模型骨骼名称。
-	private static final String HEAD_BONE_NAME = "head";
-
 	public TheQueenOfHatredRenderer(EntityRendererProvider.Context context) {
 		super(context, new TheQueenOfHatredModel());
 	}
@@ -19,9 +17,17 @@ public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred
 	@Override
 	public void adjustModelBonesForRender(RenderPassInfo<LivingEntityRenderState> renderPassInfo, BoneSnapshots snapshots) {
 		LivingEntityRenderState renderState = renderPassInfo.renderState();
-		snapshots.ifPresent(HEAD_BONE_NAME, snapshot -> {
+		Vector2f rot = new Vector2f();
+		snapshots.ifPresent("up_body", snapshot -> {
+			rot.add(snapshot.getRotX(), snapshot.getRotY());
+		});
+		snapshots.ifPresent("Head", snapshot -> {
 			snapshot.setRotX(snapshot.getRotX() + -renderState.xRot * Mth.DEG_TO_RAD);
 			snapshot.setRotY(snapshot.getRotY() + -renderState.yRot * Mth.DEG_TO_RAD);
+			rot.add(snapshot.getRotX(), snapshot.getRotY());
+		});
+		snapshots.ifPresent("hair", snapshot -> {
+			snapshot.setRotX(snapshot.getRotX() - rot.x);
 		});
 	}
 }

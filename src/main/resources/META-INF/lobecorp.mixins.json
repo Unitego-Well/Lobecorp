@@ -10,11 +10,12 @@
 		"item.SpawnEggItemMixin"
 	],
 	"client": [
+		"client.AnimationControllerMaskMixin",
 		"client.DebugRendererMixin",
 		"client.DebugScreenEntryListMixin",
 		"client.EntityHitboxDebugRendererMixin",
 		"client.LevelRendererMixin",
-		"client.RenderPassInfoMixin"
+		"client.RenderPassInfoAnimationMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

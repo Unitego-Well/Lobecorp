@@ -7,9 +7,11 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.tags.TagKey;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillGroup;
+import org.unitego.lobecorp.entity.entity_skill.EntitySkillDebug;
 import org.unitego.lobecorp.entity.entity_skill.EntitySkillRuntime;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.entity.entity_skill.IEntitySkillHolder;
+import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectManager;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.entity_skill.LcEntitySkillGroups;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
@@ -455,9 +457,11 @@ public final class EntitySkillManager {
 
 	private static void cancelRuntime(LivingEntity entity, EntitySkillRuntime<?> runtime, boolean forced) {
 		if (!forced && !canCancel(runtime)) {
+			EntitySkillDebug.log(runtime, "cancel-rejected:not-cancellable");
 			return;
 		}
 		runtime.onCancel();
+		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		activeSkills(entity).remove(runtime);
 		startCooldown(runtime);
 		if (entity instanceof IEntitySkillHolder holder) {
@@ -615,6 +619,7 @@ public final class EntitySkillManager {
 
 	private static void finish(EntitySkillRuntime<?> runtime) {
 		runtime.onRecoveryEnd();
+		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		LivingEntity owner = runtime.owner();
 		startCooldown(runtime);
 		activeSkills(owner).remove(runtime);

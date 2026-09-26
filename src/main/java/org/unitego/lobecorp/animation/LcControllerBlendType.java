@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.animation;
 
-public enum LcBlendMode {
+public enum LcControllerBlendType {
+	ADDITIVE,
 	OVERRIDE,
-	ADDITIVE
+	MASK
 }

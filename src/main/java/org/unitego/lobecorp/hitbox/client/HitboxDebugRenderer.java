@@ -8,6 +8,7 @@ import net.minecraft.util.debug.DebugValueAccess;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.hitbox.BoxSize;
+import org.unitego.lobecorp.hitbox.BoxRingCylinderSize;
 import org.unitego.lobecorp.hitbox.CylinderSize;
 import org.unitego.lobecorp.hitbox.ConeSize;
 import org.unitego.lobecorp.hitbox.EllipsoidSize;
@@ -16,6 +17,7 @@ import org.unitego.lobecorp.hitbox.HitboxSnapshot;
 import org.unitego.lobecorp.hitbox.HitboxPurpose;
 import org.unitego.lobecorp.hitbox.SectorCylinderSize;
 import org.unitego.lobecorp.hitbox.SphereSize;
+import org.unitego.lobecorp.hitbox.RingCylinderSize;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
 import java.util.ArrayList;
@@ -60,12 +62,42 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		switch (snapshot.size()) {
 			case SphereSize sphere -> renderSphere(snapshot, sphere, color);
 			case CylinderSize cylinder -> renderCylinder(snapshot, cylinder.radius(), cylinder.height(), color);
+			case RingCylinderSize ring -> renderRingCylinder(snapshot, ring, color);
 			case BoxSize box -> renderBox(snapshot, box, color);
+			case BoxRingCylinderSize ring -> renderBoxRingCylinder(snapshot, ring, color);
 			case SectorCylinderSize sector -> renderSector(snapshot, sector, color);
 			case ConeSize cone -> renderCone(snapshot, cone, color);
 			case EllipsoidSize ellipsoid -> renderEllipsoid(snapshot, ellipsoid, color);
 			default -> throw new IllegalStateException("Unsupported hitbox size: "
 					+ snapshot.size().getClass().getName());
+		}
+	}
+
+	private static void renderRingCylinder(HitboxSnapshot snapshot, RingCylinderSize ring, int color) {
+		renderCylinderBoundary(snapshot, ring.radius(), ring.height(), color);
+		if (ring.innerRadius() > 0.0) {
+			renderCylinderBoundary(snapshot, ring.innerRadius(), ring.height(), color);
+		}
+	}
+
+	private static void renderCylinderBoundary(HitboxSnapshot snapshot, double radius, double height, int color) {
+		double halfHeight = height / 2.0;
+		renderCircle(snapshot, radius, halfHeight, CirclePlane.XZ, color);
+		renderCircle(snapshot, radius, -halfHeight, CirclePlane.XZ, color);
+		for (int index = 0; index < CYLINDER_SIDE_COUNT; index++) {
+			double angle = Math.PI * 2.0 * index / CYLINDER_SIDE_COUNT;
+			Vec3 bottom = world(snapshot, new Vec3(Math.sin(angle) * radius, -halfHeight,
+					Math.cos(angle) * radius));
+			Vec3 top = world(snapshot, new Vec3(Math.sin(angle) * radius, halfHeight,
+					Math.cos(angle) * radius));
+			Gizmos.line(bottom, top, color);
+		}
+	}
+
+	private static void renderBoxRingCylinder(HitboxSnapshot snapshot, BoxRingCylinderSize ring, int color) {
+		renderBox(snapshot, new BoxSize(ring.width(), ring.height(), ring.depth()), color);
+		if (ring.innerWidth() > 0.0 && ring.innerDepth() > 0.0) {
+			renderBox(snapshot, new BoxSize(ring.innerWidth(), ring.height(), ring.innerDepth()), color);
 		}
 	}
 

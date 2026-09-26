@@ -59,6 +59,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	}
 
 	public void onWindupStart() {
+		EntitySkillDebug.log(this, "windup-start");
 		sync(EntitySkillSyncPayload.Callback.WINDUP_START);
 		skill.onWindupStart(owner, this);
 	}
@@ -77,16 +78,19 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	}
 
 	public void onEnd() {
+		EntitySkillDebug.log(this, "effect-end");
 		sync(EntitySkillSyncPayload.Callback.END);
 		skill.onEnd(owner, this);
 	}
 
 	public void onRecoveryEnd() {
+		EntitySkillDebug.log(this, "recovery-end");
 		sync(EntitySkillSyncPayload.Callback.RECOVERY_END);
 		skill.onRecoveryEnd(owner, this);
 	}
 
 	public void onCancel() {
+		EntitySkillDebug.log(this, "cancel");
 		sync(EntitySkillSyncPayload.Callback.CANCEL);
 		skill.onCancel(owner, this);
 	}
@@ -105,6 +109,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	/// 更新当前生命周期阶段。通常仅由技能管理器推进状态机时调用。
 	/// @param state 新阶段
 	public void setState(SkillState state) {
+		EntitySkillDebug.log(this, "state-change " + this.state + " -> " + state);
 		this.state = state;
 	}
 

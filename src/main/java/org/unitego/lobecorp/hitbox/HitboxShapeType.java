@@ -13,5 +13,9 @@ public enum HitboxShapeType {
 	/// 可旋转三维圆锥。
 	CONE,
 	/// 可旋转椭球。
-	ELLIPSOID
+	ELLIPSOID,
+	/// 圆环柱。
+	RING_CYLINDER,
+	/// 立方环柱。
+	BOX_RING_CYLINDER
 }

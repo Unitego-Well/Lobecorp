@@ -632,7 +632,7 @@
     },
     "sitdown": {
       "loop": "hold_on_last_frame",
-      "animation_length": 1.75,
+      "animation_length": 2,
       "bones": {
         "up_body": {
           "rotation": {
@@ -4318,9 +4318,7 @@
             "0.0": {
               "vector": ["-1*math.sin(q.anim_time*90*64)", "0.5*math.sin(q.anim_time*90*64)", "1*math.sin(q.anim_time*90*32)"]
             },
-            "0.0417": {
-              "vector": [0, 0, 0]
-            },
+            "0.0417": [0, 0, 0],
             "0.125": {
               "vector": [0, 0, 0]
             }

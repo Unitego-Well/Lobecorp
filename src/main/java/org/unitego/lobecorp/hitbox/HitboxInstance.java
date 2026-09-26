@@ -5,6 +5,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectDebugInfo;
 import org.unitego.lobecorp.util.TypedDataKey;
 
 import java.util.HashMap;
@@ -38,6 +39,8 @@ public class HitboxInstance {
 	private boolean active;
 	private boolean exhausted;
 	private boolean removed;
+	@Nullable
+	private EntitySkillEffectDebugInfo entitySkillEffectDebugInfo;
 
 	/// 创建尚未加入 Level 管理器的实例。
 	///
@@ -159,6 +162,15 @@ public class HitboxInstance {
 	/// @param source 来源实体
 	public void setSource(@Nullable Entity source) {
 		this.source = source;
+	}
+
+	public void setEntitySkillEffectDebugInfo(@Nullable EntitySkillEffectDebugInfo debugInfo) {
+		this.entitySkillEffectDebugInfo = debugInfo;
+	}
+
+	@Nullable
+	public EntitySkillEffectDebugInfo entitySkillEffectDebugInfo() {
+		return entitySkillEffectDebugInfo;
 	}
 
 	/// @return 可选来源实体

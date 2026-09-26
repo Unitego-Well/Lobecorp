@@ -4,6 +4,8 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectDebugInfo;
 
 /// 客户端调试渲染需要的完整判断框实例快照。
 ///
@@ -15,7 +17,7 @@ import org.jspecify.annotations.NonNull;
 /// @param active 是否处于伤害阶段
 /// @param remainingTicks 服务端剩余寿命
 public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose, boolean active,
-		int remainingTicks) {
+		int remainingTicks, @Nullable EntitySkillEffectDebugInfo entitySkillEffectDebugInfo) {
 	/// 判断框快照网络编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxSnapshot> STREAM_CODEC = new StreamCodec<>() {
 		@Override
@@ -28,7 +30,11 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 			HitboxPurpose purpose = HitboxPurpose.values()[buffer.readVarInt()];
 			boolean active = buffer.readBoolean();
 			int remainingTicks = buffer.readVarInt();
-			return new HitboxSnapshot(id, size, position, rotation, purpose, active, remainingTicks);
+			EntitySkillEffectDebugInfo entitySkillEffectDebugInfo = buffer.readBoolean()
+					? new EntitySkillEffectDebugInfo(buffer.readUtf(), buffer.readUtf(), buffer.readUtf(), buffer.readVarInt())
+					: null;
+			return new HitboxSnapshot(id, size, position, rotation, purpose, active, remainingTicks,
+				entitySkillEffectDebugInfo);
 		}
 
 		@Override
@@ -41,6 +47,13 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 			buffer.writeVarInt(snapshot.purpose.ordinal());
 			buffer.writeBoolean(snapshot.active);
 			buffer.writeVarInt(snapshot.remainingTicks);
+			buffer.writeBoolean(snapshot.entitySkillEffectDebugInfo != null);
+			if (snapshot.entitySkillEffectDebugInfo != null) {
+				buffer.writeUtf(snapshot.entitySkillEffectDebugInfo.name());
+				buffer.writeUtf(snapshot.entitySkillEffectDebugInfo.owner());
+				buffer.writeUtf(snapshot.entitySkillEffectDebugInfo.skill());
+				buffer.writeVarInt(snapshot.entitySkillEffectDebugInfo.lifetimeTicks());
+			}
 		}
 	};
 
@@ -51,7 +64,7 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 	public static HitboxSnapshot of(HitboxInstance instance) {
 		return new HitboxSnapshot(instance.id(), instance.size(), instance.position(), instance.rotation(),
 				instance.template().purpose(),
-				instance.isActive(), instance.remainingTicks());
+				instance.isActive(), instance.remainingTicks(), instance.entitySkillEffectDebugInfo());
 	}
 
 	private static HitboxSize decodeSize(RegistryFriendlyByteBuf buffer, HitboxShapeType type) {
@@ -63,6 +76,9 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 					new SectorCylinderSize(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
 			case CONE -> new ConeSize(buffer.readDouble(), buffer.readDouble());
 			case ELLIPSOID -> new EllipsoidSize(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+			case RING_CYLINDER -> new RingCylinderSize(buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
+			case BOX_RING_CYLINDER ->
+					new BoxRingCylinderSize(buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble());
 		};
 	}
 
@@ -91,6 +107,17 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 				buffer.writeDouble(ellipsoid.radiusX());
 				buffer.writeDouble(ellipsoid.radiusY());
 				buffer.writeDouble(ellipsoid.radiusZ());
+			}
+			case RingCylinderSize ring -> {
+				buffer.writeDouble(ring.radius());
+				buffer.writeDouble(ring.height());
+				buffer.writeDouble(ring.thickness());
+			}
+			case BoxRingCylinderSize ring -> {
+				buffer.writeDouble(ring.width());
+				buffer.writeDouble(ring.height());
+				buffer.writeDouble(ring.depth());
+				buffer.writeDouble(ring.thickness());
 			}
 			default -> throw new IllegalStateException("Unsupported hitbox size: " + size.getClass().getName());
 		}

@@ -12,6 +12,7 @@ import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
 import net.neoforged.neoforge.client.event.RegisterDebugRenderersEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.client.debug.EntitySkillDebugRenderer;
+import org.unitego.lobecorp.entity.client.debug.EntitySkillEffectDebugRenderer;
 import org.unitego.lobecorp.entity.client.debug.EntityStateDebugRenderer;
 import org.unitego.lobecorp.hitbox.client.HitboxDebugRenderer;
 
@@ -23,6 +24,8 @@ public class LcDebugEntries {
 	public static final Identifier ENTITY_STATES = id("entity_states");
 	/// 实体技能调试项标识符。
 	public static final Identifier ENTITY_SKILLS = id("entity_skills");
+	/// 技能实体调试项标识符。
+	public static final Identifier SKILL_EFFECT_ENTITIES = id("skill_effect_entities");
 	/// 判断框调试项标识符。
 	public static final Identifier HITBOXES = id("hitboxes");
 	/// 原版总调试渲染开关标识符。
@@ -42,6 +45,7 @@ public class LcDebugEntries {
 	public static void onRegisterDebugEntries(RegisterDebugEntriesEvent event) {
 		event.register(ENTITY_STATES, new DebugEntryNoop());
 		event.register(ENTITY_SKILLS, new DebugEntryNoop());
+		event.register(SKILL_EFFECT_ENTITIES, new DebugEntryNoop());
 		event.register(HITBOXES, new DebugEntryNoop());
 		event.register(DEBUG_ENABLED, new DebugEntryNoop());
 		event.register(DEBUG_PATHFINDING, new DebugEntryNoop());
@@ -58,6 +62,9 @@ public class LcDebugEntries {
 		}
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_SKILLS)) {
 			event.register(EntitySkillDebugRenderer::new);
+		}
+		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(SKILL_EFFECT_ENTITIES)) {
+			event.register(EntitySkillEffectDebugRenderer::new);
 		}
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(HITBOXES)) {
 			event.register(HitboxDebugRenderer::new);

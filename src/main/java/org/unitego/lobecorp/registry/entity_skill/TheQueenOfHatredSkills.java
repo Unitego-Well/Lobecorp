@@ -16,9 +16,9 @@ public interface TheQueenOfHatredSkills {
 			TheQueenOfHatredRepelSkill::new, properties -> properties
 					.locksNavigation()
 					.locksMovement()
-					.windupTicks(TheQueenOfHatredRepelSkill.WINDUP_TICKS)
-					.durationTicks(TheQueenOfHatredRepelSkill.WAVE_DURATION_TICKS)
-					.recoveryTicks(TheQueenOfHatredRepelSkill.RECOVERY_TICKS)
+					.windupTicks(44)
+					.durationTicks(0)
+					.recoveryTicks(10)
 					.cooldownTicks(0));
 
 	static void init(IEventBus eventBus) {

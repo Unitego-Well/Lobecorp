@@ -1,6 +1,6 @@
 [versions]
 moddev = "2.0.142"
-mixinmcpdecompile = "0.9.0"
+mixinmcpdecompile = "1.5.0"
 minecraft = "26.1.2"
 neoforge = "26.1.2.100"
 

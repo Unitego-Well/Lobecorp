@@ -25,6 +25,12 @@ public final class HitboxGeometry {
 		if (!boundingBox(instance).intersects(bounds)) {
 			return false;
 		}
+		if (instance.size() instanceof RingCylinderSize ring) {
+			return intersectsRingCylinder(ring, localBounds(instance, bounds));
+		}
+		if (instance.size() instanceof BoxRingCylinderSize ring) {
+			return intersectsBoxRingCylinder(ring, localBounds(instance, bounds));
+		}
 
 		Vec3 direction = bounds.getCenter().subtract(instance.position());
 		if (direction.lengthSqr() <= DIRECTION_EPSILON_SQUARED) {
@@ -101,16 +107,88 @@ public final class HitboxGeometry {
 		return switch (size) {
 			case SphereSize sphere -> sphereSupport(sphere, direction);
 			case CylinderSize cylinder -> cylinderSupport(cylinder.radius(), cylinder.height(), direction);
-			case BoxSize box -> new Vec3(
-					direction.x >= 0.0 ? box.width() / 2.0 : -box.width() / 2.0,
-					direction.y >= 0.0 ? box.height() / 2.0 : -box.height() / 2.0,
-					direction.z >= 0.0 ? box.depth() / 2.0 : -box.depth() / 2.0
-			);
+			case RingCylinderSize ring -> cylinderSupport(ring.radius(), ring.height(), direction);
+			case BoxSize box -> boxSupport(box.width(), box.height(), box.depth(), direction);
+			case BoxRingCylinderSize ring -> boxSupport(ring.width(), ring.height(), ring.depth(), direction);
 			case SectorCylinderSize sector -> sectorSupport(sector, direction);
 			case ConeSize cone -> coneSupport(cone, direction);
 			case EllipsoidSize ellipsoid -> ellipsoidSupport(ellipsoid, direction);
 			default -> throw new IllegalStateException("Unsupported hitbox size: " + size.getClass().getName());
 		};
+	}
+
+	private static Vec3 boxSupport(double width, double height, double depth, Vec3 direction) {
+		return new Vec3(
+			direction.x >= 0.0 ? width / 2.0 : -width / 2.0,
+			direction.y >= 0.0 ? height / 2.0 : -height / 2.0,
+			direction.z >= 0.0 ? depth / 2.0 : -depth / 2.0
+		);
+	}
+
+	private static AABB localBounds(HitboxInstance instance, AABB bounds) {
+		Vec3 position = instance.position();
+		Vec3 rotation = instance.rotation();
+		double minX = Double.POSITIVE_INFINITY;
+		double minY = Double.POSITIVE_INFINITY;
+		double minZ = Double.POSITIVE_INFINITY;
+		double maxX = Double.NEGATIVE_INFINITY;
+		double maxY = Double.NEGATIVE_INFINITY;
+		double maxZ = Double.NEGATIVE_INFINITY;
+		for (int xIndex = 0; xIndex < 2; xIndex++) {
+			for (int yIndex = 0; yIndex < 2; yIndex++) {
+				for (int zIndex = 0; zIndex < 2; zIndex++) {
+					Vec3 corner = new Vec3(
+						xIndex == 0 ? bounds.minX : bounds.maxX,
+						yIndex == 0 ? bounds.minY : bounds.maxY,
+						zIndex == 0 ? bounds.minZ : bounds.maxZ
+					);
+					Vec3 local = inverseRotate(corner.subtract(position), rotation);
+					minX = Math.min(minX, local.x);
+					minY = Math.min(minY, local.y);
+					minZ = Math.min(minZ, local.z);
+					maxX = Math.max(maxX, local.x);
+					maxY = Math.max(maxY, local.y);
+					maxZ = Math.max(maxZ, local.z);
+				}
+			}
+		}
+		return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+	}
+
+	private static boolean intersectsRingCylinder(RingCylinderSize ring, AABB bounds) {
+		double halfHeight = ring.height() / 2.0;
+		if (bounds.maxY < -halfHeight || bounds.minY > halfHeight) {
+			return false;
+		}
+		double nearestX = bounds.minX > 0.0 ? bounds.minX : Math.min(bounds.maxX, 0.0);
+		double nearestZ = bounds.minZ > 0.0 ? bounds.minZ : Math.min(bounds.maxZ, 0.0);
+		if (nearestX * nearestX + nearestZ * nearestZ > ring.radius() * ring.radius()) {
+			return false;
+		}
+		double farthestX = Math.max(bounds.minX * bounds.minX, bounds.maxX * bounds.maxX);
+		double farthestZ = Math.max(bounds.minZ * bounds.minZ, bounds.maxZ * bounds.maxZ);
+		return ring.innerRadius() == 0.0
+				|| farthestX + farthestZ > ring.innerRadius() * ring.innerRadius();
+	}
+
+	private static boolean intersectsBoxRingCylinder(BoxRingCylinderSize ring, AABB bounds) {
+		double halfHeight = ring.height() / 2.0;
+		if (bounds.maxY < -halfHeight || bounds.minY > halfHeight) {
+			return false;
+		}
+		double halfWidth = ring.width() / 2.0;
+		double halfDepth = ring.depth() / 2.0;
+		if (bounds.maxX < -halfWidth || bounds.minX > halfWidth
+				|| bounds.maxZ < -halfDepth || bounds.minZ > halfDepth) {
+			return false;
+		}
+		double innerHalfWidth = ring.innerWidth() / 2.0;
+		double innerHalfDepth = ring.innerDepth() / 2.0;
+		if (innerHalfWidth == 0.0 || innerHalfDepth == 0.0) {
+			return true;
+		}
+		return bounds.minX < -innerHalfWidth || bounds.maxX > innerHalfWidth
+				|| bounds.minZ < -innerHalfDepth || bounds.maxZ > innerHalfDepth;
 	}
 
 	private static Vec3 ellipsoidSupport(EllipsoidSize ellipsoid, Vec3 direction) {

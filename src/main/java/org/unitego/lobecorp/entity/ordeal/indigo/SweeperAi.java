@@ -3,20 +3,13 @@ package org.unitego.lobecorp.entity.ordeal.indigo;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.ActivityData;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.behavior.BehaviorUtils;
-import net.minecraft.world.entity.ai.behavior.DoNothing;
-import net.minecraft.world.entity.ai.behavior.EntityTracker;
-import net.minecraft.world.entity.ai.behavior.LookAtTargetSink;
-import net.minecraft.world.entity.ai.behavior.MoveToTargetSink;
-import net.minecraft.world.entity.ai.behavior.OneShot;
-import net.minecraft.world.entity.ai.behavior.RandomStroll;
-import net.minecraft.world.entity.ai.behavior.RunOne;
-import net.minecraft.world.entity.ai.behavior.StartAttacking;
-import net.minecraft.world.entity.ai.behavior.StopAttackingIfTargetInvalid;
+import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.memory.MemoryStatus;
@@ -24,10 +17,13 @@ import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.schedule.Activity;
+import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.conductor.control.ConductorMovement;
+import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.ai.util.BrainUtil;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperSweepSkill;
-import org.unitego.lobecorp.entity.util.EntitySkillManager;
+import org.unitego.lobecorp.util.BrainUtil;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.SweepSkill;
+import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.brain.LcSensorTypes;
 import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
@@ -80,6 +76,7 @@ public final class SweeperAi {
 
 	/// 追踪攻击或清理目标时的行走速度。
 	private static final float TARGET_WALK_SPEED = 3.0F;
+	private static final double RUN_TARGET_DISTANCE = 10.0D;
 	/// 寻路目标允许停止移动的距离。
 	private static final int TARGET_CLOSE_ENOUGH_DISTANCE = 1;
 
@@ -122,33 +119,6 @@ public final class SweeperAi {
 		return BRAIN_PROVIDER.makeBrain(sweeper, packedBrain);
 	}
 
-	/// 根据当前生命、目标和技能状态更新恢复清理与活动。
-	void updateActivity() {
-		updateRecoveryCleanup();
-		if (sweeper.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()
-				&& (EntitySkillManager.isCasting(sweeper, SweeperSkills.SWEEP.get())
-				|| EntitySkillManager.isCasting(sweeper, SweeperSkills.REASSEMBLE.get()))) {
-			EntitySkillManager.cancelSkill(sweeper);
-		}
-		sweeper.getBrain().setActiveActivityToFirstValid(ImmutableList.of(Activity.FIGHT, Activity.IDLE));
-	}
-
-	/// 恢复清理状态下受击时按概率恢复战斗。
-	boolean onHurt() {
-		if (!recoveryCleanup) {
-			return true;
-		}
-		if (sweeper.getRandom().nextFloat() >= RECOVERY_CLEANUP_INTERRUPTION_CHANCE) {
-			return false;
-		}
-		recoveryCleanup = false;
-		recoveryCleanupDecisionMade = true;
-		recoveryCleanupRetryGameTime = sweeper.level().getGameTime() + RECOVERY_CLEANUP_RETRY_TICKS;
-		EntitySkillManager.cancelSkill(sweeper);
-		sweeper.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-		return true;
-	}
-
 	private static List<ActivityData<Sweeper>> getActivities(Sweeper owner) {
 		return List.of(
 				ActivityData.create(Activity.CORE, CORE_ACTIVITY_PRIORITY, ImmutableList.of(
@@ -156,12 +126,12 @@ public final class SweeperAi {
 				), ActivityData.create(Activity.IDLE, IDLE_ACTIVITY_PRIORITY, ImmutableList.of(
 						StartAttacking.create((level, sweeper) -> sweeper.ai().isRecoveryCleanup()
 								&& sweeper.getBrain().getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get())
-										.filter(SweeperAi::isValidCleanupTarget).isPresent()
+								.filter(SweeperAi::isValidCleanupTarget).isPresent()
 								? Optional.empty()
 								: sweeper.getBrain()
-										.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
-										.orElse(NearestVisibleLivingEntities.empty())
-										.findClosest(sweeper::isValidTarget)),
+								.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
+								.orElse(NearestVisibleLivingEntities.empty())
+								.findClosest(sweeper::isValidTarget)),
 						walkToCleanupTarget(),
 						disposeCleanupTarget(),
 						new RunOne<>(ImmutableList.of(
@@ -211,7 +181,7 @@ public final class SweeperAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, sweeper, time) -> {
-			if (EntitySkillManager.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
 				stopMovementForSkill(sweeper);
 				return false;
 			}
@@ -227,7 +197,7 @@ public final class SweeperAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, sweeper, time) -> {
-			if (EntitySkillManager.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
 				return false;
 			}
 
@@ -236,7 +206,7 @@ public final class SweeperAi {
 				return false;
 			}
 
-			if (!EntitySkillManager.cast(sweeper, SweeperSkills.ATTACK.get())) {
+			if (!EntitySkillUtil.cast(sweeper, SweeperSkills.ATTACK.get()).started()) {
 				return false;
 			}
 
@@ -250,7 +220,7 @@ public final class SweeperAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, sweeper, time) -> {
-			if (EntitySkillManager.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
 				return false;
 			}
 
@@ -259,7 +229,7 @@ public final class SweeperAi {
 				return false;
 			}
 
-			if (!EntitySkillManager.cast(sweeper, SweeperSkills.LEAP.get())) {
+			if (!EntitySkillUtil.cast(sweeper, SweeperSkills.LEAP.get()).started()) {
 				return false;
 			}
 
@@ -280,7 +250,7 @@ public final class SweeperAi {
 				instance.present(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get()),
 				instance.absent(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, (nearestCleanupTarget, attackTarget) -> (level, sweeper, time) -> {
-			if (EntitySkillManager.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
 				return false;
 			}
 
@@ -303,7 +273,7 @@ public final class SweeperAi {
 				instance.present(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get()),
 				instance.absent(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, (nearestCleanupTarget, attackTarget) -> (level, sweeper, time) -> {
-			if (EntitySkillManager.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
 				return false;
 			}
 
@@ -313,10 +283,10 @@ public final class SweeperAi {
 			}
 
 			if (!(target instanceof EntityCorpse<?> corpse)) {
-				return EntitySkillManager.cast(sweeper, SweeperSkills.SWEEP.get());
+				return EntitySkillUtil.cast(sweeper, SweeperSkills.SWEEP.get()).started();
 			}
 
-			if (EntitySkillManager.cast(sweeper, SweeperSkills.REASSEMBLE.get())) {
+			if (EntitySkillUtil.cast(sweeper, SweeperSkills.REASSEMBLE.get()).started()) {
 				return true;
 			}
 
@@ -324,7 +294,7 @@ public final class SweeperAi {
 				return false;
 			}
 
-			return EntitySkillManager.cast(sweeper, SweeperSkills.SWEEP.get());
+			return EntitySkillUtil.cast(sweeper, SweeperSkills.SWEEP.get()).started();
 		}));
 	}
 
@@ -334,7 +304,69 @@ public final class SweeperAi {
 	}
 
 	private static boolean isWithinCleanupRange(Sweeper sweeper, Entity target) {
-		return SweeperSweepSkill.isWithinRange(sweeper, target);
+		return SweepSkill.isWithinRange(sweeper, target);
+	}
+
+	/// 根据当前生命、目标和技能状态更新恢复清理与活动。
+	protected void updateActivity() {
+		updateRecoveryCleanup();
+		if (sweeper.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()
+				&& (EntitySkillUtil.isCasting(sweeper, SweeperSkills.SWEEP.get())
+				|| EntitySkillUtil.isCasting(sweeper, SweeperSkills.REASSEMBLE.get()))) {
+			EntitySkillUtil.cancelSkill(sweeper);
+		}
+		sweeper.getBrain().setActiveActivityToFirstValid(ImmutableList.of(Activity.FIGHT, Activity.IDLE));
+	}
+
+	protected void updateMovementSpeed() {
+		if (!sweeper.isAlive() || !sweeper.getMoveControl().hasWanted()
+				|| EntitySkillUtil.hasActiveSkills(sweeper) || !(sweeper.level() instanceof ServerLevel level))
+			return;
+		ConductorData.Unit unit = ConductorData.get(level.getServer()).unit(sweeper.getUUID());
+		Vec3 destination;
+		boolean chasing = false;
+		if (unit != null && (unit.order() == ConductorData.OrderType.MOVE || unit.order() == ConductorData.OrderType.RETURN)) {
+			destination = new Vec3(unit.x(), unit.y(), unit.z());
+		} else {
+			LivingEntity attackTarget = sweeper.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+			Entity cleanupTarget = sweeper.getBrain().getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get()).orElse(null);
+			if (attackTarget != null && attackTarget.isAlive()) {
+				destination = attackTarget.position();
+				chasing = true;
+			} else if (cleanupTarget != null && cleanupTarget.isAlive()) destination = cleanupTarget.position();
+			else destination = sweeper.getBrain().getMemory(MemoryModuleType.WALK_TARGET)
+						.map(target -> target.getTarget().currentPosition()).orElse(null);
+		}
+		if (destination == null) {
+			BlockPos target = sweeper.getNavigation().getTargetPos();
+			if (target != null) destination = Vec3.atBottomCenterOf(target);
+		}
+		if (destination == null) return;
+		double speed = chasing || sweeper.position().distanceToSqr(destination) >= RUN_TARGET_DISTANCE * RUN_TARGET_DISTANCE
+				? TARGET_WALK_SPEED : IDLE_STROLL_SPEED;
+		if (unit != null && unit.order() == ConductorData.OrderType.MOVE && unit.movementSpeed() >= 0.0D) {
+			double base = ConductorMovement.baseSpeed(sweeper);
+			speed = base <= 0.0D ? 0.0D : Math.min(speed, unit.movementSpeed() / base);
+		}
+		sweeper.getNavigation().setSpeedModifier(speed);
+		sweeper.getMoveControl().setWantedPosition(sweeper.getMoveControl().getWantedX(),
+				sweeper.getMoveControl().getWantedY(), sweeper.getMoveControl().getWantedZ(), speed);
+	}
+
+	/// 恢复清理状态下受击时按概率恢复战斗。
+	protected boolean onHurt() {
+		if (!recoveryCleanup) {
+			return true;
+		}
+		if (sweeper.getRandom().nextFloat() >= RECOVERY_CLEANUP_INTERRUPTION_CHANCE) {
+			return false;
+		}
+		recoveryCleanup = false;
+		recoveryCleanupDecisionMade = true;
+		recoveryCleanupRetryGameTime = sweeper.level().getGameTime() + RECOVERY_CLEANUP_RETRY_TICKS;
+		EntitySkillUtil.cancelSkill(sweeper);
+		sweeper.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+		return true;
 	}
 
 	private void updateRecoveryCleanup() {
@@ -376,9 +408,9 @@ public final class SweeperAi {
 			return;
 		}
 
-		if (!EntitySkillManager.isCasting(sweeper, SweeperSkills.SWEEP.get())
-				&& !EntitySkillManager.isCasting(sweeper, SweeperSkills.REASSEMBLE.get())) {
-			EntitySkillManager.cancelSkill(sweeper);
+		if (!EntitySkillUtil.isCasting(sweeper, SweeperSkills.SWEEP.get())
+				&& !EntitySkillUtil.isCasting(sweeper, SweeperSkills.REASSEMBLE.get())) {
+			EntitySkillUtil.cancelSkill(sweeper);
 		}
 
 		sweeper.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);

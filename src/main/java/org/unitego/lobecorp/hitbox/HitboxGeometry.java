@@ -19,7 +19,7 @@ public final class HitboxGeometry {
 	/// 判断实例的实际旋转几何体是否与实体 AABB 相交。
 	///
 	/// @param instance 判断框实例
-	/// @param bounds 目标实体的世界 AABB
+	/// @param bounds   目标实体的世界 AABB
 	/// @return 两个凸体是否相交
 	public static boolean intersects(HitboxInstance instance, AABB bounds) {
 		if (!boundingBox(instance).intersects(bounds)) {
@@ -75,10 +75,10 @@ public final class HitboxGeometry {
 
 	/// 按 X、Y、Z 顺序应用欧拉旋转。
 	///
-	/// @param vector 原向量
+	/// @param vector       原向量
 	/// @param pitchDegrees X 轴角度
-	/// @param yawDegrees Y 轴角度
-	/// @param rollDegrees Z 轴角度
+	/// @param yawDegrees   Y 轴角度
+	/// @param rollDegrees  Z 轴角度
 	/// @return 旋转后的向量
 	public static Vec3 rotate(Vec3 vector, double pitchDegrees, double yawDegrees, double rollDegrees) {
 		Vec3 rotated = rotateX(vector, Math.toRadians(pitchDegrees));
@@ -119,9 +119,9 @@ public final class HitboxGeometry {
 
 	private static Vec3 boxSupport(double width, double height, double depth, Vec3 direction) {
 		return new Vec3(
-			direction.x >= 0.0 ? width / 2.0 : -width / 2.0,
-			direction.y >= 0.0 ? height / 2.0 : -height / 2.0,
-			direction.z >= 0.0 ? depth / 2.0 : -depth / 2.0
+				direction.x >= 0.0 ? width / 2.0 : -width / 2.0,
+				direction.y >= 0.0 ? height / 2.0 : -height / 2.0,
+				direction.z >= 0.0 ? depth / 2.0 : -depth / 2.0
 		);
 	}
 
@@ -138,9 +138,9 @@ public final class HitboxGeometry {
 			for (int yIndex = 0; yIndex < 2; yIndex++) {
 				for (int zIndex = 0; zIndex < 2; zIndex++) {
 					Vec3 corner = new Vec3(
-						xIndex == 0 ? bounds.minX : bounds.maxX,
-						yIndex == 0 ? bounds.minY : bounds.maxY,
-						zIndex == 0 ? bounds.minZ : bounds.maxZ
+							xIndex == 0 ? bounds.minX : bounds.maxX,
+							yIndex == 0 ? bounds.minY : bounds.maxY,
+							zIndex == 0 ? bounds.minZ : bounds.maxZ
 					);
 					Vec3 local = inverseRotate(corner.subtract(position), rotation);
 					minX = Math.min(minX, local.x);

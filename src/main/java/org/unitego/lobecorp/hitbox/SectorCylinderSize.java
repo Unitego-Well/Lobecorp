@@ -2,8 +2,8 @@ package org.unitego.lobecorp.hitbox;
 
 /// 以局部正 Z 轴为中心的扇形圆柱判断框尺寸。
 ///
-/// @param radius 半径
-/// @param height 总高度
+/// @param radius       半径
+/// @param height       总高度
 /// @param angleDegrees 完整扇形角度，范围为 0 至 180 度
 public record SectorCylinderSize(double radius, double height, double angleDegrees) implements HitboxSize {
 	/// 凸扇形允许的最大角度。

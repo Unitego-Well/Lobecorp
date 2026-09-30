@@ -2,8 +2,8 @@ package org.unitego.lobecorp.hitbox;
 
 /// 圆环柱判断框尺寸。
 ///
-/// @param radius 外半径
-/// @param height 总高度
+/// @param radius    外半径
+/// @param height    总高度
 /// @param thickness 径向厚度
 public record RingCylinderSize(double radius, double height, double thickness) implements HitboxSize {
 	public RingCylinderSize {

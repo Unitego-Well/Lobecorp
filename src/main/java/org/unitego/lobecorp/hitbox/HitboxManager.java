@@ -8,9 +8,10 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.network.HitboxCreatePayload;
-import org.unitego.lobecorp.network.HitboxRemovePayload;
-import org.unitego.lobecorp.network.HitboxUpdatePayload;
+import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.network.tc.HitboxCreatePayload;
+import org.unitego.lobecorp.network.tc.HitboxRemovePayload;
+import org.unitego.lobecorp.network.tc.HitboxUpdatePayload;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
 import java.util.ArrayList;
@@ -29,23 +30,41 @@ public final class HitboxManager {
 
 	/// 创建并立即同步一个非激活实例。
 	///
-	/// @param template 共享模板
-	/// @param level 所在服务端维度
-	/// @param position 初始中心
+	/// @param template      共享模板
+	/// @param level         所在服务端维度
+	/// @param position      初始中心
 	/// @param durationTicks 包括预览在内的总寿命
 	/// @return 已加入 Level 管理器的实例
 	public static HitboxInstance create(HitboxTemplate template, ServerLevel level, Vec3 position,
-			int durationTicks) {
+	                                    int durationTicks) {
 		HitboxInstance instance = new HitboxInstance(template, level, position, durationTicks);
 		level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).add(instance);
 		send(instance, new HitboxCreatePayload(HitboxSnapshot.of(instance)));
 		return instance;
 	}
 
+	/// 创建并绑定到一次技能运行实例的判断框。
+	public static HitboxInstance create(HitboxTemplate template, ServerLevel level, Vec3 position,
+	                                    int durationTicks, EntitySkillRuntime<?> runtime) {
+		HitboxInstance instance = create(template, level, position, durationTicks);
+		instance.bindToSkillRuntime(runtime);
+		return instance;
+	}
+
+	/// 移除指定技能运行实例仍持有的全部判断框。
+	public static void removeForSkillRuntime(EntitySkillRuntime<?> runtime) {
+		if (!(runtime.owner().level() instanceof ServerLevel level)) {
+			return;
+		}
+		List.copyOf(level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).instances()).stream()
+				.filter(instance -> instance.skillRuntime() == runtime)
+				.forEach(instance -> remove(level, instance.id()));
+	}
+
 	/// 按编号读取服务端 Level 中的实例。
 	///
 	/// @param level 所在服务端维度
-	/// @param id Level 内实例编号
+	/// @param id    Level 内实例编号
 	/// @return 当前实例；不存在时返回 {@code null}
 	@Nullable
 	public static HitboxInstance get(ServerLevel level, int id) {
@@ -55,7 +74,7 @@ public final class HitboxManager {
 	/// 立即移除实例并向当前观察者发送移除载荷。
 	///
 	/// @param level 所在服务端维度
-	/// @param id Level 内实例编号
+	/// @param id    Level 内实例编号
 	/// @return 是否确实移除了实例
 	public static boolean remove(ServerLevel level, int id) {
 		HitboxInstance instance = level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).remove(id);
@@ -174,7 +193,7 @@ public final class HitboxManager {
 	}
 
 	private static void send(HitboxInstance instance,
-			net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+	                         net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
 		Entity source = instance.source();
 		if (source != null) {
 			PacketDistributor.sendToPlayersTrackingEntity(source, payload);

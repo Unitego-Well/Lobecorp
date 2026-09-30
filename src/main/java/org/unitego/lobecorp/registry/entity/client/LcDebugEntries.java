@@ -5,20 +5,15 @@ import net.minecraft.client.gui.components.debug.DebugEntryNoop;
 import net.minecraft.client.gui.components.debug.DebugScreenEntries;
 import net.minecraft.client.renderer.debug.EntityHitboxDebugRenderer;
 import net.minecraft.resources.Identifier;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
 import net.neoforged.neoforge.client.event.RegisterDebugRenderersEvent;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.client.debug.EntitySkillDebugRenderer;
-import org.unitego.lobecorp.entity.client.debug.EntitySkillEffectDebugRenderer;
-import org.unitego.lobecorp.entity.client.debug.EntityStateDebugRenderer;
-import org.unitego.lobecorp.hitbox.client.HitboxDebugRenderer;
+import org.unitego.lobecorp.client.debug.EntitySkillDebugRenderer;
+import org.unitego.lobecorp.client.debug.EntitySkillEffectDebugRenderer;
+import org.unitego.lobecorp.client.debug.EntityStateDebugRenderer;
+import org.unitego.lobecorp.client.hitbox.HitboxDebugRenderer;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
-@EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class LcDebugEntries {
 	/// 实体状态调试项标识符。
 	public static final Identifier ENTITY_STATES = id("entity_states");
@@ -41,7 +36,6 @@ public class LcDebugEntries {
 	/// 原版 tick 时间监控调试项标识符。
 	public static final Identifier DEBUG_MONITOR_TICK_TIMES = id("mc_debug_monitor_tick_times");
 
-	@SubscribeEvent
 	public static void onRegisterDebugEntries(RegisterDebugEntriesEvent event) {
 		event.register(ENTITY_STATES, new DebugEntryNoop());
 		event.register(ENTITY_SKILLS, new DebugEntryNoop());
@@ -55,7 +49,6 @@ public class LcDebugEntries {
 		event.register(DEBUG_MONITOR_TICK_TIMES, new DebugEntryNoop());
 	}
 
-	@SubscribeEvent
 	public static void onRegisterDebugRenderers(RegisterDebugRenderersEvent event) {
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_STATES)) {
 			event.register(EntityStateDebugRenderer::new);

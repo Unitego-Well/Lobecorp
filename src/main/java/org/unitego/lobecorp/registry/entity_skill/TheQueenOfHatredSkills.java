@@ -1,27 +1,32 @@
 package org.unitego.lobecorp.registry.entity_skill;
 
-import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
-import org.unitego.lobecorp.entity.entity_skill.abnormalitie.TheQueenOfHatredRepelSkill;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.RepelSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.SweepSkill;
 
 public interface TheQueenOfHatredSkills {
-	DeferredRegister<IEntitySkill<?>> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_KEY);
-
-	DeferredHolder<IEntitySkill<?>, TheQueenOfHatredRepelSkill> REPEL = LcEntitySkills.register(REGISTER,
+	DeferredHolder<IEntitySkill<?>, RepelSkill> REPEL = LcEntitySkills.register(
 			"the_queen_of_hatred_repel", "Repel", "退散",
-			TheQueenOfHatredRepelSkill::new, properties -> properties
+			RepelSkill::new, properties -> properties
 					.locksNavigation()
 					.locksMovement()
-					.windupTicks(44)
+					.windupTicks(37)
 					.durationTicks(0)
 					.recoveryTicks(10)
 					.cooldownTicks(0));
+	DeferredHolder<IEntitySkill<?>, SweepSkill> SWEEP = LcEntitySkills.register(
+			"the_queen_of_hatred_sweep", "Sweep", "横扫",
+			SweepSkill::new, properties -> properties
+					.locksNavigation()
+					.locksMovement()
+					.windupTicks(10)
+					.durationTicks(0)
+					.recoveryTicks(15)
+					.cooldownTicks(40));
 
-	static void init(IEventBus eventBus) {
-		REGISTER.register(eventBus);
+	/// 强制初始化憎恶女皇技能注册声明。
+	static void init() {
 	}
+
 }

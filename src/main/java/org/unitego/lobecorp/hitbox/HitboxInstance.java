@@ -5,7 +5,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectDebugInfo;
+import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectDebugInfo;
 import org.unitego.lobecorp.util.TypedDataKey;
 
 import java.util.HashMap;
@@ -41,12 +42,14 @@ public class HitboxInstance {
 	private boolean removed;
 	@Nullable
 	private EntitySkillEffectDebugInfo entitySkillEffectDebugInfo;
+	@Nullable
+	private EntitySkillRuntime<?> skillRuntime;
 
 	/// 创建尚未加入 Level 管理器的实例。
 	///
-	/// @param template 共享模板
-	/// @param level 所在服务端维度
-	/// @param position 初始中心位置
+	/// @param template      共享模板
+	/// @param level         所在服务端维度
+	/// @param position      初始中心位置
 	/// @param durationTicks 包含预览阶段的总存在时间；1 表示当前 tick
 	public HitboxInstance(HitboxTemplate template, ServerLevel level, Vec3 position, int durationTicks) {
 		if (durationTicks <= 0) {
@@ -59,12 +62,22 @@ public class HitboxInstance {
 		this.remainingTicks = durationTicks;
 	}
 
+	/// 将判断框绑定到一次技能运行实例，供统一终止路径清理。
+	public void bindToSkillRuntime(EntitySkillRuntime<?> runtime) {
+		this.skillRuntime = runtime;
+	}
+
+	@Nullable
+	public EntitySkillRuntime<?> skillRuntime() {
+		return skillRuntime;
+	}
+
 	/// @return Level 内唯一实例编号
 	public int id() {
 		return id;
 	}
 
-	void setId(int id) {
+	protected void setId(int id) {
 		this.id = id;
 	}
 
@@ -135,8 +148,8 @@ public class HitboxInstance {
 
 	/// 绑定来源实体并在每 tick 根据局部偏移更新中心。
 	///
-	/// @param source 来源实体
-	/// @param localOffset 随来源朝向旋转的局部偏移
+	/// @param source          来源实体
+	/// @param localOffset     随来源朝向旋转的局部偏移
 	/// @param inheritRotation 是否把来源俯仰和偏航加入实例旋转
 	public void follow(Entity source, Vec3 localOffset, boolean inheritRotation) {
 		this.source = source;
@@ -149,7 +162,7 @@ public class HitboxInstance {
 
 	/// 绑定来源生物并在每 tick 使用头部偏航更新实例旋转。
 	///
-	/// @param source 来源生物
+	/// @param source      来源生物
 	/// @param localOffset 随来源身体朝向旋转的局部偏移
 	public void followHead(LivingEntity source, Vec3 localOffset) {
 		follow(source, localOffset, true);
@@ -186,7 +199,7 @@ public class HitboxInstance {
 		additionalFilter = additionalFilter.and(filter);
 	}
 
-	boolean accepts(Entity target) {
+	protected boolean accepts(Entity target) {
 		return template.targetFilter().test(target) && additionalFilter.test(target);
 	}
 
@@ -232,7 +245,7 @@ public class HitboxInstance {
 		return exhausted;
 	}
 
-	void exhaust() {
+	protected void exhaust() {
 		exhausted = true;
 	}
 
@@ -251,15 +264,15 @@ public class HitboxInstance {
 		this.remainingTicks = remainingTicks;
 	}
 
-	void advanceLifetime() {
+	protected void advanceLifetime() {
 		remainingTicks--;
 	}
 
-	boolean isExpired() {
+	protected boolean isExpired() {
 		return remainingTicks <= 0;
 	}
 
-	void updateFollowTransform() {
+	protected void updateFollowTransform() {
 		if (!followsSource || source == null) {
 			return;
 		}
@@ -284,12 +297,12 @@ public class HitboxInstance {
 		}
 	}
 
-	boolean hasInvalidSource() {
+	protected boolean hasInvalidSource() {
 		return source != null
 				&& (source.isRemoved() || !source.isAlive() || source.level() != level);
 	}
 
-	boolean canAttempt(Entity target, long gameTime) {
+	protected boolean canAttempt(Entity target, long gameTime) {
 		HitRecord record = hitRecords.get(target.getUUID());
 		int successful = record == null ? 0 : record.successfulHits();
 		if (hitPolicy.perTargetMaximum() == 0) {
@@ -301,30 +314,27 @@ public class HitboxInstance {
 		if (hitPolicy.mode() == HitboxHitMode.ONCE && successful > 0) {
 			return false;
 		}
-		if (hitPolicy.mode() == HitboxHitMode.INTERVAL && record != null
-				&& gameTime - record.lastSuccessfulGameTime() < hitPolicy.intervalTicks()) {
-			return false;
-		}
-		return true;
+		return hitPolicy.mode() != HitboxHitMode.INTERVAL || record == null
+				|| gameTime - record.lastSuccessfulGameTime() >= hitPolicy.intervalTicks();
 	}
 
-	void recordSuccess(Entity target, long gameTime) {
+	protected void recordSuccess(Entity target, long gameTime) {
 		HitRecord previous = hitRecords.get(target.getUUID());
 		int successful = previous == null ? 1 : previous.successfulHits() + 1;
 		hitRecords.put(target.getUUID(), new HitRecord(successful, gameTime));
 		successfulHits++;
 	}
 
-	boolean reachedTotalMaximum() {
+	protected boolean reachedTotalMaximum() {
 		return hitPolicy.totalMaximum() == 0
 				|| hitPolicy.totalMaximum() > 0 && successfulHits >= hitPolicy.totalMaximum();
 	}
 
 	/// 保存只在服务端存在、不会同步或持久化的类型安全参数。
 	///
-	/// @param key 参数键
+	/// @param key   参数键
 	/// @param value 参数值
-	/// @param <T> 参数类型
+	/// @param <T>   参数类型
 	public <T> void setData(TypedDataKey<T> key, T value) {
 		data.put(key, value);
 	}
@@ -356,7 +366,7 @@ public class HitboxInstance {
 		return removed;
 	}
 
-	void markRemoved() {
+	public void markRemoved() {
 		removed = true;
 	}
 

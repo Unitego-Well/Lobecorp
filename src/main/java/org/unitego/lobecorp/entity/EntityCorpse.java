@@ -26,33 +26,27 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.util.EntitySkillManager;
-import org.unitego.lobecorp.entity.entity_state.EntityStateHolder;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.entity_state.EntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
+import org.unitego.lobecorp.util.TranslationKeys;
 
 import java.util.List;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 public class EntityCorpse<T extends Entity> extends LivingEntity {
+	/// 尸体显示名称翻译键。
+	public static final String DISPLAY_NAME_KEY = TranslationKeys.ENTITY_LOBECORP_ENTITY_CORPSE_DISPLAY_NAME;
+	/// 尸体自动腐烂前的最大存续 tick。
+	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
 	/// 尸体序列化错误日志记录器。
 	private static final Logger LOGGER = LogUtils.getLogger();
-
-	/// 尸体显示名称翻译键。
-	public static final String DISPLAY_NAME_KEY = LangHandler.creates(Lobecorp.NAMESPACE,
-			"entity." + Lobecorp.NAMESPACE + ".entity_corpse.display_name", "%s Corpse", "%s尸体");
-
 	/// 原实体序列化数据的同步字段。
 	private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
 			EntityCorpse.class, LcEntityDataSerializers.COMPOUND_TAG.get());
-
-	/// 尸体自动腐烂前的最大存续 tick。
-	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
-
 	/// 由同步数据重建的原实体缓存。
 	@Nullable
 	private T ownerEntity;
@@ -76,6 +70,49 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	public static AttributeSupplier.Builder createAttributes() {
 		return createLivingAttributes()
 				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER);
+	}
+
+	private static void clearTemporaryState(@Nullable Entity entity) {
+		if (entity == null) {
+			return;
+		}
+		entity.setDeltaMovement(Vec3.ZERO);
+		entity.fallDistance = 0.0F;
+		entity.clearFire();
+		entity.setAirSupply(entity.getMaxAirSupply());
+		entity.setTicksFrozen(0);
+		if (!(entity instanceof LivingEntity livingEntity)) {
+			return;
+		}
+		livingEntity.removeAllEffects();
+		for (AttributeInstance.Packed packedAttribute : livingEntity.getAttributes().pack()) {
+			AttributeInstance attribute = livingEntity.getAttribute(packedAttribute.attribute());
+			if (attribute == null) {
+				continue;
+			}
+			for (AttributeModifier modifier : attribute.getModifiers()) {
+				if (!attribute.getPermanentModifiers().contains(modifier)) {
+					attribute.removeModifier(modifier);
+				}
+			}
+		}
+		if (entity instanceof EntityStateHolder stateHolder) {
+			stateHolder.setEntityStates(List.of());
+		}
+		if (!(entity instanceof Mob mob)) {
+			return;
+		}
+		Brain<?> brain = mob.getBrain();
+		brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
+		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
+		brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
+		brain.eraseMemory(MemoryModuleType.PATH);
+		brain.eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+		brain.eraseMemory(MemoryModuleType.HURT_BY);
+		brain.eraseMemory(MemoryModuleType.HURT_BY_ENTITY);
+		EntitySkillUtil.clearTemporaryState(livingEntity);
+		mob.setTarget(null);
+		mob.getNavigation().stop();
 	}
 
 	@Override
@@ -275,12 +312,12 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		super.tickDeath();
 	}
 
-	protected void setOwnerEntityTag(CompoundTag tag) {
-		entityData.set(DATA_OWNER_ENTITY_TAG, tag);
-	}
-
 	protected CompoundTag getOwnerEntityTag() {
 		return entityData.get(DATA_OWNER_ENTITY_TAG);
+	}
+
+	protected void setOwnerEntityTag(CompoundTag tag) {
+		entityData.set(DATA_OWNER_ENTITY_TAG, tag);
 	}
 
 	@Nullable
@@ -301,49 +338,6 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		revivedEntity.restoreFrom(ownerEntity);
 		clearTemporaryState(revivedEntity);
 		return revivedEntity;
-	}
-
-	private static void clearTemporaryState(@Nullable Entity entity) {
-		if (entity == null) {
-			return;
-		}
-		entity.setDeltaMovement(Vec3.ZERO);
-		entity.fallDistance = 0.0F;
-		entity.clearFire();
-		entity.setAirSupply(entity.getMaxAirSupply());
-		entity.setTicksFrozen(0);
-		if (!(entity instanceof LivingEntity livingEntity)) {
-			return;
-		}
-		livingEntity.removeAllEffects();
-		for (AttributeInstance.Packed packedAttribute : livingEntity.getAttributes().pack()) {
-			AttributeInstance attribute = livingEntity.getAttribute(packedAttribute.attribute());
-			if (attribute == null) {
-				continue;
-			}
-			for (AttributeModifier modifier : attribute.getModifiers()) {
-				if (!attribute.getPermanentModifiers().contains(modifier)) {
-					attribute.removeModifier(modifier);
-				}
-			}
-		}
-		if (entity instanceof EntityStateHolder stateHolder) {
-			stateHolder.setEntityStates(List.of());
-		}
-		if (!(entity instanceof Mob mob)) {
-			return;
-		}
-		Brain<?> brain = mob.getBrain();
-		brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
-		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
-		brain.eraseMemory(MemoryModuleType.LOOK_TARGET);
-		brain.eraseMemory(MemoryModuleType.PATH);
-		brain.eraseMemory(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
-		brain.eraseMemory(MemoryModuleType.HURT_BY);
-		brain.eraseMemory(MemoryModuleType.HURT_BY_ENTITY);
-		EntitySkillManager.clearTemporaryState(livingEntity);
-		mob.setTarget(null);
-		mob.getNavigation().stop();
 	}
 
 	@Nullable

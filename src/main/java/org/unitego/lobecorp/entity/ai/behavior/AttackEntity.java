@@ -34,34 +34,6 @@ import java.util.function.BiPredicate;
 /// }</pre>
 public class AttackEntity {
 
-	/// 攻击动作接口。在挥拳动画后调用。
-	///
-	/// @param <E> 攻击者类型
-	@FunctionalInterface
-	public interface AttackAction<E extends Mob> {
-		/// 执行攻击动作（如伤害计算、投掷物生成等）。
-		///
-		/// @param level    服务端世界
-		/// @param attacker 攻击实体
-		/// @param target   攻击目标
-		/// @return true 表示本次攻击成功命中；false 表示未命中
-		boolean attack(ServerLevel level, E attacker, LivingEntity target);
-	}
-
-	/// 攻击结果回调接口。无论是否命中都会调用，可用于粒子效果、音效、属性调整等。
-	///
-	/// @param <E> 攻击者类型
-	@FunctionalInterface
-	public interface AttackOutcome<E extends Mob> {
-		/// 攻击完成后的回调。
-		///
-		/// @param level    服务端世界
-		/// @param attacker 攻击实体
-		/// @param target   攻击目标
-		/// @param hit      {@link AttackAction#attack} 的返回值，true 表示这次攻击有效命中
-		void onOutcome(ServerLevel level, E attacker, LivingEntity target, boolean hit);
-	}
-
 	/// 完全自定义版。适用于非标准攻击（远程、多段攻击、特殊技能等）。
 	/// <p>
 	/// 执行流程：
@@ -133,5 +105,33 @@ public class AttackEntity {
 	public static <E extends Mob> BehaviorControl<E> simpleMelee(int cooldownTicks) {
 		return simpleMelee(cooldownTicks, (level, mob, target, hit) -> {
 		});
+	}
+
+	/// 攻击动作接口。在挥拳动画后调用。
+	///
+	/// @param <E> 攻击者类型
+	@FunctionalInterface
+	public interface AttackAction<E extends Mob> {
+		/// 执行攻击动作（如伤害计算、投掷物生成等）。
+		///
+		/// @param level    服务端世界
+		/// @param attacker 攻击实体
+		/// @param target   攻击目标
+		/// @return true 表示本次攻击成功命中；false 表示未命中
+		boolean attack(ServerLevel level, E attacker, LivingEntity target);
+	}
+
+	/// 攻击结果回调接口。无论是否命中都会调用，可用于粒子效果、音效、属性调整等。
+	///
+	/// @param <E> 攻击者类型
+	@FunctionalInterface
+	public interface AttackOutcome<E extends Mob> {
+		/// 攻击完成后的回调。
+		///
+		/// @param level    服务端世界
+		/// @param attacker 攻击实体
+		/// @param target   攻击目标
+		/// @param hit      {@link AttackAction#attack} 的返回值，true 表示这次攻击有效命中
+		void onOutcome(ServerLevel level, E attacker, LivingEntity target, boolean hit);
 	}
 }

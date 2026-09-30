@@ -5,13 +5,17 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 public interface LcBlocks {
+	DeferredRegister.Blocks REGISTER = DeferredRegister.createBlocks(Lobecorp.NAMESPACE);
+
 	static void init(IEventBus iEventBus) {
+		REGISTER.register(iEventBus);
 	}
 
 	static <B extends Block> DeferredBlock<B> register(

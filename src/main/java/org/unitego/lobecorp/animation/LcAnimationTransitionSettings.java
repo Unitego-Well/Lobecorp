@@ -38,14 +38,14 @@ public record LcAnimationTransitionSettings(
 
 	public void applyTo(AnimationController<?> controller) {
 		LcAnimationControllerTransitions<?> transitions = LcAnimationControllerTransitions.of(controller);
-		transitions.lc$setFadeInTicks(fadeInTicks);
-		transitions.lc$setFadeOutTicks(fadeOutTicks);
-		transitions.lc$setFadeInTransitionMode(fadeInTransitionMode);
-		transitions.lc$setFadeOutTransitionMode(fadeOutTransitionMode);
-		transitions.lc$setFadeInRotationTransitionMode(fadeInRotationTransitionMode);
-		transitions.lc$setFadeOutRotationTransitionMode(fadeOutRotationTransitionMode);
-		transitions.lc$setAnimationTransitionMode(animationTransitionMode);
-		transitions.lc$setRotationTransitionMode(rotationTransitionMode);
-		transitions.lc$setBlendType(blendType);
+		transitions.lobecorp$setFadeInTicks(fadeInTicks);
+		transitions.lobecorp$setFadeOutTicks(fadeOutTicks);
+		transitions.lobecorp$setFadeInTransitionMode(fadeInTransitionMode);
+		transitions.lobecorp$setFadeOutTransitionMode(fadeOutTransitionMode);
+		transitions.lobecorp$setFadeInRotationTransitionMode(fadeInRotationTransitionMode);
+		transitions.lobecorp$setFadeOutRotationTransitionMode(fadeOutRotationTransitionMode);
+		transitions.lobecorp$setAnimationTransitionMode(animationTransitionMode);
+		transitions.lobecorp$setRotationTransitionMode(rotationTransitionMode);
+		transitions.lobecorp$setBlendType(blendType);
 	}
 }

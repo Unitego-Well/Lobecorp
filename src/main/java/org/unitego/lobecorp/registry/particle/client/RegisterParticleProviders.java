@@ -1,18 +1,12 @@
 package org.unitego.lobecorp.registry.particle.client;
 
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.particle.client.BloodParticle;
-import org.unitego.lobecorp.particle.client.ShortSmokeParticle;
-import org.unitego.lobecorp.particle.client.SweeperStrikeParticle;
+import org.unitego.lobecorp.client.particle.BloodParticle;
+import org.unitego.lobecorp.client.particle.ShortSmokeParticle;
+import org.unitego.lobecorp.client.particle.SweeperStrikeParticle;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
-@EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class RegisterParticleProviders {
-	@SubscribeEvent
 	public static void registry(RegisterParticleProvidersEvent event) {
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_DOUBLE_SLASH.get(), SweeperStrikeParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_LONG_SLASH.get(), SweeperStrikeParticle.Provider::new);

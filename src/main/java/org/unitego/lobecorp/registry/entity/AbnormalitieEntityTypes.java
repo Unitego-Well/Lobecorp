@@ -7,6 +7,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
+import org.unitego.lobecorp.entity.projectile.MagicStarProjectile;
 
 public interface AbnormalitieEntityTypes {
 	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
@@ -30,6 +31,18 @@ public interface AbnormalitieEntityTypes {
 			TheQueenOfHatred::new, MobCategory.CREATURE, b -> b
 					.sized(0.6F, 1.8F)
 					.eyeHeight(1.62F));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_NORMAL_STAR = LcEntityTypes.register(REGISTER,
+			"magic_normal_star", "Magic Normal Star", "魔法普通星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_HOMING_STAR = LcEntityTypes.register(REGISTER,
+			"magic_homing_star", "Magic Homing Star", "魔法追踪星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_BURST_STAR = LcEntityTypes.register(REGISTER,
+			"magic_burst_star", "Magic Burst Star", "魔法爆裂星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
 
 	//endregion
 

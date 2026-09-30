@@ -4,18 +4,32 @@
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"DamageSourceMixin",
-		"LivingEntityMixin",
+		"entity.BrainConductorMixin",
+		"entity.BreezeMixin",
+		"entity.DragonHoldingPatternPhaseMixin",
+		"entity.EntityMixin",
+		"entity.LivingEntityMixin",
+		"entity.MobConductorMixin",
+		"entity.PathNavigationConductorMixin",
+		"entity.SensorMixin",
+		"entity.SonicBoomConductorMixin",
+		"entity.TargetGoalMixin",
+		"entity.WardenConductorMixin",
+		"entity.WitherSkeletonMixin",
 		"SingleTickProfilerMixin",
 		"accessor.LanguageProviderAccessor",
 		"item.SpawnEggItemMixin"
 	],
 	"client": [
-		"client.AnimationControllerMaskMixin",
+		"client.CameraMixin",
+		"client.ClientInputAccessor",
+		"client.ConductorKeyboardMixin",
+		"geckolib.AnimationControllerMaskMixin",
 		"client.DebugRendererMixin",
 		"client.DebugScreenEntryListMixin",
 		"client.EntityHitboxDebugRendererMixin",
 		"client.LevelRendererMixin",
-		"client.RenderPassInfoAnimationMixin"
+		"geckolib.client.RenderPassInfoMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

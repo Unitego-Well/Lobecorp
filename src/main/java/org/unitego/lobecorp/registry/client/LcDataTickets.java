@@ -16,6 +16,7 @@ public interface LcDataTickets {
 	DataTicket<Float> HEALTHY = createFloat("healthy");
 	/// 是否是尸体
 	DataTicket<Boolean> IS_CORPSE = createFloatBoolean("is_corpse");
+	DataTicket<Boolean> QUEEN_PHASE_TWO = createFloatBoolean("queen_phase_two");
 
 	static <T> DataTicket<T> create(String id, Class<? extends T> objectType) {
 		return DataTicket.create(Lobecorp.name(id), objectType);

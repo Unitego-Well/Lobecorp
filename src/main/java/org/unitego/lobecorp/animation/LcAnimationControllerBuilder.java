@@ -15,47 +15,47 @@ public class LcAnimationControllerBuilder<T extends GeoAnimatable> {
 	}
 
 	public LcAnimationControllerBuilder<T> blendType(LcControllerBlendType blendType) {
-		this.transitions.lc$setBlendType(blendType);
+		this.transitions.lobecorp$setBlendType(blendType);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeInTicks(int ticks) {
-		this.transitions.lc$setFadeInTicks(ticks);
+		this.transitions.lobecorp$setFadeInTicks(ticks);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeOutTicks(int ticks) {
-		this.transitions.lc$setFadeOutTicks(ticks);
+		this.transitions.lobecorp$setFadeOutTicks(ticks);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeInTransitionMode(LcTransitionMode mode) {
-		this.transitions.lc$setFadeInTransitionMode(mode);
+		this.transitions.lobecorp$setFadeInTransitionMode(mode);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeOutTransitionMode(LcTransitionMode mode) {
-		this.transitions.lc$setFadeOutTransitionMode(mode);
+		this.transitions.lobecorp$setFadeOutTransitionMode(mode);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeInRotationTransitionMode(LcRotationTransitionMode mode) {
-		this.transitions.lc$setFadeInRotationTransitionMode(mode);
+		this.transitions.lobecorp$setFadeInRotationTransitionMode(mode);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> fadeOutRotationTransitionMode(LcRotationTransitionMode mode) {
-		this.transitions.lc$setFadeOutRotationTransitionMode(mode);
+		this.transitions.lobecorp$setFadeOutRotationTransitionMode(mode);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> animationTransitionMode(LcTransitionMode mode) {
-		this.transitions.lc$setAnimationTransitionMode(mode);
+		this.transitions.lobecorp$setAnimationTransitionMode(mode);
 		return this;
 	}
 
 	public LcAnimationControllerBuilder<T> rotationTransitionMode(LcRotationTransitionMode mode) {
-		this.transitions.lc$setRotationTransitionMode(mode);
+		this.transitions.lobecorp$setRotationTransitionMode(mode);
 		return this;
 	}
 

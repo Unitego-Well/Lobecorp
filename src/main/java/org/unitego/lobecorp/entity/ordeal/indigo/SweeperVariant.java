@@ -6,7 +6,7 @@ import net.minecraft.network.codec.StreamCodec;
 import org.unitego.lobecorp.util.EnumCodecUtil;
 import org.unitego.lobecorp.util.EnumStreamCodecUtil;
 
-	/// 清道夫外观变种。
+/// 清道夫外观变种。
 public enum SweeperVariant {
 	A,
 	B,

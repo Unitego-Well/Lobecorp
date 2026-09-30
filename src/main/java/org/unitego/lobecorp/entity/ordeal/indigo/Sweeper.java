@@ -32,15 +32,12 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.animation.LcAnimationControllerBuilder;
-import org.unitego.lobecorp.animation.LcControllerBlendType;
-import org.unitego.lobecorp.animation.LcCustomAnimatable;
-import org.unitego.lobecorp.animation.LcRotationTransitionMode;
+import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.conductor.control.ConductorWork;
 import org.unitego.lobecorp.entity.IEntityTarget;
-import org.unitego.lobecorp.entity.entity_skill.IEntitySkillHolder;
-import org.unitego.lobecorp.entity.entity_state.EntityState;
-import org.unitego.lobecorp.entity.entity_state.EntityStateHolder;
-import org.unitego.lobecorp.entity.util.EntitySkillManager;
+import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.entity_state.EntityState;
+import org.unitego.lobecorp.entity_state.EntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
@@ -50,7 +47,7 @@ import java.util.List;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫
-public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustomAnimatable, IIndigoOrdeal, IEntityTarget, IEntitySkillHolder, EntityStateHolder {
+public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustomAnimatable, IIndigoOrdeal, IEntityTarget, EntityStateHolder {
 	// 攻击属性标识
 
 	/// 普通攻击临时伤害倍率属性的唯一标识
@@ -79,8 +76,8 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 	/// 脱离战斗后开始使用生物质回血的延迟 tick
 	private static final int BIOMASS_HEAL_COMBAT_DELAY_TICKS = 2 * TICKS_PER_SECOND;
 	private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-	private long lastCombatGameTime;
 	private final SweeperAi ai = SweeperAi.create(this);
+	private long lastCombatGameTime;
 	@Nullable
 	private Entity entityTarget;
 
@@ -90,10 +87,23 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		setPathfindingMalus(PathType.FIRE, -1);
 		setPathfindingMalus(PathType.WATER, 10.0F);
 		setPathfindingMalus(PathType.WATER_BORDER, 5.0F);
-		EntitySkillManager.addSkill(this, SweeperSkills.ATTACK.get());
-		EntitySkillManager.addSkill(this, SweeperSkills.LEAP.get());
-		EntitySkillManager.addSkill(this, SweeperSkills.SWEEP.get());
-		EntitySkillManager.addSkill(this, SweeperSkills.REASSEMBLE.get());
+		EntitySkillUtil.addSkill(this, SweeperSkills.ATTACK.get());
+		EntitySkillUtil.addSkill(this, SweeperSkills.LEAP.get());
+		EntitySkillUtil.addSkill(this, SweeperSkills.SWEEP.get());
+		EntitySkillUtil.addSkill(this, SweeperSkills.REASSEMBLE.get());
+	}
+
+	public static AttributeSupplier.Builder createAttributes() {
+		return createMobAttributes()
+				.add(Attributes.MAX_HEALTH, 25.0F)
+				.add(Attributes.ARMOR, 8.0)
+				.add(Attributes.ARMOR_TOUGHNESS, 2.0)
+				.add(Attributes.ATTACK_DAMAGE, 6.0)
+				.add(LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER, 1.0)
+				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER)
+				.add(Attributes.MOVEMENT_SPEED, 0.23)
+				.add(Attributes.ATTACK_KNOCKBACK, 1.0)
+				.add(Attributes.KNOCKBACK_RESISTANCE, 0.4);
 	}
 
 	@Override
@@ -150,24 +160,11 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 
 	/// 攻击连击计数
 	public int getAttackCombo() {
-		return EntitySkillManager.getAttackCombo(this);
+		return EntitySkillUtil.getAttackCombo(this);
 	}
 
 	public void setAttackCombo(int combo) {
-		EntitySkillManager.setAttackCombo(this, combo);
-	}
-
-	public static AttributeSupplier.Builder createAttributes() {
-		return createMobAttributes()
-				.add(Attributes.MAX_HEALTH, 25.0F)
-				.add(Attributes.ARMOR, 8.0)
-				.add(Attributes.ARMOR_TOUGHNESS, 2.0)
-				.add(Attributes.ATTACK_DAMAGE, 6.0)
-				.add(LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER, 1.0)
-				.add(LcAttributes.DAMAGE_TAKEN_MULTIPLIER)
-				.add(Attributes.MOVEMENT_SPEED, 0.23)
-				.add(Attributes.ATTACK_KNOCKBACK, 1.0)
-				.add(Attributes.KNOCKBACK_RESISTANCE, 0.4);
+		EntitySkillUtil.setAttackCombo(this, combo);
 	}
 
 	@Override
@@ -175,10 +172,10 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		restoreHealthFromBiomass();
 		ProfilerFiller profiler = Profiler.get();
 		profiler.push("sweeperBrain");
-		getBrain().tick(level, this);
+		if (!ConductorWork.active(this)) getBrain().tick(level, this);
 		profiler.pop();
 		profiler.push("sweeperActivityUpdate");
-		ai.updateActivity();
+		if (!ConductorWork.active(this)) ai.updateActivity();
 		profiler.pop();
 		super.customServerAiStep(level);
 	}
@@ -280,7 +277,11 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		return doHurtTarget(level, target, new AttributeModifier(ATTACK_MULTIPLIER, multiplier, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 	}
 
-	SweeperAi ai() {
+	public void updateMovementSpeed() {
+		ai.updateMovementSpeed();
+	}
+
+	protected SweeperAi ai() {
 		return ai;
 	}
 
@@ -331,6 +332,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 
 	public void playActionAnimation(SweeperAnim animation) {
 		if (level().isClientSide()) {
+			var controller = getAnimatableInstanceCache().getManagerForId(getId())
+					.getAnimationControllers().get("action");
+			if (controller != null) {
+				LcAnimationControllerTransitions.of(controller).lobecorp$setAnimationTransitionMode(
+						animation == SweeperAnim.CLEAR1 || animation == SweeperAnim.CLEAR2 || animation == SweeperAnim.CLEAR3
+								? LcTransitionMode.OVERLAP : LcTransitionMode.SEQUENTIAL);
+			}
 			playCustomAnimation("action", animation.name());
 		}
 	}

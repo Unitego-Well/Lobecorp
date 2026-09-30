@@ -4,8 +4,8 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkill;
-import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.entity_skill.EntitySkill;
+import org.unitego.lobecorp.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.registry.LcRegistrys;
 
@@ -17,9 +17,16 @@ public interface LcEntitySkills {
 
 	static void init(IEventBus iEventBus) {
 		LcEntitySkillGroups.init(iEventBus);
+		SweeperSkills.init();
+		TheQueenOfHatredSkills.init();
 		REGISTER.register(iEventBus);
-		TheQueenOfHatredSkills.init(iEventBus);
-		SweeperSkills.init(iEventBus);
+	}
+
+	static <T extends IEntitySkill<?>> DeferredHolder<IEntitySkill<?>, T> register(
+			String name, String enUs, String zhCn,
+			Function<EntitySkill.Properties, T> factory, UnaryOperator<EntitySkill.Properties> properties
+	) {
+		return register(REGISTER, name, enUs, zhCn, factory, properties);
 	}
 
 	static <T extends IEntitySkill<?>> DeferredHolder<IEntitySkill<?>, T> register(

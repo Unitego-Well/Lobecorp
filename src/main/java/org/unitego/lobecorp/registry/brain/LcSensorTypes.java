@@ -12,14 +12,16 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ai.sensing.NearestEntitySensor;
 import org.unitego.lobecorp.entity.ai.sensing.OrdealAttackablesSensor;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperReassembleSkill;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.ReassembleSkill;
 
 import java.util.function.Supplier;
 
 /// 实体 brain 系统的传感器
 public interface LcSensorTypes {
-    int CLEANUP_TARGET_SCAN_RATE = 10;
+	int CLEANUP_TARGET_SCAN_RATE = 10;
+	int CLEANUP_HORIZONTAL_RANGE = 32;
+	int CLEANUP_VERTICAL_RANGE = 16;
 	DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
 	/// 考验最近目标
 	DeferredHolder<SensorType<?>, SensorType<OrdealAttackablesSensor>> ORDEAL_ATTACKABLES = register("ordeal_attackables", OrdealAttackablesSensor::new);
@@ -35,8 +37,8 @@ public interface LcSensorTypes {
 			NearestEntitySensor.create(
 					(body, entity) -> entity.isAlive() && (entity instanceof EntityCorpse<?> corpse
 							&& (!(corpse.getOwnerEntity() instanceof Sweeper)
-							|| body instanceof Sweeper sweeper && SweeperReassembleSkill.canReassemble(sweeper, corpse))
-							|| entity instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty()), 32, 16,
+							|| body instanceof Sweeper sweeper && ReassembleSkill.canReassemble(sweeper, corpse))
+							|| entity instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty()), CLEANUP_HORIZONTAL_RANGE, CLEANUP_VERTICAL_RANGE,
 					LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get(), CLEANUP_TARGET_SCAN_RATE));
 
 	private static <U extends Sensor<?>> DeferredHolder<SensorType<?>, SensorType<U>> register(String name, Supplier<U> factory) {

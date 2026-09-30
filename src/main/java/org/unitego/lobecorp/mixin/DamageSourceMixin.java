@@ -18,16 +18,14 @@ import java.util.Set;
 
 @Mixin(DamageSource.class)
 public abstract class DamageSourceMixin implements IDamageSourceExpand {
-	@Shadow
-	@Final
-	private Holder<DamageType> type;
-
 	@Unique
 	private final Set<TagKey<DamageType>> lobecorp$modifiableTags = new HashSet<>();
-
 	/// 需要从原始及动态伤害标签中排除的标签。
 	@Unique
 	private final Set<TagKey<DamageType>> lobecorp$eliminateTags = new HashSet<>();
+	@Shadow
+	@Final
+	private Holder<DamageType> type;
 
 	@Override
 	public Set<TagKey<DamageType>> lobecorp$getModifiableTags() {

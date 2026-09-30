@@ -11,12 +11,13 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.block.LcBlocks;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.brain.LcSensorTypes;
 import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity_skill.LcEntitySkills;
 import org.unitego.lobecorp.registry.item.LcCreativeModeTabs;
 import org.unitego.lobecorp.registry.item.LcItems;
@@ -43,6 +44,7 @@ public class Lobecorp {
 		LcEntityDataSerializers.init(iEventBus);
 		LcEntityTypes.init(iEventBus);
 		LcEntitySkills.init(iEventBus);
+		LcBlocks.init(iEventBus);
 		LcItems.init(iEventBus);
 		LcCreativeModeTabs.init(iEventBus);
 	}
@@ -66,7 +68,7 @@ public class Lobecorp {
 	/// 为原版注册表创建本模组的延迟注册器。
 	///
 	/// @param registry 目标注册表
-	/// @param <T> 注册对象类型
+	/// @param <T>      注册对象类型
 	/// @return 绑定本模组命名空间的延迟注册器
 	public static <T> DeferredRegister<T> register(Registry<T> registry) {
 		return DeferredRegister.create(registry, NAMESPACE);
@@ -75,7 +77,7 @@ public class Lobecorp {
 	/// 为资源键指定的注册表创建本模组延迟注册器。
 	///
 	/// @param registry 目标注册表资源键
-	/// @param <T> 注册对象类型
+	/// @param <T>      注册对象类型
 	/// @return 绑定本模组命名空间的延迟注册器
 	public static <T> DeferredRegister<T> register(ResourceKey<Registry<T>> registry) {
 		return DeferredRegister.create(registry, NAMESPACE);
@@ -84,7 +86,7 @@ public class Lobecorp {
 	/// 创建属于本模组命名空间的网络载荷类型。
 	///
 	/// @param identifier 载荷资源路径
-	/// @param <T> 载荷类型
+	/// @param <T>        载荷类型
 	/// @return 网络载荷类型
 	public static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String identifier) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(NAMESPACE, identifier));

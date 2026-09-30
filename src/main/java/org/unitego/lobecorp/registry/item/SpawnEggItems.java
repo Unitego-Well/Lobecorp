@@ -29,12 +29,12 @@ public interface SpawnEggItems {
 	}
 
 	static DeferredItem<LcSpawnEggItem> register(String name, String enUs, String zhCn,
-			Supplier<? extends EntityType<?>> entityType) {
+	                                             Supplier<? extends EntityType<?>> entityType) {
 		return register(name, enUs, zhCn, UnaryOperator.identity(), entityType);
 	}
 
 	static DeferredItem<LcSpawnEggItem> register(String name, String enUs, String zhCn,
-			UnaryOperator<Item.Properties> properties, Supplier<? extends EntityType<?>> entityType) {
+	                                             UnaryOperator<Item.Properties> properties, Supplier<? extends EntityType<?>> entityType) {
 		return LcItems.register(REGISTER, name + "_spawn_egg", enUs + " Spawn Egg",
 				zhCn + "刷怪蛋", p -> new LcSpawnEggItem(entityType, p), properties);
 	}

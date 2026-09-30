@@ -10,22 +10,22 @@ public class HitboxLevelData {
 	private final Map<Integer, ClientEntry> clientEntries = new LinkedHashMap<>();
 	private int nextId = 1;
 
-	int add(HitboxInstance instance) {
+	protected int add(HitboxInstance instance) {
 		int id = nextId++;
 		instance.setId(id);
 		instances.put(id, instance);
 		return id;
 	}
 
-	HitboxInstance get(int id) {
+	protected HitboxInstance get(int id) {
 		return instances.get(id);
 	}
 
-	HitboxInstance remove(int id) {
+	protected HitboxInstance remove(int id) {
 		return instances.remove(id);
 	}
 
-	Collection<HitboxInstance> instances() {
+	protected Collection<HitboxInstance> instances() {
 		return instances.values();
 	}
 

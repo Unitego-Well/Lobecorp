@@ -1,28 +1,21 @@
 package org.unitego.lobecorp.registry.entity_skill;
 
-import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_skill.IEntitySkill;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperAttackSkill;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperLeapSkill;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperReassembleSkill;
-import org.unitego.lobecorp.entity.entity_skill.sweeper.SweeperSweepSkill;
-import org.unitego.lobecorp.registry.LcRegistrys;
-
-import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
+import org.unitego.lobecorp.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.AttackSkill;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.LeapSkill;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.ReassembleSkill;
+import org.unitego.lobecorp.entity_skill.skill.sweeper.SweepSkill;
 
 /// 清道夫
 public interface SweeperSkills {
-	/// 清理类技能结束后的冷却 tick。
-	int CLEANUP_COOLDOWN_TICKS = 10;
-	DeferredRegister<IEntitySkill<?>> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_KEY);
+	/// 清理结束动画及淡出期间保持技能占用的后摇 tick。
+	int CLEANUP_RECOVERY_TICKS = 15;
 
 	/// 普通攻击
-	DeferredHolder<IEntitySkill<?>, SweeperAttackSkill> ATTACK = LcEntitySkills.register(REGISTER,
+	DeferredHolder<IEntitySkill<?>, AttackSkill> ATTACK = LcEntitySkills.register(
 			"sweeper_attack", "Normal Attack", "普通攻击",
-			SweeperAttackSkill::new, p -> p
+			AttackSkill::new, p -> p
 					.locksNavigation()
 					.locksMovement()
 					.windupTicks(6)
@@ -30,36 +23,37 @@ public interface SweeperSkills {
 					.recoveryTicks(14)
 					.cooldownTicks(0));
 	/// 飞扑
-	DeferredHolder<IEntitySkill<?>, SweeperLeapSkill> LEAP = LcEntitySkills.register(REGISTER,
+	DeferredHolder<IEntitySkill<?>, LeapSkill> LEAP = LcEntitySkills.register(
 			"sweeper_leap", "Leap", "飞扑",
-			SweeperLeapSkill::new, p -> p
+			LeapSkill::new, p -> p
 					.locksNavigation()
 					.windupTicks(5)
 					.durationTicks(-1)
 					.recoveryTicks(10)
-					.cooldownTicks(5 * TICKS_PER_SECOND));
+					.cooldownTicks(5 * 20));
 	/// 清扫
-	DeferredHolder<IEntitySkill<?>, SweeperSweepSkill> SWEEP = LcEntitySkills.register(REGISTER,
+	DeferredHolder<IEntitySkill<?>, SweepSkill> SWEEP = LcEntitySkills.register(
 			"sweeper_sweep", "Sweep", "清扫",
-			SweeperSweepSkill::new, p -> p
+			SweepSkill::new, p -> p
 					.locksNavigation()
 					.locksMovement()
 					.windupTicks(17)
 					.durationTicks(-1)
-					.recoveryTicks(10)
-					.cooldownTicks(CLEANUP_COOLDOWN_TICKS));
+					.recoveryTicks(CLEANUP_RECOVERY_TICKS)
+					.cooldownTicks(10));
 	/// 重组
-	DeferredHolder<IEntitySkill<?>, SweeperReassembleSkill> REASSEMBLE = LcEntitySkills.register(REGISTER,
+	DeferredHolder<IEntitySkill<?>, ReassembleSkill> REASSEMBLE = LcEntitySkills.register(
 			"sweeper_reassemble", "Reassemble", "重组",
-			SweeperReassembleSkill::new, p -> p
+			ReassembleSkill::new, p -> p
 					.locksNavigation()
 					.locksMovement()
 					.windupTicks(17)
 					.durationTicks(-1)
-					.recoveryTicks(10)
-					.cooldownTicks(CLEANUP_COOLDOWN_TICKS));
+					.recoveryTicks(CLEANUP_RECOVERY_TICKS)
+					.cooldownTicks(10));
 
-	static void init(IEventBus iEventBus) {
-		REGISTER.register(iEventBus);
+	/// 强制初始化清道夫技能注册声明。
+	static void init() {
 	}
+
 }

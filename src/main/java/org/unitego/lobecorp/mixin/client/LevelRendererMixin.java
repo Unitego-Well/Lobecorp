@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 
 @Mixin(LevelRenderer.class)
-public class LevelRendererMixin {
+public abstract class LevelRendererMixin {
 	@ModifyExpressionValue(
 			method = {"extractBlockOutline", "renderHitOutline"},
 			at = @At(value = "FIELD", target = "Lnet/minecraft/SharedConstants;DEBUG_SHAPES:Z", opcode = Opcodes.GETSTATIC)

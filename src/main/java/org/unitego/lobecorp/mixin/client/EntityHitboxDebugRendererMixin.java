@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 
 @Mixin(EntityHitboxDebugRenderer.class)
-public class EntityHitboxDebugRendererMixin {
+public abstract class EntityHitboxDebugRendererMixin {
 	@ModifyExpressionValue(
 			method = "emitGizmos",
 			at = @At(value = "FIELD", target = "Lnet/minecraft/SharedConstants;DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES:Z", opcode = Opcodes.GETSTATIC)

@@ -4,7 +4,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_skill.EntitySkillGroup;
+import org.unitego.lobecorp.entity_skill.EntitySkillGroup;
 import org.unitego.lobecorp.registry.LcRegistrys;
 
 /// 实体技能组的注册入口与内置组定义。
@@ -21,6 +21,7 @@ public interface LcEntitySkillGroups {
 	DeferredHolder<EntitySkillGroup, EntitySkillGroup> PASSIVE = register("passive");
 
 	/// 使用通用默认上限注册自定义技能组。
+	///
 	/// @param name 组的注册路径，不包含命名空间
 	/// @return 可在注册完成后解析技能组实例的延迟持有者
 	static DeferredHolder<EntitySkillGroup, EntitySkillGroup> register(String name) {
@@ -28,7 +29,8 @@ public interface LcEntitySkillGroups {
 	}
 
 	/// 使用指定默认上限注册自定义技能组。
-	/// @param name 组的注册路径，不包含命名空间
+	///
+	/// @param name                       组的注册路径，不包含命名空间
 	/// @param defaultMaximumActiveSkills 实体首次获得该组时使用的上限，必须大于或等于零
 	/// @return 可在注册完成后解析技能组实例的延迟持有者
 	static DeferredHolder<EntitySkillGroup, EntitySkillGroup> register(String name, int defaultMaximumActiveSkills) {
@@ -37,6 +39,7 @@ public interface LcEntitySkillGroups {
 
 	/// 将技能组延迟注册器绑定到模组事件总线。
 	/// 每个模组初始化流程只应调用一次。
+	///
 	/// @param eventBus Lobecorp 使用的模组事件总线
 	static void init(IEventBus eventBus) {
 		REGISTER.register(eventBus);

@@ -16,6 +16,7 @@ photon = "26.1.2.2"
 # photon 依赖
 ldlib2 = "26.1.2.36"
 kilagraph = "26.1.0.14"
+particlestorm = "1.4.4"
 
 [libraries]
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
@@ -30,6 +31,7 @@ reretrodamageindicators = { module = "maven.modrinth:re-retro-damage-indicators"
 ldlib2 = { module = "com.lowdragmc.ldlib2:ldlib2-neoforge-26.1", version.ref = "ldlib2" }
 kilagraph = { module = "com.lowdragmc.kilagraph:kilagraph-neoforge-26.1", version.ref = "kilagraph" }
 photon = { module = "com.lowdragmc.photon:photon-neoforge-26.1", version.ref = "photon" }
+particlestorm = { module = "org.mesdag:ParticleStorm-neoforge-26.1.2", version.ref = "particlestorm" }
 
 [bundles]
 

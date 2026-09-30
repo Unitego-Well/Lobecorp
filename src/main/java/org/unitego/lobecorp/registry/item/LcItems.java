@@ -1,8 +1,6 @@
 package org.unitego.lobecorp.registry.item;
 
-import net.minecraft.world.item.EggItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;

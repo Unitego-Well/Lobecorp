@@ -9,7 +9,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.entity_state.EntityState;
+import org.unitego.lobecorp.entity_state.EntityState;
 import org.unitego.lobecorp.registry.LcStreamCodecs;
 
 import java.util.List;

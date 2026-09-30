@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 
 @Mixin(DebugRenderer.class)
-public class DebugRendererMixin {
+public abstract class DebugRendererMixin {
 	@ModifyExpressionValue(
 			method = "refreshRendererList",
 			at = @At(value = "FIELD", target = "Lnet/minecraft/SharedConstants;DEBUG_PATHFINDING:Z", opcode = Opcodes.GETSTATIC)

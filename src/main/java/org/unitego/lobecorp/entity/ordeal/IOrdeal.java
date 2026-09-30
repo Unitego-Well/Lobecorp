@@ -7,6 +7,7 @@ import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
+/// 异常实体的共同标记契约，提供目标与营地归属判定。
 public interface IOrdeal {
 	/// 目标选择
 	default boolean canTarget(Entity entity, Level level) {

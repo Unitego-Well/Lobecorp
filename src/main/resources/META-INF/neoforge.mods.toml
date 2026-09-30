@@ -48,5 +48,12 @@ versionRange = "[${curios_version},)"
 ordering = "NONE"
 side = "BOTH"
 
+[[dependencies.${ mod_id }]]
+modId = "particlestorm"
+type = "required"
+versionRange = "[${particlestorm_version},)"
+ordering = "NONE"
+side = "BOTH"
+
 [modproperties.${ mod_id }]
 catalogueImageIcon = "META-INF/icon.png"

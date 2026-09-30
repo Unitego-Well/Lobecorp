@@ -20,7 +20,7 @@ public enum SweeperAnim {
 
 	private final RawAnimation animation;
 
-	SweeperAnim(RawAnimation animation) {
+	private SweeperAnim(RawAnimation animation) {
 		this.animation = animation;
 	}
 

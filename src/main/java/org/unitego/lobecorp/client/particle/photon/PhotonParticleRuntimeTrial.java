@@ -7,15 +7,9 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.shape.Sphere;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import net.minecraft.core.BlockPos;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import org.unitego.lobecorp.Lobecorp;
 
-@EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class PhotonParticleRuntimeTrial {
-	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
 		ParticleEmitter emitter = new ParticleEmitter();
 		emitter.transform()._refreshInternalID();

@@ -82,6 +82,7 @@ repositories {
     maven { url = uri("https://api.modrinth.com/maven") }
     // photon 依赖 (LDLib2 / KilaGraph)
     maven { url = uri("https://maven.firstdark.dev/snapshots") }
+    maven { url = uri("https://maven.confluence.ink/releases") }
 }
 
 dependencies {
@@ -100,6 +101,7 @@ dependencies {
     implementation(libs.photon){
         isTransitive = false
     }
+    implementation(libs.particlestorm)
     // lib/ 下的本地 jar (Photon) 打包进 mod 并加入 dev classpath
 //    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
     implementation(fileTree("lib") { include("*.jar") })
@@ -113,6 +115,7 @@ dependencies {
     internalTestMods(libs.ldlib2)
     internalTestMods(libs.kilagraph)
     internalTestMods(libs.photon)
+    internalTestMods(libs.particlestorm)
     internalTestMods(fileTree("lib") { include("*.jar") })
 }
 
@@ -182,6 +185,7 @@ tasks.processResources {
         "neoforge_version" to neoforgeVersion,
         "geckolib_version" to libs.versions.geckolib.get(),
         "curios_version" to libs.versions.curios.get(),
+        "particlestorm_version" to libs.versions.particlestorm.get(),
         "mod_id" to modId,
         "mod_version" to modVersion
     )

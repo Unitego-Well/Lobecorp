@@ -5,19 +5,20 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.entity.entity_skill.effect.EntitySkillEffectDebugInfo;
+import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectDebugInfo;
 
 /// 客户端调试渲染需要的完整判断框实例快照。
 ///
-/// @param id Level 内实例编号
-/// @param size 当前类型化尺寸
-/// @param position 当前世界中心
-/// @param rotation 当前欧拉旋转
-/// @param purpose 判断框的逻辑用途
-/// @param active 是否处于伤害阶段
+/// @param id             Level 内实例编号
+/// @param size           当前类型化尺寸
+/// @param position       当前世界中心
+/// @param rotation       当前欧拉旋转
+/// @param purpose        判断框的逻辑用途
+/// @param active         是否处于伤害阶段
 /// @param remainingTicks 服务端剩余寿命
-public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose, boolean active,
-		int remainingTicks, @Nullable EntitySkillEffectDebugInfo entitySkillEffectDebugInfo) {
+public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose,
+                             boolean active,
+                             int remainingTicks, @Nullable EntitySkillEffectDebugInfo entitySkillEffectDebugInfo) {
 	/// 判断框快照网络编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxSnapshot> STREAM_CODEC = new StreamCodec<>() {
 		@Override
@@ -34,7 +35,7 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 					? new EntitySkillEffectDebugInfo(buffer.readUtf(), buffer.readUtf(), buffer.readUtf(), buffer.readVarInt())
 					: null;
 			return new HitboxSnapshot(id, size, position, rotation, purpose, active, remainingTicks,
-				entitySkillEffectDebugInfo);
+					entitySkillEffectDebugInfo);
 		}
 
 		@Override

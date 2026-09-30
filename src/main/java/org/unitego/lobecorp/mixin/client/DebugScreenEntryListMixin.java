@@ -9,7 +9,7 @@ import org.unitego.lobecorp.debug.LcDebugRuntimeOptions;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 
 @Mixin(DebugScreenEntryList.class)
-public class DebugScreenEntryListMixin {
+public abstract class DebugScreenEntryListMixin {
 	@Inject(method = "rebuildCurrentList", at = @At("TAIL"))
 	private void lobecorp$updateLocalServerDebugOptions(CallbackInfo callbackInfo) {
 		DebugScreenEntryList entries = (DebugScreenEntryList) (Object) this;

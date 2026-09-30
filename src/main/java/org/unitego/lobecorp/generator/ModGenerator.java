@@ -4,22 +4,19 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
-import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
 import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 import org.unitego.lobecorp.generator.tag.DamageTypeTagGenerator;
 import org.unitego.lobecorp.generator.tag.EntityTypeTagGenerator;
+import org.unitego.lobecorp.util.TranslationKeys;
 
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("UnusedReturnValue")
-@EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ModGenerator {
-	@SubscribeEvent
 	public static void gatherData(GatherDataEvent.Client event) {
+		TranslationKeys.init();
 		build(event, EnUsLangGenerator::new);
 		build(event, ZhCnLangGenerator::new);
 		build(event, ParticleGenerator::new);

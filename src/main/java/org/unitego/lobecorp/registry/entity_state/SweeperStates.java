@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.registry.entity_state;
 
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.entity.entity_state.EntityState;
+import org.unitego.lobecorp.entity_state.EntityState;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 

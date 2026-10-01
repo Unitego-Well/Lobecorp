@@ -5,7 +5,7 @@ import net.minecraft.util.profiling.SingleTickProfiler;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.debug.LcDebugRuntimeOptions;
+import org.unitego.lobecorp.client.debug.LcDebugRuntimeOptions;
 
 @Mixin(SingleTickProfiler.class)
 public abstract class SingleTickProfilerMixin {

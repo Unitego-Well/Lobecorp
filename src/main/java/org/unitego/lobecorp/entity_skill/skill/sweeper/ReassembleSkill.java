@@ -8,6 +8,7 @@ import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.entity_skill.EntitySkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
@@ -16,7 +17,9 @@ import org.unitego.lobecorp.registry.entity_state.SweeperStates;
 import org.unitego.lobecorp.util.ReassemblyProgressUtil;
 
 /// 清道夫重组技能：持续消耗清道夫尸体生命并复活原清道夫。
-public class ReassembleSkill extends SweeperSkill {
+public class ReassembleSkill extends EntitySkill<Sweeper> {
+	/// 重组每游戏刻最多处理的尸体生命值。
+	private static final float PROCESS_HEALTH = 2.0F;
 	/// 重组所需的尸体生命与目标清道夫最大生命的比例
 	private static final float REQUIRED_HEALTH_RATIO = 0.5F;
 	/// 复活后的固定最大生命比例

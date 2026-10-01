@@ -12,6 +12,7 @@ public class ConductorWorldRuntime {
 	public final Map<UUID, ClientView> clients = new HashMap<>();
 	public final Map<UUID, Set<UUID>> requestedAbilities = new HashMap<>();
 	protected final Map<UUID, ConductorChunkLoading.Location> tickets = new HashMap<>();
+	protected final Map<UUID, ConductorView.State> views = new HashMap<>();
 
 	public record ClientView(ConductorDirectory directory, long revision) {
 	}

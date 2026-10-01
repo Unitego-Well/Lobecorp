@@ -197,7 +197,7 @@ public final class SweeperAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, sweeper, time) -> {
-			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
+			if (!EntitySkillUtil.require(sweeper).canBeginCast(SweeperSkills.ATTACK.get())) {
 				return false;
 			}
 
@@ -220,7 +220,7 @@ public final class SweeperAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, sweeper, time) -> {
-			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
+			if (!EntitySkillUtil.require(sweeper).canBeginCast(SweeperSkills.LEAP.get())) {
 				return false;
 			}
 
@@ -273,7 +273,7 @@ public final class SweeperAi {
 				instance.present(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get()),
 				instance.absent(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, (nearestCleanupTarget, attackTarget) -> (level, sweeper, time) -> {
-			if (EntitySkillUtil.hasActiveSkills(sweeper)) {
+			if (EntitySkillUtil.require(sweeper).activeSkills().stream().anyMatch(runtime -> !runtime.isInterruptibleBySkill())) {
 				return false;
 			}
 

@@ -12,12 +12,12 @@ import org.unitego.lobecorp.conductor.control.ConductorUnitRuntime;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
 import org.unitego.lobecorp.entity_skill.EntitySkillGroup;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntimeData;
+import org.unitego.lobecorp.entity_skill.EntitySkillState;
 import org.unitego.lobecorp.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectLevelData;
 import org.unitego.lobecorp.hitbox.HitboxLevelData;
 
 import java.util.Map;
-import java.util.Set;
 
 /// NeoForge 数据附件
 public interface LcAttachmentTypes {
@@ -36,11 +36,11 @@ public interface LcAttachmentTypes {
 	DeferredHolder<AttachmentType<?>, AttachmentType<EntitySkillEffectLevelData>> ENTITY_SKILL_EFFECT_LEVEL_DATA =
 			REGISTER.register("entity_skill_effect_level_data", () -> AttachmentType.builder(EntitySkillEffectLevelData::new).build());
 
-	/// 实体拥有的技能，持久化并同步。
-	DeferredHolder<AttachmentType<?>, AttachmentType<Set<IEntitySkill<?>>>> ENTITY_SKILLS = REGISTER.register(
-			"entity_skills", () -> AttachmentType.builder(() -> Set.<IEntitySkill<?>>of())
-					.serialize(LcCodecs.ENTITY_SKILL_SET_CODEC.fieldOf("skills"))
-					.sync(ByteBufCodecs.fromCodecWithRegistries(LcCodecs.ENTITY_SKILL_SET_CODEC))
+	/// 实体技能的增删修正，持久化并同步；新键不读取旧的完整技能集合。
+	DeferredHolder<AttachmentType<?>, AttachmentType<EntitySkillState>> ENTITY_SKILLS = REGISTER.register(
+			"entity_skill_patch", () -> AttachmentType.builder(EntitySkillState::empty)
+					.serialize(EntitySkillState.CODEC.fieldOf("skills"))
+					.sync(ByteBufCodecs.fromCodecWithRegistries(EntitySkillState.CODEC))
 					.build());
 
 	/// 实体动态拥有的技能组及其同时运行上限，持久化并同步。
@@ -62,7 +62,7 @@ public interface LcAttachmentTypes {
 					.build());
 
 	DeferredHolder<AttachmentType<?>, AttachmentType<ConductorAbilityState>> CONDUCTOR_ABILITIES = REGISTER.register(
-			"conductor_abilities", () -> AttachmentType.builder(ConductorAbilityState::empty)
+			"conductor_ability_patch", () -> AttachmentType.builder(ConductorAbilityState::empty)
 					.serialize(ConductorAbilityState.CODEC.fieldOf("abilities"))
 					.sync(ByteBufCodecs.fromCodecWithRegistries(ConductorAbilityState.CODEC))
 					.build());

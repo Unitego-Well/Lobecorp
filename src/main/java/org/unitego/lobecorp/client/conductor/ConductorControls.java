@@ -18,6 +18,7 @@ import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
@@ -25,17 +26,27 @@ import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.conductor.ConductorCamera.View;
 import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
+import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
+import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
 import org.unitego.lobecorp.mixin.client.ClientInputAccessor;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
+import org.unitego.lobecorp.network.ts.ConductorViewPayload;
 import org.unitego.lobecorp.registry.client.ConductorKeyMappings;
 
 import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+
+import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 public class ConductorControls {
 	private static final double DRAG_THRESHOLD = 5.0D;
@@ -70,6 +81,14 @@ public class ConductorControls {
 	private static ConductorCommandPayload.Action pending;
 	private static String pendingSkill = "";
 	private static UUID pendingSkillUnit;
+	/// 鼠标进入 HUD 时保留的上一次世界瞄准位置。
+	private static Vec3 lastAimPosition;
+	/// 手动激光等待客户端收到开始同步的最长时间，单位为 tick。
+	private static final int MANUAL_LASER_START_WAIT_TICKS = 3 * TICKS_PER_SECOND;
+	/// 本客户端手动施放的激光；开始同步后等待值归零，技能结束即移除。
+	private static final Map<UUID, Integer> MANUAL_LASERS = new HashMap<>();
+	/// 正在按住左键更新的手动激光，用于松开或离开世界视图时固定当前方向。
+	private static final Set<UUID> AIMING_LASERS = new LinkedHashSet<>();
 
 	public static void onGuiLayer(RenderGuiLayerEvent.Pre event) {
 		if (active && HIDDEN_HUD_LAYERS.contains(event.getName())) {
@@ -227,6 +246,7 @@ public class ConductorControls {
 		pending = action;
 		pendingSkill = "";
 		pendingSkillUnit = null;
+		lastAimPosition = null;
 	}
 
 	public static boolean isPendingSkill(String skill, UUID unit) {
@@ -247,7 +267,8 @@ public class ConductorControls {
 		if (minecraft.level == null || pendingSkillUnit == null
 				|| !(minecraft.level.getEntity(pendingSkillUnit) instanceof Mob mob)) return;
 		ConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
-		if (targeting == null || !targeting.directional()) return;
+		if (targeting == null || !targeting.directional()
+				|| targeting instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob)) return;
 		ConductorData.Unit unit = ConductorClient.unit(pendingSkillUnit);
 		if (unit == null) return;
 		ConductorClient.sendTarget(ConductorCommandPayload.Action.CAST, unit.team(), "", skillUnits(pendingSkillUnit),
@@ -256,6 +277,7 @@ public class ConductorControls {
 	}
 
 	public static void setPendingSkill(String skill, UUID unit) {
+		if (!isPendingSkill(skill, unit)) lastAimPosition = null;
 		pending = ConductorCommandPayload.Action.CAST;
 		pendingSkill = skill;
 		pendingSkillUnit = unit;
@@ -304,6 +326,7 @@ public class ConductorControls {
 			exit(minecraft);
 			return;
 		}
+		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0) syncView(minecraft, true);
 		if (following && (!(minecraft.level.getEntity(followedUnit) instanceof LivingEntity target) || !target.isAlive()))
 			cancelFollowing();
 		if (minecraft.screen != null || !minecraft.isWindowActive()) {
@@ -312,6 +335,51 @@ public class ConductorControls {
 			clearCameraKeys();
 		}
 		if (minecraft.screen == null && minecraft.mouseHandler.isMouseGrabbed()) minecraft.mouseHandler.releaseMouse();
+		updateManualLasers(minecraft);
+	}
+
+	private static void updateManualLasers(Minecraft minecraft) {
+		if (minecraft.level == null) return;
+		var iterator = MANUAL_LASERS.entrySet().iterator();
+		while (iterator.hasNext()) {
+			var entry = iterator.next();
+			ConductorData.Unit unit = ConductorClient.unit(entry.getKey());
+			if (unit == null || !(minecraft.level.getEntity(entry.getKey()) instanceof Mob mob) || !mob.isAlive()
+					|| !(ConductorUtil.ability(mob, TheQueenOfHatredSkills.LASER.getId()) instanceof EntitySkillConductorAbility.Laser laser)) {
+				AIMING_LASERS.remove(entry.getKey());
+				iterator.remove();
+				continue;
+			}
+			if (laser.isCasting(mob)) entry.setValue(0);
+			else if (entry.getValue() == 0) {
+				AIMING_LASERS.remove(entry.getKey());
+				iterator.remove();
+				continue;
+			} else entry.setValue(entry.getValue() - 1);
+			if (minecraft.screen != null || !minecraft.isWindowActive() || ConductorHud.INSTANCE.contains(minecraft)
+					|| GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), MOUSE_LEFT) != GLFW.GLFW_PRESS) {
+				if (AIMING_LASERS.remove(entry.getKey())) stopManualLaserAim(entry.getKey());
+				continue;
+			}
+			LivingEntity target = pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
+					&& laser.canTarget(mob, entity) && laser.isWithinRange(mob, entity.position())
+					&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
+			Vec3 position = ConductorCamera.pickGround(minecraft);
+			if (target != null) position = target.getBoundingBox().getCenter();
+			if (position == null) continue;
+			ConductorClient.sendTarget(ConductorCommandPayload.Action.AIM, unit.team(), "", List.of(entry.getKey()),
+					target == null ? null : target.getUUID(), position.x, position.y, position.z,
+					ConductorData.ControlMode.FULL, true, TheQueenOfHatredSkills.LASER.getId().toString(),
+					target == null ? ConductorCommandPayload.TargetSelection.POSITION : ConductorCommandPayload.TargetSelection.ENTITY);
+			AIMING_LASERS.add(entry.getKey());
+		}
+	}
+
+	private static void stopManualLaserAim(UUID member) {
+		ConductorData.Unit unit = ConductorClient.unit(member);
+		if (unit != null) ConductorClient.sendTarget(ConductorCommandPayload.Action.AIM, unit.team(), "", List.of(member),
+				null, 0.0, 0.0, 0.0, ConductorData.ControlMode.FULL, false,
+				TheQueenOfHatredSkills.LASER.getId().toString(), ConductorCommandPayload.TargetSelection.NONE);
 	}
 
 	public static @Nullable View cameraFrame(float partialTick) {
@@ -330,6 +398,13 @@ public class ConductorControls {
 		return ConductorCamera.frame(partialTick, forward, sideways, turning, following ? followedUnit : null);
 	}
 
+	private static void syncView(Minecraft minecraft, boolean observing) {
+		if (minecraft.getConnection() != null && minecraft.level != null) {
+			ClientPacketDistributor.sendToServer(new ConductorViewPayload(observing,
+					minecraft.level.dimension().identifier(), ConductorCamera.center()));
+		}
+	}
+
 	private static void enter(Minecraft minecraft) {
 		active = true;
 		clearCameraKeys();
@@ -337,11 +412,13 @@ public class ConductorControls {
 		ConductorHud.INSTANCE.resetLayout();
 		cancelFollowing();
 		ConductorCamera.open(minecraft);
+		syncView(minecraft, true);
 		minecraft.mouseHandler.releaseMouse();
 		ConductorClient.requestSnapshot();
 	}
 
 	private static void exit(Minecraft minecraft) {
+		if (active) syncView(minecraft, false);
 		active = false;
 		cancelFollowing();
 		lastClickedUnit = null;
@@ -354,7 +431,11 @@ public class ConductorControls {
 		pendingSkill = "";
 		pendingSkillUnit = null;
 		SELECTED.clear();
+		lastAimPosition = null;
 		ConductorHud.INSTANCE.resetLayout();
+		MANUAL_LASERS.clear();
+		AIMING_LASERS.forEach(ConductorControls::stopManualLaserAim);
+		AIMING_LASERS.clear();
 		ConductorCamera.close();
 		if (minecraft.screen == null) {
 			minecraft.mouseHandler.grabMouse();
@@ -572,10 +653,13 @@ public class ConductorControls {
 		if (targeting == null || !ConductorClient.hasAbility(mob.getUUID(), Identifier.parse(pendingSkill))) {
 			return null;
 		}
-		LivingEntity target = pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
+		boolean overHud = targeting.directional() && ConductorHud.INSTANCE.contains(minecraft);
+		LivingEntity target = overHud ? null : pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
 				&& targeting.canTarget(mob, entity)
 				&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
-		Vec3 position = ConductorCamera.pickGround(minecraft);
+		Vec3 position = overHud ? lastAimPosition != null ? lastAimPosition : targeting.facingPosition(mob)
+				: ConductorCamera.pickGround(minecraft);
+		if (!overHud && position != null) lastAimPosition = position;
 		if (position == null && targeting.targetKind() == ConductorTargeting.TargetKind.POSITION) return null;
 		if (position == null) position = mob.position();
 		ConductorTargeting.TargetKind kind = targeting.targetKind();
@@ -587,7 +671,8 @@ public class ConductorControls {
 					: ConductorCommandPayload.TargetSelection.ENTITY;
 		};
 		boolean valid = targeting.isAvailable(mob)
-				&& ConductorClient.abilityCooldownTicks(mob.getUUID(), Identifier.parse(pendingSkill)) == 0;
+				&& ConductorClient.abilityCooldownTicks(mob.getUUID(), Identifier.parse(pendingSkill)) == 0
+				&& (!(targeting instanceof EntitySkillConductorAbility entitySkill) || entitySkill.canBeginCast(mob));
 		boolean rangeLimited = false;
 		Vec3 requested = position;
 		if (selection == ConductorCommandPayload.TargetSelection.ENTITY) {
@@ -613,6 +698,7 @@ public class ConductorControls {
 				&& !targeting.canTargetPosition(mob, effective)) {
 			valid = false;
 		}
+		if (targeting instanceof EntitySkillConductorAbility.Laser) effective = LaserSkill.aimPosition(mob, target, requested);
 		return new AimPreview(mob, targeting, target, requested, effective, selection, valid, rangeLimited);
 	}
 
@@ -668,6 +754,9 @@ public class ConductorControls {
 						|| action == ConductorCommandPayload.Action.ATTACK) && target != null
 						? target.getUUID() : null,
 				pos.x, pos.y, pos.z, ConductorData.ControlMode.FULL, false, pendingSkill, targetSelection);
+		if (action == ConductorCommandPayload.Action.CAST && pendingSkill.equals(TheQueenOfHatredSkills.LASER.getId().toString())) {
+			for (UUID unit : units) MANUAL_LASERS.put(unit, MANUAL_LASER_START_WAIT_TICKS);
+		}
 		if (action != ConductorCommandPayload.Action.CAST) setPending(null);
 	}
 

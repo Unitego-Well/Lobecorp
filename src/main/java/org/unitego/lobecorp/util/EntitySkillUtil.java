@@ -16,6 +16,7 @@ import org.unitego.lobecorp.network.tc.EntitySkillSyncPayload;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity_skill.LcEntitySkillGroups;
+import org.unitego.lobecorp.registry.entity_skill.EntitySkillDefaults;
 
 import java.util.*;
 
@@ -32,17 +33,20 @@ public class EntitySkillUtil {
 		entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS);
 		entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS);
 		entity.getData(LcAttachmentTypes.ATTACK_COMBO);
+		for (IEntitySkill<?> skill : EntitySkillDefaults.forType(entity.getType())) {
+			addGroup(entity, skill.group());
+		}
 	}
 
 	/// 获取实体当前拥有的全部技能。
-	/// 返回值是附件数据的不可变副本，修改该集合不会改变实体数据；添加或移除技能应分别使用
+	/// 返回值是默认定义与实体修正合并后的不可变视图；添加或移除技能应分别使用
 	/// {@link #addSkill} 与 {@link #removeSkill}。
 	///
 	/// @param entity 技能拥有者
 	/// @return 当前拥有的已注册技能集合
 	public static Set<IEntitySkill<?>> getSkills(LivingEntity entity) {
 		initialize(entity);
-		return Set.copyOf(entity.getData(LcAttachmentTypes.ENTITY_SKILLS));
+		return entity.getData(LcAttachmentTypes.ENTITY_SKILLS).apply(EntitySkillDefaults.forType(entity.getType()));
 	}
 
 	/// 获取实体当前的技能运行实例快照。
@@ -65,9 +69,10 @@ public class EntitySkillUtil {
 	/// @param skill  要添加的已注册技能
 	public static void addSkill(LivingEntity entity, IEntitySkill<?> skill) {
 		initialize(entity);
-		Set<IEntitySkill<?>> skills = new LinkedHashSet<>(entity.getData(LcAttachmentTypes.ENTITY_SKILLS));
-		if (skills.add(skill)) {
-			entity.setData(LcAttachmentTypes.ENTITY_SKILLS, Set.copyOf(skills));
+		EntitySkillState state = entity.getData(LcAttachmentTypes.ENTITY_SKILLS);
+		EntitySkillState next = state.with(skill, true, EntitySkillDefaults.forType(entity.getType()).contains(skill));
+		if (!next.equals(state)) {
+			entity.setData(LcAttachmentTypes.ENTITY_SKILLS, next);
 		}
 		addGroup(entity, skill.group());
 	}
@@ -89,12 +94,15 @@ public class EntitySkillUtil {
 	/// @param entity 技能拥有者
 	/// @param skill  要移除的技能
 	public static void removeSkill(LivingEntity entity, IEntitySkill<?> skill) {
-		Set<IEntitySkill<?>> skills = new LinkedHashSet<>(entity.getData(LcAttachmentTypes.ENTITY_SKILLS));
-		if (!skills.remove(skill)) {
+		if (!getSkills(entity).contains(skill)) {
 			return;
 		}
 		cancelSkills(entity, skill, true);
-		entity.setData(LcAttachmentTypes.ENTITY_SKILLS, Set.copyOf(skills));
+		if (skill instanceof MultiStageSkill<?> multiStage) {
+			entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences.remove(multiStage);
+		}
+		entity.setData(LcAttachmentTypes.ENTITY_SKILLS, entity.getData(LcAttachmentTypes.ENTITY_SKILLS)
+				.with(skill, false, EntitySkillDefaults.forType(entity.getType()).contains(skill)));
 	}
 
 	/// 从实体拥有的技能中依次移除多个技能。
@@ -279,7 +287,8 @@ public class EntitySkillUtil {
 
 	/// 尝试施放技能并进入前摇阶段。
 	/// 组满时会先按开始顺序覆盖允许被覆盖的旧运行实例；施放成功后应用移动限制、调用持有者开始钩子，
-	/// 再调用技能的前摇开始回调。零 tick 阶段会在本次调用中立即推进。
+	/// 再调用技能的前摇开始回调。默认冷却从成功开始施放时计时，与全部运行阶段同时推进。
+	/// 零 tick 阶段会在本次调用中立即推进。
 	///
 	/// @param entity 施法实体
 	/// @param skill  要施放的技能，实体必须已经拥有该技能
@@ -305,6 +314,7 @@ public class EntitySkillUtil {
 			T entity, EntitySkillCastRequest<T> request) {
 		IEntitySkill<T> skill = request.skill();
 		initialize(entity);
+		expireMultiStageSequences(entity);
 		if (!getSkills(entity).contains(skill)) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_NOT_OWNED, null);
 		}
@@ -312,7 +322,7 @@ public class EntitySkillUtil {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.ON_COOLDOWN, null);
 		}
 		if (skill.mutuallyExclusive()
-				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill)) {
+				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.MUTUALLY_EXCLUSIVE, null);
 		}
 		if (!getGroups(entity).containsKey(skill.group())) {
@@ -330,6 +340,9 @@ public class EntitySkillUtil {
 		if (replacements == null) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_FULL, null);
 		}
+		if (!skill.prepareAim(entity, runtime)) {
+			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.AIMING, null);
+		}
 		if (!entity.level().isClientSide()) {
 			EntitySkillEvent.Cast event = new EntitySkillEvent.Cast(runtime);
 			NeoForge.EVENT_BUS.post(event);
@@ -342,9 +355,18 @@ public class EntitySkillUtil {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_FULL, null);
 		}
 		for (EntitySkillRuntime<?> replaced : replacements) {
+			if (replaced.skill() instanceof MultiStageBasicSkill<?> basic
+					&& replaced.state() == EntitySkillRuntime.SkillState.RECOVERY) {
+				if (replaced.skill() == skill) {
+					finish(replaced);
+					continue;
+				}
+				basic.expireSequence(replaced);
+			}
 			cancelRuntime(entity, replaced, true);
 		}
 		activeSkills(entity).add(runtime);
+		startCooldown(runtime, skill.cooldownTicks());
 		applyMovementLocks(entity, skill);
 		runtime.onWindupStart();
 		if (isCurrent(runtime) && runtime.state() == EntitySkillRuntime.SkillState.WINDUP) {
@@ -384,7 +406,7 @@ public class EntitySkillUtil {
 			return null;
 		}
 		if (skill.mutuallyExclusive()
-				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill)) {
+				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
 			return null;
 		}
 		if (!getGroups(entity).containsKey(skill.group())) {
@@ -393,16 +415,26 @@ public class EntitySkillUtil {
 		return new EntitySkillRuntime<>(entity, skill, EntitySkillRuntime.SkillState.WINDUP, skill.windupTicks());
 	}
 
+	/// 当前技能阶段是否允许开始新施放；与真正施放复用同一互斥和覆盖判定。
+	public static boolean canBeginCast(LivingEntity entity, IEntitySkill<?> skill) {
+		return getGroups(entity).containsKey(skill.group()) && replacementsFor(entity, skill) != null;
+	}
+
 	private static List<EntitySkillRuntime<?>> replacementsFor(LivingEntity entity, IEntitySkill<?> skill) {
 		List<EntitySkillRuntime<?>> inGroup = activeSkills(entity).stream()
 				.filter(runtime -> runtime.skill().group() == skill.group()).toList();
 		int needed = inGroup.size() - getGroups(entity).getOrDefault(skill.group(), 0) + 1;
-		if (needed <= 0) {
-			return List.of();
-		}
 		List<EntitySkillRuntime<?>> result = new ArrayList<>();
+		if (skill.mutuallyExclusive()) {
+			for (EntitySkillRuntime<?> runtime : inGroup) {
+				if (runtime.skill() != skill) continue;
+				if (!canOverride(runtime, skill)) return null;
+				result.add(runtime);
+			}
+		}
+		if (result.size() >= needed) return result;
 		for (EntitySkillRuntime<?> runtime : inGroup) {
-			if (canOverride(runtime, skill)) {
+			if (!result.contains(runtime) && canOverride(runtime, skill)) {
 				result.add(runtime);
 			}
 			if (result.size() == needed) {
@@ -415,7 +447,8 @@ public class EntitySkillUtil {
 	@SuppressWarnings("unchecked")
 	private static <T extends LivingEntity> boolean canOverride(EntitySkillRuntime<?> runtime, IEntitySkill<?> replacement) {
 		EntitySkillRuntime<T> typed = (EntitySkillRuntime<T>) runtime;
-		return (typed.state() != EntitySkillRuntime.SkillState.WINDUP
+		return replacement.interruptsSkills() && typed.isInterruptibleBySkill()
+				&& (typed.state() != EntitySkillRuntime.SkillState.WINDUP
 				|| typed.skill().canInterruptDuringWindup(typed.owner(), typed))
 				&& typed.skill().canBeOverridden(typed.owner(), typed, replacement);
 	}
@@ -504,7 +537,7 @@ public class EntitySkillUtil {
 	}
 
 	/// 尝试取消实体当前运行且属于指定标签的全部技能实例。
-	/// 不允许普通取消的实例会继续运行；每个成功取消的实例分别按自身配置进入冷却。
+	/// 不允许普通取消的实例会继续运行；取消不会重启默认冷却，仅应用运行实例的显式冷却覆盖。
 	///
 	/// @param entity 技能运行实体
 	/// @param tag    用于筛选运行技能的实体技能标签
@@ -525,7 +558,7 @@ public class EntitySkillUtil {
 		}
 	}
 
-	/// 取消指定技能的全部运行实例，并在取消成功后按技能配置开始冷却。
+	/// 取消指定技能的全部运行实例，不重启默认冷却，仅在取消成功后应用显式冷却覆盖。
 	///
 	/// @param entity 技能运行实体
 	/// @param skill  要取消的技能
@@ -536,7 +569,7 @@ public class EntitySkillUtil {
 				.forEach(runtime -> cancelRuntime(entity, runtime, forced));
 	}
 
-	/// 取消实体的全部运行技能，并在每个实例取消成功后开始对应冷却。
+	/// 取消实体的全部运行技能，不重启默认冷却，仅在每个实例取消成功后应用显式冷却覆盖。
 	///
 	/// @param entity 技能运行实体
 	/// @param forced 是否忽略前摇阶段的不可中断限制
@@ -557,7 +590,9 @@ public class EntitySkillUtil {
 		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		HitboxManager.removeForSkillRuntime(runtime);
 		activeSkills(entity).remove(runtime);
-		startCooldown(runtime);
+		if (runtime.hasCooldownTicksOverride()) {
+			startCooldown(runtime, runtime.cooldownTicks());
+		}
 		postServer(new EntitySkillEvent.Cancelled(runtime));
 	}
 
@@ -628,6 +663,26 @@ public class EntitySkillUtil {
 		}
 		for (EntitySkillRuntime<?> runtime : List.copyOf(activeSkills(entity))) {
 			tickRuntime(entity, runtime);
+		}
+		expireMultiStageSequences(entity);
+	}
+
+	/// 能力实现使用的多段技能状态入口，不保存第二份实体数据。
+	public static MultiStageSkill.Sequence multiStageSequence(LivingEntity entity, MultiStageSkill<?> skill) {
+		return entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences
+				.computeIfAbsent(skill, ignored -> new MultiStageSkill.Sequence());
+	}
+
+	private static void expireMultiStageSequences(LivingEntity entity) {
+		if (entity.level().isClientSide() || !entity.hasData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS)) return;
+		var sequences = entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences;
+		for (var entry : List.copyOf(sequences.entrySet())) {
+			EntitySkillRuntime<?> runtime = entry.getValue().pendingRuntime();
+			if (runtime != null && entity.level().getGameTime() >= entry.getValue().expiresAt()
+					&& !isCasting(entity, entry.getKey())) {
+				entry.getKey().expireSequence(runtime);
+				startCooldown(runtime, runtime.cooldownTicks());
+			}
 		}
 	}
 
@@ -725,10 +780,13 @@ public class EntitySkillUtil {
 		if (!isCurrent(runtime)) {
 			return;
 		}
+		if (runtime.skill() instanceof MultiStageSkill<?> multiStage) multiStage.completeStage(runtime);
 		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		HitboxManager.removeForSkillRuntime(runtime);
 		LivingEntity owner = runtime.owner();
-		startCooldown(runtime);
+		if (runtime.hasCooldownTicksOverride()) {
+			startCooldown(runtime, runtime.cooldownTicks());
+		}
 		activeSkills(owner).remove(runtime);
 		postServer(new EntitySkillEvent.Completed(runtime));
 	}
@@ -783,8 +841,7 @@ public class EntitySkillUtil {
 		}
 	}
 
-	private static void startCooldown(EntitySkillRuntime<?> runtime) {
-		int cooldownTicks = runtime.cooldownTicks();
+	private static void startCooldown(EntitySkillRuntime<?> runtime, int cooldownTicks) {
 		AttributeInstance cooldownMultiplier = runtime.owner().getAttribute(
 				LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER);
 		if (cooldownMultiplier != null) {
@@ -817,6 +874,7 @@ public class EntitySkillUtil {
 	public static void clearTemporaryState(LivingEntity entity) {
 		cancelAll(entity, true);
 		activeSkills(entity).clear();
+		entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences.clear();
 		entity.setData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS, Map.of());
 		entity.setData(LcAttachmentTypes.ATTACK_COMBO, 0);
 	}
@@ -825,6 +883,7 @@ public class EntitySkillUtil {
 	public static void clearRuntimeState(LivingEntity entity) {
 		cancelAll(entity, true);
 		activeSkills(entity).clear();
+		entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences.clear();
 		entity.setData(LcAttachmentTypes.ATTACK_COMBO, 0);
 	}
 

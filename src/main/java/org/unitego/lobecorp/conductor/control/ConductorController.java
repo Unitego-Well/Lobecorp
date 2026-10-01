@@ -20,8 +20,11 @@ import org.unitego.lobecorp.conductor.ability.WardenSonicBoomAbility;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
+import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
 import org.unitego.lobecorp.util.ConductorUtil;
 import org.unitego.lobecorp.entity_skill.EntitySkillAccess;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
+import org.unitego.lobecorp.entity_skill.EntitySkillCastResult;
 import org.unitego.lobecorp.entity_skill.IEntitySkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 
@@ -64,6 +67,17 @@ public class ConductorController {
 		mob.setPersistenceRequired();
 		if (!mob.isAlive()) {
 			stop(mob);
+			return;
+		}
+		PendingSkillCast pending = ConductorUnitRuntime.get(mob).pendingSkill;
+		if (pending != null) {
+			clearWalkAndLookTargets(mob);
+			stopMovement(mob);
+			if (pending.target() != null && (!pending.target().isAlive() || pending.target().isRemoved())) {
+				ConductorUnitRuntime.get(mob).pendingSkill = null;
+			} else {
+				cast(mob, pending.skill(), pending.target(), pending.position());
+			}
 			return;
 		}
 		if (mob instanceof Warden warden) {
@@ -180,7 +194,8 @@ public class ConductorController {
 			executeMoveOrder(mob, data, returning);
 			return;
 		}
-		if (unit.behaviorState() == ConductorData.BehaviorState.GUARD && target == null) {
+		if ((unit.behaviorState() == ConductorData.BehaviorState.GUARD
+				|| unit.behaviorState() == ConductorData.BehaviorState.STANDBY) && target == null) {
 			clearWalkAndLookTargets(mob);
 			stopMovement(mob);
 			return;
@@ -197,6 +212,16 @@ public class ConductorController {
 	}
 
 	public static void stopControlled(Mob mob) {
+		stopControlled(mob, true);
+	}
+
+	/// 手动施放前仅清理移动与指令；技能接招由状态机在新施放成功后处理。
+	public static void prepareForSkillCast(Mob mob) {
+		stopControlled(mob, false);
+	}
+
+	private static void stopControlled(Mob mob, boolean cancelSkills) {
+		ConductorUnitRuntime.get(mob).pendingSkill = null;
 		resetSharedTarget(mob);
 		ConductorMovement.clear(mob);
 		ConductorWork.cancel(mob);
@@ -211,7 +236,7 @@ public class ConductorController {
 		clearTarget(mob);
 		clearWalkAndLookTargets(mob);
 		stopMovement(mob);
-		EntitySkillUtil.forceCancelSkill(mob);
+		if (cancelSkills) EntitySkillUtil.forceCancelSkill(mob);
 	}
 
 	private static void stopMovement(Mob mob) {
@@ -321,6 +346,7 @@ public class ConductorController {
 				|| mob.distanceToSqr(target) > followRange(mob) * followRange(mob)) {
 			return false;
 		}
+		if (unit.behaviorState() == ConductorData.BehaviorState.STANDBY) return true;
 		ConductorData.Position origin = unit.origin();
 		return origin != null && target.position().distanceToSqr(origin.vector()) <= behaviorRadius(unit) * behaviorRadius(unit);
 	}
@@ -361,12 +387,13 @@ public class ConductorController {
 		return switch (unit.behaviorState()) {
 			case PATROL -> ConductorRules.PATROL_RADIUS;
 			case GUARD -> ConductorRules.GUARD_RADIUS;
-			case IDLE -> 0.0D;
+			case IDLE, STANDBY -> 0.0D;
 		};
 	}
 
 	private static boolean isOutsideBehaviorRadius(Mob mob, ConductorData.Unit unit) {
-		if (unit.combatBehavior() == ConductorData.CombatBehavior.PASSIVE || unit.origin() == null) {
+		if (unit.combatBehavior() == ConductorData.CombatBehavior.PASSIVE || unit.origin() == null
+				|| unit.behaviorState() == ConductorData.BehaviorState.STANDBY) {
 			return false;
 		}
 		return mob.position().distanceToSqr(unit.origin().vector())
@@ -430,6 +457,11 @@ public class ConductorController {
 						&& (mob.getTarget() == null
 						|| !isAllowedTarget(mob, mob.getTarget(), ConductorData.get(level.getServer()), unit))) {
 					yield false;
+				}
+				if (unit.behaviorState() == ConductorData.BehaviorState.STANDBY) {
+					LivingEntity target = mob.getTarget();
+					if (target == null) target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+					yield target != null && isAllowedTarget(mob, target, ConductorData.get(level.getServer()), unit);
 				}
 				double radius = behaviorRadius(unit);
 				yield destination.distanceToSqr(unit.origin().vector()) <= radius * radius;
@@ -592,16 +624,33 @@ public class ConductorController {
 		if (access == null || !access.supports(skill)) {
 			return false;
 		}
+		if (mob instanceof TheQueenOfHatred queen) queen.cancelConductorSitting();
 		Deque<ExplicitSkillCast> casts = EXPLICIT_SKILL_CASTS.get();
 		casts.push(new ExplicitSkillCast(mob, skill));
 		try {
-			return access.cast(skill, target, targetPosition).started();
+			EntitySkillCastResult<?> result = access.cast(skill, target, targetPosition);
+			if (result.started() && result.runtime() != null && skill instanceof LaserSkill) {
+				LaserSkill.enableManualControl(result.runtime());
+			}
+			boolean aiming = result.status() == EntitySkillCastResult.Status.AIMING;
+			ConductorUnitRuntime.get(mob).pendingSkill = aiming ? new PendingSkillCast(skill, target, targetPosition) : null;
+			return result.started() || aiming;
 		} finally {
 			casts.pop();
 			if (casts.isEmpty()) {
 				EXPLICIT_SKILL_CASTS.remove();
 			}
 		}
+	}
+
+	/// 手动持续激光的鼠标更新同时覆盖尚在瞄准的请求和已经开始的运行实例。
+	public static void updateLaserAim(Mob mob, IEntitySkill<?> skill, LivingEntity target, Vec3 position, boolean following) {
+		PendingSkillCast pending = ConductorUnitRuntime.get(mob).pendingSkill;
+		if (pending != null && pending.skill() == skill && skill instanceof LaserSkill) {
+			ConductorUnitRuntime.get(mob).pendingSkill = following ? new PendingSkillCast(skill, target, position)
+					: new PendingSkillCast(skill, null, mob.position().add(mob.getLookAngle().scale(LaserSkill.RANGE)));
+		}
+		LaserSkill.updateManualAim(mob, target, position, following);
 	}
 
 	public static boolean isExplicitSkillCast(Mob mob, IEntitySkill<?> skill) {
@@ -614,10 +663,18 @@ public class ConductorController {
 		return cast.mob() == mob && cast.skill() == skill;
 	}
 
+	/// 手动技能尚在瞄准时，阻止自动技能抢占其施放位置。
+	public static boolean hasPendingSkillCast(Mob mob) {
+		return ConductorUnitRuntime.get(mob).pendingSkill != null;
+	}
+
 	protected record ManualSonicBoomRequest(UUID target, long expiresAt) {
 	}
 
 	private record ExplicitSkillCast(Mob mob, IEntitySkill<?> skill) {
+	}
+
+	protected record PendingSkillCast(IEntitySkill<?> skill, @Nullable Entity target, @Nullable Vec3 position) {
 	}
 
 }

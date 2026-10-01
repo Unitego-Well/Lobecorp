@@ -33,7 +33,12 @@ public interface EntitySkillAccess {
 	/// 判断实体当前是否拥有并支持指定技能。
 	boolean supports(IEntitySkill<?> skill);
 
-	/// @return 当前技能附件的不可变视图
+	/// 只检查当前运行阶段、同技能互斥和运行组容量；不检查目标、冷却或技能业务条件。
+	default boolean canBeginCast(IEntitySkill<?> skill) {
+		return supports(skill) && EntitySkillUtil.canBeginCast(entity(), skill);
+	}
+
+	/// @return 默认定义与实体修正合并后的不可变技能视图
 	Set<IEntitySkill<?>> skills();
 
 	/// 初始化实体技能附件。只在实体确实需要技能时调用。
@@ -121,6 +126,11 @@ public interface EntitySkillAccess {
 	int attackCombo();
 
 	void setAttackCombo(int combo);
+
+	/// 获取属于本实体、指定多段技能的非持久化续段状态。
+	default MultiStageSkill.Sequence multiStageSequence(MultiStageSkill<?> skill) {
+		return EntitySkillUtil.multiStageSequence(entity(), skill);
+	}
 
 	void clearTemporaryState();
 

@@ -130,7 +130,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	}
 
 	private static void prepareSkill(Mob mob, ConductorData data) {
-		ConductorController.stop(mob);
+		ConductorController.prepareForSkillCast(mob);
 		data.update(mob.getUUID(), state -> state.command(ConductorData.OrderType.NONE, null, mob.position()));
 	}
 
@@ -318,7 +318,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 					if (ability != null) {
 						if (!ability.isAvailable(mob)
 								|| ability.cooldownTicks(mob) > 0
-								|| ability instanceof EntitySkillConductorAbility entitySkill && entitySkill.isCasting(mob)) {
+								|| ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob)) {
 							continue;
 						}
 						if ((ability.targetKind() == ConductorTargeting.TargetKind.ENTITY
@@ -357,6 +357,23 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 						continue;
 					}
 				}
+			}
+			case AIM -> {
+				if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return;
+				for (UUID uuid : units) {
+					ConductorData.Unit unit = data.unit(uuid);
+					if (unit == null || !team.equals(unit.team())) continue;
+					ServerLevel level = player.level().getServer().getLevel(
+							ResourceKey.create(Registries.DIMENSION, Identifier.parse(unit.dimension())));
+					if (level == null || !(level.getEntity(uuid) instanceof Mob mob) || !mob.isAlive()
+							|| !(conductorAbility(mob, skill) instanceof EntitySkillConductorAbility.Laser laser)) continue;
+					Entity selectedTarget = targetSelection == TargetSelection.ENTITY ? level.getEntity(target) : null;
+					LivingEntity living = selectedTarget instanceof LivingEntity candidate && candidate.isAlive()
+							&& !data.allied(uuid, candidate.getUUID()) && laser.canTarget(mob, candidate)
+							&& laser.isWithinRange(mob, candidate.position()) ? candidate : null;
+					laser.updateAim(mob, living, new Vec3(x, y, z), flag);
+				}
+				return;
 			}
 			case SET_COLOR -> {
 				ConductorData.Team current = data.team(team);
@@ -473,7 +490,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		SET_ATTACK_MODE,
 		STOP,
 		ATTACK_POINT,
-		SET_COMBAT_BEHAVIOR
+		SET_COMBAT_BEHAVIOR,
+		/// 更新当前手动持续技能的瞄准，不重新发起施放。
+		AIM
 	}
 
 	private record FormationUnit(UUID uuid, ConductorData.Unit unit, Mob mob) {

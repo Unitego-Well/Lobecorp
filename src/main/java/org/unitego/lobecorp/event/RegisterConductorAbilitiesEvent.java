@@ -67,7 +67,7 @@ public class RegisterConductorAbilitiesEvent extends Event implements IModBusEve
 
 	private static boolean owns(Mob mob, Identifier id, Definition definition) {
 		ConductorAbilityState state = ConductorAttachmentUtil.abilities(mob);
-		return !state.blocked().contains(id) && (definition.initial() || state.learned().contains(id));
+		return state.owns(id, definition.initial());
 	}
 
 	private void register(EntityType<?> type, Identifier id, Supplier<ConductorAbility> factory, boolean initial) {

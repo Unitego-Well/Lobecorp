@@ -58,6 +58,18 @@ public interface TranslationKeys {
 			"Attack mode", "攻击模式");
 	String SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_GUARD = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.behavior_guard",
 			"Guard", "驻守");
+	String SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_STANDBY = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.behavior_standby",
+			"Standby", "待命");
+	String SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.skill_unavailable_cooldown",
+			"Unavailable: skill is cooling down", "不可用：技能冷却中");
+	String SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.skill_unavailable_casting",
+			"Unavailable: skill is being cast", "不可用：技能正在施放");
+	String SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.skill_unavailable_condition",
+			"Unavailable: requirements not met", "不可用：当前条件不满足");
+	String SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.skill_unavailable_target",
+			"Unavailable: invalid target or cast position", "不可用：目标或施放位置无效");
+	String SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.skill_out_of_range",
+			"Out of casting range", "超出技能施放范围");
 	String SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_IDLE = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.behavior_idle",
 			"Idle", "待机");
 	String SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_MODE = LangHandler.creates(Lobecorp.NAMESPACE, "screen.lobecorp.conductor.behavior_mode",

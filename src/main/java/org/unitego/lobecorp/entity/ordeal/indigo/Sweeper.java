@@ -36,6 +36,7 @@ import org.unitego.lobecorp.animation.*;
 import org.unitego.lobecorp.conductor.control.ConductorWork;
 import org.unitego.lobecorp.entity.IEntityTarget;
 import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.util.EntityFacingUtil;
 import org.unitego.lobecorp.entity_state.EntityState;
 import org.unitego.lobecorp.entity_state.EntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
@@ -87,10 +88,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		setPathfindingMalus(PathType.FIRE, -1);
 		setPathfindingMalus(PathType.WATER, 10.0F);
 		setPathfindingMalus(PathType.WATER_BORDER, 5.0F);
-		EntitySkillUtil.addSkill(this, SweeperSkills.ATTACK.get());
-		EntitySkillUtil.addSkill(this, SweeperSkills.LEAP.get());
-		EntitySkillUtil.addSkill(this, SweeperSkills.SWEEP.get());
-		EntitySkillUtil.addSkill(this, SweeperSkills.REASSEMBLE.get());
+		EntitySkillUtil.initialize(this);
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
@@ -165,6 +163,16 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 
 	public void setAttackCombo(int combo) {
 		EntitySkillUtil.setAttackCombo(this, combo);
+	}
+
+	@Override
+	protected void tickHeadTurn(float yBodyRotT) {
+		if (EntitySkillUtil.isCasting(this, SweeperSkills.ATTACK.get())
+				|| EntitySkillUtil.isCasting(this, SweeperSkills.LEAP.get())) {
+			EntityFacingUtil.turn(this, getYRot());
+			return;
+		}
+		super.tickHeadTurn(yBodyRotT);
 	}
 
 	@Override

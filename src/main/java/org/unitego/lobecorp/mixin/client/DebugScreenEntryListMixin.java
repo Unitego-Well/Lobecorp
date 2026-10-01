@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.debug.LcDebugRuntimeOptions;
+import org.unitego.lobecorp.client.debug.LcDebugRuntimeOptions;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 
 @Mixin(DebugScreenEntryList.class)

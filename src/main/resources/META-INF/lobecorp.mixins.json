@@ -3,6 +3,9 @@
 	"package": "org.unitego.lobecorp.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"conductor.ChunkMapConductorMixin",
+		"conductor.TrackedEntityConductorMixin",
+		"conductor.ServerLevelConductorMixin",
 		"DamageSourceMixin",
 		"entity.BrainConductorMixin",
 		"entity.BreezeMixin",
@@ -21,6 +24,9 @@
 		"item.SpawnEggItemMixin"
 	],
 	"client": [
+		"client.ConductorClientChunkCacheMixin",
+		"client.ConductorClientLevelMixin",
+		"client.ConductorEntityRendererMixin",
 		"client.CameraMixin",
 		"client.ClientInputAccessor",
 		"client.ConductorKeyboardMixin",

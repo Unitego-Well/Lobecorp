@@ -8,24 +8,19 @@ import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
 import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.entity_skill.EntitySkill;
 import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffect;
 import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectDebugInfo;
 import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectManager;
 import org.unitego.lobecorp.hitbox.*;
 import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 憎恶皇后的环形退散冲击波。
-public class RepelSkill extends TheQueenOfHatredSkill {
-	/// 技能运行结束后再次施放前的等待时间，单位为游戏刻。
-	private static final int REUSE_DELAY_TICKS = 20;
-
+public class RepelSkill extends EntitySkill<TheQueenOfHatred> {
 	public RepelSkill(Properties properties) {
 		super(properties);
-	}
-
-	public static int conductorReuseDelayTicks() {
-		return REUSE_DELAY_TICKS;
 	}
 
 	public static double conductorPreviewRadius() {
@@ -56,7 +51,6 @@ public class RepelSkill extends TheQueenOfHatredSkill {
 	@Override
 	public void onRecoveryEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		queen.stopActionAnimation();
-		queen.delayNextSkillCast(REUSE_DELAY_TICKS);
 	}
 
 	@Override
@@ -66,14 +60,18 @@ public class RepelSkill extends TheQueenOfHatredSkill {
 
 	/// 憎恶皇后退散技能释放的脱手环形冲击波。
 	public static class RepelWaveEffect extends EntitySkillEffect {
+		/// 冲击波和视觉效果的总存在时间，单位为游戏刻。
 		private static final int WAVE_DURATION_TICKS = 20;
 		private static final double INITIAL_WAVE_RADIUS = 1.0;
 		private static final double MAXIMUM_WAVE_RADIUS = 10.0;
 		private static final double WAVE_HEIGHT = 3.0;
 		private static final double WAVE_RING_THICKNESS = 2.0;
 		private static final double MINIMUM_WAVE_ATTENUATION = 0.1;
+		/// 冲击波相对原扩张速度的倍率，不改变最大半径和总存在时间。
+		private static final double WAVE_SPEED_MULTIPLIER = 2.0;
+		/// 冲击波每游戏刻扩张的半径，单位为格。
 		private static final double WAVE_RADIUS_PER_TICK =
-				(MAXIMUM_WAVE_RADIUS - INITIAL_WAVE_RADIUS) / (WAVE_DURATION_TICKS - 1);
+				(MAXIMUM_WAVE_RADIUS - INITIAL_WAVE_RADIUS) / (WAVE_DURATION_TICKS - 1) * WAVE_SPEED_MULTIPLIER;
 		private static final TypedDataKey<RepelWaveEffect> WAVE_EFFECT = TypedDataKey.create();
 		private static final HitboxTemplate HITBOX_TEMPLATE = new HitboxTemplate(
 				new RingCylinderSize(INITIAL_WAVE_RADIUS, WAVE_HEIGHT, WAVE_RING_THICKNESS),
@@ -97,22 +95,43 @@ public class RepelSkill extends TheQueenOfHatredSkill {
 		public RepelWaveEffect(TheQueenOfHatred queen, ServerLevel level,
 		                       EntitySkillRuntime<TheQueenOfHatred> runtime) {
 			super(level, queen.position(), WAVE_DURATION_TICKS, queen, false, null, false);
-			hitbox = HitboxManager.create(HITBOX_TEMPLATE, level, position(), WAVE_DURATION_TICKS, runtime);
+			hitbox = HitboxManager.create(HITBOX_TEMPLATE, level, position(), WAVE_DURATION_TICKS);
 			hitbox.setSource(queen);
 			hitbox.setEntitySkillEffectDebugInfo(new EntitySkillEffectDebugInfo(getClass().getSimpleName(),
 					queen.getDisplayName().getString(), runtime.skill().id().toString(), WAVE_DURATION_TICKS));
 			hitbox.setHitPolicy(HitboxHitPolicy.ONCE_PER_TARGET);
 			hitbox.setLineOfSightMode(HitboxLineOfSightMode.UNRESTRICTED);
 			hitbox.setData(WAVE_EFFECT, this);
+			level.sendParticles(LcParticleTypes.QUEEN_REPEL_WAVE.get(), position().x, position().y, position().z,
+					1, 0.0, 0.0, 0.0, 0.0);
+		}
+
+		/// 客户端冲击波视觉效果使用的总时长，单位为游戏刻。
+		public static int durationTicks() {
+			return WAVE_DURATION_TICKS;
+		}
+
+		/// 首次到达最大半径的游戏刻，从第 1 tick 开始计数。
+		public static int maximumRadiusTick() {
+			return (int) Math.ceil((MAXIMUM_WAVE_RADIUS - INITIAL_WAVE_RADIUS) / WAVE_RADIUS_PER_TICK) + 1;
+		}
+
+		/// 根据从第 1 tick 开始的进度计算冲击波半径，单位为格。
+		public static double radiusAtTick(double tick) {
+			return Math.min(INITIAL_WAVE_RADIUS + (tick - 1) * WAVE_RADIUS_PER_TICK, MAXIMUM_WAVE_RADIUS);
 		}
 
 		@Override
 		protected void tickEffect() {
-			radius = Math.min(INITIAL_WAVE_RADIUS + (ageTicks() - 1) * WAVE_RADIUS_PER_TICK,
-					MAXIMUM_WAVE_RADIUS);
+			boolean reachedMaximumRadius = radius >= MAXIMUM_WAVE_RADIUS;
+			radius = radiusAtTick(ageTicks());
 			hitbox.setPosition(position());
 			hitbox.setSize(new RingCylinderSize(radius, WAVE_HEIGHT, WAVE_RING_THICKNESS));
-			hitbox.activate();
+			if (reachedMaximumRadius) {
+				hitbox.deactivate();
+			} else {
+				hitbox.activate();
+			}
 		}
 
 		@Override

@@ -26,6 +26,8 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	@Nullable
 	private Integer cooldownTicksOverride;
 	private boolean successful;
+	/// 本次多段技能施放的段数，从 0 开始；与运行实例一起同步。
+	private int sequenceStage;
 	@Nullable
 	private Entity target;
 	@Nullable
@@ -75,6 +77,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	}
 
 	public void onWindupStart() {
+		if (skill instanceof MultiStageSkill<?> multiStage) multiStage.beginStage(this);
 		EntitySkillDebugUtil.log(this, "windup-start");
 		sync(EntitySkillSyncPayload.Callback.WINDUP_START);
 		skill.onWindupStart(owner, this);
@@ -105,6 +108,14 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 		skill.onRecoveryEnd(owner, this);
 	}
 
+	public int sequenceStage() {
+		return sequenceStage;
+	}
+
+	public void setSequenceStage(int sequenceStage) {
+		this.sequenceStage = sequenceStage;
+	}
+
 	public void onCancel() {
 		EntitySkillDebugUtil.log(this, "cancel");
 		sync(EntitySkillSyncPayload.Callback.CANCEL);
@@ -120,6 +131,11 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	/// @return 当前生命周期阶段
 	public SkillState state() {
 		return state;
+	}
+
+	/// 读取本次施放当前阶段的技能打断资格，不影响普通或强制取消。
+	public boolean isInterruptibleBySkill() {
+		return skill.isInterruptibleBySkill(owner, this);
 	}
 
 	/// 更新当前生命周期阶段。通常仅由技能管理器推进状态机时调用。
@@ -178,14 +194,20 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	}
 
 	/// 覆盖本次施放结束或取消后写入的冷却时间。
-	/// 该值只属于当前运行实例，不持久化也不同步；未设置时仍使用技能定义的默认冷却。
+	/// 该值只属于当前运行实例，不持久化也不同步；结束或取消时以当时的游戏时间为基准应用冷却倍率并写入。
+	/// 未设置时保留成功开始施放时写入的默认冷却，不在结束或取消时重新计时。
 	///
 	/// @param cooldownTicks 本次施放的冷却 tick；小于等于零表示不保留冷却
 	public void setCooldownTicks(int cooldownTicks) {
 		cooldownTicksOverride = cooldownTicks;
 	}
 
-	/// 返回本次施放最终使用的冷却时间。
+	/// @return 本次施放是否显式设置了结束或取消时应用的冷却覆盖值
+	public boolean hasCooldownTicksOverride() {
+		return cooldownTicksOverride != null;
+	}
+
+	/// 返回本次施放的冷却配置值；未显式覆盖时，此方法不会使结束或取消重新开始默认冷却。
 	///
 	/// @return 运行态覆盖值；未设置时返回技能定义的默认冷却
 	public int cooldownTicks() {

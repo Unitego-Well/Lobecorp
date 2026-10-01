@@ -3,6 +3,10 @@ package org.unitego.lobecorp.conductor.config;
 /// 指挥家运行规则与业务参数的集中定义。
 public interface ConductorRules {
 	int DIRECTORY_SYNC_INTERVAL_TICKS = 20;
+	/// 指挥家镜头观察位置的客户端同步间隔，单位为 tick。
+	int VIEW_SYNC_INTERVAL_TICKS = 5;
+	/// 镜头停止同步后释放观察区块票据的等待时间，单位为 tick。
+	int VIEW_TIMEOUT_TICKS = 40;
 	double TARGET_SEARCH_RANGE = 32.0D;
 	double TEAM_AGGRO_SHARE_RANGE = 16.0D;
 	double PATROL_RADIUS = 20.0D;

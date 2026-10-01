@@ -47,8 +47,20 @@ public interface IEntitySkill<T extends LivingEntity> {
 		return true;
 	}
 
+	/// 本技能的常规施放是否具备打断其他技能的能力；仍须当前技能阶段允许被打断。
+	default boolean interruptsSkills() {
+		return true;
+	}
+
+	/// 当前运行阶段是否允许被其他技能的常规施放打断；默认全部阶段禁止。
+	/// 主动取消、强制取消和技能自身失败处理不受此规则限制。
+	default boolean isInterruptibleBySkill(T entity, EntitySkillRuntime<T> runtime) {
+		return false;
+	}
+
 	/// 分组满载时，判断当前运行实例是否允许被准备施放的新技能覆盖。
-	/// 该方法应只判断条件；返回允许后，管理器会依次调用覆盖钩子、取消回调并开始冷却。
+	/// 该方法只判断覆盖条件；管理器还检查新技能的打断能力及当前阶段的被打断资格。
+	/// 成功覆盖时沿用原取消与冷却机制，普攻后摇接同技能时提前完成本段并推进连段。
 	///
 	/// @param entity      当前运行实例的拥有者
 	/// @param runtime     可能被覆盖的当前运行实例
@@ -129,6 +141,12 @@ public interface IEntitySkill<T extends LivingEntity> {
 	/// @param runtime 尚未加入运行态附件的候选实例，可用于预先设置目标等本次施放数据
 	/// @return 允许施放时返回 {@code true}
 	default boolean canUse(T entity, EntitySkillRuntime<T> runtime) {
+		return true;
+	}
+
+	/// 在施放条件检查后按转向限制瞄准；未到位时不开始前摇、冷却或派发施放事件。
+	/// 默认无需瞄准。AI 可继续尝试，指挥家会保留待瞄准的手动请求。
+	default boolean prepareAim(T entity, EntitySkillRuntime<T> runtime) {
 		return true;
 	}
 

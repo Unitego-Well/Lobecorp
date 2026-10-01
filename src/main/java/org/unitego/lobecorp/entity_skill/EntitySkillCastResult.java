@@ -27,6 +27,7 @@ public record EntitySkillCastResult<T extends LivingEntity>(
 		GROUP_NOT_AVAILABLE,
 		SKILL_REJECTED,
 		GROUP_FULL,
+		AIMING,
 		EVENT_CANCELLED
 	}
 }

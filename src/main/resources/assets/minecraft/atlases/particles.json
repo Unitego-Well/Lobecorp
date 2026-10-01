@@ -1,0 +1,10 @@
+{
+	"sources": [
+		{
+			"type": "minecraft:single",
+			"resource": "minecraft:item/nether_star",
+			"sprite": "lobecorp:queen_convergent_star"
+		}
+	]
+}
+

@@ -6,6 +6,7 @@ import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
 import com.mojang.serialization.Codec;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -14,6 +15,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
@@ -22,14 +24,15 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.util.EntityFacingUtil;
 import org.unitego.lobecorp.entity_state.EntityState;
 import org.unitego.lobecorp.entity_state.EntityStateHolder;
 import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.registry.entity_state.TheQueenOfHatredStates;
 
 import java.util.HashSet;
@@ -46,6 +49,10 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 			SynchedEntityData.defineId(TheQueenOfHatred.class, EntityDataSerializers.BOOLEAN);
 	private static final String PHASE_TWO_SAVE_KEY = "PhaseTwo";
 	private static final float PHASE_TWO_HEALTH_RATIO = 0.5F;
+	/// 二阶段基础攻击属性提升 25%，不重复叠加，存档加载后重建。
+	private static final double PHASE_TWO_ATTACK_DAMAGE_BONUS = 0.25;
+	/// 二阶段攻击属性修饰符的稳定资源 ID。
+	private static final Identifier PHASE_TWO_ATTACK_DAMAGE_ID = Lobecorp.id("queen_phase_two_attack_damage");
 	private static final float SITTING_COLLISION_HEIGHT = 1.4F;
 	private static final int LOCOMOTION_ANIMATION_TRANSITION_TICKS = 2;
 	private final Set<UUID> attackers = new HashSet<>();
@@ -54,7 +61,6 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 	private float skillLockedYRot;
 	private float skillLockedYHeadRot;
 	private float skillLockedYBodyRot;
-	private long nextSkillCastGameTime;
 	private boolean entityStatesInitialized;
 
 	public TheQueenOfHatred(Level level) {
@@ -63,8 +69,7 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 
 	public TheQueenOfHatred(EntityType<? extends PathfinderMob> type, Level level) {
 		super(type, level);
-		EntitySkillUtil.addSkill(this, TheQueenOfHatredSkills.REPEL.get());
-		EntitySkillUtil.addSkill(this, TheQueenOfHatredSkills.SWEEP.get());
+		EntitySkillUtil.initialize(this);
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
@@ -115,6 +120,11 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 		if (!isPhaseTwo() && getHealth() <= getMaxHealth() * PHASE_TWO_HEALTH_RATIO) {
 			getEntityData().set(DATA_PHASE_TWO, true);
 		}
+		var attackDamage = getAttribute(Attributes.ATTACK_DAMAGE);
+		if (isPhaseTwo() && attackDamage != null && !attackDamage.hasModifier(PHASE_TWO_ATTACK_DAMAGE_ID)) {
+			attackDamage.addTransientModifier(new AttributeModifier(PHASE_TWO_ATTACK_DAMAGE_ID,
+					PHASE_TWO_ATTACK_DAMAGE_BONUS, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+		}
 	}
 
 	@Override
@@ -148,21 +158,7 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 	}
 
 	public void restoreSkillFacing() {
-		setYRot(skillLockedYRot);
-		setYHeadRot(skillLockedYHeadRot);
-		yBodyRot = skillLockedYBodyRot;
-	}
-
-	protected long skillCastAvailableAfterGameTime() {
-		return nextSkillCastGameTime;
-	}
-
-	public int conductorSkillCooldownTicks() {
-		return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, nextSkillCastGameTime - level().getGameTime()));
-	}
-
-	public void delayNextSkillCast(int delayTicks) {
-		nextSkillCastGameTime = level().getGameTime() + delayTicks;
+		EntityFacingUtil.turn(this, skillLockedYRot, skillLockedYHeadRot, skillLockedYBodyRot);
 	}
 
 	protected TheQueenOfHatredAi ai() {
@@ -238,6 +234,10 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 
 	@Override
 	protected void tickHeadTurn(float yBodyRotT) {
+		if (EntitySkillUtil.isMovementLocked(this)) {
+			EntityFacingUtil.turn(this, getYRot());
+			return;
+		}
 		if (!isSittingEdge()) {
 			super.tickHeadTurn(yBodyRotT);
 			return;
@@ -314,10 +314,22 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, LcCust
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
 				.triggerableAnim(TheQueenOfHatredAnim.DISPEL.name(), TheQueenOfHatredAnim.DISPEL.getAnimation())
 				.triggerableAnim(TheQueenOfHatredAnim.SWEEP.name(), TheQueenOfHatredAnim.SWEEP.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.SPIN.name(), TheQueenOfHatredAnim.SPIN.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.AIM.name(), TheQueenOfHatredAnim.AIM.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.AIM_2.name(), TheQueenOfHatredAnim.AIM_2.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.BLINK.name(), TheQueenOfHatredAnim.BLINK.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.TELEPORT.name(), TheQueenOfHatredAnim.TELEPORT.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.KISS.name(), TheQueenOfHatredAnim.KISS.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.SPELL.name(), TheQueenOfHatredAnim.SPELL.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.ATTACK.name(), TheQueenOfHatredAnim.ATTACK.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.ATTACK_2.name(), TheQueenOfHatredAnim.ATTACK_2.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.REST.name(), TheQueenOfHatredAnim.REST.getAnimation())
+				.triggerableAnim(TheQueenOfHatredAnim.TOSS.name(), TheQueenOfHatredAnim.TOSS.getAnimation())
 				.build());
 	}
 
 	public void playActionAnimation(TheQueenOfHatredAnim animation) {
+		cancelConductorSitting();
 		playCustomAnimation("action", animation.name());
 	}
 

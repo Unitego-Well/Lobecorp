@@ -17,6 +17,8 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.util.EntityFacingUtil;
+import org.unitego.lobecorp.entity_skill.EntitySkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.hitbox.HitboxInstance;
 import org.unitego.lobecorp.hitbox.HitboxManager;
@@ -31,7 +33,7 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 import static org.unitego.lobecorp.hitbox.HitboxManager.CURRENT_TICK_DURATION;
 
 /// 清道夫飞扑技能：起跳 leap 冲向目标，落地 leap2 时对落点周围造成范围伤害。
-public class LeapSkill extends TargetedSweeperSkill {
+public class LeapSkill extends EntitySkill<Sweeper> {
 	/// 落地范围伤害半径
 	private static final float DAMAGE_RADIUS = 2.5f;
 	/// 落地命中目标时的击飞强度
@@ -153,7 +155,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 
 	@Override
 	public boolean canUse(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null && runtime.targetPosition() == null) {
 			target = entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 		}
@@ -181,6 +183,11 @@ public class LeapSkill extends TargetedSweeperSkill {
 	}
 
 	@Override
+	public boolean prepareAim(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		return EntityFacingUtil.aim(entity, EntityFacingUtil.targetPosition(entity, runtime, true), false);
+	}
+
+	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.LEAP);
 		entity.playActionAnimation(SweeperAnim.LEAP);
@@ -196,7 +203,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 
 	@Override
 	public void onWindupTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null && runtime.targetPosition() == null) {
 			EntitySkillUtil.forceCancelSkill(entity, this);
 			return;
@@ -219,7 +226,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null && runtime.targetPosition() == null) {
 			EntitySkillUtil.forceCancelSkill(entity, this);
 			return;
@@ -318,7 +325,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 	}
 
 	private void updateLaunchSolution(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		Vec3 targetPosition = target == null ? runtime.targetPosition() : target.getBoundingBox().getCenter();
 		if (targetPosition == null) {
 			return;
@@ -389,7 +396,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 		if (movement.horizontalDistanceSqr() <= 1.0E-8) {
 			return;
 		}
-		float yaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
+		float yaw = EntityFacingUtil.yaw(movement, entity.getYRot());
 		setFacing(entity, yaw);
 	}
 
@@ -412,9 +419,7 @@ public class LeapSkill extends TargetedSweeperSkill {
 	}
 
 	private void setFacing(Sweeper entity, float yaw) {
-		entity.setYRot(yaw);
-		entity.setYHeadRot(yaw);
-		entity.yBodyRot = yaw;
+		EntityFacingUtil.turn(entity, yaw);
 	}
 
 	private void addKnockbackResistance(Sweeper entity) {

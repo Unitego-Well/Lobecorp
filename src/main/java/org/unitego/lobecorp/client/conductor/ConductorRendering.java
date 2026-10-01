@@ -58,7 +58,10 @@ public class ConductorRendering {
 	private static final int ATTACK_LINE_COLOR = 0xFFFF3333;
 	private static final int PREVIEW_RANGE_COLOR = 0xAA66CCFF;
 	private static final int PREVIEW_TARGET_COLOR = 0xFF66CCFF;
-	private static final int PREVIEW_LIMIT_COLOR = 0xFFFF3333;
+	/// 超出施法范围时使用黄色预览。
+	private static final int PREVIEW_LIMIT_COLOR = 0xFFFFFF55;
+	/// 目标或施放条件无效时使用红色预览。
+	private static final int PREVIEW_INVALID_COLOR = 0xFFFF3333;
 	private static final int PREVIEW_CORRECTED_COLOR = 0xFF55FF55;
 	private static final String TEAM_NAME_SEPARATOR = " · ";
 	private static ItemStack attackCursor;
@@ -249,11 +252,12 @@ public class ConductorRendering {
 
 	private static void renderPreview(SubmitCustomGeometryEvent event, Vec3 camera, PreviewState preview) {
 		PoseStack poseStack = event.getPoseStack();
+		int geometryColor = preview.rangeLimited() ? PREVIEW_LIMIT_COLOR
+				: preview.invalid() ? PREVIEW_INVALID_COLOR : PREVIEW_RANGE_COLOR;
 		if (preview.showRadius()) {
 			poseStack.pushPose();
 			poseStack.translate(preview.source().x - camera.x(), preview.source().y - camera.y() + RING_Y_OFFSET,
 					preview.source().z - camera.z());
-			int color = preview.rangeLimited() ? PREVIEW_LIMIT_COLOR : PREVIEW_RANGE_COLOR;
 			event.getSubmitNodeCollector().submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, buffer) -> {
 				for (int segment = 0; segment < PREVIEW_RING_SEGMENTS; segment++) {
 					if (preview.rangeLimited() && segment % 3 == 2) continue;
@@ -263,13 +267,11 @@ public class ConductorRendering {
 					float z1 = (float) (Math.sin(firstAngle) * preview.radius());
 					float x2 = (float) (Math.cos(secondAngle) * preview.radius());
 					float z2 = (float) (Math.sin(secondAngle) * preview.radius());
-					line(pose, buffer, x1, z1, x2, z2, color);
+					line(pose, buffer, x1, z1, x2, z2, geometryColor);
 				}
 			});
 			poseStack.popPose();
 		}
-		int geometryColor = preview.rangeLimited() || preview.invalid()
-				? PREVIEW_LIMIT_COLOR : PREVIEW_RANGE_COLOR;
 		boolean dashed = preview.rangeLimited() || preview.invalid();
 		for (ConductorTargeting.PreviewCircle circle : preview.geometry().circles()) {
 			renderPreviewCircle(event, camera, circle, geometryColor, dashed);
@@ -283,7 +285,7 @@ public class ConductorRendering {
 		if (!preview.showTarget()) {
 			return;
 		}
-		int targetColor = preview.invalid() || preview.rangeLimited() ? PREVIEW_LIMIT_COLOR : PREVIEW_TARGET_COLOR;
+		int targetColor = preview.rangeLimited() ? PREVIEW_LIMIT_COLOR : preview.invalid() ? PREVIEW_INVALID_COLOR : PREVIEW_TARGET_COLOR;
 		Vec3 requested = preview.requestedPosition();
 		Vec3 requestedOffset = requested.subtract(preview.source());
 		if (preview.rangeLimited()) {

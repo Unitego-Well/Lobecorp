@@ -27,6 +27,7 @@ public record EntitySkillSyncPayload(
 		EntitySkillRuntime.SkillState state,
 		int ticksLeft,
 		int activeTicks,
+		int sequenceStage,
 		boolean successful,
 		int targetId
 ) implements ToClientPayload {
@@ -44,6 +45,7 @@ public record EntitySkillSyncPayload(
 					EntitySkillRuntime.SkillState.values()[buffer.readVarInt()],
 					buffer.readVarInt(),
 					buffer.readVarInt(),
+					buffer.readVarInt(),
 					buffer.readBoolean(),
 					buffer.readVarInt()
 			);
@@ -58,6 +60,7 @@ public record EntitySkillSyncPayload(
 			buffer.writeVarInt(payload.state.ordinal());
 			buffer.writeVarInt(payload.ticksLeft);
 			buffer.writeVarInt(payload.activeTicks);
+			buffer.writeVarInt(payload.sequenceStage);
 			buffer.writeBoolean(payload.successful);
 			buffer.writeVarInt(payload.targetId);
 		}
@@ -75,6 +78,7 @@ public record EntitySkillSyncPayload(
 				runtime.state(),
 				runtime.ticksLeft(),
 				runtime.activeTicks(),
+				runtime.sequenceStage(),
 				runtime.isSuccessful(),
 				target == null ? NO_TARGET : target.getId()
 		));
@@ -115,6 +119,7 @@ public record EntitySkillSyncPayload(
 			data.active.add(runtime);
 		}
 		runtime.setActiveTicks(activeTicks);
+		runtime.setSequenceStage(sequenceStage);
 		if (successful) {
 			runtime.markSuccessful();
 		}

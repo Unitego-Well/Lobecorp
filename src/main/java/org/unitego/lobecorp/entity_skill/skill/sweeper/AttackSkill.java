@@ -2,7 +2,6 @@ package org.unitego.lobecorp.entity_skill.skill.sweeper;
 
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -13,6 +12,8 @@ import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.util.EntityUtil;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.util.EntityFacingUtil;
+import org.unitego.lobecorp.entity_skill.MultiStageBasicSkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.hitbox.*;
 import org.unitego.lobecorp.registry.entity_state.SweeperStates;
@@ -24,11 +25,10 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 /// 清道夫 3 段攻击技能：attack → attack2 → attack3 → attack 循环。
 /// <p>
 /// 每段由前摇 + 后摇组成（共 20 tick，与 1s 动画对齐）。
-/// 连段自动衔接：每段后摇结束由 {@link Sweeper#getAttackCombo()} 进位，
-/// 战斗行为持续施放即可自动打出下一段。
-public class AttackSkill extends TargetedSweeperSkill {
-	/// 一套连击（3 段）完成后进入的冷却
-	private static final int COMBO_COOLDOWN = 2 * TICKS_PER_SECOND;
+/// 每段后摇结束后开放默认续段窗口，整套完成或超时后进入冷却。
+public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
+	/// 一套连击（3 段）完成或续段超时后的冷却，为 20 tick（一秒）
+	private static final int COMBO_COOLDOWN = TICKS_PER_SECOND;
 	/// 普通攻击的总连击段数
 	private static final int COMBO_LENGTH = 3;
 	/// 第一段攻击相对基础攻击伤害增加的倍率
@@ -45,14 +45,8 @@ public class AttackSkill extends TargetedSweeperSkill {
 	private static final double ATTACK_HEIGHT = 3.0;
 	/// 每段普通攻击最多命中的目标数量
 	private static final int MAXIMUM_TARGET_COUNT = 2;
-	/// 本次攻击创建的判断框编号
+	/// 本次攻击锁定的水平朝向，单位为度
 	private static final TypedDataKey<Float> LOCKED_YAW = TypedDataKey.create();
-	private static final TypedDataKey<Boolean> DIRECTION_CAST = TypedDataKey.create();
-	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
-	/// 判断框使用的连击段数
-	private static final TypedDataKey<Integer> HITBOX_COMBO = TypedDataKey.create();
-	/// 判断框所属的技能运行态
-	private static final TypedDataKey<EntitySkillRuntime<Sweeper>> HITBOX_RUNTIME = TypedDataKey.create();
 	/// 普通攻击扇形判断框共享模板
 	private static final HitboxTemplate HITBOX_TEMPLATE = new HitboxTemplate(
 			new SectorCylinderSize(ATTACK_RANGE, ATTACK_HEIGHT, ATTACK_ANGLE_DEGREES),
@@ -64,15 +58,12 @@ public class AttackSkill extends TargetedSweeperSkill {
 				if (!(context.target() instanceof LivingEntity target)) {
 					return false;
 				}
-				Integer combo = context.instance().getData(HITBOX_COMBO);
-				if (combo == null || !entity.doHurtTarget(context.level(), target, getAttackDamageModifier(combo))) {
+				EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
+				if (runtime == null || !entity.doHurtTarget(context.level(), target, getAttackDamageModifier(runtime.sequenceStage()))) {
 					return false;
 				}
-				EntitySkillRuntime<Sweeper> runtime = context.instance().getData(HITBOX_RUNTIME);
-				if (runtime != null) {
-					runtime.markSuccessful();
-				}
-				SimpleParticleType strikeParticle = getStrikeParticle(combo);
+				runtime.markSuccessful();
+				SimpleParticleType strikeParticle = getStrikeParticle(runtime.sequenceStage());
 				EntityUtil.getHitPosOnAABB(entity, target).ifPresent(hitPos ->
 						context.level().sendParticles(strikeParticle, hitPos.x, hitPos.y, hitPos.z,
 								1, 0, 0, 0, 0));
@@ -80,16 +71,11 @@ public class AttackSkill extends TargetedSweeperSkill {
 			}
 	);
 	public AttackSkill(Properties properties) {
-		super(properties);
-	}
-
-	public static int conductorComboCooldownTicks() {
-		return COMBO_COOLDOWN;
+		super(properties, COMBO_LENGTH, COMBO_COOLDOWN);
 	}
 
 	public static Vec3 direction(Mob mob, Vec3 position) {
-		Vec3 offset = position.subtract(mob.position()).multiply(1.0, 0.0, 1.0);
-		return offset.horizontalDistanceSqr() > 0.0 ? offset.normalize() : Vec3.directionFromRotation(0.0F, mob.getYRot());
+		return EntityFacingUtil.horizontalDirection(mob, position);
 	}
 
 	public static double conductorAngle() {
@@ -103,9 +89,7 @@ public class AttackSkill extends TargetedSweeperSkill {
 	private static void lockFacing(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		Float yaw = runtime.getData(LOCKED_YAW);
 		if (yaw == null) return;
-		entity.setYRot(yaw);
-		entity.setYBodyRot(yaw);
-		entity.setYHeadRot(yaw);
+		EntityFacingUtil.turn(entity, yaw);
 	}
 
 	private static SimpleParticleType getStrikeParticle(int combo) {
@@ -131,17 +115,12 @@ public class AttackSkill extends TargetedSweeperSkill {
 	}
 
 	@Override
-	public boolean isBasicAttack() {
-		return true;
-	}
-
-	@Override
 	public boolean canUse(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (runtime.targetPosition() != null && ConductorController.isExplicitSkillCast(entity, this)) {
 			runtime.setData(DIRECTION_CAST, true);
 			return true;
 		}
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null) {
 			target = entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 		}
@@ -165,17 +144,17 @@ public class AttackSkill extends TargetedSweeperSkill {
 	}
 
 	@Override
+	public boolean prepareAim(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		return EntityFacingUtil.aim(entity, EntityFacingUtil.targetPosition(entity, runtime, false), false);
+	}
+
+	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		Vec3 position = runtime.targetPosition();
-		LivingEntity target = getTarget(runtime);
-		Vec3 offset = direction(entity, position != null ? position
-				: target != null ? target.position() : entity.position());
-		float yaw = offset.horizontalDistanceSqr() > 0.0
-				? (float) (Mth.atan2(offset.z, offset.x) * Mth.RAD_TO_DEG) - 90.0F : entity.getYRot();
+		float yaw = entity.getYRot();
 		runtime.setData(LOCKED_YAW, yaw);
 		lockFacing(entity, runtime);
 		entity.addEntityState(SweeperStates.ATTACK);
-		int combo = entity.getAttackCombo() % COMBO_LENGTH;
+		int combo = currentStage(runtime);
 		entity.playActionAnimation(switch (combo) {
 			case 0 -> SweeperAnim.ATTACK1;
 			case 1 -> SweeperAnim.ATTACK2;
@@ -189,8 +168,6 @@ public class AttackSkill extends TargetedSweeperSkill {
 			hitbox.setRotation(new Vec3(0.0, -yaw, 0.0));
 			hitbox.appendTargetFilter(entity::isValidTarget);
 			hitbox.setHitPolicy(new HitboxHitPolicy(HitboxHitMode.ONCE, 0, 1, MAXIMUM_TARGET_COUNT));
-			hitbox.setData(HITBOX_COMBO, combo);
-			hitbox.setData(HITBOX_RUNTIME, runtime);
 			runtime.setData(HITBOX_ID, hitbox.id());
 		}
 	}
@@ -202,7 +179,7 @@ public class AttackSkill extends TargetedSweeperSkill {
 		}
 
 		lockFacing(entity, runtime);
-		LivingEntity target = getTarget(runtime);
+		LivingEntity target = runtime.target(LivingEntity.class);
 		if (!Boolean.TRUE.equals(runtime.getData(DIRECTION_CAST))
 				&& (target == null || !target.isAlive() || !entity.isValidTarget(target)
 				|| !isWithinAttackRange(entity, target))) {
@@ -236,14 +213,6 @@ public class AttackSkill extends TargetedSweeperSkill {
 	public void onRecoveryEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.removeEntityState(SweeperStates.ATTACK);
 		removeHitbox(entity, runtime);
-		if (!runtime.isSuccessful()) {
-			return;
-		}
-		int combo = (entity.getAttackCombo() + 1) % COMBO_LENGTH;
-		entity.setAttackCombo(combo);
-		if (combo == 0) {
-			EntitySkillUtil.setCooldown(entity, this, COMBO_COOLDOWN);
-		}
 	}
 
 	@Override
@@ -253,15 +222,4 @@ public class AttackSkill extends TargetedSweeperSkill {
 		removeHitbox(entity, runtime);
 	}
 
-	private HitboxInstance getHitbox(ServerLevel level, EntitySkillRuntime<Sweeper> runtime) {
-		Integer id = runtime.getData(HITBOX_ID);
-		return id == null ? null : HitboxManager.get(level, id);
-	}
-
-	private void removeHitbox(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		Integer id = runtime.removeData(HITBOX_ID);
-		if (id != null && entity.level() instanceof ServerLevel level) {
-			HitboxManager.remove(level, id);
-		}
-	}
 }

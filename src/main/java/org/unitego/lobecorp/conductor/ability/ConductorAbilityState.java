@@ -1,47 +1,41 @@
 package org.unitego.lobecorp.conductor.ability;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
-/// 指挥家能力学习与屏蔽状态的持久化值对象。
-public record ConductorAbilityState(Set<Identifier> learned, Set<Identifier> blocked) {
-	/// 能力标识集合的序列化编解码器。
-	private static final Codec<Set<Identifier>> IDS = Codec.STRING.xmap(Identifier::parse, Identifier::toString)
-			.listOf().xmap(Set::copyOf, List::copyOf);
-
-	/// 指挥家能力状态的持久化编解码器。
-	public static final Codec<ConductorAbilityState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-			IDS.fieldOf("learned").forGetter(ConductorAbilityState::learned),
-			IDS.fieldOf("blocked").forGetter(ConductorAbilityState::blocked)
-	).apply(instance, ConductorAbilityState::new));
+/// 指挥家包装能力的持久化增删修正，未修正项继承注册定义的默认值。
+public record ConductorAbilityState(Map<Identifier, Boolean> overrides) {
+	/// true 表示显式添加，false 表示显式移除；不保存默认能力列表。
+	public static final Codec<ConductorAbilityState> CODEC = Codec.unboundedMap(Identifier.CODEC, Codec.BOOL)
+			.xmap(ConductorAbilityState::new, ConductorAbilityState::overrides);
 
 	public ConductorAbilityState {
-		learned = Set.copyOf(learned);
-		blocked = Set.copyOf(blocked);
+		overrides = Map.copyOf(overrides);
 	}
 
 	public static ConductorAbilityState empty() {
-		return new ConductorAbilityState(Set.of(), Set.of());
+		return new ConductorAbilityState(Map.of());
+	}
+
+	public boolean owns(Identifier id, boolean initial) {
+		return overrides.getOrDefault(id, initial);
 	}
 
 	public ConductorAbilityState add(Identifier id, boolean initial) {
-		Set<Identifier> nextLearned = new HashSet<>(learned);
-		Set<Identifier> nextBlocked = new HashSet<>(blocked);
-		if (!initial) nextLearned.add(id);
-		nextBlocked.remove(id);
-		return new ConductorAbilityState(nextLearned, nextBlocked);
+		return with(id, true, initial);
 	}
 
 	public ConductorAbilityState remove(Identifier id, boolean initial) {
-		Set<Identifier> nextLearned = new HashSet<>(learned);
-		Set<Identifier> nextBlocked = new HashSet<>(blocked);
-		if (initial) nextBlocked.add(id);
-		else nextLearned.remove(id);
-		return new ConductorAbilityState(nextLearned, nextBlocked);
+		return with(id, false, initial);
+	}
+
+	private ConductorAbilityState with(Identifier id, boolean owned, boolean initial) {
+		Map<Identifier, Boolean> next = new HashMap<>(overrides);
+		if (owned == initial) next.remove(id);
+		else next.put(id, owned);
+		return new ConductorAbilityState(next);
 	}
 }

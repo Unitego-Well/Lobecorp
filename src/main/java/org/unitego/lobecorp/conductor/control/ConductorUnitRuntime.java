@@ -20,6 +20,8 @@ public class ConductorUnitRuntime {
 	protected ConductorSonicBoom.Cast sonic;
 	protected ConductorPointAttack.State pointAttack;
 	protected ConductorController.ManualSonicBoomRequest manualSonic;
+	/// 手动技能在受限转向期间等待的请求，单位卸载或停止控制时清除。
+	protected ConductorController.PendingSkillCast pendingSkill;
 
 	public static ConductorUnitRuntime get(Mob mob) {
 		return ConductorAttachmentUtil.runtime(mob);

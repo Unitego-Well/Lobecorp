@@ -25,11 +25,18 @@ import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.util.BrainUtil;
+import org.unitego.lobecorp.entity_skill.EntitySkillCastRequest;
 import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.SweepSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.StarBeamSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.TeleportSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.RefractionSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.ConvergentSkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.registry.entity_state.TheQueenOfHatredStates;
+import org.unitego.lobecorp.registry.effect.LcMobEffects;
 
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +56,18 @@ public final class TheQueenOfHatredAi {
 	private static final int FIGHT_TARGET_CHECK_PRIORITY = 0;
 	/// 战斗活动中技能施放行为的优先级。
 	private static final int FIGHT_SKILL_PRIORITY = 1;
+	/// AI 选择横扫的最大距离，单位为格。
 	private static final double SWEEP_SELECTION_RANGE = SweepSkill.MELEE_RANGE;
+	/// 近身围攻时优先回旋所需的有效敌人数。
+	private static final int SPIN_DEFENSE_TARGET_COUNT = 2;
+	/// 吸引范围内至少三个有效敌人时优先聚爆。
+	private static final int CONVERGENT_TARGET_COUNT = 3;
+	/// AI 传送落点距目标的水平距离，单位为格，落点位于横扫范围内。
+	private static final double TELEPORT_TARGET_OFFSET = 3.0;
+	/// 围绕目标搜索安全传送落点的方向数。
+	private static final int TELEPORT_DESTINATION_DIRECTIONS = 8;
+	/// 传送落点允许与目标脚下相差的高度，单位为格。
+	private static final int TELEPORT_VERTICAL_SEARCH_DISTANCE = 2;
 	/// 闲置随机游走参数。
 	/// 随机游走的速度倍率。
 	private static final float IDLE_STROLL_SPEED = 1.0F;
@@ -59,6 +77,10 @@ public final class TheQueenOfHatredAi {
 	private static final int MINIMUM_IDLE_ACTION_INTERVAL_TICKS = 20 * TICKS_PER_SECOND;
 	/// 女皇随机动作选择的最长间隔，单位为游戏刻。
 	private static final int MAXIMUM_IDLE_ACTION_INTERVAL_TICKS = 40 * TICKS_PER_SECOND;
+	/// rest 一次性动画的时长，资源中为 2.75 秒，单位为游戏刻。
+	private static final int REST_DURATION_TICKS = 55;
+	/// toss 一次性动画的时长，资源中为 2 秒，单位为游戏刻。
+	private static final int TOSS_DURATION_TICKS = 2 * TICKS_PER_SECOND;
 	/// 坐下动作的最短持续时间，单位为游戏刻。
 	private static final int MINIMUM_SITTING_DURATION_TICKS = 60 * TICKS_PER_SECOND;
 	/// 坐下动作的最长持续时间，单位为游戏刻。
@@ -123,6 +145,7 @@ public final class TheQueenOfHatredAi {
 					.build();
 	private long nextIdleStrollGameTime;
 	private long nextIdleActionGameTime;
+	private long idleAnimationEndGameTime;
 	private long sittingEndGameTime;
 	private long sittingFadeOutEndGameTime;
 	private BlockPos sittingEdgePathTarget;
@@ -170,15 +193,92 @@ public final class TheQueenOfHatredAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
 		).apply(instance, target -> (level, queen, time) -> {
-			if (EntitySkillUtil.hasActiveSkills(queen) || !queen.ai().canCastSkillNow(queen)) {
+			queen.cancelConductorSitting();
+			if (EntitySkillUtil.require(queen).activeSkills().stream().anyMatch(runtime -> !runtime.isInterruptibleBySkill())) {
 				return false;
 			}
 			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			queen.getNavigation().stop();
 			LivingEntity attackTarget = instance.get(target);
-			return EntitySkillUtil.cast(queen, queen.distanceTo(attackTarget) <= SWEEP_SELECTION_RANGE
-					? TheQueenOfHatredSkills.SWEEP.get() : TheQueenOfHatredSkills.REPEL.get()).started();
+			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.PURIFICATION.get())) {
+				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.PURIFICATION.get()).started();
+			}
+			if (!queen.hasEffect(LcMobEffects.QUEEN_DAMAGE_REDUCTION)
+					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.DAMAGE_REDUCTION.get())) {
+				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.DAMAGE_REDUCTION.get()).started();
+			}
+			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.CONVERGENT.get())
+					&& level.getEntitiesOfClass(LivingEntity.class, queen.getBoundingBox().inflate(ConvergentSkill.PULL_RADIUS),
+					candidate -> candidate.isAlive() && queen.isHatedTarget(candidate) && queen.hasLineOfSight(candidate)
+							&& queen.distanceToSqr(candidate) <= ConvergentSkill.PULL_RADIUS * ConvergentSkill.PULL_RADIUS)
+					.size() >= CONVERGENT_TARGET_COUNT) {
+				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.CONVERGENT.get()).started();
+			}
+			if (queen.distanceTo(attackTarget) <= SWEEP_SELECTION_RANGE) {
+				boolean spinAvailable = !EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.SPIN.get());
+				if (spinAvailable && level.getEntitiesOfClass(LivingEntity.class,
+						queen.getBoundingBox().inflate(SWEEP_SELECTION_RANGE), candidate -> candidate.isAlive()
+								&& queen.isHatedTarget(candidate) && queen.hasLineOfSight(candidate)
+								&& queen.distanceToSqr(candidate) <= SWEEP_SELECTION_RANGE * SWEEP_SELECTION_RANGE)
+						.size() >= SPIN_DEFENSE_TARGET_COUNT) {
+					return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.SPIN.get()).started();
+				}
+				if (!EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.SWEEP.get())) {
+					return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+							TheQueenOfHatredSkills.SWEEP.get(), attackTarget, null)).started();
+				}
+				if (spinAvailable) {
+					return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.SPIN.get()).started();
+				}
+				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.ATTACK.get(), attackTarget, null)).started();
+			}
+			for (var skill : List.of(TheQueenOfHatredSkills.MARK.get(), TheQueenOfHatredSkills.SLOWNESS.get(),
+					TheQueenOfHatredSkills.PILLAR_OF_LIGHT.get(), TheQueenOfHatredSkills.STARFALL.get(), TheQueenOfHatredSkills.LASER.get())) {
+				if (EntitySkillUtil.canCast(queen, skill)) {
+					return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(skill, attackTarget, null)).started();
+				}
+			}
+			if (queen.distanceToSqr(attackTarget) <= StarBeamSkill.RANGE * StarBeamSkill.RANGE
+					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.STAR_BEAM.get())) {
+				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.STAR_BEAM.get(), attackTarget, null)).started();
+			}
+			if (queen.distanceToSqr(attackTarget) <= RefractionSkill.range() * RefractionSkill.range()
+					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.REFRACTION.get())) {
+				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.REFRACTION.get(), attackTarget, null)).started();
+			}
+			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.DASH.get())) {
+				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.DASH.get(), attackTarget, null)).started();
+			}
+			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.BLINK.get())) {
+				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.BLINK.get(), attackTarget, null)).started();
+			}
+			if (!EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.TELEPORT.get())) {
+				Vec3 destination = teleportDestination(queen, attackTarget);
+				if (destination != null) return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
+						TheQueenOfHatredSkills.TELEPORT.get(), null, destination)).started();
+			}
+			return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.REPEL.get()).started();
 		}));
+	}
+
+	@Nullable
+	private static Vec3 teleportDestination(TheQueenOfHatred queen, LivingEntity target) {
+		Vec3 offset = queen.position().subtract(target.position()).multiply(1.0, 0.0, 1.0).normalize();
+		if (offset.lengthSqr() == 0.0) offset = Vec3.directionFromRotation(0.0F, queen.getYRot());
+		for (int direction = 0; direction < TELEPORT_DESTINATION_DIRECTIONS; direction++) {
+			Vec3 horizontal = offset.yRot((float) (direction * Math.TAU / TELEPORT_DESTINATION_DIRECTIONS))
+					.scale(TELEPORT_TARGET_OFFSET);
+			for (int height = -TELEPORT_VERTICAL_SEARCH_DISTANCE; height <= TELEPORT_VERTICAL_SEARCH_DISTANCE; height++) {
+				Vec3 destination = target.position().add(horizontal).add(0.0, height, 0.0);
+				if (TeleportSkill.isSafeDestination(queen, destination)) return destination;
+			}
+		}
+		return null;
 	}
 
 	private static OneShot<TheQueenOfHatred> walkToRandomDestination() {
@@ -186,7 +286,7 @@ public final class TheQueenOfHatredAi {
 				instance.absent(MemoryModuleType.WALK_TARGET)
 		).apply(instance, walkTarget -> (level, queen, time) -> {
 			if (queen.isSittingOrFadingOut() || queen.ai().isApproachingSittingEdge()
-					|| !queen.ai().canStartIdleStroll(queen)) {
+					|| queen.ai().idleAnimationEndGameTime != 0 || !queen.ai().canStartIdleStroll(queen)) {
 				return false;
 			}
 			Vec3 destination = null;
@@ -246,6 +346,7 @@ public final class TheQueenOfHatredAi {
 	}
 
 	protected void onHurtBy(TheQueenOfHatred queen, LivingEntity attacker) {
+		queen.cancelConductorSitting();
 		queen.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, attacker);
 		queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 	}
@@ -264,10 +365,6 @@ public final class TheQueenOfHatredAi {
 
 	private void scheduleNextIdleAction(TheQueenOfHatred queen, int delayTicks) {
 		nextIdleActionGameTime = queen.level().getGameTime() + delayTicks;
-	}
-
-	private boolean canCastSkillNow(TheQueenOfHatred queen) {
-		return queen.level().getGameTime() >= queen.skillCastAvailableAfterGameTime();
 	}
 
 	private SittingGround getSittingGround(TheQueenOfHatred queen) {
@@ -529,6 +626,13 @@ public final class TheQueenOfHatredAi {
 	}
 
 	protected void cancelSitting(TheQueenOfHatred queen) {
+		scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
+				MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+		if (idleAnimationEndGameTime != 0) {
+			idleAnimationEndGameTime = 0;
+			queen.stopActionAnimation();
+		}
+		cancelSittingEdgeApproach(queen);
 		if (!queen.isSittingOrFadingOut()) {
 			return;
 		}
@@ -540,7 +644,6 @@ public final class TheQueenOfHatredAi {
 		sittingFadeOutEndGameTime = 0;
 		sittingEdgeFacingLocked = false;
 		hasSittingEdgeFacingYaw = false;
-		nextIdleActionGameTime = 0;
 	}
 
 	protected void updateActivity(TheQueenOfHatred queen) {
@@ -560,6 +663,19 @@ public final class TheQueenOfHatredAi {
 
 	protected void tick(TheQueenOfHatred queen) {
 		long gameTime = queen.level().getGameTime();
+		if (EntitySkillUtil.hasActiveSkills(queen)) {
+			cancelSitting(queen);
+			return;
+		}
+		if (idleAnimationEndGameTime != 0) {
+			if (gameTime >= idleAnimationEndGameTime) {
+				idleAnimationEndGameTime = 0;
+				queen.stopActionAnimation();
+				scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
+						MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
+			}
+			return;
+		}
 		if (tickSitting(queen, gameTime)) {
 			scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
@@ -593,6 +709,16 @@ public final class TheQueenOfHatredAi {
 					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			return;
 		}
+		IdleAction[] actions = IdleAction.values();
+		IdleAction action = actions[queen.getRandom().nextInt(actions.length)];
+		if (action != IdleAction.SIT) {
+			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+			queen.getNavigation().stop();
+			queen.setDeltaMovement(Vec3.ZERO);
+			queen.playActionAnimation(action == IdleAction.REST ? TheQueenOfHatredAnim.REST : TheQueenOfHatredAnim.TOSS);
+			idleAnimationEndGameTime = gameTime + (action == IdleAction.REST ? REST_DURATION_TICKS : TOSS_DURATION_TICKS);
+			return;
+		}
 		if (sittingGround == SittingGround.EDGE) {
 			startSitting(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS), true);
@@ -604,6 +730,12 @@ public final class TheQueenOfHatredAi {
 		startSitting(queen, Mth.nextInt(queen.getRandom(),
 						MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS),
 				false);
+	}
+
+	private enum IdleAction {
+		SIT,
+		REST,
+		TOSS
 	}
 
 	private enum SittingGround {

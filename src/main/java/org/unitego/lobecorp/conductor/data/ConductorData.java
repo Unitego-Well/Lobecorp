@@ -288,7 +288,9 @@ public class ConductorData extends SavedData {
 	public enum BehaviorState {
 		PATROL,
 		IDLE,
-		GUARD;
+		GUARD,
+		/// 空闲时停在当前位置，追击后不返回原驻守点。
+		STANDBY;
 
 		private static BehaviorState fromSerialized(String value) {
 			return switch (value) {
@@ -306,7 +308,8 @@ public class ConductorData extends SavedData {
 	public enum ControlMode {
 		FULL(BehaviorState.IDLE),
 		COMMAND(BehaviorState.PATROL),
-		SOFT(BehaviorState.GUARD);
+		SOFT(BehaviorState.GUARD),
+		STANDBY(BehaviorState.STANDBY);
 
 		private final BehaviorState behaviorState;
 

@@ -2,6 +2,8 @@ package org.unitego.lobecorp.entity_skill;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /// 实体技能的非持久化运行态容器。
 ///
@@ -9,6 +11,8 @@ import java.util.List;
 /// 生命周期由 {@link EntitySkillAccess} 能力统一推进和清理。
 public class EntitySkillRuntimeData {
 	public List<EntitySkillRuntime<?>> active = new ArrayList<>();
+	/// 各多段技能独立的续段状态；随当前实体卸载或运行态清理而丢弃。
+	public Map<MultiStageSkill<?>, MultiStageSkill.Sequence> multiStageSequences = new HashMap<>();
 	/// 当前实体内下一个运行实例 ID；仅用于本次加载期间的客户端同步关联。
 	public long nextRuntimeId = 1L;
 

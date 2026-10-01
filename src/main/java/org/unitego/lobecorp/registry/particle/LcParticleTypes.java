@@ -12,6 +12,9 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.particle.ParticleOptionsParticleType;
+import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
+import org.unitego.lobecorp.particle.QueenChannelLaserParticleOptions;
+import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
 
 import java.util.function.Function;
 
@@ -23,6 +26,14 @@ public interface LcParticleTypes {
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_DOUBLE_SLASH = register("simple_double_slash", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> BLOOD = register("blood", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SHORT_SMOKE = register("short_smoke", true);
+	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_REPEL_WAVE = register("queen_repel_wave", true);
+	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_LASER = register("queen_laser", true);
+	DeferredHolder<ParticleType<?>, ParticleType<QueenChannelLaserParticleOptions>> QUEEN_CHANNEL_LASER = register(
+			"queen_channel_laser", true, type -> QueenChannelLaserParticleOptions.CODEC, type -> QueenChannelLaserParticleOptions.STREAM_CODEC);
+	DeferredHolder<ParticleType<?>, ParticleType<QueenMagicCircleParticleOptions>> QUEEN_MAGIC_CIRCLE = register(
+			"queen_magic_circle", true, type -> QueenMagicCircleParticleOptions.CODEC, type -> QueenMagicCircleParticleOptions.STREAM_CODEC);
+	DeferredHolder<ParticleType<?>, ParticleType<QueenConvergentParticleOptions>> QUEEN_CONVERGENT = register(
+			"queen_convergent", true, type -> QueenConvergentParticleOptions.CODEC, type -> QueenConvergentParticleOptions.STREAM_CODEC);
 
 	private static DeferredHolder<ParticleType<?>, SimpleParticleType> register(String name, boolean overrideLimiter) {
 		return REGISTER.register(name, () -> new SimpleParticleType(overrideLimiter));

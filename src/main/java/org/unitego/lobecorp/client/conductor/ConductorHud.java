@@ -12,6 +12,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import dev.vfyjxf.taffy.style.TaffyPosition;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
@@ -35,6 +36,7 @@ import org.unitego.lobecorp.conductor.ability.ConductorAbility;
 import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.ConductorUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
@@ -46,6 +48,8 @@ import static org.unitego.lobecorp.client.conductor.ConductorHudTheme.*;
 
 public class ConductorHud implements ModularHudLayer {
 	public static final ConductorHud INSTANCE = new ConductorHud();
+	/// HUD 数值范围的最小值与最大值显示格式。
+	private static final String RANGE_INTERVAL_FORMAT = "%s–%s";
 	private static final String MANAGE = "manage";
 	private static final String BOTTOM = "bottom";
 	private static final String MOVE = "move";
@@ -76,7 +80,7 @@ public class ConductorHud implements ModularHudLayer {
 	private static final List<ConductorData.CombatBehavior> BEHAVIOR_OPTIONS = List.of(
 			ConductorData.CombatBehavior.ACTIVE, ConductorData.CombatBehavior.PASSIVE, ConductorData.CombatBehavior.NEUTRAL);
 	private static final List<ConductorData.ControlMode> ACTIVITY_OPTIONS = List.of(
-			ConductorData.ControlMode.COMMAND, ConductorData.ControlMode.SOFT);
+			ConductorData.ControlMode.COMMAND, ConductorData.ControlMode.SOFT, ConductorData.ControlMode.STANDBY);
 	private static final List<ConductorData.AttackState> ATTACK_OPTIONS = List.of(
 			ConductorData.AttackState.AUTO, ConductorData.AttackState.MANUAL);
 	private final Map<String, Button> cardPool = new LinkedHashMap<>();
@@ -340,6 +344,7 @@ public class ConductorHud implements ModularHudLayer {
 			case PATROL -> ConductorTexts.BEHAVIOR_PATROL;
 			case IDLE -> ConductorTexts.BEHAVIOR_IDLE;
 			case GUARD -> ConductorTexts.BEHAVIOR_GUARD;
+			case STANDBY -> ConductorTexts.BEHAVIOR_STANDBY;
 		};
 	}
 
@@ -478,6 +483,11 @@ public class ConductorHud implements ModularHudLayer {
 			case EITHER -> ConductorTexts.TARGET_EITHER;
 		};
 		double range = ability.displayRange(mob);
+		Component rangeText = ability instanceof EntitySkillConductorAbility.Laser
+				? Component.literal(String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, range))
+				: range > 0.0D ? Component.literal(Double.toString(range)) : Component.translatable(
+						ability.targetKind() == ConductorTargeting.TargetKind.SELF
+								? ConductorTexts.RANGE_SELF : ConductorTexts.RANGE_UNSPECIFIED);
 		int total = Math.max(ConductorClient.abilityCooldownTotalTicks(mob.getUUID(), ability.id()),
 				ability.totalCooldownTicks(mob));
 		int remaining = ConductorClient.abilityCooldownTicks(mob.getUUID(), ability.id());
@@ -488,18 +498,32 @@ public class ConductorHud implements ModularHudLayer {
 				Component.translatable(ConductorTexts.DAMAGE, damage),
 				Component.translatable(ConductorTexts.TYPE, Component.translatable(typeKey)),
 				Component.translatable(ConductorTexts.TARGET, Component.translatable(targetKey)),
-				Component.translatable(ConductorTexts.RANGE, range > 0.0D
-						? Component.literal(Double.toString(range)) : Component.translatable(
-						ability.targetKind() == ConductorTargeting.TargetKind.SELF
-								? ConductorTexts.RANGE_SELF : ConductorTexts.RANGE_UNSPECIFIED)),
+				Component.translatable(ConductorTexts.RANGE, rangeText),
 				Component.translatable(ConductorTexts.COOLDOWN_TOTAL,
 						String.format(Locale.ROOT, DECIMAL_FORMAT, total / (float) TICKS_PER_SECOND)),
 				remaining == 0 ? Component.translatable(ConductorTexts.READY) : Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
 						String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND)));
 		List<Component> details = new ArrayList<>(lines);
+		appendSkillStatus(details, mob, ability, remaining);
 		Component description = ConductorTexts.abilityDescription(ability.id());
 		if (!description.getString().isEmpty()) details.add(description);
 		drawTooltip(graphics, details);
+	}
+
+	private static void appendSkillStatus(List<Component> lines, Mob mob, ConductorAbility ability, int remaining) {
+		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
+		boolean available = ability.isAvailable(mob);
+		if (remaining > 0) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+		if (casting) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+		if (!available) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) return;
+		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
+		if (aim == null || aim.caster() != mob) return;
+		if (aim.rangeLimited()) {
+			lines.add(Component.translatable(ConductorTexts.SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
+		} else if (!aim.valid() && remaining == 0 && available && !casting) {
+			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
+		}
 	}
 
 	private static void renderHover(GuiGraphicsExtractor graphics) {
@@ -726,6 +750,7 @@ public class ConductorHud implements ModularHudLayer {
 		List<Identifier> abilities = focusEntity instanceof Mob mob
 				? ConductorUtil.abilities(mob).stream().filter(ability ->
 						ConductorClient.hasAbility(mob.getUUID(), ability.id()) && matchesSkill(ability))
+				.sorted(Comparator.comparing(ability -> ability.display(mob).abilityKind()))
 				.map(ConductorAbility::id).toList() : List.of();
 		if (!abilities.equals(previousAbilities) || !Objects.equals(focused, previousFocus)) {
 			previousAbilities = abilities;
@@ -1327,7 +1352,8 @@ public class ConductorHud implements ModularHudLayer {
 			lastSkillClick = "";
 		} else {
 			lastSkillClick = mouse ? skill : "";
-			if (mouse && targeting.targetKind() == ConductorTargeting.TargetKind.SELF)
+			if (mouse && targeting.targetKind() == ConductorTargeting.TargetKind.SELF
+					&& (!(targeting instanceof EntitySkillConductorAbility entitySkill) || entitySkill.canBeginCast(mob)))
 				sendFocused(ConductorCommandPayload.Action.CAST, false, skill);
 		}
 		lastSkillClickTime = now;
@@ -1366,8 +1392,12 @@ public class ConductorHud implements ModularHudLayer {
 		int remaining = ConductorControls.skillUnits(unit).stream()
 				.filter(member -> ConductorClient.hasAbility(member, id))
 				.mapToInt(member -> ConductorClient.abilityCooldownTicks(member, id)).min().orElse(0);
-		drawTooltip(graphics, List.of(abilityName(ability), Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
+		List<Component> lines = new ArrayList<>(List.of(abilityName(ability), Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
 				String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND))));
+		if (ability instanceof EntitySkillConductorAbility.Laser) lines.add(Component.translatable(ConductorTexts.RANGE,
+				String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, LaserSkill.RANGE)));
+		appendSkillStatus(lines, mob, ability, remaining);
+		drawTooltip(graphics, lines);
 	}
 
 	private void renderSkills(GuiGraphicsExtractor graphics) {
@@ -1390,6 +1420,8 @@ public class ConductorHud implements ModularHudLayer {
 			int y = (int) button.getPositionY() + buttonOffset(entry.getKey());
 			int width = (int) button.getSizeWidth();
 			int remaining = ConductorClient.abilityCooldownTicks(mob.getUUID(), ability.id());
+			boolean unavailable = remaining > 0 || !ability.isAvailable(mob)
+					|| ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
 			int total = Math.max(ConductorClient.abilityCooldownTotalTicks(mob.getUUID(), ability.id()), ability.totalCooldownTicks(mob));
 			String cooldownKey = focused + ability.id().toString();
 			Integer previous = lastCooldowns.put(cooldownKey, remaining);
@@ -1407,12 +1439,12 @@ public class ConductorHud implements ModularHudLayer {
 			graphics.fill(x + BORDER, y + BORDER, x + BORDER + SKILL_ICON_SIZE, y + BORDER + SKILL_ICON_SIZE, BG_0);
 			if (!name.isEmpty())
 				graphics.text(minecraft.font, Component.literal(name.substring(0, name.offsetByCodePoints(0, 1))),
-						x + BORDER + 1, y + BORDER + 1, remaining > 0 ? DISABLED_COLOR : color, false);
+						x + BORDER + 1, y + BORDER + 1, unavailable ? DISABLED_COLOR : color, false);
 			String time = remaining > 0 ? String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND) : "";
 			int numberWidth = minecraft.font.width(time);
 			textFit(graphics, Component.literal(name), x + SKILL_ICON_SIZE + SECTION_PADDING,
 					y + SECTION_PADDING, width - SKILL_ICON_SIZE - SECTION_PADDING * 3 - numberWidth,
-					remaining > 0 ? DISABLED_COLOR : TEXT_COLOR);
+					unavailable ? DISABLED_COLOR : TEXT_COLOR);
 			if (remaining > 0 && total > 0) {
 				int mask = Math.min(SKILL_SIZE, (int) Math.ceil(SKILL_SIZE * (double) remaining / total));
 				graphics.fill(x, y + SKILL_SIZE - mask, x + width, y + SKILL_SIZE, SKILL_COOLDOWN_MASK);

@@ -69,6 +69,10 @@ public class ConductorEvents {
 			return;
 		}
 		ConductorData.Unit unit = ConductorData.get(level.getServer()).unit(mob.getUUID());
+		if (unit != null && ConductorController.hasPendingSkillCast(mob)) {
+			event.setCanceled(true);
+			return;
+		}
 		if (unit != null && unit.order() == ConductorData.OrderType.NONE
 				&& unit.combatBehavior() == ConductorData.CombatBehavior.PASSIVE) {
 			event.setCanceled(true);

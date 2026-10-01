@@ -74,6 +74,16 @@ public class ConductorMobAdapters {
 		}
 
 		@Override
+		public boolean accept(ConductorData.Unit command) {
+			if (!super.accept(command)) return false;
+			if (command.order() == ConductorData.OrderType.ATTACK
+					|| command.order() == ConductorData.OrderType.ATTACK_POINT) {
+				((TheQueenOfHatred) mob).cancelConductorSitting();
+			}
+			return true;
+		}
+
+		@Override
 		public void prepareMovement() {
 			((TheQueenOfHatred) mob).cancelConductorSitting();
 		}

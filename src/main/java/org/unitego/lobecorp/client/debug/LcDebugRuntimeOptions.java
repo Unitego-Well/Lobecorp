@@ -1,4 +1,4 @@
-package org.unitego.lobecorp.debug;
+package org.unitego.lobecorp.client.debug;
 
 /// 客户端向本地集成服务器单向传递的调试运行时选项。
 public class LcDebugRuntimeOptions {

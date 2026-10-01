@@ -22,6 +22,7 @@ public class ConductorChunkLoading {
 	public static void onServerTick(ServerTickEvent.Post event) {
 		MinecraftServer server = event.getServer();
 		ConductorData data = ConductorData.get(server);
+		ConductorView.tick(server, data);
 		update(server, data);
 		if (server.overworld().getGameTime() % ConductorRules.DIRECTORY_SYNC_INTERVAL_TICKS == 0) {
 			data.refreshLocations();

@@ -8,6 +8,10 @@ import org.unitego.lobecorp.conductor.ability.the_queen_of_hatred.TheQueenOfHatr
 import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
 import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
 import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.SlownessSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.MarkSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.StarfallSkill;
+import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.PillarOfLightSkill;
 
 public class RegisterConductorAbilities {
 	public static void register(RegisterConductorAbilitiesEvent event) {
@@ -23,6 +27,36 @@ public class RegisterConductorAbilities {
 				() -> new TheQueenOfHatredRepelAbility(TheQueenOfHatredSkills.REPEL.get()));
 		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.SWEEP.getId(),
 				() -> new TheQueenOfHatredSweepAbility(TheQueenOfHatredSkills.SWEEP.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.ATTACK.getId(),
+				() -> new TheQueenOfHatredSweepAbility(TheQueenOfHatredSkills.ATTACK.get()));
 		event.register(EntityType.WARDEN, WardenSonicBoomAbility.ID, WardenSonicBoomAbility::new);
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.SPIN.getId(),
+				() -> new EntitySkillConductorAbility.Spin(TheQueenOfHatredSkills.SPIN.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.LASER.getId(),
+				() -> new EntitySkillConductorAbility.Laser(TheQueenOfHatredSkills.LASER.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.STAR_BEAM.getId(),
+				() -> new EntitySkillConductorAbility.StarBeam(TheQueenOfHatredSkills.STAR_BEAM.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.DAMAGE_REDUCTION.getId(),
+				() -> new EntitySkillConductorAbility(TheQueenOfHatredSkills.DAMAGE_REDUCTION.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.PURIFICATION.getId(),
+				() -> new EntitySkillConductorAbility(TheQueenOfHatredSkills.PURIFICATION.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.SLOWNESS.getId(),
+				() -> new EntitySkillConductorAbility.QueenTargeted(TheQueenOfHatredSkills.SLOWNESS.get(), SlownessSkill.RANGE, SlownessSkill.RADIUS));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.MARK.getId(),
+				() -> new EntitySkillConductorAbility.QueenTargeted(TheQueenOfHatredSkills.MARK.get(), MarkSkill.RANGE, 0.0));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.STARFALL.getId(),
+				() -> new EntitySkillConductorAbility.QueenTargeted(TheQueenOfHatredSkills.STARFALL.get(), StarfallSkill.RANGE, StarfallSkill.RADIUS));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.PILLAR_OF_LIGHT.getId(),
+				() -> new EntitySkillConductorAbility.QueenTargeted(TheQueenOfHatredSkills.PILLAR_OF_LIGHT.get(), PillarOfLightSkill.RANGE, PillarOfLightSkill.RADIUS));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.BLINK.getId(),
+				() -> new EntitySkillConductorAbility.Blink(TheQueenOfHatredSkills.BLINK.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.TELEPORT.getId(),
+				() -> new EntitySkillConductorAbility.Teleport(TheQueenOfHatredSkills.TELEPORT.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.DASH.getId(),
+				() -> new EntitySkillConductorAbility.Dash(TheQueenOfHatredSkills.DASH.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.REFRACTION.getId(),
+				() -> new EntitySkillConductorAbility.Refraction(TheQueenOfHatredSkills.REFRACTION.get()));
+		event.register(AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED.get(), TheQueenOfHatredSkills.CONVERGENT.getId(),
+				() -> new EntitySkillConductorAbility.Convergent(TheQueenOfHatredSkills.CONVERGENT.get()));
 	}
 }

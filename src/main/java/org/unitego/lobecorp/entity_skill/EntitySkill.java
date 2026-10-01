@@ -4,6 +4,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import org.unitego.lobecorp.registry.entity_skill.LcEntitySkillGroups;
 
+import java.util.Set;
+
 /// 由 {@link Properties} 集中提供基础配置的实体技能基类。
 /// 构造后基础配置不可变，具体技能只需实现生命周期回调和额外业务条件。
 public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkill<T> {
@@ -17,6 +19,8 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 	private final EntitySkillGroup group;
 	private final boolean mutuallyExclusive;
 	private final boolean overridable;
+	private final boolean interruptsSkills;
+	private final Set<EntitySkillRuntime.SkillState> interruptibleBySkillsDuring;
 
 	/// 使用完整的基础属性创建技能。
 	///
@@ -32,6 +36,8 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 		this.group = properties.group;
 		this.mutuallyExclusive = properties.mutuallyExclusive;
 		this.overridable = properties.overridable;
+		this.interruptsSkills = properties.interruptsSkills;
+		this.interruptibleBySkillsDuring = properties.interruptibleBySkillsDuring;
 	}
 
 	@Override
@@ -84,6 +90,16 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 		return overridable;
 	}
 
+	@Override
+	public boolean interruptsSkills() {
+		return interruptsSkills;
+	}
+
+	@Override
+	public boolean isInterruptibleBySkill(T entity, EntitySkillRuntime<T> runtime) {
+		return interruptibleBySkillsDuring.contains(runtime.state());
+	}
+
 	/// 实体技能的链式基础属性配置。
 	/// 每次注册应创建独立实例；构造出的 {@link EntitySkill} 会复制配置值，后续不再读取本对象。
 	public static class Properties {
@@ -97,6 +113,8 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 		private EntitySkillGroup group;
 		private boolean mutuallyExclusive = true;
 		private boolean overridable = true;
+		private boolean interruptsSkills = true;
+		private Set<EntitySkillRuntime.SkillState> interruptibleBySkillsDuring = Set.of();
 
 		/// 设置技能唯一注册标识。
 		///
@@ -134,7 +152,8 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 			return this;
 		}
 
-		/// 设置技能结束或取消后写入的冷却时长。
+		/// 设置技能成功开始施放时写入的默认冷却时长，与前摇、持续和后摇同时计时。
+		/// 完成或取消不会重新开始默认冷却；运行实例可以显式覆盖完成或取消时的冷却。
 		///
 		/// @param cooldownTicks 冷却 tick 数
 		/// @return 当前属性对象
@@ -183,6 +202,18 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 		/// @return 当前属性对象
 		public Properties cannotBeOverridden() {
 			this.overridable = false;
+			return this;
+		}
+
+		/// 配置本技能是否能通过常规施放打断其他技能，默认具备该能力。
+		public Properties interruptsSkills(boolean interruptsSkills) {
+			this.interruptsSkills = interruptsSkills;
+			return this;
+		}
+
+		/// 配置允许被其他技能打断的运行阶段，默认没有任何阶段允许。
+		public Properties interruptibleBySkillsDuring(EntitySkillRuntime.SkillState... states) {
+			this.interruptibleBySkillsDuring = Set.of(states);
 			return this;
 		}
 	}

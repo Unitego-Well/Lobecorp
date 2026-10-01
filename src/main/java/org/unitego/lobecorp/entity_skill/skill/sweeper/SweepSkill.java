@@ -13,6 +13,7 @@ import org.unitego.lobecorp.entity.EntityCorpse;
 import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
+import org.unitego.lobecorp.entity_skill.EntitySkill;
 import org.unitego.lobecorp.util.EntitySkillUtil;
 import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
@@ -20,7 +21,7 @@ import org.unitego.lobecorp.registry.entity_state.SweeperStates;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
 /// 清道夫清扫技能：靠近尸体或物品后持续进行清理，并将清理量转化为自身生命。
-public class SweepSkill extends SweeperSkill {
+public class SweepSkill extends EntitySkill<Sweeper> {
 	/// 每次清扫物品恢复的生命值
 	private static final float ITEM_HEALTH = 2.0F;
 	/// 每 tick 清扫尸体造成的伤害

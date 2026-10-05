@@ -4,7 +4,7 @@ import com.geckolib.animation.AnimationController;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import org.unitego.lobecorp.util.EnumStreamCodecUtil;
+import org.unitego.lobecorp.util.serialization.EnumStreamCodecUtil;
 
 public record LcAnimationTransitionSettings(
 		int fadeInTicks,

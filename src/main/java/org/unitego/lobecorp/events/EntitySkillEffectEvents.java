@@ -2,7 +2,7 @@ package org.unitego.lobecorp.events;
 
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
-import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectManager;
+import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectManager;
 
 public class EntitySkillEffectEvents {
 	public static void onLevelTick(LevelTickEvent.Post event) {

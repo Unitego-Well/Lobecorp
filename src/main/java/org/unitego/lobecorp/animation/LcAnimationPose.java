@@ -17,7 +17,7 @@ import java.util.*;
 
 public class LcAnimationPose {
 	protected static Pose createPose(RenderPassInfo<?> renderPassInfo, ControllerState sourceState, AnimationController<?> controller,
-	                       LcControllerBlendType blendType) {
+	                                 LcControllerBlendType blendType) {
 		AnimationPoint animationPoint = sourceState.animationPoint();
 		ControllerState sampleState = new ControllerState(animationPoint, null, -1, 0, false,
 				sourceState.easingOverride(), sourceState.renderState(), sourceState.queryValues());
@@ -113,7 +113,7 @@ public class LcAnimationPose {
 	}
 
 	protected static void applyPose(Pose pose, double weight, boolean additive, LcRotationTransitionMode rotationTransitionMode,
-	                      AnimationController<?> controller, BoneSnapshots snapshots) {
+	                                AnimationController<?> controller, BoneSnapshots snapshots) {
 		if (pose == null || weight <= 0) {
 			return;
 		}

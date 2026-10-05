@@ -1,0 +1,15 @@
+package org.unitego.lobecorp.registry.entity.state;
+
+import net.minecraft.resources.Identifier;
+import org.unitego.lobecorp.world.entity.state.EntityState;
+
+import static org.unitego.lobecorp.Lobecorp.id;
+
+public interface SweeperStates {
+	Identifier ACTION = id("sweeper/action");
+
+	EntityState ATTACK = new EntityState(id("sweeper/attack"), ACTION);
+	EntityState LEAP = new EntityState(id("sweeper/leap"), ACTION);
+	EntityState SWEEP = new EntityState(id("sweeper/sweep"), ACTION);
+	EntityState REASSEMBLE = new EntityState(id("sweeper/reassemble"), ACTION);
+}

@@ -2,6 +2,8 @@
 
 盘点时间：2026-09-30
 
+2026-10-05 系统说明补充：日常修改优先查看 [系统文档索引](../systems/README.md)，再通过 IDEA 核对源码；修改后维护对应系统页和 [修改记录](../systems/changes.md)。历史资料仍用于参考，不代表当前实现完整覆盖。
+
 本文档集整理当前仓库、仓库内已有的本地资料以及官方/一手外部参考。它是开发者、IDE 工具和自动化代理的导航入口；实际代码、当前 IDEA 索引和版本配置优先于本文档中的概括。
 
 ## 文档目录
@@ -16,6 +18,7 @@
 | [06-local-mcp-reference.md](06-local-mcp-reference.md) | 仓库内嵌 `minecraft-mod-mcp` 快照及其本地文档 |
 | [07-evidence-and-gaps.md](07-evidence-and-gaps.md) | 已检查证据、验证结果、未验证项目和维护清单 |
 | [08-external-development-reference.md](08-external-development-reference.md) | 官方 Java、NeoForge、Gradle、IDEA、MCP 和 API 参考 |
+| [09-particle-effects-research.md](09-particle-effects-research.md) | 锁定版本 Photon、GeckoLib、ParticleStorm 研究及 locator 桥接使用方式 |
 
 ## 资料优先级
 

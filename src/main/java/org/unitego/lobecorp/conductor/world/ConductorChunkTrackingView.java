@@ -17,7 +17,8 @@ public record ConductorChunkTrackingView(Positioned body, Positioned camera) imp
 	public void forEach(@NonNull Consumer<ChunkPos> consumer) {
 		body.forEach(consumer);
 		camera.forEach(pos -> {
-			if (!body.contains(pos)) consumer.accept(pos);
+			if (!body.contains(pos))
+				consumer.accept(pos);
 		});
 	}
 }

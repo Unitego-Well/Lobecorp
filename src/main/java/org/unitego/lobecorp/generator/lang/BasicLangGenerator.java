@@ -16,7 +16,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.data.LanguageProvider;
-import org.unitego.lobecorp.mixin.accessor.LanguageProviderAccessor;
+import org.unitego.lobecorp.mixin.generator.lang.LanguageProviderAccessor;
 
 import java.io.BufferedReader;
 import java.nio.file.Files;

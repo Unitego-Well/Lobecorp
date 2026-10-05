@@ -6,8 +6,8 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
-import org.unitego.lobecorp.entity.projectile.MagicStarProjectile;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
 
 public interface AbnormalitieEntityTypes {
 	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);

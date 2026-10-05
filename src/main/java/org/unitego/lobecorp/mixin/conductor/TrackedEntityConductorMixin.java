@@ -14,14 +14,17 @@ import org.unitego.lobecorp.conductor.world.ConductorView;
 /// 实体跟踪同时考虑玩家和镜头距离，镜头范围沿用玩家的区块视距。
 @Mixin(targets = "net.minecraft.server.level.ChunkMap$TrackedEntity")
 public abstract class TrackedEntityConductorMixin {
-	@Shadow @Final private Entity entity;
+	@Shadow
+	@Final
+	private Entity entity;
 
 	@WrapOperation(method = "updatePlayer", at = @At(value = "INVOKE",
 			target = "Lnet/minecraft/server/level/ServerPlayer;position()Lnet/minecraft/world/phys/Vec3;"))
 	private Vec3 lobecorp$observationPosition(ServerPlayer player, Operation<Vec3> original) {
 		Vec3 body = original.call(player);
 		Vec3 camera = ConductorView.position(player);
-		if (camera == null) return body;
+		if (camera == null)
+			return body;
 		Vec3 bodyDelta = body.subtract(entity.position());
 		Vec3 cameraDelta = camera.subtract(entity.position());
 		return cameraDelta.horizontalDistanceSqr() < bodyDelta.horizontalDistanceSqr() ? camera : body;

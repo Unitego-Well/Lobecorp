@@ -7,8 +7,10 @@ import net.minecraft.gizmos.Gizmos;
 import net.minecraft.util.debug.DebugValueAccess;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
-import org.unitego.lobecorp.hitbox.*;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.world.hitbox.HitboxPurpose;
+import org.unitego.lobecorp.world.hitbox.HitboxSnapshot;
+import org.unitego.lobecorp.world.hitbox.geometry.*;
 
 import java.util.ArrayList;
 import java.util.List;

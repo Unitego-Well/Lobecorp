@@ -25,19 +25,19 @@ import org.unitego.lobecorp.conductor.control.ConductorMovement;
 import org.unitego.lobecorp.conductor.control.ConductorPointAttack;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorChunkLoading;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
-import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
+import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 import java.util.*;
 
 /// 客户端到服务端的指挥家命令载荷及服务器校验入口。
 public record ConductorCommandPayload(Action action, String team, String otherTeam,
-                                       List<UUID> units, UUID target, double x, double y, double z,
-                                       ConductorData.BehaviorState mode, boolean flag, String skill, int color,
-                                       TargetSelection targetSelection, ConductorData.FormationMode formationMode,
-                                       ConductorData.CombatBehavior combatBehavior) implements ToServerPayload {
+                                      List<UUID> units, UUID target, double x, double y, double z,
+                                      ConductorData.BehaviorState mode, boolean flag, String skill, int color,
+                                      TargetSelection targetSelection, ConductorData.FormationMode formationMode,
+                                      ConductorData.CombatBehavior combatBehavior) implements ToServerPayload {
 	public static final Type<ConductorCommandPayload> TYPE = Lobecorp.type("conductor_command");
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorCommandPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
@@ -242,7 +242,8 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 						Entity selectedTarget = level == null || target == null ? null : level.getEntity(target);
 						if (selectedTarget instanceof LivingEntity living && living.isAlive()
 								&& !uuid.equals(living.getUUID()) && !data.allied(uuid, living.getUUID())) {
-							if (level.getEntity(uuid) instanceof Mob mob) ConductorController.stop(mob);
+							if (level.getEntity(uuid) instanceof Mob mob)
+								ConductorController.stop(mob);
 							data.update(uuid, state -> state.command(ConductorData.OrderType.ATTACK, living.getUUID(), new Vec3(x, y, z)));
 						}
 					} else if (action == Action.ATTACK_POINT) {
@@ -313,7 +314,8 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 						continue;
 					}
 					Entity selectedTarget = target == null ? null : level.getEntity(target);
-					if (ConductorUtil.get(mob) == null) continue;
+					if (ConductorUtil.get(mob) == null)
+						continue;
 					ConductorAbility ability = conductorAbility(mob, skill);
 					if (ability != null) {
 						if (!ability.isAvailable(mob)
@@ -330,7 +332,8 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 							}
 							Vec3 position = ability.targetPosition(mob, living, new Vec3(x, y, z));
 							if (!ability.canTarget(mob, living) || !ability.isWithinRange(mob, position)) {
-								if (ability.targetKind() != ConductorTargeting.TargetKind.EITHER) continue;
+								if (ability.targetKind() != ConductorTargeting.TargetKind.EITHER)
+									continue;
 								Vec3 corrected = ability.correctPosition(mob, position);
 								if (ability.canTargetPosition(mob, corrected)) {
 									prepareSkill(mob, data);
@@ -358,15 +361,22 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 					}
 				}
 			}
-			case AIM -> {
-				if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) return;
+			case AIM, END_MANUAL_CONTROL -> {
+				if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z))
+					return;
 				for (UUID uuid : units) {
 					ConductorData.Unit unit = data.unit(uuid);
-					if (unit == null || !team.equals(unit.team())) continue;
+					if (unit == null || !team.equals(unit.team()))
+						continue;
 					ServerLevel level = player.level().getServer().getLevel(
 							ResourceKey.create(Registries.DIMENSION, Identifier.parse(unit.dimension())));
 					if (level == null || !(level.getEntity(uuid) instanceof Mob mob) || !mob.isAlive()
-							|| !(conductorAbility(mob, skill) instanceof EntitySkillConductorAbility.Laser laser)) continue;
+							|| !(conductorAbility(mob, skill) instanceof EntitySkillConductorAbility.Laser laser))
+						continue;
+					if (action == Action.END_MANUAL_CONTROL) {
+						laser.releaseControl(mob);
+						continue;
+					}
 					Entity selectedTarget = targetSelection == TargetSelection.ENTITY ? level.getEntity(target) : null;
 					LivingEntity living = selectedTarget instanceof LivingEntity candidate && candidate.isAlive()
 							&& !data.allied(uuid, candidate.getUUID()) && laser.canTarget(mob, candidate)
@@ -396,7 +406,8 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 					ResourceKey.create(Registries.DIMENSION, Identifier.parse(unit.dimension())));
 			Entity entity = level == null ? null : level.getEntity(uuid);
 			Mob mob = entity instanceof Mob value ? value : null;
-			if (mob != null && !mob.isAlive()) continue;
+			if (mob != null && !mob.isAlive())
+				continue;
 			byDimension.computeIfAbsent(unit.dimension(), ignored -> new ArrayList<>())
 					.add(new FormationUnit(uuid, unit, mob));
 		}
@@ -458,8 +469,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 					});
 					continue;
 				}
-				if (nearest.mob() != null) occupied.add(nearest.mob().getBoundingBox()
-						.move(resolved.subtract(nearest.mob().position())).inflate(ConductorRules.ENTITY_AVOIDANCE_MARGIN));
+				if (nearest.mob() != null)
+					occupied.add(nearest.mob().getBoundingBox()
+							.move(resolved.subtract(nearest.mob().position())).inflate(ConductorRules.ENTITY_AVOIDANCE_MARGIN));
 				Vec3 slot = resolved;
 				data.update(nearest.uuid(), state -> {
 					state.command(ConductorData.OrderType.MOVE, null, slot);
@@ -492,7 +504,8 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		ATTACK_POINT,
 		SET_COMBAT_BEHAVIOR,
 		/// 更新当前手动持续技能的瞄准，不重新发起施放。
-		AIM
+		AIM,
+		END_MANUAL_CONTROL
 	}
 
 	private record FormationUnit(UUID uuid, ConductorData.Unit unit, Mob mob) {

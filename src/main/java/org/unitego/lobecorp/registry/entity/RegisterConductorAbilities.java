@@ -3,15 +3,15 @@ package org.unitego.lobecorp.registry.entity;
 import net.minecraft.world.entity.EntityType;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.WardenSonicBoomAbility;
-import org.unitego.lobecorp.conductor.ability.the_queen_of_hatred.TheQueenOfHatredRepelAbility;
-import org.unitego.lobecorp.conductor.ability.the_queen_of_hatred.TheQueenOfHatredSweepAbility;
+import org.unitego.lobecorp.conductor.the_queen_of_hatred.ability.TheQueenOfHatredRepelAbility;
+import org.unitego.lobecorp.conductor.the_queen_of_hatred.ability.TheQueenOfHatredSweepAbility;
 import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
-import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
-import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.SlownessSkill;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.MarkSkill;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.StarfallSkill;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.PillarOfLightSkill;
+import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.SlownessSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.MarkSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarfallSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.PillarOfLightSkill;
 
 public class RegisterConductorAbilities {
 	public static void register(RegisterConductorAbilitiesEvent event) {

@@ -1,0 +1,78 @@
+<ldlib2-ui>
+    <stylesheet location="ldlib2:lss/mc.lss"/>
+    <style>
+        .panel { width: 720; height: 450; padding: 12; flex-direction: column; gap: 7; }
+        .heading { height: 18; }
+        .body { width: 100%; flex-grow: 1; flex-direction: row; gap: 8; }
+        .team-column { width: 29%; flex-direction: column; gap: 5; }
+        .control-column { width: 28%; flex-direction: column; gap: 5; }
+        .remote-column { width: 33%; flex-direction: column; gap: 5; }
+        .row { width: 100%; flex-direction: row; gap: 4; }
+        .button { height: 22; flex-grow: 1; }
+        .field { width: 100%; height: 22; }
+        .team-field { width: 68%; height: 22; }
+        .color-field { width: 54%; height: 22; }
+        .coordinate-field { width: 33%; height: 22; }
+        .team-list { width: 100%; height: 150; }
+        .skill-list { width: 100%; height: 110; }
+    </style>
+    <root class="panel panel_bg">
+        <label text="screen.lobecorp.conductor.title" class="heading"/>
+        <label id="selected-count" class="heading"/>
+        <element class="body">
+            <element class="team-column">
+                <label text="screen.lobecorp.conductor.team" class="heading"/>
+                <element class="row">
+                    <text-field id="team-name" class="team-field"/>
+                    <button id="create" text="screen.lobecorp.conductor.create" class="button"/>
+                </element>
+                <scroller-view id="team-list" class="team-list"/>
+                <element class="row">
+                    <label text="screen.lobecorp.conductor.color" class="heading"/>
+                    <text-field id="color-hex" class="color-field"/>
+                </element>
+                <button id="apply-color" text="screen.lobecorp.conductor.apply_color" class="button"/>
+                <element class="row">
+                    <button id="assign" text="screen.lobecorp.conductor.assign" class="button"/>
+                    <button id="release" text="screen.lobecorp.conductor.release" class="button"/>
+                </element>
+            </element>
+            <element class="control-column">
+                <label text="screen.lobecorp.conductor.controls" class="heading"/>
+                <element class="row">
+                    <button id="full" text="screen.lobecorp.conductor.full" class="button"/>
+                    <button id="command" text="screen.lobecorp.conductor.command" class="button"/>
+                    <button id="soft" text="screen.lobecorp.conductor.soft" class="button"/>
+                </element>
+                <button id="attack-mode" text="screen.lobecorp.conductor.attack_mode" class="button"/>
+                <element class="row">
+                    <button id="move" text="screen.lobecorp.conductor.move" class="button"/>
+                    <button id="attack" text="screen.lobecorp.conductor.attack" class="button"/>
+                </element>
+                <label text="screen.lobecorp.conductor.enemy_team" class="heading"/>
+                <text-field id="enemy-team" class="field"/>
+                <element class="row">
+                    <button id="war" text="screen.lobecorp.conductor.war" class="button"/>
+                    <button id="peace" text="screen.lobecorp.conductor.peace" class="button"/>
+                </element>
+                <button id="force-load" class="button"/>
+            </element>
+            <element class="remote-column">
+                <label text="screen.lobecorp.conductor.remote_orders" class="heading"/>
+                <element class="row">
+                    <text-field id="x" class="coordinate-field"/>
+                    <text-field id="y" class="coordinate-field"/>
+                    <text-field id="z" class="coordinate-field"/>
+                </element>
+                <button id="remote-move" text="screen.lobecorp.conductor.remote_move" class="button"/>
+                <text-field id="target-uuid" class="field"/>
+                <button id="remote-attack" text="screen.lobecorp.conductor.remote_attack" class="button"/>
+                <label text="screen.lobecorp.conductor.skills" class="heading"/>
+                <scroller-view id="skill-list" class="skill-list"/>
+                <text-field id="skill-id" class="field"/>
+                <button id="remote-cast" text="screen.lobecorp.conductor.remote_cast" class="button"/>
+            </element>
+        </element>
+        <button id="close" text="screen.lobecorp.conductor.close" class="button"/>
+    </root>
+</ldlib2-ui>

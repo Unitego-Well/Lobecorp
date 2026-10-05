@@ -9,8 +9,8 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.effect.BasicMobEffect;
-import org.unitego.lobecorp.effect.StunMobEffect;
+import org.unitego.lobecorp.world.effect.BasicMobEffect;
+import org.unitego.lobecorp.world.effect.StunMobEffect;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 

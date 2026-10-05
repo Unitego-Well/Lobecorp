@@ -16,8 +16,13 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.hitbox.*;
 import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.world.hitbox.HitboxInstance;
+import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
+import org.unitego.lobecorp.world.hitbox.HitboxManager;
+import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.world.hitbox.geometry.BoxSize;
+import org.unitego.lobecorp.world.hitbox.geometry.HitboxGeometry;
 
 import java.util.Comparator;
 
@@ -30,9 +35,11 @@ public final class ConductorSonicBoom {
 				if (!(context.source() instanceof Warden warden) || !(context.target() instanceof LivingEntity target))
 					return false;
 				if (!target.hurtServer(context.level(), warden.damageSources().sonicBoom(warden),
-						(float) ConductorRules.WARDEN_SONIC_BOOM_DAMAGE)) return false;
+						(float) ConductorRules.WARDEN_SONIC_BOOM_DAMAGE))
+					return false;
 				Vec3 direction = context.instance().getData(DIRECTION);
-				if (direction == null) return true;
+				if (direction == null)
+					return true;
 				double resistance = 1.0 - target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
 				target.push(direction.x * ConductorRules.WARDEN_SONIC_KNOCKBACK_HORIZONTAL * resistance,
 						direction.y * ConductorRules.WARDEN_SONIC_KNOCKBACK_VERTICAL * resistance,
@@ -51,7 +58,8 @@ public final class ConductorSonicBoom {
 		Vec3 start = origin(mob);
 		Vec3 direction = requested.subtract(start);
 		if (requested.distanceToSqr(mob.position()) <= ConductorRules.FORMATION_DIRECTION_EPSILON
-				|| direction.lengthSqr() <= ConductorRules.FORMATION_DIRECTION_EPSILON) direction = mob.getLookAngle();
+				|| direction.lengthSqr() <= ConductorRules.FORMATION_DIRECTION_EPSILON)
+			direction = mob.getLookAngle();
 		direction = direction.normalize();
 		double horizontal = direction.horizontalDistance();
 		double length = horizontal > ConductorRules.FORMATION_DIRECTION_EPSILON
@@ -66,7 +74,8 @@ public final class ConductorSonicBoom {
 	}
 
 	public static boolean start(Warden mob, Vec3 position) {
-		if (!(mob.level() instanceof ServerLevel level) || active(mob)) return false;
+		if (!(mob.level() instanceof ServerLevel level) || active(mob))
+			return false;
 		Vec3 offset = endpoint(mob, position).subtract(origin(mob));
 		mob.getBrain().stopAll(level, mob);
 		mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
@@ -80,7 +89,8 @@ public final class ConductorSonicBoom {
 	}
 
 	public static void cancel(Mob mob) {
-		if (!(mob instanceof Warden warden) || ConductorUnitRuntime.get(warden).sonic == null) return;
+		if (!(mob instanceof Warden warden) || ConductorUnitRuntime.get(warden).sonic == null)
+			return;
 		ConductorUnitRuntime.get(warden).sonic = null;
 		warden.getBrain().eraseMemory(MemoryModuleType.SONIC_BOOM_SOUND_DELAY);
 		warden.getBrain().eraseMemory(MemoryModuleType.SONIC_BOOM_SOUND_COOLDOWN);
@@ -89,7 +99,8 @@ public final class ConductorSonicBoom {
 
 	public static void tick(Warden mob, ServerLevel level) {
 		Cast cast = ConductorUnitRuntime.get(mob).sonic;
-		if (cast == null) return;
+		if (cast == null)
+			return;
 		mob.getNavigation().stop();
 		mob.getMoveControl().setWait();
 		mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
@@ -99,8 +110,10 @@ public final class ConductorSonicBoom {
 		mob.setYBodyRot(yaw);
 		mob.setYHeadRot(yaw);
 		long elapsed = level.getGameTime() - cast.started();
-		if (elapsed == ConductorRules.WARDEN_SONIC_WINDUP_TICKS) fire(mob, level, cast);
-		if (elapsed >= ConductorRules.WARDEN_SONIC_DURATION_TICKS) cancel(mob);
+		if (elapsed == ConductorRules.WARDEN_SONIC_WINDUP_TICKS)
+			fire(mob, level, cast);
+		if (elapsed >= ConductorRules.WARDEN_SONIC_DURATION_TICKS)
+			cancel(mob);
 	}
 
 	private static void fire(Warden mob, ServerLevel level, Cast cast) {

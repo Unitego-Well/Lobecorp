@@ -8,8 +8,8 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.util.ConductorAttachmentUtil;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 
@@ -51,10 +51,12 @@ public class ConductorClient {
 		}
 		boolean abilitiesChanged = !state.unitAbilities.equals(nextAbilities);
 		state.unitAbilities = Map.copyOf(nextAbilities);
-		for (UUID unit : nextAbilities.keySet()) state.abilitySnapshotRequests.remove(unit);
+		for (UUID unit : nextAbilities.keySet())
+			state.abilitySnapshotRequests.remove(unit);
 		state.cooldownSnapshotTick = Minecraft.getInstance().player == null
 				? 0 : Minecraft.getInstance().player.tickCount;
-		if (rosterChanged || abilitiesChanged) state.revision++;
+		if (rosterChanged || abilitiesChanged)
+			state.revision++;
 	}
 
 	public static int abilityCooldownTicks(UUID unit, Identifier ability) {
@@ -88,10 +90,12 @@ public class ConductorClient {
 	}
 
 	public static void requestAbilitiesIfMissing(UUID unit) {
-		if (state.unitAbilities.containsKey(unit) || Minecraft.getInstance().player == null) return;
+		if (state.unitAbilities.containsKey(unit) || Minecraft.getInstance().player == null)
+			return;
 		int tick = Minecraft.getInstance().player.tickCount;
 		Integer previous = state.abilitySnapshotRequests.get(unit);
-		if (previous != null && tick >= previous && tick - previous < ABILITY_SNAPSHOT_RETRY_TICKS) return;
+		if (previous != null && tick >= previous && tick - previous < ABILITY_SNAPSHOT_RETRY_TICKS)
+			return;
 		state.abilitySnapshotRequests.put(unit, tick);
 		send(ConductorCommandPayload.Action.SNAPSHOT, "", "", List.of(unit), null,
 				0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, false, "");
@@ -99,11 +103,13 @@ public class ConductorClient {
 
 	public static ConductorData.Unit unit(UUID uuid) {
 		ConductorData.Unit member = state.snapshot.unit(uuid);
-		if (member == null) return null;
+		if (member == null)
+			return null;
 		var level = Minecraft.getInstance().level;
 		if (level != null && level.getEntity(uuid) instanceof Mob mob && ConductorAttachmentUtil.hasUnit(mob)) {
 			var attachment = ConductorAttachmentUtil.unit(mob);
-			if (attachment.revision >= state.directoryRevision) return attachment.snapshot(mob);
+			if (attachment.revision >= state.directoryRevision)
+				return attachment.snapshot(mob);
 		}
 		return member;
 	}

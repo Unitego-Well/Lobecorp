@@ -15,7 +15,8 @@ import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
 /// 固定落点法阵和光柱的显示参数；不参与命中判断。
 @NullMarked
-public record QueenMagicCircleParticleOptions(double radius, int durationTicks, boolean pillar) implements ParticleOptions {
+public record QueenMagicCircleParticleOptions(double radius, int durationTicks,
+                                              boolean pillar) implements ParticleOptions {
 	public static final MapCodec<QueenMagicCircleParticleOptions> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 			Codec.doubleRange(0.0, Double.MAX_VALUE).fieldOf("radius").forGetter(QueenMagicCircleParticleOptions::radius),
 			Codec.intRange(1, Integer.MAX_VALUE).fieldOf("duration").forGetter(QueenMagicCircleParticleOptions::durationTicks),

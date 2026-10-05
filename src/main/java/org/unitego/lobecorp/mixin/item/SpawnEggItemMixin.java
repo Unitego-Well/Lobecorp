@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SpawnEggItem;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.unitego.lobecorp.item.LcSpawnEggItem;
+import org.unitego.lobecorp.world.item.LcSpawnEggItem;
 
 import java.util.Objects;
 import java.util.Optional;

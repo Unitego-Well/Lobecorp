@@ -29,7 +29,8 @@ public record ConductorDirectory(Map<String, Team> teams, Map<String, Unit> unit
 	private static <T> Map<String, T> changed(Map<String, T> current, Map<String, T> previous) {
 		Map<String, T> changes = new HashMap<>();
 		current.forEach((key, value) -> {
-			if (!Objects.equals(value, previous.get(key))) changes.put(key, value);
+			if (!Objects.equals(value, previous.get(key)))
+				changes.put(key, value);
 		});
 		return changes;
 	}

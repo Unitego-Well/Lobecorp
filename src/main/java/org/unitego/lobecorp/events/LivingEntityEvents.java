@@ -15,10 +15,10 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.lifecycle.ConductorEvents;
-import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.entity_skill.EntitySkillAccess;
-import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillAccess;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 
@@ -28,8 +28,10 @@ public class LivingEntityEvents {
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {
 			EntitySkillAccess access = EntitySkillAccess.get(livingEntity);
-			if (access != null) access.tick();
-			else EntitySkillUtil.tick(livingEntity);
+			if (access != null)
+				access.tick();
+			else
+				EntitySkillUtil.tick(livingEntity);
 		}
 	}
 
@@ -69,7 +71,8 @@ public class LivingEntityEvents {
 					|| entity.getRemovalReason() == Entity.RemovalReason.DISCARDED;
 			ConductorController.stop(leaving);
 			data.detach(leaving, permanent);
-			if (permanent) ConductorSnapshotPayload.sendAll(serverLevel.getServer(), data);
+			if (permanent)
+				ConductorSnapshotPayload.sendAll(serverLevel.getServer(), data);
 		}
 		if (entity.getRemovalReason() != Entity.RemovalReason.KILLED) {
 			return;

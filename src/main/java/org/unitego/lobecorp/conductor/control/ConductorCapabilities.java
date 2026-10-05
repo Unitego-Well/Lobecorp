@@ -8,11 +8,11 @@ import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.ability.ConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.util.ConductorAttachmentUtil;
-import org.unitego.lobecorp.util.ConductorUtil;
-import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
-import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
+import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 import java.util.Collection;
 
@@ -44,7 +44,8 @@ public class ConductorCapabilities {
 
 		@Override
 		public boolean accept(ConductorData.Unit command) {
-			if (!supports(command.order())) return false;
+			if (!supports(command.order()))
+				return false;
 			ConductorAttachmentUtil.unit(mob).read(command);
 			return true;
 		}
@@ -108,7 +109,8 @@ public class ConductorCapabilities {
 			if (mob.level() instanceof ServerLevel level && ConductorWork.active(mob)) {
 				ConductorData data = ConductorData.get(level.getServer());
 				ConductorWork.tick((Sweeper) mob, level, data, data.unit(mob.getUUID()));
-			} else super.tick();
+			} else
+				super.tick();
 		}
 	}
 
@@ -121,7 +123,8 @@ public class ConductorCapabilities {
 		public void tick() {
 			if (mob.level() instanceof ServerLevel level && ConductorSonicBoom.active(mob)) {
 				ConductorSonicBoom.tick((Warden) mob, level);
-			} else super.tick();
+			} else
+				super.tick();
 		}
 	}
 }

@@ -20,7 +20,9 @@ import org.unitego.lobecorp.conductor.world.ConductorView;
 /// 将镜头范围加入原版区块观察，客户端原版缓存中心仍跟随玩家本体。
 @Mixin(ChunkMap.class)
 public abstract class ChunkMapConductorMixin {
-	@Shadow @Final private ServerLevel level;
+	@Shadow
+	@Final
+	private ServerLevel level;
 
 	@Shadow
 	private int getPlayerViewDistance(ServerPlayer player) {
@@ -45,19 +47,22 @@ public abstract class ChunkMapConductorMixin {
 	@Inject(method = "updateChunkTracking", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$observeCamera(ServerPlayer player, CallbackInfo ci) {
 		Vec3 camera = ConductorView.position(player);
-		if (camera == null) return;
+		if (camera == null)
+			return;
 		int radius = getPlayerViewDistance(player);
 		ConductorChunkTrackingView next = new ConductorChunkTrackingView(
 				new ChunkTrackingView.Positioned(player.chunkPosition(), radius),
 				new ChunkTrackingView.Positioned(ChunkPos.containing(BlockPos.containing(camera)), radius));
-		if (!next.equals(player.getChunkTrackingView())) applyChunkTrackingView(player, next);
+		if (!next.equals(player.getChunkTrackingView()))
+			applyChunkTrackingView(player, next);
 		ci.cancel();
 	}
 
 	@Inject(method = "applyChunkTrackingView", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$updateObservation(ServerPlayer player, ChunkTrackingView next, CallbackInfo ci) {
 		ChunkTrackingView previous = player.getChunkTrackingView();
-		if (!(next instanceof ConductorChunkTrackingView) && !(previous instanceof ConductorChunkTrackingView)) return;
+		if (!(next instanceof ConductorChunkTrackingView) && !(previous instanceof ConductorChunkTrackingView))
+			return;
 		if (player.level() == level) {
 			ChunkPos nextCenter = next instanceof ConductorChunkTrackingView view ? view.body().center()
 					: next instanceof ChunkTrackingView.Positioned view ? view.center() : null;
@@ -66,10 +71,12 @@ public abstract class ChunkMapConductorMixin {
 			if (nextCenter != null && !nextCenter.equals(previousCenter))
 				player.connection.send(new ClientboundSetChunkCacheCenterPacket(nextCenter.x(), nextCenter.z()));
 			previous.forEach(pos -> {
-				if (!next.contains(pos)) dropChunk(player, pos);
+				if (!next.contains(pos))
+					dropChunk(player, pos);
 			});
 			next.forEach(pos -> {
-				if (!previous.contains(pos)) markChunkPendingToSend(player, pos);
+				if (!previous.contains(pos))
+					markChunkPendingToSend(player, pos);
 			});
 			player.setChunkTrackingView(next);
 		}

@@ -23,16 +23,16 @@ import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.conductor.ability.ConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
 
 import java.util.*;
 
 /// 服务端到客户端的指挥家目录和能力快照载荷。
 public record ConductorSnapshotPayload(boolean full, long baseRevision, long revision,
-                                        List<String> removedTeams, List<String> removedUnits, ConductorDirectory data,
-                                        List<AbilityCooldown> abilityCooldowns,
-                                        List<UnitAbilities> unitAbilities) implements ToClientPayload {
+                                       List<String> removedTeams, List<String> removedUnits, ConductorDirectory data,
+                                       List<AbilityCooldown> abilityCooldowns,
+                                       List<UnitAbilities> unitAbilities) implements ToClientPayload {
 	public static final Type<ConductorSnapshotPayload> TYPE = Lobecorp.type("conductor_snapshot");
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorSnapshotPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
@@ -94,7 +94,8 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 		List<AbilityCooldown> cooldowns = new ArrayList<>();
 		List<UnitAbilities> abilities = new ArrayList<>();
 		for (var entry : data.units().entrySet()) {
-			if (!requested.contains(UUID.fromString(entry.getKey()))) continue;
+			if (!requested.contains(UUID.fromString(entry.getKey())))
+				continue;
 			ConductorData.Unit unit = entry.getValue();
 			ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION,
 					Identifier.parse(unit.dimension())));
@@ -103,7 +104,8 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 				continue;
 			}
 			data.remember(mob);
-			if (ConductorUtil.get(mob) == null) continue;
+			if (ConductorUtil.get(mob) == null)
+				continue;
 			List<ConductorAbility> available = List.copyOf(ConductorUtil.abilities(mob));
 			abilities.add(new UnitAbilities(mob.getUUID(), available.stream().map(ConductorAbility::id).toList()));
 			for (ConductorAbility ability : available) {

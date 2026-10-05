@@ -6,7 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.entity.ConductorCapabilityRegistration;
-import org.unitego.lobecorp.registry.entity_skill.EntitySkillCapabilities;
+import org.unitego.lobecorp.registry.entity.skill.EntitySkillCapabilities;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ConductorCapabilityEvents {

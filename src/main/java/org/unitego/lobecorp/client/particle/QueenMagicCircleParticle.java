@@ -44,7 +44,8 @@ public class QueenMagicCircleParticle extends SingleQuadParticle {
 
 	@Override
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
-		if (options.radius() <= 0.0) return;
+		if (options.radius() <= 0.0)
+			return;
 		alpha = Mth.clamp(1.0F - (age + partialTick) / lifetime, 0.0F, 1.0F);
 		if (!options.pillar()) {
 			extractRotatedQuad(renderState, camera, new Quaternionf().rotationX(Mth.HALF_PI), partialTick);
@@ -60,7 +61,8 @@ public class QueenMagicCircleParticle extends SingleQuadParticle {
 
 	@Override
 	public void tick() {
-		if (++age >= lifetime) remove();
+		if (++age >= lifetime)
+			remove();
 	}
 
 	public static class Provider implements ParticleProvider<QueenMagicCircleParticleOptions> {

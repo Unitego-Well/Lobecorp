@@ -2,7 +2,7 @@ package org.unitego.lobecorp.events;
 
 import net.minecraft.server.level.ServerLevel;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
-import org.unitego.lobecorp.hitbox.HitboxManager;
+import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
 public class HitboxEvents {

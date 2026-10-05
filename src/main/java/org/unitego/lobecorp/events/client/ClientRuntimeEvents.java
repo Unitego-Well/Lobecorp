@@ -8,7 +8,8 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
-import org.unitego.lobecorp.client.particle.photon.PhotonParticleRuntimeTrial;
+import org.unitego.lobecorp.client.photon.runtime.PhotonParticleRuntimeTrial;
+import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRuntimeEvents {
@@ -20,17 +21,22 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
 		ConductorControls.clearSession();
+		PhotonGeoEffects.clear();
 	}
 
 	@SubscribeEvent
 	public static void onClientLevelUnload(LevelEvent.Unload event) {
-		if (event.getLevel().isClientSide()) ConductorControls.clearSession();
+		if (event.getLevel().isClientSide())
+			ConductorControls.clearSession();
+		if (event.getLevel().isClientSide())
+			PhotonGeoEffects.clear();
 	}
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
+		PhotonGeoEffects.tick();
 	}
 
 	@SubscribeEvent

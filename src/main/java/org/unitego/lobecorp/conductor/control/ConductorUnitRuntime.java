@@ -4,7 +4,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import org.unitego.lobecorp.conductor.ability.ConductorAbilityRuntime;
-import org.unitego.lobecorp.util.ConductorAttachmentUtil;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 
 import java.util.HashMap;
 import java.util.Map;

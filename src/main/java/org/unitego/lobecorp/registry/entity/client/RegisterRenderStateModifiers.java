@@ -3,8 +3,8 @@ package org.unitego.lobecorp.registry.entity.client;
 import com.google.common.reflect.TypeToken;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
-import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.client.renderer.entity.EntityCorpseRenderer;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
 
 public class RegisterRenderStateModifiers {

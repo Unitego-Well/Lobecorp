@@ -32,19 +32,23 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
+import org.unitego.lobecorp.client.conductor.hud.ConductorHudPreferences;
+import org.unitego.lobecorp.client.conductor.hud.ConductorTexts;
+import org.unitego.lobecorp.client.conductor.render.ConductorCamera;
+import org.unitego.lobecorp.client.conductor.render.ConductorPortraitCache;
 import org.unitego.lobecorp.conductor.ability.ConductorAbility;
 import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 
 import java.util.*;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
-import static org.unitego.lobecorp.client.conductor.ConductorHudTheme.*;
+import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
 
 public class ConductorHud implements ModularHudLayer {
 	public static final ConductorHud INSTANCE = new ConductorHud();
@@ -323,7 +327,8 @@ public class ConductorHud implements ModularHudLayer {
 		button.noText();
 		button.layout(layout -> {
 			layout.height(height).paddingAll(0).flexShrink(0);
-			if (width > 0) layout.width(width);
+			if (width > 0)
+				layout.width(width);
 		});
 		button.buttonStyle(style -> style.baseTexture(IGuiTexture.EMPTY)
 				.hoverTexture(IGuiTexture.EMPTY)
@@ -367,7 +372,8 @@ public class ConductorHud implements ModularHudLayer {
 
 	private static void frame(GuiGraphicsExtractor graphics, int x, int y, int width, int height,
 	                          int background, int border, int depth) {
-		if (width <= 0 || height <= 0) return;
+		if (width <= 0 || height <= 0)
+			return;
 		graphics.fill(x, y, x + width, y + height + depth, border);
 		graphics.fill(x + BORDER, y + BORDER, x + width - BORDER, y + height - BORDER, background);
 		graphics.outline(x + BORDER, y + BORDER, Math.max(1, width - BORDER * 2),
@@ -376,7 +382,8 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private static void textFit(GuiGraphicsExtractor graphics, Component text, int x, int y, int width, int color) {
-		if (width <= 0) return;
+		if (width <= 0)
+			return;
 		var font = Minecraft.getInstance().font;
 		String value = text.getString();
 		if (font.width(value) > width) {
@@ -414,9 +421,11 @@ public class ConductorHud implements ModularHudLayer {
 
 	private static void drawGlyph(GuiGraphicsExtractor graphics, String glyph, int x, int y, int scale, int color) {
 		String pixels = ICONS.get(glyph);
-		if (pixels == null) return;
+		if (pixels == null)
+			return;
 		for (int pixel = 0; pixel < pixels.length(); pixel++) {
-			if (pixels.charAt(pixel) != '1') continue;
+			if (pixels.charAt(pixel) != '1')
+				continue;
 			int px = x + pixel % ICON_GRID * scale;
 			int py = y + pixel / ICON_GRID * scale;
 			graphics.fill(px, py, px + scale, py + scale, color);
@@ -454,7 +463,8 @@ public class ConductorHud implements ModularHudLayer {
 	private static Component memberName(UUID member) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		if (entity != null) return entity.getDisplayName();
+		if (entity != null)
+			return entity.getDisplayName();
 		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
 		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
 	}
@@ -486,8 +496,8 @@ public class ConductorHud implements ModularHudLayer {
 		Component rangeText = ability instanceof EntitySkillConductorAbility.Laser
 				? Component.literal(String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, range))
 				: range > 0.0D ? Component.literal(Double.toString(range)) : Component.translatable(
-						ability.targetKind() == ConductorTargeting.TargetKind.SELF
-								? ConductorTexts.RANGE_SELF : ConductorTexts.RANGE_UNSPECIFIED);
+				ability.targetKind() == ConductorTargeting.TargetKind.SELF
+						? ConductorTexts.RANGE_SELF : ConductorTexts.RANGE_UNSPECIFIED);
 		int total = Math.max(ConductorClient.abilityCooldownTotalTicks(mob.getUUID(), ability.id()),
 				ability.totalCooldownTicks(mob));
 		int remaining = ConductorClient.abilityCooldownTicks(mob.getUUID(), ability.id());
@@ -506,19 +516,25 @@ public class ConductorHud implements ModularHudLayer {
 		List<Component> details = new ArrayList<>(lines);
 		appendSkillStatus(details, mob, ability, remaining);
 		Component description = ConductorTexts.abilityDescription(ability.id());
-		if (!description.getString().isEmpty()) details.add(description);
+		if (!description.getString().isEmpty())
+			details.add(description);
 		drawTooltip(graphics, details);
 	}
 
 	private static void appendSkillStatus(List<Component> lines, Mob mob, ConductorAbility ability, int remaining) {
 		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
 		boolean available = ability.isAvailable(mob);
-		if (remaining > 0) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
-		if (casting) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
-		if (!available) lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
-		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) return;
+		if (remaining > 0)
+			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+		if (casting)
+			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+		if (!available)
+			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID()))
+			return;
 		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
-		if (aim == null || aim.caster() != mob) return;
+		if (aim == null || aim.caster() != mob)
+			return;
 		if (aim.rangeLimited()) {
 			lines.add(Component.translatable(ConductorTexts.SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
 		} else if (!aim.valid() && remaining == 0 && available && !casting) {
@@ -538,7 +554,8 @@ public class ConductorHud implements ModularHudLayer {
 		Minecraft minecraft = Minecraft.getInstance();
 		int maxWidth = Math.max(1, Math.min(TOOLTIP_WIDTH, graphics.guiWidth() - HOVER_PADDING * 2));
 		List<FormattedCharSequence> wrapped = new ArrayList<>();
-		for (Component line : lines) wrapped.addAll(minecraft.font.split(line, maxWidth - HOVER_PADDING * 2));
+		for (Component line : lines)
+			wrapped.addAll(minecraft.font.split(line, maxWidth - HOVER_PADDING * 2));
 		int lineHeight = minecraft.font.lineHeight + HOVER_LINE_GAP;
 		int columns = Math.max(1, (maxWidth - HOVER_PADDING * 2) / EFFECT_CELL_WIDTH);
 		int maxEffectRows = Math.max(0, (graphics.guiHeight() - HOVER_PADDING * 4 - lineHeight) / EFFECT_CELL_HEIGHT);
@@ -546,9 +563,11 @@ public class ConductorHud implements ModularHudLayer {
 		int effectRows = (effectCount + columns - 1) / columns;
 		int effectsHeight = effectRows * EFFECT_CELL_HEIGHT;
 		int maxLines = Math.max(1, (graphics.guiHeight() - HOVER_PADDING * 4 - effectsHeight) / lineHeight);
-		if (wrapped.size() > maxLines) wrapped = new ArrayList<>(wrapped.subList(0, maxLines));
+		if (wrapped.size() > maxLines)
+			wrapped = new ArrayList<>(wrapped.subList(0, maxLines));
 		int width = Math.min(maxWidth, wrapped.stream().mapToInt(minecraft.font::width).max().orElse(0) + HOVER_PADDING * 2);
-		if (effectCount > 0) width = maxWidth;
+		if (effectCount > 0)
+			width = maxWidth;
 		int height = wrapped.size() * lineHeight + HOVER_PADDING * 2 + effectsHeight;
 		int mx = (int) (minecraft.mouseHandler.xpos() * graphics.guiWidth() / minecraft.getWindow().getWidth());
 		int my = (int) (minecraft.mouseHandler.ypos() * graphics.guiHeight() / minecraft.getWindow().getHeight());
@@ -586,16 +605,19 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private static boolean hasRemoteSelection(Minecraft minecraft) {
-		if (minecraft.level == null) return false;
+		if (minecraft.level == null)
+			return false;
 		for (UUID member : ConductorControls.selected()) {
-			if (ConductorClient.unit(member) != null && minecraft.level.getEntity(member) == null) return true;
+			if (ConductorClient.unit(member) != null && minecraft.level.getEntity(member) == null)
+				return true;
 		}
 		return false;
 	}
 
 	private static void scrollList(ScrollerView list, float direction) {
 		float extent = list.viewContainer.getSizeHeight() - list.viewPort.getContentHeight();
-		if (extent <= 0) return;
+		if (extent <= 0)
+			return;
 		float step = direction * SCROLL_STEP / extent;
 		list.verticalScroller.setNormalizedValue(Mth.clamp(list.verticalScroller.getNormalizedValue() + step, 0, 1), true);
 	}
@@ -704,9 +726,11 @@ public class ConductorHud implements ModularHudLayer {
 			focused = selected.isEmpty() ? null : selected.getLast();
 		}
 		ConductorData.Unit focusUnit = focused == null ? null : ConductorClient.unit(focused);
-		if (focusUnit != null && !Objects.equals(focused, previousFocus)) teamSelection = focusUnit.team();
+		if (focusUnit != null && !Objects.equals(focused, previousFocus))
+			teamSelection = focusUnit.team();
 		List<String> teams = teams();
-		if (!teams.contains(teamSelection)) teamSelection = teams.isEmpty() ? "" : teams.getFirst();
+		if (!teams.contains(teamSelection))
+			teamSelection = teams.isEmpty() ? "" : teams.getFirst();
 		ConductorData.Team team = ConductorClient.snapshot().team(teamSelection);
 		hints.put(TEAM_SELECT, team == null ? Component.translatable(ConductorTexts.TEAM)
 				: Component.literal(team.name()).withColor(team.color()));
@@ -718,9 +742,11 @@ public class ConductorHud implements ModularHudLayer {
 				: Component.translatable(ConductorTexts.BEHAVIOR_VALUE, Component.translatable(combatBehaviorKey(modeUnit.combatBehavior()))));
 		hints.put(ACTIVITY_MODE, modeUnit == null ? Component.translatable(ConductorTexts.ACTIVITY_MODE)
 				: Component.translatable(ConductorTexts.ACTIVITY_VALUE, Component.translatable(behaviorKey(modeUnit.behaviorState()))));
-		if (modeUnit == null) modeDropdown = "";
+		if (modeUnit == null)
+			modeDropdown = "";
 		Entity focusEntity = focused == null || minecraft.level == null ? null : minecraft.level.getEntity(focused);
-		if (focusEntity instanceof Mob mob) ConductorClient.requestAbilitiesIfMissing(mob.getUUID());
+		if (focusEntity instanceof Mob mob)
+			ConductorClient.requestAbilitiesIfMissing(mob.getUUID());
 		long tick = minecraft.level == null ? 0 : minecraft.level.getGameTime();
 		boolean rosterChanged = previousRevision != ConductorClient.revision()
 				|| !teamSelection.equals(previousTeamSelection) || !appliedRosterSearch.equals(previousSearch)
@@ -772,7 +798,8 @@ public class ConductorHud implements ModularHudLayer {
 		healthRatios.keySet().removeIf(id -> !AVERAGE_HEALTH_ID.equals(id) && ConductorClient.unit(id) == null && !selected.contains(id));
 		previousHealthRatios.keySet().retainAll(healthRatios.keySet());
 		healthChangedAt.keySet().retainAll(healthRatios.keySet());
-		if (!keyboardFocus.isEmpty() && !focusableIds().contains(keyboardFocus)) keyboardFocus = "";
+		if (!keyboardFocus.isEmpty() && !focusableIds().contains(keyboardFocus))
+			keyboardFocus = "";
 	}
 
 	private boolean matchesSkill(ConductorAbility ability) {
@@ -791,8 +818,10 @@ public class ConductorHud implements ModularHudLayer {
 		rosterHidden = rosterCollapsed || width < MAX_ROSTER_WIDTH + EDGE_MARGIN * 2 + HANDLE_WIDTH * 2 + PANEL_SAFE_GAP;
 		skillsHidden = skillsCollapsed || width < MAX_SKILL_WIDTH + EDGE_MARGIN * 2 + HANDLE_WIDTH * 2 + PANEL_SAFE_GAP;
 		if (narrow && !rosterHidden && !skillsHidden) {
-			if (preferSkillsOnNarrow) rosterHidden = true;
-			else skillsHidden = true;
+			if (preferSkillsOnNarrow)
+				rosterHidden = true;
+			else
+				skillsHidden = true;
 		}
 		if (!panelLayoutInitialized || wasRosterHidden != rosterHidden) {
 			layoutPanel(ROSTER_PANEL, ROSTER_TOGGLE, MAX_ROSTER_WIDTH, rosterHidden, true);
@@ -832,12 +861,16 @@ public class ConductorHud implements ModularHudLayer {
 		int offset = hidden ? width : 0;
 		panel.setDisplay(!hidden);
 		panel.layout(layout -> {
-			if (left) layout.left(EDGE_MARGIN - offset);
-			else layout.right(EDGE_MARGIN - offset);
+			if (left)
+				layout.left(EDGE_MARGIN - offset);
+			else
+				layout.right(EDGE_MARGIN - offset);
 		});
 		ui.selectId(toggleId, Button.class).findFirst().orElseThrow().layout(layout -> {
-			if (left) layout.left(EDGE_MARGIN + width - offset);
-			else layout.right(EDGE_MARGIN + width - offset);
+			if (left)
+				layout.left(EDGE_MARGIN + width - offset);
+			else
+				layout.right(EDGE_MARGIN + width - offset);
 		});
 	}
 
@@ -874,8 +907,10 @@ public class ConductorHud implements ModularHudLayer {
 		List<UUID> visible = members.subList(Math.min(members.size(), first * columns), Math.min(members.size(), last * columns));
 		if (visible.equals(mountedMembers.get(listId)) && columns == (horizontal ? selectedColumns : rosterColumns))
 			return;
-		if (horizontal) selectedColumns = columns;
-		else rosterColumns = columns;
+		if (horizontal)
+			selectedColumns = columns;
+		else
+			rosterColumns = columns;
 		mountedMembers.put(listId, List.copyOf(visible));
 		list.clearAllScrollViewChildren();
 		ids.clear();
@@ -900,7 +935,8 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private boolean matchesSearch(UUID member) {
-		if (appliedRosterSearch.isBlank()) return true;
+		if (appliedRosterSearch.isBlank())
+			return true;
 		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
 		ConductorData.Unit unit = ConductorClient.unit(member);
 		String query = appliedRosterSearch.toLowerCase(Locale.ROOT);
@@ -925,7 +961,8 @@ public class ConductorHud implements ModularHudLayer {
 
 	private Button acquireCard(String id, int width, int height) {
 		Button button = spareCards.pollFirst();
-		if (button == null) return portraitButton(id, width, height);
+		if (button == null)
+			return portraitButton(id, width, height);
 		button.setId(id);
 		button.layout(layout -> layout.width(width).height(height));
 		return button;
@@ -940,7 +977,8 @@ public class ConductorHud implements ModularHudLayer {
 		int last = Math.min(previousAbilities.size(), first + (viewport + step - 1) / step + BUFFER_ROWS * 2);
 		first = Math.min(first, previousAbilities.size());
 		List<Identifier> visible = previousAbilities.subList(first, Math.max(first, last));
-		if (visible.equals(mountedSkills) && (!visible.isEmpty() || previousAbilities.isEmpty())) return;
+		if (visible.equals(mountedSkills) && (!visible.isEmpty() || previousAbilities.isEmpty()))
+			return;
 		mountedSkills = List.copyOf(visible);
 		skillIds.clear();
 		list.clearAllScrollViewChildren();
@@ -964,7 +1002,8 @@ public class ConductorHud implements ModularHudLayer {
 	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		ModularHudLayer.super.render(graphics, deltaTracker);
 		Minecraft minecraft = Minecraft.getInstance();
-		if (ui == null || !ConductorControls.active() || minecraft.screen != null || minecraft.level == null) return;
+		if (ui == null || !ConductorControls.active() || minecraft.screen != null || minecraft.level == null)
+			return;
 		UIElement hovered = elementAtCurrentUI(minecraft);
 		String nextHover = interactiveId(hovered);
 		if (!nextHover.equals(hoveredId)) {
@@ -973,11 +1012,13 @@ public class ConductorHud implements ModularHudLayer {
 		staticPortraits = countVisibleCards() > PORTRAIT_LIMIT;
 		ConductorPortraitCache.beginFrame(minecraft.level, ConductorClient.snapshot(), staticPortraits);
 		renderChrome(graphics);
-		if (!rosterHidden) renderMemberCards(graphics, minecraft, ROSTER_LIST, rosterIds);
+		if (!rosterHidden)
+			renderMemberCards(graphics, minecraft, ROSTER_LIST, rosterIds);
 		renderMemberCards(graphics, minecraft, SELECTED_LIST, selectedIds);
 		renderFocus(graphics, minecraft);
 		renderCommandIcons(graphics);
-		if (!skillsHidden) renderSkills(graphics);
+		if (!skillsHidden)
+			renderSkills(graphics);
 		ConductorPortraitCache.submit(graphics);
 		graphics.nextStratum();
 		renderPortraitOverlays(graphics, minecraft);
@@ -991,15 +1032,19 @@ public class ConductorHud implements ModularHudLayer {
 						selectedCardSize - SECTION_PADDING * 2 - BORDER * 2, MUTED_COLOR);
 			}
 		}
-		if (teamDropdown) renderTeamDropdown(graphics);
-		else if (!modeDropdown.isEmpty()) renderModeDropdown(graphics);
-		else renderHover(graphics);
+		if (teamDropdown)
+			renderTeamDropdown(graphics);
+		else if (!modeDropdown.isEmpty())
+			renderModeDropdown(graphics);
+		else
+			renderHover(graphics);
 	}
 
 	private int countVisibleCards() {
 		Set<UUID> visible = new HashSet<>();
 		for (String listId : List.of(ROSTER_LIST, SELECTED_LIST)) {
-			if (ROSTER_LIST.equals(listId) && rosterHidden) continue;
+			if (ROSTER_LIST.equals(listId) && rosterHidden)
+				continue;
 			UIElement viewport = ui.selectId(listId, ScrollerView.class).findFirst().orElseThrow().viewPort;
 			Map<String, UUID> ids = ROSTER_LIST.equals(listId) ? rosterIds : selectedIds;
 			for (var entry : ids.entrySet()) {
@@ -1018,19 +1063,22 @@ public class ConductorHud implements ModularHudLayer {
 		for (; element != null; element = element.getParent()) {
 			String id = element.getId();
 			if (element instanceof Button || ROSTER_SEARCH.equals(id) || SKILL_SEARCH.equals(id)
-					|| FOCUS_PORTRAIT.equals(id)) return id;
+					|| FOCUS_PORTRAIT.equals(id))
+				return id;
 		}
 		return "";
 	}
 
 	private void renderChrome(GuiGraphicsExtractor graphics) {
 		for (String id : List.of(BOTTOM, ROSTER_PANEL, SKILL_RAIL)) {
-			if (ROSTER_PANEL.equals(id) && rosterHidden || SKILL_RAIL.equals(id) && skillsHidden) continue;
+			if (ROSTER_PANEL.equals(id) && rosterHidden || SKILL_RAIL.equals(id) && skillsHidden)
+				continue;
 			UIElement area = ui.selectId(id, UIElement.class).findFirst().orElseThrow();
 			frame(graphics, area, BG_1, LINE_OUTER, PANEL_DEPTH);
 		}
 		for (String id : List.of(ROSTER_SEARCH, SKILL_SEARCH)) {
-			if (ROSTER_SEARCH.equals(id) && rosterHidden || SKILL_SEARCH.equals(id) && skillsHidden) continue;
+			if (ROSTER_SEARCH.equals(id) && rosterHidden || SKILL_SEARCH.equals(id) && skillsHidden)
+				continue;
 			UIElement area = ui.selectId(id, UIElement.class).findFirst().orElseThrow();
 			boolean active = searchFocused && searchTarget.equals(id);
 			frame(graphics, area, BG_0, active ? ORE_GREEN : LINE_OUTER, 0);
@@ -1051,23 +1099,27 @@ public class ConductorHud implements ModularHudLayer {
 			UIElement area = ui.selectId(SELECTED_COUNT, UIElement.class).findFirst().orElseThrow();
 			textFit(graphics, Component.translatable(ConductorTexts.ROSTER_COUNT, ConductorControls.selected().size(), teamMemberCount),
 					(int) area.getPositionX(), (int) area.getPositionY(), (int) area.getSizeWidth(), GOLD);
-			if (rosterMembers.isEmpty()) emptyMessage(graphics, ROSTER_LIST,
-					appliedRosterSearch.isBlank() ? ConductorTexts.EMPTY_TEAM : ConductorTexts.NO_MATCHING_MEMBERS);
+			if (rosterMembers.isEmpty())
+				emptyMessage(graphics, ROSTER_LIST,
+						appliedRosterSearch.isBlank() ? ConductorTexts.EMPTY_TEAM : ConductorTexts.NO_MATCHING_MEMBERS);
 		}
 		if (!skillsHidden) {
 			UIElement title = ui.selectId(SKILL_TITLE, UIElement.class).findFirst().orElseThrow();
 			textFit(graphics, Component.translatable(ConductorTexts.SKILLS), (int) title.getPositionX(),
 					(int) title.getPositionY(), (int) title.getSizeWidth(), TEXT_COLOR);
-			if (skillIds.isEmpty()) emptyMessage(graphics, SKILL_LIST, focused == null ? ConductorTexts.NO_SELECTION
-					: Minecraft.getInstance().level == null || Minecraft.getInstance().level.getEntity(focused) == null ? ConductorTexts.REMOTE_SKILLS
-					: appliedSkillSearch.isBlank() ? ConductorTexts.NO_SKILLS : ConductorTexts.NO_MATCHING_SKILLS);
+			if (skillIds.isEmpty())
+				emptyMessage(graphics, SKILL_LIST, focused == null ? ConductorTexts.NO_SELECTION
+						: Minecraft.getInstance().level == null || Minecraft.getInstance().level.getEntity(focused) == null ? ConductorTexts.REMOTE_SKILLS
+						: appliedSkillSearch.isBlank() ? ConductorTexts.NO_SKILLS : ConductorTexts.NO_MATCHING_SKILLS);
 		}
 		for (String id : List.of(ROSTER_LIST, SKILL_LIST, SELECTED_LIST)) {
-			if (ROSTER_LIST.equals(id) && rosterHidden || SKILL_LIST.equals(id) && skillsHidden) continue;
+			if (ROSTER_LIST.equals(id) && rosterHidden || SKILL_LIST.equals(id) && skillsHidden)
+				continue;
 			ScrollerView list = ui.selectId(id, ScrollerView.class).findFirst().orElseThrow();
 			int viewport = (int) list.viewPort.getContentHeight();
 			int extent = (int) list.viewContainer.getSizeHeight();
-			if (extent <= viewport || viewport <= 0) continue;
+			if (extent <= viewport || viewport <= 0)
+				continue;
 			int x = (int) list.viewPort.getPositionX();
 			int y = (int) list.viewPort.getPositionY();
 			float progress = list.verticalScroller.getNormalizedValue();
@@ -1094,7 +1146,8 @@ public class ConductorHud implements ModularHudLayer {
 
 	private void renderMemberCards(GuiGraphicsExtractor graphics, Minecraft minecraft, String listId,
 	                               Map<String, UUID> cards) {
-		if (minecraft.level == null) return;
+		if (minecraft.level == null)
+			return;
 		ScrollerView list = ui.selectId(listId, ScrollerView.class).findFirst().orElseThrow();
 		UIElement viewport = list.viewPort;
 		boolean roster = ROSTER_LIST.equals(listId);
@@ -1106,7 +1159,8 @@ public class ConductorHud implements ModularHudLayer {
 		for (Map.Entry<String, UUID> entry : cards.entrySet()) {
 			Button card = cardPool.get(entry.getKey());
 			if (card == null || card.getPositionX() >= right || card.getPositionX() + card.getSizeWidth() <= left
-					|| card.getPositionY() >= bottom || card.getPositionY() + card.getSizeHeight() <= top) continue;
+					|| card.getPositionY() >= bottom || card.getPositionY() + card.getSizeHeight() <= top)
+				continue;
 			UUID member = entry.getValue();
 			Entity entity = minecraft.level.getEntity(member);
 			int x = (int) card.getPositionX();
@@ -1144,16 +1198,19 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private void renderPortraitOverlays(GuiGraphicsExtractor graphics, Minecraft minecraft) {
-		if (minecraft.level == null) return;
+		if (minecraft.level == null)
+			return;
 		for (String listId : List.of(ROSTER_LIST, SELECTED_LIST)) {
-			if (ROSTER_LIST.equals(listId) && rosterHidden) continue;
+			if (ROSTER_LIST.equals(listId) && rosterHidden)
+				continue;
 			UIElement viewport = ui.selectId(listId, ScrollerView.class).findFirst().orElseThrow().viewPort;
 			graphics.enableScissor((int) viewport.getPositionX(), (int) viewport.getPositionY(),
 					(int) (viewport.getPositionX() + viewport.getSizeWidth()), (int) (viewport.getPositionY() + viewport.getSizeHeight()));
 			Map<String, UUID> members = ROSTER_LIST.equals(listId) ? rosterIds : selectedIds;
 			for (var entry : members.entrySet()) {
 				Button card = cardPool.get(entry.getKey());
-				if (card == null) continue;
+				if (card == null)
+					continue;
 				int width = (int) card.getSizeWidth();
 				int height = (int) card.getSizeHeight();
 				int x = (int) card.getPositionX();
@@ -1172,8 +1229,9 @@ public class ConductorHud implements ModularHudLayer {
 					graphics.fill(x + BORDER + 1, y + BORDER + BORDER, x + BORDER + BORDER, y + BORDER + BORDER + 1, GOLD);
 					graphics.fill(x + BORDER + BORDER, y + BORDER, x + BORDER + BORDER + 1, y + BORDER + BORDER, GOLD);
 				}
-				if (staticPortraits) graphics.fill(x + width - BORDER - 1,
-						y + height - BORDER - 1, x + width - BORDER, y + height - BORDER, GOLD);
+				if (staticPortraits)
+					graphics.fill(x + width - BORDER - 1,
+							y + height - BORDER - 1, x + width - BORDER, y + height - BORDER, GOLD);
 			}
 			graphics.disableScissor();
 		}
@@ -1218,7 +1276,8 @@ public class ConductorHud implements ModularHudLayer {
 			if (List.of(MANAGE, ASSIGN, RELEASE, TEAM_SELECT, ROSTER_CLEAR).contains(id) && rosterHidden
 					|| SKILL_CLEAR.equals(id) && skillsHidden
 					|| ROSTER_CLEAR.equals(id) && rosterSearch.isEmpty()
-					|| SKILL_CLEAR.equals(id) && skillSearch.isEmpty()) continue;
+					|| SKILL_CLEAR.equals(id) && skillSearch.isEmpty())
+				continue;
 			Button button = ui.selectId(id, Button.class).findFirst().orElseThrow();
 			boolean hover = hoveredId.equals(id);
 			boolean disabled = disabled(id);
@@ -1240,33 +1299,44 @@ public class ConductorHud implements ModularHudLayer {
 				textFit(graphics, hints.getOrDefault(id, Component.empty()), x + BORDER, y + SECTION_PADDING, width - BORDER * 2, color);
 			} else {
 				String glyph = id;
-				if (ROSTER_CLEAR.equals(id) || SKILL_CLEAR.equals(id)) glyph = GLYPH_CLEAR;
-				if (ROSTER_TOGGLE.equals(id)) glyph = rosterHidden ? GLYPH_RIGHT : GLYPH_LEFT;
-				if (SKILL_TOGGLE.equals(id)) glyph = skillsHidden ? GLYPH_LEFT : GLYPH_RIGHT;
+				if (ROSTER_CLEAR.equals(id) || SKILL_CLEAR.equals(id))
+					glyph = GLYPH_CLEAR;
+				if (ROSTER_TOGGLE.equals(id))
+					glyph = rosterHidden ? GLYPH_RIGHT : GLYPH_LEFT;
+				if (SKILL_TOGGLE.equals(id))
+					glyph = skillsHidden ? GLYPH_LEFT : GLYPH_RIGHT;
 				int scale = width < BUTTON_SIZE ? 1 : ICON_PIXEL;
 				drawGlyph(graphics, glyph, x + (width - ICON_GRID * scale) / 2, y + (height - ICON_GRID * scale) / 2, scale, color);
 			}
-			if (disabled) graphics.fill(x, y, x + width, y + height, DISABLED_MASK);
-			if (keyboardFocus.equals(id)) graphics.outline(x - 1, y - 1, width + BORDER, height + BORDER, GOLD);
+			if (disabled)
+				graphics.fill(x, y, x + width, y + height, DISABLED_MASK);
+			if (keyboardFocus.equals(id))
+				graphics.outline(x - 1, y - 1, width + BORDER, height + BORDER, GOLD);
 		}
 		if (searchFocused || ROSTER_SEARCH.equals(keyboardFocus) || SKILL_SEARCH.equals(keyboardFocus)) {
 			UIElement area = ui.selectId(searchFocused ? searchTarget : keyboardFocus, UIElement.class).findFirst().orElse(null);
-			if (area != null) graphics.outline((int) area.getPositionX() - 1, (int) area.getPositionY() - 1,
-					(int) area.getSizeWidth() + BORDER, (int) area.getSizeHeight() + BORDER, GOLD);
+			if (area != null)
+				graphics.outline((int) area.getPositionX() - 1, (int) area.getPositionY() - 1,
+						(int) area.getSizeWidth() + BORDER, (int) area.getSizeHeight() + BORDER, GOLD);
 		}
 	}
 
 	private int buttonOffset(String id) {
-		if (preferences.reduceMotion || !pressedId.equals(id)) return 0;
-		if (releasedAt == 0) return BUTTON_DEPTH;
+		if (preferences.reduceMotion || !pressedId.equals(id))
+			return 0;
+		if (releasedAt == 0)
+			return BUTTON_DEPTH;
 		long frame = (System.currentTimeMillis() - releasedAt) / ANIMATION_FRAME_MS;
-		if (frame == 0) return -1;
-		if (frame >= 2) pressedId = "";
+		if (frame == 0)
+			return -1;
+		if (frame >= 2)
+			pressedId = "";
 		return 0;
 	}
 
 	private void renderFocus(GuiGraphicsExtractor graphics, Minecraft minecraft) {
-		if (minecraft.level == null) return;
+		if (minecraft.level == null)
+			return;
 		UIElement portrait = ui.selectId(FOCUS_PORTRAIT, UIElement.class).findFirst().orElseThrow();
 		frame(graphics, portrait, BG_2, hoveredId.equals(FOCUS_PORTRAIT) ? GOLD : LINE_OUTER, 0);
 		Entity entity = focused == null ? null : minecraft.level.getEntity(focused);
@@ -1275,14 +1345,17 @@ public class ConductorHud implements ModularHudLayer {
 					(int) portrait.getPositionY() + BORDER, focusSize - BORDER * 2,
 					0,
 					hoveredId.equals(FOCUS_PORTRAIT) && !preferences.reduceMotion ? PORTRAIT_HOVER_SCALE : 1);
-		} else textFit(graphics, Component.literal(UNKNOWN_MARK),
-				(int) portrait.getPositionX() + SECTION_PADDING, (int) portrait.getPositionY() + SECTION_PADDING, focusSize, MUTED_COLOR);
-		if (infoWidth < INFO_WIDTH) return;
+		} else
+			textFit(graphics, Component.literal(UNKNOWN_MARK),
+					(int) portrait.getPositionX() + SECTION_PADDING, (int) portrait.getPositionY() + SECTION_PADDING, focusSize, MUTED_COLOR);
+		if (infoWidth < INFO_WIDTH)
+			return;
 		List<UUID> selected = ConductorControls.selected();
 		List<Component> lines = new ArrayList<>();
 		Component name = focused == null ? Component.translatable(ConductorTexts.NO_SELECTION) : memberName(focused);
 		lines.add(selected.size() > 1 ? Component.translatable(ConductorTexts.SELECTED, selected.size()) : name);
-		if (focused != null) lines.add(memberType(focused));
+		if (focused != null)
+			lines.add(memberType(focused));
 		if (selected.size() > 1) {
 			float sum = 0;
 			int known = 0;
@@ -1295,11 +1368,13 @@ public class ConductorHud implements ModularHudLayer {
 			if (known > 0) {
 				lines.add(Component.translatable(ConductorTexts.HEALTH_PERCENT, Math.round(sum / known * PERCENT)));
 				lines.add(Component.translatable(ConductorTexts.KNOWN_HEALTH, known, selected.size()));
-			} else lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
+			} else
+				lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
 		} else if (entity instanceof LivingEntity living) {
 			lines.add(Component.translatable(ConductorTexts.HEALTH, (int) Math.ceil(living.getHealth()), (int) Math.ceil(living.getMaxHealth())));
 			lines.add(attributes(living));
-		} else lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
+		} else
+			lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
 		ConductorData.Unit unit = focused == null ? null : ConductorClient.unit(focused);
 		if (unit != null && ConductorClient.snapshot().team(unit.team()) != null) {
 			lines.add(Component.translatable(ConductorTexts.BEHAVIOR_VALUE, Component.translatable(combatBehaviorKey(unit.combatBehavior()))));
@@ -1332,7 +1407,8 @@ public class ConductorHud implements ModularHudLayer {
 			if (cellX + EFFECT_CELL_WIDTH <= effects.viewPort.getPositionX()
 					|| cellX >= effects.viewPort.getPositionX() + effects.viewPort.getSizeWidth()
 					|| cellY + EFFECT_CELL_HEIGHT <= effects.viewPort.getPositionY()
-					|| cellY >= effects.viewPort.getPositionY() + effects.viewPort.getSizeHeight()) continue;
+					|| cellY >= effects.viewPort.getPositionY() + effects.viewPort.getSizeHeight())
+				continue;
 			drawEffectIcon(graphics, icons.get(index), cellX, cellY);
 		}
 		graphics.disableScissor();
@@ -1341,9 +1417,11 @@ public class ConductorHud implements ModularHudLayer {
 	private void selectSkill(String skill, boolean mouse) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = focused == null || minecraft.level == null ? null : minecraft.level.getEntity(focused);
-		if (!(entity instanceof Mob mob)) return;
+		if (!(entity instanceof Mob mob))
+			return;
 		ConductorTargeting targeting = ConductorTargetingResolver.find(mob, skill);
-		if (targeting == null) return;
+		if (targeting == null)
+			return;
 		ConductorControls.setPendingSkill(skill, focused);
 		long now = System.currentTimeMillis();
 		if (mouse && targeting.directional() && skill.equals(lastSkillClick)
@@ -1360,7 +1438,8 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	public boolean handleSkillKey(KeyEvent event, int action) {
-		if (searchFocused || teamDropdown || !modeDropdown.isEmpty() || ui == null) return false;
+		if (searchFocused || teamDropdown || !modeDropdown.isEmpty() || ui == null)
+			return false;
 		int key = event.key();
 		int index = key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_9 ? key - GLFW.GLFW_KEY_1
 				: key == GLFW.GLFW_KEY_0 ? SKILL_HOTKEY_COUNT - 1
@@ -1368,34 +1447,42 @@ public class ConductorHud implements ModularHudLayer {
 				: key == GLFW.GLFW_KEY_KP_0 ? SKILL_HOTKEY_COUNT - 1 : -1;
 		boolean previous = key == GLFW.GLFW_KEY_MINUS || key == GLFW.GLFW_KEY_KP_SUBTRACT;
 		boolean next = key == GLFW.GLFW_KEY_EQUAL || key == GLFW.GLFW_KEY_KP_ADD;
-		if (index < 0 && !previous && !next) return false;
-		if (action != GLFW.GLFW_PRESS || previousAbilities.isEmpty()) return true;
+		if (index < 0 && !previous && !next)
+			return false;
+		if (action != GLFW.GLFW_PRESS || previousAbilities.isEmpty())
+			return true;
 		if (previous || next) {
 			int current = -1;
 			for (int i = 0; i < previousAbilities.size(); i++)
-				if (ConductorControls.isPendingSkill(previousAbilities.get(i).toString(), focused)) current = i;
+				if (ConductorControls.isPendingSkill(previousAbilities.get(i).toString(), focused))
+					current = i;
 			index = current < 0 ? (previous ? previousAbilities.size() - 1 : 0)
 					: Math.floorMod(current + (previous ? -1 : 1), previousAbilities.size());
 		}
-		if (index < previousAbilities.size()) selectSkill(previousAbilities.get(index).toString(), false);
+		if (index < previousAbilities.size())
+			selectSkill(previousAbilities.get(index).toString(), false);
 		return true;
 	}
 
 	public void renderSelectedSkill(GuiGraphicsExtractor graphics) {
-		if (!modeDropdown.isEmpty()) return;
+		if (!modeDropdown.isEmpty())
+			return;
 		UUID unit = ConductorControls.pendingSkillUnit();
 		Minecraft minecraft = Minecraft.getInstance();
-		if (unit == null || minecraft.level == null || !(minecraft.level.getEntity(unit) instanceof Mob mob)) return;
+		if (unit == null || minecraft.level == null || !(minecraft.level.getEntity(unit) instanceof Mob mob))
+			return;
 		Identifier id = Identifier.parse(ConductorControls.pendingSkill());
 		ConductorAbility ability = ConductorUtil.ability(mob, id);
-		if (ability == null) return;
+		if (ability == null)
+			return;
 		int remaining = ConductorControls.skillUnits(unit).stream()
 				.filter(member -> ConductorClient.hasAbility(member, id))
 				.mapToInt(member -> ConductorClient.abilityCooldownTicks(member, id)).min().orElse(0);
 		List<Component> lines = new ArrayList<>(List.of(abilityName(ability), Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
 				String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND))));
-		if (ability instanceof EntitySkillConductorAbility.Laser) lines.add(Component.translatable(ConductorTexts.RANGE,
-				String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, LaserSkill.RANGE)));
+		if (ability instanceof EntitySkillConductorAbility.Laser)
+			lines.add(Component.translatable(ConductorTexts.RANGE,
+					String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, LaserSkill.RANGE)));
 		appendSkillStatus(lines, mob, ability, remaining);
 		drawTooltip(graphics, lines);
 	}
@@ -1415,7 +1502,8 @@ public class ConductorHud implements ModularHudLayer {
 			if (button == null || button.getPositionY() >= bottom || button.getPositionY() + SKILL_SIZE <= top)
 				continue;
 			ConductorAbility ability = ConductorUtil.ability(mob, Identifier.parse(entry.getValue()));
-			if (ability == null) continue;
+			if (ability == null)
+				continue;
 			int x = (int) button.getPositionX();
 			int y = (int) button.getPositionY() + buttonOffset(entry.getKey());
 			int width = (int) button.getSizeWidth();
@@ -1455,35 +1543,44 @@ public class ConductorHud implements ModularHudLayer {
 			if (!preferences.reduceMotion && flash < FLASH_FRAMES) {
 				int line = SKILL_SIZE - BORDER - (int) flash * (SKILL_SIZE / FLASH_FRAMES);
 				graphics.fill(x + BORDER, y + line, x + width - BORDER, y + line + 1, TEXT_COLOR);
-				if (flash == FLASH_FRAMES - 1) graphics.outline(x, y, width, SKILL_SIZE, TEXT_COLOR);
+				if (flash == FLASH_FRAMES - 1)
+					graphics.outline(x, y, width, SKILL_SIZE, TEXT_COLOR);
 			}
-			if (keyboardFocus.equals(entry.getKey())) graphics.outline(x, y, width, SKILL_SIZE, GOLD);
+			if (keyboardFocus.equals(entry.getKey()))
+				graphics.outline(x, y, width, SKILL_SIZE, GOLD);
 		}
 		graphics.disableScissor();
 	}
 
 	private void renderTooltipAtPointer(GuiGraphicsExtractor graphics) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (ConductorControls.pendingAction() == ConductorCommandPayload.Action.CAST && !contains(minecraft)) return;
-		if (minecraft.level == null) return;
+		if (ConductorControls.pendingAction() == ConductorCommandPayload.Action.CAST && !contains(minecraft))
+			return;
+		if (minecraft.level == null)
+			return;
 		String id = interactiveId(elementAtCurrentUI(minecraft));
 		UUID member = rosterIds.get(id);
-		if (member == null) member = selectedIds.get(id);
-		if (FOCUS_PORTRAIT.equals(id)) member = focused;
+		if (member == null)
+			member = selectedIds.get(id);
+		if (FOCUS_PORTRAIT.equals(id))
+			member = focused;
 		LivingEntity worldEntity = id.isEmpty() && !isHudElement(elementAtCurrentUI(minecraft)) ? ConductorControls.hoveredLivingEntity(minecraft) : null;
 		String key = worldEntity == null ? id : worldEntity.getUUID().toString();
 		if (!key.equals(tooltipId)) {
 			tooltipId = key;
 			tooltipSince = System.currentTimeMillis();
 		}
-		if (key.isEmpty() || System.currentTimeMillis() - tooltipSince < TOOLTIP_DELAY_MS) return;
+		if (key.isEmpty() || System.currentTimeMillis() - tooltipSince < TOOLTIP_DELAY_MS)
+			return;
 		String skill = skillIds.get(id);
 		if (skill != null && focused != null && minecraft.level.getEntity(focused) instanceof Mob mob) {
 			ConductorAbility ability = ConductorUtil.ability(mob, Identifier.parse(skill));
-			if (ability != null) renderSkillDetails(graphics, mob, ability);
+			if (ability != null)
+				renderSkillDetails(graphics, mob, ability);
 			return;
 		}
-		if (member == null && worldEntity != null) member = worldEntity.getUUID();
+		if (member == null && worldEntity != null)
+			member = worldEntity.getUUID();
 		List<Component> lines = new ArrayList<>();
 		List<EffectIcon> effects = List.of();
 		if (member != null) {
@@ -1519,11 +1616,13 @@ public class ConductorHud implements ModularHudLayer {
 					case UNREACHABLE -> ConductorTexts.MOVE_UNREACHABLE;
 					case CANCELED -> ConductorTexts.MOVE_CANCELED;
 				};
-				if (result != null) lines.add(Component.translatable(result));
+				if (result != null)
+					lines.add(Component.translatable(result));
 			}
 		} else if (hints.containsKey(id)) {
 			lines.add(hints.get(id));
-			if (disabled(id)) lines.add(Component.translatable(ConductorTexts.NO_SELECTION));
+			if (disabled(id))
+				lines.add(Component.translatable(ConductorTexts.NO_SELECTION));
 		} else if (ROSTER_SEARCH.equals(id) || SKILL_SEARCH.equals(id)) {
 			lines.add(Component.translatable(ROSTER_SEARCH.equals(id) ? ConductorTexts.SEARCH : ConductorTexts.SEARCH_SKILLS));
 		}
@@ -1537,7 +1636,8 @@ public class ConductorHud implements ModularHudLayer {
 						Math.round(average * PERCENT), known.size(), ConductorControls.selected().size()));
 			}
 		}
-		if (!lines.isEmpty()) drawTooltip(graphics, lines, effects);
+		if (!lines.isEmpty())
+			drawTooltip(graphics, lines, effects);
 	}
 
 	private List<EffectIcon> effectIcons(LivingEntity living) {
@@ -1566,9 +1666,11 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	public UUID memberAtPointer(Minecraft minecraft) {
-		if (getModularUI() == null || teamDropdown || !modeDropdown.isEmpty()) return null;
+		if (getModularUI() == null || teamDropdown || !modeDropdown.isEmpty())
+			return null;
 		String id = interactiveId(elementAtCurrentUI(minecraft));
-		if (FOCUS_PORTRAIT.equals(id)) return focused;
+		if (FOCUS_PORTRAIT.equals(id))
+			return focused;
 		UUID member = rosterIds.get(id);
 		return member == null ? selectedIds.get(id) : member;
 	}
@@ -1576,13 +1678,15 @@ public class ConductorHud implements ModularHudLayer {
 	public boolean click(Minecraft minecraft) {
 		if (!modeDropdown.isEmpty()) {
 			int index = modeAtPointer(minecraft);
-			if (index >= 0) applyMode(index);
+			if (index >= 0)
+				applyMode(index);
 			modeDropdown = "";
 			return true;
 		}
 		if (teamDropdown) {
 			int index = teamAtPointer(minecraft);
-			if (index >= 0) teamSelection = teams().get(index);
+			if (index >= 0)
+				teamSelection = teams().get(index);
 			teamDropdown = false;
 			return true;
 		}
@@ -1592,10 +1696,12 @@ public class ConductorHud implements ModularHudLayer {
 			return false;
 		}
 		String id = interactiveId(clicked);
-		if (!ROSTER_SEARCH.equals(id) && !SKILL_SEARCH.equals(id)) searchFocused = false;
+		if (!ROSTER_SEARCH.equals(id) && !SKILL_SEARCH.equals(id))
+			searchFocused = false;
 		boolean handled = activate(clicked, minecraft);
 		UUID member = selectedIds.get(id);
-		if (member == null) member = rosterIds.get(id);
+		if (member == null)
+			member = rosterIds.get(id);
 		clickedMember = member != null && ConductorControls.selected().contains(member) ? member : null;
 		clickX = minecraft.mouseHandler.xpos();
 		clickY = minecraft.mouseHandler.ypos();
@@ -1623,7 +1729,8 @@ public class ConductorHud implements ModularHudLayer {
 			if (element instanceof Button) {
 				searchFocused = false;
 				keyboardFocus = id;
-				if (disabled(id)) return true;
+				if (disabled(id))
+					return true;
 				pressedId = id;
 				releasedAt = 0;
 				UUID member = selectedIds.get(id);
@@ -1633,10 +1740,13 @@ public class ConductorHud implements ModularHudLayer {
 				}
 				member = rosterIds.get(id);
 				if (member != null) {
-					if (minecraft.hasShiftDown()) ConductorControls.selectRange(rosterMembers, selectionAnchor, member);
-					else ConductorControls.selectMember(member, minecraft.hasControlDown());
+					if (minecraft.hasShiftDown())
+						ConductorControls.selectRange(rosterMembers, selectionAnchor, member);
+					else
+						ConductorControls.selectMember(member, minecraft.hasControlDown());
 					selectionAnchor = member;
-					if (ConductorControls.selected().contains(member)) setFocusedMember(member);
+					if (ConductorControls.selected().contains(member))
+						setFocusedMember(member);
 					return true;
 				}
 				if (MANAGE.equals(id)) {
@@ -1660,13 +1770,17 @@ public class ConductorHud implements ModularHudLayer {
 					return true;
 				}
 				if (MOVE.equals(id)) {
-					if (hasRemoteSelection(minecraft)) ConductorControls.openPanel(ConductorLdlibScreen.Tab.REMOTE);
-					else ConductorControls.setPending(ConductorCommandPayload.Action.MOVE);
+					if (hasRemoteSelection(minecraft))
+						ConductorControls.openPanel(ConductorLdlibScreen.Tab.REMOTE);
+					else
+						ConductorControls.setPending(ConductorCommandPayload.Action.MOVE);
 					return true;
 				}
 				if (ATTACK.equals(id)) {
-					if (hasRemoteSelection(minecraft)) ConductorControls.openPanel(ConductorLdlibScreen.Tab.REMOTE);
-					else ConductorControls.setPending(ConductorCommandPayload.Action.ATTACK);
+					if (hasRemoteSelection(minecraft))
+						ConductorControls.openPanel(ConductorLdlibScreen.Tab.REMOTE);
+					else
+						ConductorControls.setPending(ConductorCommandPayload.Action.ATTACK);
 					return true;
 				}
 				if (STOP.equals(id)) {
@@ -1703,16 +1817,20 @@ public class ConductorHud implements ModularHudLayer {
 					return true;
 				}
 			}
-			if (BOTTOM.equals(id) || ROSTER_PANEL.equals(id) || SKILL_RAIL.equals(id)) return true;
+			if (BOTTOM.equals(id) || ROSTER_PANEL.equals(id) || SKILL_RAIL.equals(id))
+				return true;
 		}
 		return false;
 	}
 
 	public boolean handleSearchKey(KeyEvent event, int action) {
-		if (!ConductorControls.active() || Minecraft.getInstance().screen != null) return false;
+		if (!ConductorControls.active() || Minecraft.getInstance().screen != null)
+			return false;
 		if (!modeDropdown.isEmpty()) {
-			if (action == GLFW.GLFW_RELEASE) return true;
-			if (event.isEscape()) modeDropdown = "";
+			if (action == GLFW.GLFW_RELEASE)
+				return true;
+			if (event.isEscape())
+				modeDropdown = "";
 			else if (event.key() == GLFW.GLFW_KEY_ENTER) {
 				applyMode(modeCursor);
 				modeDropdown = "";
@@ -1723,10 +1841,13 @@ public class ConductorHud implements ModularHudLayer {
 			return true;
 		}
 		if (teamDropdown) {
-			if (action == GLFW.GLFW_RELEASE) return true;
-			if (event.isEscape()) teamDropdown = false;
+			if (action == GLFW.GLFW_RELEASE)
+				return true;
+			if (event.isEscape())
+				teamDropdown = false;
 			else if (event.key() == GLFW.GLFW_KEY_ENTER) {
-				if (!teams().isEmpty()) teamSelection = teams().get(Math.min(teamCursor, teams().size() - 1));
+				if (!teams().isEmpty())
+					teamSelection = teams().get(Math.min(teamCursor, teams().size() - 1));
 				teamDropdown = false;
 			} else if (event.key() == GLFW.GLFW_KEY_DOWN || event.key() == GLFW.GLFW_KEY_UP || event.key() == GLFW.GLFW_KEY_TAB) {
 				int direction = event.key() == GLFW.GLFW_KEY_UP || Minecraft.getInstance().hasShiftDown() ? -1 : 1;
@@ -1739,32 +1860,39 @@ public class ConductorHud implements ModularHudLayer {
 			searchFocused = false;
 			return false;
 		}
-		if (action == GLFW.GLFW_RELEASE) return searchFocused || event.key() == GLFW.GLFW_KEY_TAB;
+		if (action == GLFW.GLFW_RELEASE)
+			return searchFocused || event.key() == GLFW.GLFW_KEY_TAB;
 		if (event.key() == GLFW.GLFW_KEY_TAB) {
 			List<String> ids = focusableIds();
-			if (ids.isEmpty()) return true;
+			if (ids.isEmpty())
+				return true;
 			int index = ids.indexOf(keyboardFocus);
 			int direction = Minecraft.getInstance().hasShiftDown() ? -1 : 1;
 			keyboardFocus = ids.get(Math.floorMod(index + direction, ids.size()));
 			revealKeyboardFocus();
 			searchFocused = ROSTER_SEARCH.equals(keyboardFocus) || SKILL_SEARCH.equals(keyboardFocus);
-			if (searchFocused) searchTarget = keyboardFocus;
+			if (searchFocused)
+				searchTarget = keyboardFocus;
 			ConductorControls.releaseCameraKeys();
 			return true;
 		}
 		if (event.key() == GLFW.GLFW_KEY_ENTER) {
-			if (searchFocused) searchFocused = false;
-			else ui.selectId(keyboardFocus, UIElement.class).findFirst().ifPresent(element -> {
-				activate(element, Minecraft.getInstance());
-				releasedAt = System.currentTimeMillis();
-			});
+			if (searchFocused)
+				searchFocused = false;
+			else
+				ui.selectId(keyboardFocus, UIElement.class).findFirst().ifPresent(element -> {
+					activate(element, Minecraft.getInstance());
+					releasedAt = System.currentTimeMillis();
+				});
 			return !keyboardFocus.isEmpty();
 		}
-		if (!searchFocused) return false;
+		if (!searchFocused)
+			return false;
 		String query = currentSearch();
 		if (event.key() == GLFW.GLFW_KEY_BACKSPACE && !query.isEmpty()) {
 			setSearchQuery(query.substring(0, query.offsetByCodePoints(query.length(), -1)));
-		} else if (event.key() == GLFW.GLFW_KEY_DELETE) setSearchQuery("");
+		} else if (event.key() == GLFW.GLFW_KEY_DELETE)
+			setSearchQuery("");
 		return true;
 	}
 
@@ -1776,13 +1904,15 @@ public class ConductorHud implements ModularHudLayer {
 		List<String> ids = new ArrayList<>();
 		if (!rosterHidden) {
 			ids.addAll(List.of(TEAM_SELECT, ASSIGN, RELEASE, MANAGE, ROSTER_SEARCH));
-			if (!rosterSearch.isEmpty()) ids.add(ROSTER_CLEAR);
+			if (!rosterSearch.isEmpty())
+				ids.add(ROSTER_CLEAR);
 			rosterMembers.stream().map(member -> UNIT_PREFIX + member).forEach(ids::add);
 		}
 		ids.add(ROSTER_TOGGLE);
 		if (!skillsHidden) {
 			ids.add(SKILL_SEARCH);
-			if (!skillSearch.isEmpty()) ids.add(SKILL_CLEAR);
+			if (!skillSearch.isEmpty())
+				ids.add(SKILL_CLEAR);
 			previousAbilities.stream().map(ability -> SKILL_PREFIX + ability).forEach(ids::add);
 		}
 		ids.add(SKILL_TOGGLE);
@@ -1816,8 +1946,10 @@ public class ConductorHud implements ModularHudLayer {
 			index = previousAbilities.indexOf(Identifier.parse(keyboardFocus.substring(SKILL_PREFIX.length())));
 			count = previousAbilities.size();
 			step = SKILL_SIZE + BUTTON_GAP;
-		} else return;
-		if (index < 0) return;
+		} else
+			return;
+		if (index < 0)
+			return;
 		ScrollerView list = ui.selectId(listId, ScrollerView.class).findFirst().orElseThrow();
 		int viewport = Math.max(1, (int) list.viewPort.getContentHeight());
 		int extent = Math.max(0, ((count + columns - 1) / columns) * step
@@ -1839,8 +1971,10 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private boolean disabled(String id) {
-		if (ASSIGN.equals(id)) return ConductorControls.selected().isEmpty();
-		if (List.of(MOVE, ATTACK, STOP, RELEASE).contains(id)) return ConductorControls.controlledSelection().isEmpty();
+		if (ASSIGN.equals(id))
+			return ConductorControls.selected().isEmpty();
+		if (List.of(MOVE, ATTACK, STOP, RELEASE).contains(id))
+			return ConductorControls.controlledSelection().isEmpty();
 		if (ATTACK_MODE.equals(id) || BEHAVIOR_MODE.equals(id) || ACTIVITY_MODE.equals(id))
 			return ConductorControls.controlledSelection().isEmpty();
 		String skill = skillIds.get(id);
@@ -1849,13 +1983,15 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	public boolean release() {
-		if (pressedId.isEmpty() || releasedAt != 0) return false;
+		if (pressedId.isEmpty() || releasedAt != 0)
+			return false;
 		releasedAt = System.currentTimeMillis();
 		Minecraft minecraft = Minecraft.getInstance();
 		if (clickedMember != null && clickedMember.equals(memberAtPointer(minecraft))
 				&& !ConductorControls.isDrag(clickX, clickY, minecraft.mouseHandler.xpos(), minecraft.mouseHandler.ypos())) {
 			ConductorControls.clickedUnit(clickedMember);
-		} else if (clickedMember != null) ConductorControls.cancelDoubleClick();
+		} else if (clickedMember != null)
+			ConductorControls.cancelDoubleClick();
 		clickedMember = null;
 		return true;
 	}
@@ -1901,35 +2037,42 @@ public class ConductorHud implements ModularHudLayer {
 	public boolean handleCharTyped(long handle, CharacterEvent event) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (!searchFocused || handle != minecraft.getWindow().handle() || minecraft.screen != null
-				|| !event.isAllowedChatCharacter()) return false;
+				|| !event.isAllowedChatCharacter())
+			return false;
 		appendSearchCharacter(event.codepoint());
 		return true;
 	}
 
 	private void appendSearchCharacter(int codepoint) {
 		String query = currentSearch();
-		if (query.codePointCount(0, query.length()) >= SEARCH_LIMIT) return;
+		if (query.codePointCount(0, query.length()) >= SEARCH_LIMIT)
+			return;
 		setSearchQuery(query + new String(Character.toChars(codepoint)));
 	}
 
 	private void setSearchQuery(String query) {
-		if (SKILL_SEARCH.equals(searchTarget)) skillSearch = query;
-		else rosterSearch = query;
+		if (SKILL_SEARCH.equals(searchTarget))
+			skillSearch = query;
+		else
+			rosterSearch = query;
 		searchChangedAt = query.isEmpty() ? 0 : System.currentTimeMillis();
 	}
 
 	public boolean scroll(Minecraft minecraft, double scrollDeltaY) {
 		if (!modeDropdown.isEmpty()) {
-			if (scrollDeltaY != 0) modeCursor = Math.floorMod(modeCursor + (scrollDeltaY > 0 ? -1 : 1), modeCount());
+			if (scrollDeltaY != 0)
+				modeCursor = Math.floorMod(modeCursor + (scrollDeltaY > 0 ? -1 : 1), modeCount());
 			return true;
 		}
 		if (teamDropdown) {
 			teamScroll = Math.clamp(teamScroll + (scrollDeltaY > 0.0 ? -1 : 1), 0, Math.max(0, teams().size() - TEAM_DROPDOWN_ROWS));
 			return true;
 		}
-		if (scrollDeltaY == 0.0D) return false;
+		if (scrollDeltaY == 0.0D)
+			return false;
 		for (UIElement element = elementAt(minecraft); element != null; element = element.getParent()) {
-			if (!(element instanceof ScrollerView scroller)) continue;
+			if (!(element instanceof ScrollerView scroller))
+				continue;
 			float direction = (scrollDeltaY > 0.0D ? -1.0F : 1.0F)
 					* (minecraft.hasShiftDown() ? SHIFT_SCROLL_MULTIPLIER : 1);
 			switch (element.getId()) {
@@ -1957,13 +2100,15 @@ public class ConductorHud implements ModularHudLayer {
 
 	private ConductorData.Unit selectedModeUnit() {
 		List<UUID> units = ConductorControls.controlledSelection();
-		if (units.isEmpty()) return null;
+		if (units.isEmpty())
+			return null;
 		return ConductorClient.unit(units.contains(focused) ? focused : units.getFirst());
 	}
 
 	private void send(ConductorCommandPayload.Action action, boolean flag, String skill) {
 		String team = action == ConductorCommandPayload.Action.ASSIGN ? teamSelection : ConductorControls.selectedTeam();
-		if (team.isBlank()) team = teamSelection;
+		if (team.isBlank())
+			team = teamSelection;
 		if (!team.isBlank() && !ConductorControls.selected().isEmpty()) {
 			ConductorClient.send(action, team, "", action == ConductorCommandPayload.Action.ASSIGN
 							? ConductorControls.selected() : ConductorControls.controlledSelection(), null,
@@ -1999,11 +2144,15 @@ public class ConductorHud implements ModularHudLayer {
 
 	private int currentModeIndex() {
 		ConductorData.Unit unit = selectedModeUnit();
-		if (unit == null) return 0;
-		if (ATTACK_MODE.equals(modeDropdown)) return ATTACK_OPTIONS.indexOf(unit.attackState());
-		if (BEHAVIOR_MODE.equals(modeDropdown)) return BEHAVIOR_OPTIONS.indexOf(unit.combatBehavior());
+		if (unit == null)
+			return 0;
+		if (ATTACK_MODE.equals(modeDropdown))
+			return ATTACK_OPTIONS.indexOf(unit.attackState());
+		if (BEHAVIOR_MODE.equals(modeDropdown))
+			return BEHAVIOR_OPTIONS.indexOf(unit.combatBehavior());
 		for (int index = 0; index < ACTIVITY_OPTIONS.size(); index++) {
-			if (ACTIVITY_OPTIONS.get(index).behaviorState() == unit.behaviorState()) return index;
+			if (ACTIVITY_OPTIONS.get(index).behaviorState() == unit.behaviorState())
+				return index;
 		}
 		return 0;
 	}
@@ -2019,7 +2168,8 @@ public class ConductorHud implements ModularHudLayer {
 
 	private void applyMode(int index) {
 		ConductorData.Unit unit = selectedModeUnit();
-		if (unit == null || index < 0 || index >= modeCount()) return;
+		if (unit == null || index < 0 || index >= modeCount())
+			return;
 		if (ATTACK_MODE.equals(modeDropdown)) {
 			send(ConductorCommandPayload.Action.SET_ATTACK_MODE, ATTACK_OPTIONS.get(index) == ConductorData.AttackState.MANUAL, "");
 		} else if (BEHAVIOR_MODE.equals(modeDropdown)) {
@@ -2039,7 +2189,8 @@ public class ConductorHud implements ModularHudLayer {
 		int height = modeCount() * HEADER_HEIGHT;
 		int x = Math.clamp((int) button.getPositionX(), 0, Math.max(0, minecraft.getWindow().getGuiScaledWidth() - width));
 		int y = (int) (button.getPositionY() + button.getSizeHeight());
-		if (y + height > minecraft.getWindow().getGuiScaledHeight()) y = (int) button.getPositionY() - height;
+		if (y + height > minecraft.getWindow().getGuiScaledHeight())
+			y = (int) button.getPositionY() - height;
 		y = Math.clamp(y, 0, Math.max(0, minecraft.getWindow().getGuiScaledHeight() - height));
 		return new ModeBounds(x, y, width, height);
 	}
@@ -2113,18 +2264,21 @@ public class ConductorHud implements ModularHudLayer {
 		for (UIElement element = clicked; element != null; element = element.getParent()) {
 			String id = element.getId();
 			if (MANAGE.equals(id) || BOTTOM.equals(id) || ROSTER_PANEL.equals(id) || ROSTER_TOGGLE.equals(id)
-					|| SKILL_RAIL.equals(id) || SKILL_TOGGLE.equals(id) || ROSTER_SEARCH.equals(id)) return true;
+					|| SKILL_RAIL.equals(id) || SKILL_TOGGLE.equals(id) || ROSTER_SEARCH.equals(id))
+				return true;
 		}
 		return false;
 	}
 
 	public @Nullable HoveredSkill hoveredSkill(Minecraft minecraft) {
-		if (!modeDropdown.isEmpty()) return null;
+		if (!modeDropdown.isEmpty())
+			return null;
 		if (!ConductorControls.active() || minecraft.screen != null || minecraft.level == null || ui == null)
 			return null;
 		for (UIElement element = elementAtCurrentUI(minecraft); element != null; element = element.getParent()) {
 			String skill = skillIds.get(element.getId());
-			if (skill == null || focused == null || !(minecraft.level.getEntity(focused) instanceof Mob mob)) continue;
+			if (skill == null || focused == null || !(minecraft.level.getEntity(focused) instanceof Mob mob))
+				continue;
 			ConductorTargeting targeting = ConductorTargetingResolver.find(mob, skill);
 			return targeting == null || !ConductorClient.hasAbility(mob.getUUID(), Identifier.parse(skill))
 					? null : new HoveredSkill(mob, targeting);
@@ -2133,7 +2287,8 @@ public class ConductorHud implements ModularHudLayer {
 	}
 
 	private UIElement elementAt(Minecraft minecraft) {
-		if (getModularUI() == null) return null;
+		if (getModularUI() == null)
+			return null;
 		return elementAtCurrentUI(minecraft);
 	}
 

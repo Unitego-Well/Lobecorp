@@ -8,12 +8,12 @@
 | `Lobecorp.name` | `Lobecorp.java` | 创建完整资源名称字符串 |
 | `Lobecorp.register` | `Lobecorp.java` | 创建模组命名空间的 `DeferredRegister` |
 | `Lobecorp.type` | `Lobecorp.java` | 创建 Custom Payload 类型 |
-| `ConductorUtil` | `util/ConductorUtil.java` | 指挥家能力、指令、Tick、移动和技能入口 |
-| `ConductorAttachmentUtil` | `util/ConductorAttachmentUtil.java` | 指挥家附件读取、同步和清理 |
-| `EntitySkillAccess` | `entity_skill/EntitySkillAccess.java` | 实体技能查询、施放、Tick、取消和清理 |
-| `EntitySkillUtil` | `util/EntitySkillUtil.java` | 技能状态机内部辅助和兼容入口 |
-| `HitboxManager` | `hitbox/HitboxManager.java` | Level 级命中框生命周期和快照 |
-| `EntityStateHolder` | `entity_state/EntityStateHolder.java` | 实体持续状态的读写和查询 |
+| `ConductorUtil` | `util/conductor/ConductorUtil.java` | 指挥家能力、指令、Tick、移动和技能入口 |
+| `ConductorAttachmentUtil` | `util/conductor/ConductorAttachmentUtil.java` | 指挥家附件读取、同步和清理 |
+| `EntitySkillAccess` | `world/entity/skill/EntitySkillAccess.java` | 实体技能查询、施放、Tick、取消和清理 |
+| `EntitySkillUtil` | `util/entity/skill/EntitySkillUtil.java` | 技能状态机内部辅助和兼容入口 |
+| `HitboxManager` | `world/hitbox/HitboxManager.java` | Level 级命中框生命周期和快照 |
+| `EntityStateHolder` | `world/entity/state/EntityStateHolder.java` | 实体持续状态的读写和查询 |
 | `ToPayload` | `network/ToPayload.java` | 统一 Payload 工作调度 |
 | `ToServerPayload` | `network/ts/ToServerPayload.java` | 服务端玩家校验后的 Payload 入口 |
 | `ToClientPayload` | `network/tc/ToClientPayload.java` | 客户端玩家上下文的 Payload 入口 |
@@ -34,9 +34,9 @@
 - `reassembly_progress`：尸体重组进度。
 - `hitbox_level_data`：Level 级服务端命中框和客户端调试镜像。
 - `entity_skill_effect_level_data`：Level 级不持久化技能效果。
-- `entity_skills`、`entity_skill_groups`、`entity_skill_cooldowns`：技能资格、分组和冷却，按声明持久化/同步。
+- `entity_skill_patch`、`entity_skill_groups`、`entity_skill_cooldowns`：技能资格、分组和冷却，按声明持久化/同步。
 - `active_entity_skills`：当前技能运行实例，不序列化。
-- `conductor_abilities`：旧指挥家能力适配状态。
+- `conductor_ability_patch`：旧指挥家能力适配状态。
 - `attack_combo`：攻击段数，运行时字段但同步。
 - `conductor_unit`：单位持久化字段和同步编码。
 - `conductor_runtime`：单位运行态，不持久化。
@@ -50,7 +50,7 @@
 
 ## Payload 协议
 
-`LcPayloads` 当前登记协议版本 `6`：
+`LcPayloads` 当前登记协议版本 `11`：
 
 | 方向 | Payload | 作用 |
 | --- | --- | --- |
@@ -72,7 +72,7 @@
 | 实体技能标签 | `src/main/resources/data/lobecorp/tags/entity_skill` | magic、movement、damage、healing、melee、ranged 等分类 |
 | 伤害类型 | `src/main/resources/data/lobecorp/damage_type` | 例如魔法星伤害 |
 | 原版伤害标签 | `src/main/resources/data/minecraft/tags/damage_type` | projectile、bypasses_cooldown 等行为标签 |
-| 语言 | 根目录 `lang` | 中英文源文本 |
+| 语言 | `src/generated/resources/assets/lobecorp/lang`；手动候选文件由 `BasicLangGenerator` 的路径公式决定 | 生成源与手动合并边界见 [资源说明](../systems/resources-datagen.md) |
 | GeckoLib 模型/动画 | `src/main/resources/assets/lobecorp/geckolib` | 运行时模型和动画 |
 | 粒子定义 | `src/main/resources/assets/lobecorp/particle_definitions` | 粒子 JSON |
 | UI | `src/main/resources/assets/lobecorp/ui` | 客户端界面资源 |
@@ -93,7 +93,7 @@
 | JEI | `29.34.0.90` | 物品/配方查看集成 |
 | Jade | `26.1.8+neoforge` | 信息提示集成 |
 | Re-Tro Damage Indicators | `ldSJzzoV` | 伤害/血量显示集成 |
-| LDLib2 | `26.1.2.36` | UI 和公共库 |
+| LDLib2 | `26.1.2.39` | UI 和公共库 |
 | KilaGraph | `26.1.0.14` | Photon 依赖 |
 | Photon | `26.1.2.2` | 粒子/视觉效果 |
 | ParticleStorm | `1.4.4` | 粒子效果 |

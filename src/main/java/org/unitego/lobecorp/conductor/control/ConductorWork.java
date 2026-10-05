@@ -9,14 +9,14 @@ import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.entity_skill.skill.sweeper.ReassembleSkill;
-import org.unitego.lobecorp.entity_skill.skill.sweeper.SweepSkill;
-import org.unitego.lobecorp.util.EntitySkillUtil;
-import org.unitego.lobecorp.registry.brain.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.brain.LcSensorTypes;
-import org.unitego.lobecorp.registry.entity_skill.SweeperSkills;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.ReassembleSkill;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.SweepSkill;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
+import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 import java.util.Comparator;
 import java.util.HashSet;
@@ -30,17 +30,20 @@ public final class ConductorWork {
 	}
 
 	public static boolean active(Mob mob) {
-		if (!(mob instanceof Sweeper) || !(mob.level() instanceof ServerLevel level)) return false;
+		if (!(mob instanceof Sweeper) || !(mob.level() instanceof ServerLevel level))
+			return false;
 		ConductorData.Unit unit = ConductorData.get(level.getServer()).unit(mob.getUUID());
 		return unit != null && (unit.order() == ConductorData.OrderType.CLEANUP
 				|| unit.order() == ConductorData.OrderType.REASSEMBLE);
 	}
 
 	public static boolean start(Sweeper mob, boolean reassemble) {
-		if (!(mob.level() instanceof ServerLevel level)) return false;
+		if (!(mob.level() instanceof ServerLevel level))
+			return false;
 		ConductorData data = ConductorData.get(level.getServer());
 		ConductorData.Unit unit = data.unit(mob.getUUID());
-		if (unit == null) return false;
+		if (unit == null)
+			return false;
 		ConductorController.stop(mob);
 		mob.getBrain().stopAll(level, mob);
 		ConductorUnitRuntime.get(mob).work = new Work(reassemble);
@@ -50,7 +53,8 @@ public final class ConductorWork {
 	}
 
 	public static void cancel(Mob mob) {
-		if (!(mob instanceof Sweeper sweeper)) return;
+		if (!(mob instanceof Sweeper sweeper))
+			return;
 		ConductorUnitRuntime.get(sweeper).work = null;
 		sweeper.getBrain().eraseMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get());
 		EntitySkillUtil.forceCancelSkills(sweeper, SweeperSkills.SWEEP.get(), SweeperSkills.REASSEMBLE.get());
@@ -63,7 +67,8 @@ public final class ConductorWork {
 		mob.setTarget(null);
 		mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
 		mob.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
-		if (EntitySkillUtil.hasActiveSkills(mob)) return;
+		if (EntitySkillUtil.hasActiveSkills(mob))
+			return;
 		Entity target = work.target == null ? null : level.getEntity(work.target);
 		if (!valid(mob, target, work)) {
 			target = level.getEntities(mob, mob.getBoundingBox().inflate(LcSensorTypes.CLEANUP_HORIZONTAL_RANGE,
@@ -119,7 +124,8 @@ public final class ConductorWork {
 	}
 
 	private static boolean valid(Sweeper mob, Entity target, Work work) {
-		if (target == null || !target.isAlive() || work.skipped.contains(target.getUUID())) return false;
+		if (target == null || !target.isAlive() || work.skipped.contains(target.getUUID()))
+			return false;
 		if (work.reassemble)
 			return target instanceof EntityCorpse<?> corpse && ReassembleSkill.canReassemble(mob, corpse);
 		return target instanceof EntityCorpse<?> corpse && !(corpse.getOwnerEntity() instanceof Sweeper)

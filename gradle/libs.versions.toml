@@ -14,7 +14,7 @@ jade = "26.1.8+neoforge"
 reretrodamageindicators = "ldSJzzoV"
 photon = "26.1.2.2"
 # photon 依赖
-ldlib2 = "26.1.2.36"
+ldlib2 = "26.1.2.39"
 kilagraph = "26.1.0.14"
 particlestorm = "1.4.4"
 

@@ -33,7 +33,8 @@ public record ConductorViewPayload(boolean active, Identifier dimension, Vec3 po
 
 	@Override
 	public void work(IPayloadContext context, ServerPlayer player) {
-		if (player.level().dimension().identifier().equals(dimension)) ConductorView.update(player, active, position);
+		if (player.level().dimension().identifier().equals(dimension))
+			ConductorView.update(player, active, position);
 	}
 
 	@Override

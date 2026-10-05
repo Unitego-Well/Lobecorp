@@ -6,7 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 
 public interface OrdealEntityTypes {
 	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);

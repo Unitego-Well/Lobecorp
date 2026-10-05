@@ -14,12 +14,12 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
-import org.unitego.lobecorp.entity.projectile.MagicStarProjectile;
-import org.unitego.lobecorp.entity_skill.EntitySkillRuntime.SkillState;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.ConvergentSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime.SkillState;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.ConvergentSkill;
 import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
-import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 /// 聚爆星星与向内收拢的双面光环在提取时读取女皇的插值位置。
 @NullMarked
@@ -34,7 +34,7 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 	private int textureFrame;
 
 	public QueenConvergentParticle(ClientLevel level, double x, double y, double z,
-	                              SpriteSet sprites, QueenConvergentParticleOptions options) {
+	                               SpriteSet sprites, QueenConvergentParticleOptions options) {
 		super(level, x, y, z, sprites.get(options.star() ? 0 : 1, 1));
 		this.options = options;
 		this.lifetime = options.star() ? options.durationTicks() : options.pulseTicks();
@@ -77,7 +77,8 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 	@Override
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
 		TheQueenOfHatred queen = owner();
-		if (queen == null) return;
+		if (queen == null)
+			return;
 		float progress = Mth.clamp((age + partialTick) / lifetime, 0.0F, 1.0F);
 		double height = options.star() ? STAR_HEIGHT * (1.0 - Mth.clamp(
 				(age + partialTick - (lifetime - options.pulseTicks())) / options.pulseTicks(), 0.0F, 1.0F)) : GROUND_OFFSET;

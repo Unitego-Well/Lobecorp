@@ -20,16 +20,19 @@ import java.util.List;
 /// 镜头范围内的粒子沿用原版载荷，绕过以玩家本体为中心的粒子距离限制。
 @Mixin(ServerLevel.class)
 public abstract class ServerLevelConductorMixin {
-	@Shadow @Final private List<ServerPlayer> players;
+	@Shadow
+	@Final
+	private List<ServerPlayer> players;
 
 	@Inject(method = "sendParticles(Lnet/minecraft/server/level/ServerPlayer;ZDDDLnet/minecraft/network/protocol/Packet;)Z",
 			at = @At("HEAD"), cancellable = true)
 	private void lobecorp$sendObservedParticles(ServerPlayer player, boolean overrideLimiter, double x, double y, double z,
-	                                          Packet<?> packet, CallbackInfoReturnable<Boolean> cir) {
+	                                            Packet<?> packet, CallbackInfoReturnable<Boolean> cir) {
 		if (!players.contains(player) || ConductorView.position(player) == null
 				|| !(player.getChunkTrackingView() instanceof ConductorChunkTrackingView view)
 				|| !view.camera().contains(ChunkPos.containing(BlockPos.containing(x, y, z)))
-				|| !(packet instanceof ClientboundLevelParticlesPacket particles)) return;
+				|| !(packet instanceof ClientboundLevelParticlesPacket particles))
+			return;
 		player.connection.send(new ClientboundLevelParticlesPacket(particles.getParticle(), true, particles.alwaysShow(),
 				particles.getX(), particles.getY(), particles.getZ(), particles.getXDist(), particles.getYDist(),
 				particles.getZDist(), particles.getMaxSpeed(), particles.getCount()));

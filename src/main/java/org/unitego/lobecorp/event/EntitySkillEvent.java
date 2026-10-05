@@ -3,8 +3,8 @@ package org.unitego.lobecorp.event;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.Event;
 import net.neoforged.bus.api.ICancellableEvent;
-import org.unitego.lobecorp.entity_skill.EntitySkillRuntime;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
 /// 技能运行实例的生命周期事件。客户端事件中的运行实例是同步消息构造的当前阶段快照。
 public abstract class EntitySkillEvent extends Event {

@@ -2,8 +2,225 @@ package org.unitego.lobecorp.util;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 
 public interface TranslationKeys {
+	String PHOTON_EDITOR_TEXT = PhotonEditorTextUtil.register();
+	/**
+	 * 发射器发射器的原生编辑器控件和数据生成翻译入口。
+	 */
+	@SuppressWarnings("unused")
+	String PHOTON_EMITTER_SPAWNER_TEXT = PhotonEmitterSpawnerTextUtil.register();
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_AXES_KEY = "photon.lobecorp.cycle_time_offset.axes";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_AXES = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_AXES_KEY,
+			"Time offset (ticks)", "时间偏移（tick）");
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_ROTATION_KEY = "photon.lobecorp.cycle_time_offset.rotation";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_ROTATION = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_ROTATION_KEY,
+			"Rotation time offset (ticks)", "旋转时间偏移（tick）");
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_LINEAR_KEY = "photon.lobecorp.cycle_time_offset.linear";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_LINEAR = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_LINEAR_KEY,
+			"Linear time offset (ticks)", "线性时间偏移（tick）");
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_ORBITAL_KEY = "photon.lobecorp.cycle_time_offset.orbital";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_ORBITAL = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_ORBITAL_KEY,
+			"Orbital time offset (ticks)", "轨道时间偏移（tick）");
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_CENTER_KEY = "photon.lobecorp.cycle_time_offset.center";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_CENTER = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_CENTER_KEY,
+			"Orbital center time offset (ticks)", "轨道中心时间偏移（tick）");
+	/**
+	 * 循环采样的时间偏移；单位 tick。
+	 */
+	String PHOTON_CYCLE_TIME_OFFSET_UV_KEY = "photon.lobecorp.cycle_time_offset.uv";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_TIME_OFFSET_UV = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_TIME_OFFSET_UV_KEY,
+			"UV time offset (ticks)", "UV 时间偏移（tick）");
+	/**
+	 * 循环采样的 X 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_X_KEY = "photon.lobecorp.cycle_offset.x";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_X = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_X_KEY,
+			"X time offset (ticks)", "X 时间偏移（tick）");
+	/**
+	 * 循环采样的 Y 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_Y_KEY = "photon.lobecorp.cycle_offset.y";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_Y = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_Y_KEY,
+			"Y time offset (ticks)", "Y 时间偏移（tick）");
+	/**
+	 * 循环采样的 Z 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_Z_KEY = "photon.lobecorp.cycle_offset.z";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_Z = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_Z_KEY,
+			"Z time offset (ticks)", "Z 时间偏移（tick）");
+	/**
+	 * 循环采样的 翻滚时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_ROLL_KEY = "photon.lobecorp.cycle_offset.roll";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_ROLL = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ROLL_KEY,
+			"Roll time offset (ticks)", "翻滚时间偏移（tick）");
+	/**
+	 * 循环采样的 俯仰时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_PITCH_KEY = "photon.lobecorp.cycle_offset.pitch";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_PITCH = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_PITCH_KEY,
+			"Pitch time offset (ticks)", "俯仰时间偏移（tick）");
+	/**
+	 * 循环采样的 偏航时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_YAW_KEY = "photon.lobecorp.cycle_offset.yaw";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_YAW = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_YAW_KEY,
+			"Yaw time offset (ticks)", "偏航时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道 X 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_ORBITAL_X_KEY = "photon.lobecorp.cycle_offset.orbital_x";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_ORBITAL_X = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ORBITAL_X_KEY,
+			"Orbital X time offset (ticks)", "轨道 X 时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道 Y 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_ORBITAL_Y_KEY = "photon.lobecorp.cycle_offset.orbital_y";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_ORBITAL_Y = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ORBITAL_Y_KEY,
+			"Orbital Y time offset (ticks)", "轨道 Y 时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道 Z 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_ORBITAL_Z_KEY = "photon.lobecorp.cycle_offset.orbital_z";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_ORBITAL_Z = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ORBITAL_Z_KEY,
+			"Orbital Z time offset (ticks)", "轨道 Z 时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道中心 X 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_CENTER_X_KEY = "photon.lobecorp.cycle_offset.center_x";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_CENTER_X = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_CENTER_X_KEY,
+			"Orbital center X time offset (ticks)", "轨道中心 X 时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道中心 Y 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_CENTER_Y_KEY = "photon.lobecorp.cycle_offset.center_y";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_CENTER_Y = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_CENTER_Y_KEY,
+			"Orbital center Y time offset (ticks)", "轨道中心 Y 时间偏移（tick）");
+	/**
+	 * 循环采样的 轨道中心 Z 时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_CENTER_Z_KEY = "photon.lobecorp.cycle_offset.center_z";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_CENTER_Z = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_CENTER_Z_KEY,
+			"Orbital center Z time offset (ticks)", "轨道中心 Z 时间偏移（tick）");
+	/**
+	 * 循环采样的 径向时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_RADIAL_KEY = "photon.lobecorp.cycle_offset.radial";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_RADIAL = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_RADIAL_KEY,
+			"Radial time offset (ticks)", "径向时间偏移（tick）");
+	/**
+	 * 循环采样的 速度倍率时间偏移 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_MULTIPLIER_KEY = "photon.lobecorp.cycle_offset.multiplier";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_MULTIPLIER = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_MULTIPLIER_KEY,
+			"Speed multiplier time offset (ticks)", "速度倍率时间偏移（tick）");
+	/**
+	 * 循环采样的 红色时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_RED_KEY = "photon.lobecorp.cycle_offset.red";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_RED = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_RED_KEY,
+			"Red time offset (ticks)", "红色时间偏移（tick）");
+	/**
+	 * 循环采样的 绿色时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_GREEN_KEY = "photon.lobecorp.cycle_offset.green";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_GREEN = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_GREEN_KEY,
+			"Green time offset (ticks)", "绿色时间偏移（tick）");
+	/**
+	 * 循环采样的 蓝色时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_BLUE_KEY = "photon.lobecorp.cycle_offset.blue";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_BLUE = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_BLUE_KEY,
+			"Blue time offset (ticks)", "蓝色时间偏移（tick）");
+	/**
+	 * 循环采样的 透明度时间偏移（tick） 的配置标签。
+	 */
+	String PHOTON_CYCLE_OFFSET_ALPHA_KEY = "photon.lobecorp.cycle_offset.alpha";
+	@SuppressWarnings("unused")
+	String PHOTON_CYCLE_OFFSET_ALPHA = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ALPHA_KEY,
+			"Alpha time offset (ticks)", "透明度时间偏移（tick）");
+	/**
+	 * 发射器之间按视线深度重排的原生编辑器开关。
+	 */
+	String PHOTON_VIEW_DEPTH_SORT_KEY = "photon.lobecorp.renderer.view_depth_sort";
+	/**
+	 * 说明新排序模式的启用范围与限制。
+	 */
+	String PHOTON_VIEW_DEPTH_SORT_TIPS_KEY = "photon.lobecorp.renderer.view_depth_sort.tips";
+	@SuppressWarnings("unused")
+	String PHOTON_VIEW_DEPTH_SORT = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_VIEW_DEPTH_SORT_KEY,
+			"View depth sorting", "视线深度排序");
+	@SuppressWarnings("unused")
+	String PHOTON_VIEW_DEPTH_SORT_TIPS = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_VIEW_DEPTH_SORT_TIPS_KEY,
+			"Sort enabled emitters with the same Order by camera view depth. Enable on all overlapping emitters. Does not resolve intersecting geometry.",
+			"相同 Order 中开启此选项的发射器按视线深度排序。请在需要互相叠加的发射器上同时开启，无法解决面片相交。");
+	/**
+	 * 颜色、大小、速度和受力模块的循环开关，与粒子寿命独立。
+	 */
+	String PHOTON_LIFETIME_CYCLE_ENABLED_KEY = "photon.lobecorp.lifetime_cycle.enabled";
+	/**
+	 * 对应模块的曲线完整循环一次的 tick 数。
+	 */
+	String PHOTON_LIFETIME_CYCLE_TICKS_KEY = "photon.lobecorp.lifetime_cycle.ticks";
+	@SuppressWarnings("unused")
+	String PHOTON_LIFETIME_CYCLE_ENABLED = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_LIFETIME_CYCLE_ENABLED_KEY,
+			"Loop curves", "循环曲线");
+	@SuppressWarnings("unused")
+	String PHOTON_LIFETIME_CYCLE_TICKS = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_LIFETIME_CYCLE_TICKS_KEY,
+			"Curve cycle (ticks)", "曲线周期（tick）");
+	/**
+	 * 循环采样旋转曲线的编辑器开关，与粒子寿命独立。
+	 */
+	String PHOTON_ROTATION_CYCLE_ENABLED_KEY = "photon.lobecorp.rotation_cycle.enabled";
+	/**
+	 * 旋转曲线完整循环一次的 tick 数。
+	 */
+	String PHOTON_ROTATION_CYCLE_TICKS_KEY = "photon.lobecorp.rotation_cycle.ticks";
+	String PHOTON_ROTATION_CYCLE_ENABLED = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_ROTATION_CYCLE_ENABLED_KEY,
+			"Loop rotation", "循环旋转");
+	String PHOTON_ROTATION_CYCLE_TICKS = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_ROTATION_CYCLE_TICKS_KEY,
+			"Rotation cycle (ticks)", "旋转周期（tick）");
 
 
 	String CONDUCTOR_ABILITY_LOBECORP_WARDEN_SONIC_BOOM = LangHandler.creates(Lobecorp.NAMESPACE, "conductor_ability.lobecorp.warden_sonic_boom",

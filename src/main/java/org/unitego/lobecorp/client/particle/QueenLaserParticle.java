@@ -14,7 +14,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.StarBeamSkill;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
 
 /// 一次粒子消息显示整条短暂发光星束，不参与伤害或目标追踪。
 @NullMarked
@@ -53,7 +53,8 @@ public class QueenLaserParticle extends SingleQuadParticle {
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
 		Vec3 start = new Vec3(this.x, this.y, this.z).subtract(camera.position());
 		double length = beam.length();
-		if (length == 0.0) return;
+		if (length == 0.0)
+			return;
 		Vec3 direction = beam.scale(1.0 / length);
 		Quaternionf rotation = new Quaternionf(camera.rotation());
 		for (double distance = 0.0; distance <= length; distance += quadSize * SEGMENT_SPACING_RATIO) {
@@ -64,7 +65,8 @@ public class QueenLaserParticle extends SingleQuadParticle {
 
 	@Override
 	public void tick() {
-		if (++this.age >= this.lifetime) this.remove();
+		if (++this.age >= this.lifetime)
+			this.remove();
 	}
 
 	public static class Provider implements ParticleProvider<SimpleParticleType> {

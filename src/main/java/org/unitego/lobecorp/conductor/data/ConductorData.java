@@ -12,8 +12,8 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
-import org.unitego.lobecorp.util.ConductorAttachmentUtil;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
 
 import java.util.*;
@@ -95,7 +95,8 @@ public class ConductorData extends SavedData {
 
 	public void refreshLocations() {
 		for (Mob mob : List.copyOf(loaded.values())) {
-			if (!mob.isRemoved() && ConductorAttachmentUtil.hasUnit(mob)) remember(mob);
+			if (!mob.isRemoved() && ConductorAttachmentUtil.hasUnit(mob))
+				remember(mob);
 		}
 	}
 
@@ -121,13 +122,15 @@ public class ConductorData extends SavedData {
 	}
 
 	public boolean join(Mob mob, String team) {
-		if (!teams.containsKey(team) || ConductorUtil.get(mob) == null) return false;
+		if (!teams.containsKey(team) || ConductorUtil.get(mob) == null)
+			return false;
 		ConductorUnitData state = new ConductorUnitData();
 		state.team = team;
 		state.origin = mob.position();
 		state.destination = mob.position();
 		assign(mob.getUUID(), state.snapshot(mob));
-		if (!ConductorAttachmentUtil.hasUnit(mob)) return false;
+		if (!ConductorAttachmentUtil.hasUnit(mob))
+			return false;
 		mob.setPersistenceRequired();
 		remember(mob);
 		return true;
@@ -135,11 +138,13 @@ public class ConductorData extends SavedData {
 
 	public void update(UUID uuid, Consumer<ConductorUnitData> mutation) {
 		Unit before = unit(uuid);
-		if (before == null) return;
+		if (before == null)
+			return;
 		Mob mob = find(uuid);
 		ConductorUnitData state;
 		if (mob != null) {
-			if (!ConductorAttachmentUtil.hasUnit(mob)) return;
+			if (!ConductorAttachmentUtil.hasUnit(mob))
+				return;
 			state = ConductorAttachmentUtil.unit(mob);
 		} else {
 			state = new ConductorUnitData();
@@ -152,14 +157,16 @@ public class ConductorData extends SavedData {
 				return;
 			}
 			commit(mob);
-		} else assign(uuid, state.snapshot(before.dimension(), before.chunkX(), before.chunkZ()));
+		} else
+			assign(uuid, state.snapshot(before.dimension(), before.chunkX(), before.chunkZ()));
 	}
 
 	private void assign(UUID uuid, Unit unit) {
 		Mob mob = find(uuid);
 		long next = ++revision;
 		if (mob != null) {
-			if (!ConductorUtil.accept(mob, unit)) return;
+			if (!ConductorUtil.accept(mob, unit))
+				return;
 			ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 			state.revision = next;
 			loaded.put(uuid, mob);
@@ -174,7 +181,8 @@ public class ConductorData extends SavedData {
 	}
 
 	public void commit(Mob mob) {
-		if (!ConductorAttachmentUtil.hasUnit(mob)) return;
+		if (!ConductorAttachmentUtil.hasUnit(mob))
+			return;
 		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 		state.revision = ++revision;
 		units.put(mob.getUUID().toString(), state.snapshot(mob));
@@ -185,10 +193,13 @@ public class ConductorData extends SavedData {
 
 	private Mob find(UUID uuid) {
 		Mob cached = loaded.get(uuid);
-		if (cached != null && !cached.isRemoved()) return cached;
-		if (server != null) for (ServerLevel level : server.getAllLevels()) {
-			if (level.getEntity(uuid) instanceof Mob mob && !mob.isRemoved()) return mob;
-		}
+		if (cached != null && !cached.isRemoved())
+			return cached;
+		if (server != null)
+			for (ServerLevel level : server.getAllLevels()) {
+				if (level.getEntity(uuid) instanceof Mob mob && !mob.isRemoved())
+					return mob;
+			}
 		return null;
 	}
 
@@ -201,7 +212,8 @@ public class ConductorData extends SavedData {
 			setDirty();
 			return;
 		}
-		if (!ConductorAttachmentUtil.hasUnit(mob)) return;
+		if (!ConductorAttachmentUtil.hasUnit(mob))
+			return;
 		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 		if (delivery != null) {
 			if (delivery.revision() > state.revision) {
@@ -236,7 +248,8 @@ public class ConductorData extends SavedData {
 	}
 
 	public void detach(Mob mob, boolean permanent) {
-		if (ConductorAttachmentUtil.hasUnit(mob)) commit(mob);
+		if (ConductorAttachmentUtil.hasUnit(mob))
+			commit(mob);
 		loaded.remove(mob.getUUID());
 		if (permanent) {
 			String key = mob.getUUID().toString();

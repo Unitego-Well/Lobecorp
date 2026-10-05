@@ -11,7 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.registry.ConductorTicketControllers;
+import org.unitego.lobecorp.registry.conductor.ConductorTicketControllers;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -24,7 +24,8 @@ public class ConductorView {
 		State previous = data.runtime.views.get(player.getUUID());
 		if (!active) {
 			data.runtime.views.remove(player.getUUID());
-			if (previous != null) release(player.getUUID(), previous);
+			if (previous != null)
+				release(player.getUUID(), previous);
 			player.level().getChunkSource().chunkMap.move(player);
 			return;
 		}
@@ -33,7 +34,8 @@ public class ConductorView {
 			return;
 		}
 		if (previous == null || previous.level != player.level()) {
-			if (previous != null) release(player.getUUID(), previous);
+			if (previous != null)
+				release(player.getUUID(), previous);
 			previous = new State(player.level());
 			data.runtime.views.put(player.getUUID(), previous);
 		}
@@ -55,17 +57,20 @@ public class ConductorView {
 			if (player == null || !valid(player, state)) {
 				iterator.remove();
 				release(entry.getKey(), state);
-				if (player != null) player.level().getChunkSource().chunkMap.move(player);
+				if (player != null)
+					player.level().getChunkSource().chunkMap.move(player);
 				continue;
 			}
 			int radius = Mth.clamp(player.requestedViewDistance(), 2, server.getPlayerList().getViewDistance());
 			ChunkTrackingView next = ChunkTrackingView.of(ChunkPos.containing(BlockPos.containing(state.position)), radius);
 			if (!next.equals(state.tickets)) {
 				state.tickets.forEach(pos -> {
-					if (!next.contains(pos)) ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), false);
+					if (!next.contains(pos))
+						ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), false);
 				});
 				next.forEach(pos -> {
-					if (!state.tickets.contains(pos)) ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), true);
+					if (!state.tickets.contains(pos))
+						ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), true);
 				});
 				state.tickets = next;
 			}

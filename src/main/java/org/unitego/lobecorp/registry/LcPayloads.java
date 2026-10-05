@@ -8,41 +8,41 @@ import org.unitego.lobecorp.network.ts.ToServerPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "10";
+	private static final String NETWORK_VERSION = "11";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		event.registrar(NETWORK_VERSION).playToServer(
 				ConductorCommandPayload.TYPE,
 				ConductorCommandPayload.STREAM_CODEC,
 				ToServerPayload::handle
-			).playToServer(
+		).playToServer(
 				ConductorViewPayload.TYPE,
 				ConductorViewPayload.STREAM_CODEC,
 				ToServerPayload::handle
-			).playToClient(
+		).playToClient(
 				ConductorSnapshotPayload.TYPE,
 				ConductorSnapshotPayload.STREAM_CODEC,
 				ToClientPayload::handle
-			).playToClient(
+		).playToClient(
 				EntitySkillSyncPayload.TYPE,
 				EntitySkillSyncPayload.STREAM_CODEC,
 				ToClientPayload::handle
-			).playToClient(
+		).playToClient(
 				LcCustomAnimationSettingsSyncPayload.TYPE,
 				LcCustomAnimationSettingsSyncPayload.STREAM_CODEC,
 				ToClientPayload::handle
-			).playToClient(
+		).playToClient(
 				HitboxCreatePayload.TYPE,
 				HitboxCreatePayload.STREAM_CODEC,
 				ToClientPayload::handle
-			).playToClient(
+		).playToClient(
 				HitboxUpdatePayload.TYPE,
 				HitboxUpdatePayload.STREAM_CODEC,
 				ToClientPayload::handle
-			).playToClient(
+		).playToClient(
 				HitboxRemovePayload.TYPE,
 				HitboxRemovePayload.STREAM_CODEC,
 				ToClientPayload::handle
-			);
+		);
 	}
 }

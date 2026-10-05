@@ -13,10 +13,10 @@ import org.unitego.lobecorp.registry.entity.client.EntityRenderers;
 import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
 import org.unitego.lobecorp.registry.entity.client.RegisterRenderStateModifiers;
 import org.unitego.lobecorp.registry.particle.client.RegisterParticleProviders;
-import org.unitego.lobecorp.registry.client.ConductorHudRegistration;
-import org.unitego.lobecorp.registry.client.ConductorKeyMappings;
-import org.unitego.lobecorp.registry.client.ConductorPortraitRegistration;
-import org.unitego.lobecorp.registry.client.ConductorRenderStateRegistration;
+import org.unitego.lobecorp.registry.conductor.client.ConductorHudRegistration;
+import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
+import org.unitego.lobecorp.registry.conductor.client.ConductorPortraitRegistration;
+import org.unitego.lobecorp.registry.conductor.client.ConductorRenderStateRegistration;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class LobecorpClientEvents {

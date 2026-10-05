@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.registry.entity.client;
 
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import org.unitego.lobecorp.client.renderer.entity.EntityCorpseRenderer;
-import org.unitego.lobecorp.client.renderer.entity.abnormalitie.TheQueenOfHatredRenderer;
-import org.unitego.lobecorp.client.renderer.entity.ordeal.SweeperRenderer;
-import org.unitego.lobecorp.client.renderer.entity.projectile.MagicStarRenderer;
+import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
+import org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.renderer.TheQueenOfHatredRenderer;
+import org.unitego.lobecorp.client.entity.ordeal.indigo.renderer.SweeperRenderer;
+import org.unitego.lobecorp.client.entity.projectile.renderer.MagicStarRenderer;
 import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;

@@ -20,13 +20,13 @@ import org.unitego.lobecorp.conductor.ability.WardenSonicBoomAbility;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
-import org.unitego.lobecorp.util.ConductorUtil;
-import org.unitego.lobecorp.entity_skill.EntitySkillAccess;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
-import org.unitego.lobecorp.entity_skill.EntitySkillCastResult;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
-import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillAccess;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillCastResult;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -42,9 +42,11 @@ public class ConductorController {
 	}
 
 	public static void tick(Mob mob) {
-		if (!(mob.level() instanceof ServerLevel level)) return;
+		if (!(mob.level() instanceof ServerLevel level))
+			return;
 		ConductorData data = ConductorData.get(level.getServer());
-		if (data.unit(mob.getUUID()) == null) return;
+		if (data.unit(mob.getUUID()) == null)
+			return;
 		if (!mob.isAlive()) {
 			stop(mob);
 			return;
@@ -179,7 +181,8 @@ public class ConductorController {
 		}
 		if (target == null) {
 			target = findTeamTarget(level, mob, data, unit);
-			if (target != null) ConductorUnitRuntime.get(mob).sharedTarget = target.getUUID();
+			if (target != null)
+				ConductorUnitRuntime.get(mob).sharedTarget = target.getUUID();
 		}
 		if (target == null) {
 			target = findTarget(level, mob, data, unit);
@@ -230,13 +233,16 @@ public class ConductorController {
 		ConductorUnitRuntime.get(mob).manualSonic = null;
 		if (mob instanceof Warden warden) {
 			LivingEntity target = warden.getTarget();
-			if (target != null) warden.clearAnger(target);
-			if (warden.level() instanceof ServerLevel level) warden.getBrain().stopAll(level, warden);
+			if (target != null)
+				warden.clearAnger(target);
+			if (warden.level() instanceof ServerLevel level)
+				warden.getBrain().stopAll(level, warden);
 		}
 		clearTarget(mob);
 		clearWalkAndLookTargets(mob);
 		stopMovement(mob);
-		if (cancelSkills) EntitySkillUtil.forceCancelSkill(mob);
+		if (cancelSkills)
+			EntitySkillUtil.forceCancelSkill(mob);
 	}
 
 	private static void stopMovement(Mob mob) {
@@ -289,7 +295,8 @@ public class ConductorController {
 					&& ally.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)) {
 				target = ally.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 			}
-			if (target == null || target.level() != level || !isWithinBehaviorRange(mob, target, data, unit)) continue;
+			if (target == null || target.level() != level || !isWithinBehaviorRange(mob, target, data, unit))
+				continue;
 			double distance = mob.distanceToSqr(target);
 			if (distance < nearestDistance) {
 				nearest = target;
@@ -346,13 +353,15 @@ public class ConductorController {
 				|| mob.distanceToSqr(target) > followRange(mob) * followRange(mob)) {
 			return false;
 		}
-		if (unit.behaviorState() == ConductorData.BehaviorState.STANDBY) return true;
+		if (unit.behaviorState() == ConductorData.BehaviorState.STANDBY)
+			return true;
 		ConductorData.Position origin = unit.origin();
 		return origin != null && target.position().distanceToSqr(origin.vector()) <= behaviorRadius(unit) * behaviorRadius(unit);
 	}
 
 	public static boolean allowsTargetChange(Mob mob, LivingEntity target) {
-		if (ConductorSonicBoom.active(mob)) return false;
+		if (ConductorSonicBoom.active(mob))
+			return false;
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return true;
 		}
@@ -407,8 +416,10 @@ public class ConductorController {
 
 	private static void finishAttackOrder(Mob mob, ConductorData data, ConductorData.Unit unit) {
 		data.update(mob.getUUID(), state -> {
-			if (isOutsideBehaviorRadius(mob, unit)) returnToOrigin(state);
-			else state.command(ConductorData.OrderType.NONE, null, mob.position());
+			if (isOutsideBehaviorRadius(mob, unit))
+				returnToOrigin(state);
+			else
+				state.command(ConductorData.OrderType.NONE, null, mob.position());
 		});
 	}
 
@@ -416,7 +427,8 @@ public class ConductorController {
 		clearTarget(mob);
 		clearWalkAndLookTargets(mob);
 		Vec3 destination = new Vec3(unit.x(), unit.y(), unit.z());
-		if (ConductorUtil.get(mob) == null) return;
+		if (ConductorUtil.get(mob) == null)
+			return;
 		ConductorUtil.prepareMovement(mob);
 		if (ConductorMovement.arrived(mob, destination)) {
 			ConductorMovement.clear(mob);
@@ -425,7 +437,8 @@ public class ConductorController {
 			data.update(mob.getUUID(), state -> {
 				state.command(ConductorData.OrderType.NONE, null, destination);
 				state.moveResult = ConductorData.MoveResult.ARRIVED;
-				if (unit.order() == ConductorData.OrderType.MOVE) state.origin = destination;
+				if (unit.order() == ConductorData.OrderType.MOVE)
+					state.origin = destination;
 			});
 			return;
 		}
@@ -460,7 +473,8 @@ public class ConductorController {
 				}
 				if (unit.behaviorState() == ConductorData.BehaviorState.STANDBY) {
 					LivingEntity target = mob.getTarget();
-					if (target == null) target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+					if (target == null)
+						target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 					yield target != null && isAllowedTarget(mob, target, ConductorData.get(level.getServer()), unit);
 				}
 				double radius = behaviorRadius(unit);
@@ -480,7 +494,8 @@ public class ConductorController {
 	}
 
 	private static void avoidCollidableEntities(ServerLevel level, Mob mob, LivingEntity target) {
-		if (mob.getNavigation().isDone() && !mob.getMoveControl().hasWanted()) return;
+		if (mob.getNavigation().isDone() && !mob.getMoveControl().hasWanted())
+			return;
 		ConductorData.Unit unit = ConductorData.get(level.getServer()).unit(mob.getUUID());
 		double attenuation = 1.0;
 		if (unit != null && (unit.order() == ConductorData.OrderType.MOVE || unit.order() == ConductorData.OrderType.RETURN)) {
@@ -490,18 +505,23 @@ public class ConductorController {
 		Vec3 avoidance = Vec3.ZERO;
 		AABB bounds = mob.getBoundingBox().inflate(ConductorRules.ENTITY_AVOIDANCE_MARGIN);
 		for (Entity entity : level.getEntities(mob, bounds, Entity::isPushable)) {
-			if (entity == target || mob.getUUID().compareTo(entity.getUUID()) < 0) continue;
+			if (entity == target || mob.getUUID().compareTo(entity.getUUID()) < 0)
+				continue;
 			Vec3 separation = mob.position().subtract(entity.position()).multiply(1.0, 0.0, 1.0);
-			if (separation.lengthSqr() == 0.0) separation = new Vec3(1.0, 0.0, 0.0);
+			if (separation.lengthSqr() == 0.0)
+				separation = new Vec3(1.0, 0.0, 0.0);
 			avoidance = avoidance.add(separation.normalize());
 		}
-		if (avoidance.lengthSqr() == 0.0) return;
+		if (avoidance.lengthSqr() == 0.0)
+			return;
 		Vec3 adjustment = avoidance.normalize().scale(ConductorRules.ENTITY_AVOIDANCE_STRENGTH * attenuation);
-		if (!ConductorMovement.safeApproach(mob, mob.position().add(adjustment))) return;
+		if (!ConductorMovement.safeApproach(mob, mob.position().add(adjustment)))
+			return;
 		Vec3 velocity = mob.getDeltaMovement();
 		double speed = velocity.horizontalDistance();
 		Vec3 horizontal = velocity.multiply(1.0, 0.0, 1.0).add(adjustment);
-		if (horizontal.lengthSqr() > 0.0) horizontal = horizontal.normalize().scale(speed);
+		if (horizontal.lengthSqr() > 0.0)
+			horizontal = horizontal.normalize().scale(speed);
 		mob.setDeltaMovement(horizontal.x, velocity.y, horizontal.z);
 	}
 
@@ -530,7 +550,8 @@ public class ConductorController {
 			return false;
 		}
 		Mob owner = owners.peek();
-		if (ConductorSonicBoom.active(owner)) return true;
+		if (ConductorSonicBoom.active(owner))
+			return true;
 		if (owner instanceof Warden warden && hasManualSonicBoomRequest(warden)) {
 			ManualSonicBoomRequest request = ConductorUnitRuntime.get(warden).manualSonic;
 			return request == null || !request.target().equals(target.getUUID());
@@ -624,7 +645,8 @@ public class ConductorController {
 		if (access == null || !access.supports(skill)) {
 			return false;
 		}
-		if (mob instanceof TheQueenOfHatred queen) queen.cancelConductorSitting();
+		if (mob instanceof TheQueenOfHatred queen)
+			queen.cancelConductorSitting();
 		Deque<ExplicitSkillCast> casts = EXPLICIT_SKILL_CASTS.get();
 		casts.push(new ExplicitSkillCast(mob, skill));
 		try {
@@ -651,6 +673,17 @@ public class ConductorController {
 					: new PendingSkillCast(skill, null, mob.position().add(mob.getLookAngle().scale(LaserSkill.RANGE)));
 		}
 		LaserSkill.updateManualAim(mob, target, position, following);
+	}
+
+	/// 退出手动后清除鼠标落点；尚未开始的施放也恢复生物当前目标。
+	public static void releaseLaserControl(Mob mob, IEntitySkill<?> skill) {
+		PendingSkillCast pending = ConductorUnitRuntime.get(mob).pendingSkill;
+		if (pending != null && pending.skill() == skill && skill instanceof LaserSkill) {
+			LivingEntity target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+			ConductorUnitRuntime.get(mob).pendingSkill = new PendingSkillCast(skill, target,
+					target != null ? target.getBoundingBox().getCenter() : mob.position().add(mob.getLookAngle().scale(LaserSkill.RANGE)));
+		}
+		LaserSkill.releaseManualControl(mob);
 	}
 
 	public static boolean isExplicitSkillCast(Mob mob, IEntitySkill<?> skill) {

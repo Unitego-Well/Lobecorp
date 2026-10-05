@@ -5,8 +5,8 @@ import net.minecraft.resources.ResourceKey;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity_skill.EntitySkillGroup;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
 public interface LcRegistrys {
 	ResourceKey<Registry<IEntitySkill<?>>> ENTITY_SKILL_KEY = ResourceKey.createRegistryKey(Lobecorp.id("entity_skill"));

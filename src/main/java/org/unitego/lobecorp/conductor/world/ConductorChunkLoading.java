@@ -11,7 +11,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
-import org.unitego.lobecorp.registry.ConductorTicketControllers;
+import org.unitego.lobecorp.registry.conductor.ConductorTicketControllers;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,7 +51,8 @@ public class ConductorChunkLoading {
 			}
 			if (entity != null && (!unit.dimension().equals(entity.level().dimension().identifier().toString())
 					|| unit.chunkX() != entity.chunkPosition().x() || unit.chunkZ() != entity.chunkPosition().z())) {
-				if (entity instanceof Mob mob) data.commit(mob);
+				if (entity instanceof Mob mob)
+					data.commit(mob);
 				unit = data.unit(uuid);
 			}
 			ConductorData.Team team = data.team(unit.team());

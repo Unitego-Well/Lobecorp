@@ -1,0 +1,5 @@
+package org.unitego.lobecorp.world.entity.ordeal.white;
+
+/// 白色系异常实体的标记实现。
+public class BlackFixer implements IWhiteOrdeal {
+}

@@ -7,7 +7,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 
 import java.util.function.UnaryOperator;

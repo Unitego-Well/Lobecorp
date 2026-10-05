@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.registry.tag;
 
 import net.minecraft.tags.TagKey;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 import org.unitego.lobecorp.registry.LcRegistrys;
 
 /// 实体技能的原版注册表标签。

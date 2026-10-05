@@ -10,12 +10,12 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.ability.ConductorAbilityState;
 import org.unitego.lobecorp.conductor.control.ConductorUnitRuntime;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
-import org.unitego.lobecorp.entity_skill.EntitySkillGroup;
-import org.unitego.lobecorp.entity_skill.EntitySkillRuntimeData;
-import org.unitego.lobecorp.entity_skill.EntitySkillState;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
-import org.unitego.lobecorp.entity_skill.effect.EntitySkillEffectLevelData;
-import org.unitego.lobecorp.hitbox.HitboxLevelData;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntimeData;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillState;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
+import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectLevelData;
+import org.unitego.lobecorp.world.hitbox.HitboxLevelData;
 
 import java.util.Map;
 

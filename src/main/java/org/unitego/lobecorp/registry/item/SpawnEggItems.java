@@ -6,7 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.item.LcSpawnEggItem;
+import org.unitego.lobecorp.world.item.LcSpawnEggItem;
 import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 

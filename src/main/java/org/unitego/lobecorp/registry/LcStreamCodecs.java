@@ -10,7 +10,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import org.jspecify.annotations.NonNull;
-import org.unitego.lobecorp.entity_state.EntityState;
+import org.unitego.lobecorp.world.entity.state.EntityState;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -15,8 +15,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.entity_skill.IEntitySkill;
-import org.unitego.lobecorp.util.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.event.EntitySkillEvent;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 import org.unitego.lobecorp.registry.tag.LcEntitySkillTags;
@@ -78,7 +78,8 @@ public class ConductorEvents {
 			event.setCanceled(true);
 			return;
 		}
-		if (!isAttackSkill(event.getSkill())) return;
+		if (!isAttackSkill(event.getSkill()))
+			return;
 		if (unit != null && unit.order() == ConductorData.OrderType.NONE
 				&& unit.combatBehavior() == ConductorData.CombatBehavior.NEUTRAL) {
 			LivingEntity target = mob.getTarget();

@@ -5,7 +5,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.conductor.ConductorRendering;
+import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRenderingEvents {

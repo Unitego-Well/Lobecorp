@@ -25,7 +25,8 @@ public class ConductorPointAttack {
 
 	private static State state(Mob mob) {
 		ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-		if (runtime.pointAttack == null) runtime.pointAttack = new State();
+		if (runtime.pointAttack == null)
+			runtime.pointAttack = new State();
 		return runtime.pointAttack;
 	}
 

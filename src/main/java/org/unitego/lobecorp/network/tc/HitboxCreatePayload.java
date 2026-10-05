@@ -5,7 +5,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.unitego.lobecorp.hitbox.HitboxSnapshot;
+import org.unitego.lobecorp.world.hitbox.HitboxSnapshot;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
 import static org.unitego.lobecorp.Lobecorp.id;

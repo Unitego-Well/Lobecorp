@@ -2,9 +2,9 @@ package org.unitego.lobecorp.registry.entity;
 
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeModificationEvent;
-import org.unitego.lobecorp.entity.EntityCorpse;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
-import org.unitego.lobecorp.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 
 public class EntityAttributeCreation {
 	public static void registry(EntityAttributeCreationEvent event) {

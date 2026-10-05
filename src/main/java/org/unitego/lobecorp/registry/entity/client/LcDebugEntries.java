@@ -7,9 +7,9 @@ import net.minecraft.client.renderer.debug.EntityHitboxDebugRenderer;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterDebugEntriesEvent;
 import net.neoforged.neoforge.client.event.RegisterDebugRenderersEvent;
-import org.unitego.lobecorp.client.debug.EntitySkillDebugRenderer;
-import org.unitego.lobecorp.client.debug.EntitySkillEffectDebugRenderer;
-import org.unitego.lobecorp.client.debug.EntityStateDebugRenderer;
+import org.unitego.lobecorp.client.entity.skill.debug.EntitySkillDebugRenderer;
+import org.unitego.lobecorp.client.entity.skill.effect.debug.EntitySkillEffectDebugRenderer;
+import org.unitego.lobecorp.client.entity.state.debug.EntityStateDebugRenderer;
 import org.unitego.lobecorp.client.hitbox.HitboxDebugRenderer;
 
 import static org.unitego.lobecorp.Lobecorp.id;

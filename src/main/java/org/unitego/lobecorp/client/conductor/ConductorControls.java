@@ -23,30 +23,28 @@ import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
-import org.unitego.lobecorp.client.conductor.ConductorCamera.View;
+import org.unitego.lobecorp.client.conductor.input.ConductorManualSkillControl;
+import org.unitego.lobecorp.client.conductor.render.ConductorCamera;
+import org.unitego.lobecorp.client.conductor.render.ConductorCamera.View;
 import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.LaserSkill;
-import org.unitego.lobecorp.registry.entity_skill.TheQueenOfHatredSkills;
-import org.unitego.lobecorp.util.ConductorUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
+import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.mixin.client.ClientInputAccessor;
+import org.unitego.lobecorp.mixin.input.client.ClientInputAccessor;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
-import org.unitego.lobecorp.registry.client.ConductorKeyMappings;
+import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
 
 import java.util.LinkedHashSet;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 
-import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 public class ConductorControls {
 	private static final double DRAG_THRESHOLD = 5.0D;
@@ -83,12 +81,6 @@ public class ConductorControls {
 	private static UUID pendingSkillUnit;
 	/// 鼠标进入 HUD 时保留的上一次世界瞄准位置。
 	private static Vec3 lastAimPosition;
-	/// 手动激光等待客户端收到开始同步的最长时间，单位为 tick。
-	private static final int MANUAL_LASER_START_WAIT_TICKS = 3 * TICKS_PER_SECOND;
-	/// 本客户端手动施放的激光；开始同步后等待值归零，技能结束即移除。
-	private static final Map<UUID, Integer> MANUAL_LASERS = new HashMap<>();
-	/// 正在按住左键更新的手动激光，用于松开或离开世界视图时固定当前方向。
-	private static final Set<UUID> AIMING_LASERS = new LinkedHashSet<>();
 
 	public static void onGuiLayer(RenderGuiLayerEvent.Pre event) {
 		if (active && HIDDEN_HUD_LAYERS.contains(event.getName())) {
@@ -101,28 +93,43 @@ public class ConductorControls {
 	}
 
 	public static boolean handleKeyboard(long handle, KeyEvent event, int action) {
-		if (!active) return false;
+		if (!active)
+			return false;
 		Minecraft minecraft = Minecraft.getInstance();
-		if (handle != minecraft.getWindow().handle()) return false;
-		if (minecraft.screen != null) return false;
+		if (handle != minecraft.getWindow().handle())
+			return false;
+		if (minecraft.screen != null)
+			return false;
 		if (minecraft.options.keyDebugModifier.matches(event) || minecraft.options.keyDebugModifier.isDown()
 				|| minecraft.options.keyDebugOverlay.matches(event) || minecraft.options.keyScreenshot.matches(event)
-				|| minecraft.options.keyFullscreen.matches(event)) return false;
-		if (ConductorHud.INSTANCE.handleSearchKey(event, action)) return true;
-		if (ConductorHud.INSTANCE.handleSkillKey(event, action)) return true;
+				|| minecraft.options.keyFullscreen.matches(event))
+			return false;
+		if (ConductorHud.INSTANCE.handleSearchKey(event, action))
+			return true;
+		if (ConductorHud.INSTANCE.handleSkillKey(event, action))
+			return true;
 		if (action == InputConstants.PRESS && event.isEscape()) {
-			if (pending != null) setPending(null);
-			else if (following) cancelFollowing();
-			else exit(minecraft);
+			if (pending != null)
+				setPending(null);
+			else if (following)
+				cancelFollowing();
+			else
+				exit(minecraft);
 			return true;
 		}
 		boolean down = action != InputConstants.RELEASE;
-		if (minecraft.options.keyUp.matches(event)) moveUp = down;
-		if (minecraft.options.keyDown.matches(event)) moveDown = down;
-		if (minecraft.options.keyLeft.matches(event)) moveLeft = down;
-		if (minecraft.options.keyRight.matches(event)) moveRight = down;
-		if (ConductorKeyMappings.matchesRotateLeft(event)) rotateLeft = down;
-		if (ConductorKeyMappings.matchesRotateRight(event)) rotateRight = down;
+		if (minecraft.options.keyUp.matches(event))
+			moveUp = down;
+		if (minecraft.options.keyDown.matches(event))
+			moveDown = down;
+		if (minecraft.options.keyLeft.matches(event))
+			moveLeft = down;
+		if (minecraft.options.keyRight.matches(event))
+			moveRight = down;
+		if (ConductorKeyMappings.matchesRotateLeft(event))
+			rotateLeft = down;
+		if (ConductorKeyMappings.matchesRotateRight(event))
+			rotateRight = down;
 		return minecraft.options.keyUp.matches(event) || minecraft.options.keyDown.matches(event)
 				|| minecraft.options.keyLeft.matches(event) || minecraft.options.keyRight.matches(event)
 				|| ConductorKeyMappings.matchesRotateLeft(event) || ConductorKeyMappings.matchesRotateRight(event);
@@ -159,7 +166,8 @@ public class ConductorControls {
 		if (member.equals(lastClickedUnit) && now - lastUnitClick < DOUBLE_CLICK_MS) {
 			followUnit(member, false);
 			lastClickedUnit = null;
-		} else lastClickedUnit = member;
+		} else
+			lastClickedUnit = member;
 		lastUnitClick = now;
 	}
 
@@ -169,7 +177,8 @@ public class ConductorControls {
 			return;
 		SELECTED.add(member);
 		ConductorHud.INSTANCE.setFocusedMember(member);
-		if (toggle && following && member.equals(followedUnit)) cancelFollowing();
+		if (toggle && following && member.equals(followedUnit))
+			cancelFollowing();
 		else {
 			followedUnit = member;
 			following = true;
@@ -178,22 +187,28 @@ public class ConductorControls {
 	}
 
 	private static void cancelFollowing() {
-		if (following) ConductorCamera.releaseFollowing();
+		if (following)
+			ConductorCamera.releaseFollowing();
 		following = false;
 		followedUnit = null;
 	}
 
 	public static void selectMember(UUID member, boolean multiple) {
-		if (!multiple) SELECTED.clear();
-		if (multiple && SELECTED.contains(member)) SELECTED.remove(member);
-		else SELECTED.add(member);
+		if (!multiple)
+			SELECTED.clear();
+		if (multiple && SELECTED.contains(member))
+			SELECTED.remove(member);
+		else
+			SELECTED.add(member);
 	}
 
 	public static void selectRange(List<UUID> members, UUID anchor, UUID member) {
 		int start = members.indexOf(anchor);
 		int end = members.indexOf(member);
-		if (end < 0) return;
-		if (start < 0) start = end;
+		if (end < 0)
+			return;
+		if (start < 0)
+			start = end;
 		SELECTED.addAll(members.subList(Math.min(start, end), Math.max(start, end) + 1));
 	}
 
@@ -217,7 +232,8 @@ public class ConductorControls {
 	public static boolean focusMember(UUID member) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		if (entity == null) return false;
+		if (entity == null)
+			return false;
 		ConductorCamera.focus(entity.position());
 		return true;
 	}
@@ -265,19 +281,25 @@ public class ConductorControls {
 	public static void castFacing() {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || pendingSkillUnit == null
-				|| !(minecraft.level.getEntity(pendingSkillUnit) instanceof Mob mob)) return;
+				|| !(minecraft.level.getEntity(pendingSkillUnit) instanceof Mob mob))
+			return;
 		ConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
 		if (targeting == null || !targeting.directional()
-				|| targeting instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob)) return;
+				|| targeting instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob))
+			return;
 		ConductorData.Unit unit = ConductorClient.unit(pendingSkillUnit);
-		if (unit == null) return;
+		if (unit == null)
+			return;
 		ConductorClient.sendTarget(ConductorCommandPayload.Action.CAST, unit.team(), "", skillUnits(pendingSkillUnit),
 				null, 0, 0, 0, ConductorData.ControlMode.FULL, true, pendingSkill,
 				ConductorCommandPayload.TargetSelection.POSITION);
+		if (targeting instanceof EntitySkillConductorAbility.Laser)
+			ConductorManualSkillControl.track(skillUnits(pendingSkillUnit), Identifier.parse(pendingSkill));
 	}
 
 	public static void setPendingSkill(String skill, UUID unit) {
-		if (!isPendingSkill(skill, unit)) lastAimPosition = null;
+		if (!isPendingSkill(skill, unit))
+			lastAimPosition = null;
 		pending = ConductorCommandPayload.Action.CAST;
 		pendingSkill = skill;
 		pendingSkillUnit = unit;
@@ -315,18 +337,22 @@ public class ConductorControls {
 	public static void onTick(ClientTickEvent.Post event) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.player == null || minecraft.level == null || !minecraft.player.isAlive()) {
-			if (active) exit(minecraft);
+			if (active)
+				exit(minecraft);
 			return;
 		}
 		while (ConductorKeyMappings.consumeToggle()) {
-			if (!active && minecraft.screen == null) enter(minecraft);
+			if (!active && minecraft.screen == null)
+				enter(minecraft);
 		}
-		if (!active) return;
+		if (!active)
+			return;
 		if (!ConductorCamera.valid(minecraft)) {
 			exit(minecraft);
 			return;
 		}
-		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0) syncView(minecraft, true);
+		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0)
+			syncView(minecraft, true);
 		if (following && (!(minecraft.level.getEntity(followedUnit) instanceof LivingEntity target) || !target.isAlive()))
 			cancelFollowing();
 		if (minecraft.screen != null || !minecraft.isWindowActive()) {
@@ -334,67 +360,27 @@ public class ConductorControls {
 			rightDragging = false;
 			clearCameraKeys();
 		}
-		if (minecraft.screen == null && minecraft.mouseHandler.isMouseGrabbed()) minecraft.mouseHandler.releaseMouse();
-		updateManualLasers(minecraft);
-	}
-
-	private static void updateManualLasers(Minecraft minecraft) {
-		if (minecraft.level == null) return;
-		var iterator = MANUAL_LASERS.entrySet().iterator();
-		while (iterator.hasNext()) {
-			var entry = iterator.next();
-			ConductorData.Unit unit = ConductorClient.unit(entry.getKey());
-			if (unit == null || !(minecraft.level.getEntity(entry.getKey()) instanceof Mob mob) || !mob.isAlive()
-					|| !(ConductorUtil.ability(mob, TheQueenOfHatredSkills.LASER.getId()) instanceof EntitySkillConductorAbility.Laser laser)) {
-				AIMING_LASERS.remove(entry.getKey());
-				iterator.remove();
-				continue;
-			}
-			if (laser.isCasting(mob)) entry.setValue(0);
-			else if (entry.getValue() == 0) {
-				AIMING_LASERS.remove(entry.getKey());
-				iterator.remove();
-				continue;
-			} else entry.setValue(entry.getValue() - 1);
-			if (minecraft.screen != null || !minecraft.isWindowActive() || ConductorHud.INSTANCE.contains(minecraft)
-					|| GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), MOUSE_LEFT) != GLFW.GLFW_PRESS) {
-				if (AIMING_LASERS.remove(entry.getKey())) stopManualLaserAim(entry.getKey());
-				continue;
-			}
-			LivingEntity target = pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
-					&& laser.canTarget(mob, entity) && laser.isWithinRange(mob, entity.position())
-					&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
-			Vec3 position = ConductorCamera.pickGround(minecraft);
-			if (target != null) position = target.getBoundingBox().getCenter();
-			if (position == null) continue;
-			ConductorClient.sendTarget(ConductorCommandPayload.Action.AIM, unit.team(), "", List.of(entry.getKey()),
-					target == null ? null : target.getUUID(), position.x, position.y, position.z,
-					ConductorData.ControlMode.FULL, true, TheQueenOfHatredSkills.LASER.getId().toString(),
-					target == null ? ConductorCommandPayload.TargetSelection.POSITION : ConductorCommandPayload.TargetSelection.ENTITY);
-			AIMING_LASERS.add(entry.getKey());
-		}
-	}
-
-	private static void stopManualLaserAim(UUID member) {
-		ConductorData.Unit unit = ConductorClient.unit(member);
-		if (unit != null) ConductorClient.sendTarget(ConductorCommandPayload.Action.AIM, unit.team(), "", List.of(member),
-				null, 0.0, 0.0, 0.0, ConductorData.ControlMode.FULL, false,
-				TheQueenOfHatredSkills.LASER.getId().toString(), ConductorCommandPayload.TargetSelection.NONE);
+		if (minecraft.screen == null && minecraft.mouseHandler.isMouseGrabbed())
+			minecraft.mouseHandler.releaseMouse();
+		ConductorManualSkillControl.tick(minecraft, predicate -> pickLivingEntity(minecraft, predicate));
 	}
 
 	public static @Nullable View cameraFrame(float partialTick) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (!active) return null;
+		if (!active)
+			return null;
 		if (!ConductorCamera.valid(minecraft)) {
 			exit(minecraft);
 			return null;
 		}
 		boolean input = minecraft.screen == null && minecraft.isWindowActive();
-		if (input) updateRightDrag(minecraft);
+		if (input)
+			updateRightDrag(minecraft);
 		int forward = input ? (moveUp ? 1 : 0) - (moveDown ? 1 : 0) : 0;
 		int sideways = input ? (moveRight ? 1 : 0) - (moveLeft ? 1 : 0) : 0;
 		int turning = input && !rightDragging ? (rotateRight ? 1 : 0) - (rotateLeft ? 1 : 0) : 0;
-		if (forward != 0 || sideways != 0) cancelFollowing();
+		if (forward != 0 || sideways != 0)
+			cancelFollowing();
 		return ConductorCamera.frame(partialTick, forward, sideways, turning, following ? followedUnit : null);
 	}
 
@@ -418,7 +404,8 @@ public class ConductorControls {
 	}
 
 	private static void exit(Minecraft minecraft) {
-		if (active) syncView(minecraft, false);
+		if (active)
+			syncView(minecraft, false);
 		active = false;
 		cancelFollowing();
 		lastClickedUnit = null;
@@ -433,9 +420,7 @@ public class ConductorControls {
 		SELECTED.clear();
 		lastAimPosition = null;
 		ConductorHud.INSTANCE.resetLayout();
-		MANUAL_LASERS.clear();
-		AIMING_LASERS.forEach(ConductorControls::stopManualLaserAim);
-		AIMING_LASERS.clear();
+		ConductorManualSkillControl.clear();
 		ConductorCamera.close();
 		if (minecraft.screen == null) {
 			minecraft.mouseHandler.grabMouse();
@@ -482,9 +467,11 @@ public class ConductorControls {
 				UUID member = ConductorHud.INSTANCE.memberAtPointer(minecraft);
 				if (member == null && !ConductorHud.INSTANCE.contains(minecraft)) {
 					LivingEntity living = pickLivingEntity(minecraft);
-					if (living != null) member = living.getUUID();
+					if (living != null)
+						member = living.getUUID();
 				}
-				if (member != null) followUnit(member, true);
+				if (member != null)
+					followUnit(member, true);
 			}
 			event.setCanceled(true);
 		} else if (event.getButton() == MOUSE_LEFT) {
@@ -518,10 +505,13 @@ public class ConductorControls {
 					LivingEntity entity = pickLivingEntity(minecraft);
 					if (entity != null) {
 						selectMember(entity.getUUID(), minecraft.hasControlDown());
-						if (SELECTED.contains(entity.getUUID())) clickedUnit(entity.getUUID());
-						else lastClickedUnit = null;
+						if (SELECTED.contains(entity.getUUID()))
+							clickedUnit(entity.getUUID());
+						else
+							lastClickedUnit = null;
 					} else {
-						if (!minecraft.hasControlDown()) SELECTED.clear();
+						if (!minecraft.hasControlDown())
+							SELECTED.clear();
 						lastClickedUnit = null;
 					}
 				}
@@ -555,14 +545,17 @@ public class ConductorControls {
 				rightDragging = false;
 			}
 			event.setCanceled(true);
-		} else event.setCanceled(true);
+		} else
+			event.setCanceled(true);
 	}
 
 	private static void updateRightDrag(Minecraft minecraft) {
-		if (!rightPressed) return;
+		if (!rightPressed)
+			return;
 		if (isDrag(rightDownX, rightDownY, minecraft.mouseHandler.xpos(), minecraft.mouseHandler.ypos()))
 			rightDragging = true;
-		if (rightDragging) ConductorCamera.drag(minecraft.mouseHandler.xpos());
+		if (rightDragging)
+			ConductorCamera.drag(minecraft.mouseHandler.xpos());
 	}
 
 	private static void selectBox(Minecraft minecraft, double x1, double y1, double x2, double y2) {
@@ -574,7 +567,8 @@ public class ConductorControls {
 		double maxY = Math.max(y1, y2);
 		SELECTED.clear();
 		for (Entity entity : minecraft.level.entitiesForRendering()) {
-			if (!(entity instanceof LivingEntity mob) || !mob.isAlive()) continue;
+			if (!(entity instanceof LivingEntity mob) || !mob.isAlive())
+				continue;
 			Vec3 relative = mob.getBoundingBox().getCenter().subtract(camera.position());
 			Vector4f point = new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1.0F).mul(matrix);
 			if (point.w <= 0.0F) {
@@ -613,7 +607,8 @@ public class ConductorControls {
 		double limit = block.getLocation().distanceToSqr(start);
 		LivingEntity picked = null;
 		for (Entity candidate : minecraft.level.entitiesForRendering()) {
-			if (!(candidate instanceof LivingEntity entity)) continue;
+			if (!(candidate instanceof LivingEntity entity))
+				continue;
 			if (!predicate.test(entity)) {
 				continue;
 			}
@@ -635,8 +630,10 @@ public class ConductorControls {
 		AimPreview fallback = null;
 		for (UUID unit : skillUnits(pendingSkillUnit)) {
 			AimPreview preview = aimPreview(minecraft, unit);
-			if (preview == null) continue;
-			if (fallback == null) fallback = preview;
+			if (preview == null)
+				continue;
+			if (fallback == null)
+				fallback = preview;
 			if (preview.valid() && ConductorClient.abilityCooldownTicks(unit, Identifier.parse(pendingSkill)) == 0)
 				return preview;
 		}
@@ -659,9 +656,12 @@ public class ConductorControls {
 				&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
 		Vec3 position = overHud ? lastAimPosition != null ? lastAimPosition : targeting.facingPosition(mob)
 				: ConductorCamera.pickGround(minecraft);
-		if (!overHud && position != null) lastAimPosition = position;
-		if (position == null && targeting.targetKind() == ConductorTargeting.TargetKind.POSITION) return null;
-		if (position == null) position = mob.position();
+		if (!overHud && position != null)
+			lastAimPosition = position;
+		if (position == null && targeting.targetKind() == ConductorTargeting.TargetKind.POSITION)
+			return null;
+		if (position == null)
+			position = mob.position();
 		ConductorTargeting.TargetKind kind = targeting.targetKind();
 		ConductorCommandPayload.TargetSelection selection = switch (kind) {
 			case SELF -> ConductorCommandPayload.TargetSelection.NONE;
@@ -698,7 +698,8 @@ public class ConductorControls {
 				&& !targeting.canTargetPosition(mob, effective)) {
 			valid = false;
 		}
-		if (targeting instanceof EntitySkillConductorAbility.Laser) effective = LaserSkill.aimPosition(mob, target, requested);
+		if (targeting instanceof EntitySkillConductorAbility.Laser)
+			effective = LaserSkill.aimPosition(mob, target, requested);
 		return new AimPreview(mob, targeting, target, requested, effective, selection, valid, rangeLimited);
 	}
 
@@ -709,7 +710,8 @@ public class ConductorControls {
 		String team = selectedTeam();
 		if (pending == ConductorCommandPayload.Action.CAST && pendingSkillUnit != null) {
 			ConductorData.Unit unit = ConductorClient.unit(pendingSkillUnit);
-			if (unit != null) team = unit.team();
+			if (unit != null)
+				team = unit.team();
 		}
 		if (team.isBlank()) {
 			return;
@@ -731,7 +733,8 @@ public class ConductorControls {
 		}
 		Vec3 pos = ConductorCamera.pickGround(minecraft);
 		if (pos == null) {
-			if (target == null && action != ConductorCommandPayload.Action.CAST) return;
+			if (target == null && action != ConductorCommandPayload.Action.CAST)
+				return;
 			pos = target == null ? Vec3.ZERO : target.position();
 		}
 		ConductorCommandPayload.TargetSelection targetSelection = ConductorCommandPayload.TargetSelection.NONE;
@@ -755,9 +758,10 @@ public class ConductorControls {
 						? target.getUUID() : null,
 				pos.x, pos.y, pos.z, ConductorData.ControlMode.FULL, false, pendingSkill, targetSelection);
 		if (action == ConductorCommandPayload.Action.CAST && pendingSkill.equals(TheQueenOfHatredSkills.LASER.getId().toString())) {
-			for (UUID unit : units) MANUAL_LASERS.put(unit, MANUAL_LASER_START_WAIT_TICKS);
+			ConductorManualSkillControl.track(units, Identifier.parse(pendingSkill));
 		}
-		if (action != ConductorCommandPayload.Action.CAST) setPending(null);
+		if (action != ConductorCommandPayload.Action.CAST)
+			setPending(null);
 	}
 
 	private static LivingEntity pickCommandTarget(Minecraft minecraft, List<UUID> units) {

@@ -9,9 +9,9 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.attribute.BasicAttribute;
-import org.unitego.lobecorp.attribute.MaxAttribute;
-import org.unitego.lobecorp.attribute.MinAttribute;
+import org.unitego.lobecorp.world.entity.attribute.BasicAttribute;
+import org.unitego.lobecorp.world.entity.attribute.MaxAttribute;
+import org.unitego.lobecorp.world.entity.attribute.MinAttribute;
 
 import java.util.function.Consumer;
 import java.util.function.Function;

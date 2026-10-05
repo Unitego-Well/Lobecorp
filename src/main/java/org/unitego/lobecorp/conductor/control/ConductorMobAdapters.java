@@ -10,7 +10,7 @@ import net.minecraft.world.entity.monster.breeze.Breeze;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.control.ConductorCapabilities.MobControl;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.entity.abnormalitie.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 
 /// 不同实体类型的指挥命令适配实现。
 public class ConductorMobAdapters {
@@ -24,24 +24,29 @@ public class ConductorMobAdapters {
 			if (mob.level() instanceof ServerLevel level) {
 				ConductorData.Unit command = ConductorData.get(level.getServer()).unit(mob.getUUID());
 				if (command != null && command.order() != ConductorData.OrderType.MOVE
-						&& command.order() != ConductorData.OrderType.RETURN) clearNavigation();
+						&& command.order() != ConductorData.OrderType.RETURN)
+					clearNavigation();
 			}
 			super.tick();
 		}
 
 		private void clearNavigation() {
 			ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-			if (runtime.flyingNavigation != null) runtime.flyingNavigation.stop();
+			if (runtime.flyingNavigation != null)
+				runtime.flyingNavigation.stop();
 			runtime.flyingNavigation = null;
 		}
 
 		@Override
 		public void advanceMovement(ConductorData data, ConductorData.Unit command) {
 			ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-			if (runtime.flyingNavigation == null) runtime.flyingNavigation = new FlyingPathNavigation(mob, mob.level());
+			if (runtime.flyingNavigation == null)
+				runtime.flyingNavigation = new FlyingPathNavigation(mob, mob.level());
 			FlyingPathNavigation navigation = runtime.flyingNavigation;
-			if (ConductorMovement.advance(mob, navigation, data, command)) navigation.tick();
-			else navigation.stop();
+			if (ConductorMovement.advance(mob, navigation, data, command))
+				navigation.tick();
+			else
+				navigation.stop();
 		}
 
 		@Override
@@ -58,7 +63,8 @@ public class ConductorMobAdapters {
 
 		@Override
 		public void stop() {
-			if (mob.getPose() == Pose.SLIDING) mob.setPose(Pose.STANDING);
+			if (mob.getPose() == Pose.SLIDING)
+				mob.setPose(Pose.STANDING);
 			super.stop();
 		}
 
@@ -75,7 +81,8 @@ public class ConductorMobAdapters {
 
 		@Override
 		public boolean accept(ConductorData.Unit command) {
-			if (!super.accept(command)) return false;
+			if (!super.accept(command))
+				return false;
 			if (command.order() == ConductorData.OrderType.ATTACK
 					|| command.order() == ConductorData.OrderType.ATTACK_POINT) {
 				((TheQueenOfHatred) mob).cancelConductorSitting();
@@ -96,7 +103,8 @@ public class ConductorMobAdapters {
 
 		@Override
 		public void advanceMovement(ConductorData data, ConductorData.Unit command) {
-			if (!ConductorMovement.advance(mob, mob.getNavigation(), data, command)) return;
+			if (!ConductorMovement.advance(mob, mob.getNavigation(), data, command))
+				return;
 			EnderDragon dragon = (EnderDragon) mob;
 			if (dragon.getPhaseManager().getCurrentPhase().getPhase() != EnderDragonPhase.HOLDING_PATTERN) {
 				dragon.getPhaseManager().setPhase(EnderDragonPhase.HOLDING_PATTERN);

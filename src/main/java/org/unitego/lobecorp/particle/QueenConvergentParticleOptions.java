@@ -14,7 +14,8 @@ import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 /// 聚爆表现通过实体与运行实例编号绑定；时间单位均为游戏 tick。
 @NullMarked
 public record QueenConvergentParticleOptions(int entityId, long runtimeId, long startGameTime,
-                                            int durationTicks, int pulseTicks, boolean star) implements ParticleOptions {
+                                             int durationTicks, int pulseTicks,
+                                             boolean star) implements ParticleOptions {
 	public static final MapCodec<QueenConvergentParticleOptions> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
 			Codec.INT.fieldOf("entity_id").forGetter(QueenConvergentParticleOptions::entityId),
 			Codec.LONG.fieldOf("runtime_id").forGetter(QueenConvergentParticleOptions::runtimeId),

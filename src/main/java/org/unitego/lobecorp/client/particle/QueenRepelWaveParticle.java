@@ -13,7 +13,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.entity_skill.skill.abnormalitie.the_queen_of_hatred.RepelSkill.RepelWaveEffect;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.RepelSkill.RepelWaveEffect;
 
 /// 女皇退散冲击波的水平双面发光纹理，独立播放并在扩张结束后淡出。
 @NullMarked

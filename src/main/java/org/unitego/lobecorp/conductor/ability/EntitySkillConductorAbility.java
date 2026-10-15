@@ -11,7 +11,7 @@ import org.unitego.lobecorp.conductor.control.ConductorWork;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillAccess;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 import org.unitego.lobecorp.world.entity.skill.MultiStageSkill;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
@@ -39,7 +39,7 @@ import java.util.List;
 import static org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.SweepSkill.MELEE_RANGE;
 
 /// 将实体技能注册项适配为指挥家可用能力。
-public class EntitySkillConductorAbility implements ConductorAbility {
+public class EntitySkillConductorAbility implements IConductorAbility {
 	protected final IEntitySkill<?> skill;
 
 	public EntitySkillConductorAbility(IEntitySkill<?> skill) {
@@ -53,7 +53,7 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 
 	@Override
 	public boolean supports(Mob mob) {
-		EntitySkillAccess access = EntitySkillAccess.get(mob);
+		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
 		return access != null && access.supports(skill);
 	}
 
@@ -69,7 +69,7 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 
 	@Override
 	public int cooldownTicks(Mob mob) {
-		EntitySkillAccess access = EntitySkillAccess.get(mob);
+		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
 		return access == null ? EntitySkillUtil.cooldownTicks(mob, skill) : access.cooldownTicks(skill);
 	}
 
@@ -79,7 +79,7 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 
 	/// HUD 与服务端共享当前施放阶段的接招资格，不以“存在运行实例”直接禁止。
 	public boolean canBeginCast(Mob mob) {
-		EntitySkillAccess access = EntitySkillAccess.get(mob);
+		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
 		return access != null && access.canBeginCast(skill);
 	}
 
@@ -106,16 +106,17 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 
 	@Override
 	public double displayRange(Mob mob) {
-		return skill instanceof AttackSkill ? AttackSkill.conductorRange() : ConductorAbility.super.displayRange(mob);
+		return skill instanceof AttackSkill ? AttackSkill.conductorRange() : IConductorAbility.super.displayRange(mob);
 	}
 
 	@Override
 	public PreviewGeometry previewGeometry(Mob mob, Vec3 requestedPosition, Vec3 effectivePosition) {
-		if (skill instanceof AttackSkill)
+		if (skill instanceof AttackSkill) {
 			return new PreviewGeometry(List.of(), List.of(), List.of(
 					new PreviewSector(mob.position(), AttackSkill.direction(mob, requestedPosition),
 							AttackSkill.conductorRange(), AttackSkill.conductorAngle())));
-		return ConductorAbility.super.previewGeometry(mob, requestedPosition, effectivePosition);
+		}
+		return IConductorAbility.super.previewGeometry(mob, requestedPosition, effectivePosition);
 	}
 
 	@Override
@@ -123,6 +124,7 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 		if (mob instanceof Sweeper sweeper && (skill instanceof SweepSkill || skill instanceof ReassembleSkill)) {
 			return ConductorWork.start(sweeper, skill instanceof ReassembleSkill);
 		}
+
 		return ConductorController.cast(mob, skill, target, position);
 	}
 
@@ -159,7 +161,7 @@ public class EntitySkillConductorAbility implements ConductorAbility {
 
 		@Override
 		public PreviewGeometry previewGeometry(Mob mob, Vec3 requestedPosition, Vec3 effectivePosition) {
-			Vec3 endpoint = new Vec3(effectivePosition.x, mob.getY(), effectivePosition.z);
+			var endpoint = new Vec3(effectivePosition.x, mob.getY(), effectivePosition.z);
 			return new PreviewGeometry(List.of(new PreviewCircle(endpoint, mob.getBbWidth() / 2.0)),
 					List.of(new PreviewBeam(mob.position(), endpoint, mob.getBbWidth() / 2.0)));
 		}

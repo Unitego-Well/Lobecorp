@@ -9,6 +9,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.world.entity.attribute.BasicAttribute;
 import org.unitego.lobecorp.world.entity.attribute.MaxAttribute;
 import org.unitego.lobecorp.world.entity.attribute.MinAttribute;
@@ -21,6 +22,10 @@ public interface LcAttributes {
 
 	DeferredHolder<Attribute, RangedAttribute> ENTITY_SKILL_COOLDOWN_MULTIPLIER = registerRanged(
 			"entity_skill_cooldown_multiplier", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
+
+	/// 每 tick 推进的技能冷却 tick 数；1 为正常速度，0 暂停，实体须显式持有该属性。
+	DeferredHolder<Attribute, RangedAttribute> ENTITY_SKILL_COOLDOWN_SPEED = registerRanged(
+			"entity_skill_cooldown_speed", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
 
 	DeferredHolder<Attribute, RangedAttribute> DAMAGE_TAKEN_MULTIPLIER = registerRanged(
 			"damage_taken_multiplier", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
@@ -71,6 +76,8 @@ public interface LcAttributes {
 	}
 
 	static void init(IEventBus eventBus) {
+		LangHandler.creates(REGISTER, "Entity Skill Cooldown Speed", "实体技能冷却速度",
+				(langSet, text) -> langSet.attributeText(ENTITY_SKILL_COOLDOWN_SPEED, text));
 		REGISTER.register(eventBus);
 	}
 }

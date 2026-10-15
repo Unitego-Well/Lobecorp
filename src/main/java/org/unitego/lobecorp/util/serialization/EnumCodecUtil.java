@@ -10,7 +10,7 @@ public class EnumCodecUtil {
 					try {
 						T e = Enum.valueOf(enumClass, name);
 						return DataResult.success(e);
-					} catch (IllegalArgumentException ignored) {
+					} catch (IllegalArgumentException _) {
 						return DataResult.error(() -> "Unknown enum name: '" + name + "' for enum class: " + enumClass);
 					}
 				},

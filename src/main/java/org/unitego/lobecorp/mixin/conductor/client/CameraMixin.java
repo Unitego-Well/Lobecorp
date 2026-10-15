@@ -25,8 +25,10 @@ public abstract class CameraMixin {
 	@Inject(method = "alignWithEntity", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$conductorView(float partialTicks, CallbackInfo callback) {
 		ConductorCamera.View view = ConductorControls.cameraFrame(partialTicks);
-		if (view == null)
+		if (view == null) {
 			return;
+		}
+
 		setPosition(view.position());
 		setRotation(view.yaw(), view.pitch(), 0);
 		detached = true;
@@ -35,8 +37,10 @@ public abstract class CameraMixin {
 
 	@Inject(method = "extractRenderState", at = @At("TAIL"))
 	private void lobecorp$independentCameraState(CameraRenderState cameraState, float cameraEntityPartialTicks, CallbackInfo callback) {
-		if (!ConductorControls.active())
+		if (!ConductorControls.active()) {
 			return;
+		}
+
 		cameraState.entityRenderState.isPlayer = false;
 		cameraState.entityRenderState.isLiving = false;
 	}

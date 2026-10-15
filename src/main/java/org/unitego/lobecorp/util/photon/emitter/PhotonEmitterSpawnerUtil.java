@@ -2,15 +2,14 @@ package org.unitego.lobecorp.util.photon.emitter;
 
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.client.photon.animation.runtime.PhotonAnimationRuntime;
 import org.unitego.lobecorp.client.photon.emitter.PhotonEmitterSpawner;
 import org.unitego.lobecorp.client.photon.emitter.runtime.PhotonSpawnOverrides;
 
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 客户端线程上的实例控制入口；只作用于指定 FXRuntime，不修改特效资源。
- */
+/// 客户端线程上的实例控制入口；只作用于指定 FXRuntime，不修改特效资源。
 @SuppressWarnings("unused")
 public class PhotonEmitterSpawnerUtil {
 	@Nullable
@@ -26,6 +25,7 @@ public class PhotonEmitterSpawnerUtil {
 
 	public static boolean stop(FXRuntime runtime, String name) {
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -40,6 +40,7 @@ public class PhotonEmitterSpawnerUtil {
 		}
 
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -49,6 +50,7 @@ public class PhotonEmitterSpawnerUtil {
 
 	public static boolean pause(FXRuntime runtime, String name, boolean paused) {
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -59,6 +61,7 @@ public class PhotonEmitterSpawnerUtil {
 
 	public static boolean restart(FXRuntime runtime, String name, boolean clear) {
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -73,6 +76,7 @@ public class PhotonEmitterSpawnerUtil {
 
 	public static boolean clear(FXRuntime runtime, String name) {
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -83,6 +87,7 @@ public class PhotonEmitterSpawnerUtil {
 
 	public static boolean parameters(FXRuntime runtime, String name, @Nullable PhotonSpawnOverrides values) {
 		var emitter = find(runtime, name);
+
 		if (emitter == null) {
 			return false;
 		}
@@ -99,5 +104,11 @@ public class PhotonEmitterSpawnerUtil {
 	public static boolean stopInstance(FXRuntime runtime, String name, UUID handle, boolean force) {
 		var emitter = find(runtime, name);
 		return emitter != null && emitter.stopInstance(handle, force);
+	}
+
+	/// 查询生成实例的动画控制器；无动画、实例结束或句柄无效时返回 null。
+	public static @Nullable PhotonAnimationRuntime animations(FXRuntime runtime, String name, UUID handle) {
+		var emitter = find(runtime, name);
+		return emitter == null ? null : emitter.instanceAnimations(handle);
 	}
 }

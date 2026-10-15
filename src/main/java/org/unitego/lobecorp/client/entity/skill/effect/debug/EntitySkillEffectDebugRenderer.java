@@ -44,13 +44,17 @@ public class EntitySkillEffectDebugRenderer implements DebugRenderer.SimpleDebug
 		if (minecraft.level == null) {
 			return;
 		}
-		Vec3 cameraPosition = new Vec3(camX, camY, camZ);
+
+		var cameraPosition = new Vec3(camX, camY, camZ);
+
 		for (HitboxSnapshot snapshot : minecraft.level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA)
 				.clientSnapshots()) {
 			EntitySkillEffectDebugInfo debugInfo = snapshot.entitySkillEffectDebugInfo();
+
 			if (debugInfo == null || snapshot.position().distanceToSqr(cameraPosition) > MAX_RENDER_DISTANCE_SQUARED) {
 				continue;
 			}
+
 			double heightOffset = snapshot.size() instanceof CylinderSize cylinder
 					? cylinder.height() / 2.0 + TEXT_HEIGHT_OFFSET : TEXT_HEIGHT_OFFSET;
 			Vec3 textPosition = snapshot.position().add(0.0, heightOffset, 0.0);

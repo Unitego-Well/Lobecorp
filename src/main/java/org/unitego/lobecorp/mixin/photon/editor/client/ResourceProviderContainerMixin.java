@@ -34,12 +34,15 @@ public abstract class ResourceProviderContainerMixin<T> {
 	@ModifyReturnValue(method = "createResourceUI", at = @At("RETURN"))
 	private UIElement lobecorp$clipboardKeys(UIElement cell, IResourcePath key) {
 		var container = lobecorp$container();
-		if (!PhotonResourceClipboardUtil.enabled(container))
+		if (!PhotonResourceClipboardUtil.enabled(container)) {
 			return cell;
+		}
+
 		cell.setFocusable(true);
 		cell.addEventListener(UIEvents.MOUSE_DOWN, event -> {
-			if (event.button == 0 && PhotonResourceClipboardUtil.enabled(container) && !PhotonResourceClipboardUtil.textTarget(event.target))
+			if (event.button == 0 && PhotonResourceClipboardUtil.enabled(container) && !PhotonResourceClipboardUtil.textTarget(event.target)) {
 				cell.focus();
+			}
 		});
 		cell.addEventListener(UIEvents.VALIDATE_COMMAND, event -> PhotonResourceClipboardUtil.command(container, event));
 		cell.addEventListener(UIEvents.EXECUTE_COMMAND, event -> PhotonResourceClipboardUtil.command(container, event));
@@ -49,7 +52,8 @@ public abstract class ResourceProviderContainerMixin<T> {
 	@WrapOperation(method = "renameResource", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/editor/ui/resource/ResourceProviderContainer;startInlineRename(Lcom/lowdragmc/lowdraglib2/gui/ui/UIElement;Ljava/lang/String;Ljava/util/function/Predicate;Ljava/util/function/Consumer;)V"))
 	private void lobecorp$renameDialog(UIElement cell, String initial, Predicate<Character> charValidator, Consumer<String> onCommit, Operation<Void> original) {
-		if (!PhotonResourceClipboardUtil.renameDialog(lobecorp$container(), initial, charValidator, onCommit))
+		if (!PhotonResourceClipboardUtil.renameDialog(lobecorp$container(), initial, charValidator, onCommit)) {
 			original.call(cell, initial, charValidator, onCommit);
+		}
 	}
 }

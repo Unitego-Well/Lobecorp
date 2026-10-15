@@ -19,8 +19,9 @@ public abstract class MobConductorMixin {
 	private void lobecorp$conductorAi(CallbackInfo callback) {
 		Mob mob = (Mob) (Object) this;
 		ConductorController.tick(mob);
-		if (mob instanceof Sweeper sweeper)
+		if (mob instanceof Sweeper sweeper) {
 			sweeper.updateMovementSpeed();
+		}
 	}
 
 	@Inject(method = "canReplaceCurrentItem", at = @At("HEAD"), cancellable = true)

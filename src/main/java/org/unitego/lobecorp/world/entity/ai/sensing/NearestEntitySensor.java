@@ -12,11 +12,11 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
-/// 通用的最近实体 Sensor。在指定范围内扫描满足条件的实体，按距离排序，<br>
+/// 通用的最近实体 Sensor。在指定范围内扫描满足条件的实体，按距离排序，
 /// 过滤出可见的最近实体并写入指定记忆。
-/// <p>
+///
 /// 用法示例：
-/// <pre>{@code
+/// ```java
 /// // 扫描 ItemEntity（替代原版 NearestItemSensor）
 /// NearestEntitySensor.create(e -> e instanceof ItemEntity, 32, 16,
 ///     MemoryModuleType.NEAREST_VISIBLE_WANTED_ITEM);
@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 /// // 扫描 EntityCorpse
 /// NearestEntitySensor.create(e -> e instanceof EntityCorpse, 16, 8,
 ///     LcMemoryModuleTypes.NEAREST_CORPSE.get());
-/// }</pre>
+/// ```
 public class NearestEntitySensor<E extends Entity> extends Sensor<Mob> {
 	private final BiPredicate<Mob, Entity> filter;
 	private final long xzRange;
@@ -33,7 +33,7 @@ public class NearestEntitySensor<E extends Entity> extends Sensor<Mob> {
 
 	private NearestEntitySensor(Predicate<Entity> filter, long xzRange, long yRange,
 	                            MemoryModuleType<E> targetMemory) {
-		this.filter = (ignoredBody, entity) -> filter.test(entity);
+		this.filter = (_, entity) -> filter.test(entity);
 		this.xzRange = xzRange;
 		this.yRange = yRange;
 		this.targetMemory = targetMemory;
@@ -42,7 +42,7 @@ public class NearestEntitySensor<E extends Entity> extends Sensor<Mob> {
 	private NearestEntitySensor(Predicate<Entity> filter, long xzRange, long yRange,
 	                            MemoryModuleType<E> targetMemory, int scanRate) {
 		super(scanRate);
-		this.filter = (ignoredBody, entity) -> filter.test(entity);
+		this.filter = (_, entity) -> filter.test(entity);
 		this.xzRange = xzRange;
 		this.yRange = yRange;
 		this.targetMemory = targetMemory;

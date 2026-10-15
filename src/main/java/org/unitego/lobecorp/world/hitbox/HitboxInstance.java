@@ -6,7 +6,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.hitbox.geometry.HitboxGeometry;
-import org.unitego.lobecorp.world.hitbox.geometry.HitboxSize;
+import org.unitego.lobecorp.world.hitbox.geometry.IHitboxSize;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
 import org.unitego.lobecorp.util.TypedDataKey;
@@ -18,17 +18,24 @@ import java.util.function.Predicate;
 
 /// 位于服务端 Level 中的可变判断框实例。
 public class HitboxInstance {
+	/// 初始寿命不为正时的错误说明。
+	private static final String INVALID_DURATION_MESSAGE = "durationTicks must be positive";
+	/// 实例尝试改变模板形状类型时的错误说明。
+	private static final String SHAPE_TYPE_CHANGE_MESSAGE = "hitbox shape type cannot be changed";
+	/// 剩余寿命不为正时的错误说明。
+	private static final String INVALID_REMAINING_TICKS_MESSAGE = "remainingTicks must be positive";
+
 	private final HitboxTemplate template;
 	private final ServerLevel level;
 	private final Map<TypedDataKey<?>, Object> data = new HashMap<>();
 	private final Map<UUID, HitRecord> hitRecords = new HashMap<>();
-	private HitboxSize size;
+	private IHitboxSize size;
 	private Vec3 position;
 	private Vec3 rotation = Vec3.ZERO;
 	private Vec3 localRotation = Vec3.ZERO;
 	private Vec3 localOffset = Vec3.ZERO;
 	private Vec3 rotationPivot = Vec3.ZERO;
-	private Predicate<Entity> additionalFilter = entity -> true;
+	private Predicate<Entity> additionalFilter = _ -> true;
 	private HitboxHitPolicy hitPolicy = HitboxHitPolicy.ONCE_PER_TARGET;
 	private HitboxLineOfSightMode lineOfSightMode = HitboxLineOfSightMode.ENTITY_TO_ENTITY;
 	@Nullable
@@ -55,8 +62,9 @@ public class HitboxInstance {
 	/// @param durationTicks 包含预览阶段的总存在时间；1 表示当前 tick
 	public HitboxInstance(HitboxTemplate template, ServerLevel level, Vec3 position, int durationTicks) {
 		if (durationTicks <= 0) {
-			throw new IllegalArgumentException("durationTicks must be positive");
+			throw new IllegalArgumentException(INVALID_DURATION_MESSAGE);
 		}
+
 		this.template = template;
 		this.level = level;
 		this.size = template.initialSize();
@@ -94,17 +102,18 @@ public class HitboxInstance {
 	}
 
 	/// @return 当前类型化尺寸
-	public HitboxSize size() {
+	public IHitboxSize size() {
 		return size;
 	}
 
 	/// 修改当前尺寸，但不允许改变模板确定的形状类型。
 	///
 	/// @param size 新尺寸
-	public void setSize(HitboxSize size) {
+	public void setSize(IHitboxSize size) {
 		if (size.type() != template.shapeType()) {
-			throw new IllegalArgumentException("hitbox shape type cannot be changed");
+			throw new IllegalArgumentException(SHAPE_TYPE_CHANGE_MESSAGE);
 		}
+
 		this.size = size;
 	}
 
@@ -170,6 +179,13 @@ public class HitboxInstance {
 		follow(source, localOffset, true);
 		followsHeadYaw = true;
 		updateFollowTransform();
+	}
+
+	/// 解除来源变换跟随，保留当前世界姿态、来源、寿命和命中记录。
+	public void stopFollowing() {
+		followsSource = false;
+		inheritsSourceRotation = false;
+		followsHeadYaw = false;
 	}
 
 	/// 仅设置来源，用于生命周期和实体到实体遮挡判断，不自动移动实例。
@@ -261,8 +277,9 @@ public class HitboxInstance {
 	/// @param remainingTicks 正的剩余 tick 数
 	public void setRemainingTicks(int remainingTicks) {
 		if (remainingTicks <= 0) {
-			throw new IllegalArgumentException("remainingTicks must be positive");
+			throw new IllegalArgumentException(INVALID_REMAINING_TICKS_MESSAGE);
 		}
+
 		this.remainingTicks = remainingTicks;
 	}
 
@@ -278,6 +295,7 @@ public class HitboxInstance {
 		if (!followsSource || source == null) {
 			return;
 		}
+
 		Vec3 sourceCenter = source.getBoundingBox().getCenter();
 		Vec3 sourceRotationOffset = HitboxGeometry.rotate(localOffset,
 				source.getXRot(), -source.getYRot(), 0.0);
@@ -310,12 +328,15 @@ public class HitboxInstance {
 		if (hitPolicy.perTargetMaximum() == 0) {
 			return false;
 		}
+
 		if (hitPolicy.perTargetMaximum() > 0 && successful >= hitPolicy.perTargetMaximum()) {
 			return false;
 		}
+
 		if (hitPolicy.mode() == HitboxHitMode.ONCE && successful > 0) {
 			return false;
 		}
+
 		return hitPolicy.mode() != HitboxHitMode.INTERVAL || record == null
 				|| gameTime - record.lastSuccessfulGameTime() >= hitPolicy.intervalTicks();
 	}
@@ -345,7 +366,7 @@ public class HitboxInstance {
 	///
 	/// @param key 参数键
 	/// @param <T> 参数类型
-	/// @return 已保存的值；未设置时返回 {@code null}
+	/// @return 已保存的值；未设置时返回 `null`
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getData(TypedDataKey<T> key) {
@@ -356,7 +377,7 @@ public class HitboxInstance {
 	///
 	/// @param key 参数键
 	/// @param <T> 参数类型
-	/// @return 被移除的值；未设置时返回 {@code null}
+	/// @return 被移除的值；未设置时返回 `null`
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T removeData(TypedDataKey<T> key) {

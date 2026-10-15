@@ -9,11 +9,10 @@ import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
-public record HitboxRemovePayload(int id) implements ToClientPayload {
+public record HitboxRemovePayload(int id) implements IToClientPayload {
 	/// 判断框移除载荷类型。
 	public static final CustomPacketPayload.Type<HitboxRemovePayload> TYPE =
 			new CustomPacketPayload.Type<>(Lobecorp.id("hitbox_remove"));
-	/// 判断框移除载荷编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxRemovePayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull HitboxRemovePayload decode(@NonNull RegistryFriendlyByteBuf buffer) {

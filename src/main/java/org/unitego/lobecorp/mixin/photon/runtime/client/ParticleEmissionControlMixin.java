@@ -35,14 +35,16 @@ public abstract class ParticleEmissionControlMixin implements PhotonEmissionCont
 
 	@WrapOperation(method = "reset", at = @At(value = "INVOKE", target = "Ljava/util/Map;clear()V"))
 	private void lobecorp$resetParticles(Map<?, ?> particles, Operation<Void> original) {
-		if (!lobecorp$preserveOnReset)
+		if (!lobecorp$preserveOnReset) {
 			original.call(particles);
+		}
 	}
 
 	@WrapOperation(method = "reset", at = @At(value = "INVOKE", target = "Ljava/util/Queue;clear()V"))
 	private void lobecorp$resetPendingSpawns(Queue<?> pending, Operation<Void> original) {
-		if (!lobecorp$preserveOnReset)
+		if (!lobecorp$preserveOnReset) {
 			original.call(pending);
+		}
 	}
 
 	@Override
@@ -71,8 +73,9 @@ public abstract class ParticleEmissionControlMixin implements PhotonEmissionCont
 
 	@Inject(method = "emitParticle(Lcom/lowdragmc/photon/client/gameobject/particle/IParticle;)V", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$blockNewParticle(IParticle particle, CallbackInfo ci) {
-		if (lobecorp$emissionStopped)
+		if (lobecorp$emissionStopped) {
 			ci.cancel();
+		}
 	}
 
 	@Inject(method = "reset", at = @At("RETURN"))

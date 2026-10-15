@@ -16,7 +16,8 @@ import org.unitego.lobecorp.conductor.control.ConductorSonicBoom;
 import java.util.List;
 
 /// 监守者声波的指挥家能力适配。
-public final class WardenSonicBoomAbility implements ConductorAbility {
+public final class WardenSonicBoomAbility implements IConductorAbility {
+	/// 监守者声波指挥家能力的稳定资源标识。
 	public static final Identifier ID = Lobecorp.id("warden_sonic_boom");
 
 	@Override
@@ -40,13 +41,13 @@ public final class WardenSonicBoomAbility implements ConductorAbility {
 	}
 
 	@Override
-	public ConductorTargeting.TargetKind targetKind() {
-		return ConductorTargeting.TargetKind.POSITION;
+	public IConductorTargeting.TargetKind targetKind() {
+		return IConductorTargeting.TargetKind.POSITION;
 	}
 
 	@Override
-	public ConductorTargeting.RangeMetric rangeMetric() {
-		return ConductorTargeting.RangeMetric.HORIZONTAL;
+	public IConductorTargeting.RangeMetric rangeMetric() {
+		return IConductorTargeting.RangeMetric.HORIZONTAL;
 	}
 
 	@Override
@@ -74,8 +75,8 @@ public final class WardenSonicBoomAbility implements ConductorAbility {
 	}
 
 	@Override
-	public ConductorTargeting.PreviewGeometry previewGeometry(Mob mob, Vec3 requestedPosition, Vec3 effectivePosition) {
-		return new ConductorTargeting.PreviewGeometry(List.of(), List.of(new ConductorTargeting.PreviewBeam(
+	public IConductorTargeting.PreviewGeometry previewGeometry(Mob mob, Vec3 requestedPosition, Vec3 effectivePosition) {
+		return new IConductorTargeting.PreviewGeometry(List.of(), List.of(new IConductorTargeting.PreviewBeam(
 				ConductorSonicBoom.origin(mob), ConductorSonicBoom.endpoint(mob, requestedPosition),
 				ConductorRules.WARDEN_SONIC_BOOM_PREVIEW_HALF_WIDTH)));
 	}
@@ -90,6 +91,7 @@ public final class WardenSonicBoomAbility implements ConductorAbility {
 		if (!(mob instanceof Warden warden)) {
 			return 0;
 		}
+
 		long cooldown = warden.getBrain().hasMemoryValue(MemoryModuleType.SONIC_BOOM_COOLDOWN)
 				? warden.getBrain().getTimeUntilExpiry(MemoryModuleType.SONIC_BOOM_COOLDOWN) : 0L;
 		long active = warden.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_COOLING_DOWN)

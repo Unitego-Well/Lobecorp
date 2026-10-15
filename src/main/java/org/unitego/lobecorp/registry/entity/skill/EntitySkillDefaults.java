@@ -27,8 +27,9 @@ public class EntitySkillDefaults {
 	public static Set<IEntitySkill<?>> forType(EntityType<?> type) {
 		Set<IEntitySkill<?>> skills = new LinkedHashSet<>();
 		DEFAULTS.forEach((registeredType, defaults) -> {
-			if (registeredType.get() == type)
+			if (registeredType.get() == type) {
 				skills.addAll(defaults.get());
+			}
 		});
 		return Collections.unmodifiableSet(skills);
 	}

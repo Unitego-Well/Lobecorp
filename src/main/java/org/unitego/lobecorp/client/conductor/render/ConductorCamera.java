@@ -16,19 +16,33 @@ import org.jspecify.annotations.Nullable;
 import java.util.UUID;
 
 public class ConductorCamera {
+	/// 进入指挥视角时的初始相机距离，单位为格。
 	private static final double START_ZOOM = 24.0;
+	/// 指挥相机的最小距离，单位为格。
 	private static final double MIN_ZOOM = 6.0;
+	/// 指挥相机的最大距离，单位为格。
 	private static final double MAX_ZOOM = 80.0;
+	/// 滚轮每步改变的相机距离，单位为格。
 	private static final double ZOOM_INCREMENT = 3.0;
+	/// 相机平移速度，单位为格每秒。
 	private static final double PAN_PER_SECOND = 13.0;
+	/// 键盘旋转相机的角速度，单位为度每秒。
 	private static final double TURN_PER_SECOND = 40.0;
+	/// 拖动旋转相机的灵敏度，单位为度每 GUI 像素。
 	private static final double DRAG_DEGREES_PER_PIXEL = 0.35;
+	/// 相机更新允许的最大帧间隔，单位为秒。
 	private static final double MAX_FRAME_SECONDS = 0.05;
+	/// 相机目标插值的每秒响应倍率。
 	private static final double VIEW_RESPONSE_PER_SECOND = 12.0;
+	/// 纳秒计时换算为秒的比例。
 	private static final double NANOS_PER_SECOND = 1_000_000_000.0;
+	/// 远距离地面拾取射线的最大长度，单位为格。
 	private static final double MAX_PICK_DISTANCE = 4096.0;
+	/// 地面拾取射线的最小长度，单位为格。
 	private static final double MIN_PICK_DISTANCE = 256.0;
+	/// 拾取射线的数值判定容差。
 	private static final double RAY_EPSILON = 1.0E-6;
+	/// 指挥视角的初始俯视角，单位为度。
 	private static final float PITCH = 58.0F;
 	private static LocalPlayer owner;
 	private static ClientLevel world;
@@ -43,8 +57,10 @@ public class ConductorCamera {
 	private static long lastFrame;
 
 	public static void open(Minecraft minecraft) {
-		if (minecraft.player == null || minecraft.level == null)
+		if (minecraft.player == null || minecraft.level == null) {
 			return;
+		}
+
 		owner = minecraft.player;
 		world = minecraft.level;
 		pivot = owner.position();
@@ -99,14 +115,16 @@ public class ConductorCamera {
 		lastFrame = now;
 		heading += turnInput * TURN_PER_SECOND * elapsed;
 		Entity target = following == null || world == null ? null : world.getEntity(following);
+
 		if (target instanceof LivingEntity living && living.isAlive()) {
 			pivot = living.getPosition(partialTick);
 		} else if (forwardInput != 0 || sideInput != 0) {
 			double angle = Math.toRadians(heading);
-			Vec3 motion = new Vec3(-Math.sin(angle) * forwardInput - Math.cos(angle) * sideInput,
+			var motion = new Vec3(-Math.sin(angle) * forwardInput - Math.cos(angle) * sideInput,
 					0, Math.cos(angle) * forwardInput - Math.sin(angle) * sideInput).normalize();
 			pivot = pivot.add(motion.scale(PAN_PER_SECOND * elapsed));
 		}
+
 		double blend = 1.0 - Math.exp(-VIEW_RESPONSE_PER_SECOND * elapsed);
 		displayedPivot = displayedPivot.lerp(pivot, blend);
 		displayedHeading += Mth.wrapDegrees(heading - displayedHeading) * blend;
@@ -126,16 +144,20 @@ public class ConductorCamera {
 	}
 
 	public static double pickDistance(Minecraft minecraft, Vec3 direction) {
-		if (minecraft.level == null)
+		if (minecraft.level == null) {
 			return MIN_PICK_DISTANCE;
+		}
+
 		double height = minecraft.gameRenderer.getMainCamera().position().y - minecraft.level.getMinY();
 		double toBottom = direction.y < -RAY_EPSILON ? (height + 1.0) / -direction.y : MIN_PICK_DISTANCE;
 		return Math.clamp(toBottom, MIN_PICK_DISTANCE, MAX_PICK_DISTANCE);
 	}
 
 	public static @Nullable Vec3 pickGround(Minecraft minecraft) {
-		if (minecraft.level == null || minecraft.player == null)
+		if (minecraft.level == null || minecraft.player == null) {
 			return null;
+		}
+
 		Vec3 start = minecraft.gameRenderer.getMainCamera().position();
 		Vec3 ray = pointerRay(minecraft);
 		BlockHitResult hit = minecraft.level.clip(new ClipContext(start, start.add(ray.scale(pickDistance(minecraft, ray))),

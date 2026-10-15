@@ -29,11 +29,11 @@ public interface LcParticleTypes {
 	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_REPEL_WAVE = register("queen_repel_wave", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_LASER = register("queen_laser", true);
 	DeferredHolder<ParticleType<?>, ParticleType<QueenChannelLaserParticleOptions>> QUEEN_CHANNEL_LASER = register(
-			"queen_channel_laser", true, type -> QueenChannelLaserParticleOptions.CODEC, type -> QueenChannelLaserParticleOptions.STREAM_CODEC);
+			"queen_channel_laser", true, _ -> QueenChannelLaserParticleOptions.CODEC, _ -> QueenChannelLaserParticleOptions.STREAM_CODEC);
 	DeferredHolder<ParticleType<?>, ParticleType<QueenMagicCircleParticleOptions>> QUEEN_MAGIC_CIRCLE = register(
-			"queen_magic_circle", true, type -> QueenMagicCircleParticleOptions.CODEC, type -> QueenMagicCircleParticleOptions.STREAM_CODEC);
+			"queen_magic_circle", true, _ -> QueenMagicCircleParticleOptions.CODEC, _ -> QueenMagicCircleParticleOptions.STREAM_CODEC);
 	DeferredHolder<ParticleType<?>, ParticleType<QueenConvergentParticleOptions>> QUEEN_CONVERGENT = register(
-			"queen_convergent", true, type -> QueenConvergentParticleOptions.CODEC, type -> QueenConvergentParticleOptions.STREAM_CODEC);
+			"queen_convergent", true, _ -> QueenConvergentParticleOptions.CODEC, _ -> QueenConvergentParticleOptions.STREAM_CODEC);
 
 	private static DeferredHolder<ParticleType<?>, SimpleParticleType> register(String name, boolean overrideLimiter) {
 		return REGISTER.register(name, () -> new SimpleParticleType(overrideLimiter));

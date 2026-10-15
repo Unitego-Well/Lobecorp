@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
 public class PhotonParticleRuntimeTrial {
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
-		ParticleEmitter emitter = new ParticleEmitter();
+		var emitter = new ParticleEmitter();
 		emitter.transform()._refreshInternalID();
 		emitter.config.setDuration(4);
 		emitter.config.setLooping(false);
@@ -22,7 +22,7 @@ public class PhotonParticleRuntimeTrial {
 		emitter.config.emission.setEmissionRate(NumberFunction.constant(2));
 		emitter.config.shape.setShape(new Sphere());
 
-		FX fx = new FX();
+		var fx = new FX();
 		fx.getFxData().objects().add(emitter);
 		BlockPos anchor = event.getPlayer().blockPosition();
 		new BlockEffectExecutor(fx, event.getPlayer().level(), anchor).start();

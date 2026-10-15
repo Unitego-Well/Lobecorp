@@ -67,10 +67,12 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 		if (entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
 			return false;
 		}
+
 		Entity target = getCleanupTarget(entity);
 		if (target == null) {
 			return false;
 		}
+
 		runtime.setTarget(target);
 		return true;
 	}
@@ -92,14 +94,17 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
+
 		if (target instanceof EntityCorpse<?> corpse) {
 			sweepCorpse(level, entity, corpse);
 			return;
 		}
+
 		if (target instanceof ItemEntity itemEntity) {
 			sweepItem(level, entity, itemEntity);
 			return;
 		}
+
 		EntitySkillUtil.endSkill(entity, this);
 	}
 
@@ -127,6 +132,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 			EntitySkillUtil.endSkill(entity, this);
 			return;
 		}
+
 		spawnItemParticles(level, entity, itemEntity);
 		itemEntity.getItem().shrink(1);
 		entity.heal(ITEM_HEALTH);
@@ -139,7 +145,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 	private void spawnItemParticles(ServerLevel level, Sweeper entity, ItemEntity itemEntity) {
 		RandomSource random = entity.getRandom();
 		AABB bounds = itemEntity.getBoundingBox();
-		ItemParticleOption particle = new ItemParticleOption(ParticleTypes.ITEM, itemEntity.getItem().getItem());
+		var particle = new ItemParticleOption(ParticleTypes.ITEM, itemEntity.getItem().getItem());
 		for (int i = 0; i < PARTICLE_COUNT; i++) {
 			double x = bounds.minX + random.nextDouble() * bounds.getXsize();
 			double y = bounds.minY + random.nextDouble() * bounds.getYsize();
@@ -168,6 +174,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 			runtime.setCooldownTicks(SweeperSkills.CLEANUP_RECOVERY_TICKS);
 			EntitySkillUtil.setCooldown(entity, SweeperSkills.REASSEMBLE.get(), SweeperSkills.CLEANUP_RECOVERY_TICKS);
 		}
+
 		if (runtime.state() != EntitySkillRuntime.SkillState.RECOVERY) {
 			entity.playActionAnimation(SweeperAnim.CLEAR3);
 		}

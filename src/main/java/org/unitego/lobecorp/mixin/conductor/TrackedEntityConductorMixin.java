@@ -23,8 +23,10 @@ public abstract class TrackedEntityConductorMixin {
 	private Vec3 lobecorp$observationPosition(ServerPlayer player, Operation<Vec3> original) {
 		Vec3 body = original.call(player);
 		Vec3 camera = ConductorView.position(player);
-		if (camera == null)
+		if (camera == null) {
 			return body;
+		}
+
 		Vec3 bodyDelta = body.subtract(entity.position());
 		Vec3 cameraDelta = camera.subtract(entity.position());
 		return cameraDelta.horizontalDistanceSqr() < bodyDelta.horizontalDistanceSqr() ? camera : body;

@@ -12,13 +12,17 @@ curios = "15.0.0-beta.2+26.1.2"
 jei = "29.34.0.90"
 jade = "26.1.8+neoforge"
 reretrodamageindicators = "ldSJzzoV"
-photon = "26.1.2.2"
+photon = "26.1.2.3"
 # photon 依赖
-ldlib2 = "26.1.2.39"
-kilagraph = "26.1.0.14"
+ldlib2 = "26.1.2.42"
+kilagraph = "26.1.0.15"
 particlestorm = "1.4.4"
+junit = "6.1.3"
 
 [libraries]
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 mixinsquared = { module = "com.github.bawnorton.mixinsquared:mixinsquared-neoforge", version.ref = "mixinsquared" }
 anvilcraftlib = { module = "dev.anvilcraft.lib:anvillib-neoforge-26.1", version.ref = "anvilcraftlib" }
 geckolib = { module = "com.geckolib:geckolib-neoforge-26.1.2", version.ref = "geckolib" }

@@ -23,9 +23,11 @@ public abstract class SpawnEggItemMixin {
 		if (call != null) {
 			return call;
 		}
+
 		if (itemStack.getItem() instanceof LcSpawnEggItem spawnEggItem) {
 			return spawnEggItem.getType();
 		}
+
 		return null;
 	}
 
@@ -35,6 +37,7 @@ public abstract class SpawnEggItemMixin {
 		if (call.isPresent()) {
 			return call;
 		}
+
 		return BuiltInRegistries.ITEM.stream()
 				.filter(LcSpawnEggItem.class::isInstance)
 				.map(LcSpawnEggItem.class::cast)
@@ -49,9 +52,11 @@ public abstract class SpawnEggItemMixin {
 		if (call) {
 			return true;
 		}
+
 		if (itemStack.getItem() instanceof LcSpawnEggItem spawnEggItem) {
 			return Objects.equals(spawnEggItem.getType(), type);
 		}
+
 		return false;
 	}
 }

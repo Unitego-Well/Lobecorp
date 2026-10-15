@@ -3,6 +3,8 @@ package org.unitego.lobecorp.world.entity.projectile;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.Connection;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -24,6 +26,7 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.jspecify.annotations.Nullable;
@@ -33,10 +36,13 @@ import java.util.UUID;
 
 /// 女皇技能使用的魔法星投射物，负责飞行碰撞和伤害结算。
 public class MagicStarProjectile extends ThrowableItemProjectile {
+	/// 同步魔法星外观尺寸的数据字段。
 	private static final EntityDataAccessor<Integer> DATA_SIZE =
 			SynchedEntityData.defineId(MagicStarProjectile.class, EntityDataSerializers.INT);
+	/// 同步魔法星外观变种的数据字段。
 	private static final EntityDataAccessor<Integer> DATA_VARIANT =
 			SynchedEntityData.defineId(MagicStarProjectile.class, EntityDataSerializers.INT);
+	/// 魔法星命中时使用的伤害类型资源键。
 	private static final ResourceKey<DamageType> DAMAGE_TYPE =
 			ResourceKey.create(Registries.DAMAGE_TYPE, Lobecorp.id("magic_star"));
 	/// 普通飞行星星的速度，单位为格/游戏刻。
@@ -59,11 +65,15 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 	private static final int SPLIT_STAR_COUNT = 2;
 	/// 路径星星寿命、折射剩余代数和最近一次命中目标的存档键。
 	private static final String STATIONARY_LIFETIME_KEY = "StationaryLifetime";
+	/// 魔法星剩余分裂次数的存档字段名称。
 	private static final String SPLITS_REMAINING_KEY = "SplitsRemaining";
+	/// 魔法星排除目标的存档字段名称。
 	private static final String EXCLUDED_TARGET_KEY = "ExcludedTarget";
 	/// 单枚星星独立飞行参数的存档键；没有覆盖时保持原有星星规则。
 	private static final String FLIGHT_LIFETIME_KEY = "FlightLifetime";
+	/// 魔法星伤害倍率的存档字段名称。
 	private static final String DAMAGE_MULTIPLIER_KEY = "DamageMultiplier";
+	/// 魔法星爆发范围的存档字段名称。
 	private static final String BURST_RADIUS_KEY = "BurstRadius";
 	private StarSize starSize = StarSize.TINY;
 	private int flightLifetimeTicks = MAX_LIFETIME_TICKS;
@@ -84,14 +94,17 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 		if (current.lengthSqr() == 0.0 || desired.lengthSqr() == 0.0) {
 			return current;
 		}
+
 		double dot = Mth.clamp(current.dot(desired), -1.0, 1.0);
 		double angle = Math.acos(dot);
 		if (angle <= HOMING_TURN_RADIANS) {
 			return desired;
 		}
+
 		if (dot <= OPPOSITE_DIRECTION_DOT) {
 			return current.yRot((float) HOMING_TURN_RADIANS);
 		}
+
 		double ratio = HOMING_TURN_RADIANS / angle;
 		double sine = Math.sin(angle);
 		return current.scale(Math.sin((1.0 - ratio) * angle) / sine)
@@ -177,12 +190,15 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 		output.putInt(STATIONARY_LIFETIME_KEY, stationaryLifetimeTicks);
 		output.putInt(SPLITS_REMAINING_KEY, splitsRemaining);
 		output.putInt(FLIGHT_LIFETIME_KEY, flightLifetimeTicks);
-		if (damageMultiplier != null)
+		if (damageMultiplier != null) {
 			output.putDouble(DAMAGE_MULTIPLIER_KEY, damageMultiplier);
-		if (burstRadius != null)
+		}
+		if (burstRadius != null) {
 			output.putDouble(BURST_RADIUS_KEY, burstRadius);
-		if (excludedTarget != null)
+		}
+		if (excludedTarget != null) {
 			output.store(EXCLUDED_TARGET_KEY, UUIDUtil.CODEC, excludedTarget);
+		}
 	}
 
 	@Override
@@ -216,6 +232,7 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 			discard();
 			return;
 		}
+
 		if (stationaryLifetimeTicks > 0 && level() instanceof ServerLevel level) {
 			setDeltaMovement(Vec3.ZERO);
 			LivingEntity contact = level.getEntitiesOfClass(LivingEntity.class, getBoundingBox(), this::canHitEntity)
@@ -225,6 +242,7 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 				return;
 			}
 		}
+
 		Vec3 direction = getDeltaMovement().normalize();
 		if (!level().isClientSide() && getType() == AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get()
 				&& getOwner() instanceof TheQueenOfHatred queen) {
@@ -250,9 +268,10 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 		if (!(level() instanceof ServerLevel level) || !(getOwner() instanceof TheQueenOfHatred queen)) {
 			return;
 		}
+
 		float damage = (float) (queen.getAttributeValue(Attributes.ATTACK_DAMAGE)
 				* (damageMultiplier == null ? BASE_DAMAGE_RATIO * starSize.scale() : damageMultiplier));
-		DamageSource damageSource = new DamageSource(level.registryAccess()
+		var damageSource = new DamageSource(level.registryAccess()
 				.lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(DAMAGE_TYPE), this, queen);
 		if (getType() == AbnormalitieEntityTypes.MAGIC_BURST_STAR.get()) {
 			double radius = burstRadius == null ? BASE_BURST_RADIUS * starSize.scale() : burstRadius;
@@ -265,10 +284,14 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 			}
 		} else if (hitResult instanceof EntityHitResult entityHit
 				&& entityHit.getEntity() instanceof LivingEntity target) {
-			target.hurtServer(level, damageSource, damage);
-			if (splitsRemaining > 0)
+			Vec3 hitPosition = stationaryLifetimeTicks > 0
+					? target.getBoundingBox().getCenter() : entityHit.getLocation();
+			DamageParticles.hurtAt(level, target, damageSource, damage, hitPosition, false);
+			if (splitsRemaining > 0) {
 				split(level, queen, target);
+			}
 		}
+
 		discard();
 	}
 
@@ -283,7 +306,7 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 
 	private void split(ServerLevel level, TheQueenOfHatred queen, LivingEntity hitTarget) {
 		for (int index = 0; index < SPLIT_STAR_COUNT; index++) {
-			MagicStarProjectile child = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get(), level);
+			var child = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get(), level);
 			child.setRefraction(splitsRemaining - 1, hitTarget.getUUID());
 			child.setPos(position());
 			LivingEntity nearest = child.nearestTarget(queen);

@@ -33,4 +33,3 @@ public record QueenChannelLaserParticleOptions(int entityId, long runtimeId, lon
 		return LcParticleTypes.QUEEN_CHANNEL_LASER.get();
 	}
 }
-

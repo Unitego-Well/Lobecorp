@@ -15,3 +15,14 @@ approval_mode = "approve"
 
 [mcp_servers.idea.tools.execute_run_configuration]
 approval_mode = "approve"
+
+[mcp_servers.idea.tools.execute_terminal_command]
+approval_mode = "approve"
+
+[mcp_servers.minecraft]
+command = "C:/Program Files/nodejs/node.exe"
+args = ["D:/xm/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp/dist/cli.js"]
+cwd = "D:/xm/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp"
+
+[mcp_servers.minecraft.tools.effect_edit_batch]
+approval_mode = "approve"

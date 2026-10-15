@@ -63,17 +63,24 @@ public class RepelSkill extends EntitySkill<TheQueenOfHatred> {
 	public static class RepelWaveEffect extends EntitySkillEffect {
 		/// 冲击波和视觉效果的总存在时间，单位为游戏刻。
 		private static final int WAVE_DURATION_TICKS = 20;
+		/// 排斥波生成时的半径，单位为方块。
 		private static final double INITIAL_WAVE_RADIUS = 1.0;
+		/// 排斥波扩散的最大半径，单位为方块。
 		private static final double MAXIMUM_WAVE_RADIUS = 10.0;
+		/// 排斥波判断框的高度，单位为方块。
 		private static final double WAVE_HEIGHT = 3.0;
+		/// 排斥波环形判断框的厚度，单位为方块。
 		private static final double WAVE_RING_THICKNESS = 2.0;
+		/// 排斥波对远端目标保留的最小作用倍率。
 		private static final double MINIMUM_WAVE_ATTENUATION = 0.1;
 		/// 冲击波相对原扩张速度的倍率，不改变最大半径和总存在时间。
 		private static final double WAVE_SPEED_MULTIPLIER = 2.0;
 		/// 冲击波每游戏刻扩张的半径，单位为格。
 		private static final double WAVE_RADIUS_PER_TICK =
 				(MAXIMUM_WAVE_RADIUS - INITIAL_WAVE_RADIUS) / (WAVE_DURATION_TICKS - 1) * WAVE_SPEED_MULTIPLIER;
+		/// 当前技能运行实例保存的排斥波效果。
 		private static final TypedDataKey<RepelWaveEffect> WAVE_EFFECT = TypedDataKey.create();
+		/// 当前效果使用的共享判断框模板。
 		private static final HitboxTemplate HITBOX_TEMPLATE = new HitboxTemplate(
 				new RingCylinderSize(INITIAL_WAVE_RADIUS, WAVE_HEIGHT, WAVE_RING_THICKNESS),
 				target -> target instanceof LivingEntity,
@@ -82,10 +89,12 @@ public class RepelSkill extends EntitySkill<TheQueenOfHatred> {
 							|| !(context.target() instanceof LivingEntity target)) {
 						return false;
 					}
+
 					RepelWaveEffect effect = context.instance().getData(WAVE_EFFECT);
 					if (effect == null || !queen.isHatedTarget(target) || !effect.intersectsCurrentWave(target)) {
 						return false;
 					}
+
 					effect.applyHit(queen, context.level(), target);
 					return true;
 				}
@@ -160,6 +169,7 @@ public class RepelSkill extends EntitySkill<TheQueenOfHatred> {
 					target.addEffect(new MobEffectInstance(LcMobEffects.STUN, 50, 2));
 				}
 			}
+
 			Vec3 horizontalDirection = distance == 0.0
 					? Vec3.directionFromRotation(0.0F, queen.getYRot())
 					: new Vec3(offset.x, 0.0, offset.z).normalize();

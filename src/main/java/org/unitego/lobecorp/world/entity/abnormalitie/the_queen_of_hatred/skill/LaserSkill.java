@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillAccess;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillManualControl;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
@@ -51,9 +51,13 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 当前持续命中框编号及累计接触时间，均属于本次施放。
 	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
+	/// 持续激光与目标接触的累计 tick 数。
 	private static final TypedDataKey<Integer> CONTACT_TICKS = TypedDataKey.create();
+	/// 持续激光上一次接触目标的游戏时间。
 	private static final TypedDataKey<Long> LAST_CONTACT_TIME = TypedDataKey.create();
+	/// 持续激光每 tick 处理命中的判断框策略。
 	private static final HitboxHitPolicy HIT_POLICY = new HitboxHitPolicy(HitboxHitMode.EVERY_TICK, 0, -1, -1);
+	/// 当前技能使用的共享判断框模板。
 	private static final HitboxTemplate HITBOX = new HitboxTemplate(new CylinderSize(WIDTH / 2.0, RANGE),
 			target -> target instanceof LivingEntity living && living.isAlive(), LaserSkill::hit);
 
@@ -85,9 +89,10 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	/// 更新已有手动施放的目标，不重新施放、不推进生命周期，也不改变冷却。
 	public static void updateManualAim(Mob mob, @Nullable LivingEntity target, Vec3 position, boolean following) {
-		EntitySkillAccess access = EntitySkillAccess.get(mob);
-		if (access == null)
+		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
+		if (access == null) {
 			return;
+		}
 		for (EntitySkillRuntime<?> runtime : access.activeSkills()) {
 			EntitySkillManualControl control = EntitySkillManualControl.get(runtime);
 			if (runtime.skill() instanceof LaserSkill && control != null
@@ -98,24 +103,28 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	}
 
 	public static void releaseManualControl(Mob mob) {
-		EntitySkillAccess access = EntitySkillAccess.get(mob);
-		if (access == null)
+		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
+		if (access == null) {
 			return;
+		}
 		for (EntitySkillRuntime<?> runtime : access.activeSkills()) {
 			EntitySkillManualControl control = EntitySkillManualControl.get(runtime);
-			if (runtime.skill() instanceof LaserSkill && control != null)
+			if (runtime.skill() instanceof LaserSkill && control != null) {
 				control.release();
+			}
 		}
 	}
 
 	private static boolean aim(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime, float ratio) {
 		EntitySkillManualControl control = EntitySkillManualControl.get(runtime);
 		Vec3 direction = control == null ? null : control.direction();
-		if (direction != null)
+		if (direction != null) {
 			return EntityFacingUtil.aim(queen, origin(queen).add(direction), origin(queen), true, ratio);
+		}
 		Vec3 position = EntityFacingUtil.targetPosition(queen, runtime, true);
-		if (position == null)
+		if (position == null) {
 			return true;
+		}
 		boolean aligned = EntityFacingUtil.aim(queen, aimPosition(queen, runtime.target(LivingEntity.class), position),
 				origin(queen), true, ratio);
 		queen.setXRot(Mth.clamp(queen.getXRot(), -MAXIMUM_PITCH, MAXIMUM_PITCH));
@@ -124,11 +133,13 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	private static boolean hit(HitboxEffectContext context) {
 		if (!(context.source() instanceof TheQueenOfHatred queen)
-				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target))
+				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target)) {
 			return false;
+		}
 		EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
-		if (runtime == null || runtime.state() != EntitySkillRuntime.SkillState.ACTIVE)
+		if (runtime == null || runtime.state() != EntitySkillRuntime.SkillState.ACTIVE) {
 			return false;
+		}
 		long time = context.level().getGameTime();
 		Long previous = runtime.getData(LAST_CONTACT_TIME);
 		if (previous == null || previous != time) {
@@ -136,18 +147,21 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 			runtime.setData(CONTACT_TICKS, ticks == null ? 1 : ticks + 1);
 			runtime.setData(LAST_CONTACT_TIME, time);
 		}
+
 		boolean hurt = target.hurtServer(context.level(), queen.damageSources().mobAttack(queen),
 				(float) (queen.getAttributeValue(Attributes.ATTACK_DAMAGE) * DAMAGE_MULTIPLIER));
-		if (hurt)
+		if (hurt) {
 			runtime.markSuccessful();
+		}
 		return hurt;
 	}
 
 	@Override
 	public boolean canUse(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		LivingEntity target = QueenSkillUtil.primaryTarget(queen, runtime, RANGE);
-		if (target != null)
+		if (target != null) {
 			return queen.distanceToSqr(target) >= MINIMUM_RANGE * MINIMUM_RANGE;
+		}
 		Vec3 position = runtime.targetPosition();
 		return QueenSkillUtil.validTargetPosition(queen, runtime, RANGE) && position != null
 				&& queen.position().distanceToSqr(position) >= MINIMUM_RANGE * MINIMUM_RANGE;
@@ -180,8 +194,9 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		HitboxInstance hitbox = HitboxManager.create(HITBOX, level, origin(queen), durationTicks(), runtime);
 		hitbox.setSource(queen);
 		hitbox.setHitPolicy(HIT_POLICY);
@@ -200,6 +215,7 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 			hitbox.deactivate();
 			return;
 		}
+
 		hitbox.setPosition(start.add(beam.scale(0.5)));
 		hitbox.setSize(new CylinderSize(WIDTH / 2.0, beam.length()));
 		hitbox.setRotation(new Vec3(queen.getXRot() + 90.0, -queen.getYRot(), 0.0));
@@ -213,20 +229,23 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 			EntitySkillUtil.endSkill(queen, this);
 			return;
 		}
+
 		aim(queen, runtime);
 		Integer id = runtime.getData(HITBOX_ID);
 		if (queen.level() instanceof ServerLevel level && id != null) {
 			HitboxInstance hitbox = HitboxManager.get(level, id);
-			if (hitbox != null)
+			if (hitbox != null) {
 				updateBeam(queen, hitbox);
+			}
 		}
 	}
 
 	@Override
 	public void onEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		Integer id = runtime.removeData(HITBOX_ID);
-		if (queen.level() instanceof ServerLevel level && id != null)
+		if (queen.level() instanceof ServerLevel level && id != null) {
 			HitboxManager.remove(level, id);
+		}
 	}
 
 	@Override

@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonObjectClipboardUtil;
+import org.unitego.lobecorp.util.photon.animation.PhotonAnimationCopyUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorRenameUtil;
@@ -43,17 +44,23 @@ public abstract class FXHierarchyViewMixin {
 
 	@ModifyReturnValue(method = "createMenu", at = @At("RETURN"))
 	private TreeBuilder.Menu lobecorp$clipboardMenu(TreeBuilder.Menu menu) {
-		if (menu == null)
+		if (menu == null) {
 			return null;
+		}
+
 		var view = (FXHierarchyView) (Object) this;
 		if (PhotonKeyClipboardUtil.systemEnabled(fxEditor)) {
-			if (!treeList.getSelected().isEmpty())
+			if (!treeList.getSelected().isEmpty()) {
 				menu.leaf(PhotonEditorTextUtil.key("copy_system"), () -> PhotonObjectClipboardUtil.copy(view));
-			if (PhotonObjectClipboardUtil.OBJECTS.equals(PhotonSystemClipboardUtil.kind()))
+			}
+			if (PhotonObjectClipboardUtil.OBJECTS.equals(PhotonSystemClipboardUtil.kind())) {
 				menu.leaf(PhotonEditorTextUtil.key("paste_system"), () -> PhotonObjectClipboardUtil.paste(view));
+			}
 		}
-		if (PhotonEditorSettings.of(fxEditor).enabled("rename_dialog") && treeList.getSelected().size() == 1)
+
+		if (PhotonEditorSettings.of(fxEditor).enabled("rename_dialog") && treeList.getSelected().size() == 1) {
 			menu.leaf("ldlib.gui.editor.menu.rename", () -> PhotonEditorRenameUtil.object(view, treeList.getSelected().iterator().next().getKey()));
+		}
 		return menu;
 	}
 
@@ -66,11 +73,18 @@ public abstract class FXHierarchyViewMixin {
 	@WrapMethod(method = "copySceneObject")
 	private List<IFXObject> lobecorp$copyBranch(IFXObject toCopied, Operation<List<IFXObject>> original) {
 		if (lobecorp$copyDepth == 0 && treeList.getSelected().stream().map(FXObjectTreeNode::getKey)
-				.anyMatch(selected -> selected != toCopied && toCopied.transform().isInheritedParent(selected.transform())))
+				.anyMatch(selected -> selected != toCopied && toCopied.transform().isInheritedParent(selected.transform()))) {
 			return List.of();
+		}
+
 		lobecorp$copyDepth++;
 		try {
-			return original.call(toCopied);
+			var result = original.call(toCopied);
+			if (lobecorp$copyDepth == 1) {
+				PhotonAnimationCopyUtil.remap(toCopied, result);
+			}
+
+			return result;
 		} finally {
 			lobecorp$copyDepth--;
 		}

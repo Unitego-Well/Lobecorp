@@ -32,6 +32,12 @@ public interface AnimationTrackUIStateAccessor {
 	@Accessor("selectedProperty")
 	public AnimatedProperty lobecorp$getSelectedProperty();
 
+	@Accessor("selectedProperty")
+	public void lobecorp$setSelectedProperty(AnimatedProperty property);
+
+	@Accessor("expandedProperties")
+	public Set<AnimatedProperty> lobecorp$getExpandedProperties();
+
 	@Accessor("selectedStop")
 	public ColorAnimatedProperty.ColorKey lobecorp$getSelectedStop();
 

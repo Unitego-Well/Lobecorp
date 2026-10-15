@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /// 单次技能施放的可变运行状态。
-/// 实例由 {@link EntitySkillAccess} 能力实现创建并存放在实体的非持久化运行态附件中；
+/// 实例由 [IEntitySkillAccess] 能力实现创建并存放在实体的非持久化运行态附件中；
 /// 技能实现可以使用目标、计划位移、成功标记和阶段计时保存本次施放数据。
 public final class EntitySkillRuntime<T extends LivingEntity> {
 	private final long id;
@@ -40,7 +40,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	/// @param owner     本次施放的实体拥有者
 	/// @param skill     正在运行的技能定义
 	/// @param state     初始生命周期阶段
-	/// @param ticksLeft 初始阶段剩余 tick；持续阶段可使用 {@code -1} 表示无限
+	/// @param ticksLeft 初始阶段剩余 tick；持续阶段可使用 `-1` 表示无限
 	public EntitySkillRuntime(T owner, IEntitySkill<T> skill, SkillState state, int ticksLeft) {
 		this(0L, owner, skill, state, ticksLeft);
 	}
@@ -71,14 +71,15 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 
 	/// 执行技能定义的额外施放条件检查。
 	///
-	/// @return {@link IEntitySkill#canUse} 的检查结果
+	/// @return [IEntitySkill#canUse] 的检查结果
 	public boolean canUse() {
 		return skill.canUse(owner, this);
 	}
 
 	public void onWindupStart() {
-		if (skill instanceof MultiStageSkill<?> multiStage)
+		if (skill instanceof MultiStageSkill<?> multiStage) {
 			multiStage.beginStage(this);
+		}
 		EntitySkillDebugUtil.log(this, "windup-start");
 		sync(EntitySkillSyncPayload.Callback.WINDUP_START);
 		skill.onWindupStart(owner, this);
@@ -227,12 +228,12 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 
 	/// 锁定本次施放使用的目标，避免 Sensor 更新时切换目标。
 	///
-	/// @param target 本次施放目标；{@code null} 表示清除目标
+	/// @param target 本次施放目标；`null` 表示清除目标
 	public void setTarget(@Nullable Entity target) {
 		this.target = target;
 	}
 
-	/// @return 当前锁定目标；没有目标时返回 {@code null}
+	/// @return 当前锁定目标；没有目标时返回 `null`
 	@Nullable
 	public Entity target() {
 		return target;
@@ -241,7 +242,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	/// 按期望类型获取当前目标。
 	///
 	/// @param targetType 目标实体类型
-	/// @return 目标类型匹配时返回目标，否则返回 {@code null}
+	/// @return 目标类型匹配时返回目标，否则返回 `null`
 	@Nullable
 	public <E extends Entity> E target(Class<E> targetType) {
 		return targetType.isInstance(target) ? targetType.cast(target) : null;
@@ -252,7 +253,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 		this.targetPosition = targetPosition;
 	}
 
-	/// @return 本次施放使用的坐标目标；未指定时返回 {@code null}
+	/// @return 本次施放使用的坐标目标；未指定时返回 `null`
 	@Nullable
 	public Vec3 targetPosition() {
 		return targetPosition;
@@ -260,12 +261,12 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 
 	/// 设置技能预先计算的位移向量。
 	///
-	/// @param plannedMovement 计划位移；{@code null} 表示清除
+	/// @param plannedMovement 计划位移；`null` 表示清除
 	public void setPlannedMovement(@Nullable Vec3 plannedMovement) {
 		this.plannedMovement = plannedMovement;
 	}
 
-	/// @return 当前计划位移；未设置时返回 {@code null}
+	/// @return 当前计划位移；未设置时返回 `null`
 	@Nullable
 	public Vec3 plannedMovement() {
 		return plannedMovement;
@@ -284,7 +285,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	///
 	/// @param key 数据键
 	/// @param <V> 数据类型
-	/// @return 已保存的值；未设置时返回 {@code null}
+	/// @return 已保存的值；未设置时返回 `null`
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <V> V getData(TypedDataKey<V> key) {
@@ -295,7 +296,7 @@ public final class EntitySkillRuntime<T extends LivingEntity> {
 	///
 	/// @param key 数据键
 	/// @param <V> 数据类型
-	/// @return 被移除的值；未设置时返回 {@code null}
+	/// @return 被移除的值；未设置时返回 `null`
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <V> V removeData(TypedDataKey<V> key) {

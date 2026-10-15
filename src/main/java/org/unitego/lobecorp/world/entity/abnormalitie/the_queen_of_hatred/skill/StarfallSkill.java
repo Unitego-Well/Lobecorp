@@ -32,11 +32,13 @@ public class StarfallSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		Vec3 position = QueenSkillUtil.primaryPosition(queen, runtime, RANGE);
-		if (position == null)
+		if (position == null) {
 			return;
+		}
 		EntitySkillEffectManager.add(new QueenStarfallEffect(level, position, queen, queen.isPhaseTwo()));
 		QueenMagicCircleParticleOptions.send(level, position, RADIUS, EFFECT_TICKS, false);
 		runtime.markSuccessful();

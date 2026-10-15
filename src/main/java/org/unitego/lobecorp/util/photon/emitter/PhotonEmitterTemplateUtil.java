@@ -18,52 +18,58 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * 从项目子树或完整 FX 定义构造隔离实例，并携带异步递归检测路径。
- */
+/// 从项目子树或完整 FX 定义构造隔离实例，并携带异步递归检测路径。
 public class PhotonEmitterTemplateUtil {
 	@Nullable
 	public static SpawnTemplate create(PhotonEmitterSpawner owner) {
 		var scope = owner.templateScope();
+
 		if (owner.config.source == PhotonEmitterSpawnConfig.Source.FX) {
 			return createFx(owner);
 		}
 
 		var reference = owner.config.template.getTransform(scope);
+
 		if (reference == null || !(reference.sceneObject() instanceof Emitter target) || target == owner) {
 			owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_MISSING_TEMPLATE);
 			return null;
 		}
 
 		var path = descend(owner, "project:" + target.id());
+
 		if (path == null) {
 			return null;
 		}
 
 		var copies = copySubtree(target.transform(), owner.config.includeChildren, owner);
+
 		if (copies == null) {
 			return null;
 		}
 
 		copies.getFirst().transform()._setInternalParentID(FXRuntime.ROOT_UUID);
 		copies.getFirst().transform().localPosition(new Vector3f());
+		PhotonEmitterAnimationUtil.include(scope, copies);
 		return new SpawnTemplate(new FXRuntime(new FXData(copies)), path, scope);
 	}
 
 	@Nullable
 	private static SpawnTemplate createFx(PhotonEmitterSpawner owner) {
 		var location = owner.config.fxLocation;
+
 		if (location == null) {
 			owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_MISSING_FX);
 			return null;
 		}
 
 		var path = descend(owner, "fx:" + location);
+
 		if (path == null) {
 			return null;
 		}
 
 		var fx = FXHelper.getFX(location);
+
 		if (fx == null) {
 			owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_MISSING_FX);
 			return null;
@@ -81,6 +87,7 @@ public class PhotonEmitterTemplateUtil {
 	@Nullable
 	private static Set<String> descend(PhotonEmitterSpawner owner, String source) {
 		var path = owner.sourcePath();
+
 		if (path.contains(source) || path.size() >= Math.clamp(owner.config.maxDepth, 1, PhotonEmitterSpawnConfig.DEFAULT_MAX_DEPTH)) {
 			owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_RECURSIVE);
 			return null;
@@ -97,8 +104,10 @@ public class PhotonEmitterTemplateUtil {
 		var pending = new ArrayDeque<Transform>();
 		var visited = new HashSet<Transform>();
 		pending.add(source);
+
 		while (!pending.isEmpty()) {
 			var next = pending.removeFirst();
+
 			if (!visited.add(next) || copies.size() >= PhotonEmitterSpawnConfig.MAX_TEMPLATE_OBJECTS
 					|| next.sceneObject() == owner || !(next.sceneObject() instanceof IFXObject object)) {
 				owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_RECURSIVE);
@@ -106,6 +115,7 @@ public class PhotonEmitterTemplateUtil {
 			}
 
 			var copy = object.copy(true);
+
 			if (copy == null) {
 				owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_INVALID);
 				return null;
@@ -114,11 +124,14 @@ public class PhotonEmitterTemplateUtil {
 			if (!children) {
 				copy.transform()._setInternalChildID(new ArrayList<>());
 			}
+
 			copies.add(copy);
+
 			if (children) {
 				pending.addAll(next.children());
 			}
 		}
+
 		return copies;
 	}
 

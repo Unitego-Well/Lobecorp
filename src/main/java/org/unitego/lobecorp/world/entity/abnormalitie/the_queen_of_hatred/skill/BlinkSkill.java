@@ -64,8 +64,9 @@ public class BlinkSkill extends EntitySkill<TheQueenOfHatred> {
 	public void onTick(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		queen.restoreSkillFacing();
 		Vec3 movement = runtime.plannedMovement();
-		if (movement == null)
+		if (movement == null) {
 			return;
+		}
 		Vec3 before = queen.position();
 		queen.setDeltaMovement(Vec3.ZERO);
 		queen.move(MoverType.SELF, movement.add(0.0, -GROUND_CONTACT_OFFSET, 0.0));

@@ -10,11 +10,10 @@ import org.unitego.lobecorp.registry.LcAttachmentTypes;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
-public record HitboxCreatePayload(HitboxSnapshot snapshot) implements ToClientPayload {
+public record HitboxCreatePayload(HitboxSnapshot snapshot) implements IToClientPayload {
 	/// 判断框创建载荷类型。
 	public static final CustomPacketPayload.Type<HitboxCreatePayload> TYPE =
 			new CustomPacketPayload.Type<>(id("hitbox_create"));
-	/// 判断框创建载荷编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxCreatePayload> STREAM_CODEC =
 			HitboxSnapshot.STREAM_CODEC.map(HitboxCreatePayload::new, HitboxCreatePayload::snapshot);
 

@@ -28,18 +28,23 @@ import java.util.Comparator;
 
 /// 指挥家声波的服务端前摇、命中框和生命周期控制。
 public final class ConductorSonicBoom {
+	/// 声波判断框当前运行实例保存的发射方向。
 	private static final TypedDataKey<Vec3> DIRECTION = TypedDataKey.create();
+	/// 当前技能使用的共享判断框模板。
 	private static final HitboxTemplate HITBOX = new HitboxTemplate(new BoxSize(0.0, 0.0, 0.0),
 			target -> target instanceof LivingEntity,
 			context -> {
-				if (!(context.source() instanceof Warden warden) || !(context.target() instanceof LivingEntity target))
+				if (!(context.source() instanceof Warden warden) || !(context.target() instanceof LivingEntity target)) {
 					return false;
+				}
 				if (!target.hurtServer(context.level(), warden.damageSources().sonicBoom(warden),
-						(float) ConductorRules.WARDEN_SONIC_BOOM_DAMAGE))
+						(float) ConductorRules.WARDEN_SONIC_BOOM_DAMAGE)) {
 					return false;
+				}
 				Vec3 direction = context.instance().getData(DIRECTION);
-				if (direction == null)
+				if (direction == null) {
 					return true;
+				}
 				double resistance = 1.0 - target.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
 				target.push(direction.x * ConductorRules.WARDEN_SONIC_KNOCKBACK_HORIZONTAL * resistance,
 						direction.y * ConductorRules.WARDEN_SONIC_KNOCKBACK_VERTICAL * resistance,
@@ -58,14 +63,16 @@ public final class ConductorSonicBoom {
 		Vec3 start = origin(mob);
 		Vec3 direction = requested.subtract(start);
 		if (requested.distanceToSqr(mob.position()) <= ConductorRules.FORMATION_DIRECTION_EPSILON
-				|| direction.lengthSqr() <= ConductorRules.FORMATION_DIRECTION_EPSILON)
+				|| direction.lengthSqr() <= ConductorRules.FORMATION_DIRECTION_EPSILON) {
 			direction = mob.getLookAngle();
+		}
 		direction = direction.normalize();
 		double horizontal = direction.horizontalDistance();
 		double length = horizontal > ConductorRules.FORMATION_DIRECTION_EPSILON
 				? ConductorRules.WARDEN_SONIC_BOOM_HORIZONTAL_RANGE / horizontal : Double.POSITIVE_INFINITY;
-		if (Math.abs(direction.y) > ConductorRules.FORMATION_DIRECTION_EPSILON)
+		if (Math.abs(direction.y) > ConductorRules.FORMATION_DIRECTION_EPSILON) {
 			length = Math.min(length, ConductorRules.WARDEN_SONIC_BOOM_VERTICAL_RANGE / Math.abs(direction.y));
+		}
 		return start.add(direction.scale(length));
 	}
 
@@ -74,8 +81,9 @@ public final class ConductorSonicBoom {
 	}
 
 	public static boolean start(Warden mob, Vec3 position) {
-		if (!(mob.level() instanceof ServerLevel level) || active(mob))
+		if (!(mob.level() instanceof ServerLevel level) || active(mob)) {
 			return false;
+		}
 		Vec3 offset = endpoint(mob, position).subtract(origin(mob));
 		mob.getBrain().stopAll(level, mob);
 		mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
@@ -89,8 +97,9 @@ public final class ConductorSonicBoom {
 	}
 
 	public static void cancel(Mob mob) {
-		if (!(mob instanceof Warden warden) || ConductorUnitRuntime.get(warden).sonic == null)
+		if (!(mob instanceof Warden warden) || ConductorUnitRuntime.get(warden).sonic == null) {
 			return;
+		}
 		ConductorUnitRuntime.get(warden).sonic = null;
 		warden.getBrain().eraseMemory(MemoryModuleType.SONIC_BOOM_SOUND_DELAY);
 		warden.getBrain().eraseMemory(MemoryModuleType.SONIC_BOOM_SOUND_COOLDOWN);
@@ -99,8 +108,9 @@ public final class ConductorSonicBoom {
 
 	public static void tick(Warden mob, ServerLevel level) {
 		Cast cast = ConductorUnitRuntime.get(mob).sonic;
-		if (cast == null)
+		if (cast == null) {
 			return;
+		}
 		mob.getNavigation().stop();
 		mob.getMoveControl().setWait();
 		mob.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
@@ -110,10 +120,12 @@ public final class ConductorSonicBoom {
 		mob.setYBodyRot(yaw);
 		mob.setYHeadRot(yaw);
 		long elapsed = level.getGameTime() - cast.started();
-		if (elapsed == ConductorRules.WARDEN_SONIC_WINDUP_TICKS)
+		if (elapsed == ConductorRules.WARDEN_SONIC_WINDUP_TICKS) {
 			fire(mob, level, cast);
-		if (elapsed >= ConductorRules.WARDEN_SONIC_DURATION_TICKS)
+		}
+		if (elapsed >= ConductorRules.WARDEN_SONIC_DURATION_TICKS) {
 			cancel(mob);
+		}
 	}
 
 	private static void fire(Warden mob, ServerLevel level, Cast cast) {
@@ -145,6 +157,7 @@ public final class ConductorSonicBoom {
 			Vec3 point = start.add(cast.direction().scale(step));
 			level.sendParticles(ParticleTypes.SONIC_BOOM, point.x, point.y, point.z, 1, 0.0, 0.0, 0.0, 0.0);
 		}
+
 		mob.playSound(SoundEvents.WARDEN_SONIC_BOOM, ConductorRules.WARDEN_SONIC_VOLUME, ConductorRules.WARDEN_SONIC_PITCH);
 	}
 

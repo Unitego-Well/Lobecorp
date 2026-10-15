@@ -132,6 +132,7 @@ public final class TheQueenOfHatredAi {
 	private static final int IDLE_LOOK_DIRECTION_WEIGHT = 3;
 	/// 停止行为在 RunOne 中的选择权重。
 	private static final int IDLE_STOP_WEIGHT = 10;
+	/// 憎恶皇后的 Brain 记忆与 Sensor 配置。
 	private static final Brain.Provider<TheQueenOfHatred> BRAIN_PROVIDER =
 			BrainUtil.provider(TheQueenOfHatredAi::getActivities)
 					.addMemoryTypes(
@@ -171,7 +172,7 @@ public final class TheQueenOfHatredAi {
 						new MoveToTargetSink()
 				)),
 				ActivityData.create(Activity.IDLE, IDLE_ACTIVITY_PRIORITY, ImmutableList.of(
-						StartAttacking.create((level, queen) -> queen.getBrain()
+						StartAttacking.create((_, queen) -> queen.getBrain()
 								.getMemory(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
 								.orElse(NearestVisibleLivingEntities.empty())
 								.findClosest(queen::isHatedTarget)),
@@ -193,21 +194,24 @@ public final class TheQueenOfHatredAi {
 	private static OneShot<TheQueenOfHatred> performCombatSkill() {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.present(MemoryModuleType.ATTACK_TARGET)
-		).apply(instance, target -> (level, queen, time) -> {
+		).apply(instance, target -> (level, queen, _) -> {
 			queen.cancelConductorSitting();
 			if (EntitySkillUtil.require(queen).activeSkills().stream().anyMatch(runtime -> !runtime.isInterruptibleBySkill())) {
 				return false;
 			}
+
 			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			queen.getNavigation().stop();
 			LivingEntity attackTarget = instance.get(target);
 			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.PURIFICATION.get())) {
 				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.PURIFICATION.get()).started();
 			}
+
 			if (!queen.hasEffect(LcMobEffects.QUEEN_DAMAGE_REDUCTION)
 					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.DAMAGE_REDUCTION.get())) {
 				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.DAMAGE_REDUCTION.get()).started();
 			}
+
 			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.CONVERGENT.get())
 					&& level.getEntitiesOfClass(LivingEntity.class, queen.getBoundingBox().inflate(ConvergentSkill.PULL_RADIUS),
 							candidate -> candidate.isAlive() && queen.isHatedTarget(candidate) && queen.hasLineOfSight(candidate)
@@ -215,6 +219,7 @@ public final class TheQueenOfHatredAi {
 					.size() >= CONVERGENT_TARGET_COUNT) {
 				return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.CONVERGENT.get()).started();
 			}
+
 			if (queen.distanceTo(attackTarget) <= SWEEP_SELECTION_RANGE) {
 				boolean spinAvailable = !EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.SPIN.get());
 				if (spinAvailable && level.getEntitiesOfClass(LivingEntity.class,
@@ -224,46 +229,57 @@ public final class TheQueenOfHatredAi {
 						.size() >= SPIN_DEFENSE_TARGET_COUNT) {
 					return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.SPIN.get()).started();
 				}
+
 				if (!EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.SWEEP.get())) {
 					return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 							TheQueenOfHatredSkills.SWEEP.get(), attackTarget, null)).started();
 				}
+
 				if (spinAvailable) {
 					return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.SPIN.get()).started();
 				}
+
 				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 						TheQueenOfHatredSkills.ATTACK.get(), attackTarget, null)).started();
 			}
+
 			for (var skill : List.of(TheQueenOfHatredSkills.MARK.get(), TheQueenOfHatredSkills.SLOWNESS.get(),
 					TheQueenOfHatredSkills.PILLAR_OF_LIGHT.get(), TheQueenOfHatredSkills.STARFALL.get(), TheQueenOfHatredSkills.LASER.get())) {
 				if (EntitySkillUtil.canCast(queen, skill)) {
 					return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(skill, attackTarget, null)).started();
 				}
 			}
+
 			if (queen.distanceToSqr(attackTarget) <= StarBeamSkill.RANGE * StarBeamSkill.RANGE
 					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.STAR_BEAM.get())) {
 				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 						TheQueenOfHatredSkills.STAR_BEAM.get(), attackTarget, null)).started();
 			}
+
 			if (queen.distanceToSqr(attackTarget) <= RefractionSkill.range() * RefractionSkill.range()
 					&& EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.REFRACTION.get())) {
 				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 						TheQueenOfHatredSkills.REFRACTION.get(), attackTarget, null)).started();
 			}
+
 			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.DASH.get())) {
 				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 						TheQueenOfHatredSkills.DASH.get(), attackTarget, null)).started();
 			}
+
 			if (EntitySkillUtil.canCast(queen, TheQueenOfHatredSkills.BLINK.get())) {
 				return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 						TheQueenOfHatredSkills.BLINK.get(), attackTarget, null)).started();
 			}
+
 			if (!EntitySkillUtil.isOnCooldown(queen, TheQueenOfHatredSkills.TELEPORT.get())) {
 				Vec3 destination = teleportDestination(queen, attackTarget);
-				if (destination != null)
+				if (destination != null) {
 					return EntitySkillUtil.cast(queen, new EntitySkillCastRequest<>(
 							TheQueenOfHatredSkills.TELEPORT.get(), null, destination)).started();
+				}
 			}
+
 			return EntitySkillUtil.cast(queen, TheQueenOfHatredSkills.REPEL.get()).started();
 		}));
 	}
@@ -271,28 +287,32 @@ public final class TheQueenOfHatredAi {
 	@Nullable
 	private static Vec3 teleportDestination(TheQueenOfHatred queen, LivingEntity target) {
 		Vec3 offset = queen.position().subtract(target.position()).multiply(1.0, 0.0, 1.0).normalize();
-		if (offset.lengthSqr() == 0.0)
+		if (offset.lengthSqr() == 0.0) {
 			offset = Vec3.directionFromRotation(0.0F, queen.getYRot());
+		}
 		for (int direction = 0; direction < TELEPORT_DESTINATION_DIRECTIONS; direction++) {
 			Vec3 horizontal = offset.yRot((float) (direction * Math.TAU / TELEPORT_DESTINATION_DIRECTIONS))
 					.scale(TELEPORT_TARGET_OFFSET);
 			for (int height = -TELEPORT_VERTICAL_SEARCH_DISTANCE; height <= TELEPORT_VERTICAL_SEARCH_DISTANCE; height++) {
 				Vec3 destination = target.position().add(horizontal).add(0.0, height, 0.0);
-				if (TeleportSkill.isSafeDestination(queen, destination))
+				if (TeleportSkill.isSafeDestination(queen, destination)) {
 					return destination;
+				}
 			}
 		}
+
 		return null;
 	}
 
 	private static OneShot<TheQueenOfHatred> walkToRandomDestination() {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.absent(MemoryModuleType.WALK_TARGET)
-		).apply(instance, walkTarget -> (level, queen, time) -> {
+		).apply(instance, walkTarget -> (_, queen, _) -> {
 			if (queen.isSittingOrFadingOut() || queen.ai().isApproachingSittingEdge()
 					|| queen.ai().idleAnimationEndGameTime != 0 || !queen.ai().canStartIdleStroll(queen)) {
 				return false;
 			}
+
 			Vec3 destination = null;
 			for (int attempt = 0; attempt < IDLE_STROLL_DESTINATION_ATTEMPTS; attempt++) {
 				Vec3 candidate = LandRandomPos.getPos(
@@ -300,6 +320,7 @@ public final class TheQueenOfHatredAi {
 				if (candidate == null) {
 					continue;
 				}
+
 				double distanceSquared = queen.position().subtract(candidate).horizontalDistanceSqr();
 				if (distanceSquared >= MINIMUM_IDLE_STROLL_DISTANCE_SQUARED
 						&& distanceSquared <= MAXIMUM_IDLE_STROLL_DISTANCE_SQUARED) {
@@ -307,9 +328,11 @@ public final class TheQueenOfHatredAi {
 					break;
 				}
 			}
+
 			if (destination == null) {
 				return false;
 			}
+
 			walkTarget.set(new WalkTarget(destination, IDLE_STROLL_SPEED, 0));
 			queen.ai().delayNextIdleStroll(queen);
 			return true;
@@ -320,13 +343,14 @@ public final class TheQueenOfHatredAi {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.absent(MemoryModuleType.LOOK_TARGET),
 				instance.present(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
-		).apply(instance, (lookTarget, nearestEntities) -> (level, queen, time) -> {
+		).apply(instance, (lookTarget, nearestEntities) -> (_, queen, _) -> {
 			List<LivingEntity> candidates = instance.get(nearestEntities)
 					.find(candidate -> candidate != queen && candidate.isAlive())
 					.toList();
 			if (candidates.isEmpty()) {
 				return false;
 			}
+
 			LivingEntity target = candidates.get(queen.getRandom().nextInt(candidates.size()));
 			int duration = Mth.nextInt(queen.getRandom(), MINIMUM_IDLE_LOOK_TICKS, MAXIMUM_IDLE_LOOK_TICKS);
 			lookTarget.setWithExpiry(new EntityTracker(target, true), duration);
@@ -337,7 +361,7 @@ public final class TheQueenOfHatredAi {
 	private static OneShot<TheQueenOfHatred> lookInRandomDirection() {
 		return BehaviorBuilder.create(instance -> instance.group(
 				instance.absent(MemoryModuleType.LOOK_TARGET)
-		).apply(instance, lookTarget -> (level, queen, time) -> {
+		).apply(instance, lookTarget -> (_, queen, _) -> {
 			float pitch = Mth.nextFloat(queen.getRandom(),
 					RANDOM_LOOK_MINIMUM_PITCH, RANDOM_LOOK_MAXIMUM_PITCH);
 			float yaw = Mth.wrapDegrees(queen.getYRot()
@@ -375,6 +399,7 @@ public final class TheQueenOfHatredAi {
 		if (!queen.onGround() || queen.isOnFire()) {
 			return SittingGround.UNSAFE;
 		}
+
 		return getSittingGround(queen, queen.getBoundingBox());
 	}
 
@@ -389,33 +414,39 @@ public final class TheQueenOfHatredAi {
 		int unsupportedBlocks = 0;
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {
-				BlockPos supportPos = new BlockPos(x, supportY, z);
+				var supportPos = new BlockPos(x, supportY, z);
 				BlockState supportState = queen.level().getBlockState(supportPos);
 				if (!supportState.getFluidState().isEmpty()
 						|| supportState.is(BlockTags.FIRE)
 						|| supportState.is(Blocks.LAVA)) {
 					return SittingGround.UNSAFE;
 				}
+
 				VoxelShape shape = supportState.getCollisionShape(queen.level(), supportPos);
 				if (!supportState.isFaceSturdy(queen.level(), supportPos, Direction.UP)) {
 					if (!shape.isEmpty()) {
 						return SittingGround.UNSAFE;
 					}
+
 					unsupportedBlocks++;
 					continue;
 				}
+
 				double top = supportPos.getY() + shape.max(Direction.Axis.Y);
 				if (Double.isNaN(supportTop)) {
 					supportTop = top;
 				} else if (Math.abs(supportTop - top) > GROUND_CHECK_EPSILON) {
 					return SittingGround.UNSAFE;
 				}
+
 				supportedBlocks++;
 			}
 		}
+
 		if (supportedBlocks == 0 || Math.abs(supportTop - bounds.minY) > GROUND_CHECK_EPSILON) {
 			return SittingGround.UNSAFE;
 		}
+
 		for (BlockPos blockPos : BlockPos.betweenClosed(
 				Mth.floor(bounds.minX), Mth.floor(bounds.minY), Mth.floor(bounds.minZ),
 				Mth.floor(bounds.maxX - GROUND_CHECK_EPSILON),
@@ -426,6 +457,7 @@ public final class TheQueenOfHatredAi {
 				return SittingGround.UNSAFE;
 			}
 		}
+
 		return unsupportedBlocks == 0 ? SittingGround.FLAT : SittingGround.EDGE;
 	}
 
@@ -440,7 +472,7 @@ public final class TheQueenOfHatredAi {
 		double edgeDirectionZ = 0.0D;
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {
-				BlockPos supportPos = new BlockPos(x, supportY, z);
+				var supportPos = new BlockPos(x, supportY, z);
 				BlockState supportState = queen.level().getBlockState(supportPos);
 				if (supportState.getCollisionShape(queen.level(), supportPos).isEmpty()) {
 					edgeDirectionX += x + 0.5D - queen.getX();
@@ -448,6 +480,7 @@ public final class TheQueenOfHatredAi {
 				}
 			}
 		}
+
 		return edgeDirectionX == 0.0D && edgeDirectionZ == 0.0D
 				? queen.getYRot()
 				: Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(-edgeDirectionX, edgeDirectionZ)));
@@ -484,7 +517,8 @@ public final class TheQueenOfHatredAi {
 						> MAXIMUM_IDLE_STROLL_DISTANCE_SQUARED) {
 					continue;
 				}
-				BlockPos supportPos = new BlockPos(x, supportY, z);
+
+				var supportPos = new BlockPos(x, supportY, z);
 				BlockState supportState = queen.level().getBlockState(supportPos);
 				if (!supportState.isFaceSturdy(queen.level(), supportPos, Direction.UP)
 						|| !supportState.getFluidState().isEmpty()
@@ -494,6 +528,7 @@ public final class TheQueenOfHatredAi {
 						.max(Direction.Axis.Y) - supportTop) > GROUND_CHECK_EPSILON) {
 					continue;
 				}
+
 				for (Direction direction : Direction.Plane.HORIZONTAL) {
 					BlockPos neighborPos = supportPos.relative(direction);
 					BlockState neighborState = queen.level().getBlockState(neighborPos);
@@ -503,6 +538,7 @@ public final class TheQueenOfHatredAi {
 							|| neighborState.is(Blocks.LAVA)) {
 						continue;
 					}
+
 					double edgeX = x + 0.5D + direction.getStepX()
 							* (0.5D - queen.getBbWidth() * 0.5D + SITTING_EDGE_OVERHANG);
 					double edgeZ = z + 0.5D + direction.getStepZ()
@@ -512,6 +548,7 @@ public final class TheQueenOfHatredAi {
 							|| !queen.level().noCollision(queen, edgeBounds)) {
 						continue;
 					}
+
 					BlockPos pathTarget = supportPos.above(Mth.floor(supportTop) - supportY);
 					float facingYaw = Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(
 							-direction.getStepX(), direction.getStepZ())));
@@ -520,19 +557,23 @@ public final class TheQueenOfHatredAi {
 				}
 			}
 		}
+
 		if (edgeApproachTargets.isEmpty()) {
 			return false;
 		}
+
 		Path path = queen.getNavigation().createPath(edgeApproachTargets.keySet(), 0);
 		if (path == null || !path.canReach()) {
 			return false;
 		}
+
 		sittingEdgePathTarget = path.getTarget();
 		SittingEdgeApproachTarget approachTarget = edgeApproachTargets.get(sittingEdgePathTarget);
 		if (approachTarget == null) {
 			sittingEdgePathTarget = null;
 			return false;
 		}
+
 		sittingEdgeApproachTarget = approachTarget.position();
 		sittingEdgeFacingYaw = approachTarget.facingYaw();
 		hasSittingEdgeFacingYaw = true;
@@ -546,26 +587,32 @@ public final class TheQueenOfHatredAi {
 		if (sittingEdgeApproachTarget == null) {
 			return false;
 		}
+
 		if (!sittingEdgeApproachingDirectly) {
 			if (!queen.getNavigation().isDone()) {
 				return true;
 			}
+
 			Vec3 pathTargetPosition = Vec3.atBottomCenterOf(sittingEdgePathTarget);
 			if (queen.position().distanceToSqr(pathTargetPosition) > 0.25D) {
 				if (queen.getBrain().hasMemoryValue(MemoryModuleType.WALK_TARGET)) {
 					return true;
 				}
+
 				cancelSittingEdgeApproach(queen);
 				return false;
 			}
+
 			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			queen.getNavigation().stop();
 			sittingEdgeApproachingDirectly = true;
 		}
+
 		if (!queen.onGround()) {
 			cancelSittingEdgeApproach(queen);
 			return false;
 		}
+
 		queen.getMoveControl().setWantedPosition(sittingEdgeApproachTarget.x, queen.getY(),
 				sittingEdgeApproachTarget.z, sittingEdgeApproachSpeedModifier);
 		return true;
@@ -575,6 +622,7 @@ public final class TheQueenOfHatredAi {
 		if (!isApproachingSittingEdge()) {
 			return;
 		}
+
 		sittingEdgePathTarget = null;
 		sittingEdgeApproachTarget = null;
 		sittingEdgeApproachSpeedModifier = 0.0F;
@@ -582,6 +630,7 @@ public final class TheQueenOfHatredAi {
 		if (!sittingEdgeFacingLocked) {
 			hasSittingEdgeFacingYaw = false;
 		}
+
 		queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 		queen.getNavigation().stop();
 		queen.getMoveControl().setWait();
@@ -617,6 +666,7 @@ public final class TheQueenOfHatredAi {
 			sittingFadeOutEndGameTime = gameTime + TheQueenOfHatred.SITTING_FADE_OUT_TICKS;
 			return false;
 		}
+
 		if (queen.isSittingFadeOut() && gameTime >= sittingFadeOutEndGameTime) {
 			queen.removeEntityState(TheQueenOfHatredStates.SITTING_FADE_OUT);
 			queen.removeEntityState(TheQueenOfHatredStates.SITTING_EDGE_FADE_OUT);
@@ -626,6 +676,7 @@ public final class TheQueenOfHatredAi {
 			hasSittingEdgeFacingYaw = false;
 			return true;
 		}
+
 		return false;
 	}
 
@@ -636,10 +687,12 @@ public final class TheQueenOfHatredAi {
 			idleAnimationEndGameTime = 0;
 			queen.stopActionAnimation();
 		}
+
 		cancelSittingEdgeApproach(queen);
 		if (!queen.isSittingOrFadingOut()) {
 			return;
 		}
+
 		queen.removeEntityState(TheQueenOfHatredStates.SITTING);
 		queen.removeEntityState(TheQueenOfHatredStates.SITTING_EDGE);
 		queen.removeEntityState(TheQueenOfHatredStates.SITTING_FADE_OUT);
@@ -656,9 +709,11 @@ public final class TheQueenOfHatredAi {
 			cancelSitting(queen);
 			cancelSittingEdgeApproach(queen);
 		}
+
 		if (queen.isSittingOrFadingOut() && !queen.getNavigation().isDone()) {
 			cancelSitting(queen);
 		}
+
 		if (queen.isSittingOrFadingOut()) {
 			queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			queen.getNavigation().stop();
@@ -671,6 +726,7 @@ public final class TheQueenOfHatredAi {
 			cancelSitting(queen);
 			return;
 		}
+
 		if (idleAnimationEndGameTime != 0) {
 			if (gameTime >= idleAnimationEndGameTime) {
 				idleAnimationEndGameTime = 0;
@@ -678,17 +734,21 @@ public final class TheQueenOfHatredAi {
 				scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 						MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			}
+
 			return;
 		}
+
 		if (tickSitting(queen, gameTime)) {
 			scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			return;
 		}
+
 		if (queen.isSittingOrFadingOut()
 				|| queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
 			return;
 		}
+
 		if (isApproachingSittingEdge()) {
 			if (getSittingGround(queen) == SittingGround.EDGE) {
 				startSitting(queen, Mth.nextInt(queen.getRandom(),
@@ -697,22 +757,27 @@ public final class TheQueenOfHatredAi {
 				scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 						MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			}
+
 			return;
 		}
+
 		if (nextIdleActionGameTime() == 0) {
 			scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			return;
 		}
+
 		if (gameTime < nextIdleActionGameTime()) {
 			return;
 		}
+
 		SittingGround sittingGround = getSittingGround(queen);
 		if (sittingGround == SittingGround.UNSAFE) {
 			scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 			return;
 		}
+
 		IdleAction[] actions = IdleAction.values();
 		IdleAction action = actions[queen.getRandom().nextInt(actions.length)];
 		if (action != IdleAction.SIT) {
@@ -723,14 +788,17 @@ public final class TheQueenOfHatredAi {
 			idleAnimationEndGameTime = gameTime + (action == IdleAction.REST ? REST_DURATION_TICKS : TOSS_DURATION_TICKS);
 			return;
 		}
+
 		if (sittingGround == SittingGround.EDGE) {
 			startSitting(queen, Mth.nextInt(queen.getRandom(),
 					MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS), true);
 			return;
 		}
+
 		if (tryApproachNearbySittingEdge(queen)) {
 			return;
 		}
+
 		startSitting(queen, Mth.nextInt(queen.getRandom(),
 						MINIMUM_SITTING_DURATION_TICKS, MAXIMUM_SITTING_DURATION_TICKS),
 				false);

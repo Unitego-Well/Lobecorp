@@ -7,10 +7,13 @@ package org.unitego.lobecorp.world.hitbox.geometry;
 /// @param depth     外深
 /// @param thickness 四周边框厚度
 public record BoxRingCylinderSize(double width, double height, double depth, double thickness)
-		implements HitboxSize {
+		implements IHitboxSize {
+	/// 矩形环柱尺寸小于零时的错误说明。
+	private static final String NEGATIVE_SIZE_MESSAGE = "box ring cylinder size must not be negative";
+
 	public BoxRingCylinderSize {
 		if (width < 0.0 || height < 0.0 || depth < 0.0 || thickness < 0.0) {
-			throw new IllegalArgumentException("box ring cylinder size must not be negative");
+			throw new IllegalArgumentException(NEGATIVE_SIZE_MESSAGE);
 		}
 	}
 

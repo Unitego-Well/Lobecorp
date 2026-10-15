@@ -38,17 +38,21 @@ public class EntityPurificationUtil {
 				return true;
 			}
 		}
+
 		for (Holder.Reference<Attribute> attribute : BuiltInRegistries.ATTRIBUTE.listElements().toList()) {
 			AttributeInstance instance = entity.getAttribute(attribute);
+
 			if (instance == null) {
 				continue;
 			}
+
 			for (AttributeModifier modifier : instance.getModifiers()) {
 				if (isDetrimental(attribute.value(), modifier)) {
 					return true;
 				}
 			}
 		}
+
 		return false;
 	}
 
@@ -63,9 +67,11 @@ public class EntityPurificationUtil {
 	private static void removeDetrimentalAttributeModifiers(LivingEntity entity) {
 		for (Holder.Reference<Attribute> attribute : BuiltInRegistries.ATTRIBUTE.listElements().toList()) {
 			AttributeInstance instance = entity.getAttribute(attribute);
+
 			if (instance == null) {
 				continue;
 			}
+
 			for (AttributeModifier modifier : instance.getModifiers()) {
 				if (isDetrimental(attribute.value(), modifier)) {
 					instance.removeModifier(modifier);
@@ -78,6 +84,7 @@ public class EntityPurificationUtil {
 		if (modifier.amount() == 0.0) {
 			return false;
 		}
+
 		return attribute.getStyle(modifier.amount() > 0.0) == ChatFormatting.RED;
 	}
 }

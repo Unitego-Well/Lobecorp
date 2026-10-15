@@ -29,6 +29,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
@@ -37,8 +38,10 @@ import org.unitego.lobecorp.conductor.control.ConductorWork;
 import org.unitego.lobecorp.world.entity.IEntityTarget;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillHolder;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.entity.state.EntityState;
-import org.unitego.lobecorp.world.entity.state.EntityStateHolder;
+import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
@@ -48,7 +51,8 @@ import java.util.List;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫
-public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustomAnimatable, IIndigoOrdeal, IEntityTarget, EntityStateHolder {
+public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCustomAnimatable, IIndigoOrdeal,
+		IEntityTarget, IEntityStateHolder, IEntitySkillHolder {
 	// 攻击属性标识
 
 	/// 普通攻击临时伤害倍率属性的唯一标识
@@ -172,7 +176,15 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 			EntityFacingUtil.turn(this, getYRot());
 			return;
 		}
+
 		super.tickHeadTurn(yBodyRotT);
+	}
+
+	/// 飞扑持续阶段不接受移动加速度，沿起跳时锁定的弹道继续运动。
+	@Override
+	public void travel(@NonNull Vec3 input) {
+		var skills = IEntitySkillAccess.get(this);
+		super.travel(skills != null && skills.isActive(SweeperSkills.LEAP.get()) ? Vec3.ZERO : input);
 	}
 
 	@Override
@@ -180,12 +192,14 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		restoreHealthFromBiomass();
 		ProfilerFiller profiler = Profiler.get();
 		profiler.push("sweeperBrain");
-		if (!ConductorWork.active(this))
+		if (!ConductorWork.active(this)) {
 			getBrain().tick(level, this);
+		}
 		profiler.pop();
 		profiler.push("sweeperActivityUpdate");
-		if (!ConductorWork.active(this))
+		if (!ConductorWork.active(this)) {
 			ai.updateActivity();
+		}
 		profiler.pop();
 		super.customServerAiStep(level);
 	}
@@ -196,6 +210,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 			super.heal(amount);
 			return;
 		}
+
 		float healthBeforeHealing = getHealth();
 		super.heal(amount);
 		float restoredHealth = getHealth() - healthBeforeHealing;
@@ -221,6 +236,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 				|| level().getGameTime() - lastCombatGameTime < BIOMASS_HEAL_COMBAT_DELAY_TICKS) {
 			return;
 		}
+
 		float restoredHealth = Math.min(Math.min(getMaxHealth() - getHealth(), getBiomass()),
 				getMaxHealth() * BIOMASS_HEAL_MAX_HEALTH_RATIO_PER_SECOND / TICKS_PER_SECOND);
 		setHealth(getHealth() + restoredHealth);
@@ -233,6 +249,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		if (hurt && source.getEntity() instanceof LivingEntity attacker) {
 			trySetAttackTargetFromDamage(attacker);
 		}
+
 		return hurt;
 	}
 
@@ -247,6 +264,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		if (!isValidTarget(attacker) || !ai.onHurt()) {
 			return;
 		}
+
 		getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, attacker);
 		getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 	}
@@ -261,6 +279,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		if (!super.doHurtTarget(level, livingEntityTarget)) {
 			return false;
 		}
+
 		markCombat();
 
 		float inflictedDamage = health - livingEntityTarget.getHealth();
@@ -276,10 +295,12 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 		if (attribute != null) {
 			attribute.addOrUpdateTransientModifier(modifier);
 		}
+
 		boolean result = doHurtTarget(level, target);
 		if (attribute != null) {
 			attribute.removeModifier(ATTACK_MULTIPLIER);
 		}
+
 		return result;
 	}
 
@@ -326,13 +347,14 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 				.blendType(LcControllerBlendType.ADDITIVE)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
 				.build());
-		controllers.add(new LcAnimationControllerBuilder<Sweeper>("action", 2, state -> PlayState.STOP)
+		controllers.add(new LcAnimationControllerBuilder<Sweeper>("action", 2, _ -> PlayState.STOP)
 				.blendType(LcControllerBlendType.OVERRIDE)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
 				.triggerableAnim(SweeperAnim.ATTACK1.name(), SweeperAnim.ATTACK1.getAnimation())
 				.triggerableAnim(SweeperAnim.ATTACK2.name(), SweeperAnim.ATTACK2.getAnimation())
 				.triggerableAnim(SweeperAnim.ATTACK3.name(), SweeperAnim.ATTACK3.getAnimation())
 				.triggerableAnim(SweeperAnim.LEAP.name(), SweeperAnim.LEAP.getAnimation())
+				.triggerableAnim(SweeperAnim.LEAP_FLIGHT.name(), SweeperAnim.LEAP_FLIGHT.getAnimation())
 				.triggerableAnim(SweeperAnim.LEAP2.name(), SweeperAnim.LEAP2.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR1.name(), SweeperAnim.CLEAR1.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR2.name(), SweeperAnim.CLEAR2.getAnimation())
@@ -347,8 +369,10 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, LcCustom
 			if (controller != null) {
 				LcAnimationControllerTransitions.of(controller).lobecorp$setAnimationTransitionMode(
 						animation == SweeperAnim.CLEAR1 || animation == SweeperAnim.CLEAR2 || animation == SweeperAnim.CLEAR3
+								|| animation == SweeperAnim.LEAP || animation == SweeperAnim.LEAP_FLIGHT || animation == SweeperAnim.LEAP2
 								? LcTransitionMode.OVERLAP : LcTransitionMode.SEQUENTIAL);
 			}
+
 			playCustomAnimation("action", animation.name());
 		}
 	}

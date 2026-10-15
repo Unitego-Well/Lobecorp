@@ -3,241 +3,123 @@ package org.unitego.lobecorp.util.photon.editor;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 
-/**
- * 发射器发射器的配置标签、枚举显示和数据生成翻译。
- */
+/// 发射器发射器的配置标签、枚举显示和数据生成翻译。
 public class PhotonEmitterSpawnerTextUtil {
-	/**
-	 * 本扩展编辑器控件与翻译键的统一前缀。
-	 */
+	/// 本扩展编辑器控件与翻译键的统一前缀。
 	public static final String PREFIX = "photon.lobecorp.emitter_spawner.";
-	/**
-	 * 最近一次发射的稳定状态标识，对应翻译键后缀。
-	 */
+	/// 最近一次发射的稳定状态标识，对应翻译键后缀。
 	public static final String STATUS_OK = "ok";
-	/**
-	 * 未找到有效的项目发射器模板。
-	 */
+	/// 未找到有效的项目发射器模板。
 	public static final String STATUS_MISSING_TEMPLATE = "missing_template";
-	/**
-	 * 已保存 FX 资源不可用。
-	 */
+	/// 已保存 FX 资源不可用。
 	public static final String STATUS_MISSING_FX = "missing_fx";
-	/**
-	 * 来源循环或嵌套层数超过配置。
-	 */
+	/// 来源循环或嵌套层数超过配置。
 	public static final String STATUS_RECURSIVE = "recursive";
-	/**
-	 * 数值或模板数据无效。
-	 */
+	/// 数值或模板数据无效。
 	public static final String STATUS_INVALID = "invalid";
-	/**
-	 * 发射实例数量已达到配置上限。
-	 */
+	/// 发射实例数量已达到配置上限。
 	public static final String STATUS_CAPACITY = "capacity";
-	/**
-	 * Lobecorp 粒子分类中的控件开关。
-	 */
+	/// Lobecorp 粒子分类中的控件开关。
 	public static final String FEATURE = "emitter_spawner";
-	/**
-	 * 发射器配置组标题。
-	 */
+	/// 发射器配置组标题。
 	public static final String CONFIG = PREFIX + "config";
-	/**
-	 * 启用。
-	 */
+	/// 启用。
 	public static final String ENABLED = PREFIX + "enabled";
-	/**
-	 * 来源。
-	 */
+	/// 来源。
 	public static final String SOURCE = PREFIX + "source";
-	/**
-	 * 发射器模板。
-	 */
+	/// 发射器模板。
 	public static final String TEMPLATE = PREFIX + "template";
-	/**
-	 * 清除项目模板引用的原生按钮标签，不删除模板对象。
-	 */
+	/// 清除项目模板引用的原生按钮标签，不删除模板对象。
 	public static final String CLEAR_TEMPLATE = PREFIX + "clear_template";
-	/**
-	 * FX 资源。
-	 */
+	/// FX 资源。
 	public static final String FX = PREFIX + "fx";
-	/**
-	 * 包含模板子对象。
-	 */
+	/// 包含模板子对象。
 	public static final String INCLUDE_CHILDREN = PREFIX + "include_children";
-	/**
-	 * 发射持续时间（tick）。
-	 */
+	/// 发射持续时间（tick）。
 	public static final String DURATION = PREFIX + "duration";
-	/**
-	 * 循环发射。
-	 */
+	/// 循环发射。
 	public static final String LOOPING = PREFIX + "looping";
-	/**
-	 * 开始延迟（tick）。
-	 */
+	/// 开始延迟（tick）。
 	public static final String START_DELAY = PREFIX + "start_delay";
-	/**
-	 * 发射模式。
-	 */
+	/// 发射模式。
 	public static final String MODE = PREFIX + "mode";
-	/**
-	 * 发射间隔（tick）。
-	 */
+	/// 发射间隔（tick）。
 	public static final String INTERVAL = PREFIX + "interval";
-	/**
-	 * 每次发射实例数。
-	 */
+	/// 每次发射实例数。
 	public static final String COUNT = PREFIX + "count";
-	/**
-	 * 每 tick 发射实例数。
-	 */
+	/// 每 tick 发射实例数。
 	public static final String RATE = PREFIX + "rate";
-	/**
-	 * 发射概率。
-	 */
+	/// 发射概率。
 	public static final String PROBABILITY = PREFIX + "probability";
-	/**
-	 * 最大存活实例数。
-	 */
+	/// 最大存活实例数。
 	public static final String MAX_INSTANCES = PREFIX + "max_instances";
-	/**
-	 * 总发射数量（0：不限）。
-	 */
+	/// 总发射数量（0：不限）。
 	public static final String MAX_TOTAL = PREFIX + "max_total";
-	/**
-	 * 每 tick 最大发射数量。
-	 */
+	/// 每 tick 最大发射数量。
 	public static final String MAX_PER_TICK = PREFIX + "max_per_tick";
-	/**
-	 * 最大嵌套深度。
-	 */
+	/// 最大嵌套深度。
 	public static final String MAX_DEPTH = PREFIX + "max_depth";
-	/**
-	 * 实例存活时间（tick，0：沿用原效果）。
-	 */
+	/// 实例存活时间（tick，0：沿用原效果）。
 	public static final String INSTANCE_LIFETIME = PREFIX + "instance_lifetime";
-	/**
-	 * 结束行为。
-	 */
+	/// 结束行为。
 	public static final String END_BEHAVIOR = PREFIX + "end_behavior";
-	/**
-	 * 重启时清理实例。
-	 */
+	/// 重启时清理实例。
 	public static final String CLEAR_ON_RESTART = PREFIX + "clear_on_restart";
-	/**
-	 * 跟随发射器变换。
-	 */
+	/// 跟随发射器变换。
 	public static final String FOLLOW = PREFIX + "follow";
-	/**
-	 * 继承旋转。
-	 */
+	/// 继承旋转。
 	public static final String INHERIT_ROTATION = PREFIX + "inherit_rotation";
-	/**
-	 * 继承缩放。
-	 */
+	/// 继承缩放。
 	public static final String INHERIT_SCALE = PREFIX + "inherit_scale";
-	/**
-	 * 继承颜色。
-	 */
+	/// 继承颜色。
 	public static final String INHERIT_COLOR = PREFIX + "inherit_color";
-	/**
-	 * 继承速度。
-	 */
+	/// 继承速度。
 	public static final String INHERIT_VELOCITY = PREFIX + "inherit_velocity";
-	/**
-	 * 实例移动速度（格/tick）。
-	 */
+	/// 实例移动速度（格/tick）。
 	public static final String LAUNCH_SPEED = PREFIX + "launch_speed";
-	/**
-	 * 发射形状。
-	 */
+	/// 发射形状。
 	public static final String SHAPE = PREFIX + "shape";
-	/**
-	 * 形状。
-	 */
+	/// 形状。
 	public static final String SHAPE_TYPE = PREFIX + "shape_type";
-	/**
-	 * 形状范围／半径。
-	 */
+	/// 形状范围／半径。
 	public static final String SHAPE_SIZE = PREFIX + "shape_size";
-	/**
-	 * 本地位置偏移。
-	 */
+	/// 本地位置偏移。
 	public static final String SHAPE_OFFSET = PREFIX + "shape_offset";
-	/**
-	 * 实例参数。
-	 */
+	/// 实例参数。
 	public static final String PARAMETERS = PREFIX + "parameters";
-	/**
-	 * 参数目标（空：所有兼容发射器）。
-	 */
+	/// 参数目标（空：所有兼容发射器）。
 	public static final String TARGET = PREFIX + "target";
-	/**
-	 * 覆盖粒子寿命。
-	 */
+	/// 覆盖粒子寿命。
 	public static final String OVERRIDE_LIFETIME = PREFIX + "override_lifetime";
-	/**
-	 * 粒子寿命（tick）。
-	 */
+	/// 粒子寿命（tick）。
 	public static final String LIFETIME = PREFIX + "lifetime";
-	/**
-	 * 覆盖粒子初始大小。
-	 */
+	/// 覆盖粒子初始大小。
 	public static final String OVERRIDE_SIZE = PREFIX + "override_size";
-	/**
-	 * 粒子初始大小。
-	 */
+	/// 粒子初始大小。
 	public static final String SIZE = PREFIX + "size";
-	/**
-	 * 覆盖粒子初始颜色。
-	 */
+	/// 覆盖粒子初始颜色。
 	public static final String OVERRIDE_COLOR = PREFIX + "override_color";
-	/**
-	 * 粒子初始颜色。
-	 */
+	/// 粒子初始颜色。
 	public static final String COLOR = PREFIX + "color";
-	/**
-	 * 覆盖粒子初始速度。
-	 */
+	/// 覆盖粒子初始速度。
 	public static final String OVERRIDE_SPEED = PREFIX + "override_speed";
-	/**
-	 * 粒子初始速度。
-	 */
+	/// 粒子初始速度。
 	public static final String SPEED = PREFIX + "speed";
-	/**
-	 * 覆盖光柱长度。
-	 */
+	/// 覆盖光柱长度。
 	public static final String OVERRIDE_BEAM_LENGTH = PREFIX + "override_beam_length";
-	/**
-	 * 光柱长度（格）。
-	 */
+	/// 光柱长度（格）。
 	public static final String BEAM_LENGTH = PREFIX + "beam_length";
-	/**
-	 * 覆盖光柱宽度。
-	 */
+	/// 覆盖光柱宽度。
 	public static final String OVERRIDE_BEAM_WIDTH = PREFIX + "override_beam_width";
-	/**
-	 * 光柱宽度（格）。
-	 */
+	/// 光柱宽度（格）。
 	public static final String BEAM_WIDTH = PREFIX + "beam_width";
-	/**
-	 * 实例播放倍率。
-	 */
+	/// 实例播放倍率。
 	public static final String PLAYBACK_SPEED = PREFIX + "playback_speed";
-	/**
-	 * 存活实例。
-	 */
+	/// 存活实例。
 	public static final String INSTANCES = PREFIX + "instances";
-	/**
-	 * 已生成实例数。
-	 */
+	/// 已生成实例数。
 	public static final String GENERATED = PREFIX + "generated";
-	/**
-	 * 最近发射状态。
-	 */
+	/// 最近发射状态。
 	public static final String FAILURE = PREFIX + "failure";
 
 	public static String enumKey(Enum<?> value) {

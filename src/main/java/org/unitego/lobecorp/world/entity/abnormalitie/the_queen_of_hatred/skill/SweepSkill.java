@@ -20,27 +20,39 @@ import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
 
 /// 憎恶女皇向前横扫并发射扇形星星。
 public class SweepSkill extends EntitySkill<TheQueenOfHatred> {
+	/// 横扫攻击的水平作用范围，单位为方块。
 	public static final double MELEE_RANGE = 4.0;
+	/// 横扫扇形的半角，单位为度。
 	private static final double HALF_SWEEP_ANGLE_DEGREES = 45.0;
+	/// 横扫判断框的高度，单位为方块。
 	private static final double MELEE_HEIGHT = 2.0;
+	/// 横扫命中时施加的击退强度。
 	private static final double MELEE_KNOCKBACK = 1.5;
+	/// 一阶段横扫释放的魔法星数量。
 	private static final int PHASE_ONE_STAR_COUNT = 3;
+	/// 二阶段横扫释放的魔法星数量。
 	private static final int PHASE_TWO_STAR_COUNT = 6;
+	/// 横扫魔法星距实体的水平生成偏移，单位为方块。
 	private static final double STAR_SPAWN_OFFSET = 0.8;
+	/// 横扫魔法星的生成高度偏移，单位为方块。
 	private static final double STAR_SPAWN_HEIGHT = 1.2;
 
+	/// 当前技能运行实例保存的判断框编号。
 	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
+	/// 当前技能使用的共享判断框模板。
 	private static final HitboxTemplate HITBOX = new HitboxTemplate(
 			new SectorCylinderSize(MELEE_RANGE, MELEE_HEIGHT * 2.0, HALF_SWEEP_ANGLE_DEGREES * 2.0),
 			target -> target instanceof LivingEntity,
 			context -> {
 				if (!(context.source() instanceof TheQueenOfHatred queen)
 						|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target) || !queen.hasLineOfSight(target)
-						|| Math.abs(target.getBoundingBox().getCenter().y - queen.getBoundingBox().getCenter().y) > MELEE_HEIGHT)
+						|| Math.abs(target.getBoundingBox().getCenter().y - queen.getBoundingBox().getCenter().y) > MELEE_HEIGHT) {
 					return false;
+				}
 				float damage = (float) queen.getAttributeValue(Attributes.ATTACK_DAMAGE);
-				if (!target.hurtServer(context.level(), queen.damageSources().mobAttack(queen), damage))
+				if (!target.hurtServer(context.level(), queen.damageSources().mobAttack(queen), damage)) {
 					return false;
+				}
 				Vec3 offset = target.position().subtract(queen.position()).multiply(1.0, 0.0, 1.0);
 				Vec3 direction = offset.lengthSqr() > 0.0 ? offset.normalize() : Vec3.directionFromRotation(0.0F, queen.getYRot());
 				target.setDeltaMovement(target.getDeltaMovement().add(direction.scale(MELEE_KNOCKBACK)));
@@ -63,8 +75,9 @@ public class SweepSkill extends EntitySkill<TheQueenOfHatred> {
 
 	private static void removeHitbox(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		Integer id = runtime.removeData(HITBOX_ID);
-		if (id != null && queen.level() instanceof ServerLevel level)
+		if (id != null && queen.level() instanceof ServerLevel level) {
 			HitboxManager.remove(level, id);
+		}
 	}
 
 	@Override
@@ -91,6 +104,7 @@ public class SweepSkill extends EntitySkill<TheQueenOfHatred> {
 		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
 		}
+
 		Vec3 forward = Vec3.directionFromRotation(0.0F, queen.getYRot());
 		Integer id = runtime.getData(HITBOX_ID);
 		HitboxInstance hitbox = id == null ? null : HitboxManager.get(level, id);
@@ -98,6 +112,7 @@ public class SweepSkill extends EntitySkill<TheQueenOfHatred> {
 			hitbox.setRemainingTicks(HitboxManager.CURRENT_TICK_DURATION);
 			hitbox.activate();
 		}
+
 		int count = queen.isPhaseTwo()
 				? PHASE_TWO_STAR_COUNT : PHASE_ONE_STAR_COUNT;
 		for (int index = 0; index < count; index++) {
@@ -106,7 +121,7 @@ public class SweepSkill extends EntitySkill<TheQueenOfHatred> {
 			Vec3 direction = forward.yRot((float) angle);
 			Vec3 origin = queen.position().add(0.0, STAR_SPAWN_HEIGHT, 0.0)
 					.add(direction.scale(STAR_SPAWN_OFFSET));
-			MagicStarProjectile star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
+			var star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
 			star.configure(queen, MagicStarProjectile.StarSize.TINY, MagicStarProjectile.StarVariant.A,
 					origin, direction);
 			level.addFreshEntity(star);

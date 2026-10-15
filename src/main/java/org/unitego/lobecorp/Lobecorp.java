@@ -8,9 +8,12 @@ import net.minecraft.resources.ResourceKey;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
+import org.unitego.lobecorp.config.client.DamageParticleConfig;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
 import org.unitego.lobecorp.registry.block.LcBlocks;
 import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
@@ -28,14 +31,16 @@ import org.unitego.lobecorp.registry.tag.LcTags;
 public class Lobecorp {
 	/// 模组命名空间。
 	public static final String NAMESPACE = "lobecorp";
-	/// 模组日志记录器。
 	public static final Logger LOGGER = LogUtils.getLogger();
 
 	public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
 		LOGGER.info("Unitego.");
 
+		modContainer.registerConfig(ModConfig.Type.CLIENT, DamageParticleConfig.SPEC);
+
 		LcAttachmentTypes.init(iEventBus);
 		LcTags.init();
+		LcAnimationExampleDefinitions.init();
 		LcMemoryModuleTypes.init(iEventBus);
 		LcSensorTypes.init(iEventBus);
 		LcMobEffects.init(iEventBus);

@@ -16,9 +16,7 @@ import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 @Mixin(RotationOverLifetimeSetting.class)
 public abstract class RotationOverLifetimeSettingMixin implements PhotonRotationCycleAccess, PhotonCycleOffsetAccess, IToggleConfigurable {
-	/**
-	 * 默认一个游戏秒完成一次曲线；单位 tick，可在编辑器调整。
-	 */
+	/// 默认一个游戏秒完成一次曲线；单位 tick，可在编辑器调整。
 	@Unique
 	private static final int DEFAULT_ROTATION_CYCLE_TICKS = 20;
 

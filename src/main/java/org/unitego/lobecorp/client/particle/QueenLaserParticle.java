@@ -51,12 +51,16 @@ public class QueenLaserParticle extends SingleQuadParticle {
 
 	@Override
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
-		Vec3 start = new Vec3(this.x, this.y, this.z).subtract(camera.position());
+		var start = new Vec3(this.x, this.y, this.z).subtract(camera.position());
 		double length = beam.length();
-		if (length == 0.0)
+
+		if (length == 0.0) {
 			return;
+		}
+
 		Vec3 direction = beam.scale(1.0 / length);
-		Quaternionf rotation = new Quaternionf(camera.rotation());
+		var rotation = new Quaternionf(camera.rotation());
+
 		for (double distance = 0.0; distance <= length; distance += quadSize * SEGMENT_SPACING_RATIO) {
 			Vec3 point = start.add(direction.scale(distance));
 			this.extractRotatedQuad(renderState, rotation, (float) point.x, (float) point.y, (float) point.z, partialTick);
@@ -65,8 +69,9 @@ public class QueenLaserParticle extends SingleQuadParticle {
 
 	@Override
 	public void tick() {
-		if (++this.age >= this.lifetime)
+		if (++this.age >= this.lifetime) {
 			this.remove();
+		}
 	}
 
 	public static class Provider implements ParticleProvider<SimpleParticleType> {

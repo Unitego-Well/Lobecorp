@@ -12,17 +12,16 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import java.util.function.BiPredicate;
 
 /// 通用自定义攻击行为。覆盖从读取目标、范围检查、挥行动画、攻击动作到冷却的完整流程。
-/// <p>
+///
 /// 使用以下记忆模块：
-/// <ul>
-///   <li>{@code targetMemory} — 攻击目标（必选，运行时必须 present）</li>
-///   <li>{@code ATTACK_COOLING_DOWN} — 攻击冷却标记（必须 absent 才能攻击，攻击后设置 expiry）</li>
-///   <li>{@code LOOK_TARGET} — 注册但不强制，攻击时自动注视目标</li>
-///   <li>{@code NEAREST_VISIBLE_LIVING_ENTITIES} — 攻击前确保目标在视线内</li>
-/// </ul>
-/// <p>
+///
+/// - `targetMemory` — 攻击目标（必选，运行时必须存在）
+/// - `ATTACK_COOLING_DOWN` — 攻击冷却标记（必须不存在才能攻击，攻击后设置到期时间）
+/// - `LOOK_TARGET` — 注册但不强制，攻击时自动注视目标
+/// - `NEAREST_VISIBLE_LIVING_ENTITIES` — 攻击前确保目标在视线内
+///
 /// 提供了三个静态工厂方法，覆盖从最简到完全自定义的场景：
-/// <pre>{@code
+/// ```java
 /// // 最简：标准近战
 /// AttackEntity.simpleMelee(10);
 ///
@@ -31,21 +30,20 @@ import java.util.function.BiPredicate;
 ///
 /// // 完全自定义：范围、动作、回调
 /// AttackEntity.create(targetMem, cooldown, rangeCheck, action, outcome);
-/// }</pre>
+/// ```
 public class AttackEntity {
 
 	/// 完全自定义版。适用于非标准攻击（远程、多段攻击、特殊技能等）。
-	/// <p>
+	///
 	/// 执行流程：
-	/// <ol>
-	///   <li>从 targetMemory 读取目标</li>
-	///   <li>通过 rangeCheck 验证距离</li>
-	///   <li>通过 NEAREST_VISIBLE_LIVING_ENTITIES 验证可见性</li>
-	///   <li>播放挥拳动画（main hand swing）</li>
-	///   <li>执行 action.attack()</li>
-	///   <li>设置冷却记忆 ATTACK_COOLING_DOWN</li>
-	///   <li>调用 outcome.onOutcome() 回调</li>
-	/// </ol>
+	///
+	/// 1. 从 targetMemory 读取目标
+	/// 2. 通过 rangeCheck 验证距离
+	/// 3. 通过 NEAREST_VISIBLE_LIVING_ENTITIES 验证可见性
+	/// 4. 播放主手挥拳动画
+	/// 5. 执行 action.attack()
+	/// 6. 设置冷却记忆 ATTACK_COOLING_DOWN
+	/// 7. 调用 outcome.onOutcome() 回调
 	///
 	/// @param targetMemory     存储攻击目标的记忆模块
 	/// @param cooldownDuration 攻击冷却的 tick 数
@@ -63,14 +61,16 @@ public class AttackEntity {
 				i.present(targetMemory),
 				i.absent(MemoryModuleType.ATTACK_COOLING_DOWN),
 				i.present(MemoryModuleType.NEAREST_VISIBLE_LIVING_ENTITIES)
-		).apply(i, (lookTarget, attackTarget, coolDown, nearest) -> (level, body, time) -> {
+		).apply(i, (_, attackTarget, _, nearest) -> (level, body, _) -> {
 			T target = i.get(attackTarget);
 			if (!rangeCheck.test(body, target)) {
 				return false;
 			}
+
 			if (!i.get(nearest).contains(target)) {
 				return false;
 			}
+
 			body.swing(InteractionHand.MAIN_HAND);
 			boolean hit = action.attack(level, body, target);
 			body.getBrain().setMemoryWithExpiry(MemoryModuleType.ATTACK_COOLING_DOWN, true, cooldownDuration);
@@ -80,13 +80,13 @@ public class AttackEntity {
 	}
 
 	/// 简化版：标准近战攻击 + 命中回调。
-	/// <p>
-	/// 固定使用 {@code ATTACK_TARGET} 作为目标记忆，{@link Mob#isWithinMeleeAttackRange} 作为范围判定，
-	/// 攻击动作调用 {@link Mob#doHurtTarget(ServerLevel, Entity)}。
+	///
+	/// 固定使用 `ATTACK_TARGET` 作为目标记忆，[Mob#isWithinMeleeAttackRange] 作为范围判定，
+	/// 攻击动作调用 [Mob#doHurtTarget(ServerLevel, Entity)]。
 	/// 适用于需要额外命中效果（粒子、吸血等）的标准近战攻击。
 	///
 	/// @param cooldownTicks 攻击冷却的 tick 数
-	/// @param onHit         命中回调（仅命中时调用，未命中时 {@code hit} 为 false）
+	/// @param onHit         攻击结果回调；命中与未命中都会调用，`hit` 表示是否命中
 	public static <E extends Mob> BehaviorControl<E> simpleMelee(int cooldownTicks, AttackOutcome<E> onHit) {
 		return create(
 				MemoryModuleType.ATTACK_TARGET,
@@ -98,12 +98,12 @@ public class AttackEntity {
 	}
 
 	/// 最简版：标准近战攻击，无额外效果。
-	/// <p>
+	///
 	/// 适用于没有特殊需求的简单近战 AI。
 	///
 	/// @param cooldownTicks 攻击冷却的 tick 数
 	public static <E extends Mob> BehaviorControl<E> simpleMelee(int cooldownTicks) {
-		return simpleMelee(cooldownTicks, (level, mob, target, hit) -> {
+		return simpleMelee(cooldownTicks, (_, _, _, _) -> {
 		});
 	}
 
@@ -131,7 +131,7 @@ public class AttackEntity {
 		/// @param level    服务端世界
 		/// @param attacker 攻击实体
 		/// @param target   攻击目标
-		/// @param hit      {@link AttackAction#attack} 的返回值，true 表示这次攻击有效命中
+		/// @param hit      [AttackAction#attack] 的返回值，true 表示这次攻击有效命中
 		void onOutcome(ServerLevel level, E attacker, LivingEntity target, boolean hit);
 	}
 }

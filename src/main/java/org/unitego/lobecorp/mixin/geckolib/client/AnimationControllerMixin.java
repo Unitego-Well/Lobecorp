@@ -10,9 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
 
-/**
- * 动画切换或重启时结束本控制器旧的关键帧效果，保留代码管理的实例。
- */
+/// 动画切换或重启时结束本控制器旧的关键帧效果，保留代码管理的实例。
 @Mixin(AnimationController.class)
 public abstract class AnimationControllerMixin<T extends GeoAnimatable> {
 	@Inject(method = "initializeNewAnimation", at = @At("HEAD"))

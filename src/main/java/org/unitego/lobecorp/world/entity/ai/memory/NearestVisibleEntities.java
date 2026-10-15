@@ -8,10 +8,13 @@ import net.minecraft.world.entity.Mob;
 
 import java.util.List;
 import java.util.Optional;
+
+import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
+
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-/// {@link net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities} 的泛型版本。<br>
+/// [NearestVisibleLivingEntities] 的泛型版本。
 /// 缓存视线检测结果，提供按条件查找最近/所有可见实体的方法。
 public class NearestVisibleEntities<E extends Entity> {
 	/// 无实体的共享只读实例。
@@ -22,7 +25,7 @@ public class NearestVisibleEntities<E extends Entity> {
 
 	private NearestVisibleEntities() {
 		this.entities = List.of();
-		this.losTest = ignored -> false;
+		this.losTest = _ -> false;
 	}
 
 	public NearestVisibleEntities(ServerLevel level, Mob body, List<E> entities) {
@@ -47,6 +50,7 @@ public class NearestVisibleEntities<E extends Entity> {
 				return Optional.of(entity);
 			}
 		}
+
 		return Optional.empty();
 	}
 
@@ -68,6 +72,7 @@ public class NearestVisibleEntities<E extends Entity> {
 				return true;
 			}
 		}
+
 		return false;
 	}
 }

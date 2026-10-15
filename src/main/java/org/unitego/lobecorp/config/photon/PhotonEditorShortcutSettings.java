@@ -8,9 +8,7 @@ import org.unitego.lobecorp.Lobecorp;
 
 @SuppressWarnings("FieldMayBeFinal")
 public class PhotonEditorShortcutSettings implements Settings {
-	/**
-	 * 快捷键分类 ID；绑定数据由 PhotonEditorSettings 保存。
-	 */
+	/// 保留原设置 ID 与扩展总开关；绑定数据由原生 Keymap 保存。
 	public static final Identifier ID = Lobecorp.id("photon_editor_shortcuts");
 	private Editor editor;
 
@@ -25,7 +23,7 @@ public class PhotonEditorShortcutSettings implements Settings {
 
 	@Override
 	public String getPath() {
-		return "Lobecorp.lobecorp_photon_shortcuts";
+		return "Keymap";
 	}
 
 	@Override

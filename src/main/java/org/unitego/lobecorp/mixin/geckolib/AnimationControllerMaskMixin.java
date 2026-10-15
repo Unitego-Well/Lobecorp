@@ -80,6 +80,7 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 		if (this.lobecorp$animationTransitionPaused || this.lobecorp$controllerTransitionPaused) {
 			return compareTo;
 		}
+
 		return original.call(instance, currentTick, compareTo);
 	}
 
@@ -107,9 +108,10 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 	)
 	private AnimationTimeline lobecorp$removeGeckoTransitionStages(RawAnimation rawAnimation, T animatable, GeoModel<T> model,
 	                                                               int transitionTicks, Operation<AnimationTimeline> original) {
-		if (animatable instanceof LcCustomAnimatable) {
+		if (animatable instanceof ILcCustomAnimatable) {
 			return original.call(rawAnimation, animatable, model, 0);
 		}
+
 		return original.call(rawAnimation, animatable, model, transitionTicks);
 	}
 
@@ -118,6 +120,7 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 		if (!this.lobecorp$enabledBones.isEmpty()) {
 			return !this.lobecorp$lockedBones.contains(boneName) && this.lobecorp$enabledBones.contains(boneName);
 		}
+
 		return !this.lobecorp$lockedBones.contains(boneName);
 	}
 
@@ -189,6 +192,7 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 		if (mode == LcTransitionMode.OVERLAP) {
 			this.lobecorp$controllerTransitionPaused = false;
 		}
+
 		return this.lobecorp$getController();
 	}
 
@@ -236,6 +240,7 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 		if (mode == LcTransitionMode.OVERLAP) {
 			this.lobecorp$animationTransitionPaused = false;
 		}
+
 		return this.lobecorp$getController();
 	}
 

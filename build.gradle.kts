@@ -1,5 +1,11 @@
 @file:Suppress("AvoidDuplicateDependencies")
 
+import org.gradle.api.plugins.ExtensionAware
+import org.gradle.api.tasks.SourceSetContainer
+import org.jetbrains.gradle.ext.Gradle
+import org.jetbrains.gradle.ext.IdeaExtPlugin
+import org.jetbrains.gradle.ext.ProjectSettings
+import org.jetbrains.gradle.ext.RunConfigurationContainer
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Properties
@@ -15,6 +21,10 @@ plugins {
 tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
+
+val minecraftMcpProject = project(":minecraft-mcp")
+evaluationDependsOn(minecraftMcpProject.path)
+val minecraftMcpSources = minecraftMcpProject.extensions.getByType<SourceSetContainer>().named("main").get()
 
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
@@ -65,6 +75,18 @@ repositories {
     mavenLocal()
     mavenCentral()
     exclusiveContent {
+        forRepository { mavenCentral() }
+        filter {
+            includeGroup("org.junit")
+            includeGroup("org.junit.jupiter")
+            includeGroup("org.junit.platform")
+            includeGroup("org.opentest4j")
+            includeGroup("org.apiguardian")
+            includeGroup("org.jspecify")
+            includeModule("dev.vfyjxf", "taffy")
+        }
+    }
+    exclusiveContent {
         forRepository { maven { url = uri("https://maven.bawnorton.com/releases") } }
         filter { includeGroup("com.github.bawnorton.mixinsquared") }
     }
@@ -81,11 +103,29 @@ repositories {
     // jade reretrodamageindicators
     maven { url = uri("https://api.modrinth.com/maven") }
     // photon 依赖 (LDLib2 / KilaGraph)
-    maven { url = uri("https://maven.firstdark.dev/snapshots") }
+    exclusiveContent {
+        forRepository { maven { url = uri("https://maven.firstdark.dev/snapshots") } }
+        filter {
+            includeGroup("com.lowdragmc.photon")
+            includeGroup("com.lowdragmc.ldlib2")
+            includeGroup("com.lowdragmc.kilagraph")
+        }
+    }
     maven { url = uri("https://maven.confluence.ink/releases") }
 }
 
 dependencies {
+    compileOnly(project(":minecraft-mcp"))
+    listOf("implementation", "runtimeOnly").forEach { configuration ->
+        minecraftMcpProject.configurations[configuration].allDependencies.forEach { dependency ->
+            runtimeOnly(dependency.copy())
+        }
+    }
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+
     implementation(libs.anvilcraftlib)
     jarJar(libs.mixinsquared)?.let { implementation(it) }
     implementation(libs.geckolib)
@@ -102,7 +142,7 @@ dependencies {
         isTransitive = false
     }
     implementation(libs.particlestorm)
-    // lib/ 下的本地 jar (Photon) 打包进 mod 并加入 dev classpath
+    // lib/ 下的本地 jar (Photon) 打包进模组并加入开发类路径
 //    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
     implementation(fileTree("lib") { include("*.jar") })
 
@@ -131,8 +171,13 @@ tasks.named<Jar>("jar") {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
+tasks.test {
+    useJUnitPlatform()
+}
+
 neoForge {
     version = neoforgeVersion
+    addModdingDependenciesTo(sourceSets.test.get())
     interfaceInjectionData.from("src/main/resources/META-INF/interfaces.json")
     setAccessTransformers("src/main/resources/META-INF/accesstransformer.cfg")
     runs {
@@ -176,6 +221,15 @@ neoForge {
         register(modId) {
             sourceSet(sourceSets.main.get())
         }
+        register("mcpmod") {
+            sourceSet(minecraftMcpSources)
+        }
+    }
+    runs.configureEach {
+        loadedMods.set(listOf(mods[modId]))
+    }
+    runs.named("client") {
+        loadedMods.set(listOf(mods[modId], mods["mcpmod"]))
     }
 }
 
@@ -186,8 +240,20 @@ tasks.processResources {
         "geckolib_version" to libs.versions.geckolib.get(),
         "curios_version" to libs.versions.curios.get(),
         "particlestorm_version" to libs.versions.particlestorm.get(),
+        "photon_version" to libs.versions.photon.get(),
+        "ldlib2_version" to libs.versions.ldlib2.get(),
+        "kilagraph_version" to libs.versions.kilagraph.get(),
         "mod_id" to modId,
-        "mod_version" to modVersion
+        "mod_version" to modVersion,
+        "mod_name" to providers.gradleProperty("mod_name").get(),
+        "mod_license" to providers.gradleProperty("mod_license").get(),
+        "mod_update_json_url" to providers.gradleProperty("mod_update_json_url").get(),
+        "mod_display_url" to providers.gradleProperty("mod_display_url").get(),
+        "mod_issue_tracker_url" to providers.gradleProperty("mod_issue_tracker_url").get(),
+        "mod_logo_file" to providers.gradleProperty("mod_logo_file").get(),
+        "mod_credits" to providers.gradleProperty("mod_credits").get(),
+        "mod_authors" to providers.gradleProperty("mod_authors").get(),
+        "mod_description" to providers.gradleProperty("mod_description").get()
     )
     inputs.properties(replaceProperties)
     filesMatching("META-INF/neoforge.mods.toml") {
@@ -231,6 +297,37 @@ Install Minecraft $minecraftVersion with NeoForge $neoforgeVersion, then copy ev
 """
     )) {
         rename { "README.txt" }
+    }
+}
+
+plugins.withType<IdeaExtPlugin> {
+    val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
+    val runConfigurations = (projectSettings as ExtensionAware).extensions.getByType<RunConfigurationContainer>()
+    runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf(":minecraft-mcp:checkBridge", ":minecraft-mcp:buildBridge", ":minecraft-mcp:probeBridge")
+    }
+    runConfigurations.create("Minecraft MCP Effect Runtime", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf(":minecraft-mcp:probeEffectRuntime")
+    }
+    runConfigurations.create("Minecraft MCP Effect Authoring", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf(":minecraft-mcp:probeEffectAuthoring")
+    }
+    listOf(
+        "Minecraft MCP Reference Inspect" to ":minecraft-mcp:inspectReferenceEffects",
+        "Minecraft MCP Reference Create" to ":minecraft-mcp:createReferenceEffects",
+        "Minecraft MCP Reference Save" to ":minecraft-mcp:saveReferenceEffects",
+    ).forEach { (name, task) ->
+        runConfigurations.create(name, Gradle::class.java).apply {
+            projectPath = rootDir.absolutePath
+            taskNames = listOf(task)
+        }
+    }
+    runConfigurations.create("Minecraft MCP Import Assets", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf(":minecraft-mcp:importIcons")
     }
 }
 

@@ -4,10 +4,12 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
+import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
@@ -15,6 +17,7 @@ import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.AnimationTrackUIState;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
+import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,10 +26,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelinePanAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonCurveViewAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonTimelineClipboardUtil;
@@ -34,6 +41,7 @@ import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 
 import java.util.HashSet;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -47,11 +55,15 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@WrapMethod(method = "canPasteInto")
 	private boolean lobecorp$canPasteKeys(AnimatedProperty property, Operation<Boolean> original) {
 		if (lobecorp$clipboardEditor != null && PhotonKeyClipboardUtil.systemEnabled(lobecorp$clipboardEditor)
-				&& PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind()))
+				&& PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind())) {
 			return PhotonSubClipboardUtil.compatible(property);
+		}
+
 		if (lobecorp$clipboardEditor != null && (PhotonKeyClipboardUtil.systemEnabled(lobecorp$clipboardEditor)
-				|| PhotonKeyClipboardUtil.has(lobecorp$clipboardEditor)))
+				|| PhotonKeyClipboardUtil.has(lobecorp$clipboardEditor))) {
 			return PhotonKeyClipboardUtil.compatible(lobecorp$clipboardEditor, property);
+		}
+
 		return original.call(property);
 	}
 
@@ -64,15 +76,17 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 				FXTimelineViewAccessor.lobecorp$setClipboardKind(3);
 				return true;
 			}
+
 			if (PhotonKeyClipboardUtil.systemEnabled(ctx.editor())) {
 				boolean copied = PhotonSubClipboardUtil.copy((AnimationTrackUIState) state);
 				if (copied) {
 					PhotonKeyClipboardUtil.clear(ctx.editor());
 					FXTimelineViewAccessor.lobecorp$setClipboardKind(3);
 				}
+
 				return copied;
 			}
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException _) {
 			PhotonTimelineClipboardUtil.invalid(ctx);
 			return false;
 		}
@@ -81,6 +95,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 			PhotonKeyClipboardUtil.clear(ctx.editor());
 			FXTimelineViewAccessor.lobecorp$setClipboardKind(3);
 		}
+
 		return copied;
 	}
 
@@ -90,22 +105,26 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 			boolean pasted = PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind())
 					? PhotonSubClipboardUtil.paste(ctx, track, (AnimationTrackUIState) state, destTick)
 					: PhotonKeyClipboardUtil.paste(ctx, track, (AnimationTrackUIState) state, destTick);
-			if (!pasted && PhotonSystemClipboardUtil.hasContent())
+			if (!pasted && PhotonSystemClipboardUtil.hasContent()) {
 				PhotonTimelineClipboardUtil.invalid(ctx);
+			}
 			return pasted;
 		}
-		if (PhotonKeyClipboardUtil.has(ctx.editor()))
+
+		if (PhotonKeyClipboardUtil.has(ctx.editor())) {
 			return PhotonKeyClipboardUtil.paste(ctx, track, (AnimationTrackUIState) state, destTick);
+		}
+
 		return original.call(ctx, track, state, destTick);
 	}
 
-	/**
-	 * GUI 像素：超过此距离后区分点击与拖动，并确定 Shift 锁定轴。
-	 */
+	/// GUI 像素：超过此距离后区分点击与拖动，并确定 Shift 锁定轴。
 	@Unique
 	private static final float DRAG_AXIS_THRESHOLD = 3f;
 	@Unique
 	private Map<AnimatedProperty, Float> lobecorp$viewOffsets = new WeakHashMap<>();
+	@Unique
+	private Set<AnimatedProperty> lobecorp$initializedRanges = Collections.newSetFromMap(new WeakHashMap<>());
 	@Unique
 	private Map<AnimationTrackUIState, CurveGesture> lobecorp$gestures = new WeakHashMap<>();
 	@Unique
@@ -122,6 +141,11 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		throw new AssertionError();
 	}
 
+	@Shadow
+	private void noteRecordingEdit(TimelineContext ctx, Track track, AnimationTrackUIState st) {
+		throw new AssertionError();
+	}
+
 	private static class CurveGesture {
 		private Vector2f origin;
 		private int axis;
@@ -129,6 +153,37 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		private Set<Long> clickSelection;
 		private boolean copyOnEnd;
 		private Set<Long> copyKeys;
+		private Map<Long, Vector2f> linkedOrigins = Map.of();
+	}
+
+	@WrapMethod(method = "addProperty")
+	private void lobecorp$chooseCurveEasing(TimelineContext ctx, AnimationTrack track, AnimationTrackUIState st,
+	                                        AnimatedPropertyType type, Operation<Void> original) {
+		PhotonCurveEasingUtil.addProperty(ctx, track, type, () -> original.call(ctx, track, st, type));
+	}
+
+	@WrapOperation(method = "addProperty", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimatedPropertyType;create(Lcom/lowdragmc/photon/client/gameobject/FXObject;)Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;"))
+	private AnimatedProperty lobecorp$rememberCurveEasing(AnimatedPropertyType type, FXObject target,
+	                                                      Operation<AnimatedProperty> original) {
+		var property = original.call(type, target);
+		PhotonCurveEasingUtil.created(property);
+		return property;
+	}
+
+	@WrapOperation(method = "onCurveDoubleClick", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;addKey(IFF)I"))
+	private int lobecorp$addScaleKeys(AnimatedProperty property, int axis, float tick, float value, Operation<Integer> original,
+	                                  @Local(argsOnly = true, name = "ctx") TimelineContext ctx) {
+		int inserted = PhotonScaleCurveUtil.supports(property)
+				&& PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.SCALE_LINK_FEATURE)
+				? PhotonScaleCurveUtil.addLinkedKey(property, axis, tick, value, () -> original.call(property, axis, tick, value))
+				: original.call(property, axis, tick, value);
+		if (inserted >= 0) {
+			PhotonCurveEasingUtil.applyCreatedKey(ctx, property, axis, inserted);
+		}
+
+		return inserted;
 	}
 
 	@Override
@@ -137,12 +192,19 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	}
 
 	@Override
+	public void lobecorp$noteCurveEdit(TimelineContext ctx, Track track, AnimationTrackUIState state) {
+		noteRecordingEdit(ctx, track, state);
+	}
+
+	@Override
 	public boolean lobecorp$cancelCurve(TimelineContext ctx, AnimationTrackUIState st) {
 		AnimationTrackUIStateAccessor access = (AnimationTrackUIStateAccessor) st;
 		var property = access.lobecorp$getDragProperty();
 		var snapshot = access.lobecorp$getDragSnapshot();
-		if (property == null || snapshot == null)
+		if (property == null || snapshot == null) {
 			return false;
+		}
+
 		property.restoreChannels(snapshot);
 		lobecorp$gestures.remove(st);
 		access.lobecorp$setDragProperty(null);
@@ -161,43 +223,71 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		return new float[]{range[0] + offset, range[1] + offset};
 	}
 
+	@Inject(method = "buildExpandedRight", at = @At("HEAD"))
+	private void lobecorp$initializeRange(TimelineContext ctx, Track track, TrackUIState state,
+	                                      CallbackInfoReturnable<UIElement> cir) {
+		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.FIT_VIEW_FEATURE)) {
+			return;
+		}
+
+		var property = ((AnimationTrackUIStateAccessor) state).lobecorp$getSelectedProperty();
+		if (property == null || property instanceof ColorAnimatedProperty
+				|| !((AnimationTrack) track).properties().contains(property)
+				|| !lobecorp$initializedRanges.add(property)) {
+			return;
+		}
+
+		PhotonCurveEditUtil.initializeRange(property);
+	}
+
 	@ModifyReturnValue(method = "buildExpandedRight", at = @At("RETURN"))
 	private UIElement lobecorp$enablePan(UIElement container, TimelineContext ctx, Track track, TrackUIState state) {
 		lobecorp$clipboardEditor = ctx.editor();
 		AnimationTrackUIState st = (AnimationTrackUIState) state;
 		boolean[] panning = {false};
-		Vector2f last = new Vector2f();
+		var last = new Vector2f();
 		container.addEventListener(UIEvents.MOUSE_DOWN, event -> {
-			if (!PhotonEditorTools.enabled(container, "curve_pan"))
+			if (!PhotonEditorTools.enabled(container, PhotonEditorTextUtil.CURVE_PAN_FEATURE)) {
 				return;
+			}
+
 			AnimatedProperty property = ((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedProperty();
-			if (event.button != GLFW.GLFW_MOUSE_BUTTON_MIDDLE || property == null || property instanceof ColorAnimatedProperty)
+			if (event.button != GLFW.GLFW_MOUSE_BUTTON_MIDDLE || property == null || property instanceof ColorAnimatedProperty) {
 				return;
+			}
+
 			panning[0] = true;
 			last.set(event.x, event.y);
 			container.startDrag(null, null);
 			event.stopImmediatePropagation();
 		}, true);
 		container.addEventListener(UIEvents.DRAG_SOURCE_UPDATE, event -> {
-			if (!panning[0])
+			if (!panning[0]) {
 				return;
+			}
+
 			AnimatedProperty property = ((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedProperty();
 			if (property != null && container.getContentHeight() > 0) {
 				float[] range = effectiveRange(property);
 				float offset = lobecorp$viewOffsets.getOrDefault(property, 0f)
 						+ (event.y - last.y) * (range[1] - range[0]) / container.getContentHeight();
-				if (Float.isFinite(offset))
+				if (Float.isFinite(offset)) {
 					lobecorp$viewOffsets.put(property, offset);
+				}
 			}
-			if (ctx instanceof PhotonTimelinePanAccess pan)
+
+			if (ctx instanceof PhotonTimelinePanAccess pan) {
 				pan.lobecorp$panTimeline(event.x - last.x);
+			}
 			last.set(event.x, event.y);
 			ctx.refreshLaneLayout();
 			event.stopImmediatePropagation();
 		}, true);
 		container.addEventListener(UIEvents.DRAG_END, event -> {
-			if (!panning[0])
+			if (!panning[0]) {
 				return;
+			}
+
 			panning[0] = false;
 			event.stopImmediatePropagation();
 		}, true);
@@ -209,72 +299,90 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	                                     int axis, int key, int handle, CallbackInfo ci) {
 		Vector2f origin = handle == 1 ? property.inHandle(axis, key)
 				: handle == 2 ? property.outHandle(axis, key) : property.key(axis, key);
-		if (origin == null)
+		if (origin == null) {
 			return;
-		CurveGesture gesture = new CurveGesture();
+		}
+
+		var gesture = new CurveGesture();
 		gesture.origin = new Vector2f(origin);
+		if (PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.SCALE_LINK_FEATURE)) {
+			gesture.linkedOrigins = PhotonScaleCurveUtil.dragOrigins(property,
+					((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedKeys(), axis, key, handle);
+		}
+
 		lobecorp$gestures.put(st, gesture);
 	}
 
 	@WrapMethod(method = "onKeyframeMouseDown")
 	private void lobecorp$startShiftDrag(TimelineContext ctx, UIEvent e, AnimationTrack track, AnimatedProperty property,
 	                                     AnimationTrackUIState st, int axis, int index, UIElement el, Operation<Void> original) {
-		boolean shift = PhotonEditorTools.enabled(ctx.editor(), "axis_lock")
+		boolean shift = PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.AXIS_LOCK_FEATURE)
 				&& e.button == GLFW.GLFW_MOUSE_BUTTON_LEFT && e.isShiftDown() && !e.isCtrlDown() && !track.lock();
 		AnimationTrackUIStateAccessor access = (AnimationTrackUIStateAccessor) st;
 		Set<Long> before = shift ? new HashSet<>(access.lobecorp$getSelectedKeys()) : null;
 		original.call(ctx, e, track, property, st, axis, index, el);
 		if (e.button == GLFW.GLFW_MOUSE_BUTTON_LEFT && e.isAltDown() && !e.isCtrlDown()
-				&& !e.isShiftDown() && !track.lock() && PhotonEditorTools.enabled(ctx.editor(), "precise")) {
+				&& !e.isShiftDown() && !track.lock() && PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.PRECISE_FEATURE)) {
 			var gesture = lobecorp$gestures.get(st);
 			if (gesture != null) {
 				gesture.copyOnEnd = true;
 				gesture.copyKeys = new HashSet<>(access.lobecorp$getSelectedKeys());
+				gesture.copyKeys.addAll(gesture.linkedOrigins.keySet());
 			}
 		}
-		if (!shift)
+		if (!shift) {
 			return;
+		}
+
 		Set<Long> clicked = new HashSet<>(access.lobecorp$getSelectedKeys());
 		access.lobecorp$getSelectedKeys().clear();
 		access.lobecorp$getSelectedKeys().addAll(before);
 		access.lobecorp$getSelectedKeys().add((long) axis << 32 | index & 0xffffffffL);
 		beginCurveDrag(ctx, st, property, axis, index, 0);
 		CurveGesture gesture = lobecorp$gestures.get(st);
-		if (gesture != null)
+		if (gesture != null) {
 			gesture.clickSelection = clicked;
+		}
 		el.startDrag(null, null);
 		ctx.refreshLaneLayout();
 	}
 
 	@WrapMethod(method = "onCurveDrag")
 	private void lobecorp$lockCurveAxis(TimelineContext ctx, UIEvent e, AnimationTrackUIState st, Operation<Void> original) {
-		if (!PhotonEditorTools.enabled(ctx.editor(), "axis_lock")) {
+		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTextUtil.AXIS_LOCK_FEATURE)) {
 			original.call(ctx, e, st);
 			return;
 		}
+
 		CurveGesture gesture = lobecorp$gestures.get(st);
 		if (gesture == null) {
 			original.call(ctx, e, st);
 			return;
 		}
+
 		float dx = e.x - e.dragStartX;
 		float dy = e.y - e.dragStartY;
 		if (!gesture.moved && Math.max(Math.abs(dx), Math.abs(dy)) < DRAG_AXIS_THRESHOLD) {
 			e.stopPropagation();
 			return;
 		}
+
 		gesture.moved = true;
 		if (!e.isShiftDown()) {
 			gesture.axis = 0;
 			original.call(ctx, e, st);
 			return;
 		}
-		if (gesture.axis == 0)
+
+		if (gesture.axis == 0) {
 			gesture.axis = Math.abs(dx) >= Math.abs(dy) ? 1 : 2;
+		}
 		UIElement box = e.currentElement.getParent();
 		AnimatedProperty property = ((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedProperty();
-		if (property == null || box == null || box.getContentHeight() <= 0)
+		if (property == null || box == null || box.getContentHeight() <= 0) {
 			return;
+		}
+
 		float x = e.x, y = e.y;
 		boolean oldLock = lobecorp$lockTick;
 		try {
@@ -312,11 +420,12 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 						lobecorp$cancelCurve(ctx, st);
 						return;
 					}
+
 					access.lobecorp$getSelectedKeys().clear();
 					access.lobecorp$getSelectedKeys().addAll(copied);
 					access.lobecorp$setPrimaryAxis(-1);
 					access.lobecorp$setPrimaryIndex(-1);
-				} catch (IllegalArgumentException error) {
+				} catch (IllegalArgumentException _) {
 					lobecorp$cancelCurve(ctx, st);
 					return;
 				}
@@ -325,10 +434,12 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 				return;
 			}
 		}
+
 		if (gesture == null || gesture.moved || gesture.clickSelection == null) {
 			original.call(ctx, st);
 			return;
 		}
+
 		AnimationTrackUIStateAccessor access = (AnimationTrackUIStateAccessor) st;
 		access.lobecorp$getSelectedKeys().clear();
 		access.lobecorp$getSelectedKeys().addAll(gesture.clickSelection);
@@ -342,6 +453,24 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@Inject(method = "onCurveDrag", at = @At("RETURN"))
 	private void lobecorp$alignHandles(TimelineContext ctx, UIEvent e, AnimationTrackUIState st, CallbackInfo ci) {
+		var access = (AnimationTrackUIStateAccessor) st;
+		var gesture = lobecorp$gestures.get(st);
+		if (gesture != null && access.lobecorp$getDragProperty() != null && access.lobecorp$getDragSnapshot() != null
+				&& PhotonScaleCurveUtil.moveLinked(access.lobecorp$getDragProperty(), access.lobecorp$getDragSnapshot(),
+				gesture.linkedOrigins, access.lobecorp$getDragAxis(), access.lobecorp$getDragKey(), access.lobecorp$getDragHandle())) {
+			ctx.refreshLaneLayout();
+			ctx.refreshPreview();
+		}
+
+		if (gesture != null && !gesture.linkedOrigins.isEmpty() && access.lobecorp$getDragHandle() != 0) {
+			for (long id : gesture.linkedOrigins.keySet()) {
+				PhotonEditorTools.syncTangent(ctx, access.lobecorp$getDragProperty(), (int) (id >>> 32),
+						(int) id, access.lobecorp$getDragHandle());
+			}
+
+			return;
+		}
+
 		PhotonEditorTools.syncTangent(ctx, st);
 	}
 
@@ -352,8 +481,9 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		try {
 			original.call(ctx, e, st);
 		} finally {
-			if (offset != null)
+			if (offset != null) {
 				lobecorp$viewOffsets.put(property, offset);
+			}
 			ctx.refreshLaneLayout();
 		}
 	}

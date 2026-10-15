@@ -5,6 +5,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
@@ -17,11 +18,13 @@ public class ClientRenderingEvents {
 	@SubscribeEvent
 	public static void onExtract(ExtractLevelRenderStateEvent event) {
 		ConductorRendering.onExtract(event);
+		LcAnimationDisplays.onExtract(event);
 	}
 
 	@SubscribeEvent
 	public static void onCustomGeometry(SubmitCustomGeometryEvent event) {
 		ConductorRendering.onCustomGeometry(event);
+		LcAnimationDisplays.onSubmit(event);
 	}
 
 	@SubscribeEvent

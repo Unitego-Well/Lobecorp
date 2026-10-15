@@ -26,14 +26,17 @@ public class SlownessSkill extends EntitySkill<TheQueenOfHatred> {
 	private static final int EFFECT_TICKS = 100;
 	/// 原版放大器从零计数，1 对应缓慢 II。
 	private static final int AMPLIFIER = 1;
+	/// 当前技能使用的共享判断框模板。
 	private static final HitboxTemplate HITBOX = new HitboxTemplate(new SphereSize(RADIUS),
 			target -> target instanceof LivingEntity living && living.isAlive(), context -> {
 		if (!(context.source() instanceof TheQueenOfHatred queen)
-				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target))
+				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target)) {
 			return false;
+		}
 		boolean applied = target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, EFFECT_TICKS, AMPLIFIER));
-		if (applied && context.instance().skillRuntime() != null)
+		if (applied && context.instance().skillRuntime() != null) {
 			context.instance().skillRuntime().markSuccessful();
+		}
 		return applied;
 	});
 
@@ -48,8 +51,9 @@ public class SlownessSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		for (Vec3 position : QueenSkillUtil.targetPositions(queen, runtime, RANGE)) {
 			HitboxInstance hitbox = HitboxManager.create(HITBOX, level, position, HitboxManager.CURRENT_TICK_DURATION, runtime);
 			hitbox.setSource(queen);

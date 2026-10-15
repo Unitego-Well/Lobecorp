@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ConductorClient {
+	/// 空目标的协议 UUID，不代表任何实体。
 	private static final UUID NO_TARGET = new UUID(0L, 0L);
+	/// 能力快照重试间隔，单位为游戏 tick。
 	private static final int ABILITY_SNAPSHOT_RETRY_TICKS = 100;
 	private static Session state = new Session();
 
@@ -29,8 +31,10 @@ public class ConductorClient {
 				state.awaitingSnapshot = true;
 				requestSnapshot();
 			}
+
 			return;
 		}
+
 		ConductorDirectory next = payload.full() ? payload.data()
 				: state.snapshot.merge(payload.data(), payload.removedTeams(), payload.removedUnits());
 		boolean rosterChanged = !state.snapshot.equals(next);
@@ -39,63 +43,84 @@ public class ConductorClient {
 		state.awaitingSnapshot = false;
 		Map<AbilityCooldownKey, Integer> nextCooldowns = new HashMap<>();
 		Map<AbilityCooldownKey, Integer> nextTotals = new HashMap<>();
+
 		for (ConductorSnapshotPayload.AbilityCooldown cooldown : payload.abilityCooldowns()) {
 			nextCooldowns.put(new AbilityCooldownKey(cooldown.unit(), cooldown.ability()), cooldown.ticks());
 			nextTotals.put(new AbilityCooldownKey(cooldown.unit(), cooldown.ability()), cooldown.totalTicks());
 		}
+
 		state.abilityCooldowns = Map.copyOf(nextCooldowns);
 		state.abilityCooldownTotals = Map.copyOf(nextTotals);
 		Map<UUID, List<Identifier>> nextAbilities = new HashMap<>();
+
 		for (ConductorSnapshotPayload.UnitAbilities abilities : payload.unitAbilities()) {
 			nextAbilities.put(abilities.unit(), List.copyOf(abilities.abilities()));
 		}
+
 		boolean abilitiesChanged = !state.unitAbilities.equals(nextAbilities);
 		state.unitAbilities = Map.copyOf(nextAbilities);
-		for (UUID unit : nextAbilities.keySet())
+
+		for (UUID unit : nextAbilities.keySet()) {
 			state.abilitySnapshotRequests.remove(unit);
+		}
 		state.cooldownSnapshotTick = Minecraft.getInstance().player == null
 				? 0 : Minecraft.getInstance().player.tickCount;
-		if (rosterChanged || abilitiesChanged)
+
+		if (rosterChanged || abilitiesChanged) {
 			state.revision++;
+		}
 	}
 
 	public static int abilityCooldownTicks(UUID unit, Identifier ability) {
 		var level = Minecraft.getInstance().level;
+
 		if (level != null && level.getEntity(unit) instanceof Mob mob
 				&& ConductorUtil.ability(mob, ability) instanceof EntitySkillConductorAbility local) {
 			return local.cooldownTicks(mob);
 		}
+
 		int initial = state.abilityCooldowns.getOrDefault(new AbilityCooldownKey(unit, ability), 0);
+
 		if (Minecraft.getInstance().player == null) {
 			return initial;
 		}
+
 		return Math.max(0, initial - (Minecraft.getInstance().player.tickCount - state.cooldownSnapshotTick));
 	}
 
 	public static int abilityCooldownTotalTicks(UUID unit, Identifier ability) {
 		var level = Minecraft.getInstance().level;
+
 		if (level != null && level.getEntity(unit) instanceof Mob mob
 				&& ConductorUtil.ability(mob, ability) instanceof EntitySkillConductorAbility local) {
 			return local.totalCooldownTicks(mob);
 		}
+
 		return state.abilityCooldownTotals.getOrDefault(new AbilityCooldownKey(unit, ability), 0);
 	}
 
 	public static boolean hasAbility(UUID unit, Identifier ability) {
 		var level = Minecraft.getInstance().level;
+
 		if (level != null && level.getEntity(unit) instanceof Mob mob) {
 			return ConductorUtil.ability(mob, ability) != null;
 		}
+
 		return state.unitAbilities.getOrDefault(unit, List.of()).contains(ability);
 	}
 
 	public static void requestAbilitiesIfMissing(UUID unit) {
-		if (state.unitAbilities.containsKey(unit) || Minecraft.getInstance().player == null)
+		if (state.unitAbilities.containsKey(unit) || Minecraft.getInstance().player == null) {
 			return;
+		}
+
 		int tick = Minecraft.getInstance().player.tickCount;
 		Integer previous = state.abilitySnapshotRequests.get(unit);
-		if (previous != null && tick >= previous && tick - previous < ABILITY_SNAPSHOT_RETRY_TICKS)
+
+		if (previous != null && tick >= previous && tick - previous < ABILITY_SNAPSHOT_RETRY_TICKS) {
 			return;
+		}
+
 		state.abilitySnapshotRequests.put(unit, tick);
 		send(ConductorCommandPayload.Action.SNAPSHOT, "", "", List.of(unit), null,
 				0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, false, "");
@@ -103,14 +128,21 @@ public class ConductorClient {
 
 	public static ConductorData.Unit unit(UUID uuid) {
 		ConductorData.Unit member = state.snapshot.unit(uuid);
-		if (member == null)
+
+		if (member == null) {
 			return null;
+		}
+
 		var level = Minecraft.getInstance().level;
+
 		if (level != null && level.getEntity(uuid) instanceof Mob mob && ConductorAttachmentUtil.hasUnit(mob)) {
 			var attachment = ConductorAttachmentUtil.unit(mob);
-			if (attachment.revision >= state.directoryRevision)
+
+			if (attachment.revision >= state.directoryRevision) {
 				return attachment.snapshot(mob);
+			}
 		}
+
 		return member;
 	}
 
@@ -152,6 +184,7 @@ public class ConductorClient {
 
 	public static void tick() {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (minecraft.level != null && minecraft.player != null && state.level != minecraft.level) {
 			state.level = minecraft.level;
 			requestSnapshot();

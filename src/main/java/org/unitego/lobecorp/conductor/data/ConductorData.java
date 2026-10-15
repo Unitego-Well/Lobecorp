@@ -28,6 +28,7 @@ public class ConductorData extends SavedData {
 			Codec.unboundedMap(Codec.STRING, Pending.CODEC).optionalFieldOf("pending", Map.of()).forGetter(data -> data.pending),
 			Codec.LONG.optionalFieldOf("revision", 0L).forGetter(data -> data.revision)
 	).apply(instance, ConductorData::new));
+	/// 指挥家世界目录的存档类型定义。
 	private static final SavedDataType<ConductorData> TYPE =
 			new SavedDataType<>(Lobecorp.id("conductor_directory"), ConductorData::new, CODEC);
 	public final ConductorWorldRuntime runtime = new ConductorWorldRuntime();
@@ -82,6 +83,7 @@ public class ConductorData extends SavedData {
 		if (mob != null && !mob.isRemoved() && ConductorAttachmentUtil.hasUnit(mob)) {
 			return ConductorAttachmentUtil.unit(mob).snapshot(mob);
 		}
+
 		return units.get(uuid.toString());
 	}
 
@@ -95,13 +97,14 @@ public class ConductorData extends SavedData {
 
 	public void refreshLocations() {
 		for (Mob mob : List.copyOf(loaded.values())) {
-			if (!mob.isRemoved() && ConductorAttachmentUtil.hasUnit(mob))
+			if (!mob.isRemoved() && ConductorAttachmentUtil.hasUnit(mob)) {
 				remember(mob);
+			}
 		}
 	}
 
 	public void remember(Mob mob) {
-		MemberInfo next = new MemberInfo(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString(),
+		var next = new MemberInfo(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString(),
 				mob.getDisplayName().getString(), Position.of(mob.position()));
 		if (!next.equals(memberInfo.put(mob.getUUID().toString(), next))) {
 			revision++;
@@ -122,15 +125,17 @@ public class ConductorData extends SavedData {
 	}
 
 	public boolean join(Mob mob, String team) {
-		if (!teams.containsKey(team) || ConductorUtil.get(mob) == null)
+		if (!teams.containsKey(team) || ConductorUtil.get(mob) == null) {
 			return false;
-		ConductorUnitData state = new ConductorUnitData();
+		}
+		var state = new ConductorUnitData();
 		state.team = team;
 		state.origin = mob.position();
 		state.destination = mob.position();
 		assign(mob.getUUID(), state.snapshot(mob));
-		if (!ConductorAttachmentUtil.hasUnit(mob))
+		if (!ConductorAttachmentUtil.hasUnit(mob)) {
 			return false;
+		}
 		mob.setPersistenceRequired();
 		remember(mob);
 		return true;
@@ -138,68 +143,79 @@ public class ConductorData extends SavedData {
 
 	public void update(UUID uuid, Consumer<ConductorUnitData> mutation) {
 		Unit before = unit(uuid);
-		if (before == null)
+		if (before == null) {
 			return;
+		}
 		Mob mob = find(uuid);
 		ConductorUnitData state;
 		if (mob != null) {
-			if (!ConductorAttachmentUtil.hasUnit(mob))
+			if (!ConductorAttachmentUtil.hasUnit(mob)) {
 				return;
+			}
 			state = ConductorAttachmentUtil.unit(mob);
 		} else {
 			state = new ConductorUnitData();
 			state.read(before);
 		}
+
 		mutation.accept(state);
 		if (mob != null) {
 			if (!ConductorUtil.accept(mob, state.snapshot(mob))) {
 				state.read(before);
 				return;
 			}
+
 			commit(mob);
-		} else
+		} else {
 			assign(uuid, state.snapshot(before.dimension(), before.chunkX(), before.chunkZ()));
+		}
 	}
 
 	private void assign(UUID uuid, Unit unit) {
 		Mob mob = find(uuid);
 		long next = ++revision;
 		if (mob != null) {
-			if (!ConductorUtil.accept(mob, unit))
+			if (!ConductorUtil.accept(mob, unit)) {
 				return;
+			}
 			ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 			state.revision = next;
 			loaded.put(uuid, mob);
-			ConductorAttachmentUtil.syncUnit(mob);
+			ConductorAttachmentUtil.syncUnit(mob, units.get(uuid.toString()));
 			units.put(uuid.toString(), state.snapshot(mob));
 			pending.remove(uuid.toString());
 		} else {
 			units.put(uuid.toString(), unit);
 			pending.put(uuid.toString(), new Pending(unit, next, false));
 		}
+
 		setDirty();
 	}
 
 	public void commit(Mob mob) {
-		if (!ConductorAttachmentUtil.hasUnit(mob))
+		if (!ConductorAttachmentUtil.hasUnit(mob)) {
 			return;
+		}
 		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 		state.revision = ++revision;
-		units.put(mob.getUUID().toString(), state.snapshot(mob));
-		ConductorAttachmentUtil.syncUnit(mob);
+		Unit before = units.put(mob.getUUID().toString(), state.snapshot(mob));
+		ConductorAttachmentUtil.syncUnit(mob, before);
 		remember(mob);
 		setDirty();
 	}
 
 	private Mob find(UUID uuid) {
 		Mob cached = loaded.get(uuid);
-		if (cached != null && !cached.isRemoved())
+		if (cached != null && !cached.isRemoved()) {
 			return cached;
-		if (server != null)
+		}
+		if (server != null) {
 			for (ServerLevel level : server.getAllLevels()) {
-				if (level.getEntity(uuid) instanceof Mob mob && !mob.isRemoved())
+				if (level.getEntity(uuid) instanceof Mob mob && !mob.isRemoved()) {
 					return mob;
+				}
 			}
+		}
 		return null;
 	}
 
@@ -212,44 +228,53 @@ public class ConductorData extends SavedData {
 			setDirty();
 			return;
 		}
-		if (!ConductorAttachmentUtil.hasUnit(mob))
+
+		if (!ConductorAttachmentUtil.hasUnit(mob)) {
 			return;
+		}
 		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
 		if (delivery != null) {
 			if (delivery.revision() > state.revision) {
 				state.read(delivery.value());
 				state.revision = delivery.revision();
 			}
+
 			pending.remove(key);
 		}
+
 		if (!teams.containsKey(state.team)) {
 			ConductorAttachmentUtil.removeUnit(mob);
 			remove(mob.getUUID());
 			return;
 		}
+
 		if (state.order == OrderType.ATTACK_POINT || state.commandedSkill != null) {
 			state.order = OrderType.NONE;
 			state.target = null;
 			state.commandedSkill = null;
 		}
+
 		if (ConductorUtil.get(mob) == null) {
 			ConductorAttachmentUtil.removeUnit(mob);
 			remove(mob.getUUID());
 			return;
 		}
+
 		ConductorAttachmentUtil.removeRuntime(mob);
 		if (!ConductorUtil.accept(mob, state.snapshot(mob))) {
 			state.command(OrderType.NONE, null, mob.position());
 			state.moveResult = MoveResult.CANCELED;
 			ConductorUtil.stop(mob);
 		}
+
 		loaded.put(mob.getUUID(), mob);
 		commit(mob);
 	}
 
 	public void detach(Mob mob, boolean permanent) {
-		if (ConductorAttachmentUtil.hasUnit(mob))
+		if (ConductorAttachmentUtil.hasUnit(mob)) {
 			commit(mob);
+		}
 		loaded.remove(mob.getUUID());
 		if (permanent) {
 			String key = mob.getUUID().toString();
@@ -260,6 +285,7 @@ public class ConductorData extends SavedData {
 			revision++;
 			setDirty();
 		}
+
 		ConductorAttachmentUtil.removeRuntime(mob);
 	}
 
@@ -276,6 +302,7 @@ public class ConductorData extends SavedData {
 		} else if (previous != null) {
 			pending.put(uuid.toString(), new Pending(previous, ++revision, true));
 		}
+
 		loaded.remove(uuid);
 		boolean removedUnit = units.remove(uuid.toString()) != null;
 		boolean removedInfo = memberInfo.remove(uuid.toString()) != null;
@@ -373,7 +400,7 @@ public class ConductorData extends SavedData {
 	public record Team(String name, Set<String> enemies, boolean forceLoad, int color) {
 		public static final Codec<Team> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.STRING.fieldOf("name").forGetter(Team::name),
-				Codec.STRING.listOf().xmap(Set::copyOf, java.util.List::copyOf).fieldOf("enemies").forGetter(Team::enemies),
+				Codec.STRING.listOf().xmap(Set::copyOf, List::copyOf).fieldOf("enemies").forGetter(Team::enemies),
 				Codec.BOOL.fieldOf("force_load").forGetter(Team::forceLoad),
 				Codec.INT.optionalFieldOf("color", -1).forGetter(Team::color)
 		).apply(instance, Team::new));

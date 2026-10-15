@@ -20,8 +20,9 @@ public class DamageReductionSkill extends EntitySkill<TheQueenOfHatred> {
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		if (queen.level() instanceof ServerLevel
-				&& queen.addEffect(new MobEffectInstance(LcMobEffects.QUEEN_DAMAGE_REDUCTION, EFFECT_TICKS)))
+				&& queen.addEffect(new MobEffectInstance(LcMobEffects.QUEEN_DAMAGE_REDUCTION, EFFECT_TICKS))) {
 			runtime.markSuccessful();
+		}
 	}
 
 	@Override

@@ -15,8 +15,10 @@ import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.lowdragmc.photon.gui.editor.view.scene.SceneView;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.client.photon.animation.runtime.PhotonAnimationRuntime;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
@@ -28,14 +30,13 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonEmissionControlAccess;
 import org.unitego.lobecorp.config.photon.emitter.PhotonEmitterSpawnConfig;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEmitterTypes;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
+import org.unitego.lobecorp.util.photon.emitter.PhotonEmitterSpawnShapeUtil;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * 自身不创建粒子，只按独立调度发射项目模板或完整 FX 的隔离实例。
- */
+/// 自身不创建粒子，只按独立调度发射项目模板或完整 FX 的隔离实例。
 @ParametersAreNonnullByDefault
 public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionControlAccess {
 	@Persisted(subPersisted = true)
@@ -92,6 +93,7 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 		}
 
 		t = fraction(ageF);
+
 		if (!lobecorp$isEmissionStopped() && runtime.enabled.get()) {
 			schedule.update(this, dt);
 		}
@@ -99,6 +101,7 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 		ageF += dt;
 		age = (int) ageF;
 		t = fraction(ageF);
+
 		if (!removed && !isLooping() && ageF - getStartDelay() >= getLifetime()) {
 			remove(false);
 		}
@@ -148,12 +151,18 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 		return effects.stop(handle, force);
 	}
 
+	public @Nullable PhotonAnimationRuntime instanceAnimations(UUID handle) {
+		return effects.animations(handle);
+	}
+
 	public void emitConfigured() {
 		var count = runtime.count.get().get(getRandomSource(), getT()).doubleValue();
+
 		if (!Double.isFinite(count) || count < 0) {
 			setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_INVALID);
 			return;
 		}
+
 		emitNow((int) Math.min(count, Integer.MAX_VALUE));
 	}
 
@@ -174,12 +183,14 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 		effects.prune();
 		var spawned = 0;
 		var probability = runtime.probability.get().get(getRandomSource(), getT()).floatValue();
+
 		if (!Float.isFinite(probability) || probability < 0 || probability > 1) {
 			setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_INVALID);
 			return 0;
 		}
 
 		var attempts = Math.min(count, budget);
+
 		for (int i = 0; i < attempts; i++) {
 			if (effects.size() >= Math.max(0, runtime.maxInstances.get())
 					|| config.maxTotal > 0 && generated >= config.maxTotal) {
@@ -188,11 +199,13 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 			}
 
 			budget--;
+
 			if (getRandomSource().nextFloat() < probability && effects.spawn(parameterOverride)) {
 				generated++;
 				spawned++;
 			}
 		}
+
 		return spawned;
 	}
 
@@ -261,6 +274,7 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 	public void restart(boolean clear) {
 		var previous = preserveOnReset;
 		preserveOnReset = !clear;
+
 		if (clear) {
 			effects.stop(true);
 		}
@@ -275,6 +289,7 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 	@Override
 	public void remove(boolean force) {
 		super.remove(force);
+
 		if (force || config.endBehavior == PhotonEmitterSpawnConfig.EndBehavior.CLEAR) {
 			effects.stop(true);
 			return;
@@ -329,5 +344,14 @@ public class PhotonEmitterSpawner extends Emitter implements PhotonEmissionContr
 						() -> Component.literal(Long.toString(generated))),
 				view.fxObjectInfoView.createInformation(Component.translatable(PhotonEmitterSpawnerTextUtil.FAILURE),
 						() -> Component.translatable(PhotonEmitterSpawnerTextUtil.PREFIX + "status." + spawnStatus)));
+	}
+
+	@Override
+	public void drawEditorAfterWorld(SceneView.ParticleSceneEditor scene, MultiBufferSource bufferSource, float partialTicks) {
+		if (!scene.sceneView().isShapeVisible()) {
+			return;
+		}
+
+		PhotonEmitterSpawnShapeUtil.drawGuideLines(config.shape, this, bufferSource);
 	}
 }

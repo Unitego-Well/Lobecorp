@@ -21,22 +21,26 @@ public class PurificationSkill extends EntitySkill<TheQueenOfHatred> {
 	}
 
 	private static boolean harmful(Attribute attribute, AttributeModifier modifier) {
-		if (modifier.amount() == 0.0)
+		if (modifier.amount() == 0.0) {
 			return false;
+		}
 		boolean increase = modifier.amount() > 0.0;
 		// 自定义倍率属性目前没有负向 sentiment，按其实际业务含义判断。
 		if (attribute == LcAttributes.DAMAGE_TAKEN_MULTIPLIER.get()
-				|| attribute == LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER.get())
+				|| attribute == LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER.get()) {
 			return increase;
+		}
 		return attribute.getStyle(increase) == ChatFormatting.RED;
 	}
 
 	public static boolean needsPurification(TheQueenOfHatred queen) {
-		if (queen.getActiveEffects().stream().anyMatch(effect -> effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL))
+		if (queen.getActiveEffects().stream().anyMatch(effect -> effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL)) {
 			return true;
+		}
 		return BuiltInRegistries.ATTRIBUTE.listElements().anyMatch(holder -> {
-			if (!queen.getAttributes().hasAttribute(holder))
+			if (!queen.getAttributes().hasAttribute(holder)) {
 				return false;
+			}
 			var instance = queen.getAttribute(holder);
 			return instance != null && instance.getModifiers().stream().anyMatch(modifier -> harmful(holder.value(), modifier));
 		});
@@ -49,26 +53,33 @@ public class PurificationSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel))
+		if (!(queen.level() instanceof ServerLevel)) {
 			return;
+		}
 		boolean needed = needsPurification(queen);
 		for (var effect : List.copyOf(queen.getActiveEffects())) {
-			if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL)
+			if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
 				queen.removeEffect(effect.getEffect());
+			}
 		}
+
 		BuiltInRegistries.ATTRIBUTE.listElements().forEach(holder -> {
-			if (!queen.getAttributes().hasAttribute(holder))
+			if (!queen.getAttributes().hasAttribute(holder)) {
 				return;
+			}
 			var instance = queen.getAttribute(holder);
-			if (instance == null)
+			if (instance == null) {
 				return;
+			}
 			for (AttributeModifier modifier : List.copyOf(instance.getModifiers())) {
-				if (harmful(holder.value(), modifier))
+				if (harmful(holder.value(), modifier)) {
 					instance.removeModifier(modifier);
+				}
 			}
 		});
-		if (needed)
+		if (needed) {
 			runtime.markSuccessful();
+		}
 	}
 
 	@Override
@@ -100,4 +111,3 @@ public class PurificationSkill extends EntitySkill<TheQueenOfHatred> {
 		queen.stopActionAnimation();
 	}
 }
-

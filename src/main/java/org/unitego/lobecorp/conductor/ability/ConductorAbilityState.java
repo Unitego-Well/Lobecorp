@@ -34,10 +34,11 @@ public record ConductorAbilityState(Map<Identifier, Boolean> overrides) {
 
 	private ConductorAbilityState with(Identifier id, boolean owned, boolean initial) {
 		Map<Identifier, Boolean> next = new HashMap<>(overrides);
-		if (owned == initial)
+		if (owned == initial) {
 			next.remove(id);
-		else
+		} else {
 			next.put(id, owned);
+		}
 		return new ConductorAbilityState(next);
 	}
 }

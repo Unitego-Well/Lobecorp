@@ -58,23 +58,28 @@ public class AutoGlowingRenderLayer<T extends GeoAnimatable, O, R extends GeoRen
 	@Override
 	protected @Nullable RenderType getRenderType(@NonNull R renderState) {
 		Identifier glowmask = getTextureResource(renderState);
+
 		if (!glowmaskExistence.computeIfAbsent(glowmask,
 				resource -> Minecraft.getInstance().getResourceManager().getResource(resource).isPresent())) {
 			return null;
 		}
+
 		return super.getRenderType(renderState);
 	}
 
 	@Override
 	public void submitRenderTask(@NonNull RenderPassInfo<R> renderPassInfo, @NonNull SubmitNodeCollector renderTasks) {
 		float glowStrength = getGlowStrength(renderPassInfo);
+
 		if (glowStrength <= MINIMUM_GLOW_STRENGTH) {
 			return;
 		}
+
 		int renderColor = renderPassInfo.renderColor();
 		int glowColor = ARGB.color(Math.round(ARGB.alpha(renderColor) * glowStrength),
 				ARGB.red(renderColor), ARGB.green(renderColor), ARGB.blue(renderColor));
 		renderPassInfo.renderState().addGeckolibData(DataTickets.RENDER_COLOR, glowColor);
+
 		try {
 			super.submitRenderTask(renderPassInfo, renderTasks);
 		} finally {
@@ -86,12 +91,15 @@ public class AutoGlowingRenderLayer<T extends GeoAnimatable, O, R extends GeoRen
 	public @Nullable DynamicRenderPass createRenderPass(RenderPassInfo<R> renderPassInfo) {
 		float glowStrength = getGlowStrength(renderPassInfo);
 		RenderType renderType = getRenderType(renderPassInfo.renderState());
+
 		if (glowStrength <= MINIMUM_GLOW_STRENGTH) {
 			return null;
 		}
+
 		if (renderType == null) {
 			return null;
 		}
+
 		int renderColor = renderPassInfo.renderColor();
 		int glowColor = ARGB.color(Math.round(ARGB.alpha(renderColor) * glowStrength),
 				ARGB.red(renderColor), ARGB.green(renderColor), ARGB.blue(renderColor));

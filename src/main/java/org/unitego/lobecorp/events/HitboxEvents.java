@@ -11,6 +11,7 @@ public class HitboxEvents {
 			HitboxManager.tick(serverLevel);
 			return;
 		}
+
 		event.getLevel().getData(LcAttachmentTypes.HITBOX_LEVEL_DATA)
 				.pruneClient(event.getLevel().getGameTime());
 	}

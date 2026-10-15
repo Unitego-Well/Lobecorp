@@ -5,9 +5,7 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import org.unitego.lobecorp.config.photon.emitter.PhotonEmitterSpawnConfig;
 
-/**
- * 本实例的动画槽；恢复或重启时回到保存的配置，不改共享模板。
- */
+/// 本实例的动画槽；恢复或重启时回到保存的配置，不改共享模板。
 public class PhotonEmitterSpawnRuntime {
 	public final RuntimeValue<Boolean> enabled;
 	public final RuntimeValue<Integer> duration;
@@ -67,4 +65,3 @@ public class PhotonEmitterSpawnRuntime {
 		playbackSpeed.clear();
 	}
 }
-

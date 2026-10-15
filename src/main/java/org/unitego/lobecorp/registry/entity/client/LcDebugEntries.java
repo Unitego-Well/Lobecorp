@@ -53,17 +53,22 @@ public class LcDebugEntries {
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_STATES)) {
 			event.register(EntityStateDebugRenderer::new);
 		}
+
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_SKILLS)) {
 			event.register(EntitySkillDebugRenderer::new);
 		}
+
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(SKILL_EFFECT_ENTITIES)) {
 			event.register(EntitySkillEffectDebugRenderer::new);
 		}
+
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(HITBOXES)) {
 			event.register(HitboxDebugRenderer::new);
 		}
+
 		boolean localServerHitboxesEnabled = isDebugRenderingEnabled(DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES);
 		boolean clientHitboxesEnabled = isEnabled(DebugScreenEntries.ENTITY_HITBOXES);
+
 		if (localServerHitboxesEnabled && !clientHitboxesEnabled) {
 			event.register(EntityHitboxDebugRenderer::new);
 		}

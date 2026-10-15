@@ -19,6 +19,7 @@ public abstract class BeamRuntimeMixin implements PhotonBeamLengthAccess {
 		if (this.lobecorp$beamLength == null || authored.lengthSquared() == 0) {
 			return authored;
 		}
+
 		return new Vector3f(authored).normalize(this.lobecorp$beamLength);
 	}
 

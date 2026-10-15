@@ -27,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.world.entity.state.EntityStateHolder;
+import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
@@ -37,12 +37,29 @@ import java.util.List;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
+/// 保存并展示原实体快照的尸体实体，负责腐烂移除与尺寸缓存。
 public class EntityCorpse<T extends Entity> extends LivingEntity {
+	/// 无原实体缓存时重新检查尸体有效性的间隔，单位为 tick。
+	private static final int OWNER_RECHECK_INTERVAL_TICKS = TICKS_PER_SECOND;
+	/// 尸体死亡流程使用的移除计时，单位为 tick。
+	private static final int DEATH_REMOVAL_DELAY_TICKS = TICKS_PER_SECOND;
+	/// 尸体在水中追加浮力的垂直速度阈值。
+	private static final float WATER_FALL_SPEED_THRESHOLD = 0.06F;
+	/// 尸体在水中每 tick 追加的浮力速度。
+	private static final double WATER_BUOYANCY = 0.015;
+	/// 尸体在水中的水平速度保留倍率。
+	private static final double WATER_HORIZONTAL_DAMPING = 0.99;
+	/// 尸体在水中允许的最大向上速度。
+	private static final double MAXIMUM_WATER_VERTICAL_SPEED = 0.1;
+	/// 尸体在岩浆中每 tick 追加的浮力速度。
+	private static final double LAVA_BUOYANCY = 0.015;
+	/// 尸体在岩浆中的水平速度保留倍率。
+	private static final double LAVA_HORIZONTAL_DAMPING = 0.95;
+
 	/// 尸体显示名称翻译键。
 	public static final String DISPLAY_NAME_KEY = TranslationKeys.ENTITY_LOBECORP_ENTITY_CORPSE_DISPLAY_NAME;
 	/// 尸体自动腐烂前的最大存续 tick。
 	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
-	/// 尸体序列化错误日志记录器。
 	private static final Logger LOGGER = LogUtils.getLogger();
 	/// 原实体序列化数据的同步字段。
 	private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
@@ -76,6 +93,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (entity == null) {
 			return;
 		}
+
 		entity.setDeltaMovement(Vec3.ZERO);
 		entity.fallDistance = 0.0F;
 		entity.clearFire();
@@ -84,24 +102,29 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (!(entity instanceof LivingEntity livingEntity)) {
 			return;
 		}
+
 		livingEntity.removeAllEffects();
 		for (AttributeInstance.Packed packedAttribute : livingEntity.getAttributes().pack()) {
 			AttributeInstance attribute = livingEntity.getAttribute(packedAttribute.attribute());
 			if (attribute == null) {
 				continue;
 			}
+
 			for (AttributeModifier modifier : attribute.getModifiers()) {
 				if (!attribute.getPermanentModifiers().contains(modifier)) {
 					attribute.removeModifier(modifier);
 				}
 			}
 		}
-		if (entity instanceof EntityStateHolder stateHolder) {
+
+		if (entity instanceof IEntityStateHolder stateHolder) {
 			stateHolder.setEntityStates(List.of());
 		}
+
 		if (!(entity instanceof Mob mob)) {
 			return;
 		}
+
 		Brain<?> brain = mob.getBrain();
 		brain.eraseMemory(MemoryModuleType.ATTACK_TARGET);
 		brain.eraseMemory(MemoryModuleType.WALK_TARGET);
@@ -144,7 +167,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 			return;
 		}
 
-		if (!level().isClientSide() && tickCount % 20 == 0 && ownerEntity == null) {
+		if (!level().isClientSide() && tickCount % OWNER_RECHECK_INTERVAL_TICKS == 0 && ownerEntity == null) {
 			remove(RemovalReason.DISCARDED);
 			return;
 		}
@@ -160,13 +183,13 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 
 	private void setUnderwaterMovement() {
 		Vec3 movement = this.getDeltaMovement();
-		double newY = movement.y + (movement.y < 0.06F ? 0.015 : 0.0);
-		this.setDeltaMovement(movement.x * 0.99, Math.min(newY, 0.1), movement.z * 0.99);
+		double newY = movement.y + (movement.y < WATER_FALL_SPEED_THRESHOLD ? WATER_BUOYANCY : 0.0);
+		this.setDeltaMovement(movement.x * WATER_HORIZONTAL_DAMPING, Math.min(newY, MAXIMUM_WATER_VERTICAL_SPEED), movement.z * WATER_HORIZONTAL_DAMPING);
 	}
 
 	private void setUnderLavaMovement() {
 		Vec3 movement = this.getDeltaMovement();
-		this.setDeltaMovement(movement.x * 0.95, movement.y + 0.015, movement.z * 0.95);
+		this.setDeltaMovement(movement.x * LAVA_HORIZONTAL_DAMPING, movement.y + LAVA_BUOYANCY, movement.z * LAVA_HORIZONTAL_DAMPING);
 	}
 
 	@Override
@@ -174,30 +197,39 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (source.is(DamageTypeTags.IS_PROJECTILE)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.DROWN)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.IN_WALL)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.MAGIC)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.INDIRECT_MAGIC)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.WITHER)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.WITHER_SKULL)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.HOT_FLOOR)) {
 			return true;
 		}
+
 		if (source.is(DamageTypes.CACTUS)) {
 			return true;
 		}
+
 		return super.isInvulnerableTo(level, source);
 	}
 
@@ -247,6 +279,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 			reset();
 			return;
 		}
+
 		this.ownerEntity = newOwnerEntity;
 		ownerEntity.setOldPosAndRot();
 		if (newOwnerEntity instanceof LivingEntity livingEntity) {
@@ -260,6 +293,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 			getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
 			setHealth(health);
 		}
+
 		updateCachedDimensions();
 		refreshDimensions();
 	}
@@ -269,6 +303,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (cachedDimensions != null) {
 			return cachedDimensions;
 		}
+
 		return super.getDefaultDimensions(pose);
 	}
 
@@ -277,6 +312,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 			cachedDimensions = null;
 			return;
 		}
+
 		EntityDimensions original = ownerEntity.getDimensions(Pose.STANDING);
 		float newHeight = original.width() / 2.0F;
 		float newWidth = original.height();
@@ -308,7 +344,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 
 	@Override
 	protected void tickDeath() {
-		deathTime = 20;
+		deathTime = DEATH_REMOVAL_DELAY_TICKS;
 		super.tickDeath();
 	}
 
@@ -331,10 +367,12 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (ownerEntity == null) {
 			return null;
 		}
+
 		T revivedEntity = (T) ownerEntity.getType().create(level(), EntitySpawnReason.LOAD);
 		if (revivedEntity == null) {
 			return null;
 		}
+
 		revivedEntity.restoreFrom(ownerEntity);
 		clearTemporaryState(revivedEntity);
 		return revivedEntity;
@@ -359,6 +397,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (ownerEntity != null) {
 			return Component.translatable(DISPLAY_NAME_KEY, ownerEntity.getDisplayName());
 		}
+
 		return super.getDisplayName();
 	}
 }

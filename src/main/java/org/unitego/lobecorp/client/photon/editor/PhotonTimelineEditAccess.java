@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 
@@ -20,4 +21,10 @@ public interface PhotonTimelineEditAccess {
 	public void lobecorp$duplicateNative();
 
 	public void lobecorp$cancelClipDrag();
+
+	public void lobecorp$pruneSelection(Timeline timeline);
+
+	public Object lobecorp$captureViewState();
+
+	public void lobecorp$restoreViewState(Object state);
 }

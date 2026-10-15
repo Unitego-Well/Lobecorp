@@ -50,8 +50,9 @@ public class SpinSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		HitboxInstance hitbox = HitboxManager.create(HITBOX, level, queen.position(),
 				HitboxManager.CURRENT_TICK_DURATION, runtime);
 		hitbox.follow(queen, new Vec3(0.0, queen.getBbHeight() / 2.0, 0.0), false);
@@ -63,7 +64,7 @@ public class SpinSkill extends EntitySkill<TheQueenOfHatred> {
 			Vec3 direction = forward.yRot((float) Math.toRadians(FULL_CIRCLE_DEGREES * index / count));
 			Vec3 origin = queen.position().add(0.0, STAR_SPAWN_HEIGHT, 0.0)
 					.add(direction.scale(STAR_SPAWN_OFFSET));
-			MagicStarProjectile star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get(), level);
+			var star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get(), level);
 			star.configure(queen, MagicStarProjectile.StarSize.MEDIUM, MagicStarProjectile.StarVariant.A, origin, direction);
 			level.addFreshEntity(star);
 		}

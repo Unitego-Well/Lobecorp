@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.util.entity.skill;
 
 import net.minecraft.tags.TagKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -17,10 +18,11 @@ import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
 import org.unitego.lobecorp.registry.entity.skill.EntitySkillDefaults;
 import org.unitego.lobecorp.world.entity.skill.*;
+import org.unitego.lobecorp.world.effect.StunMobEffect;
 
 import java.util.*;
 
-/// 实体技能附件状态机的内部实现。业务代码通过 EntitySkillAccess 能力访问技能、分组、运行态、冷却和攻击段数。
+/// 实体技能附件状态机的内部实现。业务代码通过 IEntitySkillAccess 能力访问技能、分组、运行态、冷却和攻击段数。
 public class EntitySkillUtil {
 
 	/// 初始化实体的技能附件，并确保默认的当前执行组与被动组存在。
@@ -33,6 +35,7 @@ public class EntitySkillUtil {
 		entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS);
 		entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS);
 		entity.getData(LcAttachmentTypes.ATTACK_COMBO);
+
 		for (IEntitySkill<?> skill : EntitySkillDefaults.forType(entity.getType())) {
 			addGroup(entity, skill.group());
 		}
@@ -58,12 +61,13 @@ public class EntitySkillUtil {
 		if (!entity.hasData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS)) {
 			return List.of();
 		}
+
 		return List.copyOf(activeSkills(entity));
 	}
 
 	/// 为实体添加技能，并自动确保技能所属分组存在。
 	/// 重复添加同一个注册技能不会产生重复项，也不会重置该技能的冷却或运行态。
-	/// 已拥有技能附件会按照附件配置持久化并同步。
+	/// 已拥有技能附件按原配置持久化，变化条目通过技能数据载荷同步。
 	///
 	/// @param entity 接收技能的实体
 	/// @param skill  要添加的已注册技能
@@ -71,9 +75,12 @@ public class EntitySkillUtil {
 		initialize(entity);
 		EntitySkillState state = entity.getData(LcAttachmentTypes.ENTITY_SKILLS);
 		EntitySkillState next = state.with(skill, true, EntitySkillDefaults.forType(entity.getType()).contains(skill));
+
 		if (!next.equals(state)) {
 			entity.setData(LcAttachmentTypes.ENTITY_SKILLS, next);
+			EntitySkillDataSyncUtil.sendSkillsChanged(entity, state, next);
 		}
+
 		addGroup(entity, skill.group());
 	}
 
@@ -97,12 +104,17 @@ public class EntitySkillUtil {
 		if (!getSkills(entity).contains(skill)) {
 			return;
 		}
+
 		cancelSkills(entity, skill, true);
+
 		if (skill instanceof MultiStageSkill<?> multiStage) {
 			entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences.remove(multiStage);
 		}
-		entity.setData(LcAttachmentTypes.ENTITY_SKILLS, entity.getData(LcAttachmentTypes.ENTITY_SKILLS)
-				.with(skill, false, EntitySkillDefaults.forType(entity.getType()).contains(skill)));
+
+		var state = entity.getData(LcAttachmentTypes.ENTITY_SKILLS);
+		var next = state.with(skill, false, EntitySkillDefaults.forType(entity.getType()).contains(skill));
+		entity.setData(LcAttachmentTypes.ENTITY_SKILLS, next);
+		EntitySkillDataSyncUtil.sendSkillsChanged(entity, state, next);
 	}
 
 	/// 从实体拥有的技能中依次移除多个技能。
@@ -118,7 +130,7 @@ public class EntitySkillUtil {
 
 	/// 获取实体拥有的技能组及各组当前的同时运行上限。
 	/// 调用时会补齐不可移除的默认组。返回值为不可变副本，修改上限应使用
-	/// {@link #setGroupMaximum}。
+	/// [#setGroupMaximum]。
 	///
 	/// @param entity 要查询的实体
 	/// @return 技能组到同时运行上限的映射
@@ -135,6 +147,7 @@ public class EntitySkillUtil {
 		if (!entity.hasData(LcAttachmentTypes.ENTITY_SKILL_GROUPS)) {
 			return Map.of();
 		}
+
 		return Map.copyOf(entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS));
 	}
 
@@ -145,9 +158,12 @@ public class EntitySkillUtil {
 	/// @param entity 接收技能组的实体
 	/// @param group  要添加的已注册技能组
 	public static void addGroup(LivingEntity entity, EntitySkillGroup group) {
-		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS));
+		var previous = entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS);
+		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(previous);
+
 		if (groups.putIfAbsent(group, group.defaultMaximumActiveSkills()) == null) {
 			entity.setData(LcAttachmentTypes.ENTITY_SKILL_GROUPS, Map.copyOf(groups));
+			EntitySkillDataSyncUtil.sendGroupsChanged(entity, previous, groups);
 		}
 	}
 
@@ -172,12 +188,17 @@ public class EntitySkillUtil {
 		if (isDefaultGroup(group)) {
 			return false;
 		}
-		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS));
+
+		var previous = entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS);
+		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(previous);
+
 		if (groups.remove(group) == null) {
 			return false;
 		}
+
 		cancelGroup(entity, group);
 		entity.setData(LcAttachmentTypes.ENTITY_SKILL_GROUPS, Map.copyOf(groups));
+		EntitySkillDataSyncUtil.sendGroupsChanged(entity, previous, groups);
 		return true;
 	}
 
@@ -189,11 +210,13 @@ public class EntitySkillUtil {
 	/// @return 至少成功移除一个组时返回 {@code true}
 	public static boolean removeGroups(LivingEntity entity, EntitySkillGroup... groups) {
 		boolean removed = false;
+
 		for (EntitySkillGroup group : groups) {
 			if (removeGroup(entity, group)) {
 				removed = true;
 			}
 		}
+
 		return removed;
 	}
 
@@ -209,10 +232,13 @@ public class EntitySkillUtil {
 		if (maximum < 0) {
 			throw new IllegalArgumentException("maximum must not be negative");
 		}
+
 		addGroup(entity, group);
-		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS));
+		var previous = entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS);
+		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(previous);
 		groups.put(group, maximum);
 		entity.setData(LcAttachmentTypes.ENTITY_SKILL_GROUPS, Map.copyOf(groups));
+		EntitySkillDataSyncUtil.sendGroupsChanged(entity, previous, groups);
 		trimGroup(entity, group, maximum);
 	}
 
@@ -230,7 +256,7 @@ public class EntitySkillUtil {
 	}
 
 	/// 判断技能是否仍处于冷却。
-	/// 冷却使用世界游戏时间记录结束时刻，因此实体重新加载后仍能保持持久化的剩余冷却。
+	/// 冷却以世界时间和冷却速度推进，持久化结束时刻及小数进度，重新加载后保留剩余量。
 	///
 	/// @param entity 技能拥有者
 	/// @param skill  要查询的技能
@@ -240,7 +266,7 @@ public class EntitySkillUtil {
 	}
 
 	/// 获取技能当前剩余冷却 tick。
-	/// 冷却附件不存在或已经结束时返回零，不会为了查询创建技能附件。
+	/// 冷却附件不存在或已经结束时返回零；服务端查询会先按冷却速度推进已有冷却。
 	///
 	/// @param entity 技能拥有者
 	/// @param skill  要查询的技能
@@ -249,11 +275,15 @@ public class EntitySkillUtil {
 		if (!entity.hasData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS)) {
 			return 0;
 		}
+
+		advanceCooldowns(entity);
 		Long until = entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS).get(skill);
+
 		if (until == null) {
 			return 0;
 		}
-		return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, until - entity.level().getGameTime()));
+
+		return Math.clamp(until - entity.level().getGameTime(), 0, Integer.MAX_VALUE);
 	}
 
 	/// 获取实体当前冷却结束时间快照。
@@ -264,6 +294,8 @@ public class EntitySkillUtil {
 		if (!entity.hasData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS)) {
 			return Map.of();
 		}
+
+		advanceCooldowns(entity);
 		return Map.copyOf(entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS));
 	}
 
@@ -276,12 +308,15 @@ public class EntitySkillUtil {
 	/// @return 所有施放条件均满足时返回 {@code true}
 	public static <T extends LivingEntity> boolean canCast(T entity, IEntitySkill<T> skill) {
 		EntitySkillRuntime<T> runtime = prepareCast(entity, skill);
+
 		if (runtime == null) {
 			return false;
 		}
+
 		if (!runtime.canUse()) {
 			return false;
 		}
+
 		return replacementsFor(entity, skill) != null;
 	}
 
@@ -312,48 +347,70 @@ public class EntitySkillUtil {
 	/// @return 施放结果以及成功时创建的运行实例
 	public static <T extends LivingEntity> EntitySkillCastResult<T> cast(
 			T entity, EntitySkillCastRequest<T> request) {
+		if (StunMobEffect.preventsActions(entity)) {
+			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_REJECTED, null);
+		}
+
 		IEntitySkill<T> skill = request.skill();
 		initialize(entity);
 		expireMultiStageSequences(entity);
+
 		if (!getSkills(entity).contains(skill)) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_NOT_OWNED, null);
 		}
+
 		if (isOnCooldown(entity, skill)) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.ON_COOLDOWN, null);
 		}
+
 		if (skill.mutuallyExclusive()
 				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.MUTUALLY_EXCLUSIVE, null);
 		}
+
 		if (!getGroups(entity).containsKey(skill.group())) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_NOT_AVAILABLE, null);
 		}
+
 		long runtimeId = entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).allocateRuntimeId();
 		EntitySkillRuntime<T> runtime = new EntitySkillRuntime<>(runtimeId, entity, skill,
 				EntitySkillRuntime.SkillState.WINDUP, skill.windupTicks());
 		runtime.setTarget(request.target());
 		runtime.setTargetPosition(request.targetPosition());
+
 		if (!runtime.canUse()) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_REJECTED, null);
 		}
+
 		List<EntitySkillRuntime<?>> replacements = replacementsFor(entity, skill);
+
 		if (replacements == null) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_FULL, null);
 		}
+
 		if (!skill.prepareAim(entity, runtime)) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.AIMING, null);
 		}
+
 		if (!entity.level().isClientSide()) {
 			EntitySkillEvent.Cast event = new EntitySkillEvent.Cast(runtime);
 			NeoForge.EVENT_BUS.post(event);
+
 			if (event.isCanceled()) {
 				return new EntitySkillCastResult<>(EntitySkillCastResult.Status.EVENT_CANCELLED, null);
 			}
 		}
+
+		if (StunMobEffect.preventsActions(entity)) {
+			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_REJECTED, null);
+		}
+
 		replacements = replacementsFor(entity, skill);
+
 		if (replacements == null) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_FULL, null);
 		}
+
 		for (EntitySkillRuntime<?> replaced : replacements) {
 			if (replaced.skill() instanceof MultiStageBasicSkill<?> basic
 					&& replaced.state() == EntitySkillRuntime.SkillState.RECOVERY) {
@@ -361,20 +418,26 @@ public class EntitySkillUtil {
 					finish(replaced);
 					continue;
 				}
+
 				basic.expireSequence(replaced);
 			}
+
 			cancelRuntime(entity, replaced, true);
 		}
+
 		activeSkills(entity).add(runtime);
 		startCooldown(runtime, skill.cooldownTicks());
 		applyMovementLocks(entity, skill);
 		runtime.onWindupStart();
+
 		if (isCurrent(runtime) && runtime.state() == EntitySkillRuntime.SkillState.WINDUP) {
 			postServer(new EntitySkillEvent.Started(runtime));
+
 			if (isCurrent(runtime)) {
 				advanceImmediateStates(runtime);
 			}
 		}
+
 		return new EntitySkillCastResult<>(EntitySkillCastResult.Status.STARTED, runtime);
 	}
 
@@ -389,35 +452,47 @@ public class EntitySkillUtil {
 	@SafeVarargs
 	public static <T extends LivingEntity> int castSkills(T entity, IEntitySkill<T>... skills) {
 		int successfulCasts = 0;
+
 		for (IEntitySkill<T> skill : skills) {
 			if (cast(entity, skill).started()) {
 				successfulCasts++;
 			}
 		}
+
 		return successfulCasts;
 	}
 
 	private static <T extends LivingEntity> EntitySkillRuntime<T> prepareCast(T entity, IEntitySkill<T> skill) {
+		if (StunMobEffect.preventsActions(entity)) {
+			return null;
+		}
+
 		initialize(entity);
+
 		if (!getSkills(entity).contains(skill)) {
 			return null;
 		}
+
 		if (isOnCooldown(entity, skill)) {
 			return null;
 		}
+
 		if (skill.mutuallyExclusive()
 				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
 			return null;
 		}
+
 		if (!getGroups(entity).containsKey(skill.group())) {
 			return null;
 		}
+
 		return new EntitySkillRuntime<>(entity, skill, EntitySkillRuntime.SkillState.WINDUP, skill.windupTicks());
 	}
 
 	/// 当前技能阶段是否允许开始新施放；与真正施放复用同一互斥和覆盖判定。
 	public static boolean canBeginCast(LivingEntity entity, IEntitySkill<?> skill) {
-		return getGroups(entity).containsKey(skill.group()) && replacementsFor(entity, skill) != null;
+		return !StunMobEffect.preventsActions(entity)
+				&& getGroups(entity).containsKey(skill.group()) && replacementsFor(entity, skill) != null;
 	}
 
 	private static List<EntitySkillRuntime<?>> replacementsFor(LivingEntity entity, IEntitySkill<?> skill) {
@@ -425,25 +500,34 @@ public class EntitySkillUtil {
 				.filter(runtime -> runtime.skill().group() == skill.group()).toList();
 		int needed = inGroup.size() - getGroups(entity).getOrDefault(skill.group(), 0) + 1;
 		List<EntitySkillRuntime<?>> result = new ArrayList<>();
+
 		if (skill.mutuallyExclusive()) {
 			for (EntitySkillRuntime<?> runtime : inGroup) {
-				if (runtime.skill() != skill)
+				if (runtime.skill() != skill) {
 					continue;
-				if (!canOverride(runtime, skill))
+				}
+
+				if (!canOverride(runtime, skill)) {
 					return null;
+				}
 				result.add(runtime);
 			}
 		}
-		if (result.size() >= needed)
+
+		if (result.size() >= needed) {
 			return result;
+		}
+
 		for (EntitySkillRuntime<?> runtime : inGroup) {
 			if (!result.contains(runtime) && canOverride(runtime, skill)) {
 				result.add(runtime);
 			}
+
 			if (result.size() == needed) {
 				return result;
 			}
 		}
+
 		return null;
 	}
 
@@ -490,8 +574,10 @@ public class EntitySkillUtil {
 
 	private static void endRuntime(EntitySkillRuntime<?> runtime) {
 		runtime.onEnd();
+
 		if (isCurrent(runtime)) {
 			enterRecovery(runtime);
+
 			if (isCurrent(runtime)) {
 				advanceImmediateStates(runtime);
 			}
@@ -585,17 +671,21 @@ public class EntitySkillUtil {
 		if (!isCurrent(runtime)) {
 			return;
 		}
+
 		if (!forced && !canCancel(runtime)) {
 			EntitySkillDebugUtil.log(runtime, "cancel-rejected:not-cancellable");
 			return;
 		}
+
 		runtime.onCancel();
 		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		HitboxManager.removeForSkillRuntime(runtime);
 		activeSkills(entity).remove(runtime);
+
 		if (runtime.hasCooldownTicksOverride()) {
 			startCooldown(runtime, runtime.cooldownTicks());
 		}
+
 		postServer(new EntitySkillEvent.Cancelled(runtime));
 	}
 
@@ -661,27 +751,40 @@ public class EntitySkillUtil {
 		if (entity.level().isClientSide()) {
 			return;
 		}
+
+		advanceCooldowns(entity);
+
 		if (!entity.hasData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS)) {
 			return;
 		}
+
+		if (StunMobEffect.preventsActions(entity)) {
+			forceCancelSkill(entity);
+			return;
+		}
+
 		for (EntitySkillRuntime<?> runtime : List.copyOf(activeSkills(entity))) {
 			tickRuntime(entity, runtime);
 		}
+
 		expireMultiStageSequences(entity);
 	}
 
 	/// 能力实现使用的多段技能状态入口，不保存第二份实体数据。
 	public static MultiStageSkill.Sequence multiStageSequence(LivingEntity entity, MultiStageSkill<?> skill) {
 		return entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences
-				.computeIfAbsent(skill, ignored -> new MultiStageSkill.Sequence());
+				.computeIfAbsent(skill, _ -> new MultiStageSkill.Sequence());
 	}
 
 	private static void expireMultiStageSequences(LivingEntity entity) {
-		if (entity.level().isClientSide() || !entity.hasData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS))
+		if (entity.level().isClientSide() || !entity.hasData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS)) {
 			return;
+		}
 		var sequences = entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences;
+
 		for (var entry : List.copyOf(sequences.entrySet())) {
 			EntitySkillRuntime<?> runtime = entry.getValue().pendingRuntime();
+
 			if (runtime != null && entity.level().getGameTime() >= entry.getValue().expiresAt()
 					&& !isCasting(entity, entry.getKey())) {
 				entry.getKey().expireSequence(runtime);
@@ -695,44 +798,59 @@ public class EntitySkillUtil {
 			activeSkills(entity).remove(runtime);
 			return;
 		}
+
 		applyMovementLocks(entity, runtime.skill());
 		runtime.incrementElapsedTicks();
+
 		switch (runtime.state()) {
 			case WINDUP -> {
 				runtime.onWindupTick();
+
 				if (!isCurrent(runtime)) {
 					return;
 				}
+
 				if (runtime.state() != EntitySkillRuntime.SkillState.WINDUP) {
 					return;
 				}
+
 				runtime.setTicksLeft(runtime.ticksLeft() - 1);
+
 				if (runtime.ticksLeft() <= 0) {
 					activate(runtime);
+
 					if (isCurrent(runtime)) {
 						advanceImmediateStates(runtime);
 					}
 				}
 			}
+
 			case ACTIVE -> {
 				runtime.incrementActiveTicks();
 				runtime.onTick();
+
 				if (!isCurrent(runtime)) {
 					return;
 				}
+
 				if (runtime.state() != EntitySkillRuntime.SkillState.ACTIVE) {
 					return;
 				}
+
 				if (runtime.ticksLeft() == -1) {
 					return;
 				}
+
 				runtime.setTicksLeft(runtime.ticksLeft() - 1);
+
 				if (runtime.ticksLeft() <= 0) {
 					endRuntime(runtime);
 				}
 			}
+
 			case RECOVERY -> {
 				runtime.setTicksLeft(runtime.ticksLeft() - 1);
+
 				if (runtime.ticksLeft() <= 0) {
 					finish(runtime);
 				}
@@ -744,6 +862,7 @@ public class EntitySkillUtil {
 		runtime.setState(EntitySkillRuntime.SkillState.ACTIVE);
 		runtime.setTicksLeft(runtime.skill().durationTicks());
 		runtime.onActivate();
+
 		if (isCurrent(runtime) && runtime.state() == EntitySkillRuntime.SkillState.ACTIVE) {
 			postServer(new EntitySkillEvent.Activated(runtime));
 		}
@@ -752,6 +871,7 @@ public class EntitySkillUtil {
 	private static void enterRecovery(EntitySkillRuntime<?> runtime) {
 		runtime.setState(EntitySkillRuntime.SkillState.RECOVERY);
 		runtime.setTicksLeft(runtime.skill().recoveryTicks());
+
 		if (isCurrent(runtime) && runtime.state() == EntitySkillRuntime.SkillState.RECOVERY) {
 			EntitySkillSyncPayload.send(runtime, EntitySkillSyncPayload.Callback.ENTER_RECOVERY);
 			postServer(new EntitySkillEvent.RecoveryStarted(runtime));
@@ -762,18 +882,23 @@ public class EntitySkillUtil {
 		if (!isCurrent(runtime)) {
 			return;
 		}
+
 		if (runtime.state() == EntitySkillRuntime.SkillState.WINDUP && runtime.ticksLeft() <= 0) {
 			activate(runtime);
 		}
+
 		if (!isCurrent(runtime)) {
 			return;
 		}
+
 		if (runtime.state() == EntitySkillRuntime.SkillState.ACTIVE && runtime.ticksLeft() == 0) {
 			runtime.onEnd();
+
 			if (isCurrent(runtime)) {
 				enterRecovery(runtime);
 			}
 		}
+
 		if (isCurrent(runtime) && runtime.state() == EntitySkillRuntime.SkillState.RECOVERY && runtime.ticksLeft() <= 0) {
 			finish(runtime);
 		}
@@ -781,17 +906,22 @@ public class EntitySkillUtil {
 
 	private static void finish(EntitySkillRuntime<?> runtime) {
 		runtime.onRecoveryEnd();
+
 		if (!isCurrent(runtime)) {
 			return;
 		}
-		if (runtime.skill() instanceof MultiStageSkill<?> multiStage)
+
+		if (runtime.skill() instanceof MultiStageSkill<?> multiStage) {
 			multiStage.completeStage(runtime);
+		}
 		EntitySkillEffectManager.removeForSkillRuntime(runtime);
 		HitboxManager.removeForSkillRuntime(runtime);
 		LivingEntity owner = runtime.owner();
+
 		if (runtime.hasCooldownTicksOverride()) {
 			startCooldown(runtime, runtime.cooldownTicks());
 		}
+
 		activeSkills(owner).remove(runtime);
 		postServer(new EntitySkillEvent.Completed(runtime));
 	}
@@ -811,6 +941,7 @@ public class EntitySkillUtil {
 			mob.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
 			mob.getNavigation().stop();
 		}
+
 		if (skill.locksMovement()) {
 			Vec3 movement = entity.getDeltaMovement();
 			entity.setDeltaMovement(0.0, movement.y, 0.0);
@@ -818,20 +949,46 @@ public class EntitySkillUtil {
 	}
 
 	/// 设置或清除技能冷却。
-	/// 正数以当前世界游戏时间为基准写入冷却结束时间；零或负数会移除现有冷却。
-	/// 冷却附件会按附件配置持久化并同步。
+	/// 正数写入从当前时刻开始的剩余冷却量，之后按冷却速度推进；零或负数移除现有冷却。
+	/// 冷却附件按原配置持久化，变化条目通过技能数据载荷同步。
 	///
 	/// @param entity 技能拥有者
 	/// @param skill  要修改冷却的技能
 	/// @param ticks  从当前时刻开始计算的冷却 tick；小于等于零表示清除
 	public static void setCooldown(LivingEntity entity, IEntitySkill<?> skill, int ticks) {
-		Map<IEntitySkill<?>, Long> cooldowns = new LinkedHashMap<>(entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS));
+		advanceCooldowns(entity);
+		entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWN_CLOCK).reset(skill);
+		var previous = entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS);
+		Map<IEntitySkill<?>, Long> cooldowns = new LinkedHashMap<>(previous);
+
 		if (ticks <= 0) {
 			cooldowns.remove(skill);
 		} else {
 			cooldowns.put(skill, entity.level().getGameTime() + ticks);
 		}
+
 		entity.setData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS, Map.copyOf(cooldowns));
+		EntitySkillDataSyncUtil.sendCooldownsChanged(entity, previous, cooldowns);
+		advanceCooldowns(entity);
+	}
+
+	/// 速度改变仅影响冷却推进；原有施放时长倍率与附件同步保持独立。世界由游戏持有，不在此关闭。
+	@SuppressWarnings("resource")
+	private static void advanceCooldowns(LivingEntity entity) {
+		if (!(entity.level() instanceof ServerLevel level) || !entity.hasData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS)) {
+			return;
+		}
+
+		AttributeInstance attribute = entity.getAttribute(LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED);
+		double speed = attribute == null ? LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED.value().getDefaultValue() : attribute.getValue();
+		Map<IEntitySkill<?>, Long> cooldowns = entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS);
+		Map<IEntitySkill<?>, Long> next = entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWN_CLOCK)
+				.advance(cooldowns, level.getGameTime(), speed);
+
+		if (next != cooldowns) {
+			entity.setData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS, next);
+			EntitySkillDataSyncUtil.sendCooldownsChanged(entity, cooldowns, next);
+		}
 	}
 
 	/// 为多个技能设置或清除相同长度的冷却。
@@ -849,9 +1006,11 @@ public class EntitySkillUtil {
 	private static void startCooldown(EntitySkillRuntime<?> runtime, int cooldownTicks) {
 		AttributeInstance cooldownMultiplier = runtime.owner().getAttribute(
 				LcAttributes.ENTITY_SKILL_COOLDOWN_MULTIPLIER);
+
 		if (cooldownMultiplier != null) {
 			cooldownTicks = (int) Math.ceil(cooldownTicks * cooldownMultiplier.getValue());
 		}
+
 		setCooldown(runtime.owner(), runtime.skill(), cooldownTicks);
 	}
 
@@ -880,7 +1039,10 @@ public class EntitySkillUtil {
 		cancelAll(entity, true);
 		activeSkills(entity).clear();
 		entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).multiStageSequences.clear();
+		var cooldowns = entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS);
 		entity.setData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS, Map.of());
+		EntitySkillDataSyncUtil.sendCooldownsChanged(entity, cooldowns, Map.of());
+		entity.removeData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWN_CLOCK);
 		entity.setData(LcAttachmentTypes.ATTACK_COMBO, 0);
 	}
 
@@ -897,11 +1059,14 @@ public class EntitySkillUtil {
 	}
 
 	private static void ensureDefaultGroups(LivingEntity entity) {
-		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS));
+		var previous = entity.getData(LcAttachmentTypes.ENTITY_SKILL_GROUPS);
+		Map<EntitySkillGroup, Integer> groups = new LinkedHashMap<>(previous);
 		boolean changed = groups.putIfAbsent(LcEntitySkillGroups.CURRENT.get(), LcEntitySkillGroups.CURRENT.get().defaultMaximumActiveSkills()) == null;
 		changed |= groups.putIfAbsent(LcEntitySkillGroups.PASSIVE.get(), LcEntitySkillGroups.PASSIVE.get().defaultMaximumActiveSkills()) == null;
+
 		if (changed) {
 			entity.setData(LcAttachmentTypes.ENTITY_SKILL_GROUPS, Map.copyOf(groups));
+			EntitySkillDataSyncUtil.sendGroupsChanged(entity, previous, groups);
 		}
 	}
 
@@ -915,9 +1080,11 @@ public class EntitySkillUtil {
 					.filter(runtime -> runtime.skill().group() == group)
 					.findFirst()
 					.orElse(null);
+
 			if (oldest == null) {
 				return;
 			}
+
 			cancelRuntime(entity, oldest, true);
 		}
 	}
@@ -930,8 +1097,8 @@ public class EntitySkillUtil {
 
 	/// 兼容旧调用方的能力入口。正常实体都会返回已注册的能力；能力不可用时回退到附件状态机，
 	/// 使实体构造和第三方实体注册顺序不会丢失既有技能数据。
-	public static EntitySkillAccess require(LivingEntity entity) {
-		EntitySkillAccess access = EntitySkillAccess.get(entity);
+	public static IEntitySkillAccess require(LivingEntity entity) {
+		IEntitySkillAccess access = IEntitySkillAccess.get(entity);
 		return access == null ? new EntitySkillAttachmentAccess(entity) : access;
 	}
 

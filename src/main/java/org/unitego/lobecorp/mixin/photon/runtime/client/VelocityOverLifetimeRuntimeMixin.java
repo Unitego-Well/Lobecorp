@@ -32,8 +32,10 @@ public abstract class VelocityOverLifetimeRuntimeMixin {
 			target = "Lcom/lowdragmc/photon/client/gameobject/emitter/data/number/NumberFunction3;get(FLjava/util/function/Supplier;)Lorg/joml/Vector3f;", ordinal = 0))
 	private Vector3f lobecorp$offsetLinear(NumberFunction3 function, float t, Supplier<Float> lerp, Operation<Vector3f> original,
 	                                       TileParticle particle) {
-		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle))
+		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle)) {
 			return original.call(function, t, lerp);
+		}
+
 		return PhotonLifetimeCycleUtil.sampleVector(function, t, lerp, particle, 0, this.config, true,
 				Component.X, Component.Y, Component.Z);
 	}
@@ -42,8 +44,10 @@ public abstract class VelocityOverLifetimeRuntimeMixin {
 			target = "Lcom/lowdragmc/photon/client/gameobject/emitter/data/number/NumberFunction3;get(FLjava/util/function/Supplier;)Lorg/joml/Vector3f;", ordinal = 1))
 	private Vector3f lobecorp$offsetOrbital(NumberFunction3 function, float t, Supplier<Float> lerp, Operation<Vector3f> original,
 	                                        TileParticle particle) {
-		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle))
+		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle)) {
 			return original.call(function, t, lerp);
+		}
+
 		return PhotonLifetimeCycleUtil.sampleVector(function, t, lerp, particle, 0, this.config, true,
 				Component.ORBITAL_X, Component.ORBITAL_Y, Component.ORBITAL_Z);
 	}
@@ -52,8 +56,10 @@ public abstract class VelocityOverLifetimeRuntimeMixin {
 			target = "Lcom/lowdragmc/photon/client/gameobject/emitter/data/number/NumberFunction3;get(FLjava/util/function/Supplier;)Lorg/joml/Vector3f;", ordinal = 2))
 	private Vector3f lobecorp$offsetCenter(NumberFunction3 function, float t, Supplier<Float> lerp, Operation<Vector3f> original,
 	                                       TileParticle particle) {
-		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle))
+		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle)) {
 			return original.call(function, t, lerp);
+		}
+
 		return PhotonLifetimeCycleUtil.sampleVector(function, t, lerp, particle, 0, this.config, true,
 				Component.CENTER_X, Component.CENTER_Y, Component.CENTER_Z);
 	}

@@ -13,9 +13,7 @@ public enum SweeperVariant {
 	C,
 	D;
 
-	/// 清道夫变种存档编解码器。
 	public static final Codec<SweeperVariant> CODEC = EnumCodecUtil.create(SweeperVariant.class);
-	/// 清道夫变种网络编解码器。
 	public static final StreamCodec<ByteBuf, SweeperVariant> STREAM_CODEC = EnumStreamCodecUtil.create(SweeperVariant.class);
 
 	/// 返回用于模型、动画和纹理路径的变种名称段。

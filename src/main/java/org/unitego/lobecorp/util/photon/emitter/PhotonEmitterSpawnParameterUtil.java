@@ -11,9 +11,7 @@ import org.unitego.lobecorp.client.photon.emitter.runtime.PhotonSpawnOverrides;
 import org.unitego.lobecorp.client.photon.runtime.PhotonBeamLengthAccess;
 import org.unitego.lobecorp.config.photon.emitter.PhotonEmitterSpawnConfig;
 
-/**
- * 每次发射采样一次参数，转换为持久的实例动画槽覆盖，兼容子实例重启。
- */
+/// 每次发射采样一次参数，转换为持久的实例动画槽覆盖，兼容子实例重启。
 public class PhotonEmitterSpawnParameterUtil {
 	public static PhotonSpawnOverrides sample(PhotonEmitterSpawner emitter) {
 		var config = emitter.config.parameters;
@@ -40,9 +38,7 @@ public class PhotonEmitterSpawnParameterUtil {
 		return new OverrideBinding(values);
 	}
 
-	/**
-	 * 缓存常量函数，逐 tick 重新写入动画槽而不逐 tick 分配函数对象。
-	 */
+	/// 缓存常量函数，逐 tick 重新写入动画槽而不逐 tick 分配函数对象。
 	public static class OverrideBinding {
 		private final PhotonSpawnOverrides values;
 		private final NumberFunction lifetime;
@@ -71,6 +67,7 @@ public class PhotonEmitterSpawnParameterUtil {
 
 			if (object instanceof ParticleEmitter emitter) {
 				var runtime = emitter.runtime();
+
 				if (lifetime != null) {
 					runtime.startLifetime.set(lifetime);
 				}
@@ -86,6 +83,7 @@ public class PhotonEmitterSpawnParameterUtil {
 				if (speed != null) {
 					runtime.startSpeed.set(speed);
 				}
+
 				return;
 			}
 

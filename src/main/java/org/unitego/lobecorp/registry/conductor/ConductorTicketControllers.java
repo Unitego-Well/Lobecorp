@@ -11,7 +11,7 @@ import java.util.UUID;
 public class ConductorTicketControllers {
 	/// 指挥家远程单位保持加载的票据控制器。
 	private static final TicketController TICKETS = new TicketController(Lobecorp.id("conductor_directory_units"),
-			(level, tickets) -> {
+			(_, tickets) -> {
 				tickets.getEntityTickets().keySet().forEach(tickets::removeAllTickets);
 				tickets.getBlockTickets().keySet().forEach(tickets::removeAllTickets);
 			});
@@ -23,7 +23,7 @@ public class ConductorTicketControllers {
 
 	/// 镜头观察票据只在当前会话有效，重启时清理遗留票据。
 	private static final TicketController VIEW_TICKETS = new TicketController(Lobecorp.id("conductor_views"),
-			(level, tickets) -> {
+			(_, tickets) -> {
 				tickets.getEntityTickets().keySet().forEach(tickets::removeAllTickets);
 				tickets.getBlockTickets().keySet().forEach(tickets::removeAllTickets);
 			});

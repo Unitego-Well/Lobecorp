@@ -6,7 +6,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.neoforged.bus.api.Event;
 import net.neoforged.fml.event.IModBusEvent;
-import org.unitego.lobecorp.conductor.ability.ConductorAbility;
+import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.ConductorAbilityRuntime;
 import org.unitego.lobecorp.conductor.ability.ConductorAbilityState;
 import org.unitego.lobecorp.conductor.control.ConductorUnitRuntime;
@@ -18,58 +18,76 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class RegisterConductorAbilitiesEvent extends Event implements IModBusEvent {
+	/// 按实体类型归集的能力定义，保留登记顺序以供能力实例创建。
 	public static final Map<EntityType<?>, Map<Identifier, Definition>> DEFINITIONS = new HashMap<>();
 
-	public static ConductorAbility get(Mob mob, Identifier id) {
+	public static IConductorAbility get(Mob mob, Identifier id) {
 		ConductorAbilityRuntime runtime = runtime(mob, id);
 		return runtime == null ? null : runtime.ability();
 	}
 
 	public static boolean add(Mob mob, Identifier id) {
-		if (mob.level().isClientSide())
+		if (mob.level().isClientSide()) {
 			return false;
+		}
 		Definition definition = DEFINITIONS.getOrDefault(mob.getType(), Map.of()).get(id);
-		if (definition == null || !definition.ability().supports(mob))
+
+		if (definition == null || !definition.ability().supports(mob)) {
 			return false;
+		}
 		ConductorAbilityState state = ConductorAttachmentUtil.abilities(mob);
 		ConductorAttachmentUtil.setAbilities(mob, state.add(id, definition.initial()));
+
 		if (mob.level() instanceof ServerLevel level) {
 			ConductorSnapshotPayload.sendAll(level.getServer(), ConductorData.get(level.getServer()));
 		}
+
 		return true;
 	}
 
 	public static boolean remove(Mob mob, Identifier id) {
-		if (mob.level().isClientSide())
+		if (mob.level().isClientSide()) {
 			return false;
+		}
 		Definition definition = DEFINITIONS.getOrDefault(mob.getType(), Map.of()).get(id);
-		if (definition == null)
+
+		if (definition == null) {
 			return false;
+		}
 		ConductorAbilityState state = ConductorAttachmentUtil.abilities(mob);
 		ConductorAttachmentUtil.setAbilities(mob, state.remove(id, definition.initial()));
 		Map<Identifier, ConductorAbilityRuntime> runtimes = ConductorUnitRuntime.get(mob).abilities;
-		if (runtimes != null)
+
+		if (runtimes != null) {
 			runtimes.remove(id);
+		}
+
 		if (mob.level() instanceof ServerLevel level) {
 			ConductorSnapshotPayload.sendAll(level.getServer(), ConductorData.get(level.getServer()));
 		}
+
 		return true;
 	}
 
-	public static Collection<ConductorAbility> forMob(Mob mob) {
-		List<ConductorAbility> available = new ArrayList<>();
+	public static Collection<IConductorAbility> forMob(Mob mob) {
+		List<IConductorAbility> available = new ArrayList<>();
+
 		for (Map.Entry<Identifier, Definition> entry : DEFINITIONS.getOrDefault(mob.getType(), Map.of()).entrySet()) {
-			if (get(mob, entry.getKey()) != null)
+			if (get(mob, entry.getKey()) != null) {
 				available.add(entry.getValue().ability());
+			}
 		}
+
 		return List.copyOf(available);
 	}
 
 	public static ConductorAbilityRuntime runtime(Mob mob, Identifier id) {
 		Definition definition = DEFINITIONS.getOrDefault(mob.getType(), Map.of()).get(id);
-		if (definition == null || !owns(mob, id, definition) || !definition.ability().supports(mob))
+
+		if (definition == null || !owns(mob, id, definition) || !definition.ability().supports(mob)) {
 			return null;
-		return ConductorUnitRuntime.get(mob).abilities.computeIfAbsent(id, ignored -> new ConductorAbilityRuntime(mob.getUUID(), id, definition.ability()));
+		}
+		return ConductorUnitRuntime.get(mob).abilities.computeIfAbsent(id, _ -> new ConductorAbilityRuntime(mob.getUUID(), id, definition.ability()));
 	}
 
 	private static boolean owns(Mob mob, Identifier id, Definition definition) {
@@ -77,26 +95,30 @@ public class RegisterConductorAbilitiesEvent extends Event implements IModBusEve
 		return state.owns(id, definition.initial());
 	}
 
-	private void register(EntityType<?> type, Identifier id, Supplier<ConductorAbility> factory, boolean initial) {
-		Map<Identifier, Definition> abilities = DEFINITIONS.computeIfAbsent(type, ignored -> new LinkedHashMap<>());
+	private void register(EntityType<?> type, Identifier id, Supplier<IConductorAbility> factory, boolean initial) {
+		Map<Identifier, Definition> abilities = DEFINITIONS.computeIfAbsent(type, _ -> new LinkedHashMap<>());
+
 		if (abilities.containsKey(id)) {
 			throw new IllegalArgumentException("Duplicate conductor ability: " + type + " / " + id);
 		}
-		ConductorAbility ability = factory.get();
+
+		IConductorAbility ability = factory.get();
+
 		if (ability == null || !id.equals(ability.id())) {
 			throw new IllegalArgumentException("Invalid conductor ability: " + type + " / " + id);
 		}
+
 		abilities.put(id, new Definition(ability, initial));
 	}
 
-	public void register(EntityType<?> type, Identifier id, Supplier<ConductorAbility> factory) {
+	public void register(EntityType<?> type, Identifier id, Supplier<IConductorAbility> factory) {
 		register(type, id, factory, true);
 	}
 
-	public void registerLearnable(EntityType<?> type, Identifier id, Supplier<ConductorAbility> factory) {
+	public void registerLearnable(EntityType<?> type, Identifier id, Supplier<IConductorAbility> factory) {
 		register(type, id, factory, false);
 	}
 
-	public record Definition(ConductorAbility ability, boolean initial) {
+	public record Definition(IConductorAbility ability, boolean initial) {
 	}
 }

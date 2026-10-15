@@ -17,16 +17,18 @@ import org.unitego.lobecorp.world.hitbox.geometry.*;
 /// @param purpose        判断框的逻辑用途
 /// @param active         是否处于伤害阶段
 /// @param remainingTicks 服务端剩余寿命
-public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose,
+public record HitboxSnapshot(int id, IHitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose,
                              boolean active,
                              int remainingTicks, @Nullable EntitySkillEffectDebugInfo entitySkillEffectDebugInfo) {
-	/// 判断框快照网络编解码器。
+	/// 判断框网络编码遇到未知尺寸类型时的错误前缀。
+	private static final String UNSUPPORTED_SIZE_PREFIX = "Unsupported hitbox size: ";
+
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxSnapshot> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull HitboxSnapshot decode(@NonNull RegistryFriendlyByteBuf buffer) {
 			int id = buffer.readVarInt();
 			HitboxShapeType shapeType = HitboxShapeType.values()[buffer.readVarInt()];
-			HitboxSize size = decodeSize(buffer, shapeType);
+			IHitboxSize size = decodeSize(buffer, shapeType);
 			Vec3 position = Vec3.STREAM_CODEC.decode(buffer);
 			Vec3 rotation = Vec3.STREAM_CODEC.decode(buffer);
 			HitboxPurpose purpose = HitboxPurpose.values()[buffer.readVarInt()];
@@ -69,7 +71,7 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 				instance.isActive(), instance.remainingTicks(), instance.entitySkillEffectDebugInfo());
 	}
 
-	private static HitboxSize decodeSize(RegistryFriendlyByteBuf buffer, HitboxShapeType type) {
+	private static IHitboxSize decodeSize(RegistryFriendlyByteBuf buffer, HitboxShapeType type) {
 		return switch (type) {
 			case SPHERE -> new SphereSize(buffer.readDouble());
 			case CYLINDER -> new CylinderSize(buffer.readDouble(), buffer.readDouble());
@@ -84,44 +86,51 @@ public record HitboxSnapshot(int id, HitboxSize size, Vec3 position, Vec3 rotati
 		};
 	}
 
-	private static void encodeSize(RegistryFriendlyByteBuf buffer, HitboxSize size) {
+	private static void encodeSize(RegistryFriendlyByteBuf buffer, IHitboxSize size) {
 		switch (size) {
-			case SphereSize sphere -> buffer.writeDouble(sphere.radius());
-			case CylinderSize cylinder -> {
-				buffer.writeDouble(cylinder.radius());
-				buffer.writeDouble(cylinder.height());
+			case SphereSize(double radius) -> buffer.writeDouble(radius);
+			case CylinderSize(double radius, double height) -> {
+				buffer.writeDouble(radius);
+				buffer.writeDouble(height);
 			}
-			case BoxSize box -> {
-				buffer.writeDouble(box.width());
-				buffer.writeDouble(box.height());
-				buffer.writeDouble(box.depth());
+
+			case BoxSize(double width, double height, double depth) -> {
+				buffer.writeDouble(width);
+				buffer.writeDouble(height);
+				buffer.writeDouble(depth);
 			}
-			case SectorCylinderSize sector -> {
-				buffer.writeDouble(sector.radius());
-				buffer.writeDouble(sector.height());
-				buffer.writeDouble(sector.angleDegrees());
+
+			case SectorCylinderSize(double radius, double height, double angleDegrees) -> {
+				buffer.writeDouble(radius);
+				buffer.writeDouble(height);
+				buffer.writeDouble(angleDegrees);
 			}
-			case ConeSize cone -> {
-				buffer.writeDouble(cone.length());
-				buffer.writeDouble(cone.angleDegrees());
+
+			case ConeSize(double length, double angleDegrees) -> {
+				buffer.writeDouble(length);
+				buffer.writeDouble(angleDegrees);
 			}
-			case EllipsoidSize ellipsoid -> {
-				buffer.writeDouble(ellipsoid.radiusX());
-				buffer.writeDouble(ellipsoid.radiusY());
-				buffer.writeDouble(ellipsoid.radiusZ());
+
+			case EllipsoidSize(double radiusX, double radiusY, double radiusZ) -> {
+				buffer.writeDouble(radiusX);
+				buffer.writeDouble(radiusY);
+				buffer.writeDouble(radiusZ);
 			}
-			case RingCylinderSize ring -> {
-				buffer.writeDouble(ring.radius());
-				buffer.writeDouble(ring.height());
-				buffer.writeDouble(ring.thickness());
+
+			case RingCylinderSize(double radius, double height, double thickness) -> {
+				buffer.writeDouble(radius);
+				buffer.writeDouble(height);
+				buffer.writeDouble(thickness);
 			}
-			case BoxRingCylinderSize ring -> {
-				buffer.writeDouble(ring.width());
-				buffer.writeDouble(ring.height());
-				buffer.writeDouble(ring.depth());
-				buffer.writeDouble(ring.thickness());
+
+			case BoxRingCylinderSize(double width, double height, double depth, double thickness) -> {
+				buffer.writeDouble(width);
+				buffer.writeDouble(height);
+				buffer.writeDouble(depth);
+				buffer.writeDouble(thickness);
 			}
-			default -> throw new IllegalStateException("Unsupported hitbox size: " + size.getClass().getName());
+
+			default -> throw new IllegalStateException(UNSUPPORTED_SIZE_PREFIX + size.getClass().getName());
 		}
 	}
 }

@@ -15,7 +15,7 @@ import java.util.function.UnaryOperator;
 public interface LcCreativeModeTabs {
 	DeferredRegister<CreativeModeTab> REGISTER = Lobecorp.register(BuiltInRegistries.CREATIVE_MODE_TAB);
 
-	DeferredHolder<CreativeModeTab, CreativeModeTab> DEFAULT = register(REGISTER, "lobecorp", "Lobecorp", "脑叶公司", b -> b, (parameters, output) -> {
+	DeferredHolder<CreativeModeTab, CreativeModeTab> DEFAULT = register(REGISTER, "lobecorp", "Lobecorp", "脑叶公司", b -> b, (_, output) -> {
 		output.acceptAll(LcItems.REGISTER.getEntries().stream().map(DeferredHolder::get).map(Item::getDefaultInstance).toList());
 		output.acceptAll(SpawnEggItems.REGISTER.getEntries().stream().map(DeferredHolder::get).map(Item::getDefaultInstance).toList());
 	});

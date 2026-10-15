@@ -17,13 +17,13 @@
 | 客户端目录 | [ConductorDirectory](../../src/main/java/org/unitego/lobecorp/conductor/data/ConductorDirectory.java) 与 [ConductorClient](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorClient.java) | 收包更新；断线或换世界重置             |
 
 目录摘要不代替已加载实体的附件。查询能力或资格不会自动编队；只有明确的加入操作调用 `ConductorData.join`。修改已加载单位时优先使用
-`update`，直接修改附件字段后必须 `commit(mob)`，以更新摘要、显式同步并标记 SavedData dirty。
+`update`，直接修改附件字段后必须 `commit(mob)`，以更新摘要、发送单位变化字段并标记 SavedData dirty。
 
 ## 关键源码与复用入口
 
 | 需求                                   | 入口                                                                                                                                                                                                                                                                                                                 | 使用约束                                     |
 |----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| 查询能力、接收命令、移动回调、技能施放 | [ConductorUtil](../../src/main/java/org/unitego/lobecorp/util/conductor/ConductorUtil.java)、[ConductorUnitControl](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorUnitControl.java)                                                                                                            | 每次查询能力，不长期缓存 Provider 返回对象   |
+| 查询能力、接收命令、移动回调、技能施放 | [ConductorUtil](../../src/main/java/org/unitego/lobecorp/util/conductor/ConductorUtil.java)、[IConductorUnitControl](../../src/main/java/org/unitego/lobecorp/conductor/control/IConductorUnitControl.java)                                                                                                          | 每次查询能力，不长期缓存 Provider 返回对象   |
 | 读写与清理指挥附件                     | [ConductorAttachmentUtil](../../src/main/java/org/unitego/lobecorp/util/conductor/ConductorAttachmentUtil.java)                                                                                                                                                                                                      | 业务调用方复用统一入口，避免重复直接附件操作 |
 | 控制实现与特殊实体适配                 | [ConductorCapabilities](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorCapabilities.java)、[ConductorMobAdapters](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorMobAdapters.java)                                                                                         | 普通 Mob 兜底，特殊移动或工作通过适配器实现  |
 | 指令推进与瞄准后施放                   | [ConductorController](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorController.java)                                                                                                                                                                                                           | 保持命令顺序、AI 资格及技能转向规则          |
@@ -31,11 +31,11 @@
 | 技能展示、目标规则与预览               | [EntitySkillConductorAbility](../../src/main/java/org/unitego/lobecorp/conductor/ability/EntitySkillConductorAbility.java)、[ConductorTargetingResolver](../../src/main/java/org/unitego/lobecorp/conductor/ability/ConductorTargetingResolver.java)                                                                 | 包装现有实体技能定义，使用既有冷却来源       |
 | 能力注册与资格定义                     | [ConductorCapabilityRegistration](../../src/main/java/org/unitego/lobecorp/registry/entity/ConductorCapabilityRegistration.java)、[RegisterConductorAbilities](../../src/main/java/org/unitego/lobecorp/registry/entity/RegisterConductorAbilities.java)                                                             | 由 events 唯一入口分发，不重复注册监听       |
 
-`ConductorUnitControl` 提供 `supports`、`accept`、`tick`、`stop`、`prepareMovement`、`advanceMovement`、`movementStopped`、
+`IConductorUnitControl` 提供 `supports`、`accept`、`tick`、`stop`、`prepareMovement`、`advanceMovement`、`movementStopped`、
 `movementArrived`、`abilities` 和 `cast`。通用控制、清道夫、监守者及其他适配器按现有接口组合，不在调用方重新实现控制状态。
 
 能力注册通过 [ConductorCapabilityEvents](../../src/main/java/org/unitego/lobecorp/events/ConductorCapabilityEvents.java)
-的 `LOWEST` 入口执行。实体技能的 EntityCapability、指挥单位控制的 EntityCapability 与 `ConductorAbility`
+的 `LOWEST` 入口执行。实体技能的 EntityCapability、指挥单位控制的 EntityCapability 与 `IConductorAbility`
 技能包装是三个不同边界；新增能力先检查现有 Provider 和定义，不能把包装资格数据与实体技能所有权混用。
 
 ## 执行链与状态清理
@@ -59,13 +59,19 @@
 `ConductorMovement`，避免只改 HUD 预览。
 
 实体技能包装最终复用 [EntitySkillConductorAbility](../../src/main/java/org/unitego/lobecorp/conductor/ability/EntitySkillConductorAbility.java)
-与 [EntitySkillAccess](../../src/main/java/org/unitego/lobecorp/world/entity/skill/EntitySkillAccess.java)
+与 [IEntitySkillAccess](../../src/main/java/org/unitego/lobecorp/world/entity/skill/IEntitySkillAccess.java)
 。指挥施放先瞄准到位再进入技能前摇与冷却；连续技能的运行阶段、命中框和同步交由 [实体与技能系统](entity-skills.md) 说明。
 
 [ConductorManualSkillControl](../../src/main/java/org/unitego/lobecorp/client/conductor/input/ConductorManualSkillControl.java)
 以单位 UUID 与技能 ID
 记录手动会话。只有选中且仍在施放的单位能够接管；按住左键更新有效实体或位置目标，松开左键暂停跟随瞄准，取消选中发送结束控制以恢复生物目标。界面占用、失去窗口焦点、单位失效或开始同步超时都会走对应停止/移除路径。
 `AIM` 与 `END_MANUAL_CONTROL` 的服务端处理仍需检查当前激光能力和目标选择，不把客户端鼠标状态当成权威。
+
+### 清道夫持续清理与重组
+
+[ConductorWork](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorWork.java) 在指挥工作生效时独立推进，清道夫 Brain 不运行。2026-10-08 起与自主 AI 共用 [SweeperWorkUtil](../../src/main/java/org/unitego/lobecorp/util/entity/ai/SweeperWorkUtil.java) 的站位和接近逻辑：自动开始需水平碰撞框边缘间距不超过 0.5 格并满足原技能范围，路径末段使用安全的精确 MoveControl 移动。
+
+位置判定失败、寻路失败或停滞时保留当前目标并尝试其他站位；用完重算次数才加入本次工作的跳过集合。冷却、技能占用或事件拒绝不再因施放返回 false 而永久跳过有效目标，施放请求按 10 tick 间隔重试；技能占用和到位等待不计入移动停滞。运行状态仍由原非持久化工作附件持有，持续指令、技能冷却、存档及网络协议不变。根因、距离计算及实际检查见[实体与 AI](entities-ai.md#清道夫清扫与重组的接近位置)，实际游戏效果尚未验收。
 
 ### 卸载、永久移除与客户端退出
 
@@ -96,11 +102,14 @@
 | [ConductorCommandPayload](../../src/main/java/org/unitego/lobecorp/network/ts/ConductorCommandPayload.java)   | 客户端 → 服务端 | 编队、释放、模式、移动、攻击、技能、手动瞄准及快照请求 |
 | [ConductorViewPayload](../../src/main/java/org/unitego/lobecorp/network/ts/ConductorViewPayload.java)         | 客户端 → 服务端 | 观察激活状态与位置                                     |
 | [ConductorSnapshotPayload](../../src/main/java/org/unitego/lobecorp/network/tc/ConductorSnapshotPayload.java) | 服务端 → 客户端 | 全量/增量目录、成员信息与技能显示资料                  |
+| [单位数据包](../../src/main/java/org/unitego/lobecorp/network/tc/ConductorEntityDataSyncPayload.java)              | 服务端 → 客户端       | 已加载实体的单位状态及能力资格，首次完整、后续增量                              |
 
 首次或恢复请求发送全量目录；常规更新按各玩家基线发送增删改。客户端发现 `baseRevision`
 不一致时请求全量，不用缺失基线拼接增量。已加载单位显示可读取较新的同步附件，远程单位使用目录和按需技能资料。
 
-当前 [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java) 协议版本为 `11`
+单位与能力附件保持原类型、注册 ID 和存档结构，取消 Neo 自动同步。`commit` 对比现有目录摘要与当前单位字段并携带新修订号；能力修改发送变化 ID 与删除覆盖。`ConductorAttachmentUtil.sendInitial` 向新追踪者发送完整快照，玩家本人登录／复活／换维度也补发；单位移除单独清除单位附件，不误清除能力资格。目标、原点及一次性技能意图的空值必须显式发送，防止客户端保留旧值。远程目录和按需技能资料继续沿用原协议。
+
+当前 [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java) 协议版本为 `12`
 ；这是一份源码快照，不应把旧专项记录中的版本 `6` 当成当前值。改变载荷字段或编码时同时更新注册版本和客户端接收逻辑。
 
 ## HUD、输入、配置与资源
@@ -133,7 +142,7 @@ Payload 具有不同覆盖范围，不能用重复网络载荷代替既有同步
 ## 修改前检查点
 
 - 先读取 [项目规则](../../AGENTS.md) 和 [指挥家 Skill](../../.codex/skills/lobecorp-conductor/SKILL.md)，再通过 IDEA
-  核对最新路径、类型和引用；专项引用文档存在旧版本及旧类名，不能直接照抄。
+  核对最新路径、类型和引用；专项参考保留业务边界与迁移历史，当前实现以本页、相关系统文档和源码为准。
 - 确认改动属于目录、持久化附件、非持久化运行态、能力操作或客户端显示，避免复制权威来源。
 - 核对 `join/update/commit/attach/detach/remove`、待交付修订号、释放记录及同步基线；读取查询不能隐式创建成员。
 - 施放检查同时覆盖目标、射程、所有权、冷却、互斥、连段和取消，复用既有能力、技能与命中框。
@@ -144,5 +153,9 @@ Payload 具有不同覆盖范围，不能用重复网络载荷代替既有同步
 
 - 未实测多玩家共享目录的命令权限、断线清理、跨维度观察、远程未加载单位指令交付和服务器重启恢复；本页不提供运行验收结论。
 - 世界目录、工作能力和客户端缓存的全量边界组合尚未形成完整游戏场景表；资源更新后的头像/纹理缓存失效需结合实际运行核对。
-- 指挥家 Skill 的引用架构文件仍含旧路径、旧协议和旧 LDLib2 版本；维护时以源码为准并同步修正引用说明。
+- 指挥家 Skill 曾把旧迁移快照中的类名、协议和依赖版本当作当前要求。现已修正入口与引用，当前实现统一导航到系统文档；迁移计划明确保留为历史，后续维护先核对 IDEA 源码，避免复制旧快照。
 - 按 [系统变更记录](changes.md) 记录接口、配置、资源、网络、生命周期及验证事实；后续包调整时再次核对所有源码链接。
+
+## Java 25 维护
+
+2026-10-09 的规范整理将控制 tick 中的友方 Warden 怒气清理、攻击指令处理和空闲战斗选择拆成私有方法，主入口保留控制资格、指令优先级、挂起施放和重组顺序。服务端命令分发按具体命令拆分，编队单位收集独立为私有步骤；HUD 的按钮动作、鼠标分支、成员提示和卡片回收分别处理。公开入口、命令枚举、编解码字段与顺序、冷却及网络协议保持原行为，实际诊断与编译结果见 [修改记录](changes.md)。

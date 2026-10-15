@@ -7,15 +7,21 @@ package org.unitego.lobecorp.world.hitbox;
 /// @param perTargetMaximum 每个目标的成功命中上限，-1 表示无限
 /// @param totalMaximum     全实例成功命中上限，-1 表示无限
 public record HitboxHitPolicy(HitboxHitMode mode, int intervalTicks, int perTargetMaximum, int totalMaximum) {
+	/// 命中策略参数超出支持范围时的错误说明。
+	private static final String INVALID_POLICY_MESSAGE = "hit policy values are outside the supported range";
+	/// 间隔命中模式未提供正间隔时的错误说明。
+	private static final String INVALID_INTERVAL_MESSAGE = "interval mode requires a positive interval";
+
 	/// 默认策略：每个目标只成功命中一次，总次数不限。
 	public static final HitboxHitPolicy ONCE_PER_TARGET = new HitboxHitPolicy(HitboxHitMode.ONCE, 0, 1, -1);
 
 	public HitboxHitPolicy {
 		if (intervalTicks < 0 || perTargetMaximum < -1 || totalMaximum < -1) {
-			throw new IllegalArgumentException("hit policy values are outside the supported range");
+			throw new IllegalArgumentException(INVALID_POLICY_MESSAGE);
 		}
+
 		if (mode == HitboxHitMode.INTERVAL && intervalTicks == 0) {
-			throw new IllegalArgumentException("interval mode requires a positive interval");
+			throw new IllegalArgumentException(INVALID_INTERVAL_MESSAGE);
 		}
 	}
 }

@@ -16,12 +16,18 @@ public class EntityFacingUtil {
 	@Nullable
 	public static Vec3 targetPosition(Mob mob, EntitySkillRuntime<?> runtime, boolean center) {
 		LivingEntity target = runtime.target(LivingEntity.class);
-		if (center && target != null)
+
+		if (center && target != null) {
 			return target.getBoundingBox().getCenter();
-		if (runtime.targetPosition() != null)
+		}
+
+		if (runtime.targetPosition() != null) {
 			return runtime.targetPosition();
-		if (target == null)
+		}
+
+		if (target == null) {
 			target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+		}
 		return target == null ? null : center ? target.getBoundingBox().getCenter() : target.position();
 	}
 
@@ -66,15 +72,18 @@ public class EntityFacingUtil {
 
 	/// 持续瞄准可缩放默认转速，仍保留头身角度限制和旧值插值。
 	public static boolean aim(Mob mob, @Nullable Vec3 position, Vec3 origin, boolean pitch, float speedRatio) {
-		if (position == null)
+		if (position == null) {
 			return true;
+		}
 		Vec3 offset = position.subtract(origin);
 		float yaw = yaw(offset, mob.getYRot());
 		turn(mob, yaw, yaw, yaw, speedRatio);
 		float targetPitch = pitch && offset.lengthSqr() > 0.0
 				? (float) (-Mth.atan2(offset.y, offset.horizontalDistance()) * Mth.RAD_TO_DEG) : mob.getXRot();
-		if (pitch)
+
+		if (pitch) {
 			mob.setXRot(Mth.approachDegrees(mob.xRotO, targetPitch, mob.getMaxHeadXRot() * speedRatio));
+		}
 		// LookControl 随后的 tick 会归零俯仰；沿用本 tick 已获准的角度，避免再次转向或丢失瞄准进度。
 		mob.getLookControl().setLookAt(position.x, pitch ? position.y : mob.getEyeY(), position.z,
 				0.0F, pitch ? Math.abs(mob.getXRot()) : 0.0F);

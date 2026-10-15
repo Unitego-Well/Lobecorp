@@ -31,9 +31,11 @@ public class RefractionSkill extends EntitySkill<TheQueenOfHatred> {
 		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null && runtime.targetPosition() == null) {
 			target = queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-			if (target != null)
+			if (target != null) {
 				runtime.setTarget(target);
+			}
 		}
+
 		return target != null ? target.isAlive() && queen.isHatedTarget(target) && queen.hasLineOfSight(target)
 				&& queen.distanceToSqr(target) <= range() * range() : runtime.targetPosition() != null;
 	}
@@ -56,11 +58,12 @@ public class RefractionSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		Vec3 direction = queen.getLookAngle();
 		Vec3 origin = queen.getEyePosition().add(direction.scale(queen.getBbWidth()));
-		MagicStarProjectile star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
+		var star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
 		star.configure(queen, MagicStarProjectile.StarSize.SMALL, MagicStarProjectile.StarVariant.A, origin, direction);
 		star.setRefraction(MAXIMUM_SPLIT_GENERATIONS, null);
 		level.addFreshEntity(star);

@@ -15,6 +15,7 @@ import java.util.List;
 public class QueenStarfallEffect extends EntitySkillEffect {
 	/// 星星生成高度上下界，单位为格。
 	private static final double MINIMUM_HEIGHT = 12.0;
+	/// 落星效果的最大生成高度，单位为方块。
 	private static final double MAXIMUM_HEIGHT = 18.0;
 	/// 允许最高出生点的星星到达地面的飞行寿命，单位为 tick。
 	private static final int STAR_LIFETIME_TICKS = 40;
@@ -33,8 +34,9 @@ public class QueenStarfallEffect extends EntitySkillEffect {
 
 	@Override
 	protected void tickEffect() {
-		if ((ageTicks() - 1) % intervalTicks != 0)
+		if ((ageTicks() - 1) % intervalTicks != 0) {
 			return;
+		}
 		var random = queen.getRandom();
 		double angle = random.nextDouble() * Math.TAU;
 		double radius = Math.sqrt(random.nextDouble()) * StarfallSkill.RADIUS;
@@ -42,11 +44,10 @@ public class QueenStarfallEffect extends EntitySkillEffect {
 		double height = MINIMUM_HEIGHT + random.nextDouble() * (MAXIMUM_HEIGHT - MINIMUM_HEIGHT);
 		List<EntityType<MagicStarProjectile>> types = List.of(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(),
 				AbnormalitieEntityTypes.MAGIC_HOMING_STAR.get(), AbnormalitieEntityTypes.MAGIC_BURST_STAR.get());
-		MagicStarProjectile star = new MagicStarProjectile(types.get(random.nextInt(types.size())), level());
+		var star = new MagicStarProjectile(types.get(random.nextInt(types.size())), level());
 		star.configure(queen, MagicStarProjectile.StarSize.MEDIUM, MagicStarProjectile.StarVariant.A,
 				destination.add(0.0, height, 0.0), new Vec3(0.0, -1.0, 0.0));
 		star.setFlightParameters(STAR_LIFETIME_TICKS, DAMAGE_MULTIPLIER, BURST_RADIUS);
 		level().addFreshEntity(star);
 	}
 }
-

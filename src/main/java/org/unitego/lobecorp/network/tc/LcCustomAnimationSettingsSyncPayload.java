@@ -9,7 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.unitego.lobecorp.animation.LcAnimationTransitionSettings;
-import org.unitego.lobecorp.animation.LcCustomAnimatable;
+import org.unitego.lobecorp.animation.ILcCustomAnimatable;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
@@ -17,9 +17,11 @@ public record LcCustomAnimationSettingsSyncPayload(
 		int entityId,
 		String controllerName,
 		LcAnimationTransitionSettings settings
-) implements ToClientPayload {
+) implements IToClientPayload {
+	/// 载荷类型的稳定标识，必须与收发两端的协议登记一致。
 	public static final CustomPacketPayload.Type<LcCustomAnimationSettingsSyncPayload> TYPE =
 			new CustomPacketPayload.Type<>(id("custom_animation_settings_sync"));
+	/// 载荷的二进制编解码契约，字段读写顺序必须保持一致。
 	public static final StreamCodec<RegistryFriendlyByteBuf, LcCustomAnimationSettingsSyncPayload> STREAM_CODEC =
 			StreamCodec.composite(
 					ByteBufCodecs.VAR_INT, LcCustomAnimationSettingsSyncPayload::entityId,
@@ -41,7 +43,8 @@ public record LcCustomAnimationSettingsSyncPayload(
 	@Override
 	public void work(IPayloadContext context, AbstractClientPlayer player) {
 		Entity entity = player.level().getEntity(entityId);
-		if (entity instanceof LcCustomAnimatable animatable) {
+
+		if (entity instanceof ILcCustomAnimatable animatable) {
 			animatable.applyCustomAnimationSettings(controllerName, settings);
 		}
 	}

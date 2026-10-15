@@ -27,6 +27,7 @@ public interface LcEntityDataSerializers {
 			register("entity_type", () -> EntityDataSerializer.forValueType(EntityType.STREAM_CODEC));
 	DeferredHolder<EntityDataSerializer<?>, EntityDataSerializer<Optional<EntityType<?>>>> OPTIONAL_ENTITY_TYPE =
 			register("optional_entity_type", () -> EntityDataSerializer.forValueType(LcStreamCodecs.OPTIONAL_ENTITY_TYPE));
+	/// 实体状态列表的同步编解码契约，保留原有列表顺序。
 	DeferredHolder<EntityDataSerializer<?>, EntityDataSerializer<List<EntityState>>> ENTITY_STATES =
 			register("entity_states", () -> EntityDataSerializer.forValueType(LcStreamCodecs.ENTITY_STATES));
 

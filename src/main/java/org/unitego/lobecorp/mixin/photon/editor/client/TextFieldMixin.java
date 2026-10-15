@@ -6,16 +6,14 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
-import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
+import org.unitego.lobecorp.util.photon.clipboard.PhotonResourceClipboardUtil;
 
 @Mixin(TextField.class)
 public abstract class TextFieldMixin {
-	@WrapOperation(method = "onKeyDown", at = @At(value = "INVOKE",
+	@WrapOperation(method = "onExecuteCommand(Lcom/lowdragmc/lowdraglib2/gui/ui/event/UIEvent;)V", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/gui/ui/elements/TextField$TextFieldClientSupport;getClipboardText()Ljava/lang/String;"))
 	private String lobecorp$readSystemText(Operation<String> original) {
-		var editor = PhotonEditorTools.findEditor((TextField) (Object) this);
-		if (editor == null || !PhotonKeyClipboardUtil.systemEnabled(editor)) {
+		if (!PhotonResourceClipboardUtil.enabled((TextField) (Object) this)) {
 			return original.call();
 		}
 

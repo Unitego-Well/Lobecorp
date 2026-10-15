@@ -12,7 +12,6 @@ import org.unitego.lobecorp.registry.LcRegistrys;
 public interface LcEntitySkillGroups {
 	/// 未显式指定上限时，自定义组和被动组使用的默认同时运行数量。
 	int DEFAULT_MAXIMUM_ACTIVE_SKILLS = 5;
-	/// 实体技能组的唯一延迟注册器。
 	DeferredRegister<EntitySkillGroup> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_GROUP_KEY);
 
 	/// 默认当前执行组。该组不可从实体移除，初始同时运行上限为一。

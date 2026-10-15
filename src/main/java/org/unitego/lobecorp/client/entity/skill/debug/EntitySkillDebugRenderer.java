@@ -61,7 +61,8 @@ public class EntitySkillDebugRenderer implements DebugRenderer.SimpleDebugRender
 			return;
 		}
 
-		Vec3 cameraPosition = new Vec3(camX, camY, camZ);
+		var cameraPosition = new Vec3(camX, camY, camZ);
+
 		for (Entity entity : minecraft.level.entitiesForRendering()) {
 			if (!(entity instanceof LivingEntity livingEntity)
 					|| entity.position().distanceToSqr(cameraPosition) > MAX_RENDER_DISTANCE_SQUARED) {
@@ -72,6 +73,7 @@ public class EntitySkillDebugRenderer implements DebugRenderer.SimpleDebugRender
 			Map<EntitySkillGroup, Integer> groups = EntitySkillUtil.getGroupsIfPresent(livingEntity);
 			Map<IEntitySkill<?>, Long> cooldowns = EntitySkillUtil.getCooldowns(livingEntity);
 			long gameTime = livingEntity.level().getGameTime();
+
 			if (activeSkills.isEmpty() && groups.isEmpty()
 					&& cooldowns.values().stream().noneMatch(endTime -> endTime > gameTime)) {
 				continue;
@@ -90,9 +92,10 @@ public class EntitySkillDebugRenderer implements DebugRenderer.SimpleDebugRender
 					.map(entry -> entry.getKey().id() + "=" + (entry.getValue() - gameTime) + TICKS_SUFFIX)
 					.sorted()
 					.toList();
-			Vec3 textPosition = new Vec3(entity.getX(), entity.getBoundingBox().maxY + TEXT_HEIGHT_OFFSET, entity.getZ());
+			var textPosition = new Vec3(entity.getX(), entity.getBoundingBox().maxY + TEXT_HEIGHT_OFFSET, entity.getZ());
 			emitLine(activeSkillText, textPosition, 0);
 			emitLine(groupText, textPosition, 1);
+
 			for (int index = 0; index < cooldownTexts.size(); index++) {
 				emitLine(COOLDOWNS_PREFIX + cooldownTexts.get(index), textPosition, index + 2);
 			}

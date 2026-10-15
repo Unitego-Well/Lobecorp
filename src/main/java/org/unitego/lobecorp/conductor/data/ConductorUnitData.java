@@ -18,7 +18,7 @@ public class ConductorUnitData implements ValueIOSerializable {
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorUnitData> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public ConductorUnitData decode(RegistryFriendlyByteBuf buffer) {
-			ConductorUnitData data = new ConductorUnitData();
+			var data = new ConductorUnitData();
 			data.read(ByteBufCodecs.fromCodecWithRegistries(ConductorData.Unit.CODEC).decode(buffer));
 			data.revision = buffer.readVarLong();
 			return data;
@@ -30,7 +30,9 @@ public class ConductorUnitData implements ValueIOSerializable {
 			buffer.writeVarLong(data.revision);
 		}
 	};
+	/// 指挥家单位状态的持久化字段名称。
 	private static final String STATE_KEY = "state";
+	/// 指挥家单位修订号的持久化字段名称。
 	private static final String REVISION_KEY = "revision";
 	public String team = "";
 	public ConductorData.CombatBehavior behavior = ConductorData.CombatBehavior.NEUTRAL;

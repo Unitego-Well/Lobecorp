@@ -4,10 +4,13 @@ package org.unitego.lobecorp.world.hitbox.geometry;
 ///
 /// @param radius 半径
 /// @param height 总高度
-public record CylinderSize(double radius, double height) implements HitboxSize {
+public record CylinderSize(double radius, double height) implements IHitboxSize {
+	/// 圆柱尺寸小于零时的错误说明。
+	private static final String NEGATIVE_SIZE_MESSAGE = "cylinder size must not be negative";
+
 	public CylinderSize {
 		if (radius < 0.0 || height < 0.0) {
-			throw new IllegalArgumentException("cylinder size must not be negative");
+			throw new IllegalArgumentException(NEGATIVE_SIZE_MESSAGE);
 		}
 	}
 

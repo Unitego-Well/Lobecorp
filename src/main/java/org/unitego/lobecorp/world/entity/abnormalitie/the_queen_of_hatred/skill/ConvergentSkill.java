@@ -34,12 +34,17 @@ public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {
 	private static final double STRONG_PULL_SPEED = 0.5;
 	/// 两阶段均采用原一阶段爆炸相对攻击属性的伤害倍率。
 	private static final double DAMAGE_MULTIPLIER = 2.0;
+	/// 聚星技能当前牵引判断框的运行编号。
 	private static final TypedDataKey<Integer> PULL_HITBOX_ID = TypedDataKey.create();
+	/// 聚星牵引每 tick 处理目标的判断框策略。
 	private static final HitboxHitPolicy CONTINUOUS_PULL_POLICY = new HitboxHitPolicy(HitboxHitMode.EVERY_TICK, 0, -1, -1);
+	/// 聚星技能弱牵引阶段的共享判断框模板。
 	private static final HitboxTemplate WEAK_PULL = new HitboxTemplate(new SphereSize(PULL_RADIUS),
 			target -> target instanceof LivingEntity, ConvergentSkill::applyWeakPull, HitboxPurpose.DETECTION);
+	/// 聚星技能强牵引阶段的共享判断框模板。
 	private static final HitboxTemplate STRONG_PULL = new HitboxTemplate(new SphereSize(PULL_RADIUS),
 			target -> target instanceof LivingEntity, ConvergentSkill::applyStrongPull, HitboxPurpose.DETECTION);
+	/// 聚星技能爆发阶段的共享判断框模板。
 	private static final HitboxTemplate EXPLOSION = new HitboxTemplate(new SphereSize(EXPLOSION_RADIUS),
 			target -> target instanceof LivingEntity, ConvergentSkill::applyExplosion);
 
@@ -57,13 +62,16 @@ public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {
 
 	private static boolean applyPull(HitboxEffectContext context, double speed, boolean vertical) {
 		if (!(context.source() instanceof TheQueenOfHatred queen)
-				|| !(context.target() instanceof LivingEntity target) || !target.isAlive() || !queen.isHatedTarget(target))
+				|| !(context.target() instanceof LivingEntity target) || !target.isAlive() || !queen.isHatedTarget(target)) {
 			return false;
+		}
 		Vec3 direction = queen.getBoundingBox().getCenter().subtract(target.getBoundingBox().getCenter());
-		if (!vertical)
+		if (!vertical) {
 			direction = direction.multiply(1.0, 0.0, 1.0);
-		if (direction.lengthSqr() == 0.0)
+		}
+		if (direction.lengthSqr() == 0.0) {
 			return false;
+		}
 		target.setDeltaMovement(target.getDeltaMovement().add(direction.normalize().scale(speed)));
 		target.hurtMarked = true;
 		return true;
@@ -71,8 +79,9 @@ public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {
 
 	private static boolean applyExplosion(HitboxEffectContext context) {
 		if (!(context.source() instanceof TheQueenOfHatred queen)
-				|| !(context.target() instanceof LivingEntity target) || !target.isAlive() || !queen.isHatedTarget(target))
+				|| !(context.target() instanceof LivingEntity target) || !target.isAlive() || !queen.isHatedTarget(target)) {
 			return false;
+		}
 		return target.hurtServer(context.level(), queen.damageSources().mobAttack(queen),
 				(float) (queen.getAttributeValue(Attributes.ATTACK_DAMAGE) * DAMAGE_MULTIPLIER));
 	}
@@ -104,8 +113,9 @@ public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		sendVisual(level, queen, runtime, true);
 		sendVisual(level, queen, runtime, false);
 	}
@@ -113,29 +123,34 @@ public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {
 	@Override
 	public void onTick(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		queen.restoreSkillFacing();
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		if (runtime.activeTicks() == 1) {
 			HitboxInstance hitbox = createHitbox(WEAK_PULL, level, queen, runtime, durationTicks());
 			hitbox.setHitPolicy(CONTINUOUS_PULL_POLICY);
 			runtime.setData(PULL_HITBOX_ID, hitbox.id());
 		}
+
 		if (runtime.activeTicks() % (durationTicks() / PULL_COUNT) == 0) {
 			createHitbox(STRONG_PULL, level, queen, runtime, HitboxManager.CURRENT_TICK_DURATION);
-			if (runtime.activeTicks() < durationTicks())
+			if (runtime.activeTicks() < durationTicks()) {
 				sendVisual(level, queen, runtime, false);
+			}
 		}
 	}
 
 	@Override
 	public void onEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		queen.stopActionAnimation();
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		Integer id = runtime.removeData(PULL_HITBOX_ID);
 		HitboxInstance hitbox = id == null ? null : HitboxManager.get(level, id);
-		if (hitbox != null)
+		if (hitbox != null) {
 			hitbox.setRemainingTicks(HitboxManager.CURRENT_TICK_DURATION);
+		}
 		createHitbox(EXPLOSION, level, queen, runtime, HitboxManager.CURRENT_TICK_DURATION);
 		level.sendParticles(ParticleTypes.EXPLOSION_EMITTER, queen.getX(), queen.getY(), queen.getZ(),
 				1, 0.0, 0.0, 0.0, 0.0);

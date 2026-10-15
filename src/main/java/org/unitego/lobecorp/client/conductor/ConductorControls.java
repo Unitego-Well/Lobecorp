@@ -26,7 +26,7 @@ import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.conductor.input.ConductorManualSkillControl;
 import org.unitego.lobecorp.client.conductor.render.ConductorCamera;
 import org.unitego.lobecorp.client.conductor.render.ConductorCamera.View;
-import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
+import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
@@ -47,16 +47,23 @@ import java.util.function.Predicate;
 
 
 public class ConductorControls {
+	/// 拖动开始判定的最小距离，单位为 GUI 像素。
 	private static final double DRAG_THRESHOLD = 5.0D;
+	/// 选择与确认操作使用的左键编号。
 	private static final int MOUSE_LEFT = GLFW.GLFW_MOUSE_BUTTON_LEFT;
+	/// 取消与相机拖动使用的右键编号。
 	private static final int MOUSE_RIGHT = GLFW.GLFW_MOUSE_BUTTON_RIGHT;
+	/// 指挥家视角中需要隐藏的原版 HUD 图层。
 	private static final Set<Identifier> HIDDEN_HUD_LAYERS = Set.of(
 			VanillaGuiLayers.CROSSHAIR, VanillaGuiLayers.HOTBAR, VanillaGuiLayers.PLAYER_HEALTH,
 			VanillaGuiLayers.ARMOR_LEVEL, VanillaGuiLayers.FOOD_LEVEL, VanillaGuiLayers.AIR_LEVEL,
 			VanillaGuiLayers.CONTEXTUAL_INFO_BAR_BACKGROUND, VanillaGuiLayers.EXPERIENCE_LEVEL,
 			VanillaGuiLayers.CONTEXTUAL_INFO_BAR, VanillaGuiLayers.SELECTED_ITEM_NAME);
+	/// 双击识别的最大时间间隔，单位为毫秒。
 	private static final long DOUBLE_CLICK_MS = 250L;
+	/// 相机平移使用的中键编号。
 	private static final int MOUSE_MIDDLE = GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
+	/// 当前选择成员的有序 UUID 集合。
 	private static final Set<UUID> SELECTED = new LinkedHashSet<>();
 	private static boolean active;
 	private static boolean following;
@@ -93,43 +100,70 @@ public class ConductorControls {
 	}
 
 	public static boolean handleKeyboard(long handle, KeyEvent event, int action) {
-		if (!active)
+		if (!active) {
 			return false;
+		}
+
 		Minecraft minecraft = Minecraft.getInstance();
-		if (handle != minecraft.getWindow().handle())
+
+		if (handle != minecraft.getWindow().handle()) {
 			return false;
-		if (minecraft.screen != null)
+		}
+
+		if (minecraft.screen != null) {
 			return false;
+		}
+
 		if (minecraft.options.keyDebugModifier.matches(event) || minecraft.options.keyDebugModifier.isDown()
 				|| minecraft.options.keyDebugOverlay.matches(event) || minecraft.options.keyScreenshot.matches(event)
-				|| minecraft.options.keyFullscreen.matches(event))
+				|| minecraft.options.keyFullscreen.matches(event)) {
 			return false;
-		if (ConductorHud.INSTANCE.handleSearchKey(event, action))
-			return true;
-		if (ConductorHud.INSTANCE.handleSkillKey(event, action))
-			return true;
-		if (action == InputConstants.PRESS && event.isEscape()) {
-			if (pending != null)
-				setPending(null);
-			else if (following)
-				cancelFollowing();
-			else
-				exit(minecraft);
+		}
+
+		if (ConductorHud.INSTANCE.handleSearchKey(event, action)) {
 			return true;
 		}
+
+		if (ConductorHud.INSTANCE.handleSkillKey(event, action)) {
+			return true;
+		}
+
+		if (action == InputConstants.PRESS && event.isEscape()) {
+			if (pending != null) {
+				setPending(null);
+			} else if (following) {
+				cancelFollowing();
+			} else {
+				exit(minecraft);
+			}
+			return true;
+		}
+
 		boolean down = action != InputConstants.RELEASE;
-		if (minecraft.options.keyUp.matches(event))
+
+		if (minecraft.options.keyUp.matches(event)) {
 			moveUp = down;
-		if (minecraft.options.keyDown.matches(event))
+		}
+
+		if (minecraft.options.keyDown.matches(event)) {
 			moveDown = down;
-		if (minecraft.options.keyLeft.matches(event))
+		}
+
+		if (minecraft.options.keyLeft.matches(event)) {
 			moveLeft = down;
-		if (minecraft.options.keyRight.matches(event))
+		}
+
+		if (minecraft.options.keyRight.matches(event)) {
 			moveRight = down;
-		if (ConductorKeyMappings.matchesRotateLeft(event))
+		}
+
+		if (ConductorKeyMappings.matchesRotateLeft(event)) {
 			rotateLeft = down;
-		if (ConductorKeyMappings.matchesRotateRight(event))
+		}
+
+		if (ConductorKeyMappings.matchesRotateRight(event)) {
 			rotateRight = down;
+		}
 		return minecraft.options.keyUp.matches(event) || minecraft.options.keyDown.matches(event)
 				|| minecraft.options.keyLeft.matches(event) || minecraft.options.keyRight.matches(event)
 				|| ConductorKeyMappings.matchesRotateLeft(event) || ConductorKeyMappings.matchesRotateRight(event);
@@ -163,23 +197,29 @@ public class ConductorControls {
 	public static void clickedUnit(UUID member) {
 		ConductorHud.INSTANCE.setFocusedMember(member);
 		long now = System.currentTimeMillis();
+
 		if (member.equals(lastClickedUnit) && now - lastUnitClick < DOUBLE_CLICK_MS) {
 			followUnit(member, false);
 			lastClickedUnit = null;
-		} else
+		} else {
 			lastClickedUnit = member;
+		}
 		lastUnitClick = now;
 	}
 
 	public static void followUnit(UUID member, boolean toggle) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.level == null || !(minecraft.level.getEntity(member) instanceof LivingEntity living) || !living.isAlive())
+
+		if (minecraft.level == null || !(minecraft.level.getEntity(member) instanceof LivingEntity living) || !living.isAlive()) {
 			return;
+		}
+
 		SELECTED.add(member);
 		ConductorHud.INSTANCE.setFocusedMember(member);
-		if (toggle && following && member.equals(followedUnit))
+
+		if (toggle && following && member.equals(followedUnit)) {
 			cancelFollowing();
-		else {
+		} else {
 			followedUnit = member;
 			following = true;
 			ConductorCamera.focus(living.position());
@@ -187,36 +227,47 @@ public class ConductorControls {
 	}
 
 	private static void cancelFollowing() {
-		if (following)
+		if (following) {
 			ConductorCamera.releaseFollowing();
+		}
 		following = false;
 		followedUnit = null;
 	}
 
 	public static void selectMember(UUID member, boolean multiple) {
-		if (!multiple)
+		if (!multiple) {
 			SELECTED.clear();
-		if (multiple && SELECTED.contains(member))
+		}
+
+		if (multiple && SELECTED.contains(member)) {
 			SELECTED.remove(member);
-		else
+		} else {
 			SELECTED.add(member);
+		}
 	}
 
 	public static void selectRange(List<UUID> members, UUID anchor, UUID member) {
 		int start = members.indexOf(anchor);
 		int end = members.indexOf(member);
-		if (end < 0)
+
+		if (end < 0) {
 			return;
-		if (start < 0)
+		}
+
+		if (start < 0) {
 			start = end;
+		}
 		SELECTED.addAll(members.subList(Math.min(start, end), Math.max(start, end) + 1));
 	}
 
 	public static List<UUID> skillUnits(UUID current) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity source = minecraft.level == null || current == null ? null : minecraft.level.getEntity(current);
-		if (source == null)
+
+		if (source == null) {
 			return current != null && ConductorClient.unit(current) != null ? List.of(current) : List.of();
+		}
+
 		List<UUID> units = selected().stream().filter(member -> {
 			Entity entity = minecraft.level.getEntity(member);
 			return entity instanceof Mob && entity.getType() == source.getType()
@@ -232,8 +283,11 @@ public class ConductorControls {
 	public static boolean focusMember(UUID member) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		if (entity == null)
+
+		if (entity == null) {
 			return false;
+		}
+
 		ConductorCamera.focus(entity.position());
 		return true;
 	}
@@ -280,26 +334,38 @@ public class ConductorControls {
 
 	public static void castFacing() {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (minecraft.level == null || pendingSkillUnit == null
-				|| !(minecraft.level.getEntity(pendingSkillUnit) instanceof Mob mob))
+				|| !(minecraft.level.getEntity(pendingSkillUnit) instanceof Mob mob)) {
 			return;
-		ConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
+		}
+
+		IConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
+
 		if (targeting == null || !targeting.directional()
-				|| targeting instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob))
+				|| targeting instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob)) {
 			return;
+		}
+
 		ConductorData.Unit unit = ConductorClient.unit(pendingSkillUnit);
-		if (unit == null)
+
+		if (unit == null) {
 			return;
+		}
+
 		ConductorClient.sendTarget(ConductorCommandPayload.Action.CAST, unit.team(), "", skillUnits(pendingSkillUnit),
 				null, 0, 0, 0, ConductorData.ControlMode.FULL, true, pendingSkill,
 				ConductorCommandPayload.TargetSelection.POSITION);
-		if (targeting instanceof EntitySkillConductorAbility.Laser)
+
+		if (targeting instanceof EntitySkillConductorAbility.Laser) {
 			ConductorManualSkillControl.track(skillUnits(pendingSkillUnit), Identifier.parse(pendingSkill));
+		}
 	}
 
 	public static void setPendingSkill(String skill, UUID unit) {
-		if (!isPendingSkill(skill, unit))
+		if (!isPendingSkill(skill, unit)) {
 			lastAimPosition = null;
+		}
 		pending = ConductorCommandPayload.Action.CAST;
 		pendingSkill = skill;
 		pendingSkillUnit = unit;
@@ -321,10 +387,12 @@ public class ConductorControls {
 	public static String selectedTeam() {
 		for (UUID uuid : SELECTED) {
 			ConductorData.Unit unit = ConductorClient.unit(uuid);
+
 			if (unit != null) {
 				return unit.team();
 			}
 		}
+
 		return "";
 	}
 
@@ -336,51 +404,72 @@ public class ConductorControls {
 
 	public static void onTick(ClientTickEvent.Post event) {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (minecraft.player == null || minecraft.level == null || !minecraft.player.isAlive()) {
-			if (active)
+			if (active) {
 				exit(minecraft);
+			}
 			return;
 		}
 		while (ConductorKeyMappings.consumeToggle()) {
-			if (!active && minecraft.screen == null)
+			if (!active && minecraft.screen == null) {
 				enter(minecraft);
+			}
 		}
-		if (!active)
+
+		if (!active) {
 			return;
+		}
+
 		if (!ConductorCamera.valid(minecraft)) {
 			exit(minecraft);
 			return;
 		}
-		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0)
+
+		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0) {
 			syncView(minecraft, true);
-		if (following && (!(minecraft.level.getEntity(followedUnit) instanceof LivingEntity target) || !target.isAlive()))
+		}
+
+		if (following && (!(minecraft.level.getEntity(followedUnit) instanceof LivingEntity target) || !target.isAlive())) {
 			cancelFollowing();
+		}
+
 		if (minecraft.screen != null || !minecraft.isWindowActive()) {
 			rightPressed = false;
 			rightDragging = false;
 			clearCameraKeys();
 		}
-		if (minecraft.screen == null && minecraft.mouseHandler.isMouseGrabbed())
+
+		if (minecraft.screen == null && minecraft.mouseHandler.isMouseGrabbed()) {
 			minecraft.mouseHandler.releaseMouse();
+		}
 		ConductorManualSkillControl.tick(minecraft, predicate -> pickLivingEntity(minecraft, predicate));
 	}
 
 	public static @Nullable View cameraFrame(float partialTick) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (!active)
+
+		if (!active) {
 			return null;
+		}
+
 		if (!ConductorCamera.valid(minecraft)) {
 			exit(minecraft);
 			return null;
 		}
+
 		boolean input = minecraft.screen == null && minecraft.isWindowActive();
-		if (input)
+
+		if (input) {
 			updateRightDrag(minecraft);
+		}
 		int forward = input ? (moveUp ? 1 : 0) - (moveDown ? 1 : 0) : 0;
 		int sideways = input ? (moveRight ? 1 : 0) - (moveLeft ? 1 : 0) : 0;
 		int turning = input && !rightDragging ? (rotateRight ? 1 : 0) - (rotateLeft ? 1 : 0) : 0;
-		if (forward != 0 || sideways != 0)
+
+		if (forward != 0 || sideways != 0) {
 			cancelFollowing();
+		}
 		return ConductorCamera.frame(partialTick, forward, sideways, turning, following ? followedUnit : null);
 	}
 
@@ -404,8 +493,9 @@ public class ConductorControls {
 	}
 
 	private static void exit(Minecraft minecraft) {
-		if (active)
+		if (active) {
 			syncView(minecraft, false);
+		}
 		active = false;
 		cancelFollowing();
 		lastClickedUnit = null;
@@ -422,6 +512,7 @@ public class ConductorControls {
 		ConductorHud.INSTANCE.resetLayout();
 		ConductorManualSkillControl.clear();
 		ConductorCamera.close();
+
 		if (minecraft.screen == null) {
 			minecraft.mouseHandler.grabMouse();
 		}
@@ -440,6 +531,7 @@ public class ConductorControls {
 		if (!active) {
 			return;
 		}
+
 		ClientInput input = event.getInput();
 		input.keyPresses = Input.EMPTY;
 		((ClientInputAccessor) input).lobecorp$setMoveVector(Vec2.ZERO);
@@ -448,10 +540,12 @@ public class ConductorControls {
 	public static void onScroll(InputEvent.MouseScrollingEvent event) {
 		if (active && Minecraft.getInstance().screen == null) {
 			Minecraft minecraft = Minecraft.getInstance();
+
 			if (ConductorHud.INSTANCE.scroll(minecraft, event.getScrollDeltaY())) {
 				event.setCanceled(true);
 				return;
 			}
+
 			ConductorCamera.zoom(event.getScrollDeltaY());
 			event.setCanceled(true);
 		}
@@ -459,103 +553,144 @@ public class ConductorControls {
 
 	public static void onMouse(InputEvent.MouseButton.Pre event) {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (!active || minecraft.screen != null) {
 			return;
 		}
+
 		if (event.getButton() == MOUSE_MIDDLE) {
-			if (event.getAction() == InputConstants.PRESS) {
-				UUID member = ConductorHud.INSTANCE.memberAtPointer(minecraft);
-				if (member == null && !ConductorHud.INSTANCE.contains(minecraft)) {
-					LivingEntity living = pickLivingEntity(minecraft);
-					if (living != null)
-						member = living.getUUID();
-				}
-				if (member != null)
-					followUnit(member, true);
-			}
-			event.setCanceled(true);
+			handleMiddleMouse(event, minecraft);
 		} else if (event.getButton() == MOUSE_LEFT) {
-			if (event.getAction() == InputConstants.PRESS) {
-				if (ConductorHud.INSTANCE.click(minecraft)) {
-					dragging = false;
-					event.setCanceled(true);
-					return;
+			handleLeftMouse(event, minecraft);
+		} else if (event.getButton() == MOUSE_RIGHT) {
+			handleRightMouse(event, minecraft);
+		} else {
+			event.setCanceled(true);
+		}
+	}
+
+	/// 保留原中键跟随成员的处理顺序。
+	private static void handleMiddleMouse(InputEvent.MouseButton.Pre event, Minecraft minecraft) {
+		if (event.getAction() == InputConstants.PRESS) {
+			UUID member = ConductorHud.INSTANCE.memberAtPointer(minecraft);
+
+			if (member == null && !ConductorHud.INSTANCE.contains(minecraft)) {
+				LivingEntity living = pickLivingEntity(minecraft);
+
+				if (living != null) {
+					member = living.getUUID();
 				}
-				if (pending != null) {
-					order(minecraft);
-					dragging = false;
-					event.setCanceled(true);
-					return;
-				}
-				dragging = true;
-				dragX = minecraft.mouseHandler.xpos();
-				dragY = minecraft.mouseHandler.ypos();
-			} else if (event.getAction() == InputConstants.RELEASE && ConductorHud.INSTANCE.release()) {
+			}
+
+			if (member != null) {
+				followUnit(member, true);
+			}
+		}
+
+		event.setCanceled(true);
+	}
+
+	/// 保留原左键选择与拖选的处理顺序。
+	private static void handleLeftMouse(InputEvent.MouseButton.Pre event, Minecraft minecraft) {
+		if (event.getAction() == InputConstants.PRESS) {
+			if (ConductorHud.INSTANCE.click(minecraft)) {
 				dragging = false;
 				event.setCanceled(true);
 				return;
-			} else if (event.getAction() == InputConstants.RELEASE && dragging) {
+			}
+
+			if (pending != null) {
+				order(minecraft);
 				dragging = false;
-				double endX = minecraft.mouseHandler.xpos();
-				double endY = minecraft.mouseHandler.ypos();
-				if (Math.abs(endX - dragX) + Math.abs(endY - dragY) >= DRAG_THRESHOLD) {
-					lastClickedUnit = null;
-					selectBox(minecraft, dragX, dragY, endX, endY);
-				} else {
-					LivingEntity entity = pickLivingEntity(minecraft);
-					if (entity != null) {
-						selectMember(entity.getUUID(), minecraft.hasControlDown());
-						if (SELECTED.contains(entity.getUUID()))
-							clickedUnit(entity.getUUID());
-						else
-							lastClickedUnit = null;
+				event.setCanceled(true);
+				return;
+			}
+
+			dragging = true;
+			dragX = minecraft.mouseHandler.xpos();
+			dragY = minecraft.mouseHandler.ypos();
+		} else if (event.getAction() == InputConstants.RELEASE && ConductorHud.INSTANCE.release()) {
+			dragging = false;
+			event.setCanceled(true);
+			return;
+		} else if (event.getAction() == InputConstants.RELEASE && dragging) {
+			dragging = false;
+			double endX = minecraft.mouseHandler.xpos();
+			double endY = minecraft.mouseHandler.ypos();
+
+			if (Math.abs(endX - dragX) + Math.abs(endY - dragY) >= DRAG_THRESHOLD) {
+				lastClickedUnit = null;
+				selectBox(minecraft, dragX, dragY, endX, endY);
+			} else {
+				LivingEntity entity = pickLivingEntity(minecraft);
+
+				if (entity != null) {
+					selectMember(entity.getUUID(), minecraft.hasControlDown());
+
+					if (SELECTED.contains(entity.getUUID())) {
+						clickedUnit(entity.getUUID());
 					} else {
-						if (!minecraft.hasControlDown())
-							SELECTED.clear();
 						lastClickedUnit = null;
 					}
+				} else {
+					if (!minecraft.hasControlDown()) {
+						SELECTED.clear();
+					}
+					lastClickedUnit = null;
 				}
 			}
+		}
+
+		event.setCanceled(true);
+	}
+
+	/// 保留原右键命令与相机拖动的处理顺序。
+	private static void handleRightMouse(InputEvent.MouseButton.Pre event, Minecraft minecraft) {
+		if (event.getAction() == InputConstants.PRESS && ConductorHud.INSTANCE.rightClick(minecraft)) {
+			rightPressed = false;
 			event.setCanceled(true);
-		} else if (event.getButton() == MOUSE_RIGHT) {
-			if (event.getAction() == InputConstants.PRESS && ConductorHud.INSTANCE.rightClick(minecraft)) {
+			return;
+		}
+
+		if (event.getAction() == InputConstants.PRESS) {
+			if (pending != null) {
+				pending = null;
+				pendingSkill = "";
+				pendingSkillUnit = null;
 				rightPressed = false;
-				event.setCanceled(true);
-				return;
-			}
-			if (event.getAction() == InputConstants.PRESS) {
-				if (pending != null) {
-					pending = null;
-					pendingSkill = "";
-					pendingSkillUnit = null;
-					rightPressed = false;
-				} else if (!ConductorHud.INSTANCE.contains(minecraft)) {
-					rightPressed = true;
-					rightDragging = false;
-					rightDownX = minecraft.mouseHandler.xpos();
-					rightDownY = minecraft.mouseHandler.ypos();
-					ConductorCamera.beginDrag(rightDownX);
-				}
-			} else if (event.getAction() == InputConstants.RELEASE && rightPressed) {
-				updateRightDrag(minecraft);
-				if (!rightDragging && !ConductorHud.INSTANCE.contains(minecraft)) {
-					order(minecraft);
-				}
-				rightPressed = false;
+			} else if (!ConductorHud.INSTANCE.contains(minecraft)) {
+				rightPressed = true;
 				rightDragging = false;
+				rightDownX = minecraft.mouseHandler.xpos();
+				rightDownY = minecraft.mouseHandler.ypos();
+				ConductorCamera.beginDrag(rightDownX);
 			}
-			event.setCanceled(true);
-		} else
-			event.setCanceled(true);
+		} else if (event.getAction() == InputConstants.RELEASE && rightPressed) {
+			updateRightDrag(minecraft);
+
+			if (!rightDragging && !ConductorHud.INSTANCE.contains(minecraft)) {
+				order(minecraft);
+			}
+
+			rightPressed = false;
+			rightDragging = false;
+		}
+
+		event.setCanceled(true);
 	}
 
 	private static void updateRightDrag(Minecraft minecraft) {
-		if (!rightPressed)
+		if (!rightPressed) {
 			return;
-		if (isDrag(rightDownX, rightDownY, minecraft.mouseHandler.xpos(), minecraft.mouseHandler.ypos()))
+		}
+
+		if (isDrag(rightDownX, rightDownY, minecraft.mouseHandler.xpos(), minecraft.mouseHandler.ypos())) {
 			rightDragging = true;
-		if (rightDragging)
+		}
+
+		if (rightDragging) {
 			ConductorCamera.drag(minecraft.mouseHandler.xpos());
+		}
 	}
 
 	private static void selectBox(Minecraft minecraft, double x1, double y1, double x2, double y2) {
@@ -566,22 +701,30 @@ public class ConductorControls {
 		double minY = Math.min(y1, y2);
 		double maxY = Math.max(y1, y2);
 		SELECTED.clear();
+
 		for (Entity entity : minecraft.level.entitiesForRendering()) {
-			if (!(entity instanceof LivingEntity mob) || !mob.isAlive())
+			if (!(entity instanceof LivingEntity mob) || !mob.isAlive()) {
 				continue;
+			}
+
 			Vec3 relative = mob.getBoundingBox().getCenter().subtract(camera.position());
-			Vector4f point = new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1.0F).mul(matrix);
+			var point = new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1.0F).mul(matrix);
+
 			if (point.w <= 0.0F) {
 				continue;
 			}
+
 			double screenX = (point.x / point.w + 1.0D) * minecraft.getWindow().getWidth() / 2.0D;
 			double screenY = (1.0D - point.y / point.w) * minecraft.getWindow().getHeight() / 2.0D;
+
 			if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
 				SELECTED.add(mob.getUUID());
 			}
 		}
+
 		String team = ConductorHud.INSTANCE.selectedTeam();
 		ConductorDirectory snapshot = ConductorClient.snapshot();
+
 		if (!team.isEmpty() && SELECTED.stream().anyMatch(member -> {
 			ConductorData.Unit unit = snapshot.unit(member);
 			return unit != null && team.equals(unit.team());
@@ -606,18 +749,24 @@ public class ConductorControls {
 				ClipContext.Fluid.NONE, minecraft.player));
 		double limit = block.getLocation().distanceToSqr(start);
 		LivingEntity picked = null;
+
 		for (Entity candidate : minecraft.level.entitiesForRendering()) {
-			if (!(candidate instanceof LivingEntity entity))
+			if (!(candidate instanceof LivingEntity entity)) {
 				continue;
+			}
+
 			if (!predicate.test(entity)) {
 				continue;
 			}
+
 			var hit = entity.getBoundingBox().inflate(0.3D).clip(start, end);
+
 			if (hit.isPresent() && hit.get().distanceToSqr(start) < limit) {
 				limit = hit.get().distanceToSqr(start);
 				picked = entity;
 			}
 		}
+
 		return picked;
 	}
 
@@ -628,15 +777,23 @@ public class ConductorControls {
 
 	public static @Nullable AimPreview aimPreview(Minecraft minecraft) {
 		AimPreview fallback = null;
+
 		for (UUID unit : skillUnits(pendingSkillUnit)) {
 			AimPreview preview = aimPreview(minecraft, unit);
-			if (preview == null)
+
+			if (preview == null) {
 				continue;
-			if (fallback == null)
+			}
+
+			if (fallback == null) {
 				fallback = preview;
-			if (preview.valid() && ConductorClient.abilityCooldownTicks(unit, Identifier.parse(pendingSkill)) == 0)
+			}
+
+			if (preview.valid() && ConductorClient.abilityCooldownTicks(unit, Identifier.parse(pendingSkill)) == 0) {
 				return preview;
+			}
 		}
+
 		return fallback;
 	}
 
@@ -646,23 +803,32 @@ public class ConductorControls {
 				|| caster == null || !(minecraft.level.getEntity(caster) instanceof Mob mob)) {
 			return null;
 		}
-		ConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
+
+		IConductorTargeting targeting = ConductorTargetingResolver.find(mob, pendingSkill);
+
 		if (targeting == null || !ConductorClient.hasAbility(mob.getUUID(), Identifier.parse(pendingSkill))) {
 			return null;
 		}
+
 		boolean overHud = targeting.directional() && ConductorHud.INSTANCE.contains(minecraft);
 		LivingEntity target = overHud ? null : pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
 				&& targeting.canTarget(mob, entity)
 				&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
 		Vec3 position = overHud ? lastAimPosition != null ? lastAimPosition : targeting.facingPosition(mob)
 				: ConductorCamera.pickGround(minecraft);
-		if (!overHud && position != null)
+
+		if (!overHud && position != null) {
 			lastAimPosition = position;
-		if (position == null && targeting.targetKind() == ConductorTargeting.TargetKind.POSITION)
+		}
+
+		if (position == null && targeting.targetKind() == IConductorTargeting.TargetKind.POSITION) {
 			return null;
-		if (position == null)
+		}
+
+		if (position == null) {
 			position = mob.position();
-		ConductorTargeting.TargetKind kind = targeting.targetKind();
+		}
+		IConductorTargeting.TargetKind kind = targeting.targetKind();
 		ConductorCommandPayload.TargetSelection selection = switch (kind) {
 			case SELF -> ConductorCommandPayload.TargetSelection.NONE;
 			case ENTITY -> ConductorCommandPayload.TargetSelection.ENTITY;
@@ -675,6 +841,7 @@ public class ConductorControls {
 				&& (!(targeting instanceof EntitySkillConductorAbility entitySkill) || entitySkill.canBeginCast(mob));
 		boolean rangeLimited = false;
 		Vec3 requested = position;
+
 		if (selection == ConductorCommandPayload.TargetSelection.ENTITY) {
 			if (target == null || !targeting.canTarget(mob, target)
 					|| ConductorClient.snapshot().allied(mob.getUUID(), target.getUUID())) {
@@ -682,7 +849,8 @@ public class ConductorControls {
 			} else {
 				requested = targeting.targetPosition(mob, target, position);
 				rangeLimited = targeting.hasRange(mob) && !targeting.isWithinRange(mob, requested);
-				if (rangeLimited && kind == ConductorTargeting.TargetKind.EITHER) {
+
+				if (rangeLimited && kind == IConductorTargeting.TargetKind.EITHER) {
 					selection = ConductorCommandPayload.TargetSelection.POSITION;
 					target = null;
 				} else if (rangeLimited) {
@@ -690,16 +858,21 @@ public class ConductorControls {
 				}
 			}
 		}
+
 		if (selection == ConductorCommandPayload.TargetSelection.POSITION) {
 			rangeLimited = targeting.hasRange(mob) && !targeting.isWithinRange(mob, requested);
 		}
+
 		Vec3 effective = targeting.correctPosition(mob, requested);
+
 		if (selection == ConductorCommandPayload.TargetSelection.POSITION
 				&& !targeting.canTargetPosition(mob, effective)) {
 			valid = false;
 		}
-		if (targeting instanceof EntitySkillConductorAbility.Laser)
+
+		if (targeting instanceof EntitySkillConductorAbility.Laser) {
 			effective = LaserSkill.aimPosition(mob, target, requested);
+		}
 		return new AimPreview(mob, targeting, target, requested, effective, selection, valid, rangeLimited);
 	}
 
@@ -707,49 +880,67 @@ public class ConductorControls {
 		if (SELECTED.isEmpty() || minecraft.player == null || minecraft.level == null) {
 			return;
 		}
+
 		String team = selectedTeam();
+
 		if (pending == ConductorCommandPayload.Action.CAST && pendingSkillUnit != null) {
 			ConductorData.Unit unit = ConductorClient.unit(pendingSkillUnit);
-			if (unit != null)
+
+			if (unit != null) {
 				team = unit.team();
+			}
 		}
+
 		if (team.isBlank()) {
 			return;
 		}
+
 		boolean smartOrder = pending == null;
 		ConductorCommandPayload.Action action = pending;
 		LivingEntity target;
+
 		if (smartOrder) {
 			target = pickCommandTarget(minecraft, selected());
 			action = target == null ? ConductorCommandPayload.Action.MOVE : ConductorCommandPayload.Action.ATTACK;
 		} else if (action == ConductorCommandPayload.Action.ATTACK) {
 			LivingEntity rawTarget = pickLivingEntity(minecraft);
 			target = pickCommandTarget(minecraft, selected());
+
 			if (target == null && rawTarget != null) {
 				return;
 			}
 		} else {
 			target = null;
 		}
+
 		Vec3 pos = ConductorCamera.pickGround(minecraft);
+
 		if (pos == null) {
-			if (target == null && action != ConductorCommandPayload.Action.CAST)
+			if (target == null && action != ConductorCommandPayload.Action.CAST) {
 				return;
+			}
+
 			pos = target == null ? Vec3.ZERO : target.position();
 		}
+
 		ConductorCommandPayload.TargetSelection targetSelection = ConductorCommandPayload.TargetSelection.NONE;
+
 		if (action == ConductorCommandPayload.Action.CAST) {
 			AimPreview preview = aimPreview(minecraft);
+
 			if (preview == null || !preview.valid()) {
 				return;
 			}
+
 			target = preview.target();
 			targetSelection = preview.targetSelection();
 			pos = preview.requestedPosition();
 		}
+
 		if (action == ConductorCommandPayload.Action.ATTACK && target == null) {
 			action = ConductorCommandPayload.Action.ATTACK_POINT;
 		}
+
 		List<UUID> units = action == ConductorCommandPayload.Action.CAST && pendingSkillUnit != null
 				? skillUnits(pendingSkillUnit) : controlledSelection();
 		ConductorClient.sendTarget(action, team, "", units,
@@ -757,11 +948,14 @@ public class ConductorControls {
 						|| action == ConductorCommandPayload.Action.ATTACK) && target != null
 						? target.getUUID() : null,
 				pos.x, pos.y, pos.z, ConductorData.ControlMode.FULL, false, pendingSkill, targetSelection);
+
 		if (action == ConductorCommandPayload.Action.CAST && pendingSkill.equals(TheQueenOfHatredSkills.LASER.getId().toString())) {
 			ConductorManualSkillControl.track(units, Identifier.parse(pendingSkill));
 		}
-		if (action != ConductorCommandPayload.Action.CAST)
+
+		if (action != ConductorCommandPayload.Action.CAST) {
 			setPending(null);
+		}
 	}
 
 	private static LivingEntity pickCommandTarget(Minecraft minecraft, List<UUID> units) {
@@ -778,13 +972,14 @@ public class ConductorControls {
 
 	public static void openPanel(ConductorLdlibScreen.Tab tab) {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (active && minecraft.screen == null) {
 			minecraft.setScreen(ConductorLdlibScreen.create(tab));
 			ConductorClient.requestSnapshot();
 		}
 	}
 
-	public record AimPreview(Mob caster, ConductorTargeting targeting, @Nullable LivingEntity target,
+	public record AimPreview(Mob caster, IConductorTargeting targeting, @Nullable LivingEntity target,
 	                         Vec3 requestedPosition, Vec3 effectivePosition,
 	                         ConductorCommandPayload.TargetSelection targetSelection,
 	                         boolean valid, boolean rangeLimited) {

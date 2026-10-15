@@ -59,8 +59,8 @@ public class ConductorClientChunks {
 
 	public LevelChunk replace(int x, int z, FriendlyByteBuf buffer, Map<Heightmap.Types, long[]> heightmaps,
 	                          Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> blockEntities) {
-		ChunkPos pos = new ChunkPos(x, z);
-		LevelChunk chunk = chunks.computeIfAbsent(pos.pack(), ignored -> new LevelChunk(level, pos));
+		var pos = new ChunkPos(x, z);
+		LevelChunk chunk = chunks.computeIfAbsent(pos.pack(), _ -> new LevelChunk(level, pos));
 		chunk.replaceWithPacketData(buffer, heightmaps, blockEntities);
 		refreshEmptySections(chunk);
 		level.onChunkLoaded(pos);
@@ -70,38 +70,52 @@ public class ConductorClientChunks {
 
 	public void drop(ChunkPos pos) {
 		LevelChunk chunk = chunks.remove(pos.pack());
-		if (chunk == null)
+
+		if (chunk == null) {
 			return;
-		for (int index = 0; index < chunk.getSections().length; index++)
+		}
+
+		for (int index = 0; index < chunk.getSections().length; index++) {
 			emptySections.get().remove(SectionPos.asLong(pos.x(), chunk.getSectionYFromSectionIndex(index), pos.z()));
+		}
 		NeoForge.EVENT_BUS.post(new ChunkEvent.Unload(chunk));
 		level.unload(chunk);
 	}
 
 	public boolean retain(LevelChunk unloading) {
 		LevelChunk retained = chunks.get(unloading.getPos().pack());
-		if (retained == null)
+
+		if (retained == null) {
 			return false;
-		if (retained != unloading)
+		}
+
+		if (retained != unloading) {
 			unloading.clearAllBlockEntities();
+		}
 		refreshEmptySections(retained);
 		return true;
 	}
 
 	public void onSectionEmptinessChanged(int x, int y, int z, boolean empty) {
-		if (!chunks.containsKey(ChunkPos.pack(x, z)))
+		if (!chunks.containsKey(ChunkPos.pack(x, z))) {
 			return;
+		}
+
 		long section = SectionPos.asLong(x, y, z);
-		if (empty)
+
+		if (empty) {
 			emptySections.get().add(section);
-		else if (emptySections.get().remove(section))
+		} else if (emptySections.get().remove(section)) {
 			level.onSectionBecomingNonEmpty(section);
+		}
 	}
 
 	private void refreshEmptySections(LevelChunk chunk) {
 		ChunkPos pos = chunk.getPos();
 		LevelChunkSection[] sections = chunk.getSections();
-		for (int index = 0; index < sections.length; index++)
+
+		for (int index = 0; index < sections.length; index++) {
 			onSectionEmptinessChanged(pos.x(), chunk.getSectionYFromSectionIndex(index), pos.z(), sections[index].hasOnlyAir());
+		}
 	}
 }

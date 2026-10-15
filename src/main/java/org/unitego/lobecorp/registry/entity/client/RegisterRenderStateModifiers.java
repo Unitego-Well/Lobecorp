@@ -12,9 +12,11 @@ public class RegisterRenderStateModifiers {
 		event.registerEntityModifier(new TypeToken<EntityCorpseRenderer<EntityCorpse<?>>>(EntityCorpseRenderer.class) {
 		}, (entity, renderState) -> {
 			Entity ownerEntity = entity.getOwnerEntity();
+
 			if (ownerEntity == null) {
 				return;
 			}
+
 			if (EntityCorpseReverseEvent.contains(ownerEntity.getType())) {
 				renderState.setRenderData(EntityCorpseRenderer.IS_REVERSE, false);
 			}

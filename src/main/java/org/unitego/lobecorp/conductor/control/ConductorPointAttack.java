@@ -25,8 +25,9 @@ public class ConductorPointAttack {
 
 	private static State state(Mob mob) {
 		ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-		if (runtime.pointAttack == null)
+		if (runtime.pointAttack == null) {
 			runtime.pointAttack = new State();
+		}
 		return runtime.pointAttack;
 	}
 
@@ -34,9 +35,11 @@ public class ConductorPointAttack {
 		if (mob instanceof Breeze) {
 			return true;
 		}
+
 		if (mob instanceof AbstractSkeleton && !mob.isHolding(stack -> stack.getItem() instanceof BowItem)) {
 			return false;
 		}
+
 		return mob instanceof RangedAttackMob;
 	}
 
@@ -46,9 +49,11 @@ public class ConductorPointAttack {
 			tickBreeze(level, breeze, position, state);
 			return;
 		}
+
 		if (!(mob instanceof RangedAttackMob ranged)) {
 			return;
 		}
+
 		InteractionHand crossbowHand = ProjectileUtil.getWeaponHoldingHand(mob,
 				item -> item instanceof CrossbowItem);
 		ItemStack crossbow = mob.getItemInHand(crossbowHand);
@@ -59,9 +64,11 @@ public class ConductorPointAttack {
 				state.weapon = crossbow;
 				state.hand = crossbowHand;
 			}
+
 			tickCrossbow(level, mob, crossbowMob, crossbowItem, position, state);
 			return;
 		}
+
 		InteractionHand bowHand = ProjectileUtil.getWeaponHoldingHand(mob, item -> item instanceof BowItem);
 		ItemStack bow = mob.getItemInHand(bowHand);
 		if (bow.getItem() instanceof BowItem) {
@@ -72,9 +79,11 @@ public class ConductorPointAttack {
 				state.weapon = bow;
 				state.hand = bowHand;
 			}
+
 			if (mob.tickCount < state.readyAt) {
 				return;
 			}
+
 			if (!mob.isUsingItem()) {
 				mob.startUsingItem(bowHand);
 			} else if (mob.getTicksUsingItem() >= ConductorRules.BOW_DRAW_TICKS) {
@@ -83,11 +92,14 @@ public class ConductorPointAttack {
 				ranged.performRangedAttack(point(level, position), BowItem.getPowerForTime(pullTime));
 				state.readyAt = mob.tickCount + ConductorRules.POINT_ATTACK_INTERVAL_TICKS;
 			}
+
 			return;
 		}
+
 		if (mob instanceof AbstractSkeleton) {
 			return;
 		}
+
 		if (mob.tickCount >= state.readyAt) {
 			ranged.performRangedAttack(point(level, position), ConductorRules.POINT_ATTACK_POWER);
 			state.readyAt = mob.tickCount + ConductorRules.POINT_ATTACK_INTERVAL_TICKS;
@@ -122,6 +134,7 @@ public class ConductorPointAttack {
 			if (breeze.tickCount < state.shootAt) {
 				return;
 			}
+
 			Vec3 direction = position.subtract(breeze.getX(), breeze.getFiringYPosition(), breeze.getZ());
 			Projectile.spawnProjectileUsingShoot(new BreezeWindCharge(breeze, level), level, ItemStack.EMPTY,
 					direction.x, direction.y, direction.z, ConductorRules.BREEZE_PROJECTILE_SPEED,
@@ -152,15 +165,19 @@ public class ConductorPointAttack {
 		if (state == null) {
 			return;
 		}
+
 		if (mob.isUsingItem() && mob.getUseItem() == state.weapon) {
 			mob.stopUsingItem();
 		}
+
 		if (state.weapon.getItem() instanceof BowItem && !attackingEntity) {
 			mob.setAggressive(false);
 		}
+
 		if (mob instanceof CrossbowAttackMob shooter) {
 			shooter.setChargingCrossbow(false);
 		}
+
 		if (mob instanceof Breeze breeze && breeze.getPose() == Pose.SHOOTING) {
 			breeze.setPose(Pose.STANDING);
 		}

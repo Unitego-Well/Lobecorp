@@ -4,9 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-/**
- * 传给生成实例的参数快照；null 表示沿用模板，向量按值保存。
- */
+/// 传给生成实例的参数快照；null 表示沿用模板，向量按值保存。
 public record PhotonSpawnOverrides(String targetName, @Nullable Integer lifetime, @Nullable Vector3f size,
                                    @Nullable Vector4f color, @Nullable Float speed, @Nullable Float beamLength,
                                    @Nullable Float beamWidth, float playbackSpeed) {
@@ -22,6 +20,7 @@ public record PhotonSpawnOverrides(String targetName, @Nullable Integer lifetime
 		requireFinite(speed, false);
 		requireFinite(beamLength, true);
 		requireFinite(beamWidth, true);
+
 		if (size != null) {
 			if (!size.isFinite() || size.x < 0 || size.y < 0 || size.z < 0) {
 				throw new IllegalArgumentException();
@@ -58,4 +57,3 @@ public record PhotonSpawnOverrides(String targetName, @Nullable Integer lifetime
 		}
 	}
 }
-

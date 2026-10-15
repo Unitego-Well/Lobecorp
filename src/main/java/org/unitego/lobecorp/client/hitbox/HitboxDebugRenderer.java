@@ -36,9 +36,11 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 
 	private static void render(HitboxSnapshot snapshot) {
 		int color = INACTIVE_COLOR;
+
 		if (snapshot.active()) {
 			color = snapshot.purpose() == HitboxPurpose.DETECTION ? DETECTION_COLOR : ACTIVE_COLOR;
 		}
+
 		switch (snapshot.size()) {
 			case SphereSize sphere -> renderSphere(snapshot, sphere, color);
 			case CylinderSize cylinder -> renderCylinder(snapshot, cylinder.radius(), cylinder.height(), color);
@@ -55,6 +57,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 
 	private static void renderRingCylinder(HitboxSnapshot snapshot, RingCylinderSize ring, int color) {
 		renderCylinderBoundary(snapshot, ring.radius(), ring.height(), color);
+
 		if (ring.innerRadius() > 0.0) {
 			renderCylinderBoundary(snapshot, ring.innerRadius(), ring.height(), color);
 		}
@@ -64,6 +67,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		double halfHeight = height / 2.0;
 		renderCircle(snapshot, radius, halfHeight, CirclePlane.XZ, color);
 		renderCircle(snapshot, radius, -halfHeight, CirclePlane.XZ, color);
+
 		for (int index = 0; index < CYLINDER_SIDE_COUNT; index++) {
 			double angle = Math.PI * 2.0 * index / CYLINDER_SIDE_COUNT;
 			Vec3 bottom = world(snapshot, new Vec3(Math.sin(angle) * radius, -halfHeight,
@@ -76,6 +80,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 
 	private static void renderBoxRingCylinder(HitboxSnapshot snapshot, BoxRingCylinderSize ring, int color) {
 		renderBox(snapshot, new BoxSize(ring.width(), ring.height(), ring.depth()), color);
+
 		if (ring.innerWidth() > 0.0 && ring.innerDepth() > 0.0) {
 			renderBox(snapshot, new BoxSize(ring.innerWidth(), ring.height(), ring.innerDepth()), color);
 		}
@@ -91,6 +96,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		double radius = Math.tan(Math.toRadians(cone.angleDegrees() / 2.0)) * cone.length();
 		renderCircle(snapshot, radius, cone.length(), CirclePlane.XY, color);
 		Vec3 tip = world(snapshot, Vec3.ZERO);
+
 		for (int index = 0; index < CYLINDER_SIDE_COUNT; index++) {
 			double angle = Math.PI * 2.0 * index / CYLINDER_SIDE_COUNT;
 			Vec3 edge = world(snapshot,
@@ -109,6 +115,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		double halfHeight = height / 2.0;
 		renderCircle(snapshot, radius, halfHeight, CirclePlane.XZ, color);
 		renderCircle(snapshot, radius, -halfHeight, CirclePlane.XZ, color);
+
 		for (int index = 0; index < CYLINDER_SIDE_COUNT; index++) {
 			double angle = Math.PI * 2.0 * index / CYLINDER_SIDE_COUNT;
 			Vec3 bottom = world(snapshot, new Vec3(Math.sin(angle) * radius, -halfHeight,
@@ -138,6 +145,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 				{4, 5}, {5, 6}, {6, 7}, {7, 4},
 				{0, 4}, {1, 5}, {2, 6}, {3, 7}
 		};
+
 		for (int[] edge : edges) {
 			Gizmos.line(corners.get(edge[0]), corners.get(edge[1]), color);
 		}
@@ -148,6 +156,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		double halfAngle = Math.toRadians(sector.angleDegrees() / 2.0);
 		List<Vec3> bottom = new ArrayList<>();
 		List<Vec3> top = new ArrayList<>();
+
 		for (int index = 0; index <= CURVE_SEGMENTS; index++) {
 			double angle = -halfAngle + sector.angleDegrees() * Math.PI / 180.0
 					* index / CURVE_SEGMENTS;
@@ -156,6 +165,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 			top.add(world(snapshot, new Vec3(Math.sin(angle) * sector.radius(), halfHeight,
 					Math.cos(angle) * sector.radius())));
 		}
+
 		renderPolyline(bottom, color);
 		renderPolyline(top, color);
 		Vec3 bottomCenter = world(snapshot, new Vec3(0.0, -halfHeight, 0.0));
@@ -177,6 +187,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 	private static void renderEllipse(HitboxSnapshot snapshot, double firstRadius, double secondRadius,
 	                                  double offset, CirclePlane plane, int color) {
 		List<Vec3> points = new ArrayList<>();
+
 		for (int index = 0; index <= CURVE_SEGMENTS; index++) {
 			double angle = Math.PI * 2.0 * index / CURVE_SEGMENTS;
 			Vec3 local = switch (plane) {
@@ -186,6 +197,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 			};
 			points.add(world(snapshot, local));
 		}
+
 		renderPolyline(points, color);
 	}
 
@@ -206,6 +218,7 @@ public class HitboxDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 		if (minecraft.level == null) {
 			return;
 		}
+
 		for (HitboxSnapshot snapshot : minecraft.level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA)
 				.clientSnapshots()) {
 			render(snapshot);

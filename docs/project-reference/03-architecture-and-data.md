@@ -19,8 +19,8 @@
 | --- | --- | --- |
 | `registry` | `LcRegistrys`、`LcAttachmentTypes`、`LcCapabilities`、各类 `Lc*` 注册器 | 只定义注册对象和注册生命周期 |
 | `entity` | 女皇、清道夫、其他 Ordeal、尸体、AI、导航 | 实体自身状态、行为和实体专属表现 |
-| `entity_skill` | `IEntitySkill`、`EntitySkillAccess`、`EntitySkillRuntime` | 技能定义、资格、请求、运行实例和效果 |
-| `conductor` | `ConductorData`、`ConductorUnitControl`、`ConductorUtil` | 指挥家目录、单位能力、持续意图和世界运行态 |
+| `entity_skill` | `IEntitySkill`、`IEntitySkillAccess`、`EntitySkillRuntime` | 技能定义、资格、请求、运行实例和效果 |
+| `conductor` | `ConductorData`、`IConductorUnitControl`、`ConductorUtil` | 指挥家目录、单位能力、持续意图和世界运行态 |
 | `hitbox` | `HitboxManager`、`HitboxInstance`、`HitboxSnapshot` | 几何、命中策略、效果应用和调试快照 |
 | `events` | `LobecorpEvents`、`LivingEntityEvents`、`WorldTickEvents` | 唯一自动订阅入口和有序分发 |
 | `network` | `ConductorCommandPayload`、`ConductorSnapshotPayload`、技能/命中框 Payload | 编解码、协议分发和客户端镜像 |
@@ -38,7 +38,7 @@
 | 世界目录 | `ConductorData`，SavedData ID `lobecorp:conductor_directory` | 队伍、成员摘要、最后位置、待交付记录、修订号和释放记录 | 是 |
 | 单位附件 | `LcAttachmentTypes.CONDUCTOR_UNIT` / `ConductorUnitData` | 模式、目标 UUID、目的地/活动原点、技能 ID 和速度等直接字段 | 是，并同步 |
 | 单位运行附件 | `CONDUCTOR_RUNTIME` / `ConductorUnitRuntime` | 路径、工作、声波、方向攻击、仇恨和技能适配运行态 | 否 |
-| 能力 | `LcCapabilities.CONDUCTOR_CONTROL` / `ConductorUnitControl` | `supports`、`accept`、`tick`、`stop`、移动和技能控制 | 不保存状态副本 |
+| 能力 | `LcCapabilities.CONDUCTOR_CONTROL` / `IConductorUnitControl` | `supports`、`accept`、`tick`、`stop`、移动和技能控制 | 不保存状态副本 |
 | 世界运行态 | `ConductorWorldRuntime` | 票据、玩家目录同步基线和临时运行信息 | 否 |
 | 客户端会话 | `ConductorClient.Session` | 目录显示副本、修订号、选择、镜头和技能缓存 | 否；偏好单独保留 |
 | 网络 | `ConductorCommandPayload`、`ConductorSnapshotPayload` | 服务端命令、全量/增量目录和版本恢复 | 传输态 |
@@ -54,7 +54,7 @@
 | 技能定义 | `IEntitySkill`、`EntitySkill.Properties` | ID、资格、冷却、分组和可调属性 |
 | 持久化附件 | `ENTITY_SKILLS`、`ENTITY_SKILL_GROUPS`、`ENTITY_SKILL_COOLDOWNS` | 技能拥有、分组上限和冷却 |
 | 运行附件 | `ACTIVE_ENTITY_SKILLS` / `EntitySkillRuntimeData` | 当前运行实例和实例 ID，不序列化 |
-| 操作能力 | `EntitySkillAccess` | 查询、校验、施放、Tick、取消和清理 |
+| 操作能力 | `IEntitySkillAccess` | 查询、校验、施放、Tick、取消和清理 |
 | 结构化 API | `EntitySkillCastRequest` / `EntitySkillCastResult` | 唯一施放输入和结果分类 |
 | 同步 | `EntitySkillSyncPayload` | 运行实例 ID、创建/更新/删除客户端临时镜像 |
 | 轻量效果 | `EntitySkillEffect` / `EntitySkillEffectManager` | Level 内服务端效果，不注册为 Minecraft Entity，不写世界存档 |
@@ -63,19 +63,19 @@
 
 ## 事件数据流
 
-`WorldTickEvents.onLevelTick` 以高优先级先推进 `EntitySkillEffectEvents`，再推进 `HitboxEvents`。`LivingEntityEvents.onEntityTick` 在服务端为 LivingEntity 查询 `EntitySkillAccess` 并 Tick；没有能力时才回退到 `EntitySkillUtil`。
+`WorldTickEvents.onLevelTick` 以高优先级先推进 `EntitySkillEffectEvents`，再推进 `HitboxEvents`。`LivingEntityEvents.onEntityTick` 在服务端为 LivingEntity 查询 `IEntitySkillAccess` 并 Tick；没有能力时才回退到 `EntitySkillUtil`。
 
 伤害链路由 `LivingEntityEvents` 统一入口处理：先处理伤害倍率/清道夫吸收，再调用指挥家伤害过滤；实体离开世界时清理技能运行态，并按死亡或永久移除条件处理指挥家成员和尸体创建。
 
 ## 视觉同步数据流
 
 1. 服务端技能或实体状态发生生命周期边沿。
-2. 持续动作写入 `EntityStateHolder` 或复用已有技能同步。
+2. 持续动作写入 `IEntityStateHolder` 或复用已有技能同步。
 3. 客户端读取状态边沿，切换动画层，不在每 tick 重播。
 4. 服务端确认的粒子通过 `ServerLevel.sendParticles` 发送。
 5. 需要调试时，客户端使用现有 Hitbox/技能快照；不新增重复同步通道。
 
-当前基础设施包括 `EntityState`、`EntityStateHolder`、`LcEntityDataSerializers.ENTITY_STATES`、`EntitySkillSyncPayload`、`LcAnimationController` 和 `ServerLevel.sendParticles`。
+当前基础设施包括 `EntityState`、`IEntityStateHolder`、`LcEntityDataSerializers.ENTITY_STATES`、`EntitySkillSyncPayload`、`LcAnimationController` 和 `ServerLevel.sendParticles`。
 
 ## Mixin 边界
 

@@ -28,60 +28,80 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 public class ConductorManualSkillControl {
 	/// 手动施放等待客户端收到开始同步的最长时间，单位为 tick。
 	private static final int START_WAIT_TICKS = 3 * TICKS_PER_SECOND;
+	/// 手动施放能力的客户端控制会话集合。
 	private static final Map<Key, Session> SESSIONS = new HashMap<>();
 
 	public static void track(List<UUID> members, Identifier skill) {
-		for (UUID member : members)
+		for (UUID member : members) {
 			SESSIONS.put(new Key(member, skill), new Session());
+		}
 	}
 
 	public static void tick(Minecraft minecraft, Function<Predicate<LivingEntity>, LivingEntity> pickTarget) {
-		if (minecraft.level == null)
+		if (minecraft.level == null) {
 			return;
+		}
+
 		var iterator = SESSIONS.entrySet().iterator();
+
 		while (iterator.hasNext()) {
 			var entry = iterator.next();
 			Key key = entry.getKey();
 			Session session = entry.getValue();
 			ConductorData.Unit unit = ConductorClient.unit(key.member());
+
 			if (unit == null || !(minecraft.level.getEntity(key.member()) instanceof Mob mob) || !mob.isAlive()
 					|| !(ConductorUtil.ability(mob, key.skill()) instanceof EntitySkillConductorAbility ability)) {
-				if (session.manual)
+				if (session.manual) {
 					send(key, ConductorCommandPayload.Action.END_MANUAL_CONTROL);
+				}
 				iterator.remove();
 				continue;
 			}
-			if (ability.isCasting(mob))
+
+			if (ability.isCasting(mob)) {
 				session.waitTicks = 0;
-			else if (session.waitTicks == 0) {
-				if (session.manual)
+			} else if (session.waitTicks == 0) {
+				if (session.manual) {
 					send(key, ConductorCommandPayload.Action.END_MANUAL_CONTROL);
+				}
 				iterator.remove();
 				continue;
-			} else
+			} else {
 				session.waitTicks--;
+			}
+
 			if (!ConductorControls.isSelected(key.member())) {
-				if (session.manual)
+				if (session.manual) {
 					send(key, ConductorCommandPayload.Action.END_MANUAL_CONTROL);
+				}
 				session.manual = false;
 				session.following = false;
 				continue;
 			}
+
 			if (minecraft.screen != null || !minecraft.isWindowActive() || ConductorHud.INSTANCE.contains(minecraft)
 					|| GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) {
-				if (session.following)
+				if (session.following) {
 					send(key, ConductorCommandPayload.Action.AIM);
+				}
 				session.following = false;
 				continue;
 			}
+
 			LivingEntity target = pickTarget.apply(entity -> entity != minecraft.player && entity != mob
 					&& ability.canTarget(mob, entity) && ability.isWithinRange(mob, entity.position())
 					&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
 			Vec3 position = ConductorCamera.pickGround(minecraft);
-			if (target != null)
+
+			if (target != null) {
 				position = target.getBoundingBox().getCenter();
-			if (position == null)
+			}
+
+			if (position == null) {
 				continue;
+			}
+
 			ConductorClient.sendTarget(ConductorCommandPayload.Action.AIM, unit.team(), "", List.of(key.member()),
 					target == null ? null : target.getUUID(), position.x, position.y, position.z,
 					ConductorData.ControlMode.FULL, true, key.skill().toString(),
@@ -93,18 +113,21 @@ public class ConductorManualSkillControl {
 
 	public static void clear() {
 		SESSIONS.forEach((key, session) -> {
-			if (session.manual)
+			if (session.manual) {
 				send(key, ConductorCommandPayload.Action.END_MANUAL_CONTROL);
+			}
 		});
 		SESSIONS.clear();
 	}
 
 	private static void send(Key key, ConductorCommandPayload.Action action) {
 		ConductorData.Unit unit = ConductorClient.unit(key.member());
-		if (unit != null)
+
+		if (unit != null) {
 			ConductorClient.sendTarget(action, unit.team(), "", List.of(key.member()),
 					null, 0.0, 0.0, 0.0, ConductorData.ControlMode.FULL, false,
 					key.skill().toString(), ConductorCommandPayload.TargetSelection.NONE);
+		}
 	}
 
 	private record Key(UUID member, Identifier skill) {

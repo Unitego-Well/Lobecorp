@@ -20,19 +20,30 @@ import org.unitego.lobecorp.registry.LcCapabilities;
 public class ConductorCapabilityRegistration {
 	public static void register(RegisterCapabilitiesEvent event) {
 		for (var type : BuiltInRegistries.ENTITY_TYPE) {
-			event.registerEntity(LcCapabilities.CONDUCTOR_CONTROL, type, (entity, context) -> {
-				if (entity instanceof Sweeper sweeper)
+			event.registerEntity(LcCapabilities.CONDUCTOR_CONTROL, type, (entity, _) -> {
+				if (entity instanceof Sweeper sweeper) {
 					return new ConductorCapabilities.SweeperControl(sweeper);
-				if (entity instanceof Warden warden)
+				}
+
+				if (entity instanceof Warden warden) {
 					return new ConductorCapabilities.WardenControl(warden);
-				if (entity instanceof Ghast ghast)
+				}
+
+				if (entity instanceof Ghast ghast) {
 					return new GhastControl(ghast);
-				if (entity instanceof Breeze breeze)
+				}
+
+				if (entity instanceof Breeze breeze) {
 					return new BreezeControl(breeze);
-				if (entity instanceof EnderDragon dragon)
+				}
+
+				if (entity instanceof EnderDragon dragon) {
 					return new DragonControl(dragon);
-				if (entity instanceof TheQueenOfHatred queen)
+				}
+
+				if (entity instanceof TheQueenOfHatred queen) {
 					return new QueenControl(queen);
+				}
 				return entity instanceof Mob mob ? new ConductorCapabilities.MobControl(mob) : null;
 			});
 		}

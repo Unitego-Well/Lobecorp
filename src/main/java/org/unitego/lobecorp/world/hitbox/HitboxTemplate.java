@@ -2,19 +2,19 @@ package org.unitego.lobecorp.world.hitbox;
 
 import net.minecraft.world.entity.Entity;
 import org.unitego.lobecorp.world.hitbox.geometry.HitboxShapeType;
-import org.unitego.lobecorp.world.hitbox.geometry.HitboxSize;
+import org.unitego.lobecorp.world.hitbox.geometry.IHitboxSize;
 
 import java.util.function.Predicate;
 
 /// 判断框的共享只读模板；模板无需注册，也不会参与网络同步。
-public record HitboxTemplate(HitboxSize initialSize, Predicate<Entity> targetFilter, IHitboxEffect effect,
+public record HitboxTemplate(IHitboxSize initialSize, Predicate<Entity> targetFilter, IHitboxEffect effect,
                              HitboxPurpose purpose) {
 	/// 创建具有固定形状类型的判断框模板。
 	///
 	/// @param initialSize  实例的初始类型化尺寸
 	/// @param targetFilter 每次服务端处理候选目标时执行的默认过滤器
 	/// @param effect       候选目标通过几何与遮挡检查后执行的效果
-	public HitboxTemplate(HitboxSize initialSize, Predicate<Entity> targetFilter, IHitboxEffect effect) {
+	public HitboxTemplate(IHitboxSize initialSize, Predicate<Entity> targetFilter, IHitboxEffect effect) {
 		this(initialSize, targetFilter, effect, HitboxPurpose.DAMAGE);
 	}
 
@@ -24,7 +24,7 @@ public record HitboxTemplate(HitboxSize initialSize, Predicate<Entity> targetFil
 
 	/// @return 新实例使用的初始尺寸
 	@Override
-	public HitboxSize initialSize() {
+	public IHitboxSize initialSize() {
 		return initialSize;
 	}
 

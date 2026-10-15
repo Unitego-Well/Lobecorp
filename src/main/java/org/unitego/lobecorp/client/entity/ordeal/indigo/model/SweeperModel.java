@@ -25,6 +25,7 @@ public class SweeperModel extends GeoModel<Sweeper> {
 	/// 当前已有资源对应的清道夫外观；缺少独立资源的变种显式回退到 A。
 	private static final SweeperResources SWEEPER_A_RESOURCES =
 			new SweeperResources(ANIMATION, TEXTURE, ANIMATION);
+	/// 清道夫各变体对应的模型、纹理与动画资源。
 	private static final Map<SweeperVariant, SweeperResources> RESOURCES = Map.of(
 			SweeperVariant.A, SWEEPER_A_RESOURCES,
 			SweeperVariant.B, SWEEPER_A_RESOURCES,
@@ -42,18 +43,22 @@ public class SweeperModel extends GeoModel<Sweeper> {
 	@Override
 	public Identifier getModelResource(GeoRenderState renderState) {
 		Boolean isCorpse = renderState.getGeckolibData(LcDataTickets.IS_CORPSE);
+
 		if (isCorpse != null && isCorpse) {
 			return MODEL_CORPSE;
 		}
+
 		return resources(variantOf(renderState)).model();
 	}
 
 	@Override
 	public Identifier getTextureResource(GeoRenderState renderState) {
 		Boolean isCorpse = renderState.getGeckolibData(LcDataTickets.IS_CORPSE);
+
 		if (isCorpse != null && isCorpse) {
 			return TEXTURES_CORPSE;
 		}
+
 		return resources(variantOf(renderState)).texture();
 	}
 

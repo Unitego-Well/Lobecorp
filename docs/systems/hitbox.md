@@ -9,7 +9,7 @@
 
 | 职责             | 核对入口                                                                                                                                                                                                                                                                                                   |
 |------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 几何及尺寸类型   | [HitboxGeometry](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/HitboxGeometry.java)、[HitboxSize](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/HitboxSize.java)、[HitboxShapeType](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/HitboxShapeType.java) |
+| 几何及尺寸类型   | [HitboxGeometry](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/HitboxGeometry.java)、[IHitboxSize](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/IHitboxSize.java)、[HitboxShapeType](../../src/main/java/org/unitego/lobecorp/world/hitbox/geometry/HitboxShapeType.java) |
 | 共享定义         | [HitboxTemplate](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxTemplate.java)                                                                                                                                                                                                                |
 | 每次运行数据     | [HitboxInstance](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxInstance.java)、[HitboxLevelData](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxLevelData.java)                                                                                                                 |
 | 创建、结算和移除 | [HitboxManager](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxManager.java)                                                                                                                                                                                                                  |
@@ -18,7 +18,7 @@
 | 客户端镜像       | [HitboxSnapshot](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxSnapshot.java)、[HitboxDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/hitbox/HitboxDebugRenderer.java)                                                                                                        |
 | 事件调度         | [WorldTickEvents](../../src/main/java/org/unitego/lobecorp/events/WorldTickEvents.java)、[HitboxEvents](../../src/main/java/org/unitego/lobecorp/events/HitboxEvents.java)                                                                                                                                 |
 
-几何能力包括箱体、球体、椭球、圆柱、圆锥及环形、扇形和箱环柱体。尺寸类型及转换以具体 `HitboxSize` 实现为准；`HitboxGeometry`
+几何能力包括箱体、球体、椭球、圆柱、圆锥及环形、扇形和箱环柱体。尺寸类型及转换以具体 `IHitboxSize` 实现为准；`HitboxGeometry`
 同时提供粗筛包围盒和精确相交判断，不应通过包围盒命中直接替代精确判断。
 
 `HitboxTemplate` 固定初始尺寸、目标过滤、效果回调和用途。实例设置尺寸时不能更换模板的形状类型。模板没有单独的注册或网络协议；实例保存位置、旋转、局部偏移、旋转中心、来源、跟随、成功记录和生命周期。
@@ -30,7 +30,7 @@
 
 每个服务端 LevelTick.Post 的处理顺序：
 
-1. 技能效果先更新，然后命中框入口开始推进。
+1. 技能效果先更新，再推进服务端动画并写入空间附着，然后命中框入口开始推进；动画快照在命中框处理后同步。
 2. 从当前实例列表的副本遍历，移除寿命到期或来源无效的实例。
 3. 更新跟随位置和朝向。
 4. 对已激活且未耗尽的实例进行目标筛选及精确结算。
@@ -39,6 +39,8 @@
 寿命为 1 的实例可在一个管理器 tick 中结算，下一次到期检查移除。实例关联的来源、跟随与技能运行绑定分别设置；即使没有启用跟随，存在无效来源也会触发来源清理。来源死亡、移除或离开维度都需要核对。
 
 跟随支持局部偏移和来源旋转，以及可选头部旋转。修改坐标系前同时检查局部偏移、旋转中心、几何长轴与客户端快照，不应仅旋转可视模型。
+
+[HitboxAnimationTarget](../../src/main/java/org/unitego/lobecorp/world/hitbox/HitboxAnimationTarget.java) 显式接收动画／附着的位置与旋转通道；首次实际写入调用 `stopFollowing()`，关闭来源位置、来源旋转与头部朝向跟随，避免管理器随后覆盖外部变换。它保留同一实例的 ID、来源引用、激活状态、寿命和命中记录，缩放不隐式换算成命中尺寸。解除空间绑定不会移除实例或自动恢复跟随，尺寸、跟随和技能结束移除仍由原系统显式控制；接口与同生命周期切锚见[服务端动画、根运动与空间附着](animation-runtime.md)。
 
 技能结束或取消时通过 `removeForSkillRuntime` 移除绑定到该次运行的实例。手动 `remove`
 从维度容器删除、标记移除并发送移除载荷。无来源实例达到总成功上限时立即移除；有来源实例会标记耗尽，保留到正常寿命结束以支持剩余表现。
@@ -101,3 +103,7 @@ Level 数据由 [LcAttachmentTypes](../../src/main/java/org/unitego/lobecorp/reg
 
 已通过 IDEA
 核对核心模板、实例、管理器、几何入口、策略、快照、载荷、调度与星束实现。未逐种形状核验数值精度、旋转边界、服务器性能、多玩家观察切换或网络丢包；也没有游戏运行验收。迁移后链接仍需统一检查。维护记录见[系统维护记录](changes.md)。
+
+## Java 25 维护
+
+2026-10-09 的规范整理在 `HitboxSnapshot.encodeSize` 中使用 record 模式绑定已有尺寸分量，保持形状分支及 double 编码字段的原写入顺序，不改变快照协议、几何含义或命中结算。其余注释、常量说明和格式整理遵循 [Java 25 专项规范](../java-25-language-and-comments.md)；实际检查结果见 [修改记录](changes.md)。

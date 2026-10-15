@@ -48,5 +48,6 @@ repo/
 /.codex/
 /.backups/
 /.cherry-assistant/
-/.codex/
 /backups/
+/logs/latest.log
+**.java~

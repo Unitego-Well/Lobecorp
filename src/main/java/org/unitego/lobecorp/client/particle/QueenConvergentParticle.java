@@ -77,8 +77,11 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 	@Override
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
 		TheQueenOfHatred queen = owner();
-		if (queen == null)
+
+		if (queen == null) {
 			return;
+		}
+
 		float progress = Mth.clamp((age + partialTick) / lifetime, 0.0F, 1.0F);
 		double height = options.star() ? STAR_HEIGHT * (1.0 - Mth.clamp(
 				(age + partialTick - (lifetime - options.pulseTicks())) / options.pulseTicks(), 0.0F, 1.0F)) : GROUND_OFFSET;
@@ -87,6 +90,7 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 		xo = x;
 		yo = y;
 		zo = z;
+
 		if (options.star()) {
 			alpha = Mth.clamp((age + partialTick) / (lifetime - options.pulseTicks()), 0.0F, 1.0F);
 			super.extract(renderState, camera, partialTick);
@@ -101,11 +105,13 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 	public void tick() {
 		age = (int) Math.max(age + 1L, level.getGameTime() - options.startGameTime());
 		TheQueenOfHatred queen = owner();
+
 		if (age >= lifetime || queen == null || !queen.isAlive() || EntitySkillUtil.getActiveSkills(queen).stream()
 				.noneMatch(runtime -> runtime.id() == options.runtimeId() && runtime.state() != SkillState.RECOVERY)) {
 			remove();
 			return;
 		}
+
 		setPos(queen.getX(), queen.getY() + (options.star() ? STAR_HEIGHT : GROUND_OFFSET), queen.getZ());
 	}
 
@@ -124,4 +130,3 @@ public class QueenConvergentParticle extends SingleQuadParticle {
 		}
 	}
 }
-

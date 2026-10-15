@@ -14,14 +14,11 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 public interface SpawnEggItems {
-	/// 生物生成蛋延迟注册器。
 	DeferredRegister.Items REGISTER = DeferredRegister.createItems(Lobecorp.NAMESPACE);
 
-	/// 憎恶皇后生成蛋。
 	DeferredItem<LcSpawnEggItem> THE_QUEEN_OF_HATRED = register("the_queen_of_hatred", "The Queen Of Hatred", "憎恶皇后",
 			AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED);
 
-	/// 清道夫生成蛋。
 	DeferredItem<LcSpawnEggItem> SWEEPER = register("sweeper", "Sweeper", "清道夫", OrdealEntityTypes.SWEEPER);
 
 	static void init(IEventBus iEventBus) {

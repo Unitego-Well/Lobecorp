@@ -1,17 +1,17 @@
-license = "All Rights Reserved"
+license = "${mod_license}"
+issueTrackerURL = "${mod_issue_tracker_url}"
 
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"
-displayName = "Lobotomy Corporation"
-updateJSONURL = ""
-displayURL = ""
-issueTrackerURL = ""
-logoFile = "META-INF/logo.png"
-credits = ""
-authors = "Unitego"
+displayName = "${mod_name}"
+updateJSONURL = "${mod_update_json_url}"
+displayURL = "${mod_display_url}"
+logoFile = "${mod_logo_file}"
+credits = "${mod_credits}"
+authors = "${mod_authors}"
 description = '''
-Face the Fear, Build the Future
+${mod_description}
 '''
 
 [[mixins]]
@@ -20,40 +20,61 @@ config = "META-INF/${mod_id}.mixins.json"
 [[accessTransformers]]
 file = "META-INF/accesstransformer.cfg"
 
-[[dependencies.${ mod_id }]]
+[[dependencies."${mod_id}"]]
 modId = "minecraft"
 type = "required"
 versionRange = "[${minecraft_version}]"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${ mod_id }]]
+[[dependencies."${mod_id}"]]
 modId = "neoforge"
 type = "required"
 versionRange = "[${neoforge_version},)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${ mod_id }]]
+[[dependencies."${mod_id}"]]
 modId = "geckolib"
 type = "required"
 versionRange = "[${geckolib_version},)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${ mod_id }]]
+[[dependencies."${mod_id}"]]
 modId = "curios"
 type = "required"
 versionRange = "[${curios_version},)"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies.${ mod_id }]]
+[[dependencies."${mod_id}"]]
 modId = "particlestorm"
 type = "required"
 versionRange = "[${particlestorm_version},)"
 ordering = "NONE"
 side = "BOTH"
 
-[modproperties.${ mod_id }]
+[[dependencies."${mod_id}"]]
+modId = "photon"
+type = "required"
+versionRange = "[${photon_version},)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "ldlib2"
+type = "required"
+versionRange = "[${ldlib2_version},)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies."${mod_id}"]]
+modId = "kilagraph"
+type = "required"
+versionRange = "[${kilagraph_version},)"
+ordering = "NONE"
+side = "CLIENT"
+
+[modproperties."${mod_id}"]
 catalogueImageIcon = "META-INF/icon.png"

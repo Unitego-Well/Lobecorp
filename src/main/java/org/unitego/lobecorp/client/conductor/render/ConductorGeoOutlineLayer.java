@@ -40,10 +40,14 @@ public class ConductorGeoOutlineLayer<T extends Entity & GeoAnimatable, R extend
 	@Override
 	public void submitRenderTask(RenderPassInfo<R> renderPassInfo, SubmitNodeCollector renderTasks) {
 		R state = renderPassInfo.renderState();
-		if (!ConductorRendering.isSelected(state))
+
+		if (!ConductorRendering.isSelected(state)) {
 			return;
+		}
+
 		int previousColor = renderPassInfo.renderColor();
 		state.addGeckolibData(DataTickets.RENDER_COLOR, state.outlineColor);
+
 		try {
 			super.submitRenderTask(renderPassInfo, renderTasks);
 		} finally {

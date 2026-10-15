@@ -52,7 +52,7 @@ public interface LcMemoryModuleTypes {
 	}
 
 	private static <K, V> DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Map<K, V>>> registerMap(String name, Codec<K> codecK, Codec<V> codecV) {
-		return registerMap(name, codecK, v -> codecV);
+		return registerMap(name, codecK, _ -> codecV);
 	}
 
 	private static DeferredHolder<MemoryModuleType<?>, MemoryModuleType<Boolean>> registerBoolean(String name) {

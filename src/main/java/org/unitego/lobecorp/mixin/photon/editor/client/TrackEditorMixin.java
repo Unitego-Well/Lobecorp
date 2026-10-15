@@ -19,11 +19,13 @@ public abstract class TrackEditorMixin {
 	@Inject(method = "buildHeaderContent", at = @At("HEAD"))
 	private void lobecorp$renameDialog(TimelineContext ctx, Track track, TrackUIState state, CallbackInfoReturnable<UIElement> cir) {
 		var access = (TrackRenameUIStateAccessor) state;
-		if (!access.lobecorp$isEditingName() || !PhotonEditorSettings.of(ctx.editor()).enabled("rename_dialog"))
+		if (!access.lobecorp$isEditingName() || !PhotonEditorSettings.of(ctx.editor()).enabled("rename_dialog")) {
 			return;
+		}
+
 		access.lobecorp$setEditingName(false);
-		if (!track.lock())
+		if (!track.lock()) {
 			PhotonEditorRenameUtil.track(ctx, track);
+		}
 	}
 }
-

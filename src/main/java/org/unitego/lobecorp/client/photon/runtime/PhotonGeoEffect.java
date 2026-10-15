@@ -10,13 +10,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
-/**
- * 一个客户端 Photon 播放实例；locator 首次可用后才发射，时长与模拟速度独立。
- */
+/// 一个客户端 Photon 播放实例；locator 首次可用后才发射，时长与模拟速度独立。
 public class PhotonGeoEffect implements IEffectExecutor {
-	/**
-	 * 不设置外部截止时间，沿用资源自身生命周期。
-	 */
+	/// 不设置外部截止时间，沿用资源自身生命周期。
 	public static final int UNLIMITED_DURATION = -1;
 	private final FXRuntime runtime;
 	private final Level level;
@@ -25,6 +21,7 @@ public class PhotonGeoEffect implements IEffectExecutor {
 	private boolean started;
 	private boolean stopped;
 	private boolean forceStopped;
+	private boolean externallyAnchored;
 	private Vec3 sourcePosition;
 	private float simulationSpeed = 1;
 	private int durationTicks = UNLIMITED_DURATION;
@@ -48,31 +45,32 @@ public class PhotonGeoEffect implements IEffectExecutor {
 		return this.locator;
 	}
 
-	/**
-	 * 返回独立实例，可通过 findObject/runtime() 覆盖发射器参数，不修改共享 FX 资源。
-	 */
+	/// 返回独立实例，可通过 findObject/runtime() 覆盖发射器参数，不修改共享 FX 资源。
 	public FXRuntime runtime() {
 		return this.runtime;
 	}
 
-	/**
-	 * 只调整发射器模拟倍率；Photon Timeline 的主时钟仍按游戏 tick 推进。
-	 */
+	/// 只调整发射器模拟倍率；Photon Timeline 的主时钟仍按游戏 tick 推进。
 	public void setSimulationSpeed(float speed) {
 		if (!Float.isFinite(speed) || speed < 0) {
 			throw new IllegalArgumentException();
 		}
+
 		this.simulationSpeed = speed;
-		this.runtime.root.setSelfTimeScale(speed);
+		this.runtime.root.setSelfTimeScale(speed * this.runtime.getRate());
 	}
 
-	/**
-	 * 从实际发射时刻计算总时长；修改时长不会重置已播放时间。
-	 */
+	/// 原生运行时每 tick 重设根倍率时读取；该倍率不推进 Timeline 主时钟。
+	public float simulationSpeed() {
+		return this.simulationSpeed;
+	}
+
+	/// 从实际发射时刻计算总时长；修改时长不会重置已播放时间。
 	public void setDurationTicks(int ticks) {
 		if (ticks < 0 && ticks != UNLIMITED_DURATION) {
 			throw new IllegalArgumentException();
 		}
+
 		this.durationTicks = ticks;
 	}
 
@@ -81,9 +79,11 @@ public class PhotonGeoEffect implements IEffectExecutor {
 				&& this.runtime.getHost().generation() != this.runtime.getGenerationAtEmit()) {
 			return false;
 		}
+
 		if (!this.started) {
 			return !this.stopped;
 		}
+
 		return !this.runtime.isFinished() && (this.stopped || this.runtime.isValid());
 	}
 
@@ -91,15 +91,31 @@ public class PhotonGeoEffect implements IEffectExecutor {
 		return this.stopped;
 	}
 
-	/**
-	 * false 停止发射并保留余粒子，true 立即清除；允许将柔和结束升级为立即清除。
-	 */
+	/// false 停止发射并保留余粒子，true 立即清除；允许将柔和结束升级为立即清除。
 	public void stop(boolean force) {
 		if (!this.stopped || force) {
 			this.stopped = true;
 			this.forceStopped |= force;
-			this.runtime.root.setSelfTimeScale(1);
+			this.runtime.root.setSelfTimeScale(this.runtime.getRate());
 			this.runtime.destroy(force);
+		}
+	}
+
+	public boolean isExternallyAnchored() {
+		return this.externallyAnchored;
+	}
+
+	/// 由外部动画接管空间变换，不重建运行实例或重置播放时间。
+	public void updateExternalAnchor(PhotonAnchorTransform anchor) {
+		this.externallyAnchored = true;
+		updateAnchor(anchor);
+	}
+
+	/// 显式恢复来源或 locator 跟随，当前位置保留到下一次有效锚点更新。
+	public void useSourceAnchor() {
+		this.externallyAnchored = false;
+		if (this.source instanceof Entity entity) {
+			this.sourcePosition = entity.position();
 		}
 	}
 
@@ -107,12 +123,15 @@ public class PhotonGeoEffect implements IEffectExecutor {
 		if (this.stopped) {
 			return;
 		}
+
 		this.runtime.root.updatePos(anchor.position());
 		this.runtime.root.updateRotation(anchor.rotation());
 		this.runtime.root.updateScale(anchor.scale());
+
 		if (this.source instanceof Entity entity) {
 			this.sourcePosition = entity.position();
 		}
+
 		start();
 	}
 
@@ -122,10 +141,11 @@ public class PhotonGeoEffect implements IEffectExecutor {
 				stop(true);
 				return;
 			}
+
 			this.started = true;
 			this.startedAt = this.level.getGameTime();
 			this.runtime.emit(this);
-			this.runtime.root.setSelfTimeScale(this.simulationSpeed);
+			this.runtime.root.setSelfTimeScale(this.simulationSpeed * this.runtime.getRate());
 		}
 	}
 
@@ -137,19 +157,23 @@ public class PhotonGeoEffect implements IEffectExecutor {
 			stop(true);
 			return;
 		}
+
 		if (!this.started || this.stopped) {
 			return;
 		}
+
 		if (this.durationTicks != UNLIMITED_DURATION && this.level.getGameTime() - this.startedAt >= this.durationTicks) {
 			stop(false);
-		} else if (this.source instanceof Entity entity) {
+		} else if (!this.externallyAnchored && this.source instanceof Entity entity) {
 			Vec3 currentPosition = entity.position();
+
 			if (this.locator.isBlank()) {
 				this.runtime.root.updatePos(currentPosition.toVector3f());
 			} else {
 				this.runtime.root.updatePos(new Vector3f(this.runtime.root.transform().position())
 						.add(currentPosition.subtract(this.sourcePosition).toVector3f()));
 			}
+
 			this.sourcePosition = currentPosition;
 		}
 	}

@@ -19,8 +19,11 @@ import org.unitego.lobecorp.animation.LcAnimationPose.*;
 
 import static org.unitego.lobecorp.animation.LcAnimationControllerRuntime.transitionProgress;
 
+/// 将动画控制器的权重过渡与分层姿态应用到 GeckoLib 渲染结果。
 public class LcAnimationControllerIntegration {
+	/// 动画控制器运行数据在 GeckoLib 中使用的稳定标识。
 	private static final String RUNTIME_DATA_ID = "lobecorp_animation_controller_runtime";
+	/// 每个可动画实例独立保存的控制器运行数据票据。
 	private static final DataTicket<RuntimeData> RUNTIME_DATA = DataTicket.create(RUNTIME_DATA_ID, RuntimeData.class);
 
 	public static <R extends GeoRenderState> void apply(RenderPassInfo<R> renderPassInfo, BoneSnapshots snapshots) {
@@ -40,7 +43,7 @@ public class LcAnimationControllerIntegration {
 		double renderAge = renderPassInfo.renderState().getAnimatableAge();
 		int stateIndex = 0;
 		for (AnimationController<?> controller : manager.getAnimationControllers().values()) {
-			ControllerRuntime controllerRuntime = runtimeData.controllers.computeIfAbsent(controller, ignored -> new ControllerRuntime());
+			ControllerRuntime controllerRuntime = runtimeData.controllers.computeIfAbsent(controller, _ -> new ControllerRuntime());
 			LcAnimationControllerTransitions<?> transitions = LcAnimationControllerTransitions.of(controller);
 			ControllerState state = controller.isAnimatingBones() && stateIndex < controllerStates.length
 					? controllerStates[stateIndex++] : null;
@@ -62,11 +65,13 @@ public class LcAnimationControllerIntegration {
 			controllerRuntime.controllerExiting = true;
 			controllerRuntime.beginWeightTransition(0, renderAge, transitions.lobecorp$getFadeOutTicks(), transitions);
 		}
+
 		controllerRuntime.updateWeight(renderAge, transitions);
 		if (controllerRuntime.lastPose != null) {
 			LcAnimationPose.applyPose(controllerRuntime.lastPose, controllerRuntime.weight * controllerRuntime.animationWeight,
 					controllerRuntime.additive,
-					transitions.lobecorp$getFadeOutRotationTransitionMode(), controller, snapshots);
+					transitions.lobecorp$getFadeOutRotationTransitionMode(), controller, snapshots,
+					controllerRuntime.layerRotations, renderAge);
 		}
 	}
 
@@ -84,11 +89,16 @@ public class LcAnimationControllerIntegration {
 		boolean animationChanged = controllerRuntime.animation != animation || controllerRuntime.rawAnimation != rawAnimation
 				|| triggerChanged;
 		boolean controllerWeightTransitioning = controllerRuntime.weightTransition;
+		if (animationChanged) {
+			controllerRuntime.animationRotations.clear();
+			controllerRuntime.layerRotations.clear();
+		}
 
 		if (animationChanged && controllerRuntime.weightTransition && controllerRuntime.weightTarget != 1) {
 			controllerRuntime.controllerExiting = false;
 			controllerRuntime.beginWeightTransition(1, renderAge, transitions.lobecorp$getFadeInTicks(), transitions);
 		}
+
 		if (!controllerRuntime.initialized) {
 			controllerRuntime.initialized = true;
 			controllerRuntime.weight = 0;
@@ -158,19 +168,22 @@ public class LcAnimationControllerIntegration {
 		if (!controllerRuntime.weightTransition && controllerRuntime.weight < 1 && !controllerRuntime.controllerExiting) {
 			controllerRuntime.beginWeightTransition(1, renderAge, transitions.lobecorp$getFadeInTicks(), transitions);
 		}
+
 		updateAnimationWeightTransition(controllerRuntime, renderAge, transitions);
 		controllerRuntime.updateWeight(renderAge, transitions);
 		double animationProgress = transitionProgress(renderAge, controllerRuntime.animationTransitionStart,
 				controllerRuntime.animationTransitionTicks);
 		Pose pose = controllerRuntime.animationTransition
 				? LcAnimationPose.blendPoses(controllerRuntime.animationSource, controllerRuntime.pose, animationProgress,
-				transitions.lobecorp$getRotationTransitionMode())
+				transitions.lobecorp$getRotationTransitionMode(), controllerRuntime.animationRotations, renderAge)
 				: controllerRuntime.pose;
 		if (controllerRuntime.animationTransition && animationProgress >= 1) {
 			controllerRuntime.animationTransition = false;
 			controllerRuntime.animationSource = null;
+			controllerRuntime.animationRotations.clear();
 			transitions.lobecorp$setAnimationTransitionPaused(false);
 		}
+
 		controllerRuntime.lastPose = pose;
 		controllerRuntime.additive = transitions.lobecorp$getBlendType() == LcControllerBlendType.ADDITIVE;
 		LcRotationTransitionMode weightRotationTransitionMode = controllerRuntime.weightTransition
@@ -183,7 +196,8 @@ public class LcAnimationControllerIntegration {
 				: transitions.lobecorp$getFadeOutRotationTransitionMode()
 				: transitions.lobecorp$getRotationTransitionMode();
 		LcAnimationPose.applyPose(pose, controllerRuntime.weight * controllerRuntime.animationWeight,
-				controllerRuntime.additive, weightRotationTransitionMode, controller, snapshots);
+				controllerRuntime.additive, weightRotationTransitionMode, controller, snapshots,
+				controllerRuntime.layerRotations, renderAge);
 	}
 
 	private static void beginAnimationTransition(ControllerRuntime runtime, Animation animation, RawAnimation rawAnimation,
@@ -207,6 +221,7 @@ public class LcAnimationControllerIntegration {
 			transitions.lobecorp$setAnimationTransitionPaused(false);
 			return;
 		}
+
 		runtime.pose = runtime.lastPose != null ? runtime.lastPose : runtime.pose;
 		runtime.animationTransition = false;
 		runtime.animationSource = null;
@@ -233,6 +248,7 @@ public class LcAnimationControllerIntegration {
 				runtime.animationWeightTransition = false;
 			}
 		}
+
 		if (!runtime.animationWeightTransition && runtime.animationWeightFadingOut) {
 			runtime.animationWeightFadingOut = false;
 			runtime.animation = runtime.pendingAnimation;
@@ -243,6 +259,7 @@ public class LcAnimationControllerIntegration {
 			transitions.lobecorp$setAnimationTransitionPaused(
 					transitions.lobecorp$getAnimationTransitionMode() == LcTransitionMode.SEQUENTIAL);
 		}
+
 		if (!runtime.animationWeightTransition && runtime.pendingAnimationPose != null) {
 			runtime.pendingAnimation = null;
 			runtime.pendingRawAnimation = null;
@@ -255,18 +272,22 @@ public class LcAnimationControllerIntegration {
 		if (fadeOutTicks <= 0 || controller.getTimeline() == null) {
 			return false;
 		}
+
 		AnimationTimeline.Stage[] stages = controller.getTimeline().stages();
 		if (stages.length == 0) {
 			return false;
 		}
+
 		AnimationTimeline.Stage lastStage = stages[stages.length - 1];
 		LoopType loopType = lastStage.loopType();
 		if (loopType == LoopType.DEFAULT && lastStage.animation() != null) {
 			loopType = lastStage.animation().loopType();
 		}
+
 		if (loopType != LoopType.PLAY_ONCE) {
 			return false;
 		}
+
 		double remainingTime = controller.getTimeline().lastAnimationEndTime() - controller.getCurrentTimelineTime();
 		return remainingTime >= 0 && remainingTime <= fadeOutTicks / 20d;
 	}

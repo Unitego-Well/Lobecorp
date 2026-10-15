@@ -30,10 +30,9 @@ public record EntitySkillSyncPayload(
 		int sequenceStage,
 		boolean successful,
 		int targetId
-) implements ToClientPayload {
+) implements IToClientPayload {
 	/// 实体技能运行态同步载荷类型。
 	public static final CustomPacketPayload.Type<EntitySkillSyncPayload> TYPE = new CustomPacketPayload.Type<>(id("entity_skill_sync"));
-	/// 实体技能运行态同步载荷编解码器。
 	public static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillSyncPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull EntitySkillSyncPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -92,16 +91,20 @@ public record EntitySkillSyncPayload(
 	@Override
 	public void work(IPayloadContext context, AbstractClientPlayer player) {
 		Entity entity = player.level().getEntity(ownerId);
+
 		if (!(entity instanceof LivingEntity owner)) {
 			return;
 		}
+
 		IEntitySkill<?> skill = EntitySkillUtil.getSkills(owner).stream()
 				.filter(candidate -> candidate.id().equals(skillId))
 				.findFirst()
 				.orElse(null);
+
 		if (skill == null) {
 			return;
 		}
+
 		runCallback(owner, skill);
 	}
 
@@ -110,6 +113,7 @@ public record EntitySkillSyncPayload(
 		var data = EntitySkillUtil.activeRuntimeData(owner);
 		EntitySkillRuntime<?> existing = data.find(runtimeId);
 		EntitySkillRuntime<T> runtime;
+
 		if (existing != null) {
 			runtime = (EntitySkillRuntime<T>) existing;
 			runtime.setState(state);
@@ -118,15 +122,20 @@ public record EntitySkillSyncPayload(
 			runtime = new EntitySkillRuntime<>(runtimeId, owner, (IEntitySkill<T>) skill, state, ticksLeft);
 			data.active.add(runtime);
 		}
+
 		runtime.setActiveTicks(activeTicks);
 		runtime.setSequenceStage(sequenceStage);
+
 		if (successful) {
 			runtime.markSuccessful();
 		}
+
 		if (targetId != NO_TARGET) {
 			runtime.setTarget(owner.level().getEntity(targetId));
 		}
+
 		callback.run(runtime);
+
 		switch (callback) {
 			case WINDUP_START -> NeoForge.EVENT_BUS.post(new EntitySkillEvent.Started(runtime));
 			case ACTIVATE -> NeoForge.EVENT_BUS.post(new EntitySkillEvent.Activated(runtime));
@@ -136,6 +145,7 @@ public record EntitySkillSyncPayload(
 			case END -> {
 			}
 		}
+
 		if (callback == Callback.RECOVERY_END || callback == Callback.CANCEL) {
 			data.active.remove(runtime);
 		}

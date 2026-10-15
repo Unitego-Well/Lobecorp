@@ -10,8 +10,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
-import org.unitego.lobecorp.conductor.ability.ConductorAbility;
-import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
+import org.unitego.lobecorp.conductor.ability.IConductorAbility;
+import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
@@ -21,19 +21,33 @@ import java.util.List;
 import java.util.UUID;
 
 public class ConductorScreen extends Screen {
+	/// 面板宽度，单位为 GUI 像素。
 	private static final int PANEL_WIDTH = 500;
+	/// 面板高度，单位为 GUI 像素。
 	private static final int PANEL_HEIGHT = 394;
+	/// 单列控件宽度，单位为 GUI 像素。
 	private static final int COLUMN_WIDTH = 230;
+	/// 按钮高度，单位为 GUI 像素。
 	private static final int BUTTON_HEIGHT = 20;
+	/// 相邻控件行的纵向间距，单位为 GUI 像素。
 	private static final int ROW_SPACING = 23;
+	/// 队伍列表每页显示的队伍数。
 	private static final int TEAM_PAGE_SIZE = 6;
+	/// 技能列表每页显示的技能数。
 	private static final int SKILL_PAGE_SIZE = 4;
+	/// 面板背景的 ARGB 颜色。
 	private static final int PANEL_COLOR = 0xDD101820;
+	/// 面板正文的 ARGB 颜色。
 	private static final int TEXT_COLOR = 0xFFFFFFFF;
+	/// 左列相对面板左边缘的偏移，单位为 GUI 像素。
 	private static final int LEFT_INSET = 12;
+	/// 右列相对面板左边缘的偏移，单位为 GUI 像素。
 	private static final int RIGHT_INSET = 258;
+	/// 首行相对面板顶边的偏移，单位为 GUI 像素。
 	private static final int FIRST_ROW = 32;
+	/// 队伍列表起始行的纵向偏移，单位为 GUI 像素。
 	private static final int TEAM_LIST_ROW = 84;
+	/// 命令按钮起始行的纵向偏移，单位为 GUI 像素。
 	private static final int ACTION_ROW = 286;
 
 	private String team = "";
@@ -62,15 +76,24 @@ public class ConductorScreen extends Screen {
 	@Override
 	protected void init() {
 		revision = ConductorClient.revision();
+
 		if (team.isBlank() && !ConductorClient.snapshot().teams().isEmpty()) {
 			team = ConductorClient.snapshot().teams().keySet().stream().sorted().findFirst().orElse("");
 		}
+
 		int left = (width - PANEL_WIDTH) / 2;
 		int top = (height - PANEL_HEIGHT) / 2;
+		buildTeamControls(left, top);
+		buildCommandControls(left, top);
+		buildRemoteControls(left + RIGHT_INSET, top);
+	}
+
+	private void buildTeamControls(int left, int top) {
 		nameInput = input(left + LEFT_INSET, top + FIRST_ROW, COLUMN_WIDTH - 72, ConductorTexts.TEAM, nameText);
 		button(left + LEFT_INSET + COLUMN_WIDTH - 68, top + FIRST_ROW, 68, ConductorTexts.CREATE,
 				() -> {
 					String name = nameInput.getValue().trim();
+
 					if (!name.isEmpty()) {
 						team = name;
 						send(ConductorCommandPayload.Action.CREATE_TEAM, name, "", null,
@@ -78,11 +101,14 @@ public class ConductorScreen extends Screen {
 					}
 				});
 		List<String> teams = ConductorClient.snapshot().teams().keySet().stream().sorted().toList();
+
 		for (int index = 0; index < TEAM_PAGE_SIZE; index++) {
 			int teamIndex = teamPage * TEAM_PAGE_SIZE + index;
+
 			if (teamIndex >= teams.size()) {
 				break;
 			}
+
 			String candidate = teams.get(teamIndex);
 			button(left + LEFT_INSET, top + TEAM_LIST_ROW + index * ROW_SPACING,
 					COLUMN_WIDTH, Component.literal(candidate), () -> {
@@ -91,6 +117,7 @@ public class ConductorScreen extends Screen {
 						rebuildWidgets();
 					});
 		}
+
 		button(left + LEFT_INSET, top + TEAM_LIST_ROW + TEAM_PAGE_SIZE * ROW_SPACING,
 				COLUMN_WIDTH / 2, ConductorTexts.PREVIOUS, () -> {
 					teamPage = Math.max(0, teamPage - 1);
@@ -103,6 +130,9 @@ public class ConductorScreen extends Screen {
 						rebuildWidgets();
 					}
 				});
+	}
+
+	private void buildCommandControls(int left, int top) {
 		button(left + LEFT_INSET, top + ACTION_ROW, COLUMN_WIDTH / 2, ConductorTexts.ASSIGN,
 				() -> send(ConductorCommandPayload.Action.ASSIGN, team, "", null,
 						0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, false, ""));
@@ -126,7 +156,9 @@ public class ConductorScreen extends Screen {
 		button(left + LEFT_INSET + COLUMN_WIDTH / 2, top + ACTION_ROW + ROW_SPACING * 3,
 				COLUMN_WIDTH / 2, ConductorTexts.SOFT, () -> setMode(ConductorData.ControlMode.SOFT));
 
-		int right = left + RIGHT_INSET;
+	}
+
+	private void buildRemoteControls(int right, int top) {
 		enemyInput = input(right, top + FIRST_ROW, COLUMN_WIDTH, ConductorTexts.ENEMY_TEAM, enemyText);
 		button(right, top + FIRST_ROW + ROW_SPACING, COLUMN_WIDTH / 2, ConductorTexts.WAR,
 				() -> hostility(true));
@@ -145,28 +177,34 @@ public class ConductorScreen extends Screen {
 		zInput = input(right + COLUMN_WIDTH * 2 / 3, coordinateRow, COLUMN_WIDTH / 3, ConductorTexts.Z, zText);
 		button(right, coordinateRow + ROW_SPACING, COLUMN_WIDTH, ConductorTexts.REMOTE_MOVE, this::remoteMove);
 
-		List<ConductorAbility> skills = selectedMobSkills();
+		List<IConductorAbility> skills = selectedMobSkills();
+
 		for (int index = 0; index < SKILL_PAGE_SIZE; index++) {
 			int skillIndex = skillPage * SKILL_PAGE_SIZE + index;
+
 			if (skillIndex >= skills.size()) {
 				break;
 			}
-			ConductorAbility skill = skills.get(skillIndex);
+
+			IConductorAbility skill = skills.get(skillIndex);
 			button(right, coordinateRow + ROW_SPACING * (index + 2), COLUMN_WIDTH,
 					Component.literal(skill.id().toString()), () -> {
-						if (skill.targetKind() != ConductorTargeting.TargetKind.SELF) {
+						if (skill.targetKind() != IConductorTargeting.TargetKind.SELF) {
 							ConductorControls.setPendingSkill(skill.id().toString());
 						} else if (!ConductorControls.selected().isEmpty()) {
 							ConductorData.Unit unit = ConductorClient.unit(ConductorControls.selected().getFirst());
+
 							if (unit != null) {
 								ConductorClient.send(ConductorCommandPayload.Action.CAST, unit.team(), "",
 										List.of(ConductorControls.selected().getFirst()), null,
 										0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, false, skill.id().toString());
 							}
 						}
+
 						onClose();
 					});
 		}
+
 		targetInput = input(right, top + 240, COLUMN_WIDTH, ConductorTexts.TARGET_UUID, targetText);
 		button(right, top + 263, COLUMN_WIDTH, ConductorTexts.REMOTE_ATTACK, this::remoteAttack);
 		skillInput = input(right, top + 286, COLUMN_WIDTH, ConductorTexts.SKILL_ID, skillText);
@@ -187,7 +225,7 @@ public class ConductorScreen extends Screen {
 	}
 
 	private EditBox input(int x, int y, int width, String key, String value) {
-		EditBox box = new EditBox(font, x, y, width, BUTTON_HEIGHT, Component.translatable(key));
+		var box = new EditBox(font, x, y, width, BUTTON_HEIGHT, Component.translatable(key));
 		box.setHint(Component.translatable(key));
 		box.setValue(value);
 		addRenderableWidget(box);
@@ -199,7 +237,7 @@ public class ConductorScreen extends Screen {
 	}
 
 	private void button(int x, int y, int width, Component label, Runnable action) {
-		addRenderableWidget(Button.builder(label, ignored -> action.run())
+		addRenderableWidget(Button.builder(label, _ -> action.run())
 				.bounds(x, y, width, BUTTON_HEIGHT).build());
 	}
 
@@ -248,15 +286,19 @@ public class ConductorScreen extends Screen {
 
 	private void remoteCast() {
 		String skill = skillInput.getValue().trim();
+
 		if (skill.isEmpty()) {
 			return;
 		}
+
 		UUID target;
+
 		try {
 			target = targetInput.getValue().isBlank() ? null : UUID.fromString(targetInput.getValue().trim());
 		} catch (IllegalArgumentException ignored) {
 			return;
 		}
+
 		send(ConductorCommandPayload.Action.CAST, team, "", target,
 				0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, false, skill);
 		onClose();
@@ -267,15 +309,19 @@ public class ConductorScreen extends Screen {
 		onClose();
 	}
 
-	private List<ConductorAbility> selectedMobSkills() {
+	private List<IConductorAbility> selectedMobSkills() {
 		Minecraft minecraft = Minecraft.getInstance();
+
 		if (minecraft.level == null || ConductorControls.selected().isEmpty()) {
 			return List.of();
 		}
+
 		Entity entity = minecraft.level.getEntity(ConductorControls.selected().getFirst());
+
 		if (!(entity instanceof Mob mob)) {
 			return List.of();
 		}
+
 		ConductorClient.requestAbilitiesIfMissing(mob.getUUID());
 		return ConductorUtil.abilities(mob).stream()
 				.filter(ability -> ConductorClient.hasAbility(mob.getUUID(), ability.id()))
@@ -291,20 +337,33 @@ public class ConductorScreen extends Screen {
 	}
 
 	private void saveInputs() {
-		if (nameInput != null)
+		if (nameInput != null) {
 			nameText = nameInput.getValue();
-		if (enemyInput != null)
+		}
+
+		if (enemyInput != null) {
 			enemyText = enemyInput.getValue();
-		if (xInput != null)
+		}
+
+		if (xInput != null) {
 			xText = xInput.getValue();
-		if (yInput != null)
+		}
+
+		if (yInput != null) {
 			yText = yInput.getValue();
-		if (zInput != null)
+		}
+
+		if (zInput != null) {
 			zText = zInput.getValue();
-		if (targetInput != null)
+		}
+
+		if (targetInput != null) {
 			targetText = targetInput.getValue();
-		if (skillInput != null)
+		}
+
+		if (skillInput != null) {
 			skillText = skillInput.getValue();
+		}
 	}
 
 	@Override

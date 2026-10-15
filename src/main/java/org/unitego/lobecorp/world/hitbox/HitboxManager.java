@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.world.hitbox;
 
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ClipContext;
@@ -38,7 +39,7 @@ public final class HitboxManager {
 	/// @return 已加入 Level 管理器的实例
 	public static HitboxInstance create(HitboxTemplate template, ServerLevel level, Vec3 position,
 	                                    int durationTicks) {
-		HitboxInstance instance = new HitboxInstance(template, level, position, durationTicks);
+		var instance = new HitboxInstance(template, level, position, durationTicks);
 		level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).add(instance);
 		send(instance, new HitboxCreatePayload(HitboxSnapshot.of(instance)));
 		return instance;
@@ -57,6 +58,7 @@ public final class HitboxManager {
 		if (!(runtime.owner().level() instanceof ServerLevel level)) {
 			return;
 		}
+
 		List.copyOf(level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).instances()).stream()
 				.filter(instance -> instance.skillRuntime() == runtime)
 				.forEach(instance -> remove(level, instance.id()));
@@ -66,7 +68,7 @@ public final class HitboxManager {
 	///
 	/// @param level 所在服务端维度
 	/// @param id    Level 内实例编号
-	/// @return 当前实例；不存在时返回 {@code null}
+	/// @return 当前实例；不存在时返回 `null`
 	@Nullable
 	public static HitboxInstance get(ServerLevel level, int id) {
 		return level.getData(LcAttachmentTypes.HITBOX_LEVEL_DATA).get(id);
@@ -82,6 +84,7 @@ public final class HitboxManager {
 		if (instance == null) {
 			return false;
 		}
+
 		instance.markRemoved();
 		send(instance, new HitboxRemovePayload(id));
 		return true;
@@ -98,17 +101,21 @@ public final class HitboxManager {
 				remove(level, instance.id());
 				continue;
 			}
+
 			if (instance.hasInvalidSource()) {
 				remove(level, instance.id());
 				continue;
 			}
+
 			instance.updateFollowTransform();
 			if (instance.isActive() && !instance.isExhausted()) {
 				processHits(instance);
 			}
+
 			if (instance.isRemoved()) {
 				continue;
 			}
+
 			send(instance, new HitboxUpdatePayload(HitboxSnapshot.of(instance)));
 			instance.advanceLifetime();
 		}
@@ -119,6 +126,7 @@ public final class HitboxManager {
 			handleExhausted(instance);
 			return;
 		}
+
 		ServerLevel level = instance.level();
 		AABB broadBounds = HitboxGeometry.boundingBox(instance);
 		List<Entity> candidates = level.getEntities(instance.source(), broadBounds, instance::accepts);
@@ -129,17 +137,21 @@ public final class HitboxManager {
 			if (!instance.canAttempt(target, level.getGameTime())) {
 				continue;
 			}
+
 			if (!HitboxGeometry.intersects(instance, target.getBoundingBox())) {
 				continue;
 			}
+
 			if (!hasLineOfSight(instance, target)) {
 				continue;
 			}
+
 			boolean successful = instance.template().effect()
 					.apply(new HitboxEffectContext(level, instance, instance.source(), target));
 			if (!successful) {
 				continue;
 			}
+
 			instance.recordSuccess(target, level.getGameTime());
 			if (instance.reachedTotalMaximum()) {
 				handleExhausted(instance);
@@ -153,6 +165,7 @@ public final class HitboxManager {
 			remove(instance.level(), instance.id());
 			return;
 		}
+
 		instance.exhaust();
 	}
 
@@ -160,6 +173,7 @@ public final class HitboxManager {
 		if (instance.lineOfSightMode() == HitboxLineOfSightMode.UNRESTRICTED) {
 			return true;
 		}
+
 		List<Vec3> starts;
 		Entity source = instance.source();
 		if (instance.lineOfSightMode() == HitboxLineOfSightMode.ENTITY_TO_ENTITY && source != null) {
@@ -167,6 +181,7 @@ public final class HitboxManager {
 		} else {
 			starts = List.of(instance.position());
 		}
+
 		List<Vec3> ends = samplePoints(target.getBoundingBox());
 		for (Vec3 start : starts) {
 			for (Vec3 end : ends) {
@@ -177,6 +192,7 @@ public final class HitboxManager {
 				}
 			}
 		}
+
 		return false;
 	}
 
@@ -194,12 +210,13 @@ public final class HitboxManager {
 	}
 
 	private static void send(HitboxInstance instance,
-	                         net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+	                         CustomPacketPayload payload) {
 		Entity source = instance.source();
 		if (source != null) {
 			PacketDistributor.sendToPlayersTrackingEntity(source, payload);
 			return;
 		}
+
 		Vec3 position = instance.position();
 		PacketDistributor.sendToPlayersNear(instance.level(), null, position.x, position.y, position.z,
 				FIXED_HITBOX_SYNC_RANGE, payload);

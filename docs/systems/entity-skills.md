@@ -5,7 +5,7 @@
 
 ## 公共边界与注册
 
-技能的公共操作通过 [EntitySkillAccess](../../src/main/java/org/unitego/lobecorp/world/entity/skill/EntitySkillAccess.java)
+技能的公共操作通过 [IEntitySkillAccess](../../src/main/java/org/unitego/lobecorp/world/entity/skill/IEntitySkillAccess.java)
 提供，[EntitySkillAttachmentAccess](../../src/main/java/org/unitego/lobecorp/world/entity/skill/EntitySkillAttachmentAccess.java)
 接入附件并委托同一 [EntitySkillUtil](../../src/main/java/org/unitego/lobecorp/util/entity/skill/EntitySkillUtil.java)
 状态机。新增使用方复用这个入口，不复制生命周期推进逻辑。
@@ -52,6 +52,20 @@ ID、阶段计时、目标、成功标记、连段序号和类型化附加数据
 
 默认冷却在成功开始施放时，以游戏时间和冷却倍率计算到期时间，和三个阶段同时推进。失败、瞄准中或事件拒绝不启动默认冷却；完成和取消不重启它。显式的本次施放冷却覆盖在终止路径单独应用，不能把覆盖和默认冷却混为一谈。
 
+### 冷却速度（2026-10-07）
+
+`ENTITY_SKILL_COOLDOWN_SPEED` 表示每 tick 推进的冷却量，默认 1、范围 0～1024；0 暂停已有冷却，0.75 与 0.5 分别推进正常速度的 75% 与 50%。该属性与施放时应用的 `ENTITY_SKILL_COOLDOWN_MULTIPLIER` 独立，不改变前摇、持续和后摇的注册配置。
+
+实体属性通过 `LobecorpEvents` 的唯一 `EntityAttributeCreationEvent` 入口登记，`EntityAttributeCreation.register` 根据注册时提供的实体实现类判断 `IEntitySkillHolder`，补齐缺失的冷却速度及原版攻击速度，已手动注册的值保持原样；其他实体可在属性创建入口手动 `.add(LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED)`。没有该属性的实体按正常冷却速度推进，不对所有 LivingEntity 全局添加属性。
+
+自动补齐不再使用 `LivingEntity` 构造 Mixin。NeoForge 属性事件仅提供实体类型，`EntityType.getBaseClass()` 固定返回 `Entity.class`，不能用于识别技能接口；新增项目实体需在属性注册辅助方法中提供实际实体类，不在注册阶段构造实体或提前读取注册对象。
+
+[EntitySkillCooldownClock](../../src/main/java/org/unitego/lobecorp/world/entity/skill/EntitySkillCooldownClock.java) 保存上次游戏时间、上次速度及各技能的小数余量，仅持久化、不同步。原 `ENTITY_SKILL_COOLDOWNS` 仍保存技能到 Long 到期时间的映射，沿用原存档 Codec，改由技能数据包同步变化条目；服务端 tick、查询和设置冷却先推进，到期时间向上取整，小数余量避免逐 tick 取整损失。同 tick 查询不会重复推进；重新设置或显式覆盖冷却只重置该技能的余量。
+
+旧存档缺少计时附件时，以加载后的当前游戏时间建立基准并沿用原到期时间；已有计时附件按保存速度补算未加载时间。普通卸载保留冷却和计时附件，`clearTemporaryState` 同时清除二者。客户端沿用同步到期时间显示，不重复按速度推进。
+
+三级及以上眩晕在施放检查、事件通过后的复查和阶段推进入口拒绝新技能，并立即强制取消已有技能；保留技能自身取消清理及显式冷却覆盖规则。眩晕的统一动作判定为 `StunMobEffect.preventsActions`，不要仅依赖 AI 暂停或 HUD 灰显。飞扑的接触伤害及独立抓取见[实体抓取](entity-grab.md)。
+
 ## 结束、取消与清理
 
 `end` 结束 ACTIVE、执行持续结束回调并进入 RECOVERY；后摇为正时仍然存在活动实例。`finish`
@@ -96,7 +110,8 @@ ServerLevel 管理的效果实例，拥有自己的位置、寿命和可选来�
 - 服务端回调发送运行 ID、技能 ID、阶段、计时、连段与目标信息；客户端按 ID 查找或创建运行镜像，再执行对应表现回调。
 - 客户端在后摇结束或取消回调后移除镜像；服务端是施放资格、计时和伤害的权威。
 - 技能归属、技能组和冷却由 [LcAttachmentTypes](../../src/main/java/org/unitego/lobecorp/registry/LcAttachmentTypes.java)
-  中的相应附件持久化及同步；活动实例和续段不持久化。
+  中的相应附件持久化，由 [EntitySkillDataSyncPayload](../../src/main/java/org/unitego/lobecorp/network/tc/EntitySkillDataSyncPayload.java) 同步；活动实例和续段不持久化。
+- [EntitySkillDataSyncUtil](../../src/main/java/org/unitego/lobecorp/util/entity/skill/EntitySkillDataSyncUtil.java) 在首次追踪／玩家本人生命周期发送完整快照，修改入口直接发送三类 Map 的变化与删除。资格 `false` 保留显式禁用，删除覆盖恢复默认；冷却速度、小数余量和运行态不加入数据包，也不引入脏记录。
 - 同步回调与实体持续同步状态各有职责，不再添加重复 Payload 驱动同一动画或粒子。
 - 参数修改需同时核对注册 Properties、具体技能规则、附件 Codec、同步载荷及调用方。动画和粒子资源关联见表现文档，生成资源保持只读。
 
@@ -104,5 +119,4 @@ ServerLevel 管理的效果实例，拥有自己的位置、寿命和可选来�
 
 修改前检查施放结果、事件拒绝、瞄准门槛、替换规则、移动锁、零阶段推进、无限持续、默认与覆盖冷却、续段失败与过期、所有终止回调。新增公共操作优先复用能力接口及类型化数据，保留唯一状态机。
 
-本轮已核对表列源码、事件入口、附件以及效果管理；未逐个核对所有具体技能、指挥家完整请求校验、跨维度行为、晚加入客户端的全量恢复和多人网络时序。没有执行游戏、编译或
-Data。维护记录见[系统维护记录](changes.md)。
+2026-10-05 的初次文档核对未逐个覆盖所有具体技能、指挥家完整请求校验或多人网络时序，也未执行编译／Data。2026-10-10 的复杂附件同步改动已通过 IDEA 编译及 Data，首次追踪与本人登录／复活／换维度的完整快照已接入并核对依赖时序；没有执行游戏或多人同步验收。实际诊断及资源对比见[系统维护记录](changes.md)。

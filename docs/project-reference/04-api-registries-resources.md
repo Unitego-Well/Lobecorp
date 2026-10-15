@@ -10,13 +10,13 @@
 | `Lobecorp.type` | `Lobecorp.java` | 创建 Custom Payload 类型 |
 | `ConductorUtil` | `util/conductor/ConductorUtil.java` | 指挥家能力、指令、Tick、移动和技能入口 |
 | `ConductorAttachmentUtil` | `util/conductor/ConductorAttachmentUtil.java` | 指挥家附件读取、同步和清理 |
-| `EntitySkillAccess` | `world/entity/skill/EntitySkillAccess.java` | 实体技能查询、施放、Tick、取消和清理 |
+| `IEntitySkillAccess` | `world/entity/skill/IEntitySkillAccess.java` | 实体技能查询、施放、Tick、取消和清理 |
 | `EntitySkillUtil` | `util/entity/skill/EntitySkillUtil.java` | 技能状态机内部辅助和兼容入口 |
 | `HitboxManager` | `world/hitbox/HitboxManager.java` | Level 级命中框生命周期和快照 |
-| `EntityStateHolder` | `world/entity/state/EntityStateHolder.java` | 实体持续状态的读写和查询 |
-| `ToPayload` | `network/ToPayload.java` | 统一 Payload 工作调度 |
-| `ToServerPayload` | `network/ts/ToServerPayload.java` | 服务端玩家校验后的 Payload 入口 |
-| `ToClientPayload` | `network/tc/ToClientPayload.java` | 客户端玩家上下文的 Payload 入口 |
+| `IEntityStateHolder` | `world/entity/state/IEntityStateHolder.java` | 实体持续状态的读写和查询 |
+| `IToPayload` | `network/IToPayload.java` | 统一 Payload 工作调度 |
+| `IToServerPayload` | `network/ts/IToServerPayload.java` | 服务端玩家校验后的 Payload 入口 |
+| `IToClientPayload` | `network/tc/IToClientPayload.java` | 客户端玩家上下文的 Payload 入口 |
 
 ## 自定义注册表
 
@@ -43,8 +43,8 @@
 
 `LcCapabilities` 声明：
 
-- `lobecorp:unit_control` → `ConductorUnitControl`。
-- `lobecorp:entity_skill` → `EntitySkillAccess`。
+- `lobecorp:unit_control` → `IConductorUnitControl`。
+- `lobecorp:entity_skill` → `IEntitySkillAccess`。
 
 能力是操作入口，不是第二套持久化数据源；调用方每次查询，不长期缓存能力对象。
 

@@ -38,11 +38,13 @@ public class QueenChannelLaserParticle extends QueenLaserParticle {
 	public void tick() {
 		age = (int) Math.max(age + 1L, level.getGameTime() - options.startGameTime());
 		TheQueenOfHatred queen = owner();
+
 		if (age >= lifetime || queen == null || !queen.isAlive() || EntitySkillUtil.getActiveSkills(queen).stream()
 				.noneMatch(runtime -> runtime.id() == options.runtimeId() && runtime.state() == EntitySkillRuntime.SkillState.ACTIVE)) {
 			remove();
 			return;
 		}
+
 		Vec3 start = LaserSkill.origin(queen);
 		setPos(start.x, start.y, start.z);
 	}
@@ -50,8 +52,11 @@ public class QueenChannelLaserParticle extends QueenLaserParticle {
 	@Override
 	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
 		TheQueenOfHatred queen = owner();
-		if (queen == null)
+
+		if (queen == null) {
 			return;
+		}
+
 		Vec3 start = LaserSkill.origin(queen);
 		setPos(start.x, start.y, start.z);
 		beam = LaserSkill.endpoint(queen, start.add(queen.getLookAngle())).subtract(start);
@@ -72,4 +77,3 @@ public class QueenChannelLaserParticle extends QueenLaserParticle {
 		}
 	}
 }
-

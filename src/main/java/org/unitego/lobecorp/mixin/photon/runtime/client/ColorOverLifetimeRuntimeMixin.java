@@ -30,8 +30,10 @@ public abstract class ColorOverLifetimeRuntimeMixin {
 
 	@ModifyReturnValue(method = "getColor", at = @At("RETURN"))
 	private Vector4f lobecorp$offsetOutput(Vector4f original, IParticle particle, float partialTicks) {
-		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle))
+		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle)) {
 			return original;
+		}
+
 		return original.set(
 				lobecorp$sampleColor(particle, partialTicks, Component.RED, 16),
 				lobecorp$sampleColor(particle, partialTicks, Component.GREEN, 8),

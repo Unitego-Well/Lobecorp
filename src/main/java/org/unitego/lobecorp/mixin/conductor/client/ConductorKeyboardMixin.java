@@ -16,8 +16,9 @@ import org.unitego.lobecorp.client.conductor.ConductorControls;
 public class ConductorKeyboardMixin {
 	@Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$handleConductorKey(long handle, int action, KeyEvent event, CallbackInfo ci) {
-		if (ConductorControls.handleKeyboard(handle, event, action))
+		if (ConductorControls.handleKeyboard(handle, event, action)) {
 			ci.cancel();
+		}
 	}
 
 	@WrapWithCondition(method = "keyPress", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;set(Lcom/mojang/blaze3d/platform/InputConstants$Key;Z)V"))
@@ -32,7 +33,8 @@ public class ConductorKeyboardMixin {
 
 	@Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$handleConductorChar(long handle, CharacterEvent event, CallbackInfo ci) {
-		if (ConductorControls.handleCharTyped(handle, event))
+		if (ConductorControls.handleCharTyped(handle, event)) {
 			ci.cancel();
+		}
 	}
 }

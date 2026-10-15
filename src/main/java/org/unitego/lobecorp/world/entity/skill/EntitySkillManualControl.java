@@ -28,8 +28,9 @@ public class EntitySkillManualControl {
 	}
 
 	public void update(@Nullable LivingEntity target, Vec3 position, boolean following) {
-		if (!following && mode != Mode.MANUAL)
+		if (!following && mode != Mode.MANUAL) {
 			return;
+		}
 		mode = Mode.MANUAL;
 		runtime.setTarget(target);
 		runtime.setTargetPosition(position);
@@ -49,9 +50,11 @@ public class EntitySkillManualControl {
 			LivingEntity target = mob.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 			runtime.setTarget(target != null && target.isAlive() ? target : null);
 			runtime.setTargetPosition(null);
-			if (target == null || !target.isAlive())
+			if (target == null || !target.isAlive()) {
 				return mob.getLookAngle();
+			}
 		}
+
 		return frozenDirection;
 	}
 

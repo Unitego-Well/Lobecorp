@@ -33,9 +33,11 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 	public void extractRenderState(T entity, RenderState state, float partialTicks) {
 		super.extractRenderState(entity, state, partialTicks);
 		Entity ownerEntity = entity.getOwnerEntity();
+
 		if (ownerEntity == null) {
 			return;
 		}
+
 		EntityRenderer<Entity, EntityRenderState> ownerEntityRenderer =
 				state.ownerEntityRenderer = (EntityRenderer<Entity, EntityRenderState>) entityRenderDispatcher.getRenderer(ownerEntity);
 		EntityRenderState ownerState = state.ownerEntityRenderState = ownerEntityRenderer.createRenderState(ownerEntity, partialTicks);
@@ -47,6 +49,7 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 			livingState.hasRedOverlay = false;
 			livingState.deathTime = 0;
 		}
+
 		if (ownerEntity instanceof LivingEntity livingEntity) {
 			livingEntity.hurtTime = 0;
 			livingEntity.deathTime = 0;
@@ -56,14 +59,19 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 	@Override
 	public void submit(RenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState camera) {
 		super.submit(state, poseStack, submitNodeCollector, camera);
+
 		if (state.ownerEntityRenderer == null) {
 			return;
 		}
+
 		EntityRenderState ownerState = state.ownerEntityRenderState;
+
 		if (ownerState == null) {
 			return;
 		}
+
 		poseStack.pushPose();
+
 		if (state.getRenderData(IS_REVERSE) == null || Boolean.TRUE.equals(state.getRenderData(IS_REVERSE))) {
 			if (ownerState instanceof LivingEntityRenderState livingEntityRenderState) {
 				poseStack.mulPose(Axis.YP.rotationDegrees(livingEntityRenderState.bodyRot));

@@ -17,6 +17,7 @@ public class OrdealAttackablesSensor extends NearestVisibleLivingEntitySensor {
 		if (body instanceof IOrdeal iOrdeal) {
 			return iOrdeal.isValidTarget(mob) && Sensor.isEntityAttackable(level, body, mob);
 		}
+
 		return Sensor.isEntityAttackable(level, body, mob);
 	}
 

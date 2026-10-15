@@ -38,4 +38,3 @@ public record QueenMagicCircleParticleOptions(double radius, int durationTicks,
 		return LcParticleTypes.QUEEN_MAGIC_CIRCLE.get();
 	}
 }
-

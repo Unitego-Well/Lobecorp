@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.unitego.lobecorp.util.photon.render.PhotonViewDepthSortUtil;
+import org.unitego.lobecorp.util.photon.render.PhotonOcclusionUtil;
 
 import java.util.List;
 
@@ -36,6 +37,7 @@ public abstract class EmitterMixin implements PhotonParticleAgeAccess {
 			var emitter = (Emitter) (Object) this;
 			return emitter.isActive() && emitter.getParticleAmount() != 0;
 		}
+
 		return original;
 	}
 
@@ -71,6 +73,7 @@ public abstract class EmitterMixin implements PhotonParticleAgeAccess {
 	private void lobecorp$markCpuDepth(CallbackInfo ci, @Local(argsOnly = true) List<DrawJob> out,
 	                                   @Local(argsOnly = true) Camera camera, @Local(argsOnly = true) RendererSetting.Runtime renderer,
 	                                   @Share("lobecorp$jobStart") LocalIntRef start) {
+		PhotonOcclusionUtil.mark(out, start.get(), renderer);
 		PhotonViewDepthSortUtil.mark(out, start.get(), camera, ((Emitter) (Object) this).transform().position(), renderer);
 	}
 
@@ -78,6 +81,7 @@ public abstract class EmitterMixin implements PhotonParticleAgeAccess {
 	private void lobecorp$markInstanceDepth(CallbackInfoReturnable<Boolean> cir, @Local(argsOnly = true) List<DrawJob> out,
 	                                        @Local(argsOnly = true) Camera camera, @Local(argsOnly = true) RendererSetting.Runtime renderer,
 	                                        @Share("lobecorp$jobStart") LocalIntRef start) {
+		PhotonOcclusionUtil.mark(out, start.get(), renderer);
 		PhotonViewDepthSortUtil.mark(out, start.get(), camera, ((Emitter) (Object) this).transform().position(), renderer);
 	}
 }

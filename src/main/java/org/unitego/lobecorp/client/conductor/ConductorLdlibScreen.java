@@ -22,8 +22,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme;
 import org.unitego.lobecorp.client.conductor.hud.ConductorTexts;
-import org.unitego.lobecorp.conductor.ability.ConductorAbility;
-import org.unitego.lobecorp.conductor.ability.ConductorTargeting;
+import org.unitego.lobecorp.conductor.ability.IConductorAbility;
+import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
@@ -36,19 +36,33 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
 
 public class ConductorLdlibScreen extends ModularUIScreen {
+	/// 面板宽度，单位为 GUI 像素。
 	private static final int PANEL_WIDTH = 520;
+	/// 面板高度，单位为 GUI 像素。
 	private static final int PANEL_HEIGHT = 340;
+	/// 面板与屏幕边缘的最小间距，单位为 GUI 像素。
 	private static final int SCREEN_MARGIN = 24;
+	/// 队伍颜色保留的 RGB 位掩码。
 	private static final int COLOR_MASK = 0xFFFFFF;
+	/// RGB 十六进制颜色文本的位数。
 	private static final int COLOR_LENGTH = 6;
+	/// 根面板内边距，单位为 GUI 像素。
 	private static final int ROOT_PADDING = 12;
+	/// 根面板子元素间距，单位为 GUI 像素。
 	private static final int ROOT_GAP = 6;
+	/// 内容面板内边距，单位为 GUI 像素。
 	private static final int CONTENT_PADDING = 8;
+	/// 内容面板子元素间距，单位为 GUI 像素。
 	private static final int CONTENT_GAP = 6;
+	/// 控件行高，单位为 GUI 像素。
 	private static final int ROW_HEIGHT = 28;
+	/// 控件间距，单位为 GUI 像素。
 	private static final int ROW_GAP = 6;
+	/// 标签高度，单位为 GUI 像素。
 	private static final int LABEL_HEIGHT = 18;
+	/// 输入控件高度，单位为 GUI 像素。
 	private static final int CONTROL_HEIGHT = 26;
+	/// 列表按钮高度，单位为 GUI 像素。
 	private static final int LIST_BUTTON_HEIGHT = 26;
 	private final UI ui;
 	private final Map<String, List<Component>> tooltips = new HashMap<>();
@@ -69,6 +83,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 		revision = ConductorClient.revision();
 		bind("create", () -> {
 			String name = field("team-name").getValue().trim();
+
 			if (!name.isEmpty()) {
 				team = name;
 				send(ConductorCommandPayload.Action.CREATE_TEAM, "", null, 0, 0, 0,
@@ -97,6 +112,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 		bind("apply-color", () -> {
 			try {
 				int color = Integer.parseInt(field("color-hex").getValue().replace("#", ""), 16);
+
 				if ((color & ~COLOR_MASK) == 0) {
 					ConductorClient.setColor(team, color);
 				}
@@ -132,7 +148,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	}
 
 	private static UIElement createLayout() {
-		UIElement root = new UIElement();
+		var root = new UIElement();
 		root.layout(layout -> layout.widthPercent(100).heightPercent(100).paddingAll(ROOT_PADDING)
 				.flexDirection(FlexDirection.COLUMN).gapAll(ROOT_GAP));
 		root.style(style -> style.backgroundTexture(surface(BG_1, LINE_OUTER)));
@@ -187,7 +203,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	}
 
 	private static ScrollerView page(String id) {
-		ScrollerView page = new ScrollerView();
+		var page = new ScrollerView();
 		page.setId(id);
 		page.layout(layout -> layout.widthPercent(100).height(0).flexGrow(1).flexShrink(1));
 		page.style(style -> style.backgroundTexture(surface(BG_2, LINE_INNER)));
@@ -208,7 +224,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	}
 
 	private static UIElement list(String id) {
-		UIElement list = new UIElement();
+		var list = new UIElement();
 		list.setId(id);
 		list.layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(CONTENT_GAP));
 		list.style(style -> style.backgroundTexture(surface(BG_1, LINE_OUTER)));
@@ -216,18 +232,20 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	}
 
 	private static UIElement row(UIElement... children) {
-		UIElement row = new UIElement();
+		var row = new UIElement();
 		row.layout(layout -> layout.widthPercent(100).height(ROW_HEIGHT)
 				.flexDirection(FlexDirection.ROW).gapAll(ROW_GAP));
+
 		for (UIElement child : children) {
 			child.layout(layout -> layout.flexGrow(1));
 			row.addChild(child);
 		}
+
 		return row;
 	}
 
 	private static Label label(String id, String key) {
-		Label label = new Label();
+		var label = new Label();
 		label.setId(id);
 		label.setText(Component.translatable(key));
 		label.layout(layout -> layout.height(LABEL_HEIGHT).paddingAll(2));
@@ -235,7 +253,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	}
 
 	private static TextField newField(String id) {
-		TextField field = new TextField();
+		var field = new TextField();
 		field.setId(id);
 		field.setAnyString();
 		field.layout(layout -> layout.height(CONTROL_HEIGHT).paddingAll(3));
@@ -253,14 +271,16 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 			case "skill-id" -> ConductorTexts.SKILL_ID;
 			default -> null;
 		};
+
 		if (placeholder != null) {
 			field.textFieldStyle(style -> style.placeholder(Component.translatable(placeholder)));
 		}
+
 		return field;
 	}
 
 	private static Button button(String id, String key) {
-		Button button = new Button();
+		var button = new Button();
 		button.setId(id);
 		button.setText(Component.translatable(key));
 		button.layout(layout -> layout.height(CONTROL_HEIGHT).paddingAll(0).flexShrink(0));
@@ -297,18 +317,23 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 		UIElement hovered = modularUI.hitTestAtScreen(mouseX, mouseY);
-		while (hovered != null && !tooltips.containsKey(hovered.getId()))
+
+		while (hovered != null && !tooltips.containsKey(hovered.getId())) {
 			hovered = hovered.getParent();
+		}
+
 		if (hovered != tooltipElement) {
 			tooltipElement = hovered;
 			tooltipSince = System.currentTimeMillis();
 		}
-		if (hovered != null && System.currentTimeMillis() - tooltipSince >= TOOLTIP_DELAY_MS)
+
+		if (hovered != null && System.currentTimeMillis() - tooltipSince >= TOOLTIP_DELAY_MS) {
 			ConductorHud.drawTooltip(graphics, tooltips.get(hovered.getId()));
+		}
 	}
 
 	private void bind(String id, Runnable action) {
-		ui.selectId(id, Button.class).findFirst().orElseThrow().setOnClick(event -> action.run());
+		ui.selectId(id, Button.class).findFirst().orElseThrow().setOnClick(_ -> action.run());
 	}
 
 	private TextField field(String id) {
@@ -336,6 +361,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 	private void toggleAttackMode() {
 		ConductorData.Unit first = firstSelectedUnit();
+
 		if (first != null) {
 			ConductorClient.send(ConductorCommandPayload.Action.SET_ATTACK_MODE, first.team(), "",
 					ConductorControls.selected(), null, 0.0D, 0.0D, 0.0D,
@@ -346,9 +372,12 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	private ConductorData.Unit firstSelectedUnit() {
 		for (UUID uuid : ConductorControls.selected()) {
 			ConductorData.Unit unit = ConductorClient.unit(uuid);
-			if (unit != null)
+
+			if (unit != null) {
 				return unit;
+			}
 		}
+
 		return null;
 	}
 
@@ -377,6 +406,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	private void remoteAttack() {
 		try {
 			UUID target = target();
+
 			if (target != null) {
 				send(ConductorCommandPayload.Action.ATTACK, "", target, 0, 0, 0,
 						ConductorData.ControlMode.FULL, false, "");
@@ -388,8 +418,11 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 	private void remoteCast() {
 		String skill = field("skill-id").getValue().trim();
-		if (skill.isEmpty())
+
+		if (skill.isEmpty()) {
 			return;
+		}
+
 		try {
 			send(ConductorCommandPayload.Action.CAST, "", target(), 0, 0, 0,
 					ConductorData.ControlMode.FULL, false, skill);
@@ -400,9 +433,11 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 	private void refresh() {
 		ConductorDirectory snapshot = ConductorClient.snapshot();
+
 		if (team.isBlank() && !snapshot.teams().isEmpty()) {
 			team = snapshot.teams().keySet().stream().sorted().findFirst().orElse("");
 		}
+
 		UIElement teams = ui.selectId("team-list", UIElement.class).findFirst().orElseThrow();
 		teams.clearAllChildren();
 		snapshot.teams().keySet().stream().sorted().forEach(name -> {
@@ -410,7 +445,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 			Button button = button("team-" + name, name);
 			button.setText(Component.literal(name).withColor(data.color()));
 			button.layout(layout -> layout.widthPercent(100).height(LIST_BUTTON_HEIGHT));
-			button.setOnClick(event -> {
+			button.setOnClick(_ -> {
 				team = name;
 				ConductorControls.selectTeam(name);
 				ConductorHud.INSTANCE.selectTeam(name);
@@ -427,17 +462,22 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 		UIElement skills = ui.selectId("skill-list", UIElement.class).findFirst().orElseThrow();
 		skills.clearAllChildren();
 		tooltips.clear();
-		for (ConductorAbility skill : selectedMobSkills()) {
+
+		for (IConductorAbility skill : selectedMobSkills()) {
 			UUID focus = ConductorHud.INSTANCE.focusedMember();
+
 			if (focus == null || !ConductorControls.selected().contains(focus)) {
 				focus = ConductorControls.selected().isEmpty() ? null : ConductorControls.selected().getFirst();
 			}
+
 			Mob focusMob = focus == null || Minecraft.getInstance().level == null ? null
 					: Minecraft.getInstance().level.getEntity(focus) instanceof Mob mob ? mob : null;
 			int total = focus == null ? 0 : ConductorClient.abilityCooldownTotalTicks(focus, skill.id());
+
 			if (focusMob != null) {
 				total = Math.max(total, skill.totalCooldownTicks(focusMob));
 			}
+
 			Component title = Component.translatableWithFallback(
 					skill instanceof EntitySkillConductorAbility
 							? ConductorTexts.skillName(skill.id()) : ConductorTexts.abilityName(skill.id()),
@@ -449,23 +489,29 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 			Component description = ConductorTexts.abilityDescription(skill.id());
 			tooltips.put(button.getId(), description.getString().isEmpty() ? List.of(title) : List.of(title, description));
 			button.layout(layout -> layout.widthPercent(100).height(LIST_BUTTON_HEIGHT));
-			button.setOnClick(event -> {
+			button.setOnClick(_ -> {
 				UUID selected = ConductorHud.INSTANCE.focusedMember();
+
 				if (selected == null || !ConductorControls.selected().contains(selected)) {
 					selected = ConductorControls.selected().isEmpty() ? null : ConductorControls.selected().getFirst();
 				}
-				if (selected == null)
+
+				if (selected == null) {
 					return;
-				if (skill.targetKind() != ConductorTargeting.TargetKind.SELF) {
+				}
+
+				if (skill.targetKind() != IConductorTargeting.TargetKind.SELF) {
 					ConductorControls.setPendingSkill(skill.id().toString(), selected);
 				} else {
 					ConductorData.Unit unit = ConductorClient.unit(selected);
+
 					if (unit != null) {
 						ConductorClient.send(ConductorCommandPayload.Action.CAST, unit.team(), "",
 								ConductorControls.skillUnits(selected), null, 0.0D, 0.0D, 0.0D,
 								ConductorData.ControlMode.FULL, false, skill.id().toString());
 					}
 				}
+
 				onClose();
 			});
 			skills.addChild(button);
@@ -474,11 +520,15 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 	private void updateTeam() {
 		ConductorData.Team selected = ConductorClient.snapshot().team(team);
-		if (tab != null)
+
+		if (tab != null) {
 			setTab(tab);
+		}
+
 		if (selected != null) {
 			field("color-hex").setText(String.format("%0" + COLOR_LENGTH + "X", selected.color()), false);
 		}
+
 		ui.selectId("force-load", Button.class).findFirst().orElseThrow().setText(
 				Component.translatable(selected != null && selected.forceLoad()
 						? ConductorTexts.LOAD_ON : ConductorTexts.LOAD_OFF));
@@ -491,17 +541,25 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 						? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI));
 	}
 
-	private List<ConductorAbility> selectedMobSkills() {
+	private List<IConductorAbility> selectedMobSkills() {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.level == null || ConductorControls.selected().isEmpty())
+
+		if (minecraft.level == null || ConductorControls.selected().isEmpty()) {
 			return List.of();
+		}
+
 		UUID focus = ConductorHud.INSTANCE.focusedMember();
+
 		if (focus == null || !ConductorControls.selected().contains(focus)) {
 			focus = ConductorControls.selected().getFirst();
 		}
+
 		Entity entity = minecraft.level.getEntity(focus);
-		if (!(entity instanceof Mob mob))
+
+		if (!(entity instanceof Mob mob)) {
 			return List.of();
+		}
+
 		ConductorClient.requestAbilitiesIfMissing(mob.getUUID());
 		return ConductorUtil.abilities(mob).stream()
 				.filter(ability -> ConductorClient.hasAbility(mob.getUUID(), ability.id()))
@@ -511,6 +569,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	@Override
 	public void tick() {
 		super.tick();
+
 		if (revision != ConductorClient.revision()) {
 			revision = ConductorClient.revision();
 			refresh();

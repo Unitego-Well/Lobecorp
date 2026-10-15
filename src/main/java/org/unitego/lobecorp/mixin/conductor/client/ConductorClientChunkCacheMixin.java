@@ -42,8 +42,9 @@ public abstract class ConductorClientChunkCacheMixin implements ConductorChunkCa
 			at = @At("HEAD"), cancellable = true)
 	private void lobecorp$getObservedChunk(int x, int z, ChunkStatus targetStatus, boolean loadOrGenerate, CallbackInfoReturnable<LevelChunk> cir) {
 		LevelChunk chunk = lobecorp$observedChunks.get(x, z);
-		if (chunk != null)
+		if (chunk != null) {
 			cir.setReturnValue(chunk);
+		}
 	}
 
 	@WrapMethod(method = "replaceWithPacketData")
@@ -57,10 +58,11 @@ public abstract class ConductorClientChunkCacheMixin implements ConductorChunkCa
 	@WrapMethod(method = "replaceBiomes")
 	private void lobecorp$receiveObservedBiomes(int chunkX, int chunkZ, FriendlyByteBuf readBuffer, Operation<Void> original) {
 		LevelChunk chunk = lobecorp$observedChunks.get(chunkX, chunkZ);
-		if (chunk != null)
+		if (chunk != null) {
 			chunk.replaceBiomes(readBuffer);
-		else
+		} else {
 			original.call(chunkX, chunkZ, readBuffer);
+		}
 	}
 
 	@Inject(method = "drop", at = @At("HEAD"))

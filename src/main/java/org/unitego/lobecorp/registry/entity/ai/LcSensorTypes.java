@@ -19,8 +19,11 @@ import java.util.function.Supplier;
 
 /// 实体 brain 系统的传感器
 public interface LcSensorTypes {
+	/// 清理目标传感器的扫描间隔，单位为游戏 tick。
 	int CLEANUP_TARGET_SCAN_RATE = 10;
+	/// 清理目标搜索的水平半径，单位为方块。
 	int CLEANUP_HORIZONTAL_RANGE = 32;
+	/// 清理目标搜索的垂直半径，单位为方块。
 	int CLEANUP_VERTICAL_RANGE = 16;
 	DeferredRegister<SensorType<?>> REGISTER = Lobecorp.register(BuiltInRegistries.SENSOR_TYPE);
 	/// 考验最近目标

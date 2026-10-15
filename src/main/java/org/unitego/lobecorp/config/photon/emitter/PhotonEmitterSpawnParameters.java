@@ -4,6 +4,7 @@ import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigNumber;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.Constant;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
@@ -18,9 +19,7 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.curve.Curve;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.curve.RandomCurve;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 
-/**
- * 只覆盖生成实例的参数；默认沿用模板，数值在每次发射时采样。
- */
+/// 只覆盖生成实例的参数；默认沿用模板，数值在每次发射时采样。
 public class PhotonEmitterSpawnParameters implements IConfigurable, IPersistedSerializable {
 	@Configurable(name = PhotonEmitterSpawnerTextUtil.TARGET)
 	public String targetName = "";
@@ -44,18 +43,18 @@ public class PhotonEmitterSpawnParameters implements IConfigurable, IPersistedSe
 	@Configurable(name = PhotonEmitterSpawnerTextUtil.SPEED)
 	@NumberFunctionConfig(types = {Constant.class, RandomConstant.class, Curve.class, RandomCurve.class})
 	public NumberFunction speed = NumberFunction.constant(1);
-	@Configurable(name = PhotonEmitterSpawnerTextUtil.OVERRIDE_BEAM_LENGTH)
+	/// 旧光柱覆盖参数仅保留序列化兼容，不再提供编辑入口。
+	@Persisted
 	public boolean overrideBeamLength;
-	@Configurable(name = PhotonEmitterSpawnerTextUtil.BEAM_LENGTH)
+	@Persisted
 	@NumberFunctionConfig(types = {Constant.class, RandomConstant.class, Curve.class, RandomCurve.class}, min = 0)
 	public NumberFunction beamLength = NumberFunction.constant(1);
-	@Configurable(name = PhotonEmitterSpawnerTextUtil.OVERRIDE_BEAM_WIDTH)
+	@Persisted
 	public boolean overrideBeamWidth;
-	@Configurable(name = PhotonEmitterSpawnerTextUtil.BEAM_WIDTH)
+	@Persisted
 	@NumberFunctionConfig(types = {Constant.class, RandomConstant.class, Curve.class, RandomCurve.class}, min = 0)
 	public NumberFunction beamWidth = NumberFunction.constant(1);
 	@Configurable(name = PhotonEmitterSpawnerTextUtil.PLAYBACK_SPEED)
 	@ConfigNumber(range = {0, PhotonEmitterSpawnConfig.MAX_PLAYBACK_SPEED})
 	public float playbackSpeed = 1;
 }
-

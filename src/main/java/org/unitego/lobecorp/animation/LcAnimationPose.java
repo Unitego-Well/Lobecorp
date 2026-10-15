@@ -12,14 +12,17 @@ import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.unitego.lobecorp.animation.LcAnimationControllerRuntime.RotationHistory;
+import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil;
 
 import java.util.*;
 
+/// 采样并混合动画层的骨骼姿态，保留各通道的遮罩范围。
 public class LcAnimationPose {
 	protected static Pose createPose(RenderPassInfo<?> renderPassInfo, ControllerState sourceState, AnimationController<?> controller,
 	                                 LcControllerBlendType blendType) {
 		AnimationPoint animationPoint = sourceState.animationPoint();
-		ControllerState sampleState = new ControllerState(animationPoint, null, -1, 0, false,
+		var sampleState = new ControllerState(animationPoint, null, -1, 0, false,
 				sourceState.easingOverride(), sourceState.renderState(), sourceState.queryValues());
 		Map<String, BoneSnapshot> bones = new HashMap<>();
 		Set<Channel> channels = new LinkedHashSet<>();
@@ -30,23 +33,28 @@ public class LcAnimationPose {
 			if (!LcAnimationControllerMask.of(controller).lobecorp$isBoneInfluenced(boneName)) {
 				continue;
 			}
+
 			boolean hasScale = hasKeyframes(boneAnimation.scaleKeyFrames());
 			boolean hasRotation = hasKeyframes(boneAnimation.rotationKeyFrames());
 			boolean hasTranslation = hasKeyframes(boneAnimation.positionKeyFrames());
 			if (!hasScale && !hasRotation && !hasTranslation) {
 				continue;
 			}
+
 			GeoBone bone = renderPassInfo.model().getBone(boneName).orElse(null);
 			if (bone == null) {
 				continue;
 			}
+
 			bones.put(boneName, BoneSnapshot.create(bone));
 			if (hasScale) {
 				channels.add(new Channel(boneName, Transform.SCALE));
 			}
+
 			if (hasRotation) {
 				channels.add(new Channel(boneName, Transform.ROTATION));
 			}
+
 			if (hasTranslation) {
 				channels.add(new Channel(boneName, Transform.TRANSLATION));
 			}
@@ -59,11 +67,12 @@ public class LcAnimationPose {
 				addOverrideChannels(bone, bones, channels);
 			}
 		}
+
 		return new Pose(bones, channels);
 	}
 
 	private static void addOverrideChannels(GeoBone bone, Map<String, BoneSnapshot> bones, Set<Channel> channels) {
-		bones.computeIfAbsent(bone.name(), ignored -> BoneSnapshot.create(bone));
+		bones.computeIfAbsent(bone.name(), _ -> BoneSnapshot.create(bone));
 		channels.add(new Channel(bone.name(), Transform.SCALE));
 		channels.add(new Channel(bone.name(), Transform.ROTATION));
 		channels.add(new Channel(bone.name(), Transform.TRANSLATION));
@@ -76,10 +85,13 @@ public class LcAnimationPose {
 		return keyframes.xKeyframes().length > 0 || keyframes.yKeyframes().length > 0 || keyframes.zKeyframes().length > 0;
 	}
 
-	protected static Pose blendPoses(Pose from, Pose to, double weight, LcRotationTransitionMode rotationTransitionMode) {
+	protected static Pose blendPoses(Pose from, Pose to, double weight, LcRotationTransitionMode rotationTransitionMode,
+	                                 RotationHistory rotations, double renderAge) {
+		rotations.beginFrame(renderAge, rotationTransitionMode, false);
 		if (from == null) {
 			return to;
 		}
+
 		Set<Channel> channels = new LinkedHashSet<>(from.channels);
 		channels.addAll(to.channels);
 		Map<String, BoneSnapshot> bones = new HashMap<>();
@@ -87,16 +99,17 @@ public class LcAnimationPose {
 			BoneSnapshot fromBone = from.bones.get(channel.boneName());
 			BoneSnapshot toBone = to.bones.get(channel.boneName());
 			GeoBone bone = toBone != null ? toBone.getBone() : fromBone.getBone();
-			BoneSnapshot result = bones.computeIfAbsent(channel.boneName(), ignored -> BoneSnapshot.create(bone));
+			BoneSnapshot result = bones.computeIfAbsent(channel.boneName(), _ -> BoneSnapshot.create(bone));
 			blendTransform(result, fromBone, from.channels.contains(channel), toBone, to.channels.contains(channel),
-					channel.transform(), weight, rotationTransitionMode);
+					channel.transform(), weight, rotationTransitionMode, rotations, channel.boneName());
 		}
+
 		return new Pose(bones, channels);
 	}
 
 	private static void blendTransform(BoneSnapshot result, BoneSnapshot from, boolean fromHasChannel,
 	                                   BoneSnapshot to, boolean toHasChannel, Transform transform, double weight,
-	                                   LcRotationTransitionMode rotationTransitionMode) {
+	                                   LcRotationTransitionMode rotationTransitionMode, RotationHistory rotations, String bone) {
 		float fromX = fromHasChannel ? getValue(from, transform, 0) : getDefault(transform);
 		float fromY = fromHasChannel ? getValue(from, transform, 1) : getDefault(transform);
 		float fromZ = fromHasChannel ? getValue(from, transform, 2) : getDefault(transform);
@@ -104,32 +117,38 @@ public class LcAnimationPose {
 		float toY = toHasChannel ? getValue(to, transform, 1) : getDefault(transform);
 		float toZ = toHasChannel ? getValue(to, transform, 2) : getDefault(transform);
 		if (transform == Transform.ROTATION && rotationTransitionMode == LcRotationTransitionMode.SHORTEST_PATH) {
-			Quaternionf rotation = rotationQuaternion(fromX, fromY, fromZ)
-					.slerp(rotationQuaternion(toX, toY, toZ), (float) weight);
-			setRotation(result, rotation);
+			var rotation = blendRotation(rotationQuaternion(fromX, fromY, fromZ),
+					rotationQuaternion(toX, toY, toZ), weight, rotations, bone);
+			setRotation(result, rotation, rotations, bone,
+					new Vector3f(lerp(fromX, toX, weight), lerp(fromY, toY, weight), lerp(fromZ, toZ, weight)));
 			return;
 		}
+
 		setValue(result, transform, lerp(fromX, toX, weight), lerp(fromY, toY, weight), lerp(fromZ, toZ, weight));
 	}
 
 	protected static void applyPose(Pose pose, double weight, boolean additive, LcRotationTransitionMode rotationTransitionMode,
-	                                AnimationController<?> controller, BoneSnapshots snapshots) {
+	                                AnimationController<?> controller, BoneSnapshots snapshots,
+	                                RotationHistory rotations, double renderAge) {
+		rotations.beginFrame(renderAge, rotationTransitionMode, additive);
 		if (pose == null || weight <= 0) {
 			return;
 		}
+
 		for (Channel channel : pose.channels) {
 			if (!LcAnimationControllerMask.of(controller).lobecorp$isBoneInfluenced(channel.boneName())) {
 				continue;
 			}
+
 			BoneSnapshot layer = pose.bones.get(channel.boneName());
 			snapshots.get(channel.boneName()).ifPresent(target ->
-					mixTransform(target, layer, channel.transform(), weight, additive, rotationTransitionMode)
+					mixTransform(target, layer, channel.transform(), weight, additive, rotationTransitionMode, rotations, channel.boneName())
 			);
 		}
 	}
 
 	private static void mixTransform(BoneSnapshot target, BoneSnapshot layer, Transform transform, double weight, boolean additive,
-	                                 LcRotationTransitionMode rotationTransitionMode) {
+	                                 LcRotationTransitionMode rotationTransitionMode, RotationHistory rotations, String bone) {
 		float targetX = getValue(target, transform, 0);
 		float targetY = getValue(target, transform, 1);
 		float targetZ = getValue(target, transform, 2);
@@ -142,11 +161,15 @@ public class LcAnimationPose {
 			if (transform == Transform.ROTATION && rotationTransitionMode == LcRotationTransitionMode.SHORTEST_PATH) {
 				Quaternionf targetRotation = rotationQuaternion(targetX, targetY, targetZ);
 				Quaternionf additiveRotation = rotationQuaternion(layerX - defaultValue, layerY - defaultValue, layerZ - defaultValue);
-				Quaternionf weightedRotation = new Quaternionf().slerp(additiveRotation, (float) weight);
+				var weightedRotation = blendRotation(new Quaternionf(), additiveRotation, weight, rotations, bone);
 				targetRotation.mul(weightedRotation);
-				setRotation(target, targetRotation);
+				setRotation(target, targetRotation, rotations, bone,
+						new Vector3f(targetX + (layerX - defaultValue) * (float) weight,
+								targetY + (layerY - defaultValue) * (float) weight,
+								targetZ + (layerZ - defaultValue) * (float) weight));
 				return;
 			}
+
 			layerX = defaultValue + (layerX - defaultValue) * (float) weight;
 			layerY = defaultValue + (layerY - defaultValue) * (float) weight;
 			layerZ = defaultValue + (layerZ - defaultValue) * (float) weight;
@@ -157,21 +180,30 @@ public class LcAnimationPose {
 			}
 		} else {
 			if (transform == Transform.ROTATION && rotationTransitionMode == LcRotationTransitionMode.SHORTEST_PATH) {
-				Quaternionf rotation = rotationQuaternion(targetX, targetY, targetZ)
-						.slerp(rotationQuaternion(layerX, layerY, layerZ), (float) weight);
-				setRotation(target, rotation);
+				var rotation = blendRotation(rotationQuaternion(targetX, targetY, targetZ),
+						rotationQuaternion(layerX, layerY, layerZ), weight, rotations, bone);
+				setRotation(target, rotation, rotations, bone,
+						new Vector3f(lerp(targetX, layerX, weight), lerp(targetY, layerY, weight), lerp(targetZ, layerZ, weight)));
 				return;
 			}
+
 			setValue(target, transform, lerp(targetX, layerX, weight), lerp(targetY, layerY, weight), lerp(targetZ, layerZ, weight));
 		}
+	}
+
+	private static Quaternionf blendRotation(Quaternionf source, Quaternionf target, double weight,
+	                                         RotationHistory rotations, String bone) {
+		var sample = LcRotationTransitionUtil.interpolate(source, target, weight, rotations.previous(bone));
+		rotations.put(bone, sample.state());
+		return sample.rotation();
 	}
 
 	private static Quaternionf rotationQuaternion(float x, float y, float z) {
 		return new Quaternionf().rotationZYX(z, y, x);
 	}
 
-	private static void setRotation(BoneSnapshot snapshot, Quaternionf rotation) {
-		Vector3f eulerAngles = rotation.getEulerAnglesZYX(new Vector3f());
+	private static void setRotation(BoneSnapshot snapshot, Quaternionf rotation, RotationHistory rotations, String bone, Vector3f fallback) {
+		var eulerAngles = rotations.angles(bone, rotation, fallback);
 		snapshot.setRotation(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 	}
 

@@ -24,29 +24,34 @@ public class ConductorMobAdapters {
 			if (mob.level() instanceof ServerLevel level) {
 				ConductorData.Unit command = ConductorData.get(level.getServer()).unit(mob.getUUID());
 				if (command != null && command.order() != ConductorData.OrderType.MOVE
-						&& command.order() != ConductorData.OrderType.RETURN)
+						&& command.order() != ConductorData.OrderType.RETURN) {
 					clearNavigation();
+				}
 			}
+
 			super.tick();
 		}
 
 		private void clearNavigation() {
 			ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-			if (runtime.flyingNavigation != null)
+			if (runtime.flyingNavigation != null) {
 				runtime.flyingNavigation.stop();
+			}
 			runtime.flyingNavigation = null;
 		}
 
 		@Override
 		public void advanceMovement(ConductorData data, ConductorData.Unit command) {
 			ConductorUnitRuntime runtime = ConductorUnitRuntime.get(mob);
-			if (runtime.flyingNavigation == null)
+			if (runtime.flyingNavigation == null) {
 				runtime.flyingNavigation = new FlyingPathNavigation(mob, mob.level());
+			}
 			FlyingPathNavigation navigation = runtime.flyingNavigation;
-			if (ConductorMovement.advance(mob, navigation, data, command))
+			if (ConductorMovement.advance(mob, navigation, data, command)) {
 				navigation.tick();
-			else
+			} else {
 				navigation.stop();
+			}
 		}
 
 		@Override
@@ -63,8 +68,9 @@ public class ConductorMobAdapters {
 
 		@Override
 		public void stop() {
-			if (mob.getPose() == Pose.SLIDING)
+			if (mob.getPose() == Pose.SLIDING) {
 				mob.setPose(Pose.STANDING);
+			}
 			super.stop();
 		}
 
@@ -81,12 +87,14 @@ public class ConductorMobAdapters {
 
 		@Override
 		public boolean accept(ConductorData.Unit command) {
-			if (!super.accept(command))
+			if (!super.accept(command)) {
 				return false;
+			}
 			if (command.order() == ConductorData.OrderType.ATTACK
 					|| command.order() == ConductorData.OrderType.ATTACK_POINT) {
 				((TheQueenOfHatred) mob).cancelConductorSitting();
 			}
+
 			return true;
 		}
 
@@ -103,8 +111,9 @@ public class ConductorMobAdapters {
 
 		@Override
 		public void advanceMovement(ConductorData data, ConductorData.Unit command) {
-			if (!ConductorMovement.advance(mob, mob.getNavigation(), data, command))
+			if (!ConductorMovement.advance(mob, mob.getNavigation(), data, command)) {
 				return;
+			}
 			EnderDragon dragon = (EnderDragon) mob;
 			if (dragon.getPhaseManager().getCurrentPhase().getPhase() != EnderDragonPhase.HOLDING_PATTERN) {
 				dragon.getPhaseManager().setPhase(EnderDragonPhase.HOLDING_PATTERN);

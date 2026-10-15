@@ -32,10 +32,12 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 				if (!SweepSkill.meleeHitboxTemplate().effect().apply(context)) {
 					return false;
 				}
+
 				EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
 				if (runtime != null) {
 					runtime.markSuccessful();
 				}
+
 				return true;
 			});
 
@@ -49,11 +51,13 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 			runtime.setData(DIRECTION_CAST, true);
 			return true;
 		}
+
 		LivingEntity target = getTarget(queen, runtime);
 		if (target == null || !target.isAlive() || !queen.isHatedTarget(target)
 				|| !queen.hasLineOfSight(target) || isOutsideAttackRange(queen, target)) {
 			return false;
 		}
+
 		runtime.setTarget(target);
 		return true;
 	}
@@ -90,6 +94,7 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
 		}
+
 		queen.restoreSkillFacing();
 		LivingEntity target = getTarget(queen, runtime);
 		if (!Boolean.TRUE.equals(runtime.getData(DIRECTION_CAST))
@@ -98,6 +103,7 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 			EntitySkillUtil.cancelSkill(queen, this);
 			return;
 		}
+
 		HitboxInstance hitbox = getHitbox(level, runtime);
 		if (hitbox != null) {
 			hitbox.activate();

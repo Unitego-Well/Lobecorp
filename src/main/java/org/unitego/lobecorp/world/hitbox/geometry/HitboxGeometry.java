@@ -26,9 +26,11 @@ public final class HitboxGeometry {
 		if (!boundingBox(instance).intersects(bounds)) {
 			return false;
 		}
+
 		if (instance.size() instanceof RingCylinderSize ring) {
 			return intersectsRingCylinder(ring, localBounds(instance, bounds));
 		}
+
 		if (instance.size() instanceof BoxRingCylinderSize ring) {
 			return intersectsBoxRingCylinder(ring, localBounds(instance, bounds));
 		}
@@ -37,6 +39,7 @@ public final class HitboxGeometry {
 		if (direction.lengthSqr() <= DIRECTION_EPSILON_SQUARED) {
 			direction = new Vec3(1.0, 0.0, 0.0);
 		}
+
 		List<Vec3> simplex = new ArrayList<>(4);
 		Vec3 point = minkowskiSupport(instance, bounds, direction);
 		simplex.add(point);
@@ -46,17 +49,21 @@ public final class HitboxGeometry {
 			if (direction.lengthSqr() <= DIRECTION_EPSILON_SQUARED) {
 				return true;
 			}
+
 			point = minkowskiSupport(instance, bounds, direction);
 			if (point.dot(direction) < 0.0) {
 				return false;
 			}
+
 			simplex.add(0, point);
 			SimplexResult result = updateSimplex(simplex);
 			if (result.containsOrigin()) {
 				return true;
 			}
+
 			direction = result.direction();
 		}
+
 		return false;
 	}
 
@@ -104,7 +111,7 @@ public final class HitboxGeometry {
 		return worldPoint.add(instance.position());
 	}
 
-	private static Vec3 localSupport(HitboxSize size, Vec3 direction) {
+	private static Vec3 localSupport(IHitboxSize size, Vec3 direction) {
 		return switch (size) {
 			case SphereSize sphere -> sphereSupport(sphere, direction);
 			case CylinderSize cylinder -> cylinderSupport(cylinder.radius(), cylinder.height(), direction);
@@ -138,7 +145,7 @@ public final class HitboxGeometry {
 		for (int xIndex = 0; xIndex < 2; xIndex++) {
 			for (int yIndex = 0; yIndex < 2; yIndex++) {
 				for (int zIndex = 0; zIndex < 2; zIndex++) {
-					Vec3 corner = new Vec3(
+					var corner = new Vec3(
 							xIndex == 0 ? bounds.minX : bounds.maxX,
 							yIndex == 0 ? bounds.minY : bounds.maxY,
 							zIndex == 0 ? bounds.minZ : bounds.maxZ
@@ -153,6 +160,7 @@ public final class HitboxGeometry {
 				}
 			}
 		}
+
 		return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
 	}
 
@@ -161,11 +169,13 @@ public final class HitboxGeometry {
 		if (bounds.maxY < -halfHeight || bounds.minY > halfHeight) {
 			return false;
 		}
+
 		double nearestX = bounds.minX > 0.0 ? bounds.minX : Math.min(bounds.maxX, 0.0);
 		double nearestZ = bounds.minZ > 0.0 ? bounds.minZ : Math.min(bounds.maxZ, 0.0);
 		if (nearestX * nearestX + nearestZ * nearestZ > ring.radius() * ring.radius()) {
 			return false;
 		}
+
 		double farthestX = Math.max(bounds.minX * bounds.minX, bounds.maxX * bounds.maxX);
 		double farthestZ = Math.max(bounds.minZ * bounds.minZ, bounds.maxZ * bounds.maxZ);
 		return ring.innerRadius() == 0.0
@@ -177,17 +187,20 @@ public final class HitboxGeometry {
 		if (bounds.maxY < -halfHeight || bounds.minY > halfHeight) {
 			return false;
 		}
+
 		double halfWidth = ring.width() / 2.0;
 		double halfDepth = ring.depth() / 2.0;
 		if (bounds.maxX < -halfWidth || bounds.minX > halfWidth
 				|| bounds.maxZ < -halfDepth || bounds.minZ > halfDepth) {
 			return false;
 		}
+
 		double innerHalfWidth = ring.innerWidth() / 2.0;
 		double innerHalfDepth = ring.innerDepth() / 2.0;
 		if (innerHalfWidth == 0.0 || innerHalfDepth == 0.0) {
 			return true;
 		}
+
 		return bounds.minX < -innerHalfWidth || bounds.maxX > innerHalfWidth
 				|| bounds.minZ < -innerHalfDepth || bounds.maxZ > innerHalfDepth;
 	}
@@ -200,6 +213,7 @@ public final class HitboxGeometry {
 		if (denominator <= DIRECTION_EPSILON_SQUARED) {
 			return Vec3.ZERO;
 		}
+
 		return new Vec3(
 				ellipsoid.radiusX() * x / denominator,
 				ellipsoid.radiusY() * y / denominator,
@@ -217,9 +231,11 @@ public final class HitboxGeometry {
 			base = new Vec3(direction.x / radialLength * radius,
 					direction.y / radialLength * radius, cone.length());
 		}
+
 		if (base.dot(direction) > 0.0) {
 			return base;
 		}
+
 		return Vec3.ZERO;
 	}
 
@@ -227,6 +243,7 @@ public final class HitboxGeometry {
 		if (direction.lengthSqr() <= DIRECTION_EPSILON_SQUARED) {
 			return Vec3.ZERO;
 		}
+
 		return direction.normalize().scale(sphere.radius());
 	}
 
@@ -238,6 +255,7 @@ public final class HitboxGeometry {
 			x = direction.x / horizontalLength * radius;
 			z = direction.z / horizontalLength * radius;
 		}
+
 		double y = direction.y >= 0.0 ? height / 2.0 : -height / 2.0;
 		return new Vec3(x, y, z);
 	}
@@ -252,6 +270,7 @@ public final class HitboxGeometry {
 			x = 0.0;
 			z = 0.0;
 		}
+
 		double y = direction.y >= 0.0 ? sector.height() / 2.0 : -sector.height() / 2.0;
 		return new Vec3(x, y, z);
 	}
@@ -281,6 +300,7 @@ public final class HitboxGeometry {
 		if (ab.dot(ao) > 0.0) {
 			return new SimplexResult(false, tripleCross(ab, ao, ab));
 		}
+
 		simplex.clear();
 		simplex.add(a);
 		return new SimplexResult(false, ao);
@@ -302,20 +322,24 @@ public final class HitboxGeometry {
 				simplex.add(c);
 				return new SimplexResult(false, tripleCross(ac, ao, ac));
 			}
+
 			simplex.clear();
 			simplex.add(a);
 			simplex.add(b);
 			return updateLine(simplex);
 		}
+
 		if (ab.cross(normal).dot(ao) > 0.0) {
 			simplex.clear();
 			simplex.add(a);
 			simplex.add(b);
 			return updateLine(simplex);
 		}
+
 		if (normal.dot(ao) > 0.0) {
 			return new SimplexResult(false, normal);
 		}
+
 		simplex.set(1, c);
 		simplex.set(2, b);
 		return new SimplexResult(false, normal.reverse());
@@ -333,16 +357,19 @@ public final class HitboxGeometry {
 			setTriangle(simplex, a, b, c);
 			return updateTriangle(simplex);
 		}
+
 		Vec3 acd = outwardNormal(a, c, d, b);
 		if (acd.dot(ao) > 0.0) {
 			setTriangle(simplex, a, c, d);
 			return updateTriangle(simplex);
 		}
+
 		Vec3 adb = outwardNormal(a, d, b, c);
 		if (adb.dot(ao) > 0.0) {
 			setTriangle(simplex, a, d, b);
 			return updateTriangle(simplex);
 		}
+
 		return new SimplexResult(true, Vec3.ZERO);
 	}
 
@@ -351,6 +378,7 @@ public final class HitboxGeometry {
 		if (normal.dot(opposite.subtract(a)) > 0.0) {
 			return normal.reverse();
 		}
+
 		return normal;
 	}
 

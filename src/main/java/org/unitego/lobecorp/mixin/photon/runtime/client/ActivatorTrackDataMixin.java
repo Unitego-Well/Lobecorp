@@ -17,8 +17,9 @@ public abstract class ActivatorTrackDataMixin {
 	private void lobecorp$writeActivation(CompoundTag tag, HolderLookup.Provider provider, CallbackInfo ci) {
 		if ((Object) this instanceof ActivatorTrack) {
 			var options = ((PhotonActivatorTrackAccess) this).lobecorp$getActivationOptions();
-			if (!options.equals(PhotonActivatorOptions.DEFAULT))
+			if (!options.equals(PhotonActivatorOptions.DEFAULT)) {
 				tag.put(PhotonActivatorOptions.TAG, options.write());
+			}
 		}
 	}
 

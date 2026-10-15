@@ -24,7 +24,7 @@ import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫 3 段攻击技能：attack → attack2 → attack3 → attack 循环。
-/// <p>
+///
 /// 每段由前摇 + 后摇组成（共 20 tick，与 1s 动画对齐）。
 /// 每段后摇结束后开放默认续段窗口，整套完成或超时后进入冷却。
 public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
@@ -56,13 +56,16 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 				if (!(context.source() instanceof Sweeper entity)) {
 					return false;
 				}
+
 				if (!(context.target() instanceof LivingEntity target)) {
 					return false;
 				}
+
 				EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
 				if (runtime == null || !entity.doHurtTarget(context.level(), target, getAttackDamageModifier(runtime.sequenceStage()))) {
 					return false;
 				}
+
 				runtime.markSuccessful();
 				SimpleParticleType strikeParticle = getStrikeParticle(runtime.sequenceStage());
 				EntityUtil.getHitPosOnAABB(entity, target).ifPresent(hitPos ->
@@ -90,8 +93,9 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 
 	private static void lockFacing(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		Float yaw = runtime.getData(LOCKED_YAW);
-		if (yaw == null)
+		if (yaw == null) {
 			return;
+		}
 		EntityFacingUtil.turn(entity, yaw);
 	}
 
@@ -113,7 +117,8 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 		};
 	}
 
-	private static boolean isWithinAttackRange(Sweeper entity, LivingEntity target) {
+	/// 按双方脚部的三维距离判断普攻范围，AI 与飞扑共用该边界。
+	public static boolean isWithinAttackRange(Sweeper entity, LivingEntity target) {
 		return entity.distanceToSqr(target) <= ATTACK_RANGE * ATTACK_RANGE;
 	}
 
@@ -123,25 +128,32 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 			runtime.setData(DIRECTION_CAST, true);
 			return true;
 		}
+
 		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null) {
 			target = entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
 		}
+
 		if (target == null) {
 			return false;
 		}
+
 		if (!target.isAlive()) {
 			return false;
 		}
+
 		if (!entity.isValidTarget(target)) {
 			return false;
 		}
+
 		if (!entity.hasLineOfSight(target)) {
 			return false;
 		}
+
 		if (!isWithinAttackRange(entity, target)) {
 			return false;
 		}
+
 		runtime.setTarget(target);
 		return true;
 	}

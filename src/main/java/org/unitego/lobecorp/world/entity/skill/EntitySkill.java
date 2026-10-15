@@ -6,7 +6,7 @@ import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
 
 import java.util.Set;
 
-/// 由 {@link Properties} 集中提供基础配置的实体技能基类。
+/// 由 [Properties] 集中提供基础配置的实体技能基类。
 /// 构造后基础配置不可变，具体技能只需实现生命周期回调和额外业务条件。
 public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkill<T> {
 	private final Identifier id;
@@ -101,7 +101,7 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 	}
 
 	/// 实体技能的链式基础属性配置。
-	/// 每次注册应创建独立实例；构造出的 {@link EntitySkill} 会复制配置值，后续不再读取本对象。
+	/// 每次注册应创建独立实例；构造出的 [EntitySkill] 会复制配置值，后续不再读取本对象。
 	public static class Properties {
 		private Identifier id;
 		private int windupTicks;
@@ -136,7 +136,7 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 
 		/// 设置技能持续阶段时长。
 		///
-		/// @param durationTicks 持续 tick 数；{@code -1} 表示无限持续
+		/// @param durationTicks 持续 tick 数；`-1` 表示无限持续
 		/// @return 当前属性对象
 		public Properties durationTicks(int durationTicks) {
 			this.durationTicks = durationTicks;
@@ -162,7 +162,7 @@ public abstract class EntitySkill<T extends LivingEntity> implements IEntitySkil
 			return this;
 		}
 
-		/// 配置技能在全部运行阶段持续停止 {@code Mob} 导航。
+		/// 配置技能在全部运行阶段持续停止 `Mob` 导航。
 		///
 		/// @return 当前属性对象
 		public Properties locksNavigation() {

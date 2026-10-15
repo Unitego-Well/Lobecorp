@@ -30,8 +30,10 @@ public abstract class ForceOverLifetimeRuntimeMixin {
 			target = "Lcom/lowdragmc/photon/client/gameobject/emitter/data/number/NumberFunction3;get(FLjava/util/function/Supplier;)Lorg/joml/Vector3f;"))
 	private Vector3f lobecorp$offsetOutput(NumberFunction3 function, float t, Supplier<Float> lerp, Operation<Vector3f> original,
 	                                       IParticle particle) {
-		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle))
+		if (!PhotonLifetimeCycleUtil.isLooping(this.config, isEnable(), particle)) {
 			return original.call(function, t, lerp);
+		}
+
 		return PhotonLifetimeCycleUtil.sampleVector(function, t, lerp, particle, 0, this.config, true,
 				Component.X, Component.Y, Component.Z);
 	}

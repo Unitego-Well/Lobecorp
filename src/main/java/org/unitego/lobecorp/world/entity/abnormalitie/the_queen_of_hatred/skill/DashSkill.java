@@ -43,13 +43,15 @@ public class DashSkill extends BlinkSkill {
 	public void onTick(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		Vec3 before = queen.position();
 		super.onTick(queen, runtime);
-		if (!(queen.level() instanceof ServerLevel level) || before.subtract(queen.position()).horizontalDistanceSqr() == 0.0)
+		if (!(queen.level() instanceof ServerLevel level) || before.subtract(queen.position()).horizontalDistanceSqr() == 0.0) {
 			return;
+		}
 		Long trailStart = runtime.getData(TRAIL_START_GAME_TIME);
-		if (trailStart == null || level.getGameTime() < trailStart)
+		if (trailStart == null || level.getGameTime() < trailStart) {
 			return;
+		}
 		Vec3 origin = before.lerp(queen.position(), 0.5).add(0.0, queen.getBbHeight() / 2.0, 0.0);
-		MagicStarProjectile star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
+		var star = new MagicStarProjectile(AbnormalitieEntityTypes.MAGIC_NORMAL_STAR.get(), level);
 		star.configure(queen, MagicStarProjectile.StarSize.MEDIUM, MagicStarProjectile.StarVariant.A, origin, Vec3.ZERO);
 		star.setStationary(TRAIL_STAR_LIFETIME_TICKS);
 		level.addFreshEntity(star);

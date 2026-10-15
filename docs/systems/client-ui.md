@@ -64,7 +64,7 @@ packed light、overlay、颜色、深度、骨骼 pivot、UV 和额外 render pa
 
 | 调试内容       | 实现                                                                                                                                            | 数据来源                                                    |
 |----------------|-------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
-| 实体状态       | [EntityStateDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/state/debug/EntityStateDebugRenderer.java)                    | EntityStateHolder 与客户端实体状态，按距离显示文本          |
+| 实体状态       | [EntityStateDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/state/debug/EntityStateDebugRenderer.java)                    | IEntityStateHolder 与客户端实体状态，按距离显示文本         |
 | 技能运行       | [EntitySkillDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/skill/debug/EntitySkillDebugRenderer.java)                    | 技能能力/当前同步运行态，用于观察技能阶段                   |
 | 技能效果       | [EntitySkillEffectDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/skill/effect/debug/EntitySkillEffectDebugRenderer.java) | Level 的客户端命中框快照中携带的 EntitySkillEffectDebugInfo |
 | 命中框几何     | [HitboxDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/hitbox/HitboxDebugRenderer.java)                                          | HITBOX_LEVEL_DATA 的客户端快照；不是客户端伤害检测          |
@@ -75,7 +75,7 @@ packed light、overlay、颜色、深度、骨骼 pivot、UV 和额外 render pa
 ## 界面与 LDLib2 约定
 
 当前版本目录锁定 Minecraft 26.1.2、NeoForge 26.1.2.100、Java 25、GeckoLib 5.5.2 与 LDLib2
-26.1.2.39，见 [依赖版本](../../gradle/libs.versions.toml)。复用依赖 API 时以 IDEA 当前解析为准，旧文档或其他模组示例不能证明本版本可用。
+26.1.2.42，见 [依赖版本](../../gradle/libs.versions.toml)。复用依赖 API 时以 IDEA 当前解析为准，旧文档或其他模组示例不能证明本版本可用。
 
 ### 现有运行入口
 
@@ -121,6 +121,8 @@ Menu-backed 交互；不要因为使用 LDLib2 就绕过服务器校验。
 新增跨帧资源或会话状态时必须提供清理入口，并核对断线、世界卸载、资源重载、实体失效及 UI 重建。偏好与设置有自己的持久化生命周期，不因为清理会话删除用户配置。
 
 ## 配置、资源与网络关系
+
+屏幕伤害效果使用独立 GUI 图层消费服务端结算通知，不参与世界粒子或伤害计算。普通效果将首次命中世界坐标每帧投影到 GUI；只有本地玩家自己造成的近战使用屏幕中心，其他玩家造成的伤害仍显示在发生位置。`IScreenParticleContent` 包装文本与纹理，`ScreenParticles` 统一管理寿命、伤害合并和实例池，`DamageParticleConfig` 为 NeoForge CLIENT 配置。实现入口、默认值、缓存失效和投影限制见[屏幕伤害粒子](screen-damage-particles.md)。
 
 | 分类           | 管理位置                                                                                                                                                                     |
 |----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

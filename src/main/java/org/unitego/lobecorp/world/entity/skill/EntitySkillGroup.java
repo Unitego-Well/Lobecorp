@@ -5,12 +5,15 @@ package org.unitego.lobecorp.world.entity.skill;
 ///
 /// @param defaultMaximumActiveSkills 实体首次获得该组时使用的同时运行上限，必须大于或等于零
 public record EntitySkillGroup(int defaultMaximumActiveSkills) {
+	/// 技能组默认同时运行上限小于零时的错误说明。
+	private static final String NEGATIVE_LIMIT_MESSAGE = "defaultMaximumActiveSkills must not be negative";
+
 	/// 创建技能组定义并校验默认上限。
 	///
 	/// @throws IllegalArgumentException 当默认上限小于零时抛出
 	public EntitySkillGroup {
 		if (defaultMaximumActiveSkills < 0) {
-			throw new IllegalArgumentException("defaultMaximumActiveSkills must not be negative");
+			throw new IllegalArgumentException(NEGATIVE_LIMIT_MESSAGE);
 		}
 	}
 }

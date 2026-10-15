@@ -20,12 +20,16 @@ public abstract class AdditionalGPUDataSettingMixin {
 	private static void lobecorp$renameDialog(Configurator configurator, Supplier<String> getName, Consumer<String> setName, CallbackInfo ci) {
 		configurator.label.addEventListener(UIEvents.DOUBLE_CLICK, event -> {
 			var editor = PhotonEditorTools.findEditor(configurator);
-			if (editor == null || !PhotonEditorSettings.of(editor).enabled("rename_dialog"))
+			if (editor == null || !PhotonEditorSettings.of(editor).enabled("rename_dialog")) {
 				return;
+			}
+
 			event.stopImmediatePropagation();
 			Dialog.stringEditorDialog("ldlib.gui.editor.menu.rename", getName.get(), null, value -> {
-				if (PhotonEditorTools.findEditor(configurator) != editor)
+				if (PhotonEditorTools.findEditor(configurator) != editor) {
 					return;
+				}
+
 				setName.accept(value.isBlank() ? "" : value.trim());
 				configurator.label.setText(getName.get(), false);
 				configurator.notifyChanges();
@@ -33,4 +37,3 @@ public abstract class AdditionalGPUDataSettingMixin {
 		}, true);
 	}
 }
-

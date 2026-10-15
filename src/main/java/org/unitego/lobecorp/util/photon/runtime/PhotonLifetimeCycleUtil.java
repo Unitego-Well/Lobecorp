@@ -23,9 +23,7 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess.Compon
 import org.unitego.lobecorp.client.photon.runtime.PhotonRotationCycleAccess;
 
 public class PhotonLifetimeCycleUtil {
-	/**
-	 * 曲线默认一个游戏秒循环一次；单位 tick，与粒子寿命独立。
-	 */
+	/// 曲线默认一个游戏秒循环一次；单位 tick，与粒子寿命独立。
 	public static final int DEFAULT_CYCLE_TICKS = 20;
 
 	public static float sample(float original, IParticle particle, float partialTicks, Object config, boolean enabled) {
@@ -33,17 +31,18 @@ public class PhotonLifetimeCycleUtil {
 				|| !(config instanceof PhotonLifetimeCycleAccess cycle) || !cycle.lobecorp$isLifetimeCycleEnabled()) {
 			return original;
 		}
+
 		int ticks = cycle.lobecorp$getLifetimeCycleTicks();
+
 		if (ticks <= 0) {
 			return original;
 		}
+
 		float age = ((PhotonParticleAgeAccess) tile).lobecorp$getRotationAge(partialTicks);
 		return phase(age, ticks);
 	}
 
-	/**
-	 * 三轴时间偏移只允许常量，单位 tick；复用 Photon 的合轴/分轴控件。
-	 */
+	/// 三轴时间偏移只允许常量，单位 tick；复用 Photon 的合轴/分轴控件。
 	@NumberFunction3Config(common = @NumberFunctionConfig(min = -Float.MAX_VALUE, max = Float.MAX_VALUE))
 	private static final Object TIME_OFFSET_CONFIG = null;
 
@@ -58,18 +57,23 @@ public class PhotonLifetimeCycleUtil {
 
 	public static float sampleUV(float original, IParticle particle, float partialTicks, Object config, boolean enabled) {
 		if (!enabled || !(config instanceof PhotonLifetimeCycleAccess cycle)
-				|| !cycle.lobecorp$isLifetimeCycleEnabled() || cycle.lobecorp$getLifetimeCycleTicks() <= 0)
+				|| !cycle.lobecorp$isLifetimeCycleEnabled() || cycle.lobecorp$getLifetimeCycleTicks() <= 0) {
 			return original;
+		}
 		PhotonParticleAgeAccess age;
+
 		if (particle instanceof TileParticle tile) {
 			age = (PhotonParticleAgeAccess) tile;
 		} else {
 			IParticleEmitter emitter = particle instanceof BeamParticle beam ? beam.getEmitter()
 					: particle instanceof AraTrailParticle trail ? trail.emitter : null;
-			if (!(emitter instanceof PhotonParticleAgeAccess emitterAge))
+
+			if (!(emitter instanceof PhotonParticleAgeAccess emitterAge)) {
 				return original;
+			}
 			age = emitterAge;
 		}
+
 		float offset = config instanceof PhotonCycleOffsetAccess offsets ? offsets.lobecorp$getCycleOffset(Component.UV) : 0;
 		return phase(age.lobecorp$getRotationAge(partialTicks) + offset, cycle.lobecorp$getLifetimeCycleTicks());
 	}
@@ -81,8 +85,9 @@ public class PhotonLifetimeCycleUtil {
 
 	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public static boolean isLooping(Object config, boolean enabled, IParticle particle) {
-		if (!enabled || !(particle instanceof TileParticle))
+		if (!enabled || !(particle instanceof TileParticle)) {
 			return false;
+		}
 		return config instanceof PhotonLifetimeCycleAccess lifetime
 				&& lifetime.lobecorp$isLifetimeCycleEnabled() && lifetime.lobecorp$getLifetimeCycleTicks() > 0
 				|| config instanceof PhotonRotationCycleAccess rotation
@@ -90,8 +95,9 @@ public class PhotonLifetimeCycleUtil {
 	}
 
 	public static float sampleComponent(float original, IParticle particle, float partialTicks, Object config, boolean enabled, Component component) {
-		if (!isLooping(config, enabled, particle) || !(config instanceof PhotonCycleOffsetAccess offsets))
+		if (!isLooping(config, enabled, particle) || !(config instanceof PhotonCycleOffsetAccess offsets)) {
 			return original;
+		}
 		int ticks = config instanceof PhotonLifetimeCycleAccess lifetime
 				? lifetime.lobecorp$getLifetimeCycleTicks() : ((PhotonRotationCycleAccess) config).lobecorp$getRotationCycleTicks();
 		return phase(((PhotonParticleAgeAccess) particle).lobecorp$getRotationAge(partialTicks)

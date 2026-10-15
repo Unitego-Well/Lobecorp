@@ -13,9 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
 
-/**
- * 复用 ParticleStorm 的关键帧分发，只消费明确标记为 Photon 的效果。
- */
+/// 复用 ParticleStorm 的关键帧分发，只消费明确标记为 Photon 的效果。
 @Mixin(GeckoLibHelper.class)
 public abstract class GeckoLibHelperMixin {
 	@WrapMethod(method = "processParticleEffect")
@@ -31,4 +29,3 @@ public abstract class GeckoLibHelperMixin {
 		Minecraft.getInstance().execute(PhotonGeoEffects::clear);
 	}
 }
-

@@ -39,10 +39,12 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 		if (entity.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
 			return false;
 		}
+
 		EntityCorpse<?> corpse = getCorpse(entity);
 		if (corpse == null) {
 			return false;
 		}
+
 		runtime.setTarget(corpse);
 		return true;
 	}
@@ -72,10 +74,12 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return;
 		}
+
 		if (corpse == null || !corpse.isAlive() || !entity.isWithinMeleeAttackRange(corpse)) {
 			EntitySkillUtil.endSkill(entity, this);
 			return;
 		}
+
 		if (!(corpse.getOwnerEntity() instanceof Sweeper corpseSweeper)) {
 			EntitySkillUtil.endSkill(entity, this);
 			return;
@@ -96,12 +100,15 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 			if (!corpse.isAlive()) {
 				EntitySkillUtil.endSkill(entity, this);
 			}
+
 			return;
 		}
+
 		if (!reviveSweeper(level, entity, corpse)) {
 			EntitySkillUtil.endSkill(entity, this);
 			return;
 		}
+
 		corpse.discard();
 		runtime.markSuccessful();
 		EntitySkillUtil.endSkill(entity, this);
@@ -111,15 +118,18 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 		if (!(corpse.createRevivedOwnerEntity() instanceof Sweeper corpseSweeper)) {
 			return false;
 		}
+
 		float reviveHealth = corpseSweeper.getMaxHealth() * REVIVE_HEALTH_RATIO;
 		if (entity.getBiomass() < reviveHealth) {
 			return false;
 		}
+
 		corpseSweeper.absSnapTo(corpse.getX(), corpse.getY(), corpse.getZ(), corpse.getYRot(), corpse.getXRot());
 		corpseSweeper.setHealth(reviveHealth);
 		if (!level.addFreshEntity(corpseSweeper)) {
 			return false;
 		}
+
 		entity.setBiomass(entity.getBiomass() - reviveHealth);
 		ConductorData data = ConductorData.get(level.getServer());
 		ConductorData.Unit reviver = data.unit(entity.getUUID());
@@ -127,6 +137,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 			data.join(corpseSweeper, reviver.team());
 			ConductorSnapshotPayload.sendAll(level.getServer(), data);
 		}
+
 		return true;
 	}
 
@@ -134,6 +145,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 		if (corpse == null) {
 			return;
 		}
+
 		double offsetX = corpse.getX() - entity.getX();
 		double offsetZ = corpse.getZ() - entity.getZ();
 		float targetYaw = (float) (Mth.atan2(offsetZ, offsetX) * Mth.RAD_TO_DEG) - 90.0F;
@@ -160,6 +172,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 			runtime.setCooldownTicks(SweeperSkills.CLEANUP_RECOVERY_TICKS);
 			EntitySkillUtil.setCooldown(entity, SweeperSkills.SWEEP.get(), SweeperSkills.CLEANUP_RECOVERY_TICKS);
 		}
+
 		if (runtime.state() != EntitySkillRuntime.SkillState.RECOVERY) {
 			entity.playActionAnimation(SweeperAnim.CLEAR3);
 		}

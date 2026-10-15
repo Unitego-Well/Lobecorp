@@ -31,8 +31,10 @@ public abstract class ServerLevelConductorMixin {
 		if (!players.contains(player) || ConductorView.position(player) == null
 				|| !(player.getChunkTrackingView() instanceof ConductorChunkTrackingView view)
 				|| !view.camera().contains(ChunkPos.containing(BlockPos.containing(x, y, z)))
-				|| !(packet instanceof ClientboundLevelParticlesPacket particles))
+				|| !(packet instanceof ClientboundLevelParticlesPacket particles)) {
 			return;
+		}
+
 		player.connection.send(new ClientboundLevelParticlesPacket(particles.getParticle(), true, particles.alwaysShow(),
 				particles.getX(), particles.getY(), particles.getZ(), particles.getXDist(), particles.getYDist(),
 				particles.getZDist(), particles.getMaxSpeed(), particles.getCount()));

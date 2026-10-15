@@ -9,9 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
 
-/**
- * 在 locator 位移与旋转均已应用的姿态处捕获 Photon 锚点。
- */
+/// 在 locator 位移与旋转均已应用的姿态处捕获 Photon 锚点。
 @Mixin(GeoLocator.class)
 public abstract class GeoLocatorMixin {
 	@Inject(method = "updatePositionListeners", at = @At(value = "INVOKE",

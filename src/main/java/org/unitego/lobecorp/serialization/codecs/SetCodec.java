@@ -8,7 +8,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.Lifecycle;
-import org.unitego.lobecorp.serialization.SetBuilder;
+import org.unitego.lobecorp.serialization.ISetBuilder;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -28,13 +28,17 @@ public record SetCodec<E>(Codec<E> elementCodec, int minSize, int maxSize) imple
 		if (input.size() < minSize) {
 			return createTooShortError(input.size());
 		}
+
 		if (input.size() > maxSize) {
 			return createTooLongError(input.size());
 		}
-		final SetBuilder<T> builder = new SetBuilder.Builder<>(ops);
+
+		final ISetBuilder<T> builder = new ISetBuilder.Builder<>(ops);
+
 		for (final E element : input) {
 			builder.add(elementCodec.encodeStart(ops, element));
 		}
+
 		return builder.build(prefix);
 	}
 
@@ -68,26 +72,31 @@ public record SetCodec<E>(Codec<E> elementCodec, int minSize, int maxSize) imple
 
 		public void accept(final T value) {
 			totalCount++;
+
 			if (elements.size() >= maxSize) {
 				failed.add(value);
 				return;
 			}
+
 			final DataResult<Pair<E, T>> elementResult = elementCodec.decode(ops, value);
-			elementResult.error().ifPresent(error -> failed.add(value));
+			elementResult.error().ifPresent(_ -> failed.add(value));
 			elementResult.resultOrPartial().ifPresent(pair -> elements.add(pair.getFirst()));
-			result = result.apply2stable((result, element) -> result, elementResult);
+			result = result.apply2stable((result, _) -> result, elementResult);
 		}
 
 		public DataResult<Pair<Set<E>, T>> build() {
 			if (elements.size() < minSize) {
 				return createTooShortError(elements.size());
 			}
+
 			final T errors = ops.createList(failed.build());
 			final Pair<Set<E>, T> pair = Pair.of(Set.copyOf(elements), errors);
+
 			if (totalCount > maxSize) {
 				result = createTooLongError(totalCount);
 			}
-			return result.map(ignored -> pair).setPartial(pair);
+
+			return result.map(_ -> pair).setPartial(pair);
 		}
 	}
 }

@@ -47,39 +47,48 @@ public abstract class ChunkMapConductorMixin {
 	@Inject(method = "updateChunkTracking", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$observeCamera(ServerPlayer player, CallbackInfo ci) {
 		Vec3 camera = ConductorView.position(player);
-		if (camera == null)
+		if (camera == null) {
 			return;
+		}
+
 		int radius = getPlayerViewDistance(player);
-		ConductorChunkTrackingView next = new ConductorChunkTrackingView(
+		var next = new ConductorChunkTrackingView(
 				new ChunkTrackingView.Positioned(player.chunkPosition(), radius),
 				new ChunkTrackingView.Positioned(ChunkPos.containing(BlockPos.containing(camera)), radius));
-		if (!next.equals(player.getChunkTrackingView()))
+		if (!next.equals(player.getChunkTrackingView())) {
 			applyChunkTrackingView(player, next);
+		}
 		ci.cancel();
 	}
 
 	@Inject(method = "applyChunkTrackingView", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$updateObservation(ServerPlayer player, ChunkTrackingView next, CallbackInfo ci) {
 		ChunkTrackingView previous = player.getChunkTrackingView();
-		if (!(next instanceof ConductorChunkTrackingView) && !(previous instanceof ConductorChunkTrackingView))
+		if (!(next instanceof ConductorChunkTrackingView) && !(previous instanceof ConductorChunkTrackingView)) {
 			return;
+		}
+
 		if (player.level() == level) {
 			ChunkPos nextCenter = next instanceof ConductorChunkTrackingView view ? view.body().center()
 					: next instanceof ChunkTrackingView.Positioned view ? view.center() : null;
 			ChunkPos previousCenter = previous instanceof ConductorChunkTrackingView view ? view.body().center()
 					: previous instanceof ChunkTrackingView.Positioned view ? view.center() : null;
-			if (nextCenter != null && !nextCenter.equals(previousCenter))
+			if (nextCenter != null && !nextCenter.equals(previousCenter)) {
 				player.connection.send(new ClientboundSetChunkCacheCenterPacket(nextCenter.x(), nextCenter.z()));
+			}
 			previous.forEach(pos -> {
-				if (!next.contains(pos))
+				if (!next.contains(pos)) {
 					dropChunk(player, pos);
+				}
 			});
 			next.forEach(pos -> {
-				if (!previous.contains(pos))
+				if (!previous.contains(pos)) {
 					markChunkPendingToSend(player, pos);
+				}
 			});
 			player.setChunkTrackingView(next);
 		}
+
 		ci.cancel();
 	}
 }

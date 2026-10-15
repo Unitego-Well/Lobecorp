@@ -24,21 +24,26 @@ public class ConductorView {
 		State previous = data.runtime.views.get(player.getUUID());
 		if (!active) {
 			data.runtime.views.remove(player.getUUID());
-			if (previous != null)
+			if (previous != null) {
 				release(player.getUUID(), previous);
+			}
 			player.level().getChunkSource().chunkMap.move(player);
 			return;
 		}
+
 		if (!player.isAlive() || !Double.isFinite(position.x) || !Double.isFinite(position.y)
 				|| !Double.isFinite(position.z) || !player.level().getWorldBorder().isWithinBounds(BlockPos.containing(position))) {
 			return;
 		}
+
 		if (previous == null || previous.level != player.level()) {
-			if (previous != null)
+			if (previous != null) {
 				release(player.getUUID(), previous);
+			}
 			previous = new State(player.level());
 			data.runtime.views.put(player.getUUID(), previous);
 		}
+
 		previous.position = position;
 		previous.updatedAt = previous.level.getGameTime();
 	}
@@ -57,23 +62,28 @@ public class ConductorView {
 			if (player == null || !valid(player, state)) {
 				iterator.remove();
 				release(entry.getKey(), state);
-				if (player != null)
+				if (player != null) {
 					player.level().getChunkSource().chunkMap.move(player);
+				}
 				continue;
 			}
+
 			int radius = Mth.clamp(player.requestedViewDistance(), 2, server.getPlayerList().getViewDistance());
 			ChunkTrackingView next = ChunkTrackingView.of(ChunkPos.containing(BlockPos.containing(state.position)), radius);
 			if (!next.equals(state.tickets)) {
 				state.tickets.forEach(pos -> {
-					if (!next.contains(pos))
+					if (!next.contains(pos)) {
 						ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), false);
+					}
 				});
 				next.forEach(pos -> {
-					if (!state.tickets.contains(pos))
+					if (!state.tickets.contains(pos)) {
 						ConductorTicketControllers.forceViewChunk(state.level, entry.getKey(), pos.x(), pos.z(), true);
+					}
 				});
 				state.tickets = next;
 			}
+
 			state.level.getChunkSource().chunkMap.move(player);
 		}
 	}

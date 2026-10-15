@@ -1,18 +1,22 @@
 # 实体动画与视觉同步
 
-> 核对日期：2026-10-05。本文按 IDEA 读取的迁移前源码说明实际实现，不代表游戏运行验收。
+> 初次核对：2026-10-05。基线按 IDEA 读取的迁移前源码说明；2026-10-10 飞扑更新见对应段落，均不代表游戏运行验收。
 > 包迁移按[已批准方案](../java-package-organization-plan.md)完成，链接已按实际源码路径核对；结果见[修改记录](changes.md)。
 
 ## 真实接口与职责边界
 
-当前系统在 GeckoLib 原生 `AnimationController` 上增加过渡、遮罩和姿态混合能力。没有要求使用名为 `LcAnimationController`
+玩家第一／第三人称使用同一服务端播放快照与 GeckoLib 原生求值，并接入原版动作来源。第三人称保留皮肤外层和原版盔甲，第一人称只提交独立玩家模型的双臂／袖层及随手物品。覆盖／混合、代码策略、淡入淡出及第一人称边界见[玩家动画](player-animation.md)。
+
+既有视觉控制器系统在 GeckoLib 原生 `AnimationController` 上增加过渡、遮罩和姿态混合能力。没有要求使用名为 `LcAnimationController`
 的替代控制器；新增代码应以当前接口和 IDEA 解析为准。
 
-动画表现不决定服务端技能时序或伤害。持续实体事实来自同步数据，技能动作来自技能生命周期回调，设置载荷只传递动画过渡配置。相关服务端机制见[实体与 AI](entities-ai.md)、[实体技能](entity-skills.md)。
+既有视觉控制器的动画表现不决定服务端技能时序或伤害。持续实体事实来自同步数据，技能动作来自技能生命周期回调，设置载荷只传递动画过渡配置。相关服务端机制见[实体与 AI](entities-ai.md)、[实体技能](entity-skills.md)。
+
+新的显式服务端运行态从完整模型／动画内容及代码包装采样，只有声明根运动、空间附着或回调时才产生对应实际行为；客户端资源覆盖仅改变视觉。它提供基础 API 与适配，未迁移既有技能，资源路径、内容版本和生命周期见[服务端动画、根运动与空间附着](animation-runtime.md)。
 
 | 职责                 | 核对入口                                                                                                                                                                                                                                             |
 |----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 播放、停止和设置     | [LcCustomAnimatable](../../src/main/java/org/unitego/lobecorp/animation/LcCustomAnimatable.java)                                                                                                                                                     |
+| 播放、停止和设置     | [ILcCustomAnimatable](../../src/main/java/org/unitego/lobecorp/animation/ILcCustomAnimatable.java)                                                                                                                                                   |
 | 原生控制器构造       | [LcAnimationControllerBuilder](../../src/main/java/org/unitego/lobecorp/animation/LcAnimationControllerBuilder.java)                                                                                                                                 |
 | 遮罩能力             | [LcAnimationControllerMask](../../src/main/java/org/unitego/lobecorp/animation/LcAnimationControllerMask.java)                                                                                                                                       |
 | 过渡能力与参数       | [LcAnimationControllerTransitions](../../src/main/java/org/unitego/lobecorp/animation/LcAnimationControllerTransitions.java)、[LcAnimationTransitionSettings](../../src/main/java/org/unitego/lobecorp/animation/LcAnimationTransitionSettings.java) |
@@ -21,7 +25,7 @@
 | Mixin 接入           | [AnimationControllerMaskMixin](../../src/main/java/org/unitego/lobecorp/mixin/geckolib/AnimationControllerMaskMixin.java)、[RenderPassInfoMixin](../../src/main/java/org/unitego/lobecorp/mixin/geckolib/client/RenderPassInfoMixin.java)            |
 | 过渡设置同步         | [LcCustomAnimationSettingsSyncPayload](../../src/main/java/org/unitego/lobecorp/network/tc/LcCustomAnimationSettingsSyncPayload.java)                                                                                                                |
 
-`LcCustomAnimatable` 继承 GeoEntity，播放和停止复用 `triggerAnim`、`stopTriggeredAnim`
+`ILcCustomAnimatable` 继承 GeoEntity，播放和停止复用 `triggerAnim`、`stopTriggeredAnim`
 。包含设置的版本先应用或同步设置，再调用原生触发接口。客户端通过实体动画管理器查找控制器并应用设置；服务端只向跟踪玩家发送设置载荷。
 
 ## 动画层、遮罩与过渡
@@ -36,22 +40,27 @@ Mixin 的其他依赖版本控制器。
 - 控制器进入和退出时的权重，决定该层对整体姿态的影响。
 - 当前动画与新动画之间的姿态权重，决定同一层内部如何切换。
 
-`OVERLAP` 支持交叠混合，`SEQUENTIAL` 按退出再进入处理。旋转模式包括普通插值与 `SHORTEST_PATH`
-；后者通过四元数路径处理旋转，不应简单线性相加角度。设置记录集中描述进入/退出时间、过渡模式、旋转模式与混合类型。
+`OVERLAP` 支持交叠混合，`SEQUENTIAL` 按退出再进入处理。`NORMAL` 保留资源 Euler 数值路径及完整圈数；`SHORTEST_PATH` 首次选择最短四元数路径，后续采样保持与上一旋转向量临近的等价分支，避免移动目标跨 180° 时重新选路。设置记录集中描述进入/退出时间、过渡模式、旋转模式与混合类型。
+
+连续分支计算集中在 [LcRotationTransitionUtil](../../src/main/java/org/unitego/lobecorp/util/animation/LcRotationTransitionUtil.java)。源姿态和目标姿态仍取当前帧；多轴整圈奇点无法延续同一旋转向量分支时，以局部最短增量重建有界修正，并随权重向 0／1 衰减，端点仍精确返回当前源／目标。只有 `SHORTEST_PATH` 输出选择临近的等价 Euler 表示，防止后续普通层或冻结姿态再次读到表示分支跳变；不改写 `NORMAL` 输入。
+
+每个骨骼只保存固定数量的旋转状态，不积累轨迹列表。相邻采样相对转动超过半圈时，单凭四元数无法推断中间圈数；资源要求的完整转圈应继续使用其 Euler 路径。数学回归入口为 [LcRotationTransitionRegression](../../src/test/java/org/unitego/lobecorp/util/animation/LcRotationTransitionRegression.java)，本轮编译、Data 与回归执行结果以[修改记录](changes.md)为准，本文不把代码落盘当作运行通过。
 
 姿态提取处理位置、旋转和缩放通道，结合骨骼遮罩；覆盖模式还会处理受影响的默认通道。更改模式前必须核对骨骼默认姿态、父子关系和前层作用范围，不能仅根据动画名称推断效果。
 
 ## 渲染执行链与缓存清理
 
-`RenderPassInfoMixin` 只在动画对象实现 `LcCustomAnimatable` 时接入自定义集成，其余对象保留原路径。
+`RenderPassInfoMixin` 在 GeoEntityRenderer 存在显式服务端动画帧时优先接入 `LcAnimationBoneAdapter`，应用权威／本地视觉覆盖后的姿态。没有此运行态时，动画对象实现 `ILcCustomAnimatable` 才接入下述既有视觉控制器集成，其余对象保留原路径；服务器完整模型的渲染器需显式使用 `LcServerGeoModel`，详见[新运行态](animation-runtime.md#内容同步与客户端视觉覆盖)。
 
 1. 从渲染状态取得动画管理器，使用管理器 DataTicket 保存本对象的运行容器。
 2. 依据渲染年龄和控制器状态更新进入、退出与动画切换权重。
 3. 提取、缓存并混合控制器姿态，再将结果应用到骨骼。
 4. 控制器停止但权重未归零时继续完成退出；归零后重置运行数据。
-5. 重置清除上一姿态、待切换姿态、权重和触发修订状态，并恢复相关暂停状态。
+5. 重置清除上一姿态、待切换姿态、权重、触发修订及旋转分支状态，并恢复相关暂停状态。
 
 触发修订用于识别同一动画再次触发。缓存属于具体动画管理器和控制器，不是实体服务端技能数据；替换控制器、移除实体或切换资源时，需核对缓存所属对象及依赖本身的销毁行为。
+
+同一控制器的动画切换与层权重各自保存按骨骼隔离的旋转历史。每个渲染年龄冻结上一帧状态，同一时刻重复渲染从同一份旧状态纯计算，不额外推进分支。新动画或触发修订、新权重阶段、模式／叠加方式变化、时间倒退及重置会清理对应历史；动画内部切换结束清理其独立历史，层权重历史仍用于后续移动目标与静态部分权重。
 
 ## 女皇与清道夫实例
 
@@ -65,9 +74,24 @@ tick 重播来维持当前动作。
 
 清道夫的 `playActionAnimation` 和 `stopActionAnimation` 有客户端守卫，技能同步后的客户端生命周期回调调用表现。女皇同名入口没有该守卫，直接复用
 GeckoLib 触发接口；运行回调会在服务端及同步客户端执行。两者不能概括为同一种触发路径。女皇与 GeckoLib
-触发同步的交互和去重尚需核对，不应再叠加独立生命周期广播。清道夫清理动作与其他动作还选择不同过渡模式，修改前保留该差异。
+触发同步的交互和去重尚需核对，不应再叠加独立生命周期广播。清道夫清理与飞扑动作采用 OVERLAP，其他攻击动作仍采用 SEQUENTIAL。
 
 当前移动层源码直接读取 `walkAnimation.speed()` 参与倍率计算。项目规范要求动态倍率使用渲染部分刻插值并保留速度判定与迟滞；本文不据此宣称现有路径已完成该优化，相关插值效果尚未验收。
+
+### 清道夫飞扑三阶段
+
+2026-10-10 按已确认的 5 tick 前摇与低弧猛扑方案调整，仅复用既有技能生命周期同步：
+
+- `WINDUP_START` 触发 `LEAP`：原蓄力段压到 0.25 秒，结束时保持下蹲，与 5 tick 前摇对齐。
+- `ACTIVATE` 触发 `LEAP_FLIGHT`：0.2 秒内从下蹲过渡到腾空姿态，随后保持；这段资源长度不决定实际飞行时间。
+- 原版碰撞确认实际落地后，`END` 触发 `LEAP2` 衔接落地动作。取消仍停止动作动画，不依赖动画回调结算落地伤害。
+
+三个飞扑动作使用 `OVERLAP`，使新时间线在姿态过渡期间继续推进；其他攻击动作的过渡方式保留。
+[SweeperRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/ordeal/indigo/renderer/SweeperRenderer.java) 保留普通头部转向；2026-10-11 按用户要求移除飞扑专属的 root 俯仰、动作权重过渡和头骨俯仰补偿，飞扑姿态由上述三阶段动作资源表现。前摇／后摇包含在 `LEAP` 实体状态中，因此不能单凭该状态判断腾空。没有新增表现状态或网络通道。
+
+已确认的源码原因：旧 `leap` 长 1 秒，下蹲／起身关键段在约 0.5／0.75 秒，与 0.25 秒前摇不匹配；资源中 6.1 像素的 root 上移也会叠加真实实体位移。现已拆分动作并去掉腾空保持和落地开头的虚假上移。维护时应分别核对技能边沿、动画时间线和碰撞落地，不能用固定资源时间代替实际落地。
+
+本次仅修改 [运行资产](../../src/main/resources/assets/lobecorp/geckolib/animations/entity/sweeper_a.animation.json) 的飞扑段；`resources/entity/sweeper` 下的源素材及 `.bbmodel` 保留。后续从旧素材重导出时，必须同步保留 `leap`、`leap_flight`、`leap2` 分段与新时序，避免覆盖运行资产。本次编译、Data 和编辑器结果见[修改记录](changes.md)；未进行游戏视觉验收。
 
 ## 状态、设置与粒子的同步分工
 
@@ -99,7 +123,7 @@ ticket 选择纹理；清道夫模型保留当前变体映射和尸体处理。
 控制器触发名称、动画枚举、资源动画名称、骨骼名、定位器和粒子资源引用需要一起检查。存在 A/B/C/D
 等变体不代表每个变体都有独立模型或动画；当前模型映射以源码为准。
 
-本轮只核对资源入口及源码引用，没有格式化或编辑 JSON，也没有逐条核对资源内动画长度、触发名称和定位器。生成输出保持只读，资源生成问题应修改生成源。
+2026-10-05 的初次核对只检查资源入口及源码引用，没有格式化或编辑 JSON，也没有逐条核对资源内动画长度、触发名称和定位器。生成输出保持只读，资源生成问题应修改生成源。
 
 ## 修改前核对与尚未验收
 
@@ -109,5 +133,5 @@ ticket 选择纹理；清道夫模型保留当前变体映射和尸体处理。
 
 核对动画层顺序、遮罩骨骼、默认姿态、暂停标记、重触发、移动倍率、服务端权威、晚加入同步，以及完成、取消、卸载后的姿态与粒子清理。不要改变技能前摇、后摇或碰撞时间来补偿纯视觉过渡。
 
-本轮核对了表列接口、姿态集成、Mixin、实体层配置、模型及同步入口。未做多人时序、资源重载、实体移除后的依赖缓存、全部资源名称匹配或游戏视觉验收；没有执行编译、Data
+2026-10-05 的初次核对检查了表列接口、姿态集成、Mixin、实体层配置、模型及同步入口。未做多人时序、资源重载、实体移除后的依赖缓存、全部资源名称匹配或游戏视觉验收；当时没有执行编译、Data
 或运行游戏。维护记录见[系统维护记录](changes.md)。

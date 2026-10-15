@@ -35,6 +35,7 @@ public record PhotonNoisePreviewState(Matrix3x2fc pose, float x, float y, float 
 	public void buildVertices(VertexConsumer consumer) {
 		for (int row = 0; row < rows; row++) {
 			float top = y + row * cellHeight, bottom = top + cellHeight;
+
 			for (int column = 0; column < columns; column++) {
 				int color = ColorUtils.mulColor(colors[row * columns + column], tint);
 				float left = x + column, right = left + 1;

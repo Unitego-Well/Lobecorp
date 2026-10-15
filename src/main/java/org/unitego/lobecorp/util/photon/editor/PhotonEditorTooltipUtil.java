@@ -1,24 +1,27 @@
 package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.event.HoverTooltips;
+import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
+import com.lowdragmc.lowdraglib2.gui.ui.event.UIEventListener;
+import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
 import org.unitego.lobecorp.util.TranslationKeys;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
-/**
- * 扩展选项的悬浮说明，复用 LDLib2 原生配置行提示图标。
- */
+/// 扩展选项的悬浮说明，复用 LDLib2 原生配置行提示图标。
 public class PhotonEditorTooltipUtil {
-	/**
-	 * 配置标签对应的悬浮说明翻译后缀。
-	 */
+	/// 配置标签对应的悬浮说明翻译后缀。
 	public static final String TOOLTIP_SUFFIX = ".tooltip";
-	/**
-	 * 仅记录本项目扩展控件；不改变原生配置行的说明。
-	 */
+	/// 仅记录本项目扩展控件；不改变原生配置行的说明。
 	private static final Map<String, Tip> TIPS = createTips();
 
 	public static boolean hasTooltip(String name) {
@@ -30,8 +33,45 @@ public class PhotonEditorTooltipUtil {
 			return;
 		}
 
-		configurator.tip.getStyle().tooltips(name + TOOLTIP_SUFFIX);
+		tips(configurator, name + TOOLTIP_SUFFIX);
+	}
+
+	/// 配置说明仅放在原生帮助图标，保留输入控件自己的校验提示。
+	public static <T extends Configurator> T tips(T configurator, String name) {
+		var message = Component.translatable(name);
+		configurator.tip.getStyle().tooltips(message);
 		configurator.tip.setDisplay(true);
+		wrap(configurator.tip, message);
+		return configurator;
+	}
+
+	/// 普通控件使用自身提示；配置行统一转到帮助图标。
+	public static void tooltip(UIElement element, String name) {
+		if (element instanceof Configurator configurator) {
+			tips(configurator, name);
+			return;
+		}
+
+		var message = Component.translatable(name);
+		element.getStyle().tooltips(message);
+		wrap(element, message);
+	}
+
+	/// 悬浮时复用原生提示换行与语言缓存，避免提前读取客户端字体。
+	public static void wrap(UIElement element, Component message) {
+		wrap(element, () -> message);
+	}
+
+	/// 提示内容变化时更新原生缓存；语言变化继续由原生提示处理。
+	public static void wrap(UIElement element, Supplier<Component> messageSupplier) {
+		for (var listener : element.getBubbleListeners(UIEvents.HOVER_TOOLTIPS)) {
+			if (listener instanceof WrappedTooltip wrapped) {
+				wrapped.messageSupplier = messageSupplier;
+				return;
+			}
+		}
+
+		element.addEventListener(UIEvents.HOVER_TOOLTIPS, new WrappedTooltip(messageSupplier));
 	}
 
 	public static void register() {
@@ -46,11 +86,20 @@ public class PhotonEditorTooltipUtil {
 		addParameterTips(tips);
 		addEditorTips(tips);
 		addCycleTips(tips);
+		addOcclusionTips(tips);
 		addShortcutTips(tips);
 		return Map.copyOf(tips);
 	}
 
 	private static void addFeatureTips(Map<String, Tip> tips) {
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.HOVER_STYLE_DELTA_FEATURE), new Tip("Reduce style refresh work while hovering over editor controls.", "减少悬浮编辑器控件时的样式刷新开销。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.SCALE_LINK_FEATURE), new Tip("Link scale XYZ keys and same-direction handles at matching times using the same delta; preserve axis differences. Missing keys are not added during dragging.", "按同一时间的已有关键帧联动缩放 XYZ 与同向手柄，使用相同增量并保留轴间差异；拖动时不自动补齐缺失关键帧。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.CURVE_EASING_FEATURE), new Tip("Choose a native curve easing preset when adding an animated property; the new curve and preset share one undo step.", "添加动画属性时选择原生曲线缓动预设；新增曲线与缓动共用一次撤销。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.BATCH_EASING_FEATURE), new Tip("Apply an easing preset to marquee-selected keyframes using one undo step; unselected keyframe positions remain unchanged.", "对框选关键帧批量应用缓动预设，可一次撤销；未选中关键帧的位置保持不变。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.COMPACT_TITLE_FEATURE), new Tip("Photon window tabs show the original project type, file name and extension. Disable to restore native full-path titles.", "Photon 窗口标签保留原项目类型，仅显示文件名和后缀；关闭恢复原完整路径标题。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.TITLE_CONFLICT_FEATURE), new Tip("Show complete paths when tabs in the same editor have matching project types and file names.", "同一编辑器内，类型和文件名相同的标签显示完整路径。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.TITLE_PATH_TOOLTIP_FEATURE), new Tip("Hover over a Photon window tab to see its complete file path, even when the title is compact.", "悬浮 Photon 窗口标签显示完整文件路径，即使标题已缩短也可查看。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.TEST_FEATURE), new Tip("Show Tools > Tests. Checks use isolated objects and leave the open effect unchanged.", "显示“工具 > 测试”；检查使用隔离对象，不修改当前特效。"));
 		tips.put(PhotonEditorTextUtil.key("feature.precise"), new Tip("Edit selected keyframe time and value precisely; locked or overlapping keys are rejected.", "精确修改选中关键帧的时间和值；锁定或时间冲突的关键帧不会修改。"));
 		tips.put(PhotonEditorTextUtil.key("feature.time_scale"), new Tip("Scale selected keyframe times around the earliest selected time.", "以最早选中时间为基准缩放选中关键帧的时间。"));
 		tips.put(PhotonEditorTextUtil.key("feature.batch_move"), new Tip("Move selected keys across tracks with time and value offsets.", "跨轨道移动选中关键帧，可指定时间增量和数值增量。"));
@@ -74,8 +123,9 @@ public class PhotonEditorTooltipUtil {
 		tips.put(PhotonEditorTextUtil.key("feature.force_cycle"), new Tip("Show force cycle controls; saved runtime settings remain active when hidden.", "显示受力循环控件；关闭仅隐藏控件，已保存的循环继续生效。"));
 		tips.put(PhotonEditorTextUtil.key("feature.uv_cycle"), new Tip("Show UV cycle controls; saved runtime settings remain active when hidden.", "显示 UV 循环控件；关闭仅隐藏控件，已保存的循环继续生效。"));
 		tips.put(PhotonEditorTextUtil.key("feature.time_offset"), new Tip("Show cycle time offset controls; offsets change sampling time rather than values.", "显示循环时间偏移控件；偏移改变采样时间，不给属性值增加数值。"));
+		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEditorTextUtil.OCCLUSION_FEATURE), new Tip("Show optional opaque-pixel occlusion controls. Hiding them preserves saved emitter settings and their runtime behavior.", "显示可选的不透明像素遮挡控件；隐藏不修改发射器已保存的设置和运行行为。"));
 		tips.put(PhotonEditorTextUtil.key("feature.depth_sort"), new Tip("Show view-depth sorting controls; hiding does not change saved sorting.", "显示视线深度排序控件；隐藏不改变已保存的排序设置。"));
-		tips.put(PhotonEditorTextUtil.key("feature.control"), new Tip("Show start and end lifecycle options on activator tracks; control tracks retain native behavior.", "显示激活轨道开始和结束行为；控制轨道保留原逻辑。"));
+		tips.put(PhotonEditorTextUtil.key("feature.control"), new Tip("Show activator start and end options. Enabling only one boundary makes it a one-time event at that boundary.", "显示激活轨道开始和结束选项；仅开启一端时，在对应边界执行一次。"));
 		tips.put(PhotonEditorTextUtil.key("feature.system_clipboard"), new Tip("Use the system clipboard for supported editor data and text; arbitrary JSON is not converted to effects.", "对支持的编辑器数据和文本使用系统剪切板；普通 JSON 不自动转成特效。"));
 		tips.put(PhotonEditorTextUtil.key("feature.rename_dialog"), new Tip("Use native rename dialogs while retaining uniqueness, validation and history.", "使用原生重命名小窗口，保留名称校验、唯一性和操作历史。"));
 		tips.put(PhotonEditorTextUtil.key("feature." + PhotonEmitterSpawnerTextUtil.FEATURE), new Tip("Show emitter spawner controls; hiding them does not stop saved effects.", "显示发射器发射器控件；隐藏不会停止已保存的特效。"));
@@ -142,8 +192,8 @@ public class PhotonEditorTooltipUtil {
 		tips.put(PhotonEditorTextUtil.key("preview_start"), new Tip("Start of the local preview range in ticks.", "局部预览区间的起点，单位 tick。"));
 		tips.put(PhotonEditorTextUtil.key("preview_end"), new Tip("End of the local preview range in ticks; must be after its start.", "局部预览区间的终点，单位 tick，必须晚于起点。"));
 		tips.put(PhotonEditorTextUtil.key("preview_loop"), new Tip("Repeat only the specified preview range.", "仅在指定预览区间内反复播放。"));
-		tips.put(PhotonEditorTextUtil.key("control.start"), new Tip("Apply the start behavior when an activator clip is entered; disable to leave entry unchanged.", "进入激活片段时执行开始行为；关闭后不处理开始边界。"));
-		tips.put(PhotonEditorTextUtil.key("control.end"), new Tip("Apply the end behavior when an activator clip is exited; disable to leave exit unchanged.", "离开激活片段时执行结束行为；关闭后不处理结束边界。"));
+		tips.put(PhotonEditorTextUtil.key("control.start"), new Tip("Apply the start behavior at the clip start. With end control disabled, execute it once and keep its result; with both enabled, control the clip interval.", "在片段起点执行开始行为；仅开启开始时执行一次并保持结果，同时开启结束时按片段区间控制。"));
+		tips.put(PhotonEditorTextUtil.key("control.end"), new Tip("Apply the end behavior at the clip end. With start control disabled, execute it once; with both enabled, control the clip interval.", "在片段终点执行结束行为；仅开启结束时执行一次，同时开启开始时按片段区间控制。"));
 		tips.put(PhotonEditorTextUtil.key("control.start_behavior"), new Tip("Restart resets the subtree; continue preserves its current running state.", "重启重置子树运行状态；继续保留当前运行状态。"));
 		tips.put(PhotonEditorTextUtil.key("control.end_behavior"), new Tip("Original hides and stops updates; stop emission keeps particles updating; clear removes existing particles.", "原行为隐藏并停止更新；仅停止生成保留已有粒子更新；清理移除已有粒子。"));
 		tips.put(PhotonEditorTextUtil.key("control.clear_on_restart"), new Tip("Clear existing particles when restarting; disabled keeps them while resetting emission time.", "重新启动时清理已有粒子；关闭后保留已有粒子，但仍重置发射计时。"));
@@ -169,6 +219,7 @@ public class PhotonEditorTooltipUtil {
 		tips.put(TranslationKeys.PHOTON_ROTATION_CYCLE_TICKS_KEY, ticks);
 		var offset = new Tip("Sampling time offset in ticks, including negatives. Positive advances the phase; values are not shifted.",
 				"采样时间偏移，单位 tick，可为负；正数提前相位，不是属性值增量。");
+
 		for (var key : new String[]{
 				TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_AXES_KEY, TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ROTATION_KEY,
 				TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_LINEAR_KEY, TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ORBITAL_KEY,
@@ -184,18 +235,52 @@ public class PhotonEditorTooltipUtil {
 				TranslationKeys.PHOTON_CYCLE_OFFSET_BLUE_KEY, TranslationKeys.PHOTON_CYCLE_OFFSET_ALPHA_KEY}) {
 			tips.put(key, offset);
 		}
+
 		tips.put(TranslationKeys.PHOTON_VIEW_DEPTH_SORT_KEY, new Tip(
 				"Sort enabled emitters with the same Order by view depth. Enable on all overlapping emitters; intersecting geometry remains unresolved.",
 				"相同 Order 下按视线深度排序；需在互相叠加的发射器上同时开启，无法解决面片相交。"));
 	}
 
+	private static void addOcclusionTips(Map<String, Tip> tips) {
+		tips.put(TranslationKeys.PHOTON_OCCLUSION_KEY, new Tip(
+				"Prewrite occlusion depth for sufficiently opaque pixels of supported native materials, then retain Photon color rendering. Transparent pixels keep native blending. Disabled uses the original render path.",
+				"为支持的原生材质中足够不透明的像素预写遮挡深度，再沿用 Photon 绘制颜色；透明像素保留原混合，关闭后沿原渲染路径处理。"));
+		tips.put(TranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_KEY, new Tip(
+				"Only pixels whose effective alpha is at or above this threshold write occlusion depth. Range zero to one; texture and particle fades still contribute to alpha.",
+				"仅有效 Alpha 达到此阈值的像素写入遮挡深度；范围 0 到 1，纹理透明度和粒子淡出仍参与判定。"));
+	}
+
 	private static void addShortcutTips(Map<String, Tip> tips) {
 		var tip = new Tip("Use CTRL/SHIFT/ALT + key; empty disables this action. Conflicting and reserved bindings are rejected.",
 				"使用 CTRL/SHIFT/ALT + 按键；留空禁用此动作。冲突及保留绑定会被拒绝。");
+
 		for (var action : new String[]{"fit_selected", "fit_all", "step_back", "step_forward",
 				"step_back_large", "step_forward_large", "duplicate", "move", "scale", "range_in",
 				"range_out", "range_loop", "solo", "cancel"}) {
 			tips.put(PhotonEditorTextUtil.key("action." + action), tip);
+		}
+	}
+
+	/// 监听器归控件所有，重复注册只替换消息来源，不持有静态窗口引用。
+	private static class WrappedTooltip implements UIEventListener {
+		private Supplier<Component> messageSupplier;
+		private Component message;
+		private Tooltip tooltip;
+
+		private WrappedTooltip(Supplier<Component> messageSupplier) {
+			this.messageSupplier = messageSupplier;
+		}
+
+		@Override
+		public void handleEvent(UIEvent event) {
+			var currentMessage = messageSupplier.get();
+
+			if (tooltip == null || !currentMessage.equals(message)) {
+				message = currentMessage;
+				tooltip = Tooltip.create(currentMessage);
+			}
+
+			event.hoverTooltips = HoverTooltips.create(tooltip.toCharSequence(Minecraft.getInstance()).toArray());
 		}
 	}
 

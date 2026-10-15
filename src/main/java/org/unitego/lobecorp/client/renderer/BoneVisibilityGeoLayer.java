@@ -41,7 +41,8 @@ public class BoneVisibilityGeoLayer<T extends GeoAnimatable, O, R extends GeoRen
 		if (!renderPassInfo.willRender()) {
 			return;
 		}
-		renderPassInfo.addBoneUpdater((ignoredRenderPass, snapshots) -> visibilityRules.forEach((boneName, isVisible) ->
+
+		renderPassInfo.addBoneUpdater((_, snapshots) -> visibilityRules.forEach((boneName, isVisible) ->
 				snapshots.get(boneName).ifPresent(snapshot ->
 						snapshot.skipRender(!isVisible.test(renderPassInfo.renderState())))));
 	}

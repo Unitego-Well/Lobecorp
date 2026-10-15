@@ -53,8 +53,9 @@ public class TeleportSkill extends EntitySkill<TheQueenOfHatred> {
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		Vec3 destination = runtime.targetPosition();
-		if (!(queen.level() instanceof ServerLevel) || destination == null || !isSafeDestination(queen, destination))
+		if (!(queen.level() instanceof ServerLevel) || destination == null || !isSafeDestination(queen, destination)) {
 			return;
+		}
 		queen.getNavigation().stop();
 		queen.setDeltaMovement(Vec3.ZERO);
 		queen.teleportTo(destination.x, destination.y, destination.z);

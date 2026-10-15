@@ -50,11 +50,13 @@ public abstract class RotationOverLifetimeRuntimeMixin {
 		if (!isEnable() || !(particle instanceof TileParticle tile)) {
 			return original;
 		}
+
 		PhotonRotationCycleAccess cycle = (PhotonRotationCycleAccess) this.config;
 		int ticks = cycle.lobecorp$getRotationCycleTicks();
 		if (!cycle.lobecorp$isRotationCycleEnabled() || ticks <= 0) {
 			return original;
 		}
+
 		float age = ((PhotonParticleAgeAccess) tile).lobecorp$getRotationAge(partialTicks);
 		return PhotonLifetimeCycleUtil.phase(age, ticks);
 	}
@@ -64,11 +66,13 @@ public abstract class RotationOverLifetimeRuntimeMixin {
 		if (!isEnable() || !(particle instanceof TileParticle tile)) {
 			return original;
 		}
+
 		PhotonRotationCycleAccess cycle = (PhotonRotationCycleAccess) this.config;
 		int ticks = cycle.lobecorp$getRotationCycleTicks();
 		if (!cycle.lobecorp$isRotationCycleEnabled() || ticks <= 0) {
 			return original;
 		}
+
 		float age = ((PhotonParticleAgeAccess) tile).lobecorp$getRotationAge(partialTicks);
 		PhotonCycleOffsetAccess offsets = (PhotonCycleOffsetAccess) this.config;
 		// 每个轴按偏移后的时间累计整轮增量，保持跨周期旋转连续。

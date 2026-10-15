@@ -19,6 +19,7 @@ public class LcSpawnEggItem extends SpawnEggItem {
 		if (type == null) {
 			type = supplierType.get();
 		}
+
 		return type;
 	}
 }

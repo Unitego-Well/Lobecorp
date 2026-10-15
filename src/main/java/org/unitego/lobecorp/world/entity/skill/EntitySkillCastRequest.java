@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 /// 一次实体技能施放请求。
 ///
 /// 请求只描述本次施放的目标，不保存实体技能运行状态；运行状态由
-/// {@link EntitySkillRuntime} 创建后交给技能管理器维护。
+/// [EntitySkillRuntime] 创建后交给技能管理器维护。
 public record EntitySkillCastRequest<T extends LivingEntity>(
 		IEntitySkill<T> skill,
 		@Nullable Entity target,

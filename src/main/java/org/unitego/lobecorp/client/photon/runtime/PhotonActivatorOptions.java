@@ -4,18 +4,28 @@ import net.minecraft.nbt.CompoundTag;
 
 public record PhotonActivatorOptions(boolean startControl, StartBehavior startBehavior, boolean endControl,
                                      EndBehavior endBehavior, boolean clearOnRestart) {
-	/**
-	 * 激活轨道默认进入时重启并清理粒子、离开时停止更新并隐藏。
-	 */
+	/// 激活轨道默认进入时重启并清理粒子、离开时停止更新并隐藏。
 	public static final PhotonActivatorOptions DEFAULT = new PhotonActivatorOptions(true, StartBehavior.RESTART, true, EndBehavior.ORIGINAL, true);
-	/**
-	 * 激活轨道的扩展数据协议键。
-	 */
+	/// 激活轨道的扩展数据协议键。
 	public static final String TAG = "lobecorpActivation";
 
 	public enum StartBehavior {RESTART, CONTINUE}
 
 	public enum EndBehavior {ORIGINAL, STOP_EMISSION, CLEAR}
+
+	/// 旧单帧配置转换为只控制开始；新的数据只保存两端控制开关。
+	public PhotonActivatorOptions(boolean startControl, StartBehavior startBehavior, boolean endControl,
+	                              EndBehavior endBehavior, boolean clearOnRestart, boolean singleFrame) {
+		this(singleFrame || startControl, startBehavior, !singleFrame && endControl, endBehavior, clearOnRestart);
+	}
+
+	public boolean pointControl() {
+		return startControl != endControl;
+	}
+
+	public boolean intervalControl() {
+		return startControl && endControl;
+	}
 
 	public CompoundTag write() {
 		var tag = new CompoundTag();
@@ -32,7 +42,8 @@ public record PhotonActivatorOptions(boolean startControl, StartBehavior startBe
 				readEnum(StartBehavior.class, tag.getStringOr("startBehavior", ""), DEFAULT.startBehavior),
 				tag.getBooleanOr("endControl", DEFAULT.endControl),
 				readEnum(EndBehavior.class, tag.getStringOr("endBehavior", ""), DEFAULT.endBehavior),
-				tag.getBooleanOr("clearOnRestart", DEFAULT.clearOnRestart));
+				tag.getBooleanOr("clearOnRestart", DEFAULT.clearOnRestart),
+				tag.getBooleanOr("singleFrame", false));
 	}
 
 	private static <T extends Enum<T>> T readEnum(Class<T> type, String name, T fallback) {

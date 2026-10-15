@@ -27,16 +27,20 @@ public interface LcMobEffects {
 	DeferredHolder<MobEffect, StunMobEffect> STUN = register("stun", "Stun", "眩晕", MobEffectCategory.HARMFUL, 0xFFFFFF,
 			StunMobEffect::new, s -> s
 					.addAttributeModifier(Attributes.MOVEMENT_SPEED, Lobecorp.id("effect.stun_movement_speed"),
-							Operation.ADD_MULTIPLIED_TOTAL, amplifier -> Math.max(-1.0, -0.5 * (amplifier + 1))));
+							Operation.ADD_MULTIPLIED_TOTAL, amplifier -> Math.max(-1.0, -0.5 * (amplifier + 1)))
+					.addAttributeModifier(Attributes.ATTACK_SPEED, Lobecorp.id("effect.stun_attack_speed"),
+							Operation.ADD_MULTIPLIED_TOTAL, StunMobEffect::speedModifier)
+					.addAttributeModifier(LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED, Lobecorp.id("effect.stun_cooldown_speed"),
+							Operation.ADD_MULTIPLIED_TOTAL, StunMobEffect::speedModifier));
 
 	DeferredHolder<MobEffect, BasicMobEffect> HATRED_MARK = register("hatred_mark", "Hatred Mark", "憎恶标记", MobEffectCategory.HARMFUL, 0xFF69B4, effect -> effect
 			.addAttributeModifier(LcAttributes.DAMAGE_TAKEN_MULTIPLIER, Lobecorp.id("effect.hatred_mark_damage_taken"),
-					Operation.ADD_MULTIPLIED_TOTAL, amplifier -> MARK_DAMAGE_MULTIPLIER));
+					Operation.ADD_MULTIPLIED_TOTAL, _ -> MARK_DAMAGE_MULTIPLIER));
 
 	DeferredHolder<MobEffect, BasicMobEffect> QUEEN_DAMAGE_REDUCTION = register("queen_damage_reduction", "Damage Reduction", "减伤",
 			MobEffectCategory.BENEFICIAL, 0xFF69B4, effect -> effect
 					.addAttributeModifier(LcAttributes.DAMAGE_TAKEN_MULTIPLIER, Lobecorp.id("effect.queen_damage_reduction"),
-							Operation.ADD_MULTIPLIED_TOTAL, amplifier -> REDUCTION_DAMAGE_MULTIPLIER));
+							Operation.ADD_MULTIPLIED_TOTAL, _ -> REDUCTION_DAMAGE_MULTIPLIER));
 
 	private static <T extends MobEffect> DeferredHolder<MobEffect, T> register(
 			String id, String en, String zh,

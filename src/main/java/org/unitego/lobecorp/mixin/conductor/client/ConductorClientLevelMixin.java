@@ -14,7 +14,8 @@ public abstract class ConductorClientLevelMixin {
 	@Inject(method = "unload", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$retainObservedChunk(LevelChunk levelChunk, CallbackInfo ci) {
 		ClientLevel level = (ClientLevel) (Object) this;
-		if (((ConductorChunkCacheAccess) level.getChunkSource()).lobecorp$retainConductorChunk(levelChunk))
+		if (((ConductorChunkCacheAccess) level.getChunkSource()).lobecorp$retainConductorChunk(levelChunk)) {
 			ci.cancel();
+		}
 	}
 }

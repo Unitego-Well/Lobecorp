@@ -3,6 +3,7 @@ package org.unitego.lobecorp.animation;
 import com.geckolib.animatable.GeoAnimatable;
 import com.geckolib.animation.AnimationController;
 
+/// 动画控制器过渡配置与运行状态的 Mixin 桥接契约。
 public interface LcAnimationControllerTransitions<T extends GeoAnimatable> {
 	@SuppressWarnings("unchecked")
 	static <T extends GeoAnimatable> LcAnimationControllerTransitions<T> of(AnimationController<T> controller) {

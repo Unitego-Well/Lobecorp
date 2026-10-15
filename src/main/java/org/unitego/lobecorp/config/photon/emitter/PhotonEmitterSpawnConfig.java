@@ -32,37 +32,21 @@ import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/**
- * 发射调度、来源、变换继承和结束策略；旧发射器配置不受影响。
- */
+/// 发射调度、来源、变换继承和结束策略；旧发射器配置不受影响。
 public class PhotonEmitterSpawnConfig implements IConfigurable, IPersistedSerializable {
-	/**
-	 * 默认一次发射周期的长度，单位 tick。
-	 */
+	/// 默认一次发射周期的长度，单位 tick。
 	public static final int DEFAULT_DURATION = 100;
-	/**
-	 * 默认触发间隔，单位 tick。
-	 */
+	/// 默认触发间隔，单位 tick。
 	public static final int DEFAULT_INTERVAL = 20;
-	/**
-	 * 默认同时保留的生成实例数。
-	 */
+	/// 默认同时保留的生成实例数。
 	public static final int DEFAULT_MAX_INSTANCES = 64;
-	/**
-	 * 默认每游戏 tick 最多新建的实例数。
-	 */
+	/// 默认每游戏 tick 最多新建的实例数。
 	public static final int DEFAULT_MAX_PER_TICK = 16;
-	/**
-	 * 默认嵌套来源层数，限制异步递归发射。
-	 */
+	/// 默认嵌套来源层数，限制异步递归发射。
 	public static final int DEFAULT_MAX_DEPTH = 8;
-	/**
-	 * 与 Photon 每 tick 的积分子步上限一致的播放倍率上限。
-	 */
+	/// 与 Photon 每 tick 的积分子步上限一致的播放倍率上限。
 	public static final int MAX_PLAYBACK_SPEED = 16;
-	/**
-	 * 单个模板子树的最大对象数，防止异常资源构造过多对象。
-	 */
+	/// 单个模板子树的最大对象数，防止异常资源构造过多对象。
 	public static final int MAX_TEMPLATE_OBJECTS = 4096;
 
 	@Configurable(name = PhotonEmitterSpawnerTextUtil.ENABLED)
@@ -150,7 +134,7 @@ public class PhotonEmitterSpawnConfig implements IConfigurable, IPersistedSerial
 							onValueUpdatePassively(new TransformRef());
 							updateValue();
 						});
-				clear.getStyle().tooltips(PhotonEmitterSpawnerTextUtil.CLEAR_TEMPLATE + PhotonEditorTooltipUtil.TOOLTIP_SUFFIX);
+				PhotonEditorTooltipUtil.tooltip(clear, PhotonEmitterSpawnerTextUtil.CLEAR_TEMPLATE + PhotonEditorTooltipUtil.TOOLTIP_SUFFIX);
 				addInlineChild(clear);
 			}
 
@@ -188,6 +172,7 @@ public class PhotonEmitterSpawnConfig implements IConfigurable, IPersistedSerial
 				value -> fxLocation = value.isEmpty() ? null : Identifier.tryParse(value),
 				"", true, (word, handler) -> {
 			var search = word.toLowerCase(Locale.ROOT);
+
 			for (var candidate : candidates) {
 				if (Thread.currentThread().isInterrupted()) {
 					return;

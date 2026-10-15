@@ -40,6 +40,7 @@ public class ConductorChunkLoading {
 			if (level == null) {
 				continue;
 			}
+
 			Entity entity = level.getEntity(uuid);
 			if (entity == null) {
 				for (ServerLevel candidate : server.getAllLevels()) {
@@ -49,27 +50,33 @@ public class ConductorChunkLoading {
 					}
 				}
 			}
+
 			if (entity != null && (!unit.dimension().equals(entity.level().dimension().identifier().toString())
 					|| unit.chunkX() != entity.chunkPosition().x() || unit.chunkZ() != entity.chunkPosition().z())) {
-				if (entity instanceof Mob mob)
+				if (entity instanceof Mob mob) {
 					data.commit(mob);
+				}
 				unit = data.unit(uuid);
 			}
+
 			ConductorData.Team team = data.team(unit.team());
 			if (team != null && team.forceLoad()) {
 				wanted.put(uuid, new Location(unit.dimension(), unit.chunkX(), unit.chunkZ()));
 			}
 		}
+
 		for (Map.Entry<UUID, Location> entry : active.entrySet()) {
 			if (!entry.getValue().equals(wanted.get(entry.getKey()))) {
 				force(server, entry.getKey(), entry.getValue(), false);
 			}
 		}
+
 		for (Map.Entry<UUID, Location> entry : wanted.entrySet()) {
 			if (!entry.getValue().equals(active.get(entry.getKey()))) {
 				force(server, entry.getKey(), entry.getValue(), true);
 			}
 		}
+
 		active.clear();
 		active.putAll(wanted);
 	}

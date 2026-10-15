@@ -12,8 +12,10 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.world.ConductorView;
 
 /// 同步指挥家镜头的观察位置，维度不匹配的迟到载荷不生效。
-public record ConductorViewPayload(boolean active, Identifier dimension, Vec3 position) implements ToServerPayload {
+public record ConductorViewPayload(boolean active, Identifier dimension, Vec3 position) implements IToServerPayload {
+	/// 载荷类型的稳定标识，必须与收发两端的协议登记一致。
 	public static final Type<ConductorViewPayload> TYPE = Lobecorp.type("conductor_view");
+	/// 载荷的二进制编解码契约，字段读写顺序必须保持一致。
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorViewPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull ConductorViewPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -33,8 +35,9 @@ public record ConductorViewPayload(boolean active, Identifier dimension, Vec3 po
 
 	@Override
 	public void work(IPayloadContext context, ServerPlayer player) {
-		if (player.level().dimension().identifier().equals(dimension))
+		if (player.level().dimension().identifier().equals(dimension)) {
 			ConductorView.update(player, active, position);
+		}
 	}
 
 	@Override

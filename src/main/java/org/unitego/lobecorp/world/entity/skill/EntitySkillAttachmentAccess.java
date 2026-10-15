@@ -12,7 +12,8 @@ import java.util.Set;
 ///
 /// 技能、技能组、冷却和运行实例均从当前实体附件读取；实现本身不缓存实体状态，
 /// 因此每次通过 EntityCapability 查询到的对象都能看到同一份附件数据。
-public class EntitySkillAttachmentAccess implements EntitySkillAccess {
+@SuppressWarnings("ClassCanBeRecord")
+public class EntitySkillAttachmentAccess implements IEntitySkillAccess {
 	protected final LivingEntity entity;
 
 	public EntitySkillAttachmentAccess(LivingEntity entity) {
@@ -107,6 +108,7 @@ public class EntitySkillAttachmentAccess implements EntitySkillAccess {
 		if (!supports(request.skill())) {
 			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.UNSUPPORTED_BY_ENTITY, null);
 		}
+
 		return EntitySkillUtil.cast(entity, (EntitySkillCastRequest) request);
 	}
 

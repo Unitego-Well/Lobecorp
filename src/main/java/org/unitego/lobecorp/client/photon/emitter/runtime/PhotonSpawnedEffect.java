@@ -11,6 +11,9 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.client.photon.animation.runtime.PhotonAnimationRuntime;
+import org.unitego.lobecorp.util.photon.animation.PhotonAnimationUtil;
 import org.unitego.lobecorp.client.photon.emitter.PhotonEmitterSpawner;
 import org.unitego.lobecorp.config.photon.emitter.PhotonEmitterSpawnConfig;
 import org.unitego.lobecorp.util.photon.emitter.PhotonEmitterSpawnParameterUtil;
@@ -18,9 +21,7 @@ import org.unitego.lobecorp.util.photon.emitter.PhotonEmitterTemplateUtil;
 
 import java.util.UUID;
 
-/**
- * 一个生成实例的所有权、时钟和参数覆盖；粒子仍由 Photon 的管理器更新。
- */
+/// 一个生成实例的所有权、时钟和参数覆盖；粒子仍由 Photon 的管理器更新。
 public class PhotonSpawnedEffect implements IEffectExecutor {
 	private final UUID handle = UUID.randomUUID();
 	private final PhotonEmitterSpawner owner;
@@ -63,6 +64,7 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 		follow = owner.config.follow;
 		playbackSpeed = Math.clamp(values.playbackSpeed(), 0, PhotonEmitterSpawnConfig.MAX_PLAYBACK_SPEED);
 		lifetime = Math.max(0, owner.config.instanceLifetime);
+
 		for (var object : runtime.objects.values()) {
 			if (object instanceof PhotonEmitterSpawner spawner) {
 				spawner.bindSourceScope(template.scope(), template.sourcePath());
@@ -74,19 +76,28 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 		return handle;
 	}
 
+	@SuppressWarnings("resource") // 控制器归子 FXRuntime 所有，此处只设置它的宿主时钟。
 	public void start() {
 		syncTransform(0);
+
 		if (runtime.root instanceof FXObject root) {
 			root.setOnUpdateTick(this::tickRoot);
 			root.setOnUpdateFrame(this::frameRoot);
 		}
 
 		runtime.emit(this);
+		var animations = animations();
+
+		if (animations != null) {
+			animations.setTimeScale(this::animationSpeed);
+		}
+
 		if (runtime.root instanceof FXObject root && root.getTickHost() != null) {
 			hostGeneration = root.getTickHost().generation();
 		}
 
 		runtime.objects.values().forEach(parameters::apply);
+
 		if (owner.config.inheritColor) {
 			for (var object : runtime.objects.values()) {
 				if (object instanceof IParticleEmitter emitter) {
@@ -94,11 +105,13 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 				}
 			}
 		}
+
 		syncState();
 	}
 
 	private void tickRoot() {
 		syncState();
+
 		if (!owner.isActive() && owner.getScene() instanceof FXRuntime source && source.isFinished()) {
 			stop(true);
 			return;
@@ -113,11 +126,14 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 		travel.fma(speed, velocity);
 		previousAge = age;
 		age += speed;
+
 		while (timelineTicks < Math.floor(age)) {
 			runtime.getTimelinePlayer().tick();
 			timelineTicks++;
 		}
+
 		syncTransform(1);
+
 		if (!expired && lifetime > 0 && age >= lifetime) {
 			expired = true;
 			stop(false);
@@ -126,12 +142,14 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 
 	private void frameRoot(float partialTicks) {
 		syncState();
+
 		if (owner.isActive() && !runtime.isDestroyed()) {
 			var interpolation = owner.isPaused() ? 0 : Math.clamp(partialTicks, 0, 1);
 			var time = previousAge + (age - previousAge) * interpolation;
 			var lastEvaluation = Math.max(0, timelineTicks - 1);
 			runtime.getTimelinePlayer().frame((float) (time - lastEvaluation));
 		}
+
 		syncTransform(owner.isPaused() ? 1 : partialTicks);
 	}
 
@@ -139,6 +157,15 @@ public class PhotonSpawnedEffect implements IEffectExecutor {
 		runtime.root.setSelfActive(owner.isActive());
 		runtime.root.setSelfVisible(owner.isVisible());
 		runtime.root.setSelfTimeScale(effectiveSpeed());
+	}
+
+	///  只借用当前子实例的控制器；停止、清理和宿主失效仍由 FXRuntime 管理。
+	public @Nullable PhotonAnimationRuntime animations() {
+		return runtime.isDestroyed() ? null : PhotonAnimationUtil.of(runtime);
+	}
+
+	private double animationSpeed() {
+		return owner.isActive() && !runtime.isDestroyed() ? effectiveSpeed() : 0;
 	}
 
 	private float effectiveSpeed() {

@@ -34,19 +34,24 @@ public class PillarOfLightSkill extends EntitySkill<TheQueenOfHatred> {
 	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 本次施放开始时选择的目标，和前摇锁定的落点。
 	private static final TypedDataKey<List<LivingEntity>> TARGETS = TypedDataKey.create();
+	/// 光柱技能当前运行实例保存的落点集合。
 	private static final TypedDataKey<List<Vec3>> POSITIONS = TypedDataKey.create();
+	/// 当前技能使用的共享判断框模板。
 	private static final HitboxTemplate HITBOX = new HitboxTemplate(new CylinderSize(RADIUS, RADIUS * 2.0),
 			target -> target instanceof LivingEntity living && living.isAlive(), context -> {
 		if (!(context.source() instanceof TheQueenOfHatred queen)
-				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target))
+				|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target)) {
 			return false;
+		}
 		Vec3 offset = target.position().subtract(context.instance().position());
-		if (offset.horizontalDistanceSqr() > RADIUS * RADIUS || Math.abs(offset.y) > RADIUS)
+		if (offset.horizontalDistanceSqr() > RADIUS * RADIUS || Math.abs(offset.y) > RADIUS) {
 			return false;
+		}
 		boolean hurt = target.hurtServer(context.level(), queen.damageSources().mobAttack(queen),
 				(float) (queen.getAttributeValue(Attributes.ATTACK_DAMAGE) * DAMAGE_MULTIPLIER));
-		if (hurt && context.instance().skillRuntime() != null)
+		if (hurt && context.instance().skillRuntime() != null) {
 			context.instance().skillRuntime().markSuccessful();
+		}
 		return hurt;
 	});
 
@@ -63,15 +68,17 @@ public class PillarOfLightSkill extends EntitySkill<TheQueenOfHatred> {
 	public void onWindupStart(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		QueenSkillUtil.startSpell(queen);
 		runtime.setCooldownTicks(SHORT_COOLDOWN_TICKS);
-		if (queen.level() instanceof ServerLevel)
+		if (queen.level() instanceof ServerLevel) {
 			runtime.setData(TARGETS, QueenSkillUtil.targets(queen, runtime, RANGE));
+		}
 	}
 
 	@Override
 	public void onWindupTick(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		queen.restoreSkillFacing();
-		if (runtime.elapsedTicks() < windupTicks() - LOCK_BEFORE_ACTIVATION_TICKS || runtime.hasData(POSITIONS))
+		if (runtime.elapsedTicks() < windupTicks() - LOCK_BEFORE_ACTIVATION_TICKS || runtime.hasData(POSITIONS)) {
 			return;
+		}
 		List<LivingEntity> targets = runtime.getData(TARGETS);
 		if (targets != null) {
 			List<Vec3> positions = targets.isEmpty() ? QueenSkillUtil.targetPositions(queen, runtime, RANGE)
@@ -79,20 +86,23 @@ public class PillarOfLightSkill extends EntitySkill<TheQueenOfHatred> {
 					.map(LivingEntity::position).toList();
 			runtime.setData(POSITIONS, positions);
 			if (queen.level() instanceof ServerLevel level) {
-				for (Vec3 position : positions)
+				for (Vec3 position : positions) {
 					QueenMagicCircleParticleOptions.send(level, position, RADIUS,
 							LOCK_BEFORE_ACTIVATION_TICKS, false);
+				}
 			}
 		}
 	}
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		List<Vec3> positions = runtime.getData(POSITIONS);
-		if (positions == null)
+		if (positions == null) {
 			return;
+		}
 		for (Vec3 position : positions) {
 			HitboxInstance hitbox = HitboxManager.create(HITBOX, level, position, HitboxManager.CURRENT_TICK_DURATION, runtime);
 			hitbox.setSource(queen);

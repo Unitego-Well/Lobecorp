@@ -11,6 +11,10 @@ import java.util.Set;
 
 /// 服务端 Level 中技能效果的创建、推进和移除入口。
 public final class EntitySkillEffectManager {
+	/// 效果实例被重复交给管理器时的错误说明。
+	private static final String ALREADY_MANAGED_MESSAGE = "skill effect is already managed";
+
+	/// 保存绑定到当前技能运行实例的效果集合。
 	private static final TypedDataKey<Set<EntitySkillEffect>> BOUND_SKILL_EFFECTS = TypedDataKey.create();
 
 	private EntitySkillEffectManager() {
@@ -18,8 +22,9 @@ public final class EntitySkillEffectManager {
 
 	public static <T extends EntitySkillEffect> T add(T effect) {
 		if (!effect.level().getData(LcAttachmentTypes.ENTITY_SKILL_EFFECT_LEVEL_DATA).add(effect)) {
-			throw new IllegalStateException("skill effect is already managed");
+			throw new IllegalStateException(ALREADY_MANAGED_MESSAGE);
 		}
+
 		effect.markAdded();
 		EntitySkillRuntime<?> runtime = effect.boundSkillRuntime();
 		if (runtime != null) {
@@ -28,8 +33,10 @@ public final class EntitySkillEffectManager {
 				effects = new HashSet<>();
 				runtime.setData(BOUND_SKILL_EFFECTS, effects);
 			}
+
 			effects.add(effect);
 		}
+
 		return effect;
 	}
 
@@ -46,6 +53,7 @@ public final class EntitySkillEffectManager {
 				}
 			}
 		}
+
 		return removed;
 	}
 
@@ -54,6 +62,7 @@ public final class EntitySkillEffectManager {
 		if (effects == null) {
 			return;
 		}
+
 		for (EntitySkillEffect effect : Set.copyOf(effects)) {
 			remove(effect);
 		}
@@ -66,14 +75,17 @@ public final class EntitySkillEffectManager {
 				remove(effect);
 				continue;
 			}
+
 			if (effect.isExpired()) {
 				remove(effect);
 				continue;
 			}
+
 			if (effect.hasUnavailableBoundSource()) {
 				remove(effect);
 				continue;
 			}
+
 			effect.advanceTick();
 			if (effect.isRemoved()) {
 				remove(effect);

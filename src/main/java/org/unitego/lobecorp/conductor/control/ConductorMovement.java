@@ -42,14 +42,17 @@ public final class ConductorMovement {
 
 	public static Vec3 uniformMovement(Entity entity, MoverType moverType, Vec3 movement) {
 		if (moverType != MoverType.SELF || !(entity instanceof Mob mob)
-				|| !(mob.level() instanceof ServerLevel level))
+				|| !(mob.level() instanceof ServerLevel level)) {
 			return movement;
+		}
 		ConductorData.Unit unit = ConductorData.get(level.getServer()).unit(mob.getUUID());
-		if (unit == null || unit.order() != ConductorData.OrderType.MOVE || unit.movementSpeed() < 0.0D)
+		if (unit == null || unit.order() != ConductorData.OrderType.MOVE || unit.movementSpeed() < 0.0D) {
 			return movement;
+		}
 		double speed = flying(mob) ? movement.length() : movement.horizontalDistance();
-		if (speed <= unit.movementSpeed())
+		if (speed <= unit.movementSpeed()) {
 			return movement;
+		}
 		double ratio = unit.movementSpeed() / speed;
 		return flying(mob) ? movement.scale(ratio) : movement.multiply(ratio, 1.0D, ratio);
 	}
@@ -92,11 +95,14 @@ public final class ConductorMovement {
 		for (int index = 1; index <= samples; index++) {
 			Vec3 point = origin.add(delta.scale(index / (double) samples));
 			AABB bounds = mob.getBoundingBox().move(point.subtract(mob.position()));
-			if (!mob.level().noCollision(mob, bounds))
+			if (!mob.level().noCollision(mob, bounds)) {
 				return false;
-			if (!flying(mob) && !supported(mob, bounds))
+			}
+			if (!flying(mob) && !supported(mob, bounds)) {
 				return false;
+			}
 		}
+
 		return true;
 	}
 
@@ -107,20 +113,24 @@ public final class ConductorMovement {
 		Entity nearest = null;
 		double distance = Double.POSITIVE_INFINITY;
 		for (Entity entity : mob.level().getEntities(mob, corridor, entity -> entity.isAlive() && entity.isPushable())) {
-			if (entity.getRootVehicle() == mob.getRootVehicle())
+			if (entity.getRootVehicle() == mob.getRootVehicle()) {
 				continue;
+			}
 			AABB bounds = entity.getBoundingBox().inflate(margin, 0.0D, margin).expandTowards(0.0D, -mob.getBbHeight(), 0.0D);
-			if (bounds.contains(origin) && !bounds.contains(destination))
+			if (bounds.contains(origin) && !bounds.contains(destination)) {
 				continue;
+			}
 			Optional<Vec3> hit = bounds.clip(origin, destination);
-			if (!bounds.contains(destination) && hit.isEmpty())
+			if (!bounds.contains(destination) && hit.isEmpty()) {
 				continue;
+			}
 			double candidate = hit.orElse(destination).distanceToSqr(origin);
 			if (candidate < distance) {
 				distance = candidate;
 				nearest = entity;
 			}
 		}
+
 		return nearest;
 	}
 
@@ -132,17 +142,21 @@ public final class ConductorMovement {
 		if (path == null || navigation.isDone()) {
 			Vec3 delta = destination.subtract(origin);
 			Vec3 end = delta.length() > remaining ? origin.add(delta.normalize().scale(remaining)) : destination;
-			if (!safeApproach(mob, end))
+			if (!safeApproach(mob, end)) {
 				return null;
+			}
 		}
+
 		do {
 			Vec3 next = path != null && index < path.getNodeCount() ? path.getEntityPosAtNode(mob, index++) : destination;
 			Vec3 delta = next.subtract(origin);
-			if (delta.length() > remaining)
+			if (delta.length() > remaining) {
 				next = origin.add(delta.normalize().scale(remaining));
+			}
 			Entity blocker = blockingEntity(mob, origin, next);
-			if (blocker != null)
+			if (blocker != null) {
 				return blocker;
+			}
 			remaining -= origin.distanceTo(next);
 			origin = next;
 		} while (remaining > ConductorRules.ARRIVAL_DISTANCE && path != null && index < path.getNodeCount());
@@ -154,10 +168,12 @@ public final class ConductorMovement {
 		if (direction.lengthSqr() < ConductorRules.FORMATION_DIRECTION_EPSILON) {
 			direction = state.destination.subtract(mob.position()).multiply(1.0D, 0.0D, 1.0D);
 		}
-		if (direction.lengthSqr() < ConductorRules.FORMATION_DIRECTION_EPSILON)
+
+		if (direction.lengthSqr() < ConductorRules.FORMATION_DIRECTION_EPSILON) {
 			return false;
+		}
 		direction = direction.normalize();
-		Vec3 right = new Vec3(-direction.z, 0.0D, direction.x);
+		var right = new Vec3(-direction.z, 0.0D, direction.x);
 		double clearance = (blocker.getBbWidth() + mob.getBbWidth()) / 2.0D
 				+ ConductorRules.ENTITY_AVOIDANCE_MARGIN + ConductorRules.ARRIVAL_DISTANCE;
 		for (int side = 0; side < ConductorRules.ENTITY_AVOIDANCE_SIDES; side++) {
@@ -167,13 +183,15 @@ public final class ConductorMovement {
 			if (entry == null || exit == null || exit.subtract(state.destination).dot(direction) > 0.0D
 					|| !safeApproach(mob, mob.position(), entry)
 					|| !safeApproach(mob, entry, exit) || blockingEntity(mob, mob.position(), entry) != null
-					|| blockingEntity(mob, entry, exit) != null)
+					|| blockingEntity(mob, entry, exit) != null) {
 				continue;
+			}
 			state.detour = entry;
 			state.detourExit = exit;
 			state.position = mob.position();
 			return true;
 		}
+
 		return false;
 	}
 
@@ -183,6 +201,7 @@ public final class ConductorMovement {
 			state.detourExit = null;
 			return false;
 		}
+
 		if (state.detour != null && arrived(mob, state.detour)) {
 			state.detour = state.detourExit;
 			state.detourExit = null;
@@ -190,91 +209,109 @@ public final class ConductorMovement {
 			state.progressAt = mob.tickCount;
 			state.avoidanceAt = mob.tickCount;
 		}
+
 		if (state.detour != null && (!safeApproach(mob, state.detour)
 				|| blockingEntity(mob, mob.position(), state.detour) != null)) {
 			state.detour = null;
 			state.detourExit = null;
 			state.avoidanceAt = mob.tickCount;
 		}
+
 		if (state.detour == null && mob.tickCount >= state.avoidanceAt) {
 			Entity blocker = pathBlocker(mob, navigation, state.destination);
-			if (blocker != null)
+			if (blocker != null) {
 				detour(mob, blocker, state);
+			}
 			state.avoidanceAt = mob.tickCount + ConductorRules.MOVEMENT_RETRY_TICKS;
 		}
-		if (state.detour == null)
+
+		if (state.detour == null) {
 			return false;
+		}
 		navigation.stop();
 		mob.getMoveControl().setWantedPosition(state.detour.x, state.detour.y, state.detour.z, speed);
 		return true;
 	}
 
 	private static boolean supported(Mob mob, AABB bounds) {
-		AABB probe = new AABB(bounds.minX, bounds.minY - ConductorRules.SUPPORT_PROBE_DEPTH, bounds.minZ,
+		var probe = new AABB(bounds.minX, bounds.minY - ConductorRules.SUPPORT_PROBE_DEPTH, bounds.minZ,
 				bounds.maxX, bounds.minY, bounds.maxZ);
 		return mob.level().getBlockCollisions(mob, probe).iterator().hasNext();
 	}
 
 	private static @Nullable Vec3 project(Mob mob, Vec3 requested) {
-		if (flying(mob))
+		if (flying(mob)) {
 			return mob.level().noCollision(mob,
 					mob.getBoundingBox().move(requested.subtract(mob.position()))) ? requested : null;
-		AABB column = new AABB(requested.x - mob.getBbWidth() / 2.0, requested.y - ConductorRules.SLOT_SEARCH_RADIUS,
+		}
+		var column = new AABB(requested.x - mob.getBbWidth() / 2.0, requested.y - ConductorRules.SLOT_SEARCH_RADIUS,
 				requested.z - mob.getBbWidth() / 2.0, requested.x + mob.getBbWidth() / 2.0,
 				requested.y + ConductorRules.SLOT_SEARCH_RADIUS, requested.z + mob.getBbWidth() / 2.0);
 		List<Double> heights = new ArrayList<>();
 		for (VoxelShape shape : mob.level().getBlockCollisions(mob, column)) {
-			for (AABB bounds : shape.toAabbs())
+			for (AABB bounds : shape.toAabbs()) {
 				heights.add(bounds.maxY);
+			}
 		}
+
 		heights.sort(Comparator.comparingDouble(height -> Math.abs(height - requested.y)));
 		for (double height : heights) {
-			Vec3 candidate = new Vec3(requested.x, height, requested.z);
+			var candidate = new Vec3(requested.x, height, requested.z);
 			AABB bounds = mob.getBoundingBox().move(candidate.subtract(mob.position()));
-			if (mob.level().noCollision(mob, bounds) && supported(mob, bounds))
+			if (mob.level().noCollision(mob, bounds) && supported(mob, bounds)) {
 				return candidate;
+			}
 		}
+
 		return null;
 	}
 
 	public static @Nullable Vec3 resolve(Mob mob, Vec3 requested, List<AABB> occupied) {
 		for (int radius = 0; radius <= ConductorRules.SLOT_SEARCH_RADIUS; radius++) {
-			for (int dx = -radius; dx <= radius; dx++)
+			for (int dx = -radius; dx <= radius; dx++) {
 				for (int dz = -radius; dz <= radius; dz++) {
 					if (Math.max(Math.abs(dx), Math.abs(dz)) != radius
-							|| dx * dx + dz * dz > ConductorRules.SLOT_SEARCH_RADIUS * ConductorRules.SLOT_SEARCH_RADIUS)
+							|| dx * dx + dz * dz > ConductorRules.SLOT_SEARCH_RADIUS * ConductorRules.SLOT_SEARCH_RADIUS) {
 						continue;
+					}
 					Vec3 candidate = project(mob, requested.add(dx, 0.0, dz));
 					if (candidate == null || candidate.distanceToSqr(requested)
-							> ConductorRules.SLOT_SEARCH_RADIUS * ConductorRules.SLOT_SEARCH_RADIUS)
+							> ConductorRules.SLOT_SEARCH_RADIUS * ConductorRules.SLOT_SEARCH_RADIUS) {
 						continue;
+					}
 					AABB bounds = mob.getBoundingBox().move(candidate.subtract(mob.position())).inflate(ConductorRules.ENTITY_AVOIDANCE_MARGIN);
-					if (occupied.stream().anyMatch(bounds::intersects))
+					if (occupied.stream().anyMatch(bounds::intersects)) {
 						continue;
+					}
 					if (mob instanceof EnderDragon || arrived(mob, candidate)
 							|| candidate.distanceToSqr(mob.position()) > ConductorRules.PATH_SEGMENT_RANGE * ConductorRules.PATH_SEGMENT_RANGE
 							|| candidate.distanceToSqr(mob.position()) <= ConductorRules.FINAL_APPROACH_DISTANCE * ConductorRules.FINAL_APPROACH_DISTANCE
-							&& safeApproach(mob, candidate))
+							&& safeApproach(mob, candidate)) {
 						return candidate;
+					}
 					PathNavigation navigation = mob instanceof Ghast ? new FlyingPathNavigation(mob, mob.level()) : mob.getNavigation();
 					Path path = navigation.createPath(BlockPos.containing(candidate), 0, ConductorRules.PATH_SEGMENT_RANGE);
-					if (usable(mob, path))
+					if (usable(mob, path)) {
 						return candidate;
+					}
 				}
+			}
 		}
+
 		return null;
 	}
 
 	private static boolean usable(Mob mob, @Nullable Path path) {
-		if (path == null || path.getNodeCount() == 0)
+		if (path == null || path.getNodeCount() == 0) {
 			return false;
+		}
 		Vec3 endpoint = path.getEntityPosAtNode(mob, path.getNodeCount() - 1);
 		return path.canReach() || endpoint.distanceToSqr(mob.position())
 				>= ConductorRules.PATH_MIN_PROGRESS * ConductorRules.PATH_MIN_PROGRESS;
 	}
 
 	public static boolean advance(Mob mob, PathNavigation navigation, ConductorData data, ConductorData.Unit unit) {
-		Vec3 destination = new Vec3(unit.x(), unit.y(), unit.z());
+		var destination = new Vec3(unit.x(), unit.y(), unit.z());
 		Progress state = ConductorUnitRuntime.get(mob).movement;
 		if (state == null) {
 			Vec3 resolved = resolve(mob, destination, List.of());
@@ -286,6 +323,7 @@ public final class ConductorMovement {
 				});
 				return false;
 			}
+
 			state = new Progress(mob, resolved);
 			ConductorUnitRuntime.get(mob).movement = state;
 			if (!resolved.equals(destination)) {
@@ -293,10 +331,12 @@ public final class ConductorMovement {
 				return false;
 			}
 		}
+
 		if (!destination.equals(state.destination)) {
 			state = new Progress(mob, destination);
 			ConductorUnitRuntime.get(mob).movement = state;
 		}
+
 		double progress = ConductorRules.MOVEMENT_PROGRESS_DISTANCE;
 		Path currentPath = navigation.getPath();
 		boolean pathProgress = currentPath != null && currentPath == state.path
@@ -307,6 +347,7 @@ public final class ConductorMovement {
 			state.progressAt = mob.tickCount;
 			state.replans = 0;
 		}
+
 		state.path = currentPath;
 		state.pathIndex = currentPath == null ? 0 : currentPath.getNextNodeIndex();
 		if (mob.tickCount - state.progressAt >= ConductorRules.MOVEMENT_STALL_TICKS) {
@@ -328,6 +369,7 @@ public final class ConductorMovement {
 					});
 					return false;
 				}
+
 				state.alternative = true;
 				state.replans = 0;
 				state.destination = replacement;
@@ -335,12 +377,15 @@ public final class ConductorMovement {
 				return false;
 			}
 		}
+
 		double speed = speedModifier(mob, unit);
 		navigation.setSpeedModifier(speed);
-		if (avoidPathEntities(mob, navigation, state, speed))
+		if (avoidPathEntities(mob, navigation, state, speed)) {
 			return true;
-		if (mob instanceof EnderDragon)
+		}
+		if (mob instanceof EnderDragon) {
 			return true;
+		}
 		if (destination.distanceToSqr(mob.position())
 				<= ConductorRules.FINAL_APPROACH_DISTANCE * ConductorRules.FINAL_APPROACH_DISTANCE
 				&& safeApproach(mob, destination)) {
@@ -349,10 +394,12 @@ public final class ConductorMovement {
 		} else if ((navigation.isDone() || !BlockPos.containing(destination).equals(navigation.getTargetPos()))
 				&& mob.tickCount >= state.retryAt) {
 			Path path = navigation.createPath(BlockPos.containing(destination), 0, ConductorRules.PATH_SEGMENT_RANGE);
-			if (usable(mob, path))
+			if (usable(mob, path)) {
 				navigation.moveTo(path, speed);
+			}
 			state.retryAt = mob.tickCount + ConductorRules.MOVEMENT_RETRY_TICKS;
 		}
+
 		return true;
 	}
 

@@ -24,6 +24,7 @@ public class ConductorGameplayEvents {
 	@SubscribeEvent
 	public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
 		ConductorEvents.onPlayerLogin(event);
+		EntityDataSyncEvents.onPlayerLogin(event);
 	}
 
 	@SubscribeEvent

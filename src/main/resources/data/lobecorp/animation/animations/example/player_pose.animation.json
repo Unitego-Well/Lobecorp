@@ -1,0 +1,20 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.example.player_pose": {
+			"animation_length": 3,
+			"bones": {
+				"body": {
+					"rotation": {"0": [0, 0, 0], "0.5": [0, 20, 0], "2.5": [0, 20, 0], "3": [0, 0, 0]}
+				},
+				"head": {"rotation": [0, -20, 0]},
+				"right_arm": {
+					"rotation": {"0": [0, 0, 0], "0.5": [100, 0, -15], "2.5": [100, 0, -15], "3": [0, 0, 0]}
+				},
+				"left_arm": {"rotation": [0, 0, 10]},
+				"right_leg": {"rotation": [0, 0, 0]},
+				"left_leg": {"rotation": [0, 0, 0]}
+			}
+		}
+	}
+}

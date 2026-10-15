@@ -11,7 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.world.entity.state.EntityState;
-import org.unitego.lobecorp.world.entity.state.EntityStateHolder;
+import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
 
 import java.util.stream.Collectors;
 
@@ -38,14 +38,17 @@ public class EntityStateDebugRenderer implements DebugRenderer.SimpleDebugRender
 			return;
 		}
 
-		Vec3 cameraPosition = new Vec3(camX, camY, camZ);
+		var cameraPosition = new Vec3(camX, camY, camZ);
+
 		for (Entity entity : minecraft.level.entitiesForRendering()) {
-			if (!(entity instanceof EntityStateHolder holder)) {
+			if (!(entity instanceof IEntityStateHolder holder)) {
 				continue;
 			}
+
 			if (holder.getEntityStates().isEmpty()) {
 				continue;
 			}
+
 			if (entity.position().distanceToSqr(cameraPosition) > MAX_RENDER_DISTANCE_SQUARED) {
 				continue;
 			}
@@ -54,7 +57,7 @@ public class EntityStateDebugRenderer implements DebugRenderer.SimpleDebugRender
 					.map(EntityState::id)
 					.map(Identifier::toString)
 					.collect(Collectors.joining(", ", STATE_PREFIX, ""));
-			Vec3 textPosition = new Vec3(entity.getX(), entity.getBoundingBox().maxY + TEXT_HEIGHT_OFFSET, entity.getZ());
+			var textPosition = new Vec3(entity.getX(), entity.getBoundingBox().maxY + TEXT_HEIGHT_OFFSET, entity.getZ());
 			Gizmos.billboardText(states, textPosition, TextGizmo.Style.forColorAndCentered(TEXT_COLOR));
 		}
 	}

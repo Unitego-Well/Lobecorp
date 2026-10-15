@@ -6,6 +6,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import org.unitego.lobecorp.util.serialization.EnumStreamCodecUtil;
 
+/// 同步一次动画操作使用的混合与过渡配置。
 public record LcAnimationTransitionSettings(
 		int fadeInTicks,
 		int fadeOutTicks,

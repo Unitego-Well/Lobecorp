@@ -8,6 +8,13 @@ import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 
 /// 不作为 Minecraft 实体注册、由实体技能创建的服务端效果实例。
 public abstract class EntitySkillEffect {
+	/// 效果寿命既非正值又非无限寿命标记时的错误说明。
+	private static final String INVALID_LIFETIME_MESSAGE = "lifetimeTicks must be positive or -1";
+	/// 绑定来源清理却未提供来源实体时的错误说明。
+	private static final String MISSING_SOURCE_MESSAGE = "a source is required when source-bound cleanup is enabled";
+	/// 绑定技能清理却未提供运行实例时的错误说明。
+	private static final String MISSING_RUNTIME_MESSAGE = "a skill runtime is required when skill-bound cleanup is enabled";
+
 	private final ServerLevel level;
 	private final int lifetimeTicks;
 	@Nullable
@@ -24,14 +31,17 @@ public abstract class EntitySkillEffect {
 	                            boolean removeWhenSourceUnavailable, @Nullable EntitySkillRuntime<?> skillRuntime,
 	                            boolean removeWhenSkillRuntimeEnds) {
 		if (lifetimeTicks == 0 || lifetimeTicks < -1) {
-			throw new IllegalArgumentException("lifetimeTicks must be positive or -1");
+			throw new IllegalArgumentException(INVALID_LIFETIME_MESSAGE);
 		}
+
 		if (removeWhenSourceUnavailable && source == null) {
-			throw new IllegalArgumentException("a source is required when source-bound cleanup is enabled");
+			throw new IllegalArgumentException(MISSING_SOURCE_MESSAGE);
 		}
+
 		if (removeWhenSkillRuntimeEnds && skillRuntime == null) {
-			throw new IllegalArgumentException("a skill runtime is required when skill-bound cleanup is enabled");
+			throw new IllegalArgumentException(MISSING_RUNTIME_MESSAGE);
 		}
+
 		this.level = level;
 		this.position = position;
 		this.lifetimeTicks = lifetimeTicks;

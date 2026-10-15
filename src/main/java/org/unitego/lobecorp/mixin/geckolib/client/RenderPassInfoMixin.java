@@ -12,8 +12,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.animation.LcAnimationControllerIntegration;
-import org.unitego.lobecorp.animation.LcCustomAnimatable;
+import org.unitego.lobecorp.animation.ILcCustomAnimatable;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
+import org.unitego.lobecorp.client.animation.LcAnimationBoneAdapter;
 
 @Mixin(RenderPassInfo.class)
 public abstract class RenderPassInfoMixin {
@@ -39,7 +40,9 @@ public abstract class RenderPassInfoMixin {
 	) {
 		Class<? extends GeoAnimatable> animatableClass =
 				renderPassInfo.renderState().getGeckolibData(DataTickets.ANIMATABLE_CLASS);
-		if (animatableClass != null && LcCustomAnimatable.class.isAssignableFrom(animatableClass)) {
+		if (LcAnimationBoneAdapter.hasEntityAnimation(renderPassInfo)) {
+			renderPassInfo.addBoneUpdater(LcAnimationBoneAdapter::applyEntity);
+		} else if (animatableClass != null && ILcCustomAnimatable.class.isAssignableFrom(animatableClass)) {
 			renderPassInfo.addBoneUpdater(LcAnimationControllerIntegration::apply);
 		} else {
 			original.call(renderPassInfo, updater);

@@ -4,9 +4,7 @@ import org.unitego.lobecorp.client.photon.emitter.PhotonEmitterSpawner;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 import org.unitego.lobecorp.config.photon.emitter.PhotonEmitterSpawnConfig;
 
-/**
- * 用半开时间区间检测触发，支持小数时间步、循环边界和连续速率累计。
- */
+/// 用半开时间区间检测触发，支持小数时间步、循环边界和连续速率累计。
 public class PhotonEmitterSpawnSchedule {
 	private long cycle = -1;
 	private PhotonEmitterSpawnConfig.Mode mode;
@@ -27,13 +25,16 @@ public class PhotonEmitterSpawnSchedule {
 	public void update(PhotonEmitterSpawner owner, float dt) {
 		double start = owner.getAgeF() - Math.max(0, owner.runtime().startDelay.get());
 		var end = start + dt;
+
 		if (end <= 0) {
 			return;
 		}
 
 		var duration = owner.getLifetime();
+
 		if (owner.config.mode == PhotonEmitterSpawnConfig.Mode.ONE_SHOT) {
 			var windowEnd = owner.isLooping() ? end : Math.min(end, duration);
+
 			if (emittedOnce || windowEnd <= Math.max(start, 0)) {
 				return;
 			}
@@ -50,6 +51,7 @@ public class PhotonEmitterSpawnSchedule {
 		}
 
 		var position = Math.max(start, 0);
+
 		while (position < end) {
 			var currentCycle = (long) Math.floor(position / duration);
 			var base = (double) currentCycle * duration;
@@ -74,6 +76,7 @@ public class PhotonEmitterSpawnSchedule {
 
 		if (owner.config.mode == PhotonEmitterSpawnConfig.Mode.RATE) {
 			var rate = owner.runtime().rate.get().get(owner.getRandomSource(), owner.getT()).doubleValue();
+
 			if (!Double.isFinite(rate) || rate < 0) {
 				owner.setSpawnStatus(PhotonEmitterSpawnerTextUtil.STATUS_INVALID);
 				return;
@@ -90,14 +93,17 @@ public class PhotonEmitterSpawnSchedule {
 			if (nextTrigger == 0 && start == 0) {
 				owner.emitConfigured();
 			}
+
 			nextTrigger = Double.POSITIVE_INFINITY;
 			return;
 		}
 
 		var interval = Math.max(1, owner.runtime().interval.get());
+
 		if (previousInterval != interval || nextTrigger < start) {
 			nextTrigger = Math.ceil(start / interval) * interval;
 		}
+
 		previousInterval = interval;
 
 		while (nextTrigger < end) {

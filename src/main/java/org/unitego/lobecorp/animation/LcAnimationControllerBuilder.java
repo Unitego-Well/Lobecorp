@@ -5,6 +5,7 @@ import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.AnimationController.AnimationStateHandler;
 import com.geckolib.animation.RawAnimation;
 
+/// 按项目的遮罩、混合与过渡规则构建 GeckoLib 动画控制器。
 public class LcAnimationControllerBuilder<T extends GeoAnimatable> {
 	private final AnimationController<T> controller;
 	private final LcAnimationControllerTransitions<T> transitions;

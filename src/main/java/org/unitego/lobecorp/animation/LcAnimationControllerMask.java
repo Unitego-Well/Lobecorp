@@ -3,6 +3,7 @@ package org.unitego.lobecorp.animation;
 import com.geckolib.animatable.GeoAnimatable;
 import com.geckolib.animation.AnimationController;
 
+/// 动画控制器骨骼遮罩的 Mixin 桥接契约。
 public interface LcAnimationControllerMask<T extends GeoAnimatable> {
 	@SuppressWarnings("unchecked")
 	static <T extends GeoAnimatable> LcAnimationControllerMask<T> of(AnimationController<T> controller) {

@@ -23,9 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PhotonSubClipboardUtil {
-	/**
-	 * 系统剪切板中动画属性子片段的协议类型。
-	 */
+	/// 系统剪切板中动画属性子片段的协议类型。
 	public static final String KIND = "animation";
 
 	private enum Selection {GRADIENT, CURVE, EXPR, STOP}
@@ -34,6 +32,7 @@ public class PhotonSubClipboardUtil {
 		var access = (AnimationTrackUIStateAccessor) state;
 		Selection kind;
 		List<? extends SubClip> clips;
+
 		if (!access.lobecorp$getGradientClips().isEmpty()) {
 			kind = Selection.GRADIENT;
 			clips = new ArrayList<>(access.lobecorp$getGradientClips());
@@ -46,31 +45,40 @@ public class PhotonSubClipboardUtil {
 		} else if (access.lobecorp$getSelectedStop() != null) {
 			kind = Selection.STOP;
 			clips = List.of();
-		} else
+		} else {
 			return false;
+		}
 		var entries = new ListTag();
 		double anchor = kind == Selection.STOP ? access.lobecorp$getSelectedStop().tick
 				: clips.stream().mapToDouble(SubClip::start).min().orElseThrow();
+
 		for (var clip : clips) {
 			var entry = new CompoundTag();
 			entry.putDouble("start", clip.start() - anchor);
 			entry.putDouble("duration", clip.duration());
+
 			switch (clip) {
 				case GradientClip gradient -> {
-					if (gradient.gradient() == null)
+					if (gradient.gradient() == null) {
 						throw new IllegalArgumentException();
+					}
 					entry.put("gradient", ValueIONbt.toTag(gradient.gradient(), Platform.getFrozenRegistry()));
 				}
+
 				case CurveClip curve -> {
-					if (curve.curve() == null)
+					if (curve.curve() == null) {
 						throw new IllegalArgumentException();
+					}
 					entry.put("curve", curve.curve().serializeWrapper());
 				}
+
 				case ExprClip expression -> entry.putString("expr", expression.expression());
 				default -> throw new IllegalArgumentException();
 			}
+
 			entries.add(entry);
 		}
+
 		if (kind == Selection.STOP) {
 			var stop = access.lobecorp$getSelectedStop();
 			var entry = new CompoundTag();
@@ -78,6 +86,7 @@ public class PhotonSubClipboardUtil {
 			entry.putFloat("intensity", stop.intensity);
 			entries.add(entry);
 		}
+
 		var data = new CompoundTag();
 		data.putString("selection", kind.name());
 		data.put("entries", entries);
@@ -87,15 +96,18 @@ public class PhotonSubClipboardUtil {
 
 	public static boolean compatible(AnimatedProperty property) {
 		var data = PhotonSystemClipboardUtil.read(KIND);
-		if (data == null || property == null)
+
+		if (data == null || property == null) {
 			return false;
+		}
+
 		try {
 			return switch (Selection.valueOf(data.getStringOr("selection", ""))) {
 				case GRADIENT, STOP -> property instanceof ColorAnimatedProperty;
 				case CURVE -> property instanceof ConfigAnimatedProperty && property.channelCount() > 0;
 				case EXPR -> property.channelCount() > 0;
 			};
-		} catch (IllegalArgumentException ignored) {
+		} catch (IllegalArgumentException _) {
 			return false;
 		}
 	}
@@ -103,83 +115,49 @@ public class PhotonSubClipboardUtil {
 	public static boolean paste(TimelineContext ctx, Track track, AnimationTrackUIState state, double tick) {
 		var access = (AnimationTrackUIStateAccessor) state;
 		var property = access.lobecorp$getSelectedProperty();
-		if (track.lock() || !compatible(property) || !Double.isFinite(tick) || tick < 0)
+
+		if (track.lock() || !compatible(property) || !Double.isFinite(tick) || tick < 0) {
 			return false;
+		}
 		var before = property.copy();
+
 		try {
 			var data = PhotonSystemClipboardUtil.read(KIND);
-			if (data == null)
+
+			if (data == null) {
 				return false;
+			}
 			var kind = Selection.valueOf(data.getStringOr("selection", ""));
 			var entries = data.getListOrEmpty("entries");
-			if (entries.isEmpty() || entries.size() > PhotonSystemClipboardUtil.MAX_ITEMS)
+
+			if (entries.isEmpty() || entries.size() > PhotonSystemClipboardUtil.MAX_ITEMS) {
 				return false;
+			}
 			int axis = Math.max(0, access.lobecorp$getSelectedAxis());
+
 			if (kind == Selection.STOP) {
-				if (entries.size() != 1 || !Float.isFinite((float) tick))
+				if (entries.size() != 1 || !Float.isFinite((float) tick)) {
 					return false;
+				}
 				var color = (ColorAnimatedProperty) property;
 				var entry = entries.getCompound(0).orElseThrow(IllegalArgumentException::new);
 				float intensity = entry.getFloatOr("intensity", Float.NaN);
+
 				if (!Float.isFinite(intensity) || intensity < 0 || !entry.contains("argb")
-						|| color.stops().stream().anyMatch(stop -> Math.abs(stop.tick - (float) tick) < PhotonCurveEditUtil.KEY_GAP))
+						|| color.stops().stream().anyMatch(stop -> Math.abs(stop.tick - (float) tick) < PhotonCurveEditUtil.KEY_GAP)) {
 					return false;
+				}
 				color.addStop((float) tick, entry.getIntOr("argb", 0), intensity);
 			} else {
-				if (kind != Selection.GRADIENT && axis >= property.channelCount())
+				if (!pasteClips(property, kind, entries, axis, tick)) {
 					return false;
-				var candidates = new ArrayList<SubClip>();
-				for (var value : entries) {
-					if (!(value instanceof CompoundTag entry))
-						return false;
-					double relative = entry.getDoubleOr("start", Double.NaN), duration = entry.getDoubleOr("duration", Double.NaN);
-					double start = tick + relative;
-					if (!Double.isFinite(relative) || relative < 0 || !Double.isFinite(start)
-							|| !Double.isFinite(duration) || duration <= 0 || !Double.isFinite(start + duration))
-						return false;
-					candidates.add(switch (kind) {
-						case GRADIENT -> {
-							var gradient = new GradientColor();
-							ValueIONbt.fromTag(gradient, Platform.getFrozenRegistry(), entry.getCompound("gradient").orElseThrow(IllegalArgumentException::new));
-							yield new GradientClip(start, duration, gradient);
-						}
-						case CURVE -> {
-							var curve = NumberFunction.deserializeWrapper(entry.getCompound("curve").orElseThrow(IllegalArgumentException::new));
-							if (curve == null)
-								throw new IllegalArgumentException();
-							yield new CurveClip(start, duration, curve);
-						}
-						case EXPR ->
-								new ExprClip(start, duration, entry.getString("expr").orElseThrow(IllegalArgumentException::new));
-						case STOP -> throw new IllegalArgumentException();
-					});
 				}
-				List<? extends SubClip> existing = switch (kind) {
-					case GRADIENT -> ((ColorAnimatedProperty) property).gradientClips();
-					case CURVE -> ((ConfigAnimatedProperty) property).curveClips(axis);
-					case EXPR -> property.exprClips(axis);
-					case STOP -> throw new IllegalArgumentException();
-				};
-				for (int i = 0; i < candidates.size(); i++) {
-					var clip = candidates.get(i);
-					if (existing.stream().anyMatch(other -> overlaps(clip, other)))
-						return false;
-					for (int j = i + 1; j < candidates.size(); j++)
-						if (overlaps(clip, candidates.get(j)))
-							return false;
-				}
-				for (var clip : candidates)
-					switch (clip) {
-						case GradientClip gradient -> ((ColorAnimatedProperty) property).gradientClips().add(gradient);
-						case CurveClip curve -> ((ConfigAnimatedProperty) property).curveClips(axis).add(curve);
-						case ExprClip expression -> property.addExprClip(axis, expression);
-						default -> throw new IllegalArgumentException();
-					}
 			}
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException _) {
 			property.restoreFrom(before);
 			return false;
 		}
+
 		var after = property.copy();
 		clearSelection(access);
 		ctx.pushApplied("photon.gui.editor.timeline.edit_curve",
@@ -197,6 +175,90 @@ public class PhotonSubClipboardUtil {
 				});
 		ctx.requestRebuild();
 		ctx.refreshPreview();
+		return true;
+	}
+
+	/// 先校验全部片段与重叠，再写入目标属性；异常仍由调用方回滚。
+	private static boolean pasteClips(AnimatedProperty property, Selection kind, ListTag entries, int axis, double tick) {
+		if (kind != Selection.GRADIENT && axis >= property.channelCount()) {
+			return false;
+		}
+		var candidates = new ArrayList<SubClip>();
+
+		if (!readClips(entries, kind, tick, candidates)) {
+			return false;
+		}
+
+		List<? extends SubClip> existing = switch (kind) {
+			case GRADIENT -> ((ColorAnimatedProperty) property).gradientClips();
+			case CURVE -> ((ConfigAnimatedProperty) property).curveClips(axis);
+			case EXPR -> property.exprClips(axis);
+			case STOP -> throw new IllegalArgumentException();
+		};
+
+		for (int i = 0; i < candidates.size(); i++) {
+			var clip = candidates.get(i);
+
+			if (existing.stream().anyMatch(other -> overlaps(clip, other))) {
+				return false;
+			}
+
+			for (int j = i + 1; j < candidates.size(); j++) {
+				if (overlaps(clip, candidates.get(j))) {
+					return false;
+				}
+			}
+		}
+
+		for (var clip : candidates) {
+			switch (clip) {
+				case GradientClip gradient when property instanceof ColorAnimatedProperty color ->
+						color.gradientClips().add(gradient);
+				case CurveClip curve when property instanceof ConfigAnimatedProperty config ->
+						config.curveClips(axis).add(curve);
+				case ExprClip expression -> property.addExprClip(axis, expression);
+				default -> throw new IllegalArgumentException();
+			}
+		}
+
+		return true;
+	}
+
+	/// 将剪切板条目转换为候选片段，保持原有遍历和反序列化顺序。
+	private static boolean readClips(ListTag entries, Selection kind, double tick, List<SubClip> candidates) {
+		for (var value : entries) {
+			if (!(value instanceof CompoundTag entry)) {
+				return false;
+			}
+			double relative = entry.getDoubleOr("start", Double.NaN), duration = entry.getDoubleOr("duration", Double.NaN);
+			double start = tick + relative;
+
+			if (!Double.isFinite(relative) || relative < 0 || !Double.isFinite(start)
+					|| !Double.isFinite(duration) || duration <= 0 || !Double.isFinite(start + duration)) {
+				return false;
+			}
+			candidates.add(switch (kind) {
+				case GRADIENT -> {
+					var gradient = new GradientColor();
+					ValueIONbt.fromTag(gradient, Platform.getFrozenRegistry(), entry.getCompound("gradient").orElseThrow(IllegalArgumentException::new));
+					yield new GradientClip(start, duration, gradient);
+				}
+
+				case CURVE -> {
+					var curve = NumberFunction.deserializeWrapper(entry.getCompound("curve").orElseThrow(IllegalArgumentException::new));
+
+					if (curve == null) {
+						throw new IllegalArgumentException();
+					}
+					yield new CurveClip(start, duration, curve);
+				}
+
+				case EXPR ->
+						new ExprClip(start, duration, entry.getString("expr").orElseThrow(IllegalArgumentException::new));
+				case STOP -> throw new IllegalArgumentException();
+			});
+		}
+
 		return true;
 	}
 

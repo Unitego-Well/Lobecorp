@@ -6,7 +6,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.conductor.ability.ConductorAbility;
+import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
@@ -18,15 +18,15 @@ import java.util.Collection;
 
 /// 提供指挥家实体控制能力及实体适配器运行逻辑。
 public class ConductorCapabilities {
-	public static Collection<ConductorAbility> abilities(Mob mob) {
+	public static Collection<IConductorAbility> abilities(Mob mob) {
 		return ConductorUtil.abilities(mob);
 	}
 
-	public static ConductorAbility ability(Mob mob, Identifier id) {
+	public static IConductorAbility ability(Mob mob, Identifier id) {
 		return ConductorUtil.ability(mob, id);
 	}
 
-	public static class MobControl implements ConductorUnitControl {
+	public static class MobControl implements IConductorUnitControl {
 		protected Mob mob;
 
 		public MobControl(Mob mob) {
@@ -44,8 +44,9 @@ public class ConductorCapabilities {
 
 		@Override
 		public boolean accept(ConductorData.Unit command) {
-			if (!supports(command.order()))
+			if (!supports(command.order())) {
 				return false;
+			}
 			ConductorAttachmentUtil.unit(mob).read(command);
 			return true;
 		}
@@ -78,13 +79,13 @@ public class ConductorCapabilities {
 		}
 
 		@Override
-		public Collection<ConductorAbility> abilities() {
+		public Collection<IConductorAbility> abilities() {
 			return RegisterConductorAbilitiesEvent.forMob(mob);
 		}
 
 		@Override
 		public boolean cast(Identifier skill, Entity target, Vec3 position) {
-			ConductorAbility ability = RegisterConductorAbilitiesEvent.get(mob, skill);
+			IConductorAbility ability = RegisterConductorAbilitiesEvent.get(mob, skill);
 			return ability != null && ability.isAvailable(mob) && ability.cooldownTicks(mob) == 0
 					&& ability.cast(mob, target, position);
 		}
@@ -101,6 +102,7 @@ public class ConductorCapabilities {
 				Identifier skill = order == ConductorData.OrderType.CLEANUP ? SweeperSkills.SWEEP.getId() : SweeperSkills.REASSEMBLE.getId();
 				return mob.isAlive() && RegisterConductorAbilitiesEvent.get(mob, skill) != null;
 			}
+
 			return super.supports(order);
 		}
 
@@ -109,8 +111,9 @@ public class ConductorCapabilities {
 			if (mob.level() instanceof ServerLevel level && ConductorWork.active(mob)) {
 				ConductorData data = ConductorData.get(level.getServer());
 				ConductorWork.tick((Sweeper) mob, level, data, data.unit(mob.getUUID()));
-			} else
+			} else {
 				super.tick();
+			}
 		}
 	}
 
@@ -123,8 +126,9 @@ public class ConductorCapabilities {
 		public void tick() {
 			if (mob.level() instanceof ServerLevel level && ConductorSonicBoom.active(mob)) {
 				ConductorSonicBoom.tick((Warden) mob, level);
-			} else
+			} else {
 				super.tick();
+			}
 		}
 	}
 }

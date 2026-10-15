@@ -61,7 +61,7 @@
 
 ## 事件订阅规则
 
-来自 `.codex/standards/event-registration.md` 和 `lobecorp-event-architecture`：
+来自 `../event-registration.md` 和 `lobecorp-event-architecture`：
 
 - 自动订阅类只能位于 `org.unitego.lobecorp.events` 或子包；客户端入口位于 `events.client` 并保持客户端边界。
 - 按功能域拆分订阅类，避免一个总入口承载全部业务。
@@ -72,7 +72,7 @@
 
 ## 实体技能、附件和指挥家规则
 
-- `EntitySkillAccess` 是实体技能操作的唯一能力入口；业务调用方不直接操作技能管理器或运行附件集合。
+- `IEntitySkillAccess` 是实体技能操作的唯一能力入口；业务调用方不直接操作技能管理器或运行附件集合。
 - 技能定义和注册属性由 `IEntitySkill`/`EntitySkill.Properties`/`LcEntitySkills` 负责；运行实例使用非持久化附件，不保存实体、Level、导航或渲染对象。
 - `SavedData` 保存世界级队伍目录、远程命令摘要和释放记录，不保存单实体运行实例。
 - 指挥家单位字段由附件保存、能力负责操作、世界目录负责持久化队伍和远程摘要；查询不能自动编队。
@@ -82,7 +82,7 @@
 
 ## 动画与视觉同步规则
 
-- 持续动作优先使用 `EntityStateHolder`、`LcEntityDataSerializers.ENTITY_STATES` 和状态边沿切换。
+- 持续动作优先使用 `IEntityStateHolder`、`LcEntityDataSerializers.ENTITY_STATES` 和状态边沿切换。
 - `playAnimation`/`stopAnimation` 表达生命周期边沿，不应每 tick 重发。
 - 服务端确认生成的粒子使用 `ServerLevel.sendParticles`；已由技能同步、实体状态或粒子表达的表现不得重复添加 Payload。
 - 不使用自定义 `broadcastEntityEvent`/`handleEntityEvent` 编号承载 Lobecorp 自定义视觉事件。

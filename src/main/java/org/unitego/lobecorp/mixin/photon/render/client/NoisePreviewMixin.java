@@ -37,8 +37,10 @@ public abstract class NoisePreviewMixin {
 	private void lobecorp$batchPreview(GUIContext graphics, float x, float y, float width, float height, CallbackInfo ci) {
 		var setting = ((NoisePreviewAccessor) this).lobecorp$config();
 		ci.cancel();
-		if (!(width > 0 && height > 0) || !Float.isFinite(width) || !Float.isFinite(height))
+		if (!(width > 0 && height > 0) || !Float.isFinite(width) || !Float.isFinite(height)) {
 			return;
+		}
+
 		int columns = (int) Math.ceil(width);
 		int rows = setting.getQuality() == NoiseSetting.Quality.Noise1D ? 1 : (int) Math.ceil(height);
 		var remap = PersistedParser.serializeNBT(setting.getRemap(), Platform.getFrozenRegistry());
@@ -47,18 +49,21 @@ public abstract class NoisePreviewMixin {
 				|| setting.getQuality() != lobecorp$quality || !remap.equals(lobecorp$remap)) {
 			var colors = new int[Math.multiplyExact(columns, rows)];
 			var noise = new PerlinNoise(seed);
-			for (int row = 0; row < rows; row++)
+			for (int row = 0; row < rows; row++) {
 				for (int column = 0; column < columns; column++) {
 					float value = ((float) switch (setting.getQuality()) {
 						case Noise1D -> noise.noise(column * setting.getFrequency());
 						case Noise2D -> noise.noise(column * setting.getFrequency(), row * setting.getFrequency());
 						case Noise3D -> noise.noise(column * setting.getFrequency(), row * setting.getFrequency(), 1);
 					} + 1) / 2;
-					if (setting.getRemap().isEnable())
+					if (setting.getRemap().isEnable()) {
 						value = (setting.getRemap().getRemapCurve().get(value, () -> 0f).floatValue() + 1) / 2;
+					}
 					int gray = Math.clamp((int) (value * 255), 0, 255);
 					colors[row * columns + column] = 0xff000000 | gray << 16 | gray << 8 | gray;
 				}
+			}
+
 			lobecorp$colors = colors;
 			lobecorp$columns = columns;
 			lobecorp$rows = rows;

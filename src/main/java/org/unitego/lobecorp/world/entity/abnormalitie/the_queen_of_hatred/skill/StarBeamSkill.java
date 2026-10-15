@@ -34,14 +34,17 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 			target -> target instanceof LivingEntity living && living.isAlive(),
 			context -> {
 				if (!(context.source() instanceof TheQueenOfHatred queen)
-						|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target))
+						|| !(context.target() instanceof LivingEntity target) || !queen.isHatedTarget(target)) {
 					return false;
+				}
 				Float damage = context.instance().getData(DAMAGE);
-				if (damage == null || !target.hurtServer(context.level(), queen.damageSources().mobAttack(queen), damage))
+				if (damage == null || !target.hurtServer(context.level(), queen.damageSources().mobAttack(queen), damage)) {
 					return false;
+				}
 				EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
-				if (runtime != null)
+				if (runtime != null) {
 					runtime.markSuccessful();
+				}
 				return true;
 			});
 
@@ -64,9 +67,11 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 		LivingEntity target = runtime.target(LivingEntity.class);
 		if (target == null && runtime.targetPosition() == null) {
 			target = queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-			if (target != null)
+			if (target != null) {
 				runtime.setTarget(target);
+			}
 		}
+
 		return target != null ? target.isAlive() && queen.isHatedTarget(target)
 				&& queen.hasLineOfSight(target) && queen.distanceToSqr(target) <= RANGE * RANGE
 				: runtime.targetPosition() != null;
@@ -95,8 +100,9 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel level))
+		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
+		}
 		aim(queen, runtime);
 		Vec3 start = origin(queen);
 		Vec3 end = endpoint(queen, start.add(queen.getLookAngle()));
@@ -113,6 +119,7 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 			hitbox.setData(DAMAGE, damage);
 			hitbox.activate();
 		}
+
 		level.sendParticles(LcParticleTypes.QUEEN_LASER.get(), start.x, start.y, start.z,
 				0, beam.x, beam.y, beam.z, 1.0);
 	}

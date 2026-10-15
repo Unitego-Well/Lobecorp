@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.conductor.render.ConductorGeoOutlineLayer;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
@@ -44,7 +45,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 	}
 
 	@Override
-	public void adjustModelBonesForRender(RenderPassInfo<LivingEntityRenderState> renderPassInfo, BoneSnapshots snapshots) {
+	public void adjustModelBonesForRender(RenderPassInfo<LivingEntityRenderState> renderPassInfo, @NonNull BoneSnapshots snapshots) {
 		LivingEntityRenderState renderState = renderPassInfo.renderState();
 		snapshots.ifPresent("head", snapshot -> {
 			snapshot.setRotX(snapshot.getRotX() + -renderState.xRot * Mth.DEG_TO_RAD);

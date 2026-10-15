@@ -19,6 +19,7 @@ public abstract class MultiStageSkill<T extends LivingEntity> extends EntitySkil
 		if (stageCount < 1 || continuationWindowTicks < 1 || sequenceCooldownTicks < 0) {
 			throw new IllegalArgumentException(INVALID_TIMING_MESSAGE);
 		}
+
 		this.stageCount = stageCount;
 		this.continuationWindowTicks = continuationWindowTicks;
 		this.sequenceCooldownTicks = sequenceCooldownTicks;
@@ -51,8 +52,9 @@ public abstract class MultiStageSkill<T extends LivingEntity> extends EntitySkil
 
 	/// 由运行实例在后摇回调完成后调用；取消路径不推进段数。
 	public void completeStage(EntitySkillRuntime<?> runtime) {
-		if (runtime.owner().level().isClientSide() || !advancesStage(runtime))
+		if (runtime.owner().level().isClientSide() || !advancesStage(runtime)) {
 			return;
+		}
 		Sequence sequence = sequence(runtime.owner());
 		int nextStage = runtime.sequenceStage() + 1;
 		if (nextStage >= stageCount()) {
@@ -83,8 +85,9 @@ public abstract class MultiStageSkill<T extends LivingEntity> extends EntitySkil
 	}
 
 	private void setSequenceCooldown(EntitySkillRuntime<?> runtime) {
-		if (!runtime.hasCooldownTicksOverride())
+		if (!runtime.hasCooldownTicksOverride()) {
 			runtime.setCooldownTicks(sequenceCooldownTicks());
+		}
 	}
 
 	private Sequence sequence(LivingEntity owner) {

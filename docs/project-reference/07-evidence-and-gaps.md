@@ -32,7 +32,7 @@
 
 ## 需要持续标注的差异
 
-1. `docs/java-architecture.md` 和 `.codex/standards/java-class-organization.md` 记录了约 284 个 Java 文件以及历史静态诊断统计；当前工作区仍有大量包迁移和并行修改，具体状态以 IDEA 当前索引和文件树为准。
+1. `docs/java-architecture.md` 和 `../java-class-organization.md` 记录了约 284 个 Java 文件以及历史静态诊断统计；当前工作区仍有大量包迁移和并行修改，具体状态以 IDEA 当前索引和文件树为准。
 2. IDEA Gradle 同步已成功完成；后续依赖、同步或语义操作仍应以再次读取的当前状态为准。
 3. `minecraft-mod-mcp` 本地 README 对工具数量、支持版本和端口有多处说明，存在 `35+`/`45` 的数量差异；没有运行时握手就不应择一作为事实。
 4. `run` 目录同时包含游戏存档、截图、日志、嵌套仓库和备份，不应与 Lobecorp 的主源集混合统计。

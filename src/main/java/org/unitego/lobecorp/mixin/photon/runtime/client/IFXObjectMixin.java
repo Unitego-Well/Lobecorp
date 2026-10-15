@@ -24,10 +24,13 @@ public interface IFXObjectMixin {
 		if (!(this instanceof PhotonActivationOverrideAccess access) || !access.lobecorp$hasOwnActivation()) {
 			return original.call(parent);
 		}
+
 		for (var transform = parent.transform(); transform != null; transform = transform.parent()) {
-			if (transform.sceneObject() instanceof IFXObject ancestor && !ancestor.isSelfVisible())
+			if (transform.sceneObject() instanceof IFXObject ancestor && !ancestor.isSelfVisible()) {
 				return false;
+			}
 		}
+
 		return true;
 	}
 

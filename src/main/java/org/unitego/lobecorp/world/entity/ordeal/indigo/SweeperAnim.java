@@ -13,6 +13,7 @@ public enum SweeperAnim {
 	ATTACK2(RawAnimation.begin().then("attack2", LoopType.PLAY_ONCE)),
 	ATTACK3(RawAnimation.begin().then("attack3", LoopType.PLAY_ONCE)),
 	LEAP(RawAnimation.begin().then("leap", LoopType.HOLD_ON_LAST_FRAME)),
+	LEAP_FLIGHT(RawAnimation.begin().then("leap_flight", LoopType.HOLD_ON_LAST_FRAME)),
 	LEAP2(RawAnimation.begin().then("leap2", LoopType.PLAY_ONCE)),
 	CLEAR1(RawAnimation.begin().then("clear", LoopType.HOLD_ON_LAST_FRAME)),
 	CLEAR2(RawAnimation.begin().thenLoop("clear2")),

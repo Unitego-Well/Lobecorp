@@ -41,11 +41,15 @@ public class QueenSkillUtil {
 	@Nullable
 	public static LivingEntity primaryTarget(TheQueenOfHatred queen, EntitySkillRuntime<?> runtime, double range) {
 		LivingEntity target = runtime.target(LivingEntity.class);
+
 		if (target == null && runtime.targetPosition() == null) {
 			target = queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-			if (target != null)
+
+			if (target != null) {
 				runtime.setTarget(target);
+			}
 		}
+
 		return validTarget(queen, target, range) ? target : null;
 	}
 
@@ -77,8 +81,10 @@ public class QueenSkillUtil {
 	/// 实体施放沿用阶段目标数量；空地施放只产生一个选定落点。
 	public static List<Vec3> targetPositions(TheQueenOfHatred queen, EntitySkillRuntime<?> runtime, double range) {
 		List<LivingEntity> targets = targets(queen, runtime, range);
-		if (!targets.isEmpty())
+
+		if (!targets.isEmpty()) {
 			return targets.stream().map(LivingEntity::position).toList();
+		}
 		Vec3 position = primaryPosition(queen, runtime, range);
 		return position == null ? List.of() : List.of(position);
 	}
@@ -86,16 +92,20 @@ public class QueenSkillUtil {
 	/// 优先保留所选主目标，二阶段再补充距女皇最近的有效敌人。
 	public static List<LivingEntity> targets(TheQueenOfHatred queen, EntitySkillRuntime<?> runtime, double range) {
 		LivingEntity primary = primaryTarget(queen, runtime, range);
-		if (primary == null)
+
+		if (primary == null) {
 			return List.of();
+		}
 		List<LivingEntity> targets = new ArrayList<>();
 		targets.add(primary);
+
 		if (queen.isPhaseTwo() && queen.level() instanceof ServerLevel level) {
 			level.getEntitiesOfClass(LivingEntity.class, queen.getBoundingBox().inflate(range),
 							candidate -> candidate != primary && validTarget(queen, candidate, range)).stream()
 					.sorted(Comparator.comparingDouble(queen::distanceToSqr))
 					.limit(PHASE_TWO_TARGET_COUNT - targets.size()).forEach(targets::add);
 		}
+
 		return List.copyOf(targets);
 	}
 

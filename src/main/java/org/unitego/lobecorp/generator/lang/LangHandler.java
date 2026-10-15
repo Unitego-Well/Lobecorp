@@ -25,10 +25,12 @@ public class LangHandler {
 	public static final String ZH_CN = "zh_cn";
 
 	public static String getConfigTranslation(String modId, String... keys) {
-		StringBuilder builder = new StringBuilder(modId + ".configuration");
+		var builder = new StringBuilder(modId + ".configuration");
+
 		for (String key : keys) {
 			builder.append(".").append(key);
 		}
+
 		return builder.toString();
 	}
 
@@ -38,7 +40,7 @@ public class LangHandler {
 	}
 
 	public static LangSet getLang(String namespace, String lang) {
-		return MOD_LANG_MAP.computeIfAbsent(namespace, k -> new HashMap<>()).computeIfAbsent(lang, k -> new LangSet());
+		return MOD_LANG_MAP.computeIfAbsent(namespace, _ -> new HashMap<>()).computeIfAbsent(lang, _ -> new LangSet());
 	}
 
 	public static void creates(String namespace, String enUs, String zhCn, BiConsumer<LangSet, String> unaryOperator) {

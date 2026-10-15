@@ -12,6 +12,7 @@ public class TheQueenOfHatredModel extends GeoModel<TheQueenOfHatred> {
 	private static final Identifier MODEL = Lobecorp.id("entity/the_queen_of_hatred");
 	/// 憎恶皇后纹理资源。
 	private static final Identifier TEXTURE = Lobecorp.id("textures/entity/the_queen_of_hatred.png");
+	/// 女皇癫狂阶段使用的纹理资源。
 	private static final Identifier HYSTERICAL_TEXTURE = Lobecorp.id("textures/entity/the_queen_of_hatred_hysterical.png");
 	/// 憎恶皇后动画资源。
 	private static final Identifier ANIMATION = Lobecorp.id("entity/the_queen_of_hatred");

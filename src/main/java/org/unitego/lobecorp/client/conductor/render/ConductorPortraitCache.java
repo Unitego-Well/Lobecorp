@@ -26,10 +26,15 @@ import java.util.*;
 import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
 
 public class ConductorPortraitCache {
+	/// 成员肖像动态纹理的调试名称。
 	private static final String TEXTURE_LABEL = "lobecorp_conductor_portrait";
+	/// 肖像模型面向相机的旋转角，单位为度。
 	private static final float FACING_ROTATION = 180.0F;
+	/// 普通成员卡片使用的肖像缓存。
 	private static final Map<UUID, Portrait> cards = new HashMap<>();
+	/// 当前关注成员使用的肖像缓存。
 	private static final Map<UUID, Portrait> focus = new HashMap<>();
+	/// 待绘制肖像与目标控件的对应集合。
 	private static final Map<Portrait, List<Target>> destinations = new LinkedHashMap<>();
 	private static Object world;
 	private static boolean staticCards;
@@ -43,8 +48,9 @@ public class ConductorPortraitCache {
 	}
 
 	public static void beginFrame(Object level, ConductorDirectory members, boolean reduced) {
-		if (world != level)
+		if (world != level) {
 			clear();
+		}
 		world = level;
 		frame++;
 		staticCards = reduced;
@@ -57,10 +63,12 @@ public class ConductorPortraitCache {
 	                        int x, int y, int width, int height) {
 		Portrait portrait = cards.get(id);
 		var renderer = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
+
 		if (portrait != null && portrait.renderer != renderer) {
 			cards.remove(id);
 			portrait = null;
 		}
+
 		if (portrait == null && staticCards) {
 			String name = entity.getDisplayName().getString();
 			String icon = name.isEmpty() ? UNKNOWN_MARK : name.substring(0, name.offsetByCodePoints(0, 1));
@@ -70,16 +78,20 @@ public class ConductorPortraitCache {
 				portrait = new Portrait();
 				cards.put(id, portrait);
 			}
-			if (portrait.state == null || !staticCards && portrait.frame != frame)
+
+			if (portrait.state == null || !staticCards && portrait.frame != frame) {
 				extract(portrait, entity, 0);
+			}
 			queue(graphics, portrait, x, y, width, height, 1);
 		}
-		if (staticCards)
+
+		if (staticCards) {
 			graphics.fill(x + width - 1, y + height - 1, x + width, y + height, GOLD);
+		}
 	}
 
 	public static void focus(GuiGraphicsExtractor graphics, LivingEntity entity, int x, int y, int size, float angle, float scale) {
-		Portrait portrait = focus.computeIfAbsent(entity.getUUID(), ignored -> new Portrait());
+		Portrait portrait = focus.computeIfAbsent(entity.getUUID(), _ -> new Portrait());
 		extract(portrait, entity, angle);
 		queue(graphics, portrait, x, y, size, size, scale);
 	}
@@ -89,15 +101,19 @@ public class ConductorPortraitCache {
 		EntityRenderState state = renderer.createRenderState(entity, 1);
 		state.shadowPieces.clear();
 		state.outlineColor = 0;
+
 		if (state instanceof LivingEntityRenderState living) {
 			living.bodyRot = FACING_ROTATION + angle;
 			living.yRot = 0;
-			if (living.pose != Pose.FALL_FLYING)
+
+			if (living.pose != Pose.FALL_FLYING) {
 				living.xRot = 0;
+			}
 			living.boundingBoxWidth /= living.scale;
 			living.boundingBoxHeight /= living.scale;
 			living.scale = 1;
 		}
+
 		portrait.state = state;
 		portrait.renderer = renderer;
 		portrait.frame = frame;
@@ -108,7 +124,7 @@ public class ConductorPortraitCache {
 		float scale = Math.max(1, (int) (Math.min(width, height) * PORTRAIT_SCALE
 				/ Math.max(1, portrait.state.boundingBoxHeight))) * multiplier;
 		portrait.scale = destinations.containsKey(portrait) ? Math.max(portrait.scale, scale) : scale;
-		destinations.computeIfAbsent(portrait, ignored -> new ArrayList<>())
+		destinations.computeIfAbsent(portrait, _ -> new ArrayList<>())
 				.add(new Target(x, y, width, height, graphics.peekScissorStack()));
 	}
 
@@ -162,20 +178,25 @@ public class ConductorPortraitCache {
 		@Override
 		public @Nullable ScreenRectangle bounds() {
 			ScreenRectangle result = null;
+
 			for (Target target : targets) {
 				ScreenRectangle next = PictureInPictureRenderState.getBounds(target.x(), target.y(),
 						target.x() + target.width(), target.y() + target.height(), target.clip());
-				if (next == null)
+
+				if (next == null) {
 					continue;
-				if (result == null)
+				}
+
+				if (result == null) {
 					result = next;
-				else {
+				} else {
 					int left = Math.min(result.left(), next.left());
 					int top = Math.min(result.top(), next.top());
 					result = new ScreenRectangle(left, top, Math.max(result.right(), next.right()) - left,
 							Math.max(result.bottom(), next.bottom()) - top);
 				}
 			}
+
 			return result;
 		}
 
@@ -216,7 +237,7 @@ public class ConductorPortraitCache {
 			pose.translate(0, state.entity().boundingBoxHeight / 2 + PORTRAIT_Y_OFFSET, 0);
 			pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
 			var features = minecraft.gameRenderer.getFeatureRenderDispatcher();
-			CameraRenderState camera = new CameraRenderState();
+			var camera = new CameraRenderState();
 			camera.orientation = new Quaternionf().rotateY((float) Math.PI);
 			minecraft.getEntityRenderDispatcher().submit(state.entity(), camera, 0, 0, 0, pose, features.getSubmitNodeStorage());
 			features.renderAllFeatures();

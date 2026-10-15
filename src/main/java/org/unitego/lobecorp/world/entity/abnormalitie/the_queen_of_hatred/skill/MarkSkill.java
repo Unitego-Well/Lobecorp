@@ -27,11 +27,13 @@ public class MarkSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		if (!(queen.level() instanceof ServerLevel))
+		if (!(queen.level() instanceof ServerLevel)) {
 			return;
+		}
 		for (LivingEntity target : QueenSkillUtil.targets(queen, runtime, RANGE)) {
-			if (target.addEffect(new MobEffectInstance(LcMobEffects.HATRED_MARK, EFFECT_TICKS)))
+			if (target.addEffect(new MobEffectInstance(LcMobEffects.HATRED_MARK, EFFECT_TICKS))) {
 				runtime.markSuccessful();
+			}
 		}
 	}
 

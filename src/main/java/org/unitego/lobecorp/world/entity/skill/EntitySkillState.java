@@ -13,7 +13,7 @@ import java.util.Set;
 public record EntitySkillState(Map<IEntitySkill<?>, Boolean> overrides) {
 	/// true 表示显式添加，false 表示显式移除；默认技能本身不写入附件。
 	public static final Codec<EntitySkillState> CODEC = Codec.dispatchedMap(
-					LcRegistrys.ENTITY_SKILL.byNameCodec(), ignored -> Codec.BOOL)
+					LcRegistrys.ENTITY_SKILL.byNameCodec(), _ -> Codec.BOOL)
 			.xmap(EntitySkillState::new, EntitySkillState::overrides);
 
 	public EntitySkillState {
@@ -28,10 +28,11 @@ public record EntitySkillState(Map<IEntitySkill<?>, Boolean> overrides) {
 	public Set<IEntitySkill<?>> apply(Set<IEntitySkill<?>> defaults) {
 		Set<IEntitySkill<?>> skills = new LinkedHashSet<>(defaults);
 		overrides.forEach((skill, owned) -> {
-			if (owned)
+			if (owned) {
 				skills.add(skill);
-			else
+			} else {
 				skills.remove(skill);
+			}
 		});
 		return Collections.unmodifiableSet(skills);
 	}
@@ -39,10 +40,11 @@ public record EntitySkillState(Map<IEntitySkill<?>, Boolean> overrides) {
 	/// 与默认值一致时清除修正，恢复继承默认定义。
 	public EntitySkillState with(IEntitySkill<?> skill, boolean owned, boolean defaultOwned) {
 		Map<IEntitySkill<?>, Boolean> next = new LinkedHashMap<>(overrides);
-		if (owned == defaultOwned)
+		if (owned == defaultOwned) {
 			next.remove(skill);
-		else
+		} else {
 			next.put(skill, owned);
+		}
 		return new EntitySkillState(next);
 	}
 }

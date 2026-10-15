@@ -36,11 +36,13 @@ public class BasicLangGenerator extends LanguageProvider {
 	}
 
 	public static String getFormattedKey(String namespace, String... key) {
-		StringBuilder builder = new StringBuilder(namespace);
+		var builder = new StringBuilder(namespace);
 		builder.append(".commands");
+
 		for (String s : key) {
 			builder.append(".").append(s);
 		}
+
 		return builder.toString();
 	}
 
@@ -48,11 +50,14 @@ public class BasicLangGenerator extends LanguageProvider {
 		if (keys.length == 0) {
 			return modId + ".config";
 		}
-		StringBuilder builder = new StringBuilder();
+
+		var builder = new StringBuilder();
+
 		for (String key : keys) {
 			builder.append(".");
 			builder.append(key);
 		}
+
 		return modId + ".config" + builder;
 	}
 
@@ -80,9 +85,11 @@ public class BasicLangGenerator extends LanguageProvider {
 		String locale = getLocale();
 		Path manualPath = Paths.get(System.getProperty("user.dir")).getParent()
 				.resolve("lang/" + locale + ".json");
+
 		if (!Files.isRegularFile(manualPath)) {
 			return;
 		}
+
 		try (BufferedReader reader = Files.newBufferedReader(manualPath)) {
 			JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
 			json.entrySet().forEach(entry -> add(entry.getKey(), entry.getValue().getAsString()));

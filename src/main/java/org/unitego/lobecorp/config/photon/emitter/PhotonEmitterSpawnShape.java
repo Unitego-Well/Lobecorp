@@ -9,9 +9,7 @@ import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 
-/**
- * 实例发射的本地空间分布；不创建载体粒子。
- */
+/// 实例发射的本地空间分布；不创建载体粒子。
 public class PhotonEmitterSpawnShape implements IConfigurable, IPersistedSerializable {
 	@Configurable(name = PhotonEmitterSpawnerTextUtil.SHAPE_TYPE)
 	public Type type = Type.POINT;

@@ -20,7 +20,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
-import org.unitego.lobecorp.conductor.ability.ConductorAbility;
+import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
@@ -32,8 +32,10 @@ import java.util.*;
 public record ConductorSnapshotPayload(boolean full, long baseRevision, long revision,
                                        List<String> removedTeams, List<String> removedUnits, ConductorDirectory data,
                                        List<AbilityCooldown> abilityCooldowns,
-                                       List<UnitAbilities> unitAbilities) implements ToClientPayload {
+                                       List<UnitAbilities> unitAbilities) implements IToClientPayload {
+	/// 载荷类型的稳定标识，必须与收发两端的协议登记一致。
 	public static final Type<ConductorSnapshotPayload> TYPE = Lobecorp.type("conductor_snapshot");
+	/// 载荷的二进制编解码契约，字段读写顺序必须保持一致。
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorSnapshotPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull ConductorSnapshotPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -54,12 +56,16 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 			ABILITIES_CODEC.encode(buffer, payload.unitAbilities);
 		}
 	};
+	/// 快照中移除的团队和单位键列表的编解码契约，保留字符串标识及列表顺序。
 	private static final StreamCodec<RegistryFriendlyByteBuf, List<String>> KEYS_CODEC =
 			ByteBufCodecs.fromCodecWithRegistries(Codec.STRING.listOf());
+	/// 指挥家目录数据的快照编解码契约。
 	private static final StreamCodec<RegistryFriendlyByteBuf, ConductorDirectory> DATA_CODEC =
 			ByteBufCodecs.fromCodecWithRegistries(ConductorDirectory.CODEC);
+	/// 指挥家能力剩余冷却数据的快照编解码契约，时间单位为游戏 tick。
 	private static final StreamCodec<RegistryFriendlyByteBuf, List<AbilityCooldown>> COOLDOWNS_CODEC =
 			ByteBufCodecs.fromCodecWithRegistries(AbilityCooldown.CODEC.listOf());
+	/// 指挥家能力状态的快照编解码契约。
 	private static final StreamCodec<RegistryFriendlyByteBuf, List<UnitAbilities>> ABILITIES_CODEC =
 			ByteBufCodecs.fromCodecWithRegistries(UnitAbilities.CODEC.listOf());
 
@@ -68,17 +74,19 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 	}
 
 	public static void send(ServerPlayer player, ConductorData data, List<UUID> requested) {
-		Set<UUID> subscriptions = data.runtime.requestedAbilities.computeIfAbsent(player.getUUID(), ignored -> new HashSet<>());
+		Set<UUID> subscriptions = data.runtime.requestedAbilities.computeIfAbsent(player.getUUID(), _ -> new HashSet<>());
 		requested.stream().filter(uuid -> data.unit(uuid) != null).forEach(subscriptions::add);
 		PacketDistributor.sendToPlayer(player, create(player, data, true));
 	}
 
 	public static void sendAll(MinecraftServer server, ConductorData data) {
 		Set<UUID> online = new HashSet<>();
+
 		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
 			online.add(player.getUUID());
 			PacketDistributor.sendToPlayer(player, create(player, data, false));
 		}
+
 		data.runtime.clients.keySet().retainAll(online);
 		data.runtime.requestedAbilities.keySet().retainAll(online);
 	}
@@ -93,36 +101,45 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 		Set<UUID> requested = data.runtime.requestedAbilities.getOrDefault(player.getUUID(), Set.of());
 		List<AbilityCooldown> cooldowns = new ArrayList<>();
 		List<UnitAbilities> abilities = new ArrayList<>();
+
 		for (var entry : data.units().entrySet()) {
-			if (!requested.contains(UUID.fromString(entry.getKey())))
+			if (!requested.contains(UUID.fromString(entry.getKey()))) {
 				continue;
+			}
 			ConductorData.Unit unit = entry.getValue();
 			ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION,
 					Identifier.parse(unit.dimension())));
 			Entity entity = level == null ? null : level.getEntity(UUID.fromString(entry.getKey()));
+
 			if (!(entity instanceof Mob mob)) {
 				continue;
 			}
+
 			data.remember(mob);
-			if (ConductorUtil.get(mob) == null)
+
+			if (ConductorUtil.get(mob) == null) {
 				continue;
-			List<ConductorAbility> available = List.copyOf(ConductorUtil.abilities(mob));
-			abilities.add(new UnitAbilities(mob.getUUID(), available.stream().map(ConductorAbility::id).toList()));
-			for (ConductorAbility ability : available) {
+			}
+			List<IConductorAbility> available = List.copyOf(ConductorUtil.abilities(mob));
+			abilities.add(new UnitAbilities(mob.getUUID(), available.stream().map(IConductorAbility::id).toList()));
+
+			for (IConductorAbility ability : available) {
 				int remaining = ability.cooldownTicks(mob);
+
 				if (remaining > 0) {
 					cooldowns.add(new AbilityCooldown(mob.getUUID(), ability.id(), remaining,
 							Math.max(remaining, ability.totalCooldownTicks(mob))));
 				}
 			}
 		}
-		ConductorDirectory current = new ConductorDirectory(data.teams(), data.units(), data.memberInfo());
+
+		var current = new ConductorDirectory(data.teams(), data.units(), data.memberInfo());
 		ConductorWorldRuntime.ClientView previous = data.runtime.clients.get(player.getUUID());
 		full |= previous == null;
 		ConductorDirectory before = previous == null ? ConductorDirectory.empty() : previous.directory();
 		List<String> removedTeams = before.teams().keySet().stream().filter(key -> !current.teams().containsKey(key)).toList();
 		List<String> removedUnits = before.units().keySet().stream().filter(key -> !current.units().containsKey(key)).toList();
-		ConductorSnapshotPayload payload = new ConductorSnapshotPayload(full, previous == null ? 0L : previous.revision(),
+		var payload = new ConductorSnapshotPayload(full, previous == null ? 0L : previous.revision(),
 				data.revision(), removedTeams, removedUnits, full ? current : current.changesFrom(before),
 				List.copyOf(cooldowns), List.copyOf(abilities));
 		data.runtime.clients.put(player.getUUID(), new ConductorWorldRuntime.ClientView(current, data.revision()));
@@ -138,6 +155,7 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 		private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 		private static final Codec<Identifier> IDENTIFIER_CODEC = Codec.STRING.xmap(Identifier::parse, Identifier::toString);
 
+		/// 本记录的持久化编解码契约，保持字段名称与默认值兼容。
 		public static final Codec<UnitAbilities> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				UUID_CODEC.fieldOf("unit").forGetter(UnitAbilities::unit),
 				IDENTIFIER_CODEC.listOf().fieldOf("abilities").forGetter(UnitAbilities::abilities)
@@ -148,6 +166,7 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 		private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 		private static final Codec<Identifier> IDENTIFIER_CODEC = Codec.STRING.xmap(Identifier::parse, Identifier::toString);
 
+		/// 本记录的持久化编解码契约，保持字段名称与默认值兼容。
 		public static final Codec<AbilityCooldown> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				UUID_CODEC.fieldOf("unit").forGetter(AbilityCooldown::unit),
 				IDENTIFIER_CODEC.fieldOf("ability").forGetter(AbilityCooldown::ability),

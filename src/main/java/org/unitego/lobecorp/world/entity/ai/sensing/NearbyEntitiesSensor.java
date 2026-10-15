@@ -13,11 +13,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-/// 扫描附近实体的 Sensor。在指定范围内搜索满足条件的所有实体，按距离排序后写入两个记忆：<br>
-/// <ul>
-///   <li>{@code targetMemory} — 原始实体列表（按距离升序）</li>
-///   <li>{@code visibleMemory} — {@link NearestVisibleEntities} 包装器（带视线缓存）</li>
-/// </ul>
+/// 扫描附近实体的 Sensor。在指定范围内搜索满足条件的所有实体，按距离排序后写入两个记忆：
+///
+/// - `targetMemory` — 原始实体列表（按距离升序）
+/// - `visibleMemory` — [NearestVisibleEntities] 包装器（带视线缓存）
+///
 public class NearbyEntitiesSensor<E extends Entity> extends Sensor<Mob> {
 	private final Predicate<Entity> filter;
 	private final double range;
@@ -38,7 +38,7 @@ public class NearbyEntitiesSensor<E extends Entity> extends Sensor<Mob> {
 	/// @param filter        目标实体条件
 	/// @param range         扫描半径
 	/// @param targetMemory  存储原始列表的记忆模块
-	/// @param visibleMemory 存储 {@link NearestVisibleEntities} 包装器的记忆模块
+	/// @param visibleMemory 存储 [NearestVisibleEntities] 包装器的记忆模块
 	public static <T extends Entity> NearbyEntitiesSensor<T> create(
 			Predicate<Entity> filter, double range,
 			MemoryModuleType<List<T>> targetMemory,

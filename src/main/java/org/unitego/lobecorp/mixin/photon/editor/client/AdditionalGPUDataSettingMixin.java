@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 import java.util.function.Supplier;
 import java.util.function.Consumer;
@@ -20,7 +20,7 @@ public abstract class AdditionalGPUDataSettingMixin {
 	private static void lobecorp$renameDialog(Configurator configurator, Supplier<String> getName, Consumer<String> setName, CallbackInfo ci) {
 		configurator.label.addEventListener(UIEvents.DOUBLE_CLICK, event -> {
 			var editor = PhotonEditorTools.findEditor(configurator);
-			if (editor == null || !PhotonEditorSettings.of(editor).enabled("rename_dialog")) {
+			if (!(editor instanceof PhotonEffectEditor)) {
 				return;
 			}
 

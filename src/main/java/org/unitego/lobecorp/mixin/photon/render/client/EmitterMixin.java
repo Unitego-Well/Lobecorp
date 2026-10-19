@@ -1,87 +1,61 @@
 package org.unitego.lobecorp.mixin.photon.render.client;
 
-import com.llamalad7.mixinextras.sugar.Local;
-import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import org.unitego.lobecorp.client.photon.runtime.PhotonEmissionControlAccess;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
+import com.lowdragmc.photon.client.render.PhotonFXRenderState;
+import com.lowdragmc.photon.client.render.IPhotonFXCollector.BakeTask;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
-import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
-import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
-import net.minecraft.client.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.unitego.lobecorp.util.photon.render.PhotonViewDepthSortUtil;
-import org.unitego.lobecorp.util.photon.render.PhotonOcclusionUtil;
 
-import java.util.List;
 
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import net.minecraft.util.Mth;
-import org.unitego.lobecorp.client.photon.runtime.PhotonParticleAgeAccess;
+
 
 @Mixin(Emitter.class)
-public abstract class EmitterMixin implements PhotonParticleAgeAccess {
-	@Shadow
-	protected float ageF;
-	@Unique
-	private float lobecorp$previousCycleAge;
+public abstract class EmitterMixin {
 
-	@ModifyReturnValue(method = "isEmitting", at = @At("RETURN"))
-	private boolean lobecorp$emissionAlive(boolean original) {
-		if ((Object) this instanceof PhotonEmissionControlAccess control && control.lobecorp$isEmissionStopped()) {
-			var emitter = (Emitter) (Object) this;
-			return emitter.isActive() && emitter.getParticleAmount() != 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	@WrapOperation(method = "extractBatches", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/render/PhotonFXRenderState;defer(Lcom/lowdragmc/photon/client/render/IPhotonFXCollector$BakeTask;)V"))
+	private void lobecorp$captureDeferredBake(PhotonFXRenderState state, BakeTask task, Operation<Void> original) {
+		if (!PhotonPerformanceTraceUtil.enabled(Stage.GEOMETRY)) {
+			original.call(state, task);
+			return;
 		}
-
-		return original;
-	}
-
-	@Inject(method = "onTickBegin", at = @At("HEAD"))
-	private void lobecorp$snapshotCycleAge(CallbackInfo ci) {
-		this.lobecorp$previousCycleAge = this.ageF;
-	}
-
-	@Inject(method = {"reset", "setAge"}, at = @At("RETURN"))
-	private void lobecorp$resetCycleAge(CallbackInfo ci) {
-		this.lobecorp$previousCycleAge = this.ageF;
-	}
-
-	@Override
-	public float lobecorp$getRotationAge(float partialTicks) {
-		return partialTicks == 0 ? this.ageF
-				: Mth.lerp(Mth.clamp(partialTicks, 0, 1), this.lobecorp$previousCycleAge, this.ageF);
-	}
-
-	@Inject(method = "bakeGroup", at = @At("HEAD"))
-	private void lobecorp$rememberJobStart(CallbackInfo ci, @Local(argsOnly = true) List<DrawJob> out,
-	                                       @Share("lobecorp$jobStart") LocalIntRef start) {
-		start.set(out.size());
-	}
-
-	@Inject(method = "bakeInstancedGroup", at = @At("HEAD"))
-	private void lobecorp$rememberInstanceJobStart(CallbackInfoReturnable<Boolean> cir, @Local(argsOnly = true) List<DrawJob> out,
-	                                               @Share("lobecorp$jobStart") LocalIntRef start) {
-		start.set(out.size());
-	}
-
-	@Inject(method = "bakeGroup", at = @At("RETURN"))
-	private void lobecorp$markCpuDepth(CallbackInfo ci, @Local(argsOnly = true) List<DrawJob> out,
-	                                   @Local(argsOnly = true) Camera camera, @Local(argsOnly = true) RendererSetting.Runtime renderer,
-	                                   @Share("lobecorp$jobStart") LocalIntRef start) {
-		PhotonOcclusionUtil.mark(out, start.get(), renderer);
-		PhotonViewDepthSortUtil.mark(out, start.get(), camera, ((Emitter) (Object) this).transform().position(), renderer);
-	}
-
-	@Inject(method = "bakeInstancedGroup", at = @At("RETURN"))
-	private void lobecorp$markInstanceDepth(CallbackInfoReturnable<Boolean> cir, @Local(argsOnly = true) List<DrawJob> out,
-	                                        @Local(argsOnly = true) Camera camera, @Local(argsOnly = true) RendererSetting.Runtime renderer,
-	                                        @Share("lobecorp$jobStart") LocalIntRef start) {
-		PhotonOcclusionUtil.mark(out, start.get(), renderer);
-		PhotonViewDepthSortUtil.mark(out, start.get(), camera, ((Emitter) (Object) this).transform().position(), renderer);
+		original.call(state, (BakeTask) (settings, output) -> {
+			var emitter = (Emitter) (Object) this;
+			long scope = PhotonPerformanceTraceUtil.begin(Stage.GEOMETRY, PhotonPerformanceOwnerUtil.object(emitter));
+			int start = output.size();
+			boolean completed = false;
+			try {
+				task.bake(settings, output);
+				completed = true;
+			} finally {
+				if (PhotonPerformanceTraceUtil.active()) {
+					PhotonPerformanceOwnerUtil.baked(emitter, output, start);
+				}
+				PhotonPerformanceTraceUtil.end(scope, completed);
+			}
+		});
 	}
 }

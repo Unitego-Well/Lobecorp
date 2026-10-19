@@ -11,7 +11,6 @@ import net.minecraft.client.Minecraft;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 
 import java.util.List;
@@ -114,7 +113,7 @@ public class PhotonEffectViewUtil {
 				&& minecraft.screen instanceof ModularUIScreen screen && containsUi(screen.modularUI, window.getModularUI());
 		var result = new JsonObject();
 		result.addProperty("projectId", handle.id());
-		result.addProperty("kind", handle.project() instanceof PhotonModelProject ? "model" : "fx");
+		result.addProperty("kind", "fx");
 		result.add("view", settings(handle).json());
 		var supported = new JsonArray();
 		FIELDS.forEach(supported::add);

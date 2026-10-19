@@ -16,7 +16,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,7 +65,7 @@ public class PhotonTimelineClipboardUtil {
 		if (runtime == null || ctx.selectedClips().isEmpty()) {
 			return;
 		}
-		var source = PhotonAnimationTimelineUtil.of(ctx).leafTracks(true);
+		var source = PhotonEditorTimelineUtil.of(ctx).leafTracks(true);
 		var entries = new ListTag();
 		double anchor = ctx.selectedClips().stream().mapToDouble(Clip::start).min().orElseThrow();
 
@@ -264,7 +264,7 @@ public class PhotonTimelineClipboardUtil {
 			if (clips) {
 				pasteClips(ctx, selected, data, decoded);
 			} else {
-				var tracks = PhotonAnimationTimelineUtil.of(ctx).tracks();
+				var tracks = PhotonEditorTimelineUtil.of(ctx).tracks();
 				int at = Math.clamp(index, 0, tracks.size());
 				ctx.pushEdit("photon.gui.editor.timeline.add_track",
 						() -> {
@@ -282,7 +282,7 @@ public class PhotonTimelineClipboardUtil {
 	}
 
 	private static void pasteClips(TimelineContext ctx, Track selected, CompoundTag data, List<Track> decoded) {
-		var timeline = PhotonAnimationTimelineUtil.of(ctx);
+		var timeline = PhotonEditorTimelineUtil.of(ctx);
 		var lanes = timeline.leafTracks(true);
 		var entries = data.getListOrEmpty("tracks");
 		var batches = new ArrayList<ClipBatch>();

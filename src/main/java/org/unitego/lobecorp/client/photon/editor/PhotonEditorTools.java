@@ -4,6 +4,8 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.lowdraglib2.utils.virtuallevel.DummyWorld;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
+import com.lowdragmc.lowdraglib2.editor.ui.EditorHost;
+import com.lowdragmc.lowdraglib2.editor.ui.EditorWindow;
 import com.lowdragmc.lowdraglib2.editor.keymap.KeymapContext;
 import com.lowdragmc.lowdraglib2.configurator.EditAction;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
@@ -23,11 +25,9 @@ import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.PhotonParticleManager;
-import org.unitego.lobecorp.client.photon.animation.editor.PhotonAnimationWorkspace;
-import org.unitego.lobecorp.client.photon.animation.editor.PhotonAnimationTab;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTextUtil;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationEditingUtil;
+import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
@@ -49,7 +49,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.client.photon.runtime.PhotonBeamLengthAccess;
+import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorActions;
 import org.unitego.lobecorp.util.TranslationKeys;
@@ -136,7 +136,6 @@ public class PhotonEditorTools {
 
 	private Map<RuntimeValue<?>, Object> overrides = new LinkedHashMap<>();
 	private Map<IFXObject, Boolean> visibility = new LinkedHashMap<>();
-	private Map<BeamEmitter, Float> beamLengths = new LinkedHashMap<>();
 	private FXRuntime previewRuntime;
 	private CompoundTag moduleClipboard;
 	private String clipboardModule;
@@ -210,8 +209,7 @@ public class PhotonEditorTools {
 	}
 
 	private FXTimelineView timeline() {
-		var workspace = PhotonAnimationTab.editing(editor);
-		return workspace == null ? editor.timelineView : workspace.timelineView();
+		return editor.timelineView;
 	}
 
 	private void syncPreviewRange() {
@@ -241,8 +239,6 @@ public class PhotonEditorTools {
 		if (boundRuntime != null) {
 			PREVIEWS.put(boundRuntime, new WeakReference<>(this));
 		}
-
-		PhotonAnimationTab.install(editor);
 	}
 
 	public static void applyPreview(FXRuntime runtime) {
@@ -319,6 +315,13 @@ public class PhotonEditorTools {
 
 	public static void updateControlRegistration(UIElement element, String name, boolean attached) {
 		var editor = findEditor(element);
+		if (editor != null && !isPhotonEditor(editor)) {
+			if (attached && isFeatureControlName(name)) {
+				element.setDisplay(false);
+			}
+			return;
+		}
+
 		var tools = editor == null ? null : of(editor);
 
 		if (tools == null) {
@@ -347,15 +350,35 @@ public class PhotonEditorTools {
 	}
 
 	public static FXEditor findEditor(UIElement element) {
-		return PhotonAnimationEditingUtil.editor(element);
+		for (var parent = element; parent != null; parent = parent.getParent()) {
+			var owner = switch (parent) {
+				case FXEditor editor -> editor;
+				case EditorWindow window when window.getCurrentEditor() instanceof FXEditor current -> current;
+				case EditorHost host when host.getHostedEditor() instanceof FXEditor hosted -> hosted;
+				default -> null;
+			};
+			if (owner != null) {
+				return owner;
+			}
+		}
+
+		return null;
+	}
+
+	public static boolean isPhotonEditor(Editor editor) {
+		return editor instanceof PhotonEffectEditor;
+	}
+
+	public static @Nullable PhotonEffectEditor current(UIElement element) {
+		return findEditor(element) instanceof PhotonEffectEditor editor ? editor : null;
 	}
 
 	public static boolean enabled(UIElement element, String feature) {
 		var editor = findEditor(element);
-		return editor == null || PhotonEditorSettings.of(editor).enabled(feature);
+		return editor == null || isPhotonEditor(editor);
 	}
 
-	/// 按运行实例所属场景读取设置；普通世界和未绑定编辑器的预览沿用默认开启。
+	/// 区分扩展与原生编辑器预览；普通世界和未绑定编辑器的运行实例保持开启。
 	public static boolean enabled(FXRuntime runtime, String feature) {
 		if (runtime == null || !(runtime.getRoot().getLevel() instanceof DummyWorld world)
 				|| !(world.getParticleManager() instanceof PhotonParticleManager manager)) {
@@ -366,24 +389,24 @@ public class PhotonEditorTools {
 	}
 
 	private boolean enabled(String feature) {
-		if (PhotonEditorTextUtil.PRECISE_FEATURE.equals(feature) || "batch_move".equals(feature)) {
-			var settings = PhotonEditorSettings.of(editor);
-			return settings.enabled(PhotonEditorTextUtil.PRECISE_FEATURE) || settings.enabled("batch_move");
-		}
-
-		return PhotonEditorSettings.of(editor).enabled(feature);
+		return isPhotonEditor(editor);
 	}
 
 	private static String key(String name) {
 		return PhotonEditorTextUtil.key(name);
 	}
 
-	private static PhotonEditorTools of(Editor editor) {
-		return ((PhotonEditorAccess) editor).lobecorp$tools();
+	public static @Nullable PhotonEditorTools of(Editor editor) {
+		return isPhotonEditor(editor) ? ((PhotonEditorAccess) editor).lobecorp$tools() : null;
 	}
 
 	public static void installMenus(FXEditor editor) {
-		editor.menuContainer.addChild(directTab(editor, "documents", () -> of(editor).documents()));
+		var tools = of(editor);
+		if (tools == null) {
+			return;
+		}
+
+		editor.menuContainer.addChild(directTab(editor, "documents", tools::documents));
 		editor.menuContainer.addChild(directTab(editor, "settings", editor::openSettingsPanel));
 		editor.menuContainer.addChild(new MenuTab(editor) {
 			@Override
@@ -394,7 +417,7 @@ public class PhotonEditorTools {
 			@Override
 			protected TreeBuilder.Menu createDefaultMenu() {
 				var menu = TreeBuilder.Menu.start();
-				of(editor).toolMenu(menu);
+				tools.toolMenu(menu);
 				return menu;
 			}
 		}.createMenuTab());
@@ -432,13 +455,11 @@ public class PhotonEditorTools {
 	}
 
 	private void toolMenu(TreeBuilder.Menu menu) {
+		menu.leaf(PhotonPerformanceTextUtil.key("title"), () -> PhotonPerformancePanel.open(editor));
 		if (enabled(PhotonEditorTextUtil.TEST_FEATURE)) {
 			PhotonEditorTestMenu.append(editor, menu);
 		}
 
-		if (enabled(PhotonAnimationTextUtil.FEATURE)) {
-			menu.leaf(PhotonAnimationTextUtil.key("title"), () -> PhotonAnimationWorkspace.open(editor));
-		}
 
 		leaf(menu, PhotonEditorTextUtil.PRECISE_FEATURE, () -> editSelection(false));
 		leaf(menu, "time_scale", () -> editSelection(true));
@@ -459,10 +480,8 @@ public class PhotonEditorTools {
 		leaf(menu, "range_preview", this::rangeDialog);
 		leaf(menu, "parameters", this::parameterPanel);
 
-		if (PhotonAnimationTab.editing(editor) == null) {
-			leaf(menu, "batch_properties", this::batchPanel);
-			leaf(menu, "presets", this::presetPanel);
-		}
+		leaf(menu, "batch_properties", this::batchPanel);
+		leaf(menu, "presets", this::presetPanel);
 
 		leaf(menu, "solo", this::toggleSolo);
 		leaf(menu, "seed", this::seedPanel);
@@ -634,10 +653,10 @@ public class PhotonEditorTools {
 		var selection = selections();
 		var view = timeline();
 		var runtime = editor.runtime;
-		var model = PhotonAnimationTimelineUtil.of(view);
+		var model = PhotonEditorTimelineUtil.of(view);
 		var snapshots = PhotonCurveEasingUtil.captureSelection(selection);
 		PhotonCurveEasingUtil.choose(view, "batch_curve_easing", "batch_curve_easing_tip", preset -> {
-			if (editor.runtime != runtime || timeline() != view || PhotonAnimationTimelineUtil.of(view) != model
+			if (editor.runtime != runtime || timeline() != view || PhotonEditorTimelineUtil.of(view) != model
 					|| !PhotonCurveEasingUtil.selectionUnchanged(model, selection, snapshots)) {
 				throw new IllegalArgumentException();
 			}
@@ -685,7 +704,7 @@ public class PhotonEditorTools {
 				properties.put(selection.property(), selection.keys());
 			}
 		} else {
-			for (var track : PhotonAnimationTimelineUtil.of(timeline()).leafTracks(true)) {
+			for (var track : PhotonEditorTimelineUtil.of(timeline()).leafTracks(true)) {
 				if (track instanceof AnimationTrack animation) {
 					for (var property : animation.properties()) {
 						properties.put(property, Set.of());
@@ -728,11 +747,6 @@ public class PhotonEditorTools {
 		});
 		access.lobecorp$fitTime(all || !Double.isFinite(start) ? 0 : start, end);
 		timeline().refreshLaneLayout();
-		var workspace = PhotonAnimationTab.editing(editor);
-
-		if (workspace != null) {
-			workspace.commitInspectorChange(Component.translatable(key(all ? "action.fit_all" : "action.fit_selected")), timeline());
-		}
 	}
 
 	private void cancelDrag() {
@@ -753,13 +767,6 @@ public class PhotonEditorTools {
 	}
 
 	private void step(int ticks) {
-		var workspace = PhotonAnimationTab.editing(editor);
-
-		if (workspace != null) {
-			workspace.previewTime(Math.max(0, workspace.previewTime() + ticks));
-			return;
-		}
-
 		var manager = editor.sceneView.particleManager;
 		manager.pause();
 		editor.sceneView.requestSimulateTo(Math.max(0, manager.getTime() + ticks));
@@ -770,7 +777,7 @@ public class PhotonEditorTools {
 
 		if (previewEnd <= previewStart) {
 			previewEnd = Math.max(previewStart + 1, editor.runtime == null ? 1
-					: (long) Math.ceil(PhotonAnimationTimelineUtil.of(timeline()).getDuration()));
+					: (long) Math.ceil(PhotonEditorTimelineUtil.of(timeline()).getDuration()));
 		}
 		var group = new ConfiguratorGroup("", false).hideTitle();
 		group.addConfigurator(new NumberConfigurator(key("preview_start"), () -> previewStart,
@@ -807,17 +814,11 @@ public class PhotonEditorTools {
 		if (enabled("range_preview") && loopPreview && previewEnd > previewStart) {
 			var manager = editor.sceneView.particleManager;
 			boolean playing = manager.isPlaying();
-			var workspace = PhotonAnimationTab.editing(editor);
-			double time = workspace == null ? manager.getTime() : workspace.previewTime();
+			double time = manager.getTime();
 
 			if (playing && (time > previewEnd || time < previewStart)) {
-				if (workspace == null) {
-					editor.sceneView.simulateTo(previewStart);
-					manager.play();
-				} else {
-					workspace.previewTime(previewStart);
-					workspace.playFromCursor();
-				}
+				editor.sceneView.simulateTo(previewStart);
+				manager.play();
 			}
 		}
 	}
@@ -828,7 +829,6 @@ public class PhotonEditorTools {
 		}
 
 		overrides.forEach(RuntimeValue::setRaw);
-		beamLengths.forEach((beam, length) -> ((PhotonBeamLengthAccess) beam.runtime()).lobecorp$setBeamLength(length));
 	}
 
 	public boolean previewVisible(FXRuntime runtime, IFXObject object) {
@@ -897,12 +897,7 @@ public class PhotonEditorTools {
 					replayPreview();
 				}, color[0], false), key("parameter_tip")));
 			} else if (object instanceof BeamEmitter beam) {
-				float[] length = {beam.getConfig().getEnd().length()}, width = {sample(beam.runtime().width.get())};
-				group.addConfigurator(PhotonEditorTooltipUtil.tips(new NumberConfigurator("BeamConfig.end", () -> length[0], value -> {
-					length[0] = value.floatValue();
-					beamLengths.put(beam, length[0]);
-					replayPreview();
-				}, length[0], false).setRange(0, Float.MAX_VALUE), key("parameter_tip")));
+				float[] width = {sample(beam.runtime().width.get())};
 				group.addConfigurator(PhotonEditorTooltipUtil.tips(new NumberConfigurator("BeamConfig.width", () -> width[0], value -> {
 					width[0] = value.floatValue();
 					overrides.put(beam.runtime().width, NumberFunction.constant(width[0]));
@@ -934,19 +929,6 @@ public class PhotonEditorTools {
 	}
 
 	private void replayAt(long time) {
-		var workspace = PhotonAnimationTab.editing(editor);
-
-		if (workspace != null) {
-			boolean playing = editor.sceneView.particleManager.isPlaying();
-			workspace.previewTime(workspace.previewTime());
-
-			if (playing) {
-				workspace.playFromCursor();
-			}
-
-			return;
-		}
-
 		boolean playing = editor.sceneView.particleManager.isPlaying();
 		editor.sceneView.particleManager.pause();
 		editor.sceneView.simulateTo(0);
@@ -960,11 +942,7 @@ public class PhotonEditorTools {
 	private void clearParameters() {
 		overrides.keySet().forEach(RuntimeValue::clear);
 
-		for (var beam : beamLengths.keySet()) {
-			((PhotonBeamLengthAccess) beam.runtime()).lobecorp$setBeamLength(null);
-		}
 		overrides.clear();
-		beamLengths.clear();
 
 		if (editor.runtime == previewRuntime && editor.runtime != null) {
 			long time = editor.sceneView.particleManager.getTime();
@@ -1001,12 +979,6 @@ public class PhotonEditorTools {
 	}
 
 	public void clearPreview() {
-		for (var view : List.copyOf(editor.getAllViews())) {
-			if (view instanceof PhotonAnimationTab tab) {
-				tab.closeWorkspace();
-				view.removeSelf();
-			}
-		}
 
 		linkedTangents.clear();
 
@@ -1258,9 +1230,6 @@ public class PhotonEditorTools {
 	}
 
 	private void mutate(List<IPersistedSerializable> targets, Runnable change) {
-		if (PhotonAnimationTab.editing(editor) != null) {
-			throw new IllegalArgumentException();
-		}
 
 		var provider = Platform.getFrozenRegistry();
 		var before = targets.stream().map(t -> PersistedParser.serializeNBT(t, provider).copy()).toList();

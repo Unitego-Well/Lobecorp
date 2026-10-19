@@ -18,7 +18,7 @@ import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.TaffyDimension;
 import org.joml.Vector2f;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 import java.util.Map;
 import java.util.List;
@@ -40,10 +40,8 @@ public class PhotonCurveEasingUtil {
 
 	public static void addProperty(TimelineContext context, AnimationTrack track, AnimatedPropertyType type, Runnable add) {
 		var runtime = context.runtime();
-		var settings = PhotonEditorSettings.of(context.editor());
 
-		if (runtime == null || track.lock() || type.stepped() || type instanceof ColorPropertyType
-				|| !settings.enabled(PhotonEditorTextUtil.CURVE_EASING_FEATURE)) {
+		if (!(context.editor() instanceof PhotonEffectEditor) || runtime == null || track.lock() || type.stepped() || type instanceof ColorPropertyType) {
 			add.run();
 			return;
 		}
@@ -55,9 +53,9 @@ public class PhotonCurveEasingUtil {
 			return;
 		}
 
-		var model = PhotonAnimationTimelineUtil.of(context);
+		var model = PhotonEditorTimelineUtil.of(context);
 		choose(context, "add_curve_easing", "curve_easing_tip", preset -> {
-			if (context.runtime() != runtime || PhotonAnimationTimelineUtil.of(context) != model
+			if (context.runtime() != runtime || PhotonEditorTimelineUtil.of(context) != model
 					|| model.parentListOf(track) == null || track.lock() || track.property(type) != null
 					|| !Objects.equals(track.targetId(), targetId) || runtime.objects.get(targetId) != target
 					|| target.getFXObjectType().animatableProperties(target).stream()
@@ -98,19 +96,16 @@ public class PhotonCurveEasingUtil {
 	}
 
 	public static void applyCreatedKey(TimelineContext context, AnimatedProperty property, int axis, int index) {
-		var settings = PhotonEditorSettings.of(context.editor());
-
-		if (!settings.enabled(PhotonEditorTextUtil.CURVE_EASING_FEATURE)
+		if (!(context.editor() instanceof PhotonEffectEditor)
 				|| property instanceof ColorAnimatedProperty || property.type().stepped() || index < 0) {
 			return;
 		}
 
+		var settings = PhotonEditorSettings.of(context.editor());
 		String preset = CREATED_PRESETS.getOrDefault(property, settings.curveEasingPreset());
 		Set<Long> keys = Set.of((long) axis << 32 | index & 0xffffffffL);
 
-		if (settings.enabled(PhotonEditorTextUtil.SCALE_LINK_FEATURE)) {
-			keys = PhotonScaleCurveUtil.linkedKeys(property, keys);
-		}
+		keys = PhotonScaleCurveUtil.linkedKeys(property, keys);
 
 		for (long key : keys) {
 			int keyAxis = (int) (key >>> 32), keyIndex = (int) key;
@@ -126,6 +121,10 @@ public class PhotonCurveEasingUtil {
 	}
 
 	public static void choose(TimelineContext context, String title, String tip, Consumer<String> apply) {
+		if (!(context.editor() instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		String[] selected = {PhotonEditorSettings.of(context.editor()).curveEasingPreset()};
 		var group = new ConfiguratorGroup("", false).hideTitle();
 		group.addConfigurator(PhotonEditorTooltipUtil.tips(new SelectorConfigurator<>(PhotonEditorTextUtil.key("curve_easing"),

@@ -11,7 +11,6 @@ import org.joml.Vector2f;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonCurveViewAccess;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -44,7 +43,7 @@ public class PhotonCurveEditUtil {
 	public static List<Selection> selections(FXTimelineView timeline) {
 		var result = new ArrayList<Selection>();
 		var access = (PhotonTimelineEditAccess) timeline;
-		var model = PhotonAnimationTimelineUtil.of(timeline);
+		var model = PhotonEditorTimelineUtil.of(timeline);
 		access.lobecorp$states().forEach((track, state) -> {
 			if (model.parentListOf(track) == null) {
 				return;

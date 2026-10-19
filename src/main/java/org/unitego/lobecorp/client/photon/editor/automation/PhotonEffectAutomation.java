@@ -6,13 +6,9 @@ import com.google.gson.JsonParser;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
-import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelAnimationClip;
-import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelAnimationTrack;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationDataUtil;
 import net.minecraft.client.Minecraft;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProjectEditor;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectJsonUtil;
@@ -20,9 +16,6 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUti
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectSchemaUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectViewUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelIOUtil;
-import org.unitego.lobecorp.util.photon.model.editor.PhotonModelDefaultUtil;
-import org.unitego.lobecorp.config.photon.model.PhotonModelAsset;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
@@ -45,11 +38,8 @@ public class PhotonEffectAutomation {
 			  "add_emitter":{"projectKind":"fx","required":["type"],"optional":["name","parameters"],"parameters":"原生对象 data 字段的局部替换；type 从 emitterTypes 选择"},
 			  "remove_emitter":{"projectKind":"fx","required":["objectId"]},
 			  "set_parameter":{"projectKind":"fx","required":["objectId","path","value"],"path":"相对 parameters 的 JSON Pointer；只允许已有字段，保留原生 NBT 类型"},
-			  "set_model_asset":{"required":["asset"],"optional":["objectId"],"asset":"完整模型资产 JSON；FX 工程需指定模型发射器 objectId"},
-			  "patch_model_asset":{"required":["path","value"],"optional":["objectId"],"path":"模型资产 JSON Pointer；value=null 删除字段或数组元素，/- 追加数组元素"},
-			  "set_model_playback":{"projectKind":"model","required":["playback"],"playback":"enabled,duration>=1,startDelay>=0,looping,paused,clip,playbackSpeed>=0,animationOffset；时间单位 tick"},
 			  "set_timeline":{"projectKind":"fx","required":["timeline"],"timeline":"effect_state 返回的原生时间轴 JSON 格式；时间单位 tick"},
-			  "set_project_data":{"required":["snbt"],"snbt":"完整 snapshotSnbt，支持原生命名动画等工程字段；必须精确往返"}
+			  "set_project_data":{"required":["snbt"],"snbt":"完整 snapshotSnbt，仅支持当前原生 FX 工程字段；必须精确往返"}
 			}
 			""";
 
@@ -284,30 +274,17 @@ public class PhotonEffectAutomation {
 		return () -> {
 			var editor = handle.editor();
 
-			var controller = editor instanceof PhotonModelProjectEditor model ? model.sceneController() : null;
-
-			if (controller != null) {
-
-				switch (action) {
-					case "play" -> controller.play();
-					case "pause" -> controller.pause();
-					case "stop" -> controller.stop();
-					case "seek" -> controller.seek((float) time);
-					default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT);
+			switch (action) {
+				case "play" -> editor.sceneView.particleManager.play();
+				case "pause" -> editor.sceneView.particleManager.pause();
+				case "stop" -> editor.timelineView.stop();
+				case "seek" -> {
+					var view = PhotonEffectViewUtil.prepare(handle, new JsonObject());
+					editor.sceneView.particleManager.pause();
+					editor.sceneView.simulateTo((long) time);
+					view.commit();
 				}
-			} else {
-				switch (action) {
-					case "play" -> editor.sceneView.particleManager.play();
-					case "pause" -> editor.sceneView.particleManager.pause();
-					case "stop" -> editor.timelineView.stop();
-					case "seek" -> {
-						var view = PhotonEffectViewUtil.prepare(handle, new JsonObject());
-						editor.sceneView.particleManager.pause();
-						editor.sceneView.simulateTo((long) time);
-						view.commit();
-					}
-					default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT);
-				}
+				default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT);
 			}
 
 			return PhotonEffectProjectUtil.describe(handle);
@@ -358,11 +335,8 @@ public class PhotonEffectAutomation {
 		}
 
 		result.add("emitterTypes", types);
-		var modelExample = PhotonModelDefaultUtil.whiteBlock();
-		var clipExample = new PhotonModelAsset.Clip();
-		clipExample.id = "animation";
-		modelExample.clips.add(clipExample);
-		result.add("modelAssetExample", JsonParser.parseString(PhotonModelIOUtil.writeJson(modelExample)));
+		result.addProperty("customRuntimeAvailable", false);
+		result.addProperty("modelProjectsAvailable", false);
 		var tracks = new JsonArray();
 		PhotonRegistries.TIMELINE_TRACKS.keys().forEach(tracks::add);
 		result.add("timelineTypes", tracks);
@@ -371,9 +345,6 @@ public class PhotonEffectAutomation {
 		for (var type : PhotonRegistries.TIMELINE_TRACKS.values()) {
 			var track = type.create();
 
-			if (track instanceof PhotonModelAnimationTrack model) {
-				model.clips().add(new PhotonModelAnimationClip(0, PhotonAnimationDataUtil.DEFAULT_DURATION, 1));
-			}
 
 			templates.add(PhotonEffectJsonUtil.json(Timeline.writeTrack(track, Platform.getFrozenRegistry())));
 		}

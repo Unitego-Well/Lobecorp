@@ -2,6 +2,7 @@ package org.unitego.lobecorp.mixin.photon.editor.client;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TreeList;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.view.FXHierarchyView;
@@ -21,12 +22,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonObjectClipboardUtil;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationCopyUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorRenameUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 @Mixin(FXHierarchyView.class)
 public abstract class FXHierarchyViewMixin {
@@ -34,8 +34,14 @@ public abstract class FXHierarchyViewMixin {
 	@Final
 	public FXEditor fxEditor;
 
+
+
 	@Inject(method = "<init>", at = @At("RETURN"))
 	private void lobecorp$clipboardCommands(FXEditor fxEditor, CallbackInfo ci) {
+		if (!(fxEditor instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		var view = (FXHierarchyView) (Object) this;
 		treeList.setFocusable(true);
 		treeList.addEventListener(UIEvents.VALIDATE_COMMAND, event -> PhotonObjectClipboardUtil.command(view, event));
@@ -44,8 +50,8 @@ public abstract class FXHierarchyViewMixin {
 
 	@ModifyReturnValue(method = "createMenu", at = @At("RETURN"))
 	private TreeBuilder.Menu lobecorp$clipboardMenu(TreeBuilder.Menu menu) {
-		if (menu == null) {
-			return null;
+		if (menu == null || !(fxEditor instanceof PhotonEffectEditor)) {
+			return menu;
 		}
 
 		var view = (FXHierarchyView) (Object) this;
@@ -58,7 +64,7 @@ public abstract class FXHierarchyViewMixin {
 			}
 		}
 
-		if (PhotonEditorSettings.of(fxEditor).enabled("rename_dialog") && treeList.getSelected().size() == 1) {
+		if (treeList.getSelected().size() == 1) {
 			menu.leaf("ldlib.gui.editor.menu.rename", () -> PhotonEditorRenameUtil.object(view, treeList.getSelected().iterator().next().getKey()));
 		}
 		return menu;
@@ -72,6 +78,10 @@ public abstract class FXHierarchyViewMixin {
 
 	@WrapMethod(method = "copySceneObject")
 	private List<IFXObject> lobecorp$copyBranch(IFXObject toCopied, Operation<List<IFXObject>> original) {
+		if (!(fxEditor instanceof PhotonEffectEditor)) {
+			return original.call(toCopied);
+		}
+
 		if (lobecorp$copyDepth == 0 && treeList.getSelected().stream().map(FXObjectTreeNode::getKey)
 				.anyMatch(selected -> selected != toCopied && toCopied.transform().isInheritedParent(selected.transform()))) {
 			return List.of();
@@ -80,9 +90,6 @@ public abstract class FXHierarchyViewMixin {
 		lobecorp$copyDepth++;
 		try {
 			var result = original.call(toCopied);
-			if (lobecorp$copyDepth == 1) {
-				PhotonAnimationCopyUtil.remap(toCopied, result);
-			}
 
 			return result;
 		} finally {

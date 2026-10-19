@@ -12,11 +12,11 @@ import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.NbtIo;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.mixin.photon.editor.client.PhotonEffectEditorAccessor;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
-import org.unitego.lobecorp.util.photon.model.PhotonModelFileUtil;
+import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
 
 import java.nio.file.Files;
 import java.io.IOException;
@@ -29,8 +29,8 @@ import java.util.UUID;
 
 public class PhotonEffectFileUtil {
 	public static List<Path> roots() {
-		return List.of(LDLib2.getAssetsDir().toPath().toAbsolutePath().normalize(),
-				FXPacks.getFxPacksDir().toPath().toAbsolutePath().normalize());
+		return DevelopmentResourceUtil.workspaceRoots(List.of(LDLib2.getAssetsDir().toPath().toAbsolutePath().normalize(),
+				FXPacks.getFxPacksDir().toPath().toAbsolutePath().normalize()));
 	}
 
 	public record Prepared(Handle handle, Path target, Path temporary, boolean overwrite,
@@ -43,9 +43,6 @@ public class PhotonEffectFileUtil {
 				return exported;
 			}
 
-			if (handle.project() instanceof PhotonModelProject model) {
-				model.updateModelName(target.toFile());
-			}
 
 			var accessor = (PhotonEffectEditorAccessor) handle.editor();
 			accessor.lobecorp$setProjectFile(target.toFile());
@@ -86,23 +83,20 @@ public class PhotonEffectFileUtil {
 
 	public static Prepared prepareExport(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
-		boolean model = handle.project() instanceof PhotonModelProject;
 		var kind = PhotonEffectJsonUtil.string(request, "kind");
 		boolean pack = switch (kind) {
 			case "definition" -> false;
 			case "pack" -> true;
 			default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, kind);
 		};
-		var suffix = pack ? model ? PhotonModelFileUtil.PACK_SUFFIX : FXPacks.SUFFIX
-				: model ? PhotonModelFileUtil.DEFINITION_SUFFIX : FX.SUFFIX;
+		var suffix = pack ? FXPacks.SUFFIX : FX.SUFFIX;
 		var target = destination(request, suffix);
 
 		if (pack && FXPacks.isFileLocked(target.toFile())) {
 			throw new PhotonEffectCommandException(Code.FILE_LOCKED);
 		}
 
-		var fx = handle.project() instanceof PhotonModelProject project ? project.exportProject().getFx()
-				: ((FXProject) handle.project()).getFx();
+		var fx = ((FXProject) handle.project()).getFx();
 		Files.createDirectories(target.getParent());
 		var temporary = temporary(target, suffix);
 		var result = new JsonObject();
@@ -183,6 +177,7 @@ public class PhotonEffectFileUtil {
 			throw new PhotonEffectCommandException(Code.FILE_EXISTS, target.toString());
 		}
 
+		PhotonEditorProjectGuardUtil.requireSupportedFile(target.toFile());
 		return target;
 	}
 
@@ -216,6 +211,7 @@ public class PhotonEffectFileUtil {
 	}
 
 	private static void checkResourceTarget(Path target, boolean overwrite) {
+		PhotonEditorProjectGuardUtil.requireSupportedFile(target.toFile());
 		if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)
 				&& (!overwrite || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS))) {
 			throw new PhotonEffectCommandException(Code.FILE_EXISTS, target.toString());
@@ -227,6 +223,7 @@ public class PhotonEffectFileUtil {
 	}
 
 	private static void publish(Path source, Path target, boolean overwrite) throws Exception {
+		PhotonEditorProjectGuardUtil.requireSupportedFile(target.toFile());
 		if (overwrite) {
 			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
 		} else {

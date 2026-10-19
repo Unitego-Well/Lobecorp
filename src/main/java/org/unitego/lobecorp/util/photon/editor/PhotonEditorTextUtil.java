@@ -53,6 +53,15 @@ public class PhotonEditorTextUtil {
 	}
 
 	public static String register() {
+		LangHandler.creates(Lobecorp.NAMESPACE, key(PhotonEditorProjectGuardUtil.REMOVED_DATA_KEY),
+				"This file uses removed custom effect or model features. Loading or writing was blocked; the original file is unchanged.",
+				"该文件包含已移除的自建特效或模型功能，已阻止加载或写入，原文件保持不变。");
+		LangHandler.creates(Lobecorp.NAMESPACE, key("test.removed"),
+				"Legacy tests for the removed custom runtime are archived. Generic profiling and MCP diagnostics remain available.",
+				"已移除核心的旧回归夹具已归档，通用性能分析和 MCP 调试仍可使用。");
+		LangHandler.creates(Lobecorp.NAMESPACE, key("native_project_unsupported"),
+				"This project contains extension content that the native editor does not support. Use %s to open it.",
+				"此项目包含原生编辑器不支持的扩展内容，请使用 %s 打开。");
 		registerCategoriesAndClipboard();
 		registerActivationAndBatch();
 		registerFeatureSwitches();
@@ -71,7 +80,7 @@ public class PhotonEditorTextUtil {
 		LangHandler.creates(Lobecorp.NAMESPACE, "lobecorp_photon_preview", "Preview", "预览");
 		LangHandler.creates(Lobecorp.NAMESPACE, "lobecorp_photon_particles", "Particles and rendering", "粒子与渲染");
 		LangHandler.creates(Lobecorp.NAMESPACE, "lobecorp_photon_resources", "Resources and clipboard", "资源与剪切板");
-		LangHandler.creates(Lobecorp.NAMESPACE, key("settings_tip"), "Select a category to configure extensions. Configure keyboard bindings in Keymap. Feature switches default to enabled.", "选择左侧分类设置扩展功能；快捷键绑定在 Keymap 中设置，功能开关默认开启。");
+		LangHandler.creates(Lobecorp.NAMESPACE, key("settings_tip"), "Configure curve defaults here. Customize keyboard bindings in Keymap.", "在此设置曲线默认值；快捷键绑定在 Keymap 中设置。");
 		LangHandler.creates(Lobecorp.NAMESPACE, key("feature.system_clipboard"), "System clipboard", "使用系统剪切板");
 		LangHandler.creates(Lobecorp.NAMESPACE, key("feature.rename_dialog"), "Rename dialogs", "重命名弹窗");
 		LangHandler.creates(Lobecorp.NAMESPACE, key("clipboard"), "Clipboard", "剪切板");

@@ -3,7 +3,7 @@ package org.unitego.lobecorp.util.photon.editor;
 import com.lowdragmc.lowdraglib2.editor.settings.AppearanceSettings;
 import com.lowdragmc.lowdraglib2.editor.settings.EditorSettings;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
-import com.lowdragmc.photon.gui.editor.FXEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import net.minecraft.client.Minecraft;
 
 public class PhotonEditorViewScaleUtil {
@@ -14,7 +14,7 @@ public class PhotonEditorViewScaleUtil {
 	public static void applyFromViewMenu(EditorSettings settings, Runnable apply) {
 		var editor = settings.editor;
 
-		if (!(editor instanceof FXEditor)) {
+		if (!(editor instanceof PhotonEffectEditor)) {
 			apply.run();
 			return;
 		}

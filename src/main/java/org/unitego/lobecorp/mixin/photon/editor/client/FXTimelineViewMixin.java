@@ -1,8 +1,6 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
 import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
-import org.unitego.lobecorp.client.photon.model.editor.PhotonModelTimelineView;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.Clip;
 import com.lowdragmc.photon.client.fx.timeline.Marker;
@@ -17,6 +15,8 @@ import java.util.Set;
 import java.util.LinkedHashSet;
 
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -35,62 +35,22 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonTimelineClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineViewState;
 import org.unitego.lobecorp.util.photon.editor.PhotonTimelineStateUtil;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 
 import java.util.HashMap;
 
+
+
+
+
+
+
+
 @Mixin(FXTimelineView.class)
 public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, PhotonTimelineEditAccess {
-	/// 模型时间轴沿用原生组件，将传输控制交给模型自己的会话。
-	@Inject(method = "togglePlay", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelPlay(CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelTimelineView model) {
-			model.toggleModelPlayback();
-			ci.cancel();
-		}
-	}
-
-	@Inject(method = "stop", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelStop(CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelTimelineView model) {
-			model.stopModelPlayback();
-			ci.cancel();
-		}
-	}
-
-	@Inject(method = "jumpToEnd", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelJumpToEnd(CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelTimelineView model) {
-			model.jumpToModelEnd();
-			ci.cancel();
-		}
-	}
-
-	@Inject(method = "contentMaxTick", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelExtent(CallbackInfoReturnable<Double> cir) {
-		if ((Object) this instanceof PhotonModelTimelineView model) {
-			cir.setReturnValue(model.modelDuration());
-		}
-	}
-
-	@Inject(method = "openAddTrackMenu", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelTracks(float x, float y, CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelTimelineView model) {
-			model.openModelTrackMenu(x, y);
-			ci.cancel();
-		}
-	}
-
-	@Inject(method = "updatePlaybackEnd", at = @At("HEAD"), cancellable = true)
-	private void lobecorp$modelClock(CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelTimelineView) {
-			ci.cancel();
-		}
-	}
-
 	@Shadow
 	@Final
 	public FXEditor fxEditor;
@@ -105,6 +65,10 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 
 	@Inject(method = "copySelection", at = @At("RETURN"))
 	private void lobecorp$isolateClipboard(CallbackInfo ci) {
+		if (!(fxEditor instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		if (clipboardKind == 1) {
 			clipboardTracks.clear();
 			PhotonKeyClipboardUtil.clear(fxEditor);
@@ -123,6 +87,10 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 
 	@Inject(method = "copyTracksToClipboard", at = @At("RETURN"))
 	private void lobecorp$copyTracks(Collection<Track> tracks, CallbackInfo ci) {
+		if (!(fxEditor instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		clipboardClips.clear();
 		PhotonKeyClipboardUtil.clear(fxEditor);
 		if (PhotonKeyClipboardUtil.systemEnabled(fxEditor)) {
@@ -148,21 +116,6 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 	@Shadow
 	private Marker dragMarker;
 
-	@Inject(method = "rebuild", at = @At("HEAD"))
-	private void lobecorp$pruneAnimationState(CallbackInfo ci) {
-		var workspace = PhotonAnimationTimelineUtil.workspace((TimelineContext) this);
-		if (workspace == null) {
-			return;
-		}
-
-		// 原生按轨道引用缓存状态；命名动画切换和撤销仍会恢复这些轨道。
-		// 缓存仅跟随当前视图生命周期，不能在每次重建时删除。
-		var model = workspace.timelineContext().animationTimeline();
-		selectedTracks.removeIf(track -> model.parentListOf(track) == null);
-		if (model.parentListOf(selectedTrack) == null) {
-			selectedTrack = null;
-		}
-	}
 
 	@Inject(method = "pasteClipboard", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$pasteSystem(CallbackInfo ci) {
@@ -179,7 +132,7 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 
 		ci.cancel();
 		if (PhotonSystemClipboardUtil.CLIPS.equals(kind) || PhotonSystemClipboardUtil.TRACKS.equals(kind)) {
-			int index = fxEditor.runtime == null ? 0 : PhotonAnimationTimelineUtil.of(view).tracks().size();
+			int index = fxEditor.runtime == null ? 0 : PhotonEditorTimelineUtil.of(view).tracks().size();
 			PhotonTimelineClipboardUtil.paste(view, selectedTrack, index, PhotonSystemClipboardUtil.CLIPS.equals(kind));
 		} else if (PhotonSystemClipboardUtil.hasContent()) {
 			PhotonTimelineClipboardUtil.invalid(view);
@@ -356,7 +309,7 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 		PhotonTimelineStateUtil.restore(view, state.modes());
 		PhotonEditorTools.restorePreviewRange(fxEditor, state.previewRange());
 
-		lobecorp$pruneSelection(PhotonAnimationTimelineUtil.of(view));
+		lobecorp$pruneSelection(PhotonEditorTimelineUtil.of(view));
 		view.rebuild();
 		leftScroller.verticalScroller.setNormalizedValue(state.leftScroll());
 		rightScroller.verticalScroller.setNormalizedValue(state.rightScroll());

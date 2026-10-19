@@ -12,7 +12,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import net.minecraft.nbt.CompoundTag;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 
@@ -27,7 +27,7 @@ public class PhotonResourceClipboardUtil {
 	/// 资源与普通文本控件共用特效、模型编辑器的系统剪贴板设置。
 	public static boolean enabled(UIElement owner) {
 		var editor = PhotonEditorSaveUtil.findEditor(owner);
-		return editor != null && PhotonEditorSettings.of(editor).enabled("system_clipboard");
+		return editor instanceof PhotonEffectEditor;
 	}
 
 	public static <T> void copy(ResourceProviderContainer<T> container, IResourcePath path) {
@@ -130,7 +130,7 @@ public class PhotonResourceClipboardUtil {
 	public static boolean renameDialog(UIElement owner, String initial, Predicate<Character> validator, Consumer<String> commit) {
 		var editor = PhotonEditorSaveUtil.findEditor(owner);
 
-		if (editor == null || !PhotonEditorSettings.of(editor).enabled("rename_dialog")) {
+		if (!(editor instanceof PhotonEffectEditor)) {
 			return false;
 		}
 		Predicate<String> valid = value -> !value.trim().isEmpty() && value.trim().chars().allMatch(ch -> validator.test((char) ch));

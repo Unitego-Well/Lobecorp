@@ -7,7 +7,7 @@ import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.Animat
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.joml.Vector2f;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
@@ -33,7 +33,7 @@ public class PhotonKeyClipboardUtil {
 	}
 
 	public static boolean systemEnabled(FXEditor editor) {
-		return PhotonEditorSettings.of(editor).enabled("system_clipboard");
+		return editor instanceof PhotonEffectEditor;
 	}
 
 	public static boolean has(FXEditor editor) {

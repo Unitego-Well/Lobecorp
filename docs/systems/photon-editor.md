@@ -1,11 +1,21 @@
 # Photon 粒子编辑器
 
-核对日期：2026-10-11。本文按当前源码和 IDEA 解析的锁定依赖说明编辑器能力；Minecraft 26.1.2、NeoForge 26.1.2.100、Photon
+> 2026-10-19 当前状态：当前保留原生 Photon、路径扩展、曲线/剪贴板/快捷键等通用增强及 MCP；专用模型、命名动画、子特效界面和运行后端已移除。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
+
+核对日期：2026-10-18。本文按当前源码和 IDEA 解析的锁定依赖说明编辑器能力；Minecraft 26.1.2、NeoForge 26.1.2.100、Photon
 26.1.2.3、LDLib2 26.1.2.42、KilaGraph 26.1.0.15。版本来源：[版本目录](../../gradle/libs.versions.toml)，升级变化与检查见[依赖升级](photon-dependency-upgrade.md)。
 
 包迁移方案 1 已执行，Java 链接按当前源码核对。实际迁移与验证结果见[修改记录](changes.md)。
 
 新版原生时间轴传输栏增加步进和跳转末尾；模型时间轴直接沿用这些组件，将播放状态、步进与末尾跳转接到模型片段时钟，保留小数 tick。模型项目沿用原生动作标识、默认键位和用户重绑定，将四个播放动作路由到实际模型时间轴，不使用已移除的父类 FX 时间轴。几何与 UV 框选、取消等动作在原生 Keymap 注册相应作用域，优先于通用场景动作，未匹配按键仍走原生命令。
+
+## 入口与隔离
+
+使用 `/lobecorp photon_editor` 打开 Lobecorp 扩展编辑器；[PhotonEffectEditor](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEffectEditor.java) 继承原生 FXEditor，窗口身份为 `lobecorp:photon_editor`，继续在游戏内打开。模型标签继承同一扩展类型；新建标签、跨类型工程与最小化恢复保持该类型，MCP 仅枚举和操作该窗口中的工程。
+
+`/photon_editor` 保留 Photon 原生界面，不安装本项目工具、模型／命名动画入口、额外设置或开发资源分类。对象、轨道和子轨道菜单只隐藏本项目注册类型，不取消运行时注册。原生尝试通过菜单、最近工程、资源浏览器或内存工程加载扩展内容时，在关闭当前工程之前拦截并提示使用新命令；检测依据为模型格式、自定义对象／轨道、测试时间轴及非默认扩展模块数据。默认附加字段、普通原生项目及仅使用 lobecorp 贴图的项目不会因命名空间而被拦截。
+
+本轮仅移除“是否启用额外功能”的总开关和分类开关；辉光、播放、Solo、区间循环、粒子模块启用、周期采样与参数操作继续按各自业务状态工作。已有特效、模型和着色器内容没有重写。实际检查与备份见[修改记录](changes.md)；新客户端已检查原生与扩展入口、模型标签及子特效资源选择拦截。
 
 ## 范围和职责
 
@@ -13,7 +23,7 @@ Photon 原有编辑器负责项目、对象层级、发射器、材质、资源�
 Configurator、Dialog、菜单、事件及 Photon 编辑器接口扩展交互，不另建 UI 风格或第二套粒子引擎。
 
 - [PhotonEditorTools](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTools.java)
-  组织工具、预览覆盖、快捷键和控件开关。
+  组织工具、预览覆盖、快捷键，并按编辑器所属关系控制额外控件显示。
 - [FXEditorMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/FXEditorMixin.java)
   安装工具，并在关闭、切换项目时清理预览状态。
 - [LcPhotonEditorSettings](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonEditorSettings.java)
@@ -25,11 +35,19 @@ Configurator、Dialog、菜单、事件及 Photon 编辑器接口扩展交互，
 
 [Photon 特效 MCP](photon-effect-mcp.md)提供能力与工程状态读取、新建、批量编辑、预览、保存、导出及撤销／重做。入口复用原生工程、UUID、时间轴、模型会话、历史和文件格式，实际操作在客户端线程执行；粒子 FX 编辑前先暂停并重新读取 revision。MCP common 只提供通用命令注册，特效业务由 Lobecorp 客户端后端持有，普通游戏表现仍由原运行时管理。
 
+## 设置文本与换行修复
+
+2026-10-18 根据设置页截图修复：VisualQualitySettings 原先直接使用 TOML 字段名，且把 NeoForge 自动追加 Default/Range 的多行 comment 一次传给 setTips，换行符被显示为缺字方框。现在通过 PhotonVisualQualityTextUtil 登记 31 项名称/说明、五个分组、三类导航和默认值/范围/空值提示，中英文各 73 条；说明、默认值与范围分别使用 Component，开关默认值采用原版开/关翻译。
+
+EditorMixin 仅在扩展编辑器打开设置面板时替换树节点的显示模板，将 Appearance/Behavior/Keymap 显示为对应语言；节点路径、设置 ID、Codec、草稿键、值、应用/取消与 TOML 保持。普通原生编辑器沿原路径。实现复用[原生 Settings 流程](https://low-drag-mc.github.io/LowDragMC-Doc/zh/ldlib2/editor/settings.html)，没有更改全局裸字符串翻译。
+
+本轮 IDEA 静态诊断无代码错误，编译成功；Data exitCode=0、BUILD SUCCESSFUL in 24s，19 文件写入 2/删除 0。已回读生成中英文各 73 条、31 项名称/说明完整且无换行控制符；生成目录被 Git 忽略，按文件内容核对，未手改生成输出。未重新打开游戏设置页做外观验收，新增 Mixin 显示补丁需重启 Debug 客户端后生效。备份位于 backups/editor-settings-text-20261018。
+
 ## 菜单、设置和开关
 
 “视图大小”在独立窗口中沿原生 GUI 倍率流程调整，不再重新应用当前标签的窗口宿主偏好；再次选择已保存的倍率也会按当前实际窗口应用。普通设置面板 Apply 仍保留显式宿主选择。标签偏好与共享窗口不一致的根因、补丁范围及升级复核见[LD-05](photon-ldlib2-fixes.md#ld-05-独立窗口修改视图大小退回游戏窗口)，实际交互尚未客户端验收。
 
-特效编辑器在原有“文件”“视图”后追加“文档”“设置”“工具”。“设置”直接打开原设置面板，文件菜单中的原设置入口保留。“文档”使用可换行文本和滚动容器，并显示当前快捷键绑定；“工具”只显示已开启的工具入口。独立模型编辑器同样提供原生文件／视图及文档／设置入口：文件中新建特效或模型特效项目，视图中的“面板”重新显示各模型工作区、场景与原资源目录。模型文档说明层级、UV、动画、模型资源、面板和导出操作；特效专用工具仍由 FX 编辑器安装。
+扩展特效编辑器在原有“文件”“视图”后追加“文档”“设置”“工具”。“设置”直接打开原设置面板，文件菜单中的原设置入口保留。“文档”使用可换行文本和滚动容器，并显示当前快捷键绑定；“工具”提供本项目制作入口。菜单在工具实例创建之后安装，避免父类构造期间提前安装而跳过。独立模型编辑器同样提供原生文件／视图及文档／设置入口：文件中新建特效或模型特效项目，视图中的“面板”重新显示各模型工作区、场景与原资源目录。模型文档说明层级、UV、动画、模型资源、面板和导出操作；特效专用工具仍由扩展 FX 编辑器安装。
 
 模型外壳 `PhotonModelProjectEditor` 受限复用 `FXEditor`，通过 `IPhotonModelEditorBridge` 调用 `Editor` 基类加载模型项目；跨类型项目由 `EditorMixin` 路由到对应标签，`FXEditorMixin` 对特效工具及仅适用于 `FXProject` 的预览／动画绑定设置门禁。中央场景以真实 `FXRuntime` 渲染复制的模型发射器，选择覆盖与手柄留在 `SceneEditor` 的 Preview 中，跟随发射器世界变换并以本地 Gizmo 坐标编辑，禁止挂入只接收 `IFXObject` 的 `FXRuntime`；原生 `particleManager` 是唯一预览时钟，小数定位保存残量，原生 S 定位与 reset 清零残量。编辑与保存不改变来源发射器，只有“应用到发射器”写回并进入来源历史。模型材质槽进入同一会话历史，PNG 只保存共享资源包引用，不打包文件，撤销或删槽不删除共享资源；生命周期、初始化失败清理及翻译参数限制见 [Photon 模型特效](photon-model-effects.md#维护与实际检查)。
 
@@ -38,9 +56,9 @@ Configurator、Dialog、菜单、事件及 Photon 编辑器接口扩展交互，
 零刻暂停预览另需在原生 emit 后迁移待加入的粒子：首次初始化在 `play` 后处理，Stop 归零在 `simulateTo` TAIL 处理，仅在已初始化、零刻、正式粒子数为零且运行时已 emit 时执行一次迁移并还原时间零；reset 钩子不执行迁移。`particlesToAdd` 未进入渲染组导致表面缺失的实际根因与维护边界见 [Photon 模型特效](photon-model-effects.md#维护与实际检查)，客户端验收结果仍由修改记录区分。初始化须在 `play` 前通过 `DummyWorld.ClientSupport.asClientWorld` 为尚未绑定 level 的专用 `ParticleManager` 设置客户端世界 wrapper，提前建立独立引擎；否则 `getParticleAmount()` 返回的 `pendingAdds` 计数会掩盖实例尚未进入渲染队列的问题。此顺序与已有零刻迁移／TAIL／reset 规则同时保留。
 
 [PhotonEditorSettings](../../src/main/java/org/unitego/lobecorp/config/photon/PhotonEditorSettings.java)集中维护
-features、旧 keys、presets 映射和 curveEasingPreset。功能设置路径为 Lobecorp，未保存的功能项按开启处理；旧设置缺少缓动预设时采用线性。逐项快捷键统一进入原生“设置 → Keymap”；旧 keys 仅用于一次性迁移，通过 bindIfUnset 保留已有原生自定义绑定，成功迁移后移除对应旧项，避免重置键位后再次恢复旧绑定。
+旧 keys、presets 映射和 curveEasingPreset；不再读取或保存 features 映射，也不提供分类功能开关。真实默认缓动设置位于 Lobecorp，缺省采用线性。逐项快捷键统一进入原生“设置 → Keymap”；旧 keys 仅用于既有一次性迁移，通过 bindIfUnset 保留已有原生自定义绑定，成功迁移后移除对应旧项，避免重置键位后再次恢复旧绑定。
 
-四个功能分类直接列出配置行，不再套“功能开关”折叠组；左侧设置导航树和内部业务子组保持原结构。
+扩展功能由编辑器类型决定，不再提供四类启用开关；内部业务配置子组保持原结构。下表标识仅用于控件与功能路由，不再代表可关闭的设置项。
 扩展配置行的悬浮说明由 [PhotonEditorTooltipUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEditorTooltipUtil.java)
 集中管理，沿用 LDLib2 原生提示图标、翻译和悬浮样式。现有 Configurator 构造注入只为登记的扩展键安装 ADDED 监听，
 在控件加入时设置提示，避免原配置构建器之后清空提示；不额外遍历控件树。临时预览、批量字段和快捷键也通过同一 tips 入口补充说明，配置项只在原生放大镜上显示帮助，保留输入校验提示，不给行或整组重复挂说明。
@@ -48,7 +66,7 @@ features、旧 keys、presets 映射和 curveEasingPreset。功能设置路径�
 长提示在已登记的扩展配置行、本项目动画 UI、设置、预设、列表操作和参数工具内，复用原版 Tooltip 按 170 像素自动分行；通过控件本地 HOVER_TOOLTIPS 交给原生 HoverTooltips 绘制，保留提示图标、翻译和皮肤。动态动画动作提示在悬浮时读取当前消息，消息改变才更换 Tooltip，语言身份变化由原版缓存重建分行。是否已经包装按控件自己的 WrappedTooltip 监听器身份判断，重复注册只替换消息来源；不能因存在其他 HOVER_TOOLTIPS 监听器就跳过换行，也不保存全局控件引用。该入口不修改全局 Tooltip 或未登记的原生配置行；新增提示须沿同一入口，不能每次 ADDED 重复安装监听或把字符数当成像素宽度。帮助正文说明操作和限制，不混入修复经过或实现验收描述。
 预分行后提交 FormattedCharSequence 的路径可能跳过第三方 GatherComponents 对原 Component 文本的处理；仅本项目包装提示使用该路径，其他提示仍沿原入口。第三方兼容、屏幕边界和实际悬浮布局尚未游戏内验收，不能把静态检查或 Data 成功当作这类兼容性证明。
 
-| 设置分类 | 功能标识                                                                                    | 用途                                               |
+| 功能域   | 内部标识                                                                                    | 用途                                               |
 |----------|---------------------------------------------------------------------------------------------|----------------------------------------------------|
 | 曲线     | precise、time_scale、batch_move、fit、tangents                                              | 精确编辑、时间缩放、批量平移、适配视图、切线预设   |
 | 曲线     | curve_pan、axis_lock                                                                        | 中键移动视图、Shift 约束曲线拖动                   |
@@ -64,12 +82,12 @@ features、旧 keys、presets 映射和 curveEasingPreset。功能设置路径�
 | 资源     | presets、system_clipboard、rename_dialog                                                    | 模块预设、系统剪贴板、重命名弹窗                   |
 | 资源     | compact_window_titles、title_path_conflicts、title_path_tooltip                              | 文件名标题、同名路径区分、完整路径悬浮             |
 | 资源     | notifications                                                                               | 保存与导出通知，最多三条竖向排列                   |
-| 快捷键   | shortcuts                                                                                   | Keymap 页的扩展快捷键总开关；逐项绑定使用原生动作表                         |
+| 快捷键   | shortcuts                                                                                   | 逐项绑定使用原生动作表，无扩展快捷键总开关                         |
 
-“功能默认开启”指允许使用扩展，不表示所有发射器模块或循环自动开启。各生命周期模块的循环复选框默认关闭，周期默认 20
-tick；仍需开启原模块和该模块的循环。关闭编辑器功能开关不能当作批量清除已保存特效参数或游戏运行时配置。
+扩展编辑器提供全部制作能力，不表示所有发射器模块或循环自动开启。各生命周期模块的循环复选框默认关闭，周期默认 20
+tick；仍需开启原模块和该模块的循环。编辑器入口隔离不会批量清除已保存特效参数或游戏运行时配置。
 
-不透明遮挡控件复用原渲染器 ToggleGroup 和阈值数字字段；发射器开关默认关闭、阈值默认 0.99，均有原生悬浮提示。设置中的 opaque_occlusion 只隐藏控件，已保存 FX 的运行行为仍由发射器配置决定；支持材质、使用步骤和渲染边界见[不透明像素遮挡](particle-rendering.md#photon-不透明像素遮挡扩展)。
+不透明遮挡控件复用原渲染器 ToggleGroup 和阈值数字字段；发射器开关默认关闭、阈值默认 0.99，均有原生悬浮提示。该控件仅在扩展编辑器显示，已保存 FX 的运行行为仍由发射器配置决定；支持材质、使用步骤和渲染边界见[不透明像素遮挡](particle-rendering.md#photon-不透明像素遮挡扩展)。
 
 两类原生场景左下角共用相机朝向 XYZ 提示；模型工作区新增平移吸附、像素 UV 网格和预览方向阴影，几何操作移入视图，导入导出归入文件菜单。模型几何／历史和特效轨道仍独立处理，具体规则见 [模型视图与编辑维护](photon-model-effects.md#模型视图与编辑维护)。
 
@@ -77,13 +95,13 @@ tick；仍需开启原模块和该模块的循环。关闭编辑器功能开关�
 
 Photon 的特效项目窗口标签默认保留原项目类型，只显示文件名与完整后缀；独立模型项目显示“[模型特效项目] - 模型名称”，从工程文件名移除完整 `.mfxproj` 后缀。相同编辑器窗口内，原项目类型与文件名相同的 Photon 标签改为完整路径；Windows 文件名比较忽略大小写。关闭同名标签或另存为后，随原生每 20 tick 的标题更新重新判定，最多约一秒。
 悬浮标签显示当前文件的绝对路径，路径使用 literal Component，不作为翻译键。未保存的特效项目补充“未命名特效”，模型项目使用“未命名模型”；空编辑器保留原标题；仅装饰 EditorWindow 中的 Photon 特效和模型标签，不改变特效 Editor#getTitle、保存确认弹窗或文件引用。模型编辑器自身标题使用工程名称，完整路径提示和重名扫描复用同一工具，不另建标题系统。
-三个开关位于“设置 → Lobecorp → 资源与剪切板”，默认开启，可以分别恢复原完整路径显示、关闭同名检测或隐藏路径提示。
+文件名标题、同名路径区分和路径提示在扩展编辑器中固定提供，不再有额外功能启用开关；原生入口保持 Photon 标题。
 
 ## 命名动画
 
 打开特效项目后，在“场景”右侧增加原生“命名动画”标签；首次选择才初始化工作区及控制器。
 “工具 → 命名动画”定位同一标签，关闭后可重新打开，手动浮动时停靠回来；默认保留场景选中状态。
-设置开关为粒子与渲染分类中的 `named_animations`，默认开启；首次加载关闭该开关的项目不添加标签。
+命名动画标签只安装到扩展编辑器，不再提供 `named_animations` 启用设置。
 左侧目标直接使用原特效层级，旁边的动画列表使用原数组行、拖动条、只读 Label 与加减按钮；选中同步 UUID，重复点击保留状态。
 右侧命名配置继续使用四个原生标签；对象与轨道选择显示原完整检视，仅锁定 FXObject.name。
 未录制时修改基础参数；开启原 TL 录制后同时修改基础值与当前命名动画关键帧，沿用原场景历史。
@@ -107,7 +125,7 @@ Photon 的特效项目窗口标签默认保留原项目类型，只显示文件�
 ## 独立测试菜单
 
 “工具 → 测试”提供全部测试、时钟与参数、运行槽检查（原入口）、多实例与触发、动画运行回归、共享时间轴与原生一致性、编辑器配置以及不透明遮挡与原生管线。
-[Lobecorp 设置](../../src/main/java/org/unitego/lobecorp/config/photon/PhotonEditorSettings.java)的预览分类新增 tests（独立测试入口），默认开启；关闭后隐藏该菜单。
+独立测试菜单仅在扩展编辑器提供，不再使用 tests 启用设置；检查仍由用户显式调用。
 原命名动画表单中的运行槽检查和魔法阵示例按钮均已移除；测试入口不要求创建动画工作区或修改当前特效。
 [PhotonEditorTestMenu](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTestMenu.java)
 调用各检查自己的模型、FX 和控件，不借用当前编辑实例，不改变当前播放或游标；结果通过原生通知显示，失败堆栈写入日志。
@@ -123,8 +141,8 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 ## 发射器发射器
 
 原对象添加菜单增加“发射器发射器”，支持项目发射器模板与已保存的完整 FX 资源，自身不创建粒子。
-监视面板沿用原 Configurator、搜索/拖放、枚举和向量控件；设置的粒子与渲染分类中新增默认开启的
-`emitter_spawner` 控件开关。保存、操作历史和剪贴板复用原对象类型序列化。
+监视面板沿用原 Configurator、搜索/拖放、枚举和向量控件；扩展编辑器固定显示本类型控件，不再提供
+`emitter_spawner` 额外功能开关。保存、操作历史和剪贴板复用原对象类型序列化。
 外层同名折叠组移除，配置行直接加入监视面板；形状、实例参数等内部子组保留。
 项目模板行提供原生“移除”按钮，只清除引用，不删除模板对象。新增“一次性发射”模式每次启动只自动触发一次，
 循环不重复、重启可再次触发；原“每周期一次”模式和保存标识保持原语义。
@@ -137,19 +155,19 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 
 - 场景与命名动画共用原时间轴：每个数值属性首次显示曲线时自动适配全部分量的关键帧和切线，并预留 10% 上下余量。恒定曲线使用默认半幅，避免零跨度或上下标签显示成相同数值；角度半幅为 360 度，其他数值为 1。
 - 没有有限曲线数据时，原生角度属性默认 -360～360，其他数值属性默认 -1～1；速度、布尔等类型声明的固定下限继续生效。颜色仍使用原渐变编辑器。数值范围仅影响显示，不修改关键帧、目标基础参数、合法值限制或运行时采样。
-- 初始化复用“适配曲线视图”（fit_view）开关，默认开启；按属性身份使用弱引用标记，普通编辑、布局刷新、折叠和场景/命名上下文切换不再次覆盖手动缩放和平移。重新加载项目或新增属性的新身份会重新初始化，手动适配入口仍可随时使用。
+- 扩展编辑器固定提供首次曲线适配（fit_view）；按属性身份使用弱引用标记，普通编辑、布局刷新、折叠和场景/命名上下文切换不再次覆盖手动缩放和平移。重新加载项目或新增属性的新身份会重新初始化，手动适配入口仍可随时使用。
 - 表达式片段通过原 evalExpr 在片段内按 64 个间隔一次性采样，考虑半开结束边界并忽略非有限结果；其范围是近似值，不保证捕捉任意高频或不连续表达式的全部极值。适配不按片段 tick 长度逐刻遍历，也不在每 tick 重新计算。
 
 - 中键拖动移动视图：横向改变时间轴滚动，纵向改变当前属性的显示范围偏移。它不修改关键帧值；适配视图会重置相关显示偏移。
 - Shift + 左键拖关键帧或曲线选择，超过拖动阈值后按主要方向锁定水平或垂直；修改的是曲线数据。松开 Shift 恢复普通拖动。单纯点击仍保留选择语义。
 - Alt + 左键拖动可在结束时复制所拖关键帧；不叠加 Ctrl/Shift，并检查轨道锁定和目标时间冲突。
-- 精确编辑与批量移动统一为同一入口，可修改所选关键帧的时间和值；时间缩放围绕选中关键帧的最早时间缩放，并同步切线。原 precise 与 batch_move 两个设置 ID 保留，任意一个开启即可使用，G 键与菜单共用判断。
+- 精确编辑与批量移动统一为同一入口，可修改所选关键帧的时间和值；时间缩放围绕选中关键帧的最早时间缩放，并同步切线。precise 与 batch_move 只保留内部路由标识，G 键与菜单共用操作，不再读取功能启用设置。
 - 切线菜单包含线性、缓入、缓出、两端缓动、阶梯、平坦、对齐、断开和重置入口。实际操作受属性类型和表达式片段限制。
 - 原生对象“缩放”属性支持 XYZ 同时间关键帧和同向控制手柄按相同时间/数值增量联动，保留各轴差值；沿用原单选、框选、Shift 锁轴、Alt 复制和一次拖动撤销。拖动时缺少同时间点或对应手柄的轴不自动补点，对齐切线逐轴保留自身约束。
 - 缩放新增关键帧同步三轴：各轴取该时间的原曲线采样值加主轴增量；任一轴已存在同时间点时整次拒绝，避免覆盖已有曲线。精确编辑、时间缩放与切线批量入口也扩展为同时间三轴；其他属性和生命周期内大小的分轴函数仍使用原编辑逻辑。
 - “+ 添加属性”在数值、非离散属性创建前显示原生缓动选择窗口，提供线性、缓入、缓出、两端缓动和平坦；取消不创建属性。原新曲线只有一个关键帧，后续加点形成曲线段时应用预设并进入原新增点历史；颜色/离散属性沿用原创建流程，表达式或函数片段覆盖的区间不自动改底层切线。
 - 原生框选后使用“工具 → 为选中关键帧选择缓动”批量调整关键帧手柄，不移动未选中的关键帧。设置中的默认曲线缓动决定弹窗初始值；弹窗选择只用于当前曲线，不修改全局设置。编辑曲线重载后新增点回到设置默认，已经形成的贝塞尔形状仍由原 Codec 保存。
-- 三轴联动、新增曲线缓动选择、框选批量缓动位于“设置 → Lobecorp → 曲线编辑”，默认开启；分别关闭后恢复分轴操作、原属性创建及隐藏批量入口。精确编辑与切线的应用、撤销、重做同步原录制参考，避免额外录制基础参数。
+- 三轴联动、新增曲线缓动选择、框选批量缓动由扩展编辑器固定提供；真实默认缓动仍在“设置 → Lobecorp”配置。精确编辑与切线的应用、撤销、重做同步原录制参考，避免额外录制基础参数。
 - 修改检查有限值、非负时间、相邻时间间隔和锁定状态；失败恢复快照，通过现有操作历史提交可撤销变更。
 
 [FXTimelineViewMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/FXTimelineViewMixin.java)
@@ -183,13 +201,15 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 
 ### 导出成功与定时通知
 
+2026-10-16 工程标签栏遮挡修复：当前 LDLib2 26.1.2.42 的 `EditorWindow.window` 先绘制 editorContainer，再绘制同级工程标签栏 editorButtonContainer；此前通知栈位于 Editor 内，zIndex=1 只能调整该子树内部顺序，不能跨越外层标签栏。现 [PhotonEditorNotificationUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEditorNotificationUtil.java) 将通知栈挂到所属 EditorWindow.window，以 zIndex=1 与两者同级排序；没有窗口宿主的编辑器仍直接挂到自身。队列按编辑器实例区分，只在所属编辑器可见且活动、为当前工程时绘制和接收 screenTick；工程退出或宿主失配时移除容器。鼠标穿透、跳过定时提示 focus、最多三条、原生计时与关闭设置行为保持。维护时须检查通知与遮挡元素的共同祖先，不能只增加子元素的 zIndex；本轮尚未进行游戏内视觉与交互验收，下面的 2026-10-14 截图仅为历史证据。
+
 2026-10-14 层级与焦点修复：通知栈重新明确使用原生对话框层级 zIndex=1，避免默认 zIndex=0 与普通面板混排。定时通知本身和已有后代均关闭命中检测；仅对进入本项目通知栈的定时提示跳过 Dialog.show 中的 focus 调用，避免保存时抢走输入框、时间轴或普通确认框的焦点。设置关闭、非 Photon 和需要确认的普通 Dialog 保留原生焦点行为；堆叠数量、计时及关闭机制不变。新增 isNotificationStack 仅供该 Mixin 判断归属。IDEA 编译与静态诊断通过；重启后的原生提示实际 focusPreserved=true、可命中后代数=0，普通确认 Dialog 仍取得焦点，关闭后本轮恢复原焦点。已查看 build/mcp/notification-layer-fixed.png 与 notification-and-cone-verified.png，提示显示在顶部面板之上；完整浮动窗口、设置关闭与长期交互矩阵仍未验收。
 
-设置位于“设置 → Lobecorp → 资源与剪切板 → 保存与导出通知”，标识 notifications，默认及旧配置缺省开启，继续保存在原 features 映射。原生 BooleanConfigurator 的说明复用本项目提示换行入口；关闭时 `.fx` 恢复原无成功提示、FXPack 恢复原成功确认弹窗、保存恢复原独立定时通知，错误与其他确认弹窗保持。
+保存与导出通知属于扩展编辑器的固定能力，不再提供 notifications 功能启用设置。原生入口沿用 Photon 通知；扩展入口使用本项目堆叠通知，错误与其他确认弹窗保持原处理。
 
 导出 `.fx` 在原生 writeCompressed 与 clearCache 均成功后显示 2 秒原生定时成功提示；FXPack 原成功通知改为同样的定时提示，保留导出 ID、文件及警告详情。失败、锁定错误与需要确认的普通弹窗保留原行为，不能在写入前或失败分支显示成功。
 
-同一 Photon FXEditor 的定时通知由 [PhotonEditorNotificationUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEditorNotificationUtil.java) 放入原生竖向容器，顶部保留 10 像素、通知间隔 2 像素，最多同时 3 条；新通知超出上限时原生关闭最早一条。已有保存成功提示也沿同一入口，其他编辑器与非定时弹窗不进入该容器。容器不参与鼠标命中，通知关闭或 TICK 时移除空容器；项目导出编辑器引用使用 WeakReference，在 onLoad／onClosed 绑定和清理，没有静态窗口持有。
+同一 Photon FXEditor 的定时通知由 [PhotonEditorNotificationUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEditorNotificationUtil.java) 放入所属窗口内按编辑器区分的竖向容器，顶部保留 10 像素、通知间隔 2 像素，最多同时 3 条；新通知超出上限时原生关闭最早一条。已有保存成功提示也沿同一入口，其他编辑器与非定时弹窗不进入该容器。容器不参与鼠标命中，通知关闭或 TICK 时移除空容器；项目导出编辑器引用使用 WeakReference，在 onLoad／onClosed 绑定和清理，没有静态窗口持有。
 
 已确认源码差异：Photon `.fx` 导出原来没有成功提示，FXPack 成功使用需要确认的通知；LDLib2 .39 定时通知使用相同固定 top，连续出现时可能叠在同一位置。现在 [FXProjectMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/FXProjectMixin.java) 仅补成功路径，[DialogMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/DialogMixin.java) 仅标记和路由 showNotification(String,float)，已在队列的重复 show 不重复加入。维护时重新核对 `.fx` 写入／清缓存顺序、FXPack 成功通知 ordinal=1 与错误 ordinal=0，以及 Editor／浮动窗口归属；真实堆叠、超限关闭、导出与窗口生命周期仍需游戏内验收。
 
@@ -224,7 +244,7 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 ## 激活轨道：开始、结束和父子关系
 
 扩展目标是 ActivatorTrack（激活轨道）。选项接入轨道监视面板；既有 ControlTrack 仍保留控制时间与 ticking 的原行为。历史命名
-control 是功能开关标识，不代表把这套扩展移到 ControlTrack。
+control 是内部控件分类标识，不代表把这套扩展移到 ControlTrack。
 
 [PhotonActivatorOptions](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonActivatorOptions.java)
 默认：控制开始、开始时重启、控制结束、原结束行为、重启时清理；单帧触发默认关闭。开始控制和结束控制可独立关闭。
@@ -260,15 +280,15 @@ startControl、startBehavior、endControl、endBehavior、clearOnRestart；缺�
 
 原生播放器按当前制作时间求值，较大的时间步长可能直接跨过短激活、控制或音频片段。新增 [PhotonTimelineTraversalUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonTimelineTraversalUtil.java) 收集前后制作时间之间的离散边界，按顺序补调用原生 evaluate，再执行当前时间的原求值；动画曲线仍由原生阶段采样，不另建播放器。信号继续使用原区间派发和去重；单边只补对应起点或终点，双端重叠片段按合并区间的真实入口和退出处理，不在区间重叠内部重复触发。
 
-补求值需要暂时设置精确 localTime，并在正常求值前及 finally 中恢复原值；begin 重置经过时间，内部边界求值由重入标识保护。tick 补处理不调用 frame，避免音频、后处理或渲染贡献重复提交。维护时同时覆盖整段跨越、共享起止点、分组静音、回拖／重启与信号顺序，不能只增加最终时刻的 clipAt 查询。设置“Lobecorp → 粒子与渲染 → 时间轴经过事件补处理”（timeline_event_traversal）默认及旧配置缺省开启；关闭后恢复仅当前时间的原生采样入口。
+补求值需要暂时设置精确 localTime，并在正常求值前及 finally 中恢复原值；begin 重置经过时间，内部边界求值由重入标识保护。tick 补处理不调用 frame，避免音频、后处理或渲染贡献重复提交。维护时同时覆盖整段跨越、共享起止点、分组静音、回拖／重启与信号顺序，不能只增加最终时刻的 clipAt 查询。经过事件补处理在扩展编辑器固定使用；原生入口保留原采样，普通世界继续既有运行处理，不再有 timeline_event_traversal 启用设置。
 
 原编辑预览在首次模拟更新后才把爆发粒子接入渲染，时间轴 0 时看不到初始粒子。本轮 [PhotonEmissionPrimeUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonEmissionPrimeUtil.java) 只在使用 DummyWorld 和独立 PhotonParticleManager 的编辑器场景中初始化 Burst.time=0，并将待加入粒子接入已有渲染队列；不调用 advance／tick，不推进粒子年龄、特效时钟或管理器计数，也不提前发射 rateOverTime 粒子。正常世界的 FX 不自动调用此初始化。
 
 初始化复用原 burstTriggers 的数量、概率和周期判断；保存已经抽样的零时刻数量，首次正常发射窗口复用并排除已消费的零触发，clear 时清理记录。已有预热结果沿原规则保留，正开始延迟、已推进年龄、停止生成或非活动对象跳过初始化；非循环且寿命不超过一刻时，原预热不会执行，仍允许零时刻初始化。待加入队列只接入一次，首次正常更新仍处理出生事件和寿命。
 
-维护时不能为显示 0 帧提前模拟一刻，也不能预发持续速率或重复抽样已消费的爆发。提前发生的零时刻抽样可能改变与后续随机操作的相对顺序，即使概率和原 Burst 计算相同，也不承诺相同种子下图像逐像素不变。设置“Lobecorp → 预览 → 零时刻发射初始化”（zero_time_emission）默认及旧配置缺省开启；关闭后不执行 prime 或待加入队列的额外接入。上述实际首帧、预热、概率与延迟效果仍待游戏内验收。
+维护时不能为显示 0 帧提前模拟一刻，也不能预发持续速率或重复抽样已消费的爆发。提前发生的零时刻抽样可能改变与后续随机操作的相对顺序，即使概率和原 Burst 计算相同，也不承诺相同种子下图像逐像素不变。零时刻初始化只在扩展编辑器场景使用，不再提供 zero_time_emission 启用设置，原生入口不执行额外 prime。上述实际首帧、预热、概率与延迟效果仍待游戏内验收。
 
-两个设置按运行实例所属管理器的 sceneView 查询编辑器，子实例沿用所属场景，普通世界或未绑定编辑器时默认开启经过事件处理；零时刻初始化仍只处理局部场景。不要使用其他窗口的当前项目替代实例所属编辑器，也不要将 PhotonEditorSettings 的实例方法当作静态 API。
+经过事件补处理和零时刻初始化按运行实例所属管理器的 sceneView 区分扩展与原生编辑器，子实例沿用所属场景；不再提供对应功能启用设置。普通世界或未绑定编辑器时继续处理经过事件，零时刻初始化仍只处理局部场景。不要使用其他窗口的当前项目替代实例所属编辑器。
 
 2026-10-08 本批实际检查：34 个相关 Java 的 IDEA 最终诊断无错误／警告，修改范围格式化关闭额外导入优化和成员重排；IDEA 编译成功、Data 退出码 0。生成目录 25 文件无新增／删除，只有两份语言及对应缓存变化，中英文各新增 16 键，原有 858 键和值不变。新增“工具 → 测试 → 零时刻粒子发射”检查入口及相应加载后回归，但本轮未执行该入口、其他加载后回归或游戏验收；详见 [修改记录](changes.md)。
 
@@ -292,11 +312,10 @@ startControl、startBehavior、endControl、endBehavior、clearOnRestart；缺�
 | animation           | 曲线、渐变、表达式片段等子数据，按目标类型恢复                        |
 | 普通文本            | TextField/TextArea 原文本编辑流程读取，不解析为轨道或资源             |
 
-启用 system_clipboard
-时，[TextFieldMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/TextFieldMixin.java)
-与[TextAreaMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/TextAreaMixin.java)仅在 Photon
-编辑器读取 Minecraft keyboardHandler 的最新系统剪贴板文本，修正 LDLib2 .39 原输入入口只读内部缓存的问题。复制、文本过滤、选区和撤销沿用原控件；关闭开关或离开
-Photon 编辑器则走原入口。
+在扩展编辑器内，[TextFieldMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/TextFieldMixin.java)
+与[TextAreaMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/TextAreaMixin.java)
+读取 Minecraft keyboardHandler 的最新系统剪贴板文本，修正 LDLib2 .39 原输入入口只读内部缓存的问题。复制、文本过滤、选区和撤销沿用原控件；原生
+Photon 编辑器或离开扩展编辑器时走原入口，不另设功能开关。
 
 原 AssetBrowser 文件/目录操作仍使用原 ClipboardAssets；跨编辑器资源配置协议与操作系统文件列表不是同一种数据。普通
 JSON、路径文本或外部图片不会自动转换为编辑器对象。原层级“复制”即时复制行为保留，系统复制入口另行处理。非法协议或不兼容类型在修改前拒绝。
@@ -342,7 +361,7 @@ tick 仍检查已登记控件的设置和父级模块，显示状态有变化才
 
 [ModularUIMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/ModularUIMixin.java)只包装原 refreshHoveredElement(FF)V 中唯一 removeClass 调用。正在移除 __hovered__ 的元素仍存在于新目标的缓存路径中时，按当前 Photon 项目及设置保留它的类；其余调用原操作。共同祖先后续原 addClass 因状态已存在而直接跳过，避免共同根再次使整棵样式树失效。差异分支仍递归更新，保留父子悬浮与局部后代样式规则；没有二次命中检测、全方法替换或长期 UI 缓存。
 
-设置位于“Lobecorp → 预览 → 悬浮样式更新优化”，标识 hover_style_delta，默认开启并提供原生提示；关闭后恢复原处理。作用域复用 PhotonEditorSaveUtil.currentProjectEditor 的 FX／模型当前项目与 EditorHost 解析，支持主窗口与浮动面板；非 Photon 或没有项目时沿用原逻辑。开关只影响编辑器，不改项目、特效定义、粒子运行或保存格式。
+悬浮样式更新优化仅作用于扩展编辑器，不再提供 hover_style_delta 启用设置。作用域复用 PhotonEditorSaveUtil.currentProjectEditor 的扩展 FX／模型当前项目与 EditorHost 解析，支持主窗口与浮动面板；原生入口、非 Photon 或没有项目时沿用原逻辑。不改项目、特效定义、粒子运行或保存格式。
 
 维护时保留原鼠标坐标、hitTest、悬浮路径 clear/addAll、最后命中目标及 Widget 的 MOUSE_MOVE/LEAVE/ENTER 顺序。当前依赖的 newHoveredElement 局部名称与 removeClass 描述符已通过 IDEA 核对；更新 LDLib2 时重新确认，不能用第二次 hitTest 或简单隐藏提示替代。IDEA 格式化、Java/Mixin 静态诊断、编译和 Data 已完成；中英文各仅新增开关名称及提示，共 749 键，原有 747 项文本保留。实际客户端按钮、菜单、滚动、拖动、浮动及 FPS 对比尚未验收。
 
@@ -372,4 +391,10 @@ tick 仍检查已登记控件的设置和父级模块，显示状态有变化才
 6. 保持 [Mixin 配置](../../src/main/resources/META-INF/lobecorp.mixins.json)
    和[翻译集中入口](../../src/main/java/org/unitego/lobecorp/util/TranslationKeys.java)一致；新翻译由 Data 生成，不手写生成输出。
 7. 系统行为、配置、协议、清理或路径变化后同步本文，在[变更记录](changes.md)
-   记录日期、影响和实际验证。依赖桥接细节另见[研究记录](../project-reference/09-particle-effects-research.md)。
+    记录日期、影响和实际验证。依赖桥接细节另见[研究记录](../project-reference/09-particle-effects-research.md)。
+
+## 开发环境资源工作区（2026-10-15）
+
+开发模式下，资源浏览、工程保存和材质／着色器图使用 src/main/resources/assets，Photon 包使用 src/main/resources/fxpacks；发行环境保留原加载流程。五类本机布局／最近项目存储不迁移到源码，文件路径及配置属性见 [开发环境源码资源直读](resources-datagen.md#开发环境源码资源直读2026-10-15)。
+
+教程 V3 已正式命名为 queen_star_beam，当前工程、运行 ID、材质目录和迁移边界见 [女皇星束资源](queen-star-beam.md)。历史记录中的 tutorial_shockwave／refined／v3 路径只作为当时证据，不能再作为当前打开或保存入口。

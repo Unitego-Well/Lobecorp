@@ -14,8 +14,8 @@ import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
-import org.unitego.lobecorp.client.photon.runtime.PhotonParticleRuntimeTrial;
-import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
+import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
@@ -33,7 +33,6 @@ public class ClientRuntimeEvents {
 		LcClientAttachments.clear();
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
-		PhotonParticleRuntimeTrial.onClientLoggingIn(event);
 	}
 
 	@SubscribeEvent
@@ -46,7 +45,7 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
-		PhotonGeoEffects.clear();
+		PhotonFrameCapture.cancel();
 		LcModelLodUtil.clear();
 	}
 
@@ -59,7 +58,6 @@ public class ClientRuntimeEvents {
 		if (event.getLevel() instanceof ClientLevel level) {
 			ScreenParticles.clear();
 			TextParticleClient.clear();
-			PhotonGeoEffects.clear();
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
 			LcAttachments.clear(level);
@@ -76,6 +74,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
+		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;
 		if (level != null) {
 			LcAttachments.tick(level);
@@ -85,7 +84,6 @@ public class ClientRuntimeEvents {
 		ScreenParticles.tick();
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
-		PhotonGeoEffects.tick();
 	}
 
 	@SubscribeEvent

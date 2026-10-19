@@ -4,7 +4,6 @@ import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
-import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,40 +12,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.PhotonSceneAxisView;
-import org.unitego.lobecorp.client.photon.animation.editor.PhotonAnimationTab;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProjectEditor;
-import org.unitego.lobecorp.client.photon.model.project.IPhotonModelEditorBridge;
 
 import java.io.File;
 
+
 @Mixin(FXEditor.class)
-public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess, IPhotonModelEditorBridge {
+public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess {
 	@Unique
 	private PhotonEditorTools lobecorp$editorTools;
 
 	@Inject(method = "<init>", at = @At("RETURN"))
 	private void lobecorp$installTools(CallbackInfo ci) {
+		if (!PhotonEditorTools.isPhotonEditor(this)) {
+			return;
+		}
+
 		var editor = (FXEditor) (Object) this;
 		editor.sceneView.addChild(new PhotonSceneAxisView(editor.sceneView));
-		if ((Object) this instanceof PhotonModelProjectEditor) {
-			return;
-		}
 
 		lobecorp$editorTools = new PhotonEditorTools(editor);
+		PhotonEditorTools.installMenus(editor);
 	}
 
-	@Inject(method = "initMenus", at = @At("RETURN"))
-	// 运行时 this 是目标 FXEditor，保留 Mixin 的标准目标转换。
-	@SuppressWarnings("DataFlowIssue")
-	private void lobecorp$addMenus(CallbackInfo ci) {
-		if ((Object) this instanceof PhotonModelProjectEditor) {
-			return;
-		}
-
-		PhotonEditorTools.installMenus((FXEditor) (Object) this);
-		PhotonModelProject.installFileTypes(getFileMenu());
-	}
 
 	@Inject(method = "closeCurrentProject", at = @At("HEAD"))
 	private void lobecorp$clearTools(CallbackInfo ci) {
@@ -76,13 +63,9 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 
 	@Inject(method = "reloadEffect", at = @At("RETURN"))
 	private void lobecorp$syncAnimationScene(CallbackInfo ci) {
-		if (getCurrentProject() instanceof FXProject) {
-			PhotonAnimationTab.sceneChanged((FXEditor) (Object) this);
+		if (getCurrentProject() instanceof FXProject && lobecorp$editorTools != null) {
+			lobecorp$editorTools.bindRuntime();
 		}
 	}
 
-	@Override
-	public void lobecorp$loadProjectBase(IProject project, @Nullable File projectFile) {
-		super.loadNewProject(project, projectFile);
-	}
 }

@@ -8,6 +8,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 public class PhotonEditorSaveUtil {
 
@@ -78,7 +79,7 @@ public class PhotonEditorSaveUtil {
 	}
 
 	private static @Nullable Editor supportedEditor(@Nullable Editor editor) {
-		if (!(editor instanceof FXEditor)) {
+if (!(editor instanceof PhotonEffectEditor)) {
 			return null;
 		}
 

@@ -2,8 +2,6 @@ package org.unitego.lobecorp.util.photon.animation;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
-import org.unitego.lobecorp.config.photon.animation.PhotonAnimationParameter.Type;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonAnimationTypes;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 
 import java.util.List;
@@ -40,17 +38,6 @@ public class PhotonAnimationTextUtil {
 		return "value";
 	}
 
-	public static String componentSuffix(Type type, int axis) {
-		if (axis < 0) {
-			return "component.all";
-		}
-
-		if (type.channels() == 1 || axis >= type.channels()) {
-			return "value";
-		}
-
-		return type == Type.COLOR ? COLOR_COMPONENTS.get(axis) : VECTOR_COMPONENTS.get(axis);
-	}
 
 	private static void text(String suffix, String english, String chinese, String englishTip, String chineseTip) {
 		LangHandler.creates(Lobecorp.NAMESPACE, key(suffix), english, chinese);
@@ -162,8 +149,8 @@ public class PhotonAnimationTextUtil {
 	}
 
 	private static void registerActions() {
-		LangHandler.creates(Lobecorp.NAMESPACE, LcPhotonAnimationTypes.CALL_TRACK_NAME, "Animation call", "动画调用");
-		LangHandler.creates(Lobecorp.NAMESPACE, LcPhotonAnimationTypes.CALL_TRACK_TRANSLATION_KEY, "Animation call", "动画调用");
+		LangHandler.creates(Lobecorp.NAMESPACE, "lobecorp_animation_call", "Animation call", "动画调用");
+		LangHandler.creates(Lobecorp.NAMESPACE, "photon.timeline_track.lobecorp_animation_call", "Animation call", "动画调用");
 		text("call_target", "This FX", "本特效", "Call named animations in this FX from the project-only test timeline. Test tracks are saved with the project and excluded from FX exports.", "在项目专用测试时间轴中调用本特效的命名动画；测试轨道随项目保存，不导出到特效资源。");
 		text("call_animation", "Animation to call", "调用动画", "Select a named animation from this FX. Calls store its stable ID; renaming the animation keeps the reference.", "选择本特效的命名动画；调用保存稳定 ID，动画重命名后引用保持不变。");
 		text("call_mode", "Playback mode", "播放模式", "Independent calls start the target once on entry. Controlled calls map its complete content to the clip and release only their own contribution when stopped.", "独立触发在进入片段时启动目标一次；受控播放将目标完整内容映射到片段，停止时仅释放该片段持有的贡献。");

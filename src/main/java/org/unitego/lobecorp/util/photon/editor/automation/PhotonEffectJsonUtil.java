@@ -159,7 +159,25 @@ public class PhotonEffectJsonUtil {
 		var values = value.getAsJsonArray();
 
 		for (int i = 0; i < values.size(); i++) {
-			result.add(tag(values.get(i), i < template.size() ? template.get(i) : template.isEmpty() ? null : template.getFirst()));
+			var valueItem = values.get(i);
+			var original = i < template.size() ? template.get(i) : template.isEmpty() ? null : template.getFirst();
+			if (valueItem.isJsonObject() && valueItem.getAsJsonObject().has("type")) {
+				var type = valueItem.getAsJsonObject().get("type");
+				if (type.isJsonPrimitive() && type.getAsJsonPrimitive().isString()) {
+					var typeName = type.getAsString();
+					if (!(original instanceof CompoundTag compound) || !typeName.equals(compound.getStringOr("type", ""))) {
+						// 轨道增删或重排后，下标可能对应另一类型；UUID 数组等字段必须沿用同类型模板。
+						for (var candidate : template) {
+							if (candidate instanceof CompoundTag compound && typeName.equals(compound.getStringOr("type", ""))) {
+								original = candidate;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			result.add(tag(valueItem, original));
 		}
 
 		return result;

@@ -10,8 +10,6 @@ import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.EnumAccessor;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigSelector;
-import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
-import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunctionConfig;
@@ -23,16 +21,12 @@ import java.util.Arrays;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import org.unitego.lobecorp.config.photon.emitter.model.PhotonModelEmitterConfig;
-import org.unitego.lobecorp.config.photon.model.PhotonModelPlaybackConfig;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import net.minecraft.network.chat.Component;
 
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Field;
-import java.util.Map;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -85,9 +79,6 @@ public class PhotonEffectSchemaUtil {
 			}
 		}
 
-		if (type == PhotonModelEmitterConfig.class || type == PhotonModelPlaybackConfig.class) {
-			modelBounds(fields);
-		}
 
 		result.add("properties", fields);
 		return result;
@@ -218,51 +209,7 @@ public class PhotonEffectSchemaUtil {
 		}
 	}
 
-	/// 自有配置的范围来自其真实手写配置器，不在 MCP 层复制业务数值。
-	private static void modelBounds(JsonObject fields) {
-		var group = new ConfiguratorGroup();
-		new PhotonModelEmitterConfig().buildConfigurator(group);
-		var labels = Map.of("duration", "duration", "startDelay", "start_delay", "playbackSpeed", "playback_speed",
-				"animationOffset", "animation_offset", "length", "length", "width", "width", "opacity", "opacity");
 
-		for (var entry : labels.entrySet()) {
-			if (!fields.has(entry.getKey())) {
-				continue;
-			}
-
-			var metadata = fields.getAsJsonObject(entry.getKey());
-			var label = Component.translatable(PhotonModelTextUtil.key(entry.getValue())).getString();
-			applyBounds(group, label, metadata);
-		}
-
-		for (var key : List.of("duration", "startDelay", "animationOffset")) {
-			if (fields.has(key)) {
-				fields.getAsJsonObject(key).addProperty("unit", "tick");
-			}
-		}
-
-		if (fields.has("playbackSpeed")) {
-			fields.getAsJsonObject("playbackSpeed").addProperty("unit", "multiplier");
-		}
-	}
-
-	private static boolean applyBounds(ConfiguratorGroup group, String label, JsonObject metadata) {
-		for (var configurator : group.getConfigurators()) {
-			if (configurator instanceof NumberConfigurator number && configurator.getLabel().getString().equals(label)) {
-				metadata.add("min", number.getMin() == null ? JsonNull.INSTANCE : new JsonPrimitive(number.getMin()));
-				metadata.add("max", number.getMax() == null ? JsonNull.INSTANCE : new JsonPrimitive(number.getMax()));
-				metadata.add("wheel", number.getWheel() == null ? JsonNull.INSTANCE : new JsonPrimitive(number.getWheel()));
-				metadata.addProperty("constraintSource", PhotonModelEmitterConfig.class.getSimpleName());
-				return true;
-			}
-
-			if (configurator instanceof ConfiguratorGroup child && applyBounds(child, label, metadata)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
 
 	public static void validate(Class<?> type, Tag data) {
 		validateMetadata(describe(type, data));

@@ -8,10 +8,8 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
-
 @Mixin(ModularUI.class)
 public abstract class ModularUIMixin {
 	@WrapOperation(method = "refreshHoveredElement(FF)V", at = @At(value = "INVOKE",
@@ -24,7 +22,7 @@ public abstract class ModularUIMixin {
 		}
 
 		var editor = PhotonEditorSaveUtil.currentProjectEditor((ModularUI) (Object) this, newHoveredElement);
-		if (editor == null || !PhotonEditorSettings.of(editor).enabled(PhotonEditorTextUtil.HOVER_STYLE_DELTA_FEATURE)) {
+		if (!(editor instanceof PhotonEffectEditor)) {
 			return original.call(element, clazz);
 		}
 

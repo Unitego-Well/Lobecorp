@@ -2,7 +2,9 @@ package org.unitego.lobecorp.util;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.util.photon.editor.PhotonVisualQualityTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTextUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
@@ -13,6 +15,7 @@ public interface TranslationKeys {
 	public String PHOTON_ANIMATION_TEXT = PhotonAnimationTextUtil.register();
 	/// 触发 Photon 编辑器扩展中英文翻译的集中登记。
 	String PHOTON_EDITOR_TEXT = PhotonEditorTextUtil.register();
+	String PHOTON_PERFORMANCE_TEXT = PhotonPerformanceTextUtil.register();
 	/// 发射器发射器的原生编辑器控件和数据生成翻译入口。
 	@SuppressWarnings("unused")
 	String PHOTON_EMITTER_SPAWNER_TEXT = PhotonEmitterSpawnerTextUtil.register();
@@ -142,6 +145,15 @@ public interface TranslationKeys {
 	@SuppressWarnings("unused")
 	String VISUAL_QUALITY_SETTINGS = LangHandler.creates(Lobecorp.NAMESPACE, "settings.lobecorp.visual_quality",
 			"Visual quality", "动态视觉精细度");
+	String PHOTON_FIXED_RENDER_KEY = "photon.lobecorp.renderer.fixed";
+	@SuppressWarnings("unused")
+	String PHOTON_FIXED_RENDER = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_FIXED_RENDER_KEY, "Fixed rendering", "修复渲染");
+	String PHOTON_QUALITY_EXEMPT_KEY = "photon.lobecorp.quality.exempt";
+	@SuppressWarnings("unused")
+	String PHOTON_QUALITY_EXEMPT = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_QUALITY_EXEMPT_KEY, "Keep full detail", "始终保持完整精度");
+	String PHOTON_PLANAR_LOD_KEY = "photon.lobecorp.quality.planar";
+	@SuppressWarnings("unused")
+	String PHOTON_PLANAR_LOD = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_PLANAR_LOD_KEY, "Allow planar distant LOD", "允许远处平面简化");
 	/// 发射器之间按视线深度重排的原生编辑器开关。
 	String PHOTON_VIEW_DEPTH_SORT_KEY = "photon.lobecorp.renderer.view_depth_sort";
 	/// 说明新排序模式的启用范围与限制。
@@ -468,5 +480,6 @@ public interface TranslationKeys {
 			"Fires in the chosen direction after charging, hitting only the first valid enemy through walls. Can fire without a target and still enters cooldown.", "前摇后沿指定方向释放穿墙声波，仅命中路径上的首个有效敌人。无需锁定目标，空放也进入冷却。");
 
 	static void init() {
+		PhotonVisualQualityTextUtil.init();
 	}
 }

@@ -7,8 +7,7 @@ import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.gui.editor.view.FXHierarchyView;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
-import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTimelineUtil;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 public class PhotonEditorRenameUtil {
 	public static void object(FXHierarchyView view, IFXObject object) {
@@ -33,7 +32,7 @@ public class PhotonEditorRenameUtil {
 	}
 
 	public static boolean track(TimelineContext ctx, Track track) {
-		if (!PhotonEditorSettings.of(ctx.editor()).enabled("rename_dialog") || track.lock()) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor) || track.lock()) {
 			return false;
 		}
 		var runtime = ctx.runtime();
@@ -41,7 +40,7 @@ public class PhotonEditorRenameUtil {
 		Dialog.stringEditorDialog("ldlib.gui.editor.menu.rename", before, value -> !value.isBlank(), value -> {
 			String after = value.trim();
 
-			if (ctx.runtime() != runtime || runtime == null || PhotonAnimationTimelineUtil.of(ctx).parentListOf(track) == null
+			if (ctx.runtime() != runtime || runtime == null || PhotonEditorTimelineUtil.of(ctx).parentListOf(track) == null
 					|| track.lock() || after.isEmpty() || before.equals(after)) {
 				return;
 			}

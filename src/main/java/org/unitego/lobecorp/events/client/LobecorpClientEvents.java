@@ -12,6 +12,7 @@ import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEve
 import net.neoforged.neoforge.common.NeoForge;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonMcpCommands;
+import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorCommand;
 import org.unitego.lobecorp.registry.animation.client.LcPlayerAnimationRegistration;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
 import org.unitego.lobecorp.registry.entity.client.EntityCorpseReverse;
@@ -31,6 +32,11 @@ public class LobecorpClientEvents {
 	@SubscribeEvent
 	public static void onRegisterConfigScreens(FMLClientSetupEvent event) {
 		VisualQualityConfigScreens.register();
+	}
+
+	@SubscribeEvent
+	public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
+		LcPhotonEditorCommand.register(event.getDispatcher());
 	}
 
 	@SubscribeEvent

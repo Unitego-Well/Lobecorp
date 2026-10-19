@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.lowdraglib2.editor.settings.EditorSettings;
 import com.lowdragmc.lowdraglib2.editor.ui.menu.ViewMenu;
-import com.lowdragmc.photon.gui.editor.FXEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorViewScaleUtil;
@@ -15,7 +15,7 @@ public abstract class ViewMenuMixin {
 	@WrapOperation(method = "lambda$createDefaultMenu$2", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/editor/settings/EditorSettings;isDirty()Z"))
 	private boolean lobecorp$applySelectedViewScale(EditorSettings settings, Operation<Boolean> original) {
-		return settings.editor instanceof FXEditor || original.call(settings);
+return settings.editor instanceof PhotonEffectEditor || original.call(settings);
 	}
 
 	@WrapOperation(method = "lambda$createDefaultMenu$2", at = @At(value = "INVOKE",

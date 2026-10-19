@@ -2,10 +2,30 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-19：自建 Photon 核心移除实施
+
+- 用户批准推荐方案，先建立工作区/暂存及开发资源备份，再移除 240 个主源码和 8 个专用测试；自建特效、专用渲染、模型与专属界面移出编译/注册。原生 Photon、路径、命令、通用编辑器、资源、调试及实体动画/实体模型 LOD 保留。
+- 关键调整涉及 ClientRuntimeEvents、PhotonEditorTools、MCP automation、共享视觉配置、GeckoLib 接入及 Mixin 登记；新增原始 NBT 保护入口，缺失类型在加载/覆盖前拒绝操作。197 项受保护资源原始 blob 与备份一致；旧文件可用性兼容仍未完成。
+- IDEA 编译成功；Data 完整日志 BUILD SUCCESSFUL，19 输出、written=2/removed=0；相关 Java/JSON 诊断和过时调用已检查。本次未运行游戏、回归或性能基准，不把删除旧核心当作卡顿已解决。保留既有无关提示。
+- 完整范围、检查限制与本地三份备份引用见[实施记录](photon-removal-result.md)；最终删除清单在 backups/photon-removal-20261019-180102/result.json。按新规范准备本次提交，最终哈希以 Git 回执为准；未推送。
+
 ## 2026-10-19：每次修改必须提交的项目规则
 
 - 按用户要求，在项目根规范与工作流程中记录：每次任务修改完成后必须创建 Git 提交，包含本次修改及同步文档，只提交本次授权内容并保留其他工作与暂存状态。
 - 本轮仅修改 AGENTS.md、docs/standards/workflow.md 和本条记录；通过 IDEA 局部补丁编辑并读取文档诊断。根规范既有表格弱警告、历史记录既有两处失效链接保留，未执行编译、Data、测试或游戏操作；提交结果以 Git 回执为准。本轮未删除文件，未新增文件内容备份。
+
+## 2026-10-19：自建 Photon 移除范围 A（仅计划）
+
+- 用户确认 A 的外层边界并限定仅计划：拟移除自建 Photon 特效、专用渲染和模型，保留实体动画/实体 LOD、战斗、指挥家及指定的路径/命令/编辑器/资源/调试。整体模块和混合依赖都需逐项确认，不仅询问调试。
+- IDEA 枚举五类 Photon 源码入口 352 项（346 Java、6 个备份样式文件），仅用于范围初筛，不是删除清单。确认通用 EditorTools 会安装命名动画工作区；编辑器命令方法体同时注册 profile，MCP 15 项操作含模型强类型依赖；ClientRuntimeEvents 等共享入口不能整类删除。命令调用层级查询超时，未冒称完整语义检查。
+- 新增 photon-removal-plan.md，列出拟移除、明确保留、路径保护清单、跨目录依赖、资源写入风险、六项整体待确认决定及未来实施顺序；性能调试按保留项保护，专用夹具不擅自删除。系统索引与重写需求页同步当前阶段。
+- 本轮只修改 Markdown，通过 IDEA 文档检查；没有删除/改写实现或资源，没有编译、Data、测试、重载或游戏操作，没有提交或推送。已有备份只引用其真实覆盖范围，实施前需要新保护点。
+
+## 2026-10-19：非特效推送完成与特效重写兼容需求
+
+- 按用户 A 范围完成非特效提交 a3240ad3fd9ab5cc9a729073d9e210f602b866e0（72 文件），推送 origin/dev 成功，独立 ls-remote 核对哈希一致。通过独立 index 提交，原特效暂存内容已核对保留；三份通用距离工具相关 Java 编译成功，Data exitCode=0、19 个生成文件 written=0/removed=0，生成目录无差异。拆分提交树未做独立构建，不把当前完整工作区检查冒称该项验证。
+- 用户明确要求重写兼容当前文件，新增 photon-rewrite-requirements.md：两条实际卡顿、现有模型/命名动画/子特效/编辑/渲染能力、逐对象检测、多线程与 GUI 研究、文件往返门槛和新交付顺序。源目录通过 IDEA 枚举 43 个现存文件，开发目录与包内条目待补；清点不计兼容验收通过。
+- 最新需求入口已加入系统索引，旧计划/旧工具页标为历史参考；Git 备份及提交结果更新本地备份说明。特效源资产未修改，重写未开始；这些特效文档更新保留本地，不混入已推送的非特效提交。
 
 ## 2026-10-19：按 A 拆分非特效改动
 
@@ -13,6 +33,178 @@
 - 新增通用 LcVisualQualityUtil，仅复用原距离档位算法；实体模型及控制器改用该入口，避免非特效提交依赖 PhotonQualityUtil。IDEA 核对差异，未产生无关格式变化，修改范围格式化；三份 Java 当前工作区编译成功 isSuccess=true/problems=[]，Data exitCode=0，原 Mixin/Level/类型建议保留。未做本轮游戏或额外测试，独立拆分提交树尚未构建。
 - 全工作区及原暂存区备份分别为 refs/backups/before-effect-rewrite-20261019-165224-worktree（1c148db）和 -index（dd601b5）；包含当时五个未跟踪文件，其 Git blob 逐项一致，原暂存树未变。备份不含被忽略的运行输出和未落盘编辑器内容，仅本地保留。
 - 此条记录是提交前的实际准备情况；提交与推送结果以 Git 回执为准。没有重置、覆盖或删除特效源文件，特效重写尚未开始。
+
+## 2026-10-19：动画逐帧采样与播放上下文（部分运行验收）
+
+- TimelinePlayer 新增 frame(float) 的 ANIMATION_FRAME 计时，小数时间复用现有 sampleTime；命名标签来自 PhotonChildAnimationPlayer 已有弱来源，新增纯名称查询，不重解码库、不改播放/合成。此前仅 evaluate 的观察范围不足已由依赖源码确认。
+- TraceUtil 新增有界弱的目标/执行上下文身份与 Context 快照；轨道 parent 保留目标，node_contexts 指向执行播放器。面板双向筛选/名称搜索、路径更新、父级 FXObject 定位；JSON 与两份 CSV 导出关联。未以共享定义泛化设计宣称复现了原生复制路径的串用。
+- 11 份 Java 经 IDEA 修改范围格式化、编译及错误诊断；底层 23/23、导出 3/3、区间 11/11、后台 3/3 的本轮 XML 零失败/错误。保留规范要求的非 final 提示及既有警告，不称警告清零。Data 成功，性能键中英文各 111，最后 written=0/removed=0。快照在 backups/photon-performance-tool-20261019/animation-context。
+- 实际 tracks 夹具八节点，两轨道同目标但分别链接 profile_alpha/profile_beta；双向筛选为 true，名称过滤三项。各播放 evaluate=2、frame=4、track=5，frame/track 时间与父 span 对应；录制时轨道 8→8，恢复后 10，clock position 保持 0.05。有效报告 animation_context_tracks-3-25409648660400，截图 performance_animation_context_20261019.png。菜单/Debug 夹具不能作实际激光性能结论；第一次零轨道夹具及汇总失败会话没有当作有效轨道验收。
+- 汇总 RuntimeRegression.runLoaded 在 ChildRegression.localCalls:284 失败，采样开/关相同；该测试用字符串接口查询未入库定义，实测 UUID 查询非空、字符串为空。未改既有回归文件，未称汇总或完整动画等价性通过。详情与 API 证据见[工具状态](photon-performance-tool.md#汇总动画自测的未通过项)。
+- 已关闭/销毁本轮夹具，查看页关闭后分析器 closed，保留 FIRST_PERSON/gui4/AFK，清除临时引用与断点后正常关闭客户端，实际会话 stopped；无活客户端热替换、世界或源资源保存、全局 JVM/IDE 配置调整。编辑器定位和完整真实负载仍待验收，目标继续执行。
+
+## 2026-10-19：容量中止、帧图鼠标链与 GPU 页运行检查
+
+- 完整重启 Client，使用公开 openWorld 入口、实际最大化 2560×1494；合成节点预算 fixture capacity_live_node-1-22737630939600 在 2558 帧时触发 NODES/帧 2557，随后 CAPACITY 自动导出，冻结仍为 2558 帧且最后 HEAD 非零，未额外追加零帧。节点拒绝 7、其余损失/未完成 0，已打开合成 SEEK 的最大项保留；9.55 秒 Debug 循环不作为真实 seek 结论。
+- 按依赖现有 refreshHoveredElementAtScreen 更新合成输入 hover 后，原生 MouseHandler 按下/移动/释放完成 635～1917 帧拖选，后台同范围。区间导出 capacity_live_node-window-1-22995907307900 含 1283 个间隔、5 行 CPU 及全局容量质量。未冒称物理鼠标或真实时间轴验收。
+- GPU 页原生点击检查用两组无真实 draw 的 GL timestamp fixture，2/2 查询回收、0 跳过/错误；共享/关联两行、inclusive 标题与排序标签截图确认。报告 gpu_ui_empty_query_fixture-2-23003750637000 共五帧；1024 ns 仅证明查询/GUI 功能，不作特效 GPU 成本。此前 batch/Bloom 世界证据分别保留。
+- GPU→DETAIL 后 requested=false、supported=null、旧 GPU 行数 0；取消并原生关闭查看屏幕，回 TitleScreen，分析器 closed=true/working=false/result=null、采集 false。恢复 FIRST_PERSON、gui4、AFK，移除临时调试引用；15:01:51 日志 Stopping、会话 stopped/sessions=[]，仅保留用户三项断点。
+- 本轮无 Java 热替换、全局 JVM/IDE/驱动调整或源资源保存，先前 JBR native 问题不因一次正常退出而认定根治。截图与限制见[工具状态](photon-performance-tool.md#菜单内功能验收与边界)，备份沿用 capacity 文本快照。目标仍在执行。
+
+## 2026-10-19：采样容量原因与根聚合保留（接入，待游戏验收）
+
+- 核对旧手动 90 秒样本：4096 节点、渲染线程 4096 聚合项，1835 个模型计算细分节点；容量耗尽不等同原始事件滚动覆盖。保留实例独立归属，不合并实例或扩大预算来掩盖问题。
+- TraceUtil 新增 Limit/Quality，锁定首个非滚动预算原因、时刻与帧；停止新增 span，已打开 span 继续关闭。FrameCapture 在 render HEAD 递增帧数前以 CAPACITY 冻结并导出，容量已触发时不运行后续采样阶段，阶段回调触发容量时也检查。
+- 聚合项在 begin 预留，避免子调用填满表后丢失根调用/最大项；calls=0 的未完成预留项不当作零成本展示。原始单帧预算仍保留整会话聚合。collector_quality、GUI 原因和报告区分节点/线程/原始/depth/聚合/计数/重要标记损失；请求数不假称唯一对象数。
+- 10 份相关 Java 修改范围经 IDEA 格式化与局部编译、错误诊断通过；底层 18/18、导出 2/2、区间 11/11、后台 3/3 的本轮 Gradle XML 均零失败/错误。Data exitCode=0，日志 written=2/removed=0，生成性能键中英文各 109 项。游戏自动结束/冻结边界、GUI 标签尚待重启，不称 90 秒完整逐对象采样问题已解决。
+- 修改前 IDEA 文本快照在 backups/photon-performance-tool-20261019/capacity；保留既有无关警告和用户工作区，未手动暂存、提交、重置或删除。详见[工具状态](photon-performance-tool.md#容量治理明确截断并保留根统计)。
+
+## 2026-10-19：帧图、冻结区间分析与后台工作线程（部分运行验收）
+
+- 概览/操作页新增最多 128 时间桶的最长帧图、帧范围输入与拖选处理；冻结捕获新增按线程/对象/阶段的 CPU 区间统计、GPU 页与独立区间导出。CPU 跨界只计墙钟交集，GPU 仅整项筛选 CPU 提交边界，资源计数器保留整会话口径；缺测、环形覆盖和独立峰值证据分列。
+- PhotonPerformanceWindowAnalysisUtil 使用专用单平台守护线程、有界 8 项等待与每面板最新目标，协作取消/版本校验后发布；后台不读活 UI/世界，不等待 GPU。GUI 实际绘制仍在原渲染线程，不称 GUI 独立 renderer 已完成。计划第 19.5 节与工具文档同步。
+- 新增 11/11 区间测试、3/3 后台任务测试，底层复跑 12/12；已读取本轮 Gradle XML 的实际数量、零失败/错误，测试面板 total=0 未当通过证据。12 份相关 Java 错误诊断为空，局部编译成功；最后 Data 等待超时后读完整日志确认 BUILD SUCCESSFUL、written=2/removed=0，生成中英文性能键各 100 项。
+- 完整重启后菜单样本 window_ui_gpu-1-20055936990100：593 帧、2 节点、零 CPU 丢样/覆盖/未完；1～100 帧分析返回 5 行，P95/P99=20.0863/41.4758 ms 与 screenshot/window.json/cpu-window.csv 一致；区间导出 window_ui_gpu-window-1-20134470119600 完成且 error=null。菜单受限帧、额外 Photon GPU 查询为 0，不能作激光/GPU 性能结论。
+- 后续等待鼠标链断点时会话结束，hs_err_pid26704.log 记录 14:14:30 Render thread / DirectMethodHandle$Holder.invokeStatic 原生访问冲突，与前一份 C2 错误区分；未认定业务根因。鼠标拖选、GPU 页、模式重置与关闭生命周期尚未验收；后续关闭撤销及 GPU 排序标签修正仅完成编译/诊断。
+- 全部编辑通过 IDEA；新文件整文件、既有文件修改范围格式化，未优化导入或重排成员。快照在 backups/photon-performance-tool-20261019/window-analysis（文本快照，非字节备份）；没有手动暂存、提交、重置、删除或改全局 JVM/IDE/驱动设置。用户断点三项保持，测试断点已移除，磁盘选项仍为 guiScale=4、AFK、260、VSync=false。
+
+## 2026-10-19：GUI 独立线程渲染范围补充（方案，未实现）
+
+- 按用户补充新增[计划第 19 节](photon-detailed-performance-plan.md#19-gui-独立线程渲染专项用户补充)。IDEA 核对 ModularUIWidget、ModularUIWindow、OsWindowManager、RenderSystem 与指挥家头像；现有独立窗口仍在同一 RenderFrameEvent.Post 顺序绘制，并借用游戏渲染 scratch，不能据窗口分离宣称并行。
+- 区分 GUI 准备并行、离屏/帧缓冲与真正独立 renderer；记录只读快照、显示布局命中、资源/上下文所有权、有界完成纹理交接、输入与最终 present、重载/关闭，以及性能/正确性对照。原型优先只读性能面板，不默认改变游戏内嵌入方式。
+- 本次补充仅文档与源码调查，尚未创建 GUI renderer 线程或改线程检查。GPU→非 GPU 状态重置及导出启动异常恢复的两份 Java 已局部编译成功；后续运行检查发现原 Debug 会话已不存在（两套调试接口 sessions=[]），状态重置复测未执行。随后经 IDEA 读取 run/client/hs_err_pid39136.log，确认 2026-10-19 13:31:04、启动后 1298 秒，C2 CompilerThread3 报 ciMethod.cpp:749 的 old method not detected/JVMTI 状态内部错误。日志指向编译器方法重定义状态，不作为 GUI/GPU 逻辑根因结论；后续避免活客户端热替换，汇总修改后完整重启验证，未改全局 JVM/IDE 配置。
+
+## 2026-10-19：原生粒子并行开关对照（小负载调查）
+
+- 临时 3×512 原生 emitter、无碰撞、种子 20261019、预进 30 tick，按关→开→关各采 10 秒 GPU 模式。开启时读取 useParallelUpdate=true 且各 512 粒子；并行 emitter 主线程 tick 墙钟合计 117.583 ms/627 次，高于关闭两组 68.966/44.520 ms（各 630 次）。
+- 整帧均值 7.286→4.688→4.589 ms，关闭重复组并未变慢；前一组绘制/整帧漂移较大，不以单段帧率对比推定多线程收益。完整工作线程 CPU/分配和粒子等价性未验收，不将 fixture 结果推广为激光或所有负载结论。
+- 三组零 CPU 丢样/未完成、GPU 查询全回收且无预算跳过/聚合丢失。结束后恢复 fixture parallelUpdate=false 并暂停；没有保存 fixture、修改用户资源或建立新线程池。样本路径与口径见[工具状态](photon-performance-tool.md#原生粒子并行小负载对照)。
+
+## 2026-10-19：GPU 新路径实际验收与原生并行能力调查
+
+- 新 Client Debug 会话已进入新建测试世界，并在内存激光工程完成 editor_gpu_batches_bloom-1-16537052577800：10 秒、28254 次 timestamp 全部回收、151 次预算跳过、0 GPU 聚合丢失/错误。31 项汇总中有 16 项对象批次、15 项共享阶段/Bloom，原始环形覆盖后仍保留早期峰值。
+- 临时新工程创建两份同材质 CPU emitter 与一份 GPU instance emitter，各上限 512。gpu_ownership_fixture-2-16829873203000 实测 40328 查询全部回收、无跳过/缺测；两个 CPU emitter 的合并批次正确标共享，实例化批次链接 gpu_test_instanced。24 节点、零 CPU 丢样/未完成，未保存 fixture 或覆盖用户工程。
+- CPU 提交边界单调、整会话 GPU measured 合计与 started 一致；设备跨度不等同全程 GPU 繁忙，CPU/GPU 未校准，不相加嵌套 pass。没有据此宣称激光首次峰值已修复。
+- 锁定 Photon 已有 parallelUpdate，默认 false、无碰撞且队列不少于 128 时使用 parallelStream；计划第 18 节已补现状与主线程灯光/子发射收尾边界。正在临时固定种子、3×512 粒子场景做关→开→关对照，用户资源和全局设置未因此改变，未重复建立计算池。
+
+## 2026-10-19：GPU 批次与 Bloom 细分（接入，待运行验收）
+
+- 性能混入新增 merged/instanced batch CPU 与 timestamp，私有 Run 通过只读 accessor 取 RenderType。当前 drain 的同类型贡献者全部一致才归属到单对象；混合或未知仍标共享，保留原批处理，不拆绘制冒充对象精确值。
+- 新增 Bloom 整链与各 fullscreen pass 的 CPU/GPU 计时，带管线与目标尺寸。查询保留父 ID、CPU 提交边界、设备时钟未校准标记；维持 64 timestamp/帧、8 帧待回收预算与不等待 GPU。
+- 新增 PhotonPerformanceGpuStatsUtil，在原始环形记录之外保留有界整会话 requested/measured/unavailable/skipped、首项与最大项；gpu.jsonl 分 sample/aggregate，避免首次峰值被环形覆盖。容量满后仍更新已有组，缺测不记零，不相加嵌套共享 pass。
+- 相关 7 份 Java 通过 IDE 格式化/局部编译，错误诊断为空；新增 GPU 统计测试 3/3，exitCode=0。原 CPU/导出测试未因本次 GPU 统计变化重复运行；真实 GL、Mixin 绑定和归属尚待重启后采样，不称 GPU 验收已完成。
+- 修改前快照在 backups/photon-performance-tool-20261019/gpu-pass。停止本次测试客户端前恢复 guiScale=4、inactivity=AFK，采集已停止；已启动新的 Client Debug 供新增混入验收。没有操作其他客户端、修改用户断点或手动暂存/提交。
+
+## 2026-10-19：时间轴重复同点定位复用（实施中）
+
+- 通过游戏内透视编辑器打开 laser_spell 的内存副本、选中 laser_start；主工程源 SHA-256 前后一致。合成原生 scrubTo 标尺事件记录 15→15 约 231～246 ms、18→18 约 195 ms 的重复重放。
+- PhotonAnimationWorkspace 增加已完成暂停样本复用判定，PhotonAnimationTimelineContext.seek 仅跳过无变化的重复定位并记录标记；保留待模拟、编辑/录制、测试与播放状态的原路径，不统一改变 SceneView.simulateTo。
+- 同序列重放由 7 次/96 tick 减为 4 次/48 tick，3 次复用；优化后首份长帧反而更差（最大 672.01 ms）仍保留，重复样本最大 190.13 ms，不能声称完整拖动已解决或达到稳定目标。详见[工具状态](photon-performance-tool.md#时间轴首项优化与检查)。
+- 运行回归确认显式刷新仍重放、同帧返回当前目标不丢最终请求、小数 tick 与零刻；七阶段无错误且零丢样/覆盖/未完成。局部编译成功；Context 错误诊断为空，Workspace 一次诊断超时不计整文件通过。
+- 修改前 IDEA 文本快照在 backups/photon-performance-tool-20261019/unchanged-seek；没有保存测试工程、手动暂存、提交或删除用户内容。实际字段编辑/撤销/录制、连续物理手势和完整等价性仍待验收。
+
+## 2026-10-19：多线程优化范围补充（方案，未实现）
+
+- 按用户补充，将[多线程专项](photon-detailed-performance-plan.md#18-多线程优化专项用户补充)加入当前计划，明确模型 CPU 准备、独立姿态/网格批次的候选，世界/实体/UI/GL 的线程归属，历史重放 tick 的因果依赖。
+- 方案要求不可变快照、请求/资源/实例版本校验、每视口有界最新队列、协作取消、所属线程提交和清理，新增排队/工作/回传/应用/可见延迟指标；比较原实现及一/两个工作线程，连同正确性与内存验收。
+- 本次补充仅修改计划与记录；尚未新增计算池、迁移特效计算或取得多核收益。此前后台导出不作为特效并行的实现证明。
+
+## 2026-10-19：性能工具运行证据与能力单项查询优化（实施中）
+
+- 完整 IDEA 编译成功，Data exitCode=0；实际日志 written=2/removed=0，生成中英文各 79 个新增键无缺失。16 新增 Java 与 18 既有 Java 修改范围格式化完成；核心 12/12、导出 1/1 测试结果沿用本轮实际运行证据。
+- 重启开发客户端后确认 GameRenderer 实际混入、窗口最大化 2560×1494，修正并截图确认面板布局；一次旧面板 lambda 热替换导致 NoSuchMethodError，已以重启恢复，不记为 GPU 驱动问题。
+- 新建种子 20261019 测试世界，布置女皇与 16 格外靶子。首份朝向 CAST 被最小距离拒绝，未记为有效特效样本；第二份以原生鼠标事件链真正启动激光，记录首项 SKILL 最大 123.16 ms/共享 DRAW 最大 118.68 ms，同时暴露 4096 节点耗尽和大量丢样，未将其认定完整冷热结论。
+- 新增 ConductorHud 十段与 ConductorPortraitCache 两段 CPU/分配归属。静止 HUD 实测每帧约 6 次 update、单项能力查询重建全列表；IConductorUnitControl 增加默认查询，MobControl 复用已有按 ID 注册表，ConductorUtil 保留控制资格校验，不缓存动态拥有状态。
+- 局部编译与相关错误诊断通过；客户端 17 项已有能力逐项查询对象一致，缺失 ID 返回 null。15 秒同场景前后帧间隔均值 22.706→10.169 ms、P99 41.523→19.362 ms，单帧分配均值 30.095→9.855 MB；仅为一次工具开启的前后对照，未宣称稳定帧率、完整冷启动或时间轴已解决。详细样本路径、丢样与未完成项见[工具状态](photon-performance-tool.md)。
+- 保留用户暂存与工作区内容；新增修改前 IDEA 文本快照位于 backups/photon-performance-tool-20261019（HUD/头像及 ability-lookup）。没有手动暂存、提交、重置或删除用户文件。目标仍在执行。
+
+## 2026-10-19：性能工具接入、面板与有界证据（实施中）
+
+- 用户明确选择 A，授权代码实施、IDE 局部格式化、编译/Data/测试和运行采样，先前自动审批授权冲突已解除。新增文件的 IDE 格式化成功；没有通过其他工具绕过先前拒绝。
+- 已在源码接入整帧/提取、FX/对象/延迟烘焙、模型/材质/骨骼/Morph/曲线、时间轴定位重放、指挥家发送/服务端施放/客户端阶段。新增原生游戏内性能面板、客户端命令、语言登记、后台流式导出、最大调用与重要里程碑保留，详见[工具状态](photon-performance-tool.md)。尚未以运行验证确认这些绑定或性能收益。
+- IDE 测试运行器实际确认：PhotonPerformanceTraceUtilTest 12/12、PhotonPerformanceReportUtilTest 1/1，通过且 exitCode=0；不是仅以空输出退出码推定通过。检查覆盖代次/局部时间、容量满后的身份、环形覆盖后的峰值、重要阶段、缺测值和导出转义。多份相关 Java 错误诊断为空；警告/建议与运行验证仍分别处理。
+- 当前 GPU 仅 stage/shared 范围，命名播放细标签、batch/Bloom、图表/区间分析、资源/环境指纹和实际冷/热/拖动采样等未完成；尚未执行关键优化或取得新 FPS 成绩。完整编译/Data 与客户端验收待后续完成后记录。
+- 保留用户既有改动与暂存状态；修改前文本快照通过 IDEA 写入 backups/photon-performance-tool-20261019，不称字节级备份。没有手动暂存、提交、重置或删除用户文件。
+
+## 2026-10-19：性能检测工具启动实施（底层未接入）
+
+- 新增 PhotonPerformanceTraceUtil 与八项专项测试，记录多线程嵌套 inclusive/self、对象身份、分配近似值、阶段标记、计数和有界事件；弱身份映射及跨线程/跨会话事件编号已在源码中处理。当前尚未接入游戏调用链，不能用于实际特效归因，也没有性能改善结论。
+- IDEA 当前错误诊断为空；保留未使用 API、可 final、同步位置及测试中刻意创建不同身份 String 等警告/建议。测试入口调用返回 exitCode=0，但输出为空、IDE 测试结果读取为 total=0，尚无实际执行数量或通过数量证据，不记作 8/8 通过。
+- 两份新增 Java 文件的 IDEA 局部格式化被自动审批拒绝，理由仍按最初“仅 Markdown 计划、禁止代码修改”判断。后续目标为“开始执行”，但审批授权冲突尚未消除；未绕过拒绝或改用其他工具格式化。一次早先局部补丁未匹配、确认零应用后，已回读并经 IDEA 局部补丁修正。
+- IDEA 一度返回项目未打开、索引 HTTP 502；使用 IDE 项目接口后重新读到 Lobecorp 模块与源码。未重启 IDE、清理缓存或修改 MCP 配置。未新增完整编译、Data、游戏、GPU 或性能采样证明；未另建备份，未手动暂存、提交或删除用户文件。
+
+## 2026-10-19：特效逐对象性能检测与关键优化计划（仅文档）
+
+- 新增[检测与优化计划](photon-detailed-performance-plan.md)，覆盖特效实例/对象、模型/部件/材质、动画/轨道、手动 CAST 因果链、时间轴定位/重放、CPU/GPU/分配、面板、导出、采样预算、复现矩阵与分阶段优化；所有新增能力及阈值均标为后续方案。
+- 通过 IDEA 只读核对当前采样器、指挥手动入口、模型定位及锁定 Photon 依赖。普通时间轴已有同帧请求合并，原生模拟已有快速路径；模型定位直接 simulateTo；原激光流程通过技能接口施放，尚不能代替完整指挥家手动路径。它们是源码路径证据，不是本轮运行根因结论。
+- 仅通过 IDEA 修改 Markdown 与系统索引，保留既有工作区内容；没有修改代码、配置、工程/资源或生成输出。未编译、构建、Data、测试、同步、重载、运行游戏或采集新性能数据；未另建字节备份，未手动暂存、提交或推送。
+- IDEA 已回读计划与索引，新计划经 IDEA 排列表格后诊断无错误/警告，changes.md 诊断为空；README.md 保留修改前已有的一条表格格式弱警告，未扩大格式化。Git 状态新增一份未跟踪计划，既有暂存/未暂存计数保持，未以文档检查代替性能实测。
+
+## 2026-10-18：女皇光束代码动画与释放前准备
+
+- 选择持杖和上半身随瞄准俯仰。新增四个 TheQueenOfHatredAnimationDefinitions，包装完整 data 资源 aim/aim2，声明 up_body 姿态修饰与 effectId。新增 TheQueenOfHatredBeamAnimation，技能生命周期创建/更新/停止动画；LcAnimationInstance 可显式关闭自动片段结束，默认行为不变。
+- LaserSkill/StarBeamSkill 不再触发原 AIM action。删除已备份的 EntitySkillClientEvents 五个特效监听；QueenBeamEffects 按动画 UUID 与阶段快照拥有实例，复用已有 LcAnimationStatePayload。客户端本地资源覆盖合并代码骨骼绝对结果，头部俯仰依据动画状态去重，不依赖特效加载结果。技能伤害、命中规则、射程、冷却和注册时序未改。
+- PhotonSpawnedEffects/Spawner 支持每源最多一个未发射 FX 预备实例。女皇蓄力期间复制光束、预解析独占动画库及模型/拓扑，释放时消费；重启、真正结束、来源变化分别处理保留、回收和失效。FXRuntimeMixin 与 PhotonAnimationRuntime 共用校验后的库，避免发射重复解码。锚点与长度共用射线结果，不将活动运行态或随机采样入共享池。
+- 新增服务端完整模型/动画副本，已按正文及 JSON 解析核对与 assets 原文件一致；原 Photon 工程、模型/着色器资产和特效定义未改。系统文档、入口与[备份索引](../../backups/queen-code-animation-20261018/README.md)已更新。
+- 17 个 Java 经 IDEA 诊断、修改范围格式化，保留既有无关警告；本次新增类与特效/模型预备路径无新增诊断。最终 IDEA 编译 isSuccess=true/problems=[]；Data exitCode=0。旧特效事件及两个技能旧 AIM 调用已检查，无测试、游戏启动、资源重载或性能/视觉实测。不将代码优化或历史性能数据当作本轮稳定 100 FPS 证明。
+
+## 2026-10-18：编辑器设置翻译与提示换行
+
+- 修复 VisualQualitySettings 把 TOML 末段字段名直接用作标签，以及将包含 Default/Range 和换行的 NeoForge comment 当成单条提示的问题；分组和 31 项名称/说明改用翻译键，说明、默认值、范围分别传入 Component，开关/空列表默认值也本地化。
+- 新增 PhotonVisualQualityTextUtil，TranslationKeys.init 纳入语言生成；中英文各 73 条。EditorMixin 在扩展编辑器设置页局部翻译 Appearance/Behavior/Keymap 的显示，保留树逻辑键、注册 ID 与普通原生入口。配置定义文本核对一致，Codec、草稿/应用/取消和配置值未改。
+- 四个 Java 通过 IDEA 修改和对应范围格式化，无代码错误；现有 TranslationKeys 未使用字段提示保留。首次编译被自动审批按默认禁构建规则拒绝、未执行；回读 AGENTS 明确引用的多文件及新增翻译收尾例外后，重试同一 IDEA 编译接口成功 isSuccess=true、problems=[]。
+- 正常 Data exitCode=0、BUILD SUCCESSFUL in 24s，19 文件写入 2/删除 0；回读中英文各 73 条，31 项名称/说明无缺键，无嵌入换行控制符。生成目录为 Git 忽略输出，未手改。未执行游戏界面验收或自动重启；新的 Mixin 显示补丁需重启开发客户端后查看。
+- 修改前源码/文档 IDEA 文本快照在 backups/editor-settings-text-20261018，未手动暂存、提交、重置或清理用户文件，保留其他并行文档修改。使用说明见[动态视觉精细度](visual-quality.md)与[编辑器](photon-editor.md#设置文本与换行修复)。
+
+## 2026-10-18：EXIT 光影兼容静态评估
+
+- 新增 [EXIT 光影兼容评估](shader-compatibility-exit.md)，同步系统索引和粒子渲染入口；只写文档，没有修改 Java、Shader、资源、Gradle、依赖或运行配置。
+- IDEA 核对 Minecraft 26.1.2、NeoForge 26.1.2.100、Java 25、Photon 26.1.2.3、Iris 1.11.4 与 Sodium 0.9.2；浏览器确认 EXIT master 面向 26.3，全部公开分支仅 master 与 port/1.21.11，未查到对应 26.1.2 分支。
+- 核对 Photon HDR/透明层、IrisTargetResolver、AFTER_PACK、PhotonDeferredLayer，以及项目视深排序/Alpha 深度预写、指挥家线框、世界文字和原版星束粒子。结论为优先复用 Photon，独立辅助绘制及缩放探针可作为后续候选；没有宣称完成兼容或定位当前视觉故障。
+- 已通过 IDEA/MCP 读取依赖源码、类型、项目源码、配置与 Git 状态；修改前经 IDEA 集成终端只读对比三份既有文档的 Git 差异，保留既有修改。新增文档最终 IDEA 诊断无错误/警告，三份既有文档索引诊断均 analyzed、0 问题且未截断；README 的原生检查已有表格排版弱提示保留。早期部分大型文件诊断 timedOut=true、errors=[]，不计全量通过。
+- 整份新文档格式化被自动审批以保留排版要求拒绝，未执行；按审批提示仅通过 IDEA 行级补丁对齐本轮新增的三张表，未格式化既有文档。
+- 未执行编译、构建、Data、测试、同步、重载、运行游戏或光影视觉/性能验收；磁盘 Iris 配置 enableShaders=false 仅记作快照。全部文档通过 IDEA 新增/行级补丁修改，未手动暂存、提交、重置、删除或另建备份。
+
+## 2026-10-18：女皇激光法术与精简瞬时星束绑定
+
+- 用户确认新星束名 star_beam_spell。游戏内原生复制 laser_spell／laser／light_ball，新增 star_beam_spell 及其 _beam／_ball 的 .fxproj/.fx/.fxpack，组合/球/束为 5/7/6 对象，顶层位置和尺寸为 60%；去除副本花瓣、多余法阵与汇聚、三色星粒及密集带，降低余下粒子配额。原三组模板资产逐份字节一致，模型、图、纹理复用不改。包为 46/9/7 文件，组合含四定义，无 fxproj。
+- 新增 QueenBeamEffects 与五个具体事件的 EntitySkillClientEvents，复用已有技能同步和 PhotonGeoEffect；按实体/运行 ID 独占实例，入场与收尾在实例中切 CONTROLLED 并按技能时长重定时，输出 HOLD 后直接更新既有子光束参数，不每 tick 重播。激活清除额外蓄力粒子，恢复期冻结最后起点和方向；完成、取消、实体移除、登录、退出与世界卸载释放。
+- LaserSkill 起点改实体包围盒中心，QueenSkillUtil 增加显式起点的截断重载，命中框/HUD/表现统一；星束保留原起点、15 格射程、0.5 完整直径、瞬时伤害及方块截断，注册 ACTIVE 改 2t 仅供闪光。激光原转向、累计接触、伤害和冷却保持。两技能取消旧粒子发送，旧类型与资源保留，无新增网络包或协议变更。
+- 七个 Java 通过 IDEA 修改与对应范围格式化，关闭导入优化/成员重排；最终无代码错误，两个新类无错误/警告，既有借用 Level 等提示保留。最终 IDEA 编译成功 problems=[]。首次 Data exitCode=1，确认为本轮抽象 EntitySkillEvent 订阅不合法；改五个具体事件后最终 Data exitCode=0、BUILD SUCCESSFUL in 22s，19 个生成文件写入 0/删除 0。
+- 原生保存回读、定义往返、包内 ID/依赖与 fxproj 排除检查通过；生成目录无 Git 差异。本轮不进行用户已保留的技能实机验收，也未重启或关闭当前游戏；新增事件注册需重启开发客户端生效。
+- 细节与路径见[技能特效](queen-beam-skill-effects.md)。源码/文档修改前 IDEA 文本快照及原资产字节备份位于 backups/queen-beam-skill-binding-20261018；未手动暂存、提交、重置或删除用户资源。
+
+## 2026-10-18：光球与激光独立工程
+
+- 按用户选项 1 新建 light_ball.fxproj/.fx/.fxpack，提供 light_ball_start/end/burst；laser 保留纯光束并提供 laser_start/end，分别 24/13 个对象。共用锚点和控制器结构副本，其余 33 个对象分属两侧；原完整 200t 动画退出当前 laser，原模板与共享模型、图、纹理未改。
+- laser_spell 保持 9 个对象 UUID、法阵、汇聚粒子和原测试轨道；原光球发射器改 light_ball，新光球与激光均用 [0,-1.5,0] 抵消工程锚点。更新子动画 ID，增加光球独立爆发入口，命名动画总数 15。释放同时触发新光球爆发和光束开始，结束同时收尾两者。
+- 连续调用发现 CONTINUE 不重置已完成 ONE_SHOT 的计数，导致蓄力结束后光球无法再次出生；改为 RESTART + 不清理现存子实例。实际嵌入场景验证蓄力五源各一份、释放光球与光束各一份、重复爆发保持一份、结束后归零、可再次启动，父子 problems=[]；length=6 的参数和结束继承已核对。另有原生根 tick 的独立阶段检查；隔离编辑器未推进时钟的早期结果不记为运行通过。
+- 原生结构校验、保存回读、正式 ID 加载和包内对象数量检查通过；三包分别 12/17/50 个文件，法术包 8 份定义。原生导出没有递归自定义 FX 发射器，已合并补全依赖；三包替换与资源重载完成。直接覆写遇到 Windows 映射文件占用时停止，核对未落盘状态后改原生临时编码并关闭挂载、原子替换、重载，最终 state=committed。
+- IDEA 编译成功 problems=[]；正常 Data 日志 BUILD SUCCESSFUL in 37s，19 文件写入 0/删除 0，生成目录 Git 差异为空。已查看最大化内嵌编辑器透视截图，未进行帧率或多人验收。修改前字节资产及实时法术工程保存在 backups/laser-light-ball-split-20261018，文档备份在其 docs/ 目录；未手动暂存、重置、提交或删除用户资源。
+- 入口与限制见[光球](light-ball.md)、[激光](queen-arcana-beam.md)、[激光法术](laser-spell.md)。用户随后要求将女皇激光技能改用法术、中心发射、复制精简瞬时星束并由技能控制阶段，尚未实施，不计入本轮完成范围。
+
+## 2026-10-18：统一修复渲染与可配置动态视觉精细度
+
+- 扩展入口合并视线深度排序、不透明像素遮挡，默认开启；只保留 Layer、Order、遮挡阈值，原生默认不变。修复模型按材质创建运行渲染器时丢失有效状态及阈值的转发，桥接播放与子实例默认接入。
+- 游戏内迁移 11 份 FX 工程及对应定义，85 个发射器对象处理，非渲染配置与原生回读一致；对象、变量、动画、模板保持。5 个依赖包的 11 份定义同步，88 个其他条目逐项字节一致，原生重载完成；原包占用导致首次替换失败，未损坏原包，随后在独立副本中修改定义并关闭挂载、替换、重载成功。
+- 增加统一客户端配置、模组配置屏幕与扩展编辑器设置：按距离和可见负载降低出生密度、Photon 网格自动参考姿态烘焙、逐对象平面压缩许可；只对显式接入的女皇/清道夫降低远处姿态采样和省略小模型细节。各分类开关、距离、预算、采样 FPS、豁免、缓存上限可设置；编辑器预览保持完整精度，骨架/定位器、关键帧事件、技能与服务端时间不改变。
+- 零出生 tick 保留小数余量；网格计划使用参考姿态，避免出生零长度污染拓扑；蒙皮/Morph/图集/无收益几何回退完整网格。姿态缓存仅保存本层贡献，新建混合状态传递采样请求。资源重载、退出、世界卸载清理有界缓存。
+- 实际检查：49 个 Java 分批 IDEA 索引诊断全部 analyzed，无错误；IDEA 编译成功 problems=[]；针对性 JUnit 9/9；正常 Data exitCode=0、BUILD SUCCESSFUL in 21s，19 文件写入 0/删除 0，新增语言键已回读。加载后遮挡/管线断言 928 条通过，材质副本阈值 0.73 转发及原生默认关闭已验证。10 秒采样 GPU 查询错误 0、清理触发、借出缓冲归零，但截图没有可见激光且窗口 854×480，不计视觉或性能验收，不宣称稳定 100 FPS；ShaderGraph/未知着色器仍有原遮挡支持边界。
+- 详细修改路径、默认值和限制见[动态视觉精细度](visual-quality.md)。源码修改前 IDEA 文本快照位于 backups/adaptive-visual-quality-20261018；资产字节备份与回执位于 backups/renderer-flags-20261018-1792312043129。未手动暂存、重置、提交或删除用户资源。
+- 游戏主窗最终 GLFW_MAXIMIZED=1；laser_spell.fxproj 已通过原生项目接口在嵌入式 ModularUIScreen 打开，鼠标已释放。三处用户断点恢复原启停状态、owner=user，本轮临时断点清除；游戏继续运行。
+- 激光拆成光球/光束、分别启动/结束、光球独立爆发的要求尚待确认工程文件边界，当前未执行对象或动画拆分。
+
+## 2026-10-18：世界特效复制、动画分配与缓冲池优化
+
+- 正常世界优先，保留粒子数量、模型、着色器与命名动画时序；模型运行复制用嵌套安全的线程作用域共享不可变 JSON 文本，正常保存／导出保留 UTF-8 字节 NBT 与派生依赖。精确控制器类型直接创建独立副本，保留名字、内部 ID 和局部变换；子类沿原深复制。
+- 第一版控制器误用 copyTransformFrom，真实连接源树父节点，导致花瓣漏显示；已改为仅复制局部变换和内部 ID，新运行树负责建立自己的关系。新增12项加载归属回归并接入动画检查入口；有回归的 world_v1_after_* 全部排除，不用于最终收益。
+- PhotonAnimationMixer 复用调用独占绑定／合成工作区，重入另借、finally清空、仅保留一个备用区；安装后的函数贡献仍独立快照，顺序与回调语义保留。顶点空闲池64项／8MiB→128项／16MiB，查找合适容量时保留小项，MeshData所有权、异常释放、帧末及重载／退出规则不变。
+- 固定独立相机、原世界与种子，单实例／四实例各120秒／3周期，前后有效稳态取55～74与95～114秒。完整[前后对比](photon-world-performance-comparison.md)记录低帧、最长帧、CPU／GPU、分配、缓存、GC、各阶段与周期、原始JSON／JFR和排除理由；离线脚本 tools/photon/analyze_world_performance.py 输出SHA256及GC重叠，不把重叠等同根因。
+- 单实例最低一秒86→108FPS、1% low39.43→52.32FPS，但最长帧42.47→51.08ms；四实例最低一秒31→54FPS、1% low16.31→27.77FPS、P99 56.950→32.824ms、每帧堆分配7.751→2.996MiB。四实例缓冲丢弃42624→0，空闲驻留6.6875→15.5MiB；GC总暂停未下降，仍未达到稳定100FPS。单实例前失焦／后前台但持续期均NONE／260，四实例双方前台；环境、JIT与每周期波动限制因果结论。
+- 实际检查：IDEA最终编译isSuccess=true、problems=[]；两组IDEA JUnit退出码0；加载后动画92条、树归属12条通过；激光12个模型普通／作用域复制正常序列化全相等。Data实际日志BUILD SUCCESSFUL in40s，19文件写入0／删除0；生成目录Git差异为空。最终相关Java与新报告无错误／警告；README既有表格对齐弱提示保留。
+- 游戏正常运行、主窗口实际最大化；原相机与AFK／pause=false已恢复，laser_spell.fxproj在嵌入扩展编辑器中重新打开、dirty=false、鼠标已释放。结束源实例与借出缓冲均归零；本轮断点全部移除，三处用户断点恢复原启停状态及owner=user。
+- 六个既有Java的修改前IDEA文本快照保留在 backups/world-fx-performance-20261018；不声称字节备份。本轮全部项目文件通过IDEA行级／新增补丁修改，没有删除资源、手动暂存、重置、提交或推送，保留已有战斗与指挥家等修改。
+- 随后提出的渲染层次／视深排序／不透明深度遮挡合并与默认启用尚待确认采用一个修复模式还是保留独立控件；当前未更改该配置或保存格式，也未纳入本表成绩。
 
 ## 2026-10-18：统一战斗关系、女皇控制阶段与首次姿态工具
 
@@ -25,7 +217,6 @@
 - 首次项目编译失败于本轮未修改的 Photon 设置文件三处符号错误，未扩大范围修复。最后一次构建曾被自动审批按默认禁编译规则拒绝；重新读取 AGENTS 明确引用的大型修改收尾例外后，重试同一 IDEA 构建接口成功 success=true、aborted=false，实际执行 compileJava／compileTestJava；errors／warnings 为 null 表示未捕获结构化消息，不视作零。原 Photon 符号错误未再出现在最终构建日志，本轮未修改这些文件。
 - 最终正常 Data 配置 exitCode=0，完整日志 BUILD SUCCESSFUL in 25s，19 个生成文件写入 2／删除 0；生成目录暂存与未暂存 Git 差异均为空，未手改生成输出。前轮阶段修改结果不替代本轮证明。未执行测试或游戏、多人、存档往返与首帧姿态视觉验收。
 
-
 ## 2026-10-18：女皇阶段先行实现与只读研究（历史步骤）
 
 - 按用户本次指令，先完成无歧义部分，问题记录后集中提问。女皇阶段改为整数 1／2／3，同步字段、`Phase` 存档和 `QUEEN_PHASE` 渲染票据替换旧二阶段布尔字段，不兼容 `PhaseTwo`。二阶段阈值改为 35%；存活且降到 10% 时直接进入三阶段，以永久属性修饰符翻倍最终生命上限并仅在进入时回满，致死伤害不触发；玩家免疫仅保留在一阶段。
@@ -33,6 +224,130 @@
 - 当时只读追踪 Geo 原生时间线与项目层权重、女皇目标链、清道夫 IOrdeal／Sensor、指挥家队伍／共享目标／伤害事件及 Goal 桥接；首次淡入由项目扩展默认 3 tick 层权重产生，原生过渡已被移除。后续确认与实现见本日上条记录、[动画](animation.md#初始默认姿态免淡入)与[战斗关系](combat.md)。
 - 当时为部分实现：无差别攻击和友军伤害规则、独立仇恨／群体／阵营系统、Geo 初始姿态配置及三阶段独立表现尚未实现；用户后续确认与实现见上条记录。修改前读取了 IDEA 错误／警告及 13 个阶段资格语义引用；修改后四个 Java 文件诊断无错误，保留未使用导入、NullMarked、Level 与泛型等既有警告，三个 Markdown 文件诊断为空。`DATA_PHASE_TWO` 与 `QUEEN_PHASE_TWO` 源码检索均为空，现有 `isPhaseTwo()` 调用保留为二阶段起的派生资格。
 - 首次 IDEA build_project 等待超时，未将该调用记作成功；随后 IDEA 索引构建接口返回 success=true、aborted=false，compileJava／compileTestJava 为 UP-TO-DATE，未捕获编译消息（errors／warnings 为 null，不视作零）。正常 Data 配置 exitCode=0，完整日志 BUILD SUCCESSFUL in 44s；19 个生成文件写入 0／删除 0，`src/generated/resources` 暂存与未暂存差异均为空。未执行测试或游戏运行验收。
+
+## 2026-10-18：Photon 独立扩展编辑器与原生入口隔离
+
+- 按用户确认新增 `/lobecorp photon_editor` 与 `PhotonEffectEditor extends FXEditor`，独立窗口身份 `lobecorp:photon_editor`；模型标签改继承扩展编辑器，工厂、新标签、跨类型载入、最小化恢复与 MCP 只使用新身份。原 `/photon_editor` 恢复原生工具、设置和类型菜单。
+- 原生菜单／最近工程／资源浏览器和内存项目统一拦扩展内容，先提示新命令再停止加载，不关闭当前 dirty 工程；依据实际对象／轨道／测试时间轴及非默认模块字段，普通原生和默认附加字段放行，不按资源命名空间判断。子发射器资源控件在真实提交时拒绝直接扩展定义，清空正常，世界资源读取保持；没有递归展开资源引用图。
+- 仅移除 Settings.features 及额外功能启用页面；保留 Bloom、播放、Solo、循环、模块启用、参数操作、Keymap、预设与默认缓动。原生反射产生的扩展控件按真实 owner 隐藏，不修改值；三种对象、三种轨道只在原生选择菜单过滤，全局运行注册保留。菜单安装移到工具实例创建后；共享轨道剪贴板改从当前 ctx 解析，避免记住其他编辑器。
+- 两个旧开关页面类删除前通过 IDEA 备份到 `backups/photon-editor-split-20261018/*.java.bak`，逐份文本与原始末尾换行严格相同。未删除或重写特效／模型／着色器文件，保留用户其他并行改动、已有断点及通知堆叠改动，未手动暂存、提交或重置。一次文档保存返回无法写入，核对后同一 IDEA 局部接口成功保存，没有外部强写；最初大范围开关清理未获审批且未写，改为保留业务条件的窄 owner 门禁后成功。
+- 本轮 IDEA 编译 isSuccess=true、problems=[]；GUI JUnit 17／17，exitCode=0；正常 Data exitCode=0、BUILD SUCCESSFUL in 19s，19 文件写入 0／删除 0，生成目录无 Git 差异。静态源码无错误，保留少量布尔命名、可空性、Local 命名与旧 GUI 提示；历史编译或其他并行任务结果不代替本轮证明。
+- 已启动本项目 Client Debug，真实主窗最大化 2560×1494，原世界内验证：原生 FXEditor 无工具／扩展设置／动画工作区且 MCP 不接管，普通工程可加载，激光工程被拦时 dirty=true 的旧项目保持；扩展命令打开 PhotonEffectEditor、工具／设置存在并嵌入游戏。MCP 最小化恢复保留原窗口／项目／脏状态；实际子发射器提交 native拒绝／new允许／clear允许；模型项目为嵌入式 PhotonModelProjectEditor 且属于扩展类型，临时测试模型未保存并已关闭。激光保存版本仍为 `9c0ea99ede2a7ecfc0a1af420a6854f8174fb2d39cc8c44586a523d81778346c`、dirty=false。
+- 首次资源 probe 误调了 SDK 空方法 onResultSelected，双 null 结果不作成功证据；随后改用真实 searchComponent.setValue(value,true) 同步提交，三项结果均确认。当前仍有 Confluence 的独立客户端进程，后续性能数据须注明背景条件，不能宣称严格单客户端 A/B 或稳定 100 FPS。接口与操作见[编辑器](photon-editor.md#入口与隔离)及[性能记录](photon-performance.md)。
+- 后续新增扩展编辑器不透明全屏覆盖时的主世界绘制门禁，实际只包两个 shouldRenderLevel 的首 level 读取，不暂停或改变世界／预览时钟，GUI／PIP 与帧末清理保持。新三文件 IDEA 无错误／警告，再次编译 isSuccess=true、problems=[]，Data exitCode=0、BUILD SUCCESSFUL in 23s，19 输出写入 0／删除 0。客户端实际跳过计数增长，最终提取／绘制均 27792；非标准第三方取消 GUI 提取存在兼容限制，已记录维护文档，未冒充安全回退。
+- 首次门禁持续区间 94.51 FPS／P99 28.9707 ms，预热后 134.89 FPS／P99 19.6093 ms，空场预热 250.51 FPS／P99 6.4126 ms；场景区域、透视、Bloom 与资源内容保持，各持续样本均前台最大化／NONE／260、2560×1494。平均值已超过 100 FPS，持续长帧仍未达标；背景另有 Confluence，不能作严格因果 A/B。截图已查看、来源结束归零、运行 problems=[]；池 borrowed=0，FBO depth=0。AFK／pause=false 已还原、鼠标释放、三处用户断点保留且无本轮断点；未修改特效资产或停止另一游戏。
+- 本地 Spark 35 秒只保存文件、未上传；36 线程／13980 个渲染节点一致性检查通过。采样跨蓄力／输出／结束且只有两个粗桶，不把聚合比例当成持续 19 秒切片；剩余热点与采样边界见[性能记录](photon-performance.md)。旧 system_clipboard 开关文档已改为按编辑器类型固定提供。
+
+## 2026-10-18：Photon 性能优化续作与前台采样
+
+- 沿用迁移后的 E:/xm/mc/mod/Unitego-Well/Lobecorp 工程，继续模型规范 JSON 缓存与 Photon.drawRun 双目标 FBO 绑定折叠。公开写入、外部强制重载、模型副本、RenderPass 生命周期和现有原生缓存保持；本轮尚未改动着色器、模型几何、粒子数量或资源内容。独立只读审查未发现可确认功能问题。
+- 当前代码 IDEA 编译 isSuccess=true、problems=[]；模型 JUnit 24／24、GUI JUnit 7／7 通过。正常 Data 日志 BUILD SUCCESSFUL in 27s，19 文件写入 0／删除 0，生成目录 Git 差异为空。相关代码无错误，已有数组注解、可空性和 Mixin 参数名称提示保留；后续 GUI 补丁需重新检查。
+- 新客户端世界持续区间第 15～34 秒 2905 帧，平均 152.8 FPS、帧间隔 P50／P99 5.571／23.3833 ms；前台最大化、2560×1494、VSync 关闭、持续期 NONE／260。第 38 秒 FBO scopes=86492、foldedBinds=172984、depth=0，缓存与实际 GL read／write 均为 0／0；池结束借出归零。已查看原生世界截图，稳定 100 FPS 仍未达标。
+- 第一份编辑器采样及其空场失去前台焦点，不作对照。重新采集的前台 Spark 配套 15～34 秒 1302 帧约 68.51 FPS、P99 28.0625 ms，含采样开销；相机、Bloom 和嵌入区域与历史设置相同，工程 revision=9c0ea99ede2a7ecfc0a1af420a6854f8174fb2d39cc8c44586a523d81778346c、dirty=false。Spark 验证 35 线程／13975 节点，确认 GUI hasIntersection self 16.83% 与 AbstractList.Itr.next self 14.61% 为主要开销；继续局部优化固定边界列表的扫描，不改变层级与动态回退。原始文件与证据边界见[性能记录](photon-performance.md)。
+- 后续整表包围盒／直扫补丁 IDEA 编译、GUI JUnit 13／13、Data BUILD SUCCESSFUL in 24s；生成目录无差异。新客户端前台持续区间平均 39.89 FPS、P99 43.8573 ms，未达标。关闭 AFK 限帧后的后台 Spark 确认旧扫描仍为主热点；运行探针定位到固定文字／折线及零宽时间线图元使 16／26 节点回退。已补充固定类型和零尺寸缓存边界、新增测试，修复测试构造器参数错误；最新两文件仅完成 IDEA 诊断，无错误，尚未编译／测试／Data／运行，不能引用前次 13／13 作为新补丁结果。
+- 用户提出独立扩展编辑器命令、恢复原生命令界面及拦截扩展内容的新方案，已暂停继续实现并核对入口，尚未实施界面拆分。文件仍通过 IDEA 局部编辑；未另建字节备份、手动暂存、提交、重置或删除。测试临时 AFK 设置已恢复，鼠标已释放，本轮断点已移除，保留三处用户断点及其他已有改动。细节见[性能记录](photon-performance.md)。
+
+## 2026-10-17：工作区目录迁移
+
+- 项目根目录迁至 `E:\xm\mc\mod\Unitego-Well\Lobecorp`；仅更新受影响的路径引用，保留源码、资源、Git 元数据及原有修改。
+- 按用户授权使用 PowerShell 移动与局部补丁；修改前文件备份及迁移清单位于 `D:\Documents\ChatGPT\动画\xm-migration-20261017`。未执行 IDEA 诊断、编译、Data、测试、同步、重载或游戏运行。
+
+## 2026-10-16：Photon 系统性能优化与基线
+
+- 按已确认计划并行处理模型采样、CPU 顶点缓冲和命名动画调度。模型预建 UV／索引／材质拓扑、仅变换部件引用顶点、共享适用的法线矩阵；材质命中直接比较字段。缓冲池有界且只回收已释放结果的自有缓冲，异常清理不提前关闭其他 collector 的作业；资源重载和退出清空空闲池。动画所有权扫描复用当次排序并实时递归轨道树，不冻结 HOLD、参数或事件。
+- 已通过 IDEA 局部编辑／修改行格式化，当前相关诊断无新增错误；两条既有数组注解与八条 @Local 建议保留。模型回归新增 2 项并加强姿态／流隔离、UV、材质和法线断言；动画时间轴回归补 22 条断言。编译、Data、测试与优化后运行待统一检查；着色器和特效资产尚未修改。
+- 原版本前台 2560×1494、透视、Bloom 的 40 秒原始记录已保存，持续输出第 15～34 秒 751 帧的帧间隔 P50／P99 为 21.3205／47.4174 ms；结束零来源阶段为 13.7752／33.3128 ms。GPU 仅为 Pre→Post 范围，首爆短样本与首次加载尖峰不作为稳定分位。IDEA 后台负载未完全隔离，不能声称严格性能改善或达到 100 FPS。
+- Spark 本地样本确认 GUI 交叠扫描为实质热点，但含 82.638% 限帧等待，不换算活跃 CPU 或 GPU 耗时。Debug 长反射汇总超时后已移除本轮断点并恢复执行，改用 IDEA 终端只读 protobuf 解析；原版客户端随后停止，鼠标已释放、控制模式退出，三处用户断点保留。通用采样入口和保守 GUI 查询加速继续补充，详见[性能记录](photon-performance.md)。
+- 未另建字节备份、删除、重置、手动暂存或提交；IDEA 自动登记新增文件，保留工作区原有修改。原始采样及本地 sparkprofile 保留在 run/client 中。
+
+## 2026-10-16：保存定时提示跨工程标签栏的层级修复
+
+- 源码确认 LDLib2 26.1.2.42 的工程标签栏属于 EditorWindow.window，与 editorContainer 同级且后绘制；原通知栈挂在 Editor 内，即使 zIndex=1 也不能越过外层标签栏。PhotonEditorNotificationUtil 改为挂到所属窗口内同级排序，保留无窗口宿主时的自身挂载。
+- 通知栈保留所属编辑器实例，每个编辑器独立限制最多三条；只为当前可见且活动编辑器绘制和接收 screenTick，工程退出或宿主失配时清理。原生计时、鼠标穿透、焦点保留、关闭设置和普通 Dialog 路径保持。只修改一个 Java 文件，同步 photon-editor.md；未修改 DialogMixin、特效资产、翻译或生成源。
+- IDEA 已完成修改范围格式化，关闭导入优化与成员重排；NotificationUtil／DialogMixin 诊断无错误或警告，photon-editor.md 仅保留原有表格弱警告，修改记录诊断为空。IDEA 编译 isSuccess=true、problems=[]；正常 Data exitCode=0、BUILD SUCCESSFUL in 26s，19 输出写入 0、删除 0，生成目录 Git 差异为空。语义引用确认 parent 仍仅由 DialogMixin 调用；Git 原 122 项暂存保留，新增一项未暂存 Java 修改，无冲突。尚未运行游戏内视觉、工程切换、关闭或长期交互验收；2026-10-14 的截图与运行结果不作为本轮证明。没有创建额外备份，未手动暂存、提交或推送。
+
+## 2026-10-16：激光法术拆为四个独立阶段
+
+- 按确认名称将 laser_spell 的组合动画拆为 charge_start、charge_end、laser_start、laser_end；开始阶段入场后 HOLD，结束阶段 20t CLEAR，默认入口为 charge_start。九个对象、十个原辅助动画、六条空基线与用户变换保留；六个来源发射器改为 ONE_SHOT、上限 1、子实例寿命由阶段控制。蓄力阶段直接复用原法阵、光球及汇聚粒子的子动画，激光阶段用 INDEPENDENT 调用定义；配置四条同名 TRIGGER 规则，没有恢复固定总时长的自动组合。
+- laser 新增 laser_start／laser_end 两个命名阶段，75／54 轨道；原 200t laser 动画及主时间轴保留。通过原生模型片段、激活和运行时属性保持光柱与持续发射，结束时从原片段 180t 收尾。未改 Java、模型几何、UV、着色器或模板。
+- 两份工程保存 dirty=false，定义原生回读及完整 ID 加载通过；依赖包 37／59 条目、warnings=[]。同一个原生预览运行实例依次完成蓄力保持 481t、蓄力结束、激光保持 481t、激光结束与再次启动；开始各来源最多一个实例，结束归零，problems=[]。结束沿用原激光 handle；额外修正结束阶段覆盖默认尺寸，length=6、width=0.5、intensity=0.7 开始后，结束采样仍为长度 6、内柱宽 0.50420165、强度 0.7。
+- IDEA 编译 isSuccess=true、problems=[]；正常 Data 日志 BUILD SUCCESSFUL in 29s，19 文件写入 0、删除 0，MCP 未返回退出码。工程、定义、包与主资源输出的动画名称一致，输出定义与源定义一致，主资源输出不含被排除的工程输入；对象资源、变换、十个辅助动画、空基线、原 laser 动画及主时间轴逐项对比不变。四份修改文档最终诊断为空，生成目录 Git 差异为空；鼠标恢复并退出控制模式，三处用户断点保留、无代理断点。
+- [备份](../../backups/laser-spell-phases-20261016/README.md)包含两份修改前实时工程、磁盘工程／定义／包及三份文档，receipt.json 和 receipt-end-parameters.json 记录实际检查。未新增性能、联机或实体技能验收，未手动暂存、重置或提交。
+
+## 2026-10-16：激光法术改为直接调用激光
+
+- 以用户清空后的 laser_spell 动画为起点，只添加 laser_visibility 与 laser_playback 两条轨道，从 0 tick 生成单实例 laser.fx 并 CONTROLLED 播放 laser 动画，时长改为 200 tick、结束 CLEAR。七个已有参数按 UUID 持续转发；九个对象、十个辅助动画、六条空基线和用户的变换保持，没有恢复旧组合轨道。
+- 使用 IDEA Debug 中的原生 Prepared 事务、保存和导出；laser_spell.fxproj 保存 dirty=false，laser_spell.fx 原生回读及完整 ID 加载通过。重新生成 laser_spell.fxpack，59 条目、warnings=[]；激光本体、模板与其他工程未改。
+- 重开命名动画工作区后同步 scrub／simulateTo：持续阶段实际动画时间 59，只有 laser active、实例数 1，problems=[]；结束采样六个发射器 inactive、实例数 0。已查看嵌入式透视画面，保留用户相机，恢复鼠标并退出控制模式；三处用户断点保留，全局恢复未静音。
+- IDEA 编译 isSuccess=true、problems=[]，两份修改文档诊断为空。IDEA Data 日志 BUILD SUCCESSFUL in 55s，19 文件写入 0、删除 0，MCP 未返回退出码；工程、定义、包与主资源输出均为 200 tick／两轨道，输出无被排除的工程输入。逐项对比用户清空后的备份，其他对象数据、十个辅助动画与六条基线不变；生成目录 Git 差异为空。未新增性能或联机验收。
+- 备份：backups/laser-spell-direct-trigger-20261016，包含用户清空后的实时工程、修改前磁盘工程／定义／包及两份文档，receipt.json 记录原生导出和预览结果。未手动暂存、重置或提交。
+
+## 2026-10-16：激光法术接入、花瓣发射与运行定义
+
+- 按确认名称将 first-effect 改为 laser_spell、queen_arcana_beam 改为 laser，工程／定义／包采用英文名；激光内部对象、命名动画和参数名称使用小写字母与下划线，保留对象及参数 UUID。命名约定写入 AGENTS.md 与 resources-datagen.md；没有写入个人记忆，误写的本轮记忆备注已移除。
+- laser_spell 保留原八对象、十个辅助动画和测试轨道，新增单实例 laser 定义发射器；现为九对象、347 tick、十一条组合轨道。六个跨工程引用改为 lobecorp 命名空间的 .fx 定义；激光 CONTROLLED 子调用引用新名称对应的原动画 UUID，七个参数按 UUID 转发。更新[对象索引](laser-spell.md)，六个阶段结束行为使用 CLEAR。
+- laser 现为 35 对象、51／54 轨道、17 份专用图；沿 +Z 用 1 tick 推进至全长，11 图增加粉白占比和流速，模板 queen_star_beam 保留。反向开口改为六瓣曲面模板，145 顶点、252 三角面；每 1 tick 出生、每份持续 2 tick、上限 3，放大时轴向从 0 拉长至 muzzle_length，1.5 tick 达到目标、2 tick 淡出消失，muzzle_radius／muzzle_length 默认本地值 2.8／2.2。
+- 新增前冲 launch_spikes（首爆 28 颗、上限 32）、white_lines（每 tick 4 颗、上限 32、尺寸 0.02～0.033、拉伸 140）和末端 laser_tail（每 2 tick 一颗、寿命 6、1×4 帧）。原首爆散射改为每 tick 16 颗持续 2 tick、上限 48；粉黄蓝序列粒子沿束周围持续产生，每层 0.4／tick、上限 16，位置、尺寸或生成范围同步长度与宽度。laser_tail.material.nbt 与原 PNG 同目录，当前共 14 份纹理包装。
+- 源码的 11 个 FX 工程均已生成同目录 .fx，原生回读及完整 ID 加载的缺失列表为空；同时规范字符串及模型 JSON 字节数组中的便携图路径。laser／laser_spell 包分别 37／59 条目，warnings=[]，组合包有七份 FX 定义。counterattack.mfxproj 缺 renderer／playback，原生读取报 invalid_renderer；旁边 JSON 与工程模型不同，未替换、未修改原模型、未导出 MFX，导出配置待确认。
+- 两个工程保存 dirty=false。IDEA 编译 isSuccess=true、problems=[]；IDEA Data 日志 BUILD SUCCESSFUL，19 文件写入 0、删除 0，MCP 未回传退出码。生成目录无 Git 差异；主资源输出含全部 11 份 FX、两个新包与尾粒子材质，fxproj／mfxproj／zip／bbmodel 数为 0，旧运行定义无残留；未单独构建完整 JAR、运行独立测试或新增性能／联机／发行环境验收。
+- 已查看透视持续画面与末端粒子。MCP 直接 seek 在命名动画暂停时只推进场景，整工程替换后旧工作区还会保留旧库；本轮重建两工作区，工程快照变化为 0，再用 scrub 与同步 simulateTo 复核。最终采样实际动画时间 347、problems=[]、六发射器 inactive 且实例数为 0，结束画面无残留；旧 MCP 347／348 截图不计作收尾证据。未修改这两处 Java 接口，流程限制记录于激光法术文档。
+- [备份](../../backups/laser-spell-integration-20261016/README.md)包含改名前文件、实时工程、外观调整前资产及导出回执。精确核对后移除四个旧名资产和本轮两个中文副本；没有删除其他用户工程。整文档自动格式化被自动审批拒绝，改为仅对本轮五张表格局部对齐；新文档和激光资产文档诊断为空，既有 AGENTS／系统索引表格提示及资源文档失效锚点保留。收尾保留用户新调整的透视相机与播放状态，鼠标释放并退出 MCP 控制，恢复断点全局未静音状态，三处用户断点保留且本轮 agent 断点为 0。未手动暂存、重置或提交。
+
+## 2026-10-16：三色序列星粒与全部同类包装归位
+
+- queen_arcana_beam 新增粉、黄、蓝三层持续全向星粒，引用原有 particle／particle2／particle3 材质和 PNG，按 7／7／5 帧播放寿命序列；普通时间轴及命名动画均接入。现为 31 对象、35／38 轨道，三层每层 0.25 粒子每 tick、上限 32，原有持续粒子保留。
+- 13 份同类材质包装全部移到对应 PNG 同目录，原文件字节与贴图资源 ID 保留。只读扫描 64 源资产后确定需要改写五个用户工程和一份资源目录配置，共 11 处路径；按明确清单备份并迁移，未改模板或共享图。
+- 原先跨 64 文件及打开工程的批次被自动审批拒绝且未执行；随后依据只读依赖结果缩小为确实引用旧目录的六个文件，检查目标、并发编辑及预期变更数量，原生 NBT 保存回读通过，移动字节与备份一致。备份位于 backups/queen-arcana-star-sprites-20261016-012856，包含修改前磁盘工程、实时未保存快照、13 组资源和六份引用文件。
+- 原生工程保存 dirty=false；定义更新 38 处便携路径，原生依赖包导出 23 文件、warnings=[]、完整 ID 保持。IDEA 编译通过，Data 退出 0，生成目录无 Git 差异；主资源输出中的 13 份材质均与纹理同目录，旧材料目录无残留包装。五份文档诊断未新增问题，资源文档原有失效锚点保留；资源管理器已列举同目录全部 13 材质。当前嵌入式编辑器为透视，鼠标已释放并退出控制模式；未新增视觉／性能／联机／发行环境验收，未手动暂存、重置或提交。
+
+## 2026-10-16：女皇激光全向粒子与反向长度
+
+- queen_arcana_beam 的两层持续粒子 10／17 由后向圆锥改为全向球形发射，保持本地半径 0.25；发射率由 1／0.25 加倍为 2／0.5 粒子每 tick，保留 Exacting、无突发、无每粒子延迟及 128／32 数量上限。
+- 反向半椭圆最终长度压缩为 0.5，本地长度与 muzzleLength 默认值设为 0.416667，同步主时间轴及命名动画基值；整体 1.2 倍、最终直径 2.2 保留。
+- 通过原生 MCP 提交 8 操作事务，保存 dirty=false。导出回执超时后检查实际文件，运行定义与完整 ID 路径的依赖包均已更新，原生反序列化读到 28 对象及反向本地长度 0.41666666；未取得本轮 warnings 回执。只修改工程及对应导出和文档，未编译、Data、性能或新增视觉采样。
+- 备份位于 backups/queen-arcana-particles-20261016-011008，包含修改前磁盘工程、定义、包和未保存实时工程 live-before.fxproj；保留用户已有编辑、模板及用户断点。收尾编辑器为 31 tick 暂停、dirty=true，保留保存之后的状态；两份文档 IDEA 诊断为空，鼠标已释放并退出控制模式。
+
+## 2026-10-16：女皇激光整体尺寸与反向开口
+
+- queen_arcana_beam 整体锚点等比放大为 1.2，五个模型生成器开启 inheritScale，使持续生成的模型一同放大；粒子沿用原生模拟空间的缩放机制。模板与着色器保持原样。
+- 反向开口最终直径调整为 2.2，本地完整宽度 1.833333、muzzleRadius 默认值 0.916667；同步主时间轴与命名动画基值。现有长度 1 经整体缩放后为 1.2，未改变时序、开口朝向或锚点位置。
+- 游戏原生 MCP 以当前未保存工程提交 10 操作事务，保存 dirty=false；定义和依赖包同步导出，17 文件、warnings=[]、完整 ID 保留。静态回读确认 28 对象、整体缩放和五个生成器继承值，保留用户透视相机；原生事务将预览时钟停在 0 tick。本轮未编译、Data、测试或新增视觉采样。
+- 修改前磁盘工程、定义、包和含未保存编辑的 live-before.fxproj 备份于 backups/queen-arcana-resize-20261016-005840。只通过 IDEA 更新本记录及 queen-arcana-beam.md，两份文档诊断无错误／警告；已释放鼠标并退出 MCP 控制模式，未手动暂存、重置或提交。
+
+## 2026-10-16：女皇激光副本与混合轨道转换修复
+
+- 保留 queen_star_beam 模板工程、定义、包及 17 份共享图，另存 queen_arcana_beam 工程、运行定义、依赖包和 16 份专用图。按指定阿卡纳视频调整为粉色为主的粉白黑配色，移除闪电／暗能量的四个对象及对应轨道；新反向开口半椭圆沿 -Z，默认半径 2.3、长度 1。工程 28 对象、200 tick，主时间轴 32 轨、命名动画 35 轨。
+- 沿用 length／width／intensity／enabled，增加 muzzleRadius／muzzleLength／muzzleEnabled。IDEA Debug 实测默认、缩短／变窄／降强度、两类开关与重播恢复，运行时组合属性正确，problems=[]；16 张图原生编译错误均为空。未修改实体技能、命中、伤害或网络。
+- 批量删层暴露 PhotonEffectJsonUtil 按原数组下标套 NBT 模板的问题：混合轨道重排后 UUID 等字段类型错误，原生时间轴往返校验拒绝提交，候选事务没有改动当前工程。现按 type 匹配同类模板，保留未分类列表的原路径；修复后同一 45 操作事务提交成功。该 Java 文件 IDEA 格式化、诊断和编译通过。
+- 原生工程保存 dirty=false。运行定义同步处理 NBT 字符串及模型 UTF-8 字节数组中的 35 个源码路径字段，已按完整 ID 加载为 28 对象，16 份便携图有效。原生依赖包导出 17 文件、warnings=[]，包 ID 为 lobecorp:the_queen_of_hatred/queen_arcana_beam；未扩展 GUI／MCP 默认导出命名接口。
+- 已查看 10／23／80／195／200 tick 透视截图及侧向角度，200 tick 无可见残留；未进行发行环境、联机、实体接入、独立性能或视频逐像素验收。20 份模板备份再次逐份 mismatch 一致，备份位于 backups/queen-arcana-and-resource-roots-20261015。最终 Data 退出 0，生成目录无 Git 差异；七个相关 Java 与 Mixin 配置诊断无错误／警告，语义引用检查未发现过时调用。资源文档原有失效锚点、系统索引原有表格弱警告及 AGENTS 原有 EOF 空行提示仅记录，未扩大修改。
+- 主资源输出实测包含新定义、包和 16 份字节一致图，新 fxproj 被排除。整篇 Markdown 格式化因超出局部范围被自动审批拒绝，改为仅对齐新文档两张表，诊断为空；本轮涉及文件 git diff --check 通过。实际资源管理器展开后已查看 run／src 选择器，收尾恢复真实主窗最大化、释放鼠标并退出控制模式；编辑器嵌入游戏、透视、80 tick 暂停、dirty=false。未手动暂存、重置或提交，IDEA 自动登记的新文件和用户原有工作保留。
+
+## 2026-10-15：开发资源目录分开浏览
+
+- 修正 AssetBrowser 构造器直接使用 gamePath/ldlib2、绕过 getAssetsDir 导致资源管理器缺少 src 内容的问题。资源管理器及原生打开／保存弹窗新增 run、src/main/resources 目录选择器，复用原生树与导航，保存时保留文件名；工作区外目录、非开发环境保持原生行为。
+- DevelopmentResourceUtil 增加开发工作区路径与 run 资源包挂载；源码资源优先于 run 同 ID 资源。新增 MultiPackResourceManager 客户端 Mixin，PhotonEffectFileUtil 同步允许 run/client/ldlib2/assets 与 run/client/photon/fxpacks。未修改原有本机状态重定向、通知层级和鼠标焦点逻辑。
+- 六个相关 Java 文件经 IDEA 格式化及诊断，无错误／警告；IDEA 编译成功 problems=[]，Data 退出 0，Git 中 src/generated/resources 无改动。Client Debug 已实测打开、保存和资源管理器分别切换 run／src，保存文件名保留，MCP 返回四个允许根，运行资源包顺序为 run 后 src；未进行发行环境运行验收。首次打开时发现原生 Selector 在未选值时请求标签导致空值异常，已使用空值安全的比较修正并经实际打开确认。
+- 代码修改前原 Debug 会话已结束，原定 Debug 备份未执行；原模板工程、定义、包与 17 份共享着色器已在新 Client 中备份并逐份 mismatch 核对，位于 backups/queen-arcana-and-resource-roots-20261015。模板保持不变，独立女皇变体见 2026-10-16 记录。
+
+## 2026-10-15：特效制作经验与按需文档入口
+
+- 用户在 IDEA 未开启且 MCP 不可用时选择本次直接编辑 Markdown／Skill；先备份，再使用行级补丁。该授权仅覆盖本次文档任务，不改变项目今后 IDEA 优先及兜底需授权的规则。没有修改代码、特效素材、MCP 配置或网易附加包，没有启动 IDEA、游戏、编译、Data、测试或重载。
+- 新增全局 game-vfx-authoring，入口 743 字符，六份参考分别处理视频／验收、时序／连续发射、模型／UV、材质／侵蚀、性能／缓存／对象池、MCP／保存／迁移；通用方法与引擎协议、案例数值分离。Lobecorp 制作与 Minecraft MCP 技能改为按操作读参考，保留窗口最大化、游戏内编辑器、透视、快速世界、单 Debug 执行者和焦点交回约束。
+- 根 AGENTS 的 15 个规则章节完整迁入 docs/standards 的 workflow、java-and-packages、entity-contracts，约束效力不变。全局 AGENTS／dev-standards／提示词及索引同步按需路由；项目根入口与系统索引合计从 14,357 减为 3,725 字符，约减少 74.1%，这是文本字符统计，不是实际 token 消耗测量。
+- Photon 特效 MCP 拆为简短入口、API 与限制、制作／故障／验收历史；新增制作经验和系统导航补充。当前工程统一指向 queen_star_beam；27 步对应表明确为 2026-10-14 基线，旧 refined／V3 记录不再充当活动工程指令或新一轮验收。
+- 已静态核对文件内容、Skill 基础前置元数据、本地链接／锚点及原规则迁移，未发现新增缺失；12 份修改前备份哈希一致。原暂存条目保持，已有 67 个代码／资源文件哈希未变；未暂存、提交或重置。官方 quick_validate.py 因缺少 PyYAML 无法运行，未安装依赖，基础静态检查不等于官方校验通过或新会话自动发现。
+- 备份与静态报告位于 [vfx-guidance-20261015-201054](../../backups/vfx-guidance-20261015-201054/README.md)，包含全局与项目原文件、SHA-256、修改前暂存清单和实际检查边界。未进行新的源码、性能、视觉或发行 JAR 验收。
+
+## 2026-10-15：星束正式命名、开发资源直读与 run 资产迁移
+
+- 用户选择 queen_star_beam；当前 V3 工程迁入 assets/lobecorp/fx/the_queen_of_hatred，运行 ID 为 lobecorp:the_queen_of_hatred/queen_star_beam，命名动画改为 queen_star_beam。17 份有效着色器图按 charge／beam／particles 归档，保留 refined 中仍被引用的 spark；仅清理废弃教程版本，不删除用户工程或独立参考特效。
+- 新增 DevelopmentResourceUtil 和八个 LDLib2 客户端 Mixin，FXPacksMixin 补开发目录重定向；仅开发环境使用源码 assets／fxpacks。资源包根与 FilePath 相对路径同步调整，五类本机状态留在 run。build.gradle.kts 主资源排除 fxproj／mfxproj／zip／bbmodel。
+- 迁移 54 份工程、GUI、材质、模型、图和包，复用 17 张相同纹理，新增正式 .fx／.fxpack；同时更新模型 UTF-8 字节数组中的引用。清理后旧 run/client/ldlib2/assets 文件数为 0。修改前 144 文件备份逐文件 mismatch 检查通过，保留在 backups/resource-migration-2026-10-15-queen-star-beam；清单见该目录 README。
+- IDEA 编译成功；首轮 Data 退出 0，19 文件写入 0／删除 0。Client Debug 实际确认源码根、游戏 maximized=1、新 ID 的加载／列举、31 对象、17 图按资源 ID 读取、GUI／OBJ 资源及原布局／最近项目路径；重新导出包 18 文件、warnings=[]。未重新进行视频视觉、完整编辑器交互或发行环境验收。
+- 新增 Java 和 Mixin 配置诊断无新增错误／警告；FXPacksMixin 原有 @Local 参数名弱警告和 Gradle 原有冗余限定符警告保留。资源迁移后再次 IDEA 编译成功，最终 Data 退出 0、19 文件写入 0／删除 0；build/resources/main 未检出 fxproj／mfxproj／zip／bbmodel，正式 .fx 已进入输出，未另行构建或检查完整 JAR。
+- 真实 Minecraft MCP effect_resources 在源码目录列出 17 图且未截断。临时 Debug 断点逐个移除、客户端恢复运行；IDEA 自动暂存的本轮 9 个新增 Java 已仅撤销自动暂存，最终 staged=0、无冲突，没有提交。原生 GUI／MCP 包导出的默认命名与完整嵌套 ID 不同，本包使用显式原生 API 保留完整 ID，后续导出约束见女皇星束文档；未扩大修改命名接口。
+- 最后同步最近项目路径时原 Client Debug 会话已消失，未执行本次路径更新、额外备份或鼠标恢复；不能将该尝试记为成功。此前运行检查与临时断点移除结果仍按实际记录，用户原有三个断点未修改。
 
 ## 2026-10-15：十字星提前退场与激光冲击提速
 

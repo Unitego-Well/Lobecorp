@@ -8,8 +8,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonConfiguratorNameAccess;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
+import org.unitego.lobecorp.util.TranslationKeys;
 
 @Mixin(Configurator.class)
 public abstract class ConfiguratorMixin implements PhotonConfiguratorNameAccess {
@@ -20,18 +23,34 @@ public abstract class ConfiguratorMixin implements PhotonConfiguratorNameAccess 
 	private void lobecorp$rememberName(String name, CallbackInfo ci) {
 		lobecorp$configuratorName = name;
 		var configurator = (Configurator) (Object) this;
+		if (PhotonEditorTools.isFeatureControlName(name)) {
+			configurator.addEventListener(UIEvents.ADDED,
+					_ -> PhotonEditorTools.updateControlRegistration(configurator, name, true));
+			configurator.addEventListener(UIEvents.REMOVED,
+					_ -> PhotonEditorTools.updateControlRegistration(configurator, name, false));
+		}
+
+		if ("RendererSetting.layer".equals(name) || "photon.emitter.config.renderer.orderInLayer".equals(name)) {
+			configurator.addEventListener(UIEvents.ADDED, _ -> {
+				for (var parent = configurator.getParent(); parent != null; parent = parent.getParent()) {
+					if (parent instanceof PhotonConfiguratorNameAccess access && TranslationKeys.PHOTON_FIXED_RENDER_KEY.equals(access.lobecorp$name())) {
+						return;
+					}
+				}
+				if (PhotonEditorSaveUtil.findEditor(configurator) instanceof PhotonEffectEditor) {
+					configurator.setDisplay(false);
+				}
+			});
+		}
+
 		if (PhotonEditorTooltipUtil.hasTooltip(name)) {
-			configurator.addEventListener(UIEvents.ADDED, _ -> PhotonEditorTooltipUtil.apply(configurator, name));
+			configurator.addEventListener(UIEvents.ADDED, _ -> {
+				if (PhotonEditorSaveUtil.findEditor(configurator) instanceof PhotonEffectEditor) {
+					PhotonEditorTooltipUtil.apply(configurator, name);
+				}
+			});
 		}
 
-		if (!PhotonEditorTools.isFeatureControlName(name)) {
-			return;
-		}
-
-		configurator.addEventListener(UIEvents.ADDED,
-				_ -> PhotonEditorTools.updateControlRegistration(configurator, name, true));
-		configurator.addEventListener(UIEvents.REMOVED,
-				_ -> PhotonEditorTools.updateControlRegistration(configurator, name, false));
 	}
 
 	@Override

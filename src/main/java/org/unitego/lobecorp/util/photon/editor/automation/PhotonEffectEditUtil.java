@@ -1,7 +1,6 @@
 package org.unitego.lobecorp.util.photon.editor.automation;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.configurator.EditAction;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
@@ -15,14 +14,8 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import org.unitego.lobecorp.client.photon.emitter.model.PhotonModelEmitter;
-import org.unitego.lobecorp.client.photon.animation.PhotonAnimationController;
 import com.lowdragmc.photon.client.fx.timeline.Track;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
-import org.unitego.lobecorp.config.photon.model.PhotonModelAsset;
-import org.unitego.lobecorp.config.photon.model.PhotonModelPlaybackConfig;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
-import org.unitego.lobecorp.util.photon.model.PhotonModelIOUtil;
 
 import java.util.HashSet;
 import java.util.HashMap;
@@ -103,10 +96,8 @@ public class PhotonEffectEditUtil {
 			case "add_emitter" -> addEmitter(fx(project), operation);
 			case "remove_emitter" -> removeEmitter(fx(project), operation);
 			case "set_parameter" -> setParameter(fx(project), operation);
-			case "set_model_asset" -> replaceAsset(project, operation, PhotonModelIOUtil.readJson(
-					PhotonEffectJsonUtil.object(operation, "asset").toString()));
-			case "patch_model_asset" -> patchAsset(project, operation);
-			case "set_model_playback" -> setPlayback(project, operation);
+			case "set_model_asset", "patch_model_asset", "set_model_playback" ->
+					throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);
 			case "set_timeline" -> setTimeline(fx(project), operation);
 			case "set_project_data" -> {
 				var data = TagParser.parseCompoundFully(PhotonEffectJsonUtil.string(operation, "snbt"));
@@ -248,65 +239,9 @@ public class PhotonEffectEditUtil {
 		return normalized.equals(actual);
 	}
 
-	private static PhotonModelAsset asset(IProject project, JsonObject operation) {
-		if (project instanceof PhotonModelProject model) {
-			return model.session().asset();
-		}
 
-		if (object(fx(project), operation) instanceof PhotonModelEmitter model) {
-			return model.getAsset();
-		}
 
-		throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);
-	}
 
-	private static void replaceAsset(IProject project, JsonObject operation, PhotonModelAsset asset) {
-		asset.validate();
-
-		if (project instanceof PhotonModelProject model) {
-			model.session().restore(asset);
-			return;
-		}
-
-		if (object(fx(project), operation) instanceof PhotonModelEmitter model) {
-			model.setAsset(asset);
-			return;
-		}
-
-		throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);
-	}
-
-	private static void patchAsset(IProject project, JsonObject operation) {
-		if (!operation.has("value")) {
-			throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "value");
-		}
-
-		var json = JsonParser.parseString(PhotonModelIOUtil.writeJson(asset(project, operation)));
-		PhotonEffectJsonUtil.patch(json, PhotonEffectJsonUtil.string(operation, "path"), operation.get("value"), false);
-		replaceAsset(project, operation, PhotonModelIOUtil.readJson(json.toString()));
-	}
-
-	private static void setPlayback(IProject project, JsonObject operation) {
-		if (!(project instanceof PhotonModelProject model)) {
-			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);
-		}
-
-		var data = PhotonEffectProjectUtil.snapshot(model);
-		var playback = data.getCompoundOrEmpty("playback");
-		var json = PhotonEffectJsonUtil.json(playback).getAsJsonObject();
-
-		for (var entry : PhotonEffectJsonUtil.object(operation, "playback").entrySet()) {
-			if (!json.has(entry.getKey())) {
-				throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, entry.getKey());
-			}
-
-			json.add(entry.getKey(), entry.getValue().deepCopy());
-		}
-
-		var replacement = PhotonEffectJsonUtil.tag(json, playback);
-		data.put("playback", replacement);
-		PhotonEffectProjectUtil.decode(model, data);
-	}
 
 	private static void setTimeline(FXProject project, JsonObject operation) {
 		var timeline = project.getFx().getFxData().timeline();
@@ -356,12 +291,6 @@ public class PhotonEffectEditUtil {
 	}
 
 	public static void validate(IProject project) {
-		if (project instanceof PhotonModelProject model) {
-			model.session().asset().validate();
-			model.playback().validate(model.session().asset());
-			PhotonEffectSchemaUtil.validate(PhotonModelPlaybackConfig.class, PhotonEffectProjectUtil.snapshot(model).getCompoundOrEmpty("playback"));
-			return;
-		}
 
 		var fx = fx(project);
 		var data = fx.getFx().getFxData();
@@ -376,30 +305,11 @@ public class PhotonEffectEditUtil {
 
 			PhotonEffectSchemaUtil.validate(object.getClass(), wrapper.getCompoundOrEmpty("data"));
 
-			if (object instanceof PhotonModelEmitter model) {
-				model.getAsset().validate();
-				PhotonModelPlaybackConfig.from(model.config).validate(model.getAsset());
-			}
 		}
 
 		validateParents(data.objects());
 		ids.add(FXRuntime.ROOT_UUID);
 		validateTracks(data.timeline().leafTracks(true), ids);
 
-		for (var object : data.objects()) {
-			if (!(object instanceof PhotonAnimationController controller)) {
-				continue;
-			}
-
-			for (var animation : controller.library().animations) {
-				validateTracks(animation.leafTracks(true), ids);
-
-				for (var binding : animation.bindings) {
-					if (!ids.contains(binding.target)) {
-						throw new PhotonEffectCommandException(Code.INVALID_DATA, binding.target.toString());
-					}
-				}
-			}
-		}
 	}
 }

@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.util.photon.editor;
 
+import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
@@ -7,7 +8,7 @@ import dev.vfyjxf.taffy.style.AlignItems;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import dev.vfyjxf.taffy.style.TaffyPosition;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 public class PhotonEditorNotificationUtil {
 
@@ -21,19 +22,21 @@ public class PhotonEditorNotificationUtil {
 	private static final float STACK_GAP = 2;
 	/// 通知距编辑器顶部的距离，沿用原生 top() 的 10 像素。
 	private static final float TOP_INSET = 10;
-	/// 定时提示绘制在普通编辑器面板之后，沿用原生对话框的层级。
+	/// 在窗口内与工程标签栏同级排序，沿用原生对话框的层级。
 	private static final int STACK_Z_INDEX = 1;
 
 	public static @Nullable UIElement parent(Dialog dialog, UIElement requestedParent) {
 		var ui = requestedParent.getModularUI();
 		var editor = ui == null ? null : PhotonEditorSaveUtil.currentProjectEditor(ui, requestedParent);
 
-		if (editor == null || !PhotonEditorSettings.of(editor).enabled(PhotonEditorTextUtil.NOTIFICATIONS_FEATURE)) {
+		if (!(editor instanceof PhotonEffectEditor)) {
 			return null;
 		}
 
-		var stack = editor.getChildren().stream().filter(child -> STACK_ID.equals(child.getId())).findFirst()
-				.orElseGet(() -> createStack(editor));
+		var host = editor.getWindow() == null ? editor : editor.getWindow().window;
+		var stack = host.getChildren().stream()
+				.filter(child -> child instanceof NotificationStack notifications && notifications.editor == editor).findFirst()
+				.orElseGet(() -> createStack(editor, host));
 
 		if (dialog.getParent() == stack) {
 			return stack;
@@ -53,13 +56,13 @@ public class PhotonEditorNotificationUtil {
 		return element != null && STACK_ID.equals(element.getId());
 	}
 
-	private static UIElement createStack(UIElement editor) {
-		var stack = new UIElement().setId(STACK_ID).setAllowHitTest(false);
+	private static UIElement createStack(Editor editor, UIElement host) {
+		var stack = new NotificationStack(editor).setId(STACK_ID).setAllowHitTest(false);
 		stack.layout(layout -> layout.positionType(TaffyPosition.ABSOLUTE).top(TOP_INSET).widthPercent(100)
 				.flexDirection(FlexDirection.COLUMN).alignItems(AlignItems.CENTER).gapAll(STACK_GAP));
 		stack.style(style -> style.zIndex(STACK_Z_INDEX));
 		stack.addEventListener(UIEvents.TICK, event -> removeEmptyStack(event.currentElement));
-		editor.addChild(stack);
+		host.addChild(stack);
 		return stack;
 	}
 
@@ -72,6 +75,39 @@ public class PhotonEditorNotificationUtil {
 
 		if (parent != null) {
 			parent.removeChild(stack);
+		}
+	}
+
+	private static class NotificationStack extends UIElement {
+		private final Editor editor;
+
+		private NotificationStack(Editor editor) {
+			this.editor = editor;
+		}
+
+		@Override
+		protected boolean shouldDrawChildren() {
+			var window = editor.getWindow();
+			return editor.isDisplayed() && editor.isVisible() && editor.isActive()
+					&& (window == null || window.getCurrentEditor() == editor);
+		}
+
+		@Override
+		public void screenTick() {
+			var parent = getParent();
+			var window = editor.getWindow();
+
+			if (parent != editor && (window == null || parent != window.window || !window.getEditors().containsKey(editor))) {
+				if (parent != null) {
+					parent.removeChild(this);
+				}
+
+				return;
+			}
+
+			if (shouldDrawChildren()) {
+				super.screenTick();
+			}
 		}
 	}
 }

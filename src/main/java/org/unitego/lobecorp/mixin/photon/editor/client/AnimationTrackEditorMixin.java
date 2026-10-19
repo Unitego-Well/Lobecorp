@@ -38,7 +38,7 @@ import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonTimelineClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
-import com.lowdragmc.photon.gui.editor.FXEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 import java.util.HashSet;
 import java.util.Collections;
@@ -49,28 +49,28 @@ import java.util.WeakHashMap;
 @Mixin(AnimationTrackEditor.class)
 @SuppressWarnings("FieldMayBeFinal")
 public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess {
-	@Unique
-	private FXEditor lobecorp$clipboardEditor;
+	@WrapOperation(method = {"openAddExprClipMenu", "openColorClipMenu"}, at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/gui/editor/view/timeline/AnimationTrackEditor;canPasteInto(Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;)Z"))
+	private boolean lobecorp$canPasteKeys(AnimationTrackEditor editor, AnimatedProperty property, Operation<Boolean> original,
+	                                      @Local(argsOnly = true, name = "ctx") TimelineContext ctx) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return original.call(editor, property);
+		}
 
-	@WrapMethod(method = "canPasteInto")
-	private boolean lobecorp$canPasteKeys(AnimatedProperty property, Operation<Boolean> original) {
-		if (lobecorp$clipboardEditor != null && PhotonKeyClipboardUtil.systemEnabled(lobecorp$clipboardEditor)
-				&& PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind())) {
+		if (PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind())) {
 			return PhotonSubClipboardUtil.compatible(property);
 		}
 
-		if (lobecorp$clipboardEditor != null && (PhotonKeyClipboardUtil.systemEnabled(lobecorp$clipboardEditor)
-				|| PhotonKeyClipboardUtil.has(lobecorp$clipboardEditor))) {
-			return PhotonKeyClipboardUtil.compatible(lobecorp$clipboardEditor, property);
-		}
-
-		return original.call(property);
+		return PhotonKeyClipboardUtil.compatible(ctx.editor(), property);
 	}
 
 	@WrapMethod(method = "copySubSelection")
 	@SuppressWarnings("ConstantValue")
 	private boolean lobecorp$copyKeys(TimelineContext ctx, Track track, TrackUIState state, Operation<Boolean> original) {
-		lobecorp$clipboardEditor = ctx.editor();
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return original.call(ctx, track, state);
+		}
+
 		try {
 			if (PhotonKeyClipboardUtil.copy(ctx, (AnimationTrackUIState) state)) {
 				FXTimelineViewAccessor.lobecorp$setClipboardKind(3);
@@ -101,6 +101,10 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@WrapMethod(method = "pasteSubSelectionAt")
 	private boolean lobecorp$pasteKeys(TimelineContext ctx, Track track, TrackUIState state, double destTick, Operation<Boolean> original) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return original.call(ctx, track, state, destTick);
+		}
+
 		if (PhotonKeyClipboardUtil.systemEnabled(ctx.editor())) {
 			boolean pasted = PhotonSubClipboardUtil.KIND.equals(PhotonSystemClipboardUtil.kind())
 					? PhotonSubClipboardUtil.paste(ctx, track, (AnimationTrackUIState) state, destTick)
@@ -165,9 +169,12 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@WrapOperation(method = "addProperty", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimatedPropertyType;create(Lcom/lowdragmc/photon/client/gameobject/FXObject;)Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;"))
 	private AnimatedProperty lobecorp$rememberCurveEasing(AnimatedPropertyType type, FXObject target,
-	                                                      Operation<AnimatedProperty> original) {
+	                                                      Operation<AnimatedProperty> original,
+	                                                      @Local(argsOnly = true, name = "ctx") TimelineContext ctx) {
 		var property = original.call(type, target);
-		PhotonCurveEasingUtil.created(property);
+		if (ctx.editor() instanceof PhotonEffectEditor) {
+			PhotonCurveEasingUtil.created(property);
+		}
 		return property;
 	}
 
@@ -219,8 +226,8 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@ModifyReturnValue(method = "effectiveRange", at = @At("RETURN"))
 	private float[] lobecorp$panRange(float[] range, AnimatedProperty property) {
-		float offset = lobecorp$viewOffsets.getOrDefault(property, 0f);
-		return new float[]{range[0] + offset, range[1] + offset};
+		var offset = lobecorp$viewOffsets.get(property);
+		return offset == null ? range : new float[]{range[0] + offset, range[1] + offset};
 	}
 
 	@Inject(method = "buildExpandedRight", at = @At("HEAD"))
@@ -242,7 +249,10 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@ModifyReturnValue(method = "buildExpandedRight", at = @At("RETURN"))
 	private UIElement lobecorp$enablePan(UIElement container, TimelineContext ctx, Track track, TrackUIState state) {
-		lobecorp$clipboardEditor = ctx.editor();
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return container;
+		}
+
 		AnimationTrackUIState st = (AnimationTrackUIState) state;
 		boolean[] panning = {false};
 		var last = new Vector2f();
@@ -297,6 +307,10 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@Inject(method = "beginCurveDrag", at = @At("RETURN"))
 	private void lobecorp$rememberOrigin(TimelineContext ctx, AnimationTrackUIState st, AnimatedProperty property,
 	                                     int axis, int key, int handle, CallbackInfo ci) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		Vector2f origin = handle == 1 ? property.inHandle(axis, key)
 				: handle == 2 ? property.outHandle(axis, key) : property.key(axis, key);
 		if (origin == null) {
@@ -453,6 +467,10 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@Inject(method = "onCurveDrag", at = @At("RETURN"))
 	private void lobecorp$alignHandles(TimelineContext ctx, UIEvent e, AnimationTrackUIState st, CallbackInfo ci) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			return;
+		}
+
 		var access = (AnimationTrackUIStateAccessor) st;
 		var gesture = lobecorp$gestures.get(st);
 		if (gesture != null && access.lobecorp$getDragProperty() != null && access.lobecorp$getDragSnapshot() != null
@@ -476,6 +494,11 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@WrapMethod(method = "onCurveWheel")
 	private void lobecorp$zoomBaseRange(TimelineContext ctx, UIEvent e, AnimationTrackUIState st, Operation<Void> original) {
+		if (!(ctx.editor() instanceof PhotonEffectEditor)) {
+			original.call(ctx, e, st);
+			return;
+		}
+
 		AnimatedProperty property = ((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedProperty();
 		Float offset = lobecorp$viewOffsets.remove(property);
 		try {

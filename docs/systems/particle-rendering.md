@@ -1,10 +1,14 @@
 # 粒子效果与渲染
 
+> 2026-10-19 当前状态：自建 Photon 渲染、模型、Geo/女皇特效桥接已移除；原生 Photon、原版粒子、ParticleStorm 与实体动画保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
+
 核对日期：2026-10-13。版本依据[版本目录](../../gradle/libs.versions.toml)：Minecraft 26.1.2、NeoForge 26.1.2.100、Photon
 26.1.2.3、LDLib2 26.1.2.42、ParticleStorm 1.4.4、GeckoLib 5.5.2。依赖 API
 的详细研究入口为[粒子接入研究](../project-reference/09-particle-effects-research.md)。
 
 包迁移方案 1 已执行，Java 链接按当前源码核对。本文只记录源码确认的机制，不把静态检查等同于游戏视觉验收。
+
+光影兼容方案的版本、现有 Photon Iris 路由与 EXIT 的复用边界，见 [EXIT 光影兼容评估](shader-compatibility-exit.md)。该文档为静态研究，尚未接入代码，也不替代光影运行验收。
 
 ## 三套粒子能力与职责
 
@@ -60,7 +64,9 @@ entityId、runtimeId、startGameTime、durationTicks；[QueenConvergentParticleO
 
 ## 女皇粒子系列
 
-这些是当前客户端 Java 粒子实现，复用原版 Provider 和图集；服务端技能效果与客户端画面保持职责分离。
+2026-10-18 起，激光与星束技能改用 Photon 的 laser_spell／star_beam_spell，复用已有技能生命周期同步，不再发送旧 QUEEN_CHANNEL_LASER／QUEEN_LASER 粒子。起点、阶段与参数说明见[女皇技能特效](queen-beam-skill-effects.md)。下表的旧类型、Provider 和资源保留，但不能据此推断这两个技能仍使用旧粒子。
+
+这些是仍注册的客户端 Java 粒子实现，复用原版 Provider 和图集；服务端技能效果与客户端画面保持职责分离。
 
 | 粒子                                                                                                                 | 画面行为                                                                 | 结束条件                                            |
 |----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|-----------------------------------------------------|
@@ -172,7 +178,7 @@ Order/orderInLayer 是绘制顺序配置，不是世界空间距离。先后绘�
 Order 分组保留。
 发射器提交时计算深度，弱键映射避免跨帧强持有绘制作业及 GPU 资源；当前工具没有显式每帧清空方法，也没有按 TRANSLUCENT 层筛选登记。
 [RendererSettingMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/render/client/RendererSettingMixin.java)
-提供手动开关。
+原手动开关已在扩展编辑器合并为默认开启的修复渲染组，只保留层/Order/遮挡阈值可调；原生默认仍关闭。模型材质副本同步状态和阈值，现有 11 份工程、定义及 5 个依赖包已更新，见[动态视觉精细度](visual-quality.md#统一修复渲染)。
 
 该处理是对象/绘制作业排序，不是逐像素无序透明（OIT），不保证 magic_circle
 一类相交法阵在所有角度完全正确。深度写入、Order、透明排序和材质需要一起检查；纹理尺寸变更不能修复排序算法的固有限制。
@@ -191,17 +197,17 @@ Alpha 目标因子不会解决 RGB 的叠色或深度遮挡。关闭深度测试
 
 ## Photon 不透明像素遮挡扩展
 
-2026-10-07 用户确认方案 1：至少让不透明部分按几何遮挡关系处理，半透明继续采用 Photon。此功能是可选扩展，不替换原渲染器。
+2026-10-07 用户确认方案 1：至少让不透明部分按几何遮挡关系处理，半透明继续采用 Photon。这是该日期的原设计记录，不替换原渲染器；2026-10-18 的扩展入口已改为统一默认开启，当前使用方式见[统一修复渲染](visual-quality.md#统一修复渲染)。
 
 ### 使用与配置
 
-在要互相遮挡的发射器“渲染器”中开启“不透明像素遮挡”，遮挡 Alpha 阈值默认 0.99、范围 0～1。阈值是纹理 Alpha × 顶点/粒子颜色 Alpha × ColorModulator Alpha 的最终覆盖判定；同时遵守原材质 DiscardThreshold，Alpha 为 0 的像素始终不写深度。降低粒子 Alpha 淡出时，像素低于阈值即退出遮挡。
+扩展入口的发射器“渲染器 → 修复渲染”默认启用排序与不透明像素遮挡，遮挡 Alpha 阈值默认 0.99、范围 0～1。阈值是纹理 Alpha × 顶点/粒子颜色 Alpha × ColorModulator Alpha 的最终覆盖判定；同时遵守原材质 DiscardThreshold，Alpha 为 0 的像素始终不写深度。降低粒子 Alpha 淡出时，像素低于阈值即退出遮挡。
 
 相关发射器应使用相同 Photon 渲染层/目标，才能在同一 drain 中预写并合成；Order 不再决定本模式中不透明像素的前后关系。原材质的 RGB、HDR、Blend/混合方程及 Bloom/后处理继续使用原流程。新模式的颜色管线固定深度测试 LESS_EQUAL、不写深度；遮挡深度只由已裁剪的预写阶段提供，避免原材质 depthMask=true 将半透明边缘整片写入深度。
 
-- [PhotonOcclusionConfig](../../src/main/java/org/unitego/lobecorp/config/photon/PhotonOcclusionConfig.java)复用原 ToggleGroup，发射器默认关闭。缺少扩展数据的旧文件保持关闭；禁用组沿原 ToggleGroup 序列化。阈值读取及设置均限制有效有限值，NaN/Infinity 恢复 0.99，负零统一为 0。
+- [PhotonOcclusionConfig](../../src/main/java/org/unitego/lobecorp/config/photon/PhotonOcclusionConfig.java)底层保留原 ToggleGroup 的兼容序列化；原生入口与缺少扩展数据的旧文件默认关闭，扩展入口及本轮已迁移资产统一启用。阈值读取及设置均限制有效有限值，NaN/Infinity 恢复 0.99，负零统一为 0。
 - [PhotonOcclusionAccess](../../src/main/java/org/unitego/lobecorp/client/photon/render/PhotonOcclusionAccess.java)提供开启态、阈值和配置访问；RendererSetting.Runtime 转发本实例配置。配置等价和 effectiveEquals/effectiveHashCode 区分开启态及有效阈值，双方关闭时保留原判定和哈希。
-- “设置 → Lobecorp → 粒子与渲染 → 不透明遮挡控件”默认开启，只管理配置 UI 可见性；隐藏不修改 FX 已保存配置或游戏运行行为。组和阈值均使用原控件与悬浮提示，项目、.fx、FXPack、模块复制沿原配置序列化携带数据。
+- 原额外功能可见性开关已移除，扩展入口直接显示合并后的修复渲染配置。项目、.fx、FXPack、模块复制继续携带底层配置数据。
 - “工具 → 测试 → 不透明遮挡与原生管线”使用隔离配置/管线断言，不改当前实例；已纳入全部测试。本轮没有点击或执行这些断言。
 
 ### 已确认根因与实现

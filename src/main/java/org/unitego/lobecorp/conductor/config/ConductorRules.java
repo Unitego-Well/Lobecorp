@@ -10,8 +10,6 @@ public interface ConductorRules {
 	int VIEW_TIMEOUT_TICKS = 40;
 	/// 未配置跟随范围属性时的目标搜索距离，单位为方块。
 	double TARGET_SEARCH_RANGE = 32.0D;
-	/// 队友共享攻击目标的距离，单位为方块。
-	double TEAM_AGGRO_SHARE_RANGE = 16.0D;
 	/// 巡逻模式允许活动的半径，单位为方块。
 	double PATROL_RADIUS = 20.0D;
 	/// 警戒模式允许活动的半径，单位为方块。

@@ -11,6 +11,7 @@ import org.unitego.lobecorp.conductor.data.ConductorData.Unit;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
 import org.unitego.lobecorp.network.tc.ConductorEntityDataSyncPayload;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ public class ConductorAttachmentUtil {
 	}
 
 	public static void removeRuntime(Mob mob) {
+		CombatUtil.rememberSharedTarget(mob, null);
 		mob.removeData(LcAttachmentTypes.CONDUCTOR_RUNTIME);
 	}
 

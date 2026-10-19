@@ -266,6 +266,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 更新战斗行为，并清理已加载单位的共享目标。
 	private void updateCombatBehavior(ServerPlayer player, ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit != null) {
@@ -283,6 +286,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 按单位当前位置或已有原点更新行为状态。
 	private void updateBehaviorState(ServerPlayer player, ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit != null) {
@@ -302,6 +308,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 更新所选单位的手动或自动攻击模式。
 	private void updateAttackMode(ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit != null) {
@@ -314,6 +323,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 按原有资格校验执行攻击、点攻击或停止命令。
 	private void issueAttackCommand(ServerPlayer player, ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit == null) {
@@ -326,7 +338,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 				Entity selectedTarget = level == null || target == null ? null : level.getEntity(target);
 
 				if (selectedTarget instanceof LivingEntity living && living.isAlive()
-						&& !uuid.equals(living.getUUID()) && !data.allied(uuid, living.getUUID())) {
+						&& data.canTarget(uuid, living)) {
 					if (level.getEntity(uuid) instanceof Mob mob) {
 						ConductorController.stop(mob);
 					}
@@ -370,6 +382,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 在服务端校验单位和目标后提交能力施放，保留未加载清道夫的工作命令。
 	private void castAbilities(ServerPlayer player, ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit == null) {
@@ -414,7 +429,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 						|| ability.targetKind() == IConductorTargeting.TargetKind.EITHER)
 						&& targetSelection == TargetSelection.ENTITY) {
 					if (!(selectedTarget instanceof LivingEntity living) || !living.isAlive()
-							|| uuid.equals(living.getUUID()) || data.allied(uuid, living.getUUID())) {
+							|| !data.canTarget(uuid, living)) {
 						continue;
 					}
 
@@ -458,6 +473,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 	/// 维护已有手动技能的瞄准或结束控制，不发送普通命令快照。
 	private void updateManualAim(ServerPlayer player, ConductorData data) {
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit == null || !team.equals(unit.team())) {
@@ -478,7 +496,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 
 			Entity selectedTarget = targetSelection == TargetSelection.ENTITY ? level.getEntity(target) : null;
 			LivingEntity living = selectedTarget instanceof LivingEntity candidate && candidate.isAlive()
-					&& !data.allied(uuid, candidate.getUUID()) && laser.canTarget(mob, candidate)
+					&& data.canTarget(uuid, candidate) && laser.canTarget(mob, candidate)
 					&& laser.isWithinRange(mob, candidate.position()) ? candidate : null;
 			laser.updateAim(mob, living, new Vec3(x, y, z), flag);
 		}
@@ -574,6 +592,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		Map<String, List<FormationUnit>> byDimension = new LinkedHashMap<>();
 
 		for (UUID uuid : units) {
+			if (!data.acceptsControl(uuid)) {
+				continue;
+			}
 			ConductorData.Unit unit = data.unit(uuid);
 
 			if (unit == null) {

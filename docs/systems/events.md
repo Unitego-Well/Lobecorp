@@ -4,6 +4,8 @@
 
 ## 唯一入口
 
+2026-10-18 战斗关系接入：目标变化仍由 ConductorGameplayEvents 唯一订阅，依次分发 CombatEvents 的关系资格和 ConductorEvents 的控制资格；承伤倍率之后由 CombatEvents 统一过滤阵营伤害，伤害 Post 先记录仇恨再生成原粒子。没有增加订阅入口，详见[战斗关系](combat.md)。
+
 event 放 Mod 自定义事件，events
 放订阅与分发。唯一性按总线、发行侧和事件类型判断，保留优先级、取消语义及执行顺序。专项规则见 [事件监听规范](../event-registration.md)
 和 [事件架构 Skill](../../.codex/skills/lobecorp-event-architecture/SKILL.md)。

@@ -1,5 +1,8 @@
 package org.unitego.lobecorp.events.client;
 
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import org.unitego.lobecorp.registry.client.VisualQualityConfigScreens;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -25,6 +28,11 @@ import org.unitego.lobecorp.registry.conductor.client.ConductorRenderStateRegist
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class LobecorpClientEvents {
+	@SubscribeEvent
+	public static void onRegisterConfigScreens(FMLClientSetupEvent event) {
+		VisualQualityConfigScreens.register();
+	}
+
 	@SubscribeEvent
 	public static void onClientSetup(EntityRenderersEvent.AddLayers event) {
 		NeoForge.EVENT_BUS.post(new EntityCorpseReverseEvent());

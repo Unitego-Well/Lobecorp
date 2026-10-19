@@ -34,6 +34,10 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
+import org.unitego.lobecorp.world.entity.combat.ICombatant;
 import org.unitego.lobecorp.conductor.control.ConductorWork;
 import org.unitego.lobecorp.world.entity.IEntityTarget;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
@@ -52,7 +56,7 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 清道夫
 public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCustomAnimatable, IIndigoOrdeal,
-		IEntityTarget, IEntityStateHolder, IEntitySkillHolder {
+		IEntityTarget, IEntityStateHolder, IEntitySkillHolder, ICombatant {
 	// 攻击属性标识
 
 	/// 普通攻击临时伤害倍率属性的唯一标识
@@ -261,6 +265,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 
 	/// 尝试把造成伤害的有效实体设为攻击目标；完全由生物质吸收的伤害也可调用。
 	public void trySetAttackTargetFromDamage(LivingEntity attacker) {
+		CombatUtil.recordAttack(this, attacker);
 		if (!isValidTarget(attacker) || !ai.onHurt()) {
 			return;
 		}
@@ -312,6 +317,21 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 		ai.updateMovementSpeed();
 	}
 
+	@Override
+	public CombatPolicy getCombatPolicy() {
+		return CombatPolicy.ALL_NON_ALLIES;
+	}
+
+	@Override
+	public boolean isNaturalCombatAlly(Entity entity) {
+		return isCamp(entity);
+	}
+
+	@Override
+	public boolean isValidTarget(Entity entity) {
+		return CombatUtil.wantsTarget(this, entity);
+	}
+
 	protected SweeperAi ai() {
 		return ai;
 	}
@@ -328,7 +348,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 
 	@Override
 	public void registerControllers(AnimatableManager.@NonNull ControllerRegistrar controllers) {
-		controllers.add(new LcAnimationControllerBuilder<Sweeper>("locomotion", 2, state -> {
+		controllers.add(LcAnimationControllerUtil.withDistanceLod(LcAnimationControllerUtil.withoutInitialFadeIn(new LcAnimationControllerBuilder<Sweeper>("locomotion", 2, state -> {
 			if (!walkAnimation.isMoving() || !state.isMoving()) {
 				state.setControllerSpeed(1);
 				return state.setAndContinue(SweeperAnim.IDLE.getAnimation());
@@ -346,8 +366,8 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 		})
 				.blendType(LcControllerBlendType.ADDITIVE)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
-				.build());
-		controllers.add(new LcAnimationControllerBuilder<Sweeper>("action", 2, _ -> PlayState.STOP)
+				.build())));
+		controllers.add(LcAnimationControllerUtil.withDistanceLod(new LcAnimationControllerBuilder<Sweeper>("action", 2, _ -> PlayState.STOP)
 				.blendType(LcControllerBlendType.OVERRIDE)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
 				.triggerableAnim(SweeperAnim.ATTACK1.name(), SweeperAnim.ATTACK1.getAnimation())
@@ -359,7 +379,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 				.triggerableAnim(SweeperAnim.CLEAR1.name(), SweeperAnim.CLEAR1.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR2.name(), SweeperAnim.CLEAR2.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR3.name(), SweeperAnim.CLEAR3.getAnimation())
-				.build());
+				.build()));
 	}
 
 	public void playActionAnimation(SweeperAnim animation) {

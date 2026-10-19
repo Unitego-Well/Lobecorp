@@ -8,12 +8,10 @@ import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 /// 单个编队单位的非持久化移动、工作和技能运行状态。
 public class ConductorUnitRuntime {
 	public FlyingPathNavigation flyingNavigation;
-	public UUID sharedTarget;
 	public Map<Identifier, ConductorAbilityRuntime> abilities = new HashMap<>();
 	protected ConductorMovement.Progress movement;
 	protected ConductorWork.Work work;

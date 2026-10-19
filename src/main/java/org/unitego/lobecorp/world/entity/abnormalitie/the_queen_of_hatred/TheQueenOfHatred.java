@@ -17,15 +17,18 @@ import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.conductor.control.ConductorController;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
+import org.unitego.lobecorp.world.entity.combat.ICombatant;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
@@ -37,13 +40,10 @@ import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.state.TheQueenOfHatredStates;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 /// 憎恶皇后实体，持有实体状态并委托 Brain 与技能系统处理行为。
-public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCustomAnimatable, IEntityStateHolder, IEntitySkillHolder {
+public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCustomAnimatable, IEntityStateHolder, IEntitySkillHolder, ICombatant {
 	/// 坐姿退出动画的淡出时长，单位为 tick。
 	public static final int SITTING_FADE_OUT_TICKS = 23;
 	/// 眼睛动画重新开始的间隔，单位为 tick。
@@ -51,13 +51,19 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 	/// 同步实体当前姿态与技能状态的数据字段。
 	private static final EntityDataAccessor<List<EntityState>> DATA_ENTITY_STATES =
 			SynchedEntityData.defineId(TheQueenOfHatred.class, LcEntityDataSerializers.ENTITY_STATES.get());
-	/// 同步憎恶皇后是否已进入二阶段的数据字段。
-	private static final EntityDataAccessor<Boolean> DATA_PHASE_TWO =
-			SynchedEntityData.defineId(TheQueenOfHatred.class, EntityDataSerializers.BOOLEAN);
-	/// 憎恶皇后二阶段标记的存档字段名称。
-	private static final String PHASE_TWO_SAVE_KEY = "PhaseTwo";
+	public static final int PHASE_ONE = 1;
+	public static final int PHASE_TWO = 2;
+	public static final int PHASE_THREE = 3;
+	private static final EntityDataAccessor<Integer> DATA_PHASE =
+			SynchedEntityData.defineId(TheQueenOfHatred.class, EntityDataSerializers.INT);
+	private static final String PHASE_SAVE_KEY = "Phase";
 	/// 进入二阶段的剩余生命比例阈值。
-	private static final float PHASE_TWO_HEALTH_RATIO = 0.5F;
+	private static final float PHASE_TWO_HEALTH_RATIO = 0.35F;
+	/// 受伤后仍存活且生命比例不超过此值时，直接进入三阶段。
+	private static final float PHASE_THREE_HEALTH_RATIO = 0.1F;
+	/// 三阶段将最终生命上限翻倍；永久修饰符随原版属性存档，加载时先于生命值恢复。
+	private static final double PHASE_THREE_MAX_HEALTH_BONUS = 1.0;
+	private static final Identifier PHASE_THREE_MAX_HEALTH_ID = Lobecorp.id("queen_phase_three_max_health");
 	/// 二阶段基础攻击属性提升 25%，不重复叠加，存档加载后重建。
 	private static final double PHASE_TWO_ATTACK_DAMAGE_BONUS = 0.25;
 	/// 二阶段攻击属性修饰符的稳定资源 ID。
@@ -66,7 +72,6 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 	private static final float SITTING_COLLISION_HEIGHT = 1.4F;
 	/// 移动动画切换的过渡时长，单位为 tick。
 	private static final int LOCOMOTION_ANIMATION_TRANSITION_TICKS = 2;
-	private final Set<UUID> attackers = new HashSet<>();
 	private final TheQueenOfHatredAi ai = new TheQueenOfHatredAi();
 	private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 	private float skillLockedYRot;
@@ -103,13 +108,13 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		super.defineSynchedData(builder);
 		builder.define(DATA_ENTITY_STATES, List.of());
-		builder.define(DATA_PHASE_TWO, false);
+		builder.define(DATA_PHASE, PHASE_ONE);
 		entityStatesInitialized = true;
 	}
 
 	@Override
 	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
-		if (source.getEntity() instanceof Player) {
+		if (!isPhaseTwo() && source.getEntity() instanceof Player) {
 			return false;
 		}
 
@@ -119,53 +124,85 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 		}
 
 		if (hurt && source.getEntity() instanceof LivingEntity attacker && attacker != this) {
-			attackers.add(attacker.getUUID());
+			CombatUtil.recordAttack(this, attacker);
 			ai.onHurtBy(this, attacker);
 		}
 
 		return hurt;
 	}
 
+	public int getPhase() {
+		return getEntityData().get(DATA_PHASE);
+	}
+
+	/// 二阶段起持续生效的技能和表现资格，包含三阶段。
 	public boolean isPhaseTwo() {
-		return getEntityData().get(DATA_PHASE_TWO);
+		return getPhase() >= PHASE_TWO;
 	}
 
 	private void updatePhase() {
-		if (!isPhaseTwo() && getHealth() <= getMaxHealth() * PHASE_TWO_HEALTH_RATIO) {
-			getEntityData().set(DATA_PHASE_TWO, true);
+		if (!isAlive()) {
+			return;
 		}
 
+		if (!isPhaseTwo() && getHealth() <= getMaxHealth() * PHASE_TWO_HEALTH_RATIO) {
+			getEntityData().set(DATA_PHASE, PHASE_TWO);
+		}
+
+		boolean enteringPhaseThree = getPhase() < PHASE_THREE
+				&& getHealth() <= getMaxHealth() * PHASE_THREE_HEALTH_RATIO;
+		if (enteringPhaseThree) {
+			getEntityData().set(DATA_PHASE, PHASE_THREE);
+		}
+
+		applyPhaseAttributes();
+		if (enteringPhaseThree) {
+			setHealth(getMaxHealth());
+			ConductorController.detachControl(this);
+		}
+	}
+
+	private void applyPhaseAttributes() {
 		var attackDamage = getAttribute(Attributes.ATTACK_DAMAGE);
 		if (isPhaseTwo() && attackDamage != null && !attackDamage.hasModifier(PHASE_TWO_ATTACK_DAMAGE_ID)) {
 			attackDamage.addTransientModifier(new AttributeModifier(PHASE_TWO_ATTACK_DAMAGE_ID,
 					PHASE_TWO_ATTACK_DAMAGE_BONUS, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
+		}
+
+		var maxHealth = getAttribute(Attributes.MAX_HEALTH);
+		if (getPhase() == PHASE_THREE && maxHealth != null && !maxHealth.hasModifier(PHASE_THREE_MAX_HEALTH_ID)) {
+			maxHealth.addPermanentModifier(new AttributeModifier(PHASE_THREE_MAX_HEALTH_ID,
+					PHASE_THREE_MAX_HEALTH_BONUS, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 		}
 	}
 
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
-		output.putBoolean(PHASE_TWO_SAVE_KEY, isPhaseTwo());
+		output.putInt(PHASE_SAVE_KEY, getPhase());
 	}
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
 		super.readAdditionalSaveData(input);
-		getEntityData().set(DATA_PHASE_TWO, input.read(PHASE_TWO_SAVE_KEY, Codec.BOOL).orElse(false));
+		getEntityData().set(DATA_PHASE, Math.clamp(input.read(PHASE_SAVE_KEY, Codec.INT).orElse(PHASE_ONE),
+				PHASE_ONE, PHASE_THREE));
+		applyPhaseAttributes();
 		updatePhase();
 	}
 
 	public boolean isHatedTarget(LivingEntity target) {
-		if (isAlliedTo(target)) {
-			return false;
-		}
+		return CombatUtil.wantsTarget(this, target);
+	}
 
-		if (level() instanceof ServerLevel serverLevel
-				&& ConductorData.get(serverLevel.getServer()).allied(getUUID(), target.getUUID())) {
-			return false;
-		}
+	@Override
+	public CombatPolicy getCombatPolicy() {
+		return isPhaseTwo() ? CombatPolicy.INDISCRIMINATE : CombatPolicy.HOSTILES_AND_ATTACKERS;
+	}
 
-		return target instanceof Enemy || attackers.contains(target.getUUID());
+	@Override
+	public boolean acceptsConductorControl() {
+		return getPhase() < PHASE_THREE;
 	}
 
 	public void lockSkillFacing() {
@@ -289,7 +326,7 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 
 	@Override
 	public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-		controllers.add(new LcAnimationControllerBuilder<TheQueenOfHatred>("locomotion",
+		controllers.add(LcAnimationControllerUtil.withDistanceLod(LcAnimationControllerUtil.withoutInitialFadeIn(new LcAnimationControllerBuilder<TheQueenOfHatred>("locomotion",
 				LOCOMOTION_ANIMATION_TRANSITION_TICKS, state -> {
 			if (isSittingFadeOut()) {
 				return PlayState.STOP;
@@ -318,9 +355,9 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 		}).blendType(LcControllerBlendType.ADDITIVE)
 				.fadeOutTicks(SITTING_FADE_OUT_TICKS)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
-				.build());
+				.build())));
 
-		controllers.add(new LcAnimationControllerBuilder<TheQueenOfHatred>("eyes", 1, state -> {
+		controllers.add(LcAnimationControllerUtil.withDistanceLod(new LcAnimationControllerBuilder<TheQueenOfHatred>("eyes", 1, state -> {
 			if (tickCount % EYE_ANIMATION_INTERVAL_TICKS == 0) {
 				return PlayState.STOP;
 			}
@@ -332,9 +369,9 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 				.fadeInTransitionMode(LcTransitionMode.SEQUENTIAL)
 				.fadeOutTransitionMode(LcTransitionMode.SEQUENTIAL)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
-				.build());
+				.build()));
 
-		controllers.add(new LcAnimationControllerBuilder<TheQueenOfHatred>("action", 2, _ -> PlayState.STOP)
+		controllers.add(LcAnimationControllerUtil.withDistanceLod(new LcAnimationControllerBuilder<TheQueenOfHatred>("action", 2, _ -> PlayState.STOP)
 				.blendType(LcControllerBlendType.OVERRIDE)
 				.rotationTransitionMode(LcRotationTransitionMode.SHORTEST_PATH)
 				.triggerableAnim(TheQueenOfHatredAnim.DISPEL.name(), TheQueenOfHatredAnim.DISPEL.getAnimation())
@@ -350,7 +387,7 @@ public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCus
 				.triggerableAnim(TheQueenOfHatredAnim.ATTACK_2.name(), TheQueenOfHatredAnim.ATTACK_2.getAnimation())
 				.triggerableAnim(TheQueenOfHatredAnim.REST.name(), TheQueenOfHatredAnim.REST.getAnimation())
 				.triggerableAnim(TheQueenOfHatredAnim.TOSS.name(), TheQueenOfHatredAnim.TOSS.getAnimation())
-				.build());
+				.build()));
 	}
 
 	public void playActionAnimation(TheQueenOfHatredAnim animation) {

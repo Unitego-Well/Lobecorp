@@ -139,6 +139,9 @@ public interface TranslationKeys {
 	@SuppressWarnings("unused")
 	String PHOTON_CYCLE_OFFSET_ALPHA = LangHandler.creates(Lobecorp.NAMESPACE, PHOTON_CYCLE_OFFSET_ALPHA_KEY,
 			"Alpha time offset (ticks)", "透明度时间偏移（tick）");
+	@SuppressWarnings("unused")
+	String VISUAL_QUALITY_SETTINGS = LangHandler.creates(Lobecorp.NAMESPACE, "settings.lobecorp.visual_quality",
+			"Visual quality", "动态视觉精细度");
 	/// 发射器之间按视线深度重排的原生编辑器开关。
 	String PHOTON_VIEW_DEPTH_SORT_KEY = "photon.lobecorp.renderer.view_depth_sort";
 	/// 说明新排序模式的启用范围与限制。

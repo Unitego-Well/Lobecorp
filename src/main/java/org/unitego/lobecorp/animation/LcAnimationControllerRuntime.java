@@ -88,6 +88,8 @@ public class LcAnimationControllerRuntime {
 		protected final RotationHistory animationRotations = new RotationHistory();
 		protected final RotationHistory layerRotations = new RotationHistory();
 		protected boolean initialized;
+		/// 控制器停止会重置过渡，但不能重新取得首次呈现资格。
+		protected boolean presented;
 		protected boolean weightTransition;
 		protected double weight;
 		protected double weightFrom;

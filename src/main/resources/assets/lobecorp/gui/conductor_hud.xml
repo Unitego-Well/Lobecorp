@@ -1,0 +1,52 @@
+<ldlib2-ui>
+    <stylesheet location="ldlib2:lss/mc.lss"/>
+    <style>
+        .hud-root { width: 100%; height: 100%; }
+        .manage { position: absolute; top: 8; right: 8; width: 112; height: 24; }
+        .bottom { position: absolute; bottom: 8; left: 8; right: 8; height: 128; padding: 8; flex-direction: row; gap: 8; }
+        .info { width: 21%; flex-direction: row; gap: 5; }
+        .portrait { width: 70; height: 100%; }
+        .info-text { flex-grow: 1; flex-direction: column; gap: 3; }
+        .roster { width: 23%; flex-direction: column; gap: 4; }
+        .roster-list { width: 100%; height: 62; }
+        .commands { width: 19%; flex-direction: column; gap: 4; }
+        .command-row { width: 100%; flex-direction: row; gap: 4; }
+        .command { width: 33%; height: 26; }
+        .mode-command { width: 100%; height: 22; }
+        .team-command { width: 50%; height: 24; }
+        .skills { width: 27%; height: 100%; }
+    </style>
+    <root class="hud-root">
+        <button id="manage" class="manage" text="screen.lobecorp.conductor.title"/>
+        <element id="bottom" class="bottom panel_bg">
+            <element class="info">
+                <element id="focus-portrait" class="portrait panel_bg"/>
+                <element class="info-text">
+                    <label id="selected-count"/>
+                    <label id="selected-unit"/>
+                    <label id="selected-health"/>
+                    <label id="selected-team"/>
+                    <label id="selected-order"/>
+                </element>
+            </element>
+            <element class="roster">
+                <scroller-view id="roster-list" class="roster-list"/>
+                <button id="team-select" text="screen.lobecorp.conductor.team"/>
+                <element class="command-row">
+                    <button id="assign" class="team-command" text="screen.lobecorp.conductor.assign"/>
+                    <button id="release" class="team-command" text="screen.lobecorp.conductor.release"/>
+                </element>
+            </element>
+            <element class="commands">
+                <element class="command-row">
+                    <button id="move" class="command"/>
+                    <button id="attack" class="command"/>
+                    <button id="stop" class="command" text="screen.lobecorp.conductor.stop"/>
+                </element>
+                <button id="attack-mode" class="mode-command" text="screen.lobecorp.conductor.attack_ai"/>
+                <button id="behavior-mode" class="mode-command" text="screen.lobecorp.conductor.behavior_mode"/>
+            </element>
+            <scroller-view id="skill-list" class="skills"/>
+        </element>
+    </root>
+</ldlib2-ui>

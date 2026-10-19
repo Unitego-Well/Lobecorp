@@ -1,18 +1,13 @@
 package org.unitego.lobecorp.conductor.lifecycle;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
-import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
@@ -23,10 +18,6 @@ import org.unitego.lobecorp.registry.tag.LcEntitySkillTags;
 
 /// 指挥家生命周期与战斗事件的业务处理入口，由 events 包订阅器调用。
 public class ConductorEvents {
-	/// 允许穿过指挥家友军保护规则的伤害类型标签。
-	private static final TagKey<DamageType> CAN_HURT_ALLIES =
-			TagKey.create(Registries.DAMAGE_TYPE, Lobecorp.id("can_hurt_allies"));
-
 	public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
 		if (event.getEntity() instanceof ServerPlayer player) {
 			ConductorSnapshotPayload.send(player, ConductorData.get(player.level().getServer()));
@@ -35,40 +26,19 @@ public class ConductorEvents {
 
 	public static void onTargetChange(LivingChangeTargetEvent event) {
 		LivingEntity target = event.getNewAboutToBeSetTarget();
-		if (target == null || !(event.getEntity().level() instanceof ServerLevel level)) {
+		if (target == null || !(event.getEntity().level() instanceof ServerLevel)) {
 			return;
 		}
 
-		ConductorData data = ConductorData.get(level.getServer());
-		if (event.getEntity() == target || data.allied(event.getEntity().getUUID(), target.getUUID())
-				|| event.getEntity() instanceof Mob mob && !ConductorController.allowsTargetChange(mob, target)) {
+		if (event.getEntity() instanceof Mob mob && !ConductorController.allowsTargetChange(mob, target)) {
 			event.setNewAboutToBeSetTarget(null);
 		}
 	}
 
-	public static void onIncomingDamage(LivingIncomingDamageEvent event) {
-		Entity source = event.getSource().getEntity();
-		if (!(source instanceof LivingEntity attacker)
-				|| !(event.getEntity().level() instanceof ServerLevel level)) {
-			return;
-		}
-
-		ConductorData data = ConductorData.get(level.getServer());
-		if (attacker == event.getEntity() && data.unit(attacker.getUUID()) != null) {
-			event.setCanceled(true);
-			return;
-		}
-
-		if (event.getSource().is(CAN_HURT_ALLIES)) {
-			return;
-		}
-
-		if (data.allied(attacker.getUUID(), event.getEntity().getUUID())) {
-			event.setCanceled(true);
-		}
-	}
-
 	public static void onSkillCast(EntitySkillEvent.Cast event) {
+		if (!CombatUtil.acceptsControl(event.getEntity())) {
+			return;
+		}
 		if (!(event.getEntity() instanceof Mob mob) || !(mob.level() instanceof ServerLevel level)
 				|| ConductorController.isExplicitSkillCast(mob, event.getSkill())) {
 			return;

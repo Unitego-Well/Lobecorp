@@ -18,6 +18,7 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonParticleRuntimeTrial;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffects;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
+import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
@@ -46,6 +47,7 @@ public class ClientRuntimeEvents {
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
 		PhotonGeoEffects.clear();
+		LcModelLodUtil.clear();
 	}
 
 	@SubscribeEvent
@@ -58,12 +60,18 @@ public class ClientRuntimeEvents {
 			ScreenParticles.clear();
 			TextParticleClient.clear();
 			PhotonGeoEffects.clear();
+			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
 			LcAttachments.clear(level);
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();
 			LcPlayerAnimationRuntime.clear();
 		}
+	}
+
+	@SubscribeEvent
+	public static void onVisualFrameEnd(RenderFrameEvent.Post event) {
+		LcModelLodUtil.endFrame();
 	}
 
 	@SubscribeEvent

@@ -11,6 +11,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.lifecycle.ConductorEvents;
 import org.unitego.lobecorp.event.EntitySkillEvent;
+import org.unitego.lobecorp.world.entity.combat.CombatEvents;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ConductorGameplayEvents {
@@ -29,6 +30,7 @@ public class ConductorGameplayEvents {
 
 	@SubscribeEvent
 	public static void onTargetChange(LivingChangeTargetEvent event) {
+		CombatEvents.onTargetChange(event);
 		ConductorEvents.onTargetChange(event);
 	}
 

@@ -16,6 +16,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
@@ -132,7 +133,6 @@ public final class ConductorSonicBoom {
 		Vec3 start = origin(mob);
 		Vec3 end = start.add(cast.direction().scale(cast.length()));
 		double halfWidth = ConductorRules.WARDEN_SONIC_BOOM_PREVIEW_HALF_WIDTH;
-		ConductorData data = ConductorData.get(level.getServer());
 
 		HitboxInstance hitbox = HitboxManager.create(HITBOX, level, start.add(end).scale(0.5),
 				HitboxManager.CURRENT_TICK_DURATION);
@@ -142,7 +142,7 @@ public final class ConductorSonicBoom {
 				-Math.atan2(-cast.direction().x, cast.direction().z) * Mth.RAD_TO_DEG, 0.0));
 		LivingEntity first = level.getEntitiesOfClass(LivingEntity.class, new AABB(start, end).inflate(halfWidth),
 						target -> target != mob && target.isAlive() && HitboxGeometry.intersects(hitbox, target.getBoundingBox()) && mob.canTargetEntity(target)
-								&& !mob.isAlliedTo(target) && !data.allied(mob.getUUID(), target.getUUID())
+								&& CombatUtil.canTarget(mob, target)
 								&& (target.getBoundingBox().inflate(halfWidth).contains(start)
 								|| target.getBoundingBox().inflate(halfWidth).clip(start, end).isPresent()))
 				.stream().min(Comparator.comparingDouble(target -> target.getBoundingBox().inflate(halfWidth)

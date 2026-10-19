@@ -10,6 +10,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.ability.ConductorAbilityState;
 import org.unitego.lobecorp.conductor.control.ConductorUnitRuntime;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
+import org.unitego.lobecorp.world.entity.combat.CombatMemory;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCooldownClock;
 import org.unitego.lobecorp.world.entity.control.EntityGrabState;
@@ -86,7 +87,10 @@ public interface LcAttachmentTypes {
 
 	/// 实体指挥控制状态，持久化并通过指挥家数据包同步。
 	DeferredHolder<AttachmentType<?>, AttachmentType<ConductorUnitData>> CONDUCTOR_UNIT = REGISTER.register(
-			"conductor_unit", () -> AttachmentType.serializable(ConductorUnitData::new).build());
+			"conductor_control_unit", () -> AttachmentType.serializable(ConductorUnitData::new).build());
+
+	DeferredHolder<AttachmentType<?>, AttachmentType<CombatMemory>> COMBAT_MEMORY = REGISTER.register(
+			"combat_memory", () -> AttachmentType.builder(CombatMemory::new).build());
 	/// 实体指挥控制的运行期上下文，不作为持久化状态保存。
 	DeferredHolder<AttachmentType<?>, AttachmentType<ConductorUnitRuntime>> CONDUCTOR_RUNTIME = REGISTER.register(
 			"conductor_runtime", () -> AttachmentType.builder(ConductorUnitRuntime::new).build());

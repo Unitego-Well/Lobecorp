@@ -8,14 +8,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 @Mixin(Warden.class)
 public abstract class WardenConductorMixin {
 	@Inject(method = "canTargetEntity", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$allowCommandedWardenTarget(Entity entity, CallbackInfoReturnable<Boolean> callback) {
 		Warden warden = (Warden) (Object) this;
-		if (entity != null && warden.level() instanceof ServerLevel level
-				&& ConductorData.get(level.getServer()).allied(warden.getUUID(), entity.getUUID())) {
+		if (entity != null && !CombatUtil.canTarget(warden, entity)) {
 			callback.setReturnValue(false);
 			return;
 		}
@@ -28,7 +28,7 @@ public abstract class WardenConductorMixin {
 		ConductorData.Unit unit = data.unit(warden.getUUID());
 		if (unit != null && unit.order() == ConductorData.OrderType.ATTACK
 				&& unit.target().equals(target.getUUID().toString())
-				&& !data.allied(warden.getUUID(), target.getUUID())) {
+				&& CombatUtil.canTarget(warden, target)) {
 			callback.setReturnValue(true);
 		}
 	}

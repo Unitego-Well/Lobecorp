@@ -14,7 +14,7 @@ import org.unitego.lobecorp.network.ts.IToServerPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "19";
+	private static final String NETWORK_VERSION = "20";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		event.registrar(NETWORK_VERSION).playToServer(

@@ -33,6 +33,7 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
 import org.unitego.lobecorp.mixin.input.client.ClientInputAccessor;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
@@ -813,7 +814,7 @@ public class ConductorControls {
 		boolean overHud = targeting.directional() && ConductorHud.INSTANCE.contains(minecraft);
 		LivingEntity target = overHud ? null : pickLivingEntity(minecraft, entity -> entity != minecraft.player && entity != mob
 				&& targeting.canTarget(mob, entity)
-				&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
+				&& CombatUtil.canTarget(mob, entity, ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID())));
 		Vec3 position = overHud ? lastAimPosition != null ? lastAimPosition : targeting.facingPosition(mob)
 				: ConductorCamera.pickGround(minecraft);
 
@@ -836,7 +837,7 @@ public class ConductorControls {
 			case EITHER -> target == null ? ConductorCommandPayload.TargetSelection.POSITION
 					: ConductorCommandPayload.TargetSelection.ENTITY;
 		};
-		boolean valid = targeting.isAvailable(mob)
+		boolean valid = CombatUtil.acceptsControl(mob) && targeting.isAvailable(mob)
 				&& ConductorClient.abilityCooldownTicks(mob.getUUID(), Identifier.parse(pendingSkill)) == 0
 				&& (!(targeting instanceof EntitySkillConductorAbility entitySkill) || entitySkill.canBeginCast(mob));
 		boolean rangeLimited = false;
@@ -844,7 +845,7 @@ public class ConductorControls {
 
 		if (selection == ConductorCommandPayload.TargetSelection.ENTITY) {
 			if (target == null || !targeting.canTarget(mob, target)
-					|| ConductorClient.snapshot().allied(mob.getUUID(), target.getUUID())) {
+					|| !CombatUtil.canTarget(mob, target, ConductorClient.snapshot().allied(mob.getUUID(), target.getUUID()))) {
 				valid = false;
 			} else {
 				requested = targeting.targetPosition(mob, target, position);
@@ -963,7 +964,9 @@ public class ConductorControls {
 		return pickLivingEntity(minecraft, entity -> entity != minecraft.player
 				&& !units.contains(entity.getUUID())
 				&& units.stream().anyMatch(uuid -> snapshot.unit(uuid) != null
-				&& !snapshot.allied(uuid, entity.getUUID())));
+				&& (minecraft.level != null && minecraft.level.getEntity(uuid) instanceof Mob mob
+				? CombatUtil.acceptsControl(mob) && CombatUtil.canTarget(mob, entity, snapshot.allied(uuid, entity.getUUID()))
+				: !snapshot.allied(uuid, entity.getUUID()))));
 	}
 
 	public static void openPanel() {

@@ -9,6 +9,7 @@ import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.control.IConductorUnitControl;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.registry.LcCapabilities;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,16 +26,25 @@ public class ConductorUtil {
 	}
 
 	public static boolean supports(Mob mob, ConductorData.OrderType order) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return false;
+		}
 		IConductorUnitControl control = get(mob);
 		return control != null && control.supports(order);
 	}
 
 	public static boolean accept(Mob mob, ConductorData.Unit command) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return false;
+		}
 		IConductorUnitControl control = get(mob);
 		return control != null && control.accept(command);
 	}
 
 	public static void tick(Mob mob) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return;
+		}
 		IConductorUnitControl control = get(mob);
 
 		if (control != null) {
@@ -83,16 +93,26 @@ public class ConductorUtil {
 	}
 
 	public static Collection<IConductorAbility> abilities(Mob mob) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return List.of();
+		}
 		IConductorUnitControl control = get(mob);
 		return control == null ? List.of() : control.abilities();
 	}
 
 	@Nullable
 	public static IConductorAbility ability(Mob mob, Identifier id) {
-		return abilities(mob).stream().filter(ability -> ability.id().equals(id)).findFirst().orElse(null);
+		if (!CombatUtil.acceptsControl(mob)) {
+			return null;
+		}
+		IConductorUnitControl control = get(mob);
+		return control == null ? null : control.ability(id);
 	}
 
 	public static boolean cast(Mob mob, Identifier skill, @Nullable Entity target, @Nullable Vec3 position) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return false;
+		}
 		IConductorUnitControl control = get(mob);
 		return control != null && control.cast(skill, target, position);
 	}

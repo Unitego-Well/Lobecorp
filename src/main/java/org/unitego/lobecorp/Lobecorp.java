@@ -12,6 +12,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.config.client.DamageParticleConfig;
+import org.unitego.lobecorp.config.client.VisualQualityConfig;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
 import org.unitego.lobecorp.registry.block.LcBlocks;
@@ -37,6 +38,7 @@ public class Lobecorp {
 		LOGGER.info("Unitego.");
 
 		modContainer.registerConfig(ModConfig.Type.CLIENT, DamageParticleConfig.SPEC);
+		modContainer.registerConfig(ModConfig.Type.CLIENT, VisualQualityConfig.SPEC, VisualQualityConfig.FILE_NAME);
 
 		LcAttachmentTypes.init(iEventBus);
 		LcTags.init();

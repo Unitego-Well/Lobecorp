@@ -62,6 +62,18 @@ Mixin 的其他依赖版本控制器。
 
 同一控制器的动画切换与层权重各自保存按骨骼隔离的旋转历史。每个渲染年龄冻结上一帧状态，同一时刻重复渲染从同一份旧状态纯计算，不额外推进分支。新动画或触发修订、新权重阶段、模式／叠加方式变化、时间倒退及重置会清理对应历史；动画内部切换结束清理其独立历史，层权重历史仍用于后续移动目标与静态部分权重。
 
+## 远距离姿态采样
+
+`LcAnimationControllerUtil.withDistanceLod(controller)` 显式接入距离采样，只给女皇与清道夫的 5 个控制器启用。原生时间和关键帧事件继续推进，只缓存本层姿态贡献；首次呈现、切换、重新触发及循环边界重采样。距离、采样 FPS、逐实体和逐控制器豁免配置见[动态视觉精细度](visual-quality.md)。
+
+## 初始默认姿态免淡入
+
+2026-10-18 已通过统一工具 [LcAnimationControllerUtil.withoutInitialFadeIn](../../src/main/java/org/unitego/lobecorp/util/animation/LcAnimationControllerUtil.java) 接入女皇与清道夫的 locomotion 默认层。该工具配置控制器的首次呈现资格；每个控制器运行实例独立保存 `presented`，第一次获得有效姿态时直接使用完整层权重，停止／重新进入及后续切换仍使用原 `fadeInTicks`、淡出与过渡模式。`reset` 只重置过渡，不清除已呈现标记；新控制器或新运行容器重新取得首次资格。action 层与眼睛层保留原设置。
+
+已确认原因：项目锁定 GeckoLib 5.5.2，`AnimationControllerMaskMixin` 对 `ILcCustomAnimatable` 的原生时间线已传入 0 过渡；首次淡入实际来自项目集成默认的 3 tick 层权重，单独设置原生 `transitionTicks(0)` 无法解决。直接把 `fadeInTicks` 永久设为 0 还会改变后续进入／切换。原生参数含义参见[GeckoLib 5 官方控制器说明](https://wiki.geckolib.com/docs/geckolib5/concepts/animation/controller/overview/)。
+
+未修改动画 JSON、播放速度、技能时序或停止清理，不增加同步载荷。IDEA／编译／Data 结果见[修改记录](changes.md)；尚未做游戏首帧、停止重入或晚追踪的视觉验收。
+
 ## 女皇与清道夫实例
 
 | 实例   | 动画层与表现入口                                                                                                                                                                                                                                                                                                                    |
@@ -95,7 +107,7 @@ GeckoLib 触发接口；运行回调会在服务端及同步客户端执行。�
 
 ## 状态、设置与粒子的同步分工
 
-- 同步实体状态列表、女皇阶段和清道夫变体用于持续姿态及模型选择。
+- 同步实体状态列表、女皇整数阶段（1／2／3，渲染票据 `QUEEN_PHASE`）和清道夫变体用于持续姿态及模型选择；女皇二、三阶段暂沿用现有癫狂纹理与表现。
 - [EntitySkillSyncPayload](../../src/main/java/org/unitego/lobecorp/network/tc/EntitySkillSyncPayload.java)
   传递施放阶段回调，客户端对应运行实例触发动作和短时表现。
 - 过渡设置载荷只同步控制器配置，播放与停止仍复用 GeckoLib 原生接口。

@@ -24,7 +24,8 @@ public class TheQueenOfHatredModel extends GeoModel<TheQueenOfHatred> {
 
 	@Override
 	public Identifier getTextureResource(GeoRenderState renderState) {
-		return renderState.getOrDefaultGeckolibData(LcDataTickets.QUEEN_PHASE_TWO, false)
+		return renderState.getOrDefaultGeckolibData(LcDataTickets.QUEEN_PHASE, TheQueenOfHatred.PHASE_ONE)
+				>= TheQueenOfHatred.PHASE_TWO
 				? HYSTERICAL_TEXTURE : TEXTURE;
 	}
 

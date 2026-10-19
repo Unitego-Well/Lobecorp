@@ -17,6 +17,8 @@ import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil;
 
 import java.util.*;
 
+import org.unitego.lobecorp.client.animation.LcAnimationLodStateAccess;
+
 /// 采样并混合动画层的骨骼姿态，保留各通道的遮罩范围。
 public class LcAnimationPose {
 	protected static Pose createPose(RenderPassInfo<?> renderPassInfo, ControllerState sourceState, AnimationController<?> controller,
@@ -24,6 +26,9 @@ public class LcAnimationPose {
 		AnimationPoint animationPoint = sourceState.animationPoint();
 		var sampleState = new ControllerState(animationPoint, null, -1, 0, false,
 				sourceState.easingOverride(), sourceState.renderState(), sourceState.queryValues());
+		if ((Object) sourceState instanceof LcAnimationLodStateAccess source && (Object) sampleState instanceof LcAnimationLodStateAccess target) {
+			target.lobecorp$setLodRequest(source.lobecorp$lodRequest());
+		}
 		Map<String, BoneSnapshot> bones = new HashMap<>();
 		Set<Channel> channels = new LinkedHashSet<>();
 		BoneAnimation[] boneAnimations = animationPoint.animation().boneAnimations();

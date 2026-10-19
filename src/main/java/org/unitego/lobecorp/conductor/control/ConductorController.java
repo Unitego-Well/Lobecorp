@@ -27,6 +27,8 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCastResult;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -44,6 +46,9 @@ public class ConductorController {
 	}
 
 	public static void tick(Mob mob) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return;
+		}
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return;
 		}
@@ -60,6 +65,9 @@ public class ConductorController {
 	}
 
 	public static void tickControlled(Mob mob) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return;
+		}
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return;
 		}
@@ -133,7 +141,8 @@ public class ConductorController {
 		if (mob instanceof Warden warden) {
 			for (String member : data.units().keySet()) {
 				UUID memberId = UUID.fromString(member);
-				if (data.allied(mob.getUUID(), memberId) && level.getEntity(memberId) instanceof LivingEntity ally) {
+				if (data.allied(mob.getUUID(), memberId) && level.getEntity(memberId) instanceof LivingEntity ally
+						&& !CombatUtil.canTarget(mob, ally)) {
 					warden.clearAnger(ally);
 				}
 			}
@@ -219,9 +228,9 @@ public class ConductorController {
 		}
 
 		if (target == null) {
-			target = findTeamTarget(level, mob, data, unit);
+			target = findTeamTarget(mob, data, unit);
 			if (target != null) {
-				ConductorUnitRuntime.get(mob).sharedTarget = target.getUUID();
+				CombatUtil.rememberSharedTarget(mob, target);
 			}
 		}
 
@@ -252,11 +261,27 @@ public class ConductorController {
 	}
 
 	public static void resetSharedTarget(Mob mob) {
-		ConductorUnitRuntime.get(mob).sharedTarget = null;
+		CombatUtil.rememberSharedTarget(mob, null);
 	}
 
 	public static void stop(Mob mob) {
-		ConductorUtil.stop(mob);
+		if (CombatUtil.acceptsControl(mob)) {
+			ConductorUtil.stop(mob);
+		}
+	}
+
+	/// 撤销控制意图和运行态，但保留队伍归属及已经开始的普通技能。
+	public static void detachControl(Mob mob) {
+		if (!(mob.level() instanceof ServerLevel level) || !ConductorAttachmentUtil.hasUnit(mob)) {
+			return;
+		}
+
+		stopControlled(mob, false);
+		LaserSkill.releaseManualControl(mob);
+		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
+		state.command(ConductorData.OrderType.NONE, null, mob.position());
+		state.moveResult = ConductorData.MoveResult.CANCELED;
+		ConductorData.get(level.getServer()).commit(mob);
 	}
 
 	public static void stopControlled(Mob mob) {
@@ -332,34 +357,12 @@ public class ConductorController {
 		mob.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, target);
 	}
 
-	private static LivingEntity findTeamTarget(ServerLevel level, Mob mob, ConductorData data, ConductorData.Unit unit) {
+	private static LivingEntity findTeamTarget(Mob mob, ConductorData data, ConductorData.Unit unit) {
 		if (unit.order() != ConductorData.OrderType.NONE || unit.combatBehavior() == ConductorData.CombatBehavior.PASSIVE) {
 			return null;
 		}
 
-		double range = ConductorRules.TEAM_AGGRO_SHARE_RANGE;
-		LivingEntity nearest = null;
-		double nearestDistance = Double.POSITIVE_INFINITY;
-		for (Mob ally : level.getEntitiesOfClass(Mob.class, mob.getBoundingBox().inflate(range),
-				candidate -> candidate != mob && candidate.isAlive() && mob.distanceToSqr(candidate) <= range * range
-						&& data.allied(mob.getUUID(), candidate.getUUID()))) {
-			LivingEntity target = ally.getTarget();
-			if ((target == null || target.level() != level || !isWithinBehaviorRange(mob, target, data, unit))
-					&& ally.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)) {
-				target = ally.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-			}
-
-			if (target == null || target.level() != level || !isWithinBehaviorRange(mob, target, data, unit)) {
-				continue;
-			}
-			double distance = mob.distanceToSqr(target);
-			if (distance < nearestDistance) {
-				nearest = target;
-				nearestDistance = distance;
-			}
-		}
-
-		return nearest;
+		return CombatUtil.findSharedTarget(mob, target -> isWithinBehaviorRange(mob, target, data, unit));
 	}
 
 	private static LivingEntity findTarget(ServerLevel level, Mob mob, ConductorData data, ConductorData.Unit unit) {
@@ -372,7 +375,7 @@ public class ConductorController {
 		return level.getEntitiesOfClass(LivingEntity.class,
 						mob.getBoundingBox().inflate(followRange),
 						target -> isAllowedTarget(mob, target, data, unit)
-								&& data.enemies(mob.getUUID(), target.getUUID())
+								&& CombatUtil.isEnemy(mob, target)
 								&& mob.distanceToSqr(target) <= followRange * followRange)
 				.stream().min(Comparator.comparingDouble(mob::distanceToSqr)).orElse(null);
 	}
@@ -385,14 +388,14 @@ public class ConductorController {
 		try {
 			Entity entity = level.getEntity(UUID.fromString(unit.target()));
 			return entity instanceof LivingEntity target && target.isAlive() && target != mob
-					&& !ConductorData.get(level.getServer()).allied(mob.getUUID(), target.getUUID()) ? target : null;
+					&& CombatUtil.canTarget(mob, target) ? target : null;
 		} catch (IllegalArgumentException exception) {
 			return null;
 		}
 	}
 
 	private static boolean isAllowedTarget(Mob mob, LivingEntity target, ConductorData data, ConductorData.Unit unit) {
-		if (target == mob || !target.isAlive() || data.allied(mob.getUUID(), target.getUUID())) {
+		if (!CombatUtil.canTarget(mob, target)) {
 			return false;
 		}
 
@@ -403,11 +406,11 @@ public class ConductorController {
 
 		return isWithinBehaviorRange(mob, target, data, unit)
 				&& (unit.combatBehavior() == ConductorData.CombatBehavior.ACTIVE
-				|| target == mob.getLastHurtByMob() || target.getUUID().equals(ConductorUnitRuntime.get(mob).sharedTarget));
+				|| target == mob.getLastHurtByMob() || CombatUtil.isSharedTarget(mob, target));
 	}
 
 	private static boolean isWithinBehaviorRange(Mob mob, LivingEntity target, ConductorData data, ConductorData.Unit unit) {
-		if (target == mob || !target.isAlive() || target.level() != mob.level() || data.allied(mob.getUUID(), target.getUUID())
+		if (!CombatUtil.canTarget(mob, target)
 				|| unit.combatBehavior() == ConductorData.CombatBehavior.PASSIVE
 				|| unit.order() != ConductorData.OrderType.NONE
 				|| mob.distanceToSqr(target) > followRange(mob) * followRange(mob)) {
@@ -422,6 +425,12 @@ public class ConductorController {
 	}
 
 	public static boolean allowsTargetChange(Mob mob, LivingEntity target) {
+		if ((CombatUtil.participates(mob) || CombatUtil.participates(target)) && !CombatUtil.canTarget(mob, target)) {
+			return false;
+		}
+		if (!CombatUtil.acceptsControl(mob)) {
+			return true;
+		}
 		if (ConductorSonicBoom.active(mob)) {
 			return false;
 		}
@@ -435,11 +444,14 @@ public class ConductorController {
 	}
 
 	public static boolean isControlled(Mob mob) {
-		return mob.level() instanceof ServerLevel level
+		return CombatUtil.acceptsControl(mob) && mob.level() instanceof ServerLevel level
 				&& ConductorData.get(level.getServer()).unit(mob.getUUID()) != null;
 	}
 
 	public static boolean isCommandedTarget(Mob mob, LivingEntity target) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return false;
+		}
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return false;
 		}
@@ -516,6 +528,9 @@ public class ConductorController {
 	}
 
 	public static boolean allowNavigation(Mob mob, Vec3 destination) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return true;
+		}
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return true;
 		}
@@ -638,6 +653,12 @@ public class ConductorController {
 		}
 
 		Mob owner = owners.peek();
+		if ((CombatUtil.participates(owner) || CombatUtil.participates(target)) && !CombatUtil.canTarget(owner, target)) {
+			return true;
+		}
+		if (!CombatUtil.acceptsControl(owner)) {
+			return false;
+		}
 		if (ConductorSonicBoom.active(owner)) {
 			return true;
 		}
@@ -698,7 +719,7 @@ public class ConductorController {
 
 		ConductorData data = ConductorData.get(level.getServer());
 		ConductorData.Unit unit = data.unit(warden.getUUID());
-		if (unit == null || !isValidManualTarget(warden, target, data)) {
+		if (unit == null || !isValidManualTarget(warden, target)) {
 			return false;
 		}
 
@@ -712,8 +733,8 @@ public class ConductorController {
 		return true;
 	}
 
-	private static boolean isValidManualTarget(Mob mob, LivingEntity target, ConductorData data) {
-		return target != mob && target.isAlive() && !data.allied(mob.getUUID(), target.getUUID())
+	private static boolean isValidManualTarget(Mob mob, LivingEntity target) {
+		return CombatUtil.canTarget(mob, target)
 				&& (!(mob instanceof Warden warden) || warden.canTargetEntity(target));
 	}
 
@@ -741,6 +762,9 @@ public class ConductorController {
 	}
 
 	public static boolean cast(Mob mob, IEntitySkill<?> skill, Entity target, Vec3 targetPosition) {
+		if (!CombatUtil.acceptsControl(mob)) {
+			return false;
+		}
 		IEntitySkillAccess access = IEntitySkillAccess.get(mob);
 		if (access == null || !access.supports(skill)) {
 			return false;

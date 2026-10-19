@@ -15,6 +15,9 @@ import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
+import org.unitego.lobecorp.world.entity.combat.CombatData;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import net.minecraft.world.entity.LivingEntity;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -22,7 +25,7 @@ import java.util.function.Consumer;
 /// 指挥家世界目录，持久化队伍、成员摘要、待交付指令和修订号。
 public class ConductorData extends SavedData {
 	public static final Codec<ConductorData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-			Codec.unboundedMap(Codec.STRING, Team.CODEC).fieldOf("teams").forGetter(data -> data.teams),
+			Codec.unboundedMap(Codec.STRING, TeamSettings.CODEC).fieldOf("team_controls").forGetter(data -> data.teams),
 			Codec.unboundedMap(Codec.STRING, Unit.CODEC).fieldOf("members").forGetter(data -> data.units),
 			Codec.unboundedMap(Codec.STRING, MemberInfo.CODEC).optionalFieldOf("member_info", Map.of()).forGetter(data -> data.memberInfo),
 			Codec.unboundedMap(Codec.STRING, Pending.CODEC).optionalFieldOf("pending", Map.of()).forGetter(data -> data.pending),
@@ -30,9 +33,10 @@ public class ConductorData extends SavedData {
 	).apply(instance, ConductorData::new));
 	/// 指挥家世界目录的存档类型定义。
 	private static final SavedDataType<ConductorData> TYPE =
-			new SavedDataType<>(Lobecorp.id("conductor_directory"), ConductorData::new, CODEC);
+			new SavedDataType<>(Lobecorp.id("conductor_control"), ConductorData::new, CODEC);
+	private static final String TEAM_FACTION_PREFIX = "conductor/";
 	public final ConductorWorldRuntime runtime = new ConductorWorldRuntime();
-	private final Map<String, Team> teams;
+	private final Map<String, TeamSettings> teams;
 	private final Map<String, Unit> units;
 	private final Map<String, MemberInfo> memberInfo;
 	private final Map<String, Pending> pending;
@@ -44,7 +48,7 @@ public class ConductorData extends SavedData {
 		this(Map.of(), Map.of(), Map.of(), Map.of(), 0L);
 	}
 
-	private ConductorData(Map<String, Team> teams, Map<String, Unit> units, Map<String, MemberInfo> memberInfo,
+	private ConductorData(Map<String, TeamSettings> teams, Map<String, Unit> units, Map<String, MemberInfo> memberInfo,
 	                      Map<String, Pending> pending, long revision) {
 		this.teams = new LinkedHashMap<>(teams);
 		this.units = new LinkedHashMap<>(units);
@@ -67,7 +71,11 @@ public class ConductorData extends SavedData {
 	}
 
 	public Map<String, Team> teams() {
-		return Map.copyOf(teams);
+		Map<String, Team> snapshots = new LinkedHashMap<>();
+		for (String name : teams.keySet()) {
+			snapshots.put(name, team(name));
+		}
+		return Map.copyOf(snapshots);
 	}
 
 	public Map<String, Unit> units() {
@@ -75,7 +83,23 @@ public class ConductorData extends SavedData {
 	}
 
 	public Team team(String name) {
-		return teams.get(name);
+		TeamSettings settings = teams.get(name);
+		if (settings == null) {
+			return null;
+		}
+
+		CombatData.Faction faction = CombatData.get(server).faction(factionId(name));
+		Set<String> enemies = new HashSet<>();
+		if (faction != null) {
+			for (String enemy : faction.enemies()) {
+				enemies.add(enemy.startsWith(TEAM_FACTION_PREFIX) ? enemy.substring(TEAM_FACTION_PREFIX.length()) : enemy);
+			}
+		}
+		return new Team(name, Set.copyOf(enemies), settings.forceLoad(), settings.color());
+	}
+
+	private static String factionId(String team) {
+		return TEAM_FACTION_PREFIX + team;
 	}
 
 	public Unit unit(UUID uuid) {
@@ -113,13 +137,21 @@ public class ConductorData extends SavedData {
 	}
 
 	public void putTeam(String name) {
-		teams.putIfAbsent(name, new Team(name, Set.of(), false, defaultColor(name)));
+		if (!teams.containsKey(name)) {
+			teams.put(name, new TeamSettings(false, defaultColor(name)));
+			CombatData.get(server).putFaction(factionId(name), Set.of());
+		}
 		revision++;
 		setDirty();
 	}
 
 	public void putTeam(Team team) {
-		teams.put(team.name(), team);
+		teams.put(team.name(), new TeamSettings(team.forceLoad(), team.color()));
+		Set<String> enemies = new HashSet<>();
+		for (String enemy : team.enemies()) {
+			enemies.add(factionId(enemy));
+		}
+		CombatData.get(server).putFaction(factionId(team.name()), enemies);
 		revision++;
 		setDirty();
 	}
@@ -142,6 +174,9 @@ public class ConductorData extends SavedData {
 	}
 
 	public void update(UUID uuid, Consumer<ConductorUnitData> mutation) {
+		if (!acceptsControl(uuid)) {
+			return;
+		}
 		Unit before = unit(uuid);
 		if (before == null) {
 			return;
@@ -189,6 +224,7 @@ public class ConductorData extends SavedData {
 			pending.put(uuid.toString(), new Pending(unit, next, false));
 		}
 
+		CombatData.get(server).assign(uuid, factionId(unit.team()), factionId(unit.team()));
 		setDirty();
 	}
 
@@ -197,6 +233,7 @@ public class ConductorData extends SavedData {
 			return;
 		}
 		ConductorUnitData state = ConductorAttachmentUtil.unit(mob);
+		CombatData.get(server).assign(mob.getUUID(), factionId(state.team), factionId(state.team));
 		state.revision = ++revision;
 		Unit before = units.put(mob.getUUID().toString(), state.snapshot(mob));
 		ConductorAttachmentUtil.syncUnit(mob, before);
@@ -217,6 +254,17 @@ public class ConductorData extends SavedData {
 			}
 		}
 		return null;
+	}
+
+	public boolean acceptsControl(UUID uuid) {
+		Mob mob = find(uuid);
+		return mob == null || CombatUtil.acceptsControl(mob);
+	}
+
+	public boolean canTarget(UUID uuid, LivingEntity target) {
+		Mob mob = find(uuid);
+		return mob != null ? CombatUtil.canTarget(mob, target)
+				: !uuid.equals(target.getUUID()) && target.isAlive() && !allied(uuid, target.getUUID());
 	}
 
 	public void attach(Mob mob) {
@@ -277,6 +325,7 @@ public class ConductorData extends SavedData {
 		}
 		loaded.remove(mob.getUUID());
 		if (permanent) {
+			CombatData.get(server).remove(mob.getUUID());
 			String key = mob.getUUID().toString();
 			units.remove(key);
 			memberInfo.remove(key);
@@ -294,6 +343,7 @@ public class ConductorData extends SavedData {
 	}
 
 	public void remove(UUID uuid) {
+		CombatData.get(server).remove(uuid);
 		Unit previous = units.get(uuid.toString());
 		Mob mob = find(uuid);
 		if (mob != null) {
@@ -313,16 +363,14 @@ public class ConductorData extends SavedData {
 	}
 
 	public boolean allied(UUID first, UUID second) {
-		Unit left = unit(first);
-		Unit right = unit(second);
-		return left != null && right != null && left.team().equals(right.team());
+		return CombatData.get(server).allied(first, second);
 	}
 
-	public boolean enemies(UUID first, UUID second) {
-		Unit left = unit(first);
-		Unit right = unit(second);
-		Team team = left == null ? null : team(left.team());
-		return team != null && right != null && team.enemies().contains(right.team());
+	private record TeamSettings(boolean forceLoad, int color) {
+		private static final Codec<TeamSettings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.BOOL.fieldOf("force_load").forGetter(TeamSettings::forceLoad),
+				Codec.INT.fieldOf("color").forGetter(TeamSettings::color)
+		).apply(instance, TeamSettings::new));
 	}
 
 	public enum BehaviorState {

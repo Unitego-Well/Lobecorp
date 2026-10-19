@@ -16,8 +16,10 @@ public interface LcDataTickets {
 	DataTicket<Float> HEALTHY = createFloat("healthy");
 	/// 是否是尸体
 	DataTicket<Boolean> IS_CORPSE = createFloatBoolean("is_corpse");
-	/// 女皇第二阶段的渲染数据票据，由同步实体状态提供值。
-	DataTicket<Boolean> QUEEN_PHASE_TWO = createFloatBoolean("queen_phase_two");
+	/// 只给显式接入的实体传递本帧模型LOD档位，零保留原模型。
+	DataTicket<Integer> MODEL_LOD_BAND = create("model_lod_band", Integer.class);
+	/// 女皇当前阶段的渲染数据票据，由同步实体状态提供值。
+	DataTicket<Integer> QUEEN_PHASE = create("queen_phase", Integer.class);
 
 	static <T> DataTicket<T> create(String id, Class<? extends T> objectType) {
 		return DataTicket.create(Lobecorp.name(id), objectType);

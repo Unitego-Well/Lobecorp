@@ -16,6 +16,10 @@ public interface LcAnimationControllerTransitions<T extends GeoAnimatable> {
 
 	int lobecorp$getFadeInTicks();
 
+	boolean lobecorp$isInitialFadeInSkipped();
+
+	void lobecorp$setInitialFadeInSkipped(boolean skipped);
+
 	AnimationController<T> lobecorp$setFadeInTicks(int ticks);
 
 	int lobecorp$getFadeOutTicks();

@@ -6,6 +6,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
@@ -13,6 +14,7 @@ import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
 import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 import java.util.Collection;
 
@@ -35,7 +37,7 @@ public class ConductorCapabilities {
 
 		@Override
 		public boolean supports(ConductorData.OrderType order) {
-			return mob.isAlive() && switch (order) {
+			return mob.isAlive() && CombatUtil.acceptsControl(mob) && switch (order) {
 				case CLEANUP, REASSEMBLE -> false;
 				case ATTACK_POINT -> ConductorPointAttack.supports(mob);
 				default -> true;
@@ -84,9 +86,14 @@ public class ConductorCapabilities {
 		}
 
 		@Override
+		public @Nullable IConductorAbility ability(Identifier id) {
+			return RegisterConductorAbilitiesEvent.get(mob, id);
+		}
+
+		@Override
 		public boolean cast(Identifier skill, Entity target, Vec3 position) {
 			IConductorAbility ability = RegisterConductorAbilitiesEvent.get(mob, skill);
-			return ability != null && ability.isAvailable(mob) && ability.cooldownTicks(mob) == 0
+			return CombatUtil.acceptsControl(mob) && ability != null && ability.isAvailable(mob) && ability.cooldownTicks(mob) == 0
 					&& ability.cast(mob, target, position);
 		}
 	}

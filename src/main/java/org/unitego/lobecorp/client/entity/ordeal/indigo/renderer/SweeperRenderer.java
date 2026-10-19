@@ -15,6 +15,7 @@ import org.unitego.lobecorp.client.renderer.AutoGlowingRenderLayer;
 import org.unitego.lobecorp.client.renderer.DynamicCubeGeoLayer;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 
 	@Override
 	public void addRenderData(Sweeper animatable, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
+		LcModelLodUtil.capture(animatable, renderState);
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_VARIANT, animatable.getVariant());
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_BIOMASS_RATIO,
 				animatable.getBiomass() / animatable.getBiomassCapacity());

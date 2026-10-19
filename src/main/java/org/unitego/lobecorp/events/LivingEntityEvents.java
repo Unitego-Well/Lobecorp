@@ -15,7 +15,8 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.conductor.lifecycle.ConductorEvents;
+import org.unitego.lobecorp.world.entity.combat.CombatEvents;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
@@ -60,6 +61,7 @@ public class LivingEntityEvents {
 
 	@SubscribeEvent
 	public static void onLivingDamagePost(LivingDamageEvent.Post event) {
+		CombatEvents.onDamagePost(event);
 		DamageParticles.onDamage(event);
 	}
 
@@ -68,7 +70,7 @@ public class LivingEntityEvents {
 		LivingEntity entity = event.getEntity();
 		float multiplier = (float) entity.getAttributeValue(LcAttributes.DAMAGE_TAKEN_MULTIPLIER);
 		event.setAmount(event.getAmount() * multiplier);
-		ConductorEvents.onIncomingDamage(event);
+		CombatEvents.onIncomingDamage(event);
 	}
 
 	@SubscribeEvent
@@ -81,6 +83,7 @@ public class LivingEntityEvents {
 		}
 
 		if (entity instanceof LivingEntity living) {
+			CombatUtil.clearRuntime(living);
 			EntitySkillUtil.clearRuntimeState(living);
 			EntityGrabUtil.clear(living);
 		}

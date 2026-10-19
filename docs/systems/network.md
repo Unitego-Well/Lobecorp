@@ -1,7 +1,9 @@
 # 网络协议与同步
 
 核对日期：2026-10-13。协议登记由 [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java) 决定，当前
-NETWORK_VERSION 为 18；本文不代表联机测试通过。
+NETWORK_VERSION 为 20；本文不代表联机测试通过。
+
+2026-10-18 女皇整数阶段与战斗关系重写同步更新协议版本，指挥家继续复用既有目录／实体附件快照，没有新增战斗关系 Payload；存档边界见[战斗关系](combat.md)。
 
 ## 方向与入口
 

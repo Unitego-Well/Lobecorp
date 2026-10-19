@@ -12,6 +12,7 @@ import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorHud;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 
@@ -91,7 +92,7 @@ public class ConductorManualSkillControl {
 
 			LivingEntity target = pickTarget.apply(entity -> entity != minecraft.player && entity != mob
 					&& ability.canTarget(mob, entity) && ability.isWithinRange(mob, entity.position())
-					&& !ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID()));
+					&& CombatUtil.canTarget(mob, entity, ConductorClient.snapshot().allied(mob.getUUID(), entity.getUUID())));
 			Vec3 position = ConductorCamera.pickGround(minecraft);
 
 			if (target != null) {

@@ -36,6 +36,8 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 	@Unique
 	private int lobecorp$fadeInTicks = 3;
 	@Unique
+	private boolean lobecorp$initialFadeInSkipped;
+	@Unique
 	private int lobecorp$fadeOutTicks = 5;
 	@Unique
 	private LcTransitionMode lobecorp$fadeInTransitionMode = LcTransitionMode.OVERLAP;
@@ -162,6 +164,16 @@ public abstract class AnimationControllerMaskMixin<T extends GeoAnimatable> impl
 	@Override
 	public int lobecorp$getFadeInTicks() {
 		return this.lobecorp$fadeInTicks;
+	}
+
+	@Override
+	public boolean lobecorp$isInitialFadeInSkipped() {
+		return this.lobecorp$initialFadeInSkipped;
+	}
+
+	@Override
+	public void lobecorp$setInitialFadeInSkipped(boolean skipped) {
+		this.lobecorp$initialFadeInSkipped = skipped;
 	}
 
 	@Override

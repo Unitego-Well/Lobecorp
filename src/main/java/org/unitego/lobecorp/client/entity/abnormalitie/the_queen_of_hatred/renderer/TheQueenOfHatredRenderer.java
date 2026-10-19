@@ -11,6 +11,7 @@ import org.unitego.lobecorp.client.conductor.render.ConductorGeoOutlineLayer;
 import org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.model.TheQueenOfHatredModel;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred, LivingEntityRenderState> {
 	public TheQueenOfHatredRenderer(EntityRendererProvider.Context context) {
@@ -20,7 +21,8 @@ public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred
 
 	@Override
 	public void addRenderData(TheQueenOfHatred animatable, Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
-		renderState.addGeckolibData(LcDataTickets.QUEEN_PHASE_TWO, animatable.isPhaseTwo());
+		LcModelLodUtil.capture(animatable, renderState);
+		renderState.addGeckolibData(LcDataTickets.QUEEN_PHASE, animatable.getPhase());
 	}
 
 	@Override

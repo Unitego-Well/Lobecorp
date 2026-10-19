@@ -100,10 +100,13 @@ public class LcAnimationControllerIntegration {
 		}
 
 		if (!controllerRuntime.initialized) {
+			boolean skipInitialFadeIn = !controllerRuntime.presented && transitions.lobecorp$isInitialFadeInSkipped();
+			controllerRuntime.presented = true;
 			controllerRuntime.initialized = true;
 			controllerRuntime.weight = 0;
 			controllerRuntime.controllerExiting = false;
-			controllerRuntime.beginWeightTransition(1, renderAge, transitions.lobecorp$getFadeInTicks(), transitions);
+			controllerRuntime.beginWeightTransition(1, renderAge,
+					skipInitialFadeIn ? 0 : transitions.lobecorp$getFadeInTicks(), transitions);
 			controllerRuntime.animation = animation;
 			controllerRuntime.rawAnimation = rawAnimation;
 			controllerRuntime.animationTriggerRevision = animationTriggerRevision;

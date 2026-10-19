@@ -1,0 +1,3552 @@
+{
+  "version": 1,
+  "stage": "R0",
+  "status": "raw_data_snapshot",
+  "runtimeValidated": false,
+  "editExportRoundTripValidated": false,
+  "sourcePriorityValidated": false,
+  "capturedBy": "IDEA PhotonResourceReader / PhotonResourceInventory JUnit; full console record",
+  "roots": [
+    {
+      "root": "source_assets",
+      "directory": "src/main/resources/assets",
+      "entries": [
+        {
+          "source": "ldlib2/resources/material.meta.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "958f79963201be058e422798901336cc832779cea593922c2a5b5c8891f46fc4",
+          "bytes": 312
+        },
+        {
+          "source": "lobecorp/fx/reference_star_trail.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "cb4b21efded5f3d2aa5615f723cd149d1406ea9c74857fa8fd2de9195c3a5e1d",
+          "bytes": 2545
+        },
+        {
+          "source": "lobecorp/fx/reference_star_trail.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "47a168a56d75e8ce1f65a757af59d1be8f565e81c0e495514d20f4f9e4e03fc7",
+          "bytes": 21864
+        },
+        {
+          "source": "lobecorp/fx/reference_variable_laser.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "beb609822e41420bb7224601fa56d2f5d41c2b36df5b427ef9901736a6a50dba",
+          "bytes": 2065
+        },
+        {
+          "source": "lobecorp/fx/reference_variable_laser.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "dff8e9998908d87690019923572e185687887a47e402b9f80db0d2f1006d7ca7",
+          "bytes": 10251
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/accumulate_light_ball.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "7bacb271dcf49e8d33fda6b5faeeefd04fdc26c812940800c1d5285fa16f9317",
+          "bytes": 2540
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/accumulate_light_ball.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "d0d4abcd637cdd47863969e498a764eb093be556f89d6163461e44d7223d7411",
+          "bytes": 8177
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/accumulate_particle.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "61e1aa3e3453cc1cc299fa717c5027fa6f1209310bcf272b72f0e5979d14bdde",
+          "bytes": 2786
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/accumulate_particle.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "a2a43aeb238a535e143ff8547839e65d9692a27e748881084ce42c5334f3362c",
+          "bytes": 9724
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/lasel.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "96ae8d8cbc3ccd93462f6937ed0c1f98da74da1827b76b75fa94ddd6a06dbb97",
+          "bytes": 1747
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/lasel.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "e03ba2f756bc6a06ed8cd363e7aa6bb460e23c40b8460d293ff931c6068f8449",
+          "bytes": 6117
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/laser.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "fef6ccd6b5367838fac48544c682283c3a06d8c41429f257eedacb27c6cdc787",
+          "bytes": 33331
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/laser.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "6a0e09446d0dfa5f5e8e1761a04c42226ce3d7dadca85a7bddf2e2190b6ba58e",
+          "bytes": 500976
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/laser_spell.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "8fcfd23e01258b8c2d9cacc8a3efae77f793482a35408d467740bc7734952769",
+          "bytes": 4368
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/laser_spell.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "124dd69e858f0db5e1e508185dedd668943c882a9889a460c4e4683d17c721b4",
+          "bytes": 38333
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/light_ball.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "c3d7d7fa43680005de62f751848b0391ad25ee23c1a1d15179917a9a34a71fa3",
+          "bytes": 88558
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/light_ball.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "5d0b0be107e334d582afb8cfdc485e2ce0cf29ed0a97e85ad60ce3c4e3c49d12",
+          "bytes": 1276764
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "65a98a02d0ccd14eef45e5298e13ccdbc0b2cd687f1b6f507ad8547def81d9e2",
+          "bytes": 3000
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "82985246ed5908dad76a2122a17bb302c53b6880ef21dd4ef63533fc061ebd33",
+          "bytes": 17025
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle2.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "607fcf7ca13ca76baf07832c2b2f3b3b26253604078be9f15c633e82c6bbb8dd",
+          "bytes": 2726
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle2.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "76a168f22e27be50a7e44586d2e5de79eda4d6af0e1a74b16163b80704387604",
+          "bytes": 9397
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle3.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "7afdd3eae259c7cb8abe76192f865ab9661fb0239be69fcffc2dc04e59f7a099",
+          "bytes": 3310
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/magic_circle3.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "e62bfaf019558bb01d84e7853495d4fa40a71341bf8a2d5257df6b7b1bf23a8c",
+          "bytes": 30067
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/queen_star_beam.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "0b1d3b58097008232b74ec60a2bf17101d720a25cacb839ef3cc158da65241ef",
+          "bytes": 126501
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/queen_star_beam.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "fc03879ccee3a2fea4d297af92efe5ceb8d71c21649ea04db8934693d272360a",
+          "bytes": 1830571
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "acfd04c37988617e654e5a4ef66ed13ad89b151cfc83d338e2218aed9ba82ddd",
+          "bytes": 3081
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "acab18af1b0dc6ee4cfbdb614b4c41b1ea95a77cd094e966f3d6899a1f66a871",
+          "bytes": 20813
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "fe924b8b4a10c03816bb0fef663950a0db1d040f91ec80c5042835a094580ac6",
+          "bytes": 25847
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "338c47c0377f39880490625760f3fe4dc6c7e634c23a9e09168e40bb51fe7621",
+          "bytes": 418089
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fx",
+          "entry": "",
+          "kind": "FX",
+          "sha256": "3c9e7268d0ba76ac286696f48cd05e06ce2be43f35158ec879df0593930df0d0",
+          "bytes": 19819
+        },
+        {
+          "source": "lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fxproj",
+          "entry": "",
+          "kind": "FX_PROJECT",
+          "sha256": "286edd5a27f3f1cb02eae0e848c5284b1f6c6c0882d79cfe5d22990eec6ae2a3",
+          "bytes": 302282
+        },
+        {
+          "source": "lobecorp/geckolib/animations/entity/sweeper_a.animation.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "425398365c4747fd18a9529fddae5f882e12032a0754c36ad971bfae212ec65f",
+          "bytes": 111481
+        },
+        {
+          "source": "lobecorp/geckolib/animations/entity/the_queen_of_hatred.animation.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "a27f211b9ff812d1542f5ed92485e742b573103bc92e2c17d165633cf99183c4",
+          "bytes": 177652
+        },
+        {
+          "source": "lobecorp/geckolib/animations/example/attachment_draw.animation.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "10e01a2d54580c9d8695bd1f501a16949249022a63fa4c5a9d9b002a3b6d1c94",
+          "bytes": 1280
+        },
+        {
+          "source": "lobecorp/geckolib/models/entity/sweeper_a.geo.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "4ccdd6fd0c1895c098dc92ad3519a609e5ffac7684562d7ea659f3f1bb96df8f",
+          "bytes": 4439
+        },
+        {
+          "source": "lobecorp/geckolib/models/entity/sweeper_a_corpse.geo.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "9568837a2d8f9c2b959dad79fcfa438b410bfaf8138f98a69daf63be4e2be17b",
+          "bytes": 2328
+        },
+        {
+          "source": "lobecorp/geckolib/models/entity/the_queen_of_hatred.geo.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "05f3fb7eeae58e27dcccaa36769b9799eab1c1547334da6b2d54a2aaa3dc9bd8",
+          "bytes": 28501
+        },
+        {
+          "source": "lobecorp/gui/conductor.xml",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "8747b1d47fc265d70d8be2c584acbf43145aa5e68ad2f94ab427f59561fab176",
+          "bytes": 4541
+        },
+        {
+          "source": "lobecorp/gui/conductor_hud.ui.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7bb46b44a5469bc6c3bf248dcfadfe70bf35bed900ddd76d217875915bceab43",
+          "bytes": 638
+        },
+        {
+          "source": "lobecorp/gui/conductor_hud.xml",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "d3221c269a2370064d4e20645fc275aa0a66e5eb37882297e72c316b54a1a6a7",
+          "bytes": 2724
+        },
+        {
+          "source": "lobecorp/models/photon/the_queen_of_hatred/counterattack.lcmodel.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "8df4d2dea23ac418b94d9c75678b3bdb11db90a1f8dbc4c18e44adfe1bb84bd9",
+          "bytes": 70761
+        },
+        {
+          "source": "lobecorp/models/photon/the_queen_of_hatred/counterattack.mfxproj",
+          "entry": "",
+          "kind": "MODEL_PROJECT",
+          "sha256": "4b4bc9313a30bfd922d9919120dd04c15707e58f398944ec164e06bb992a9118",
+          "bytes": 149680
+        },
+        {
+          "source": "lobecorp/models/photon/the_queen_of_hatred/counterattack.obj",
+          "entry": "",
+          "kind": "OBJ",
+          "sha256": "2ddcc698205e5b37bfa9c384e48a77a5abf577819272559857970b719faa9ef4",
+          "bytes": 45781
+        },
+        {
+          "source": "lobecorp/particles/queen_channel_laser.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "e2aa07492338c7bcfb21636824f7e69eddc12c191c77583dfd4d0c4b3a890c85",
+          "bytes": 70
+        },
+        {
+          "source": "lobecorp/particles/queen_convergent.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "8b4772fdca94b241820b0790bfa1605394c62bd58feee226217078c3ffcbd510",
+          "bytes": 103
+        },
+        {
+          "source": "lobecorp/particles/queen_laser.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "e2aa07492338c7bcfb21636824f7e69eddc12c191c77583dfd4d0c4b3a890c85",
+          "bytes": 70
+        },
+        {
+          "source": "lobecorp/particles/queen_magic_circle.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "4646bc12fcfde3a1ed2030bec26d256ece70ce6608c016b84fa9cd3cb0246490",
+          "bytes": 72
+        },
+        {
+          "source": "lobecorp/particles/queen_repel_wave.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "813178ff65e1f1b71dd57fb496fdb66f01a82ccfbb045d0109511b4df1c40cb4",
+          "bytes": 66
+        },
+        {
+          "source": "lobecorp/shaders/core/photon_occlusion_depth.fsh",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "7640c2db062a09870875ca480c56dae337baffa797f07805a6f4f10a46bb3971",
+          "bytes": 984
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/bright_core.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/burst_cross.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/dust_column.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/impact_ellipsoid.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/launch_spike.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/pink_body.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/reverse_muzzle.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/source_dust.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/beam/white_plasma.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/core.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/inner_glow.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/outer_glow.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/pink_model.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/pink_star.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/ring.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/charge/waves.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_arcana_beam/particles/spark.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/bright_core.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "23cce0b7b867eb38e6457e054b1424d0b6de1eeb21c26e076be41f715815f2d1",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/burst_cross.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "3c3aca8429e494d81eb1d50a5d6038379d4de4a516cb13bacd03586c6198d484",
+          "bytes": 16892
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/dust_column.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "98eec991644ddc3eb0b56e8f6ecf28d67ba7e0ca05c9900284e064c5876c5fd7",
+          "bytes": 18071
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/gold_plasma.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "121eef34da80d197fad9e28b1ad66137a75371aabf44e90434c634aaf9a33f90",
+          "bytes": 16776
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/impact_ellipsoid.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "b84da2fb52cc18279c14fae831a260eee658ed852e3b51fae64e886261179ec0",
+          "bytes": 17107
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/pink_body.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7e8b53e8034a8a1d00036608320208185d77831ec81e89a837cc2a45359d7e89",
+          "bytes": 17222
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/beam/source_dust.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "9f220d02aaca5dc54e186bbdc7dca0a4474fbcb609c299d6014ba147c5e3a6d4",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/core.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "fc2bfed561fe55421b3ecd206191565128e4238d374f1870388b40eed07ad86f",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/dark_energy.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "1ca2b837a04a858b85aefca0c39fb592cdbd4822387fc6ffb67032b4d33d8c7a",
+          "bytes": 16705
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/electric.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "a5c6a91eff1f7f242a2a8e29eaad066b8a131412721c1025eefa7f30f9326016",
+          "bytes": 18540
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/inner_glow.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "6a182f6ec74208319f0cff8a4aacea05b516544d3b57ee71dc82798fe14f896c",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/outer_glow.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "755e1a6235fe933ff152112ac2c20d5f74cb371912cc7492cad4da1271008b1d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/purple_model.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "1dd18d25cb27156ed970192f74f5100af3a65e6b7446ddefc2da3ab05253606e",
+          "bytes": 16529
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/ring.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "32124304fc76cbf1dfe7172d0402b085bdbce9fad11914a778fdcedae31394f9",
+          "bytes": 17955
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/warm_star.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "02a0c456dfe432f75caf177fc8a65ea40c5b7f8f20290678ff4c0a3263526a64",
+          "bytes": 16498
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/charge/waves.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "9a7a71e83203bf993c13fc62ba0a83d2badf2b72b00aa9444bb9326eaac2588c",
+          "bytes": 18103
+        },
+        {
+          "source": "lobecorp/shaders/photon/queen_star_beam/particles/spark.shader_graph.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "6df093747aa8e4f0a2fa8e5803486df4a30a929e50ff1b5a86a7832055341439",
+          "bytes": 16382
+        },
+        {
+          "source": "lobecorp/textures/entity/sweeper_a.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "6f63658d4d63842a1a25e6d035e0e5185a3cfac44f5a8f3e4367157145e418a3",
+          "bytes": 4352
+        },
+        {
+          "source": "lobecorp/textures/entity/sweeper_a_corpse.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "bbe8c7aef8f621ae223815ecd81e37a3bf856b3a6389a4a858711aa79ecfb2b8",
+          "bytes": 4664
+        },
+        {
+          "source": "lobecorp/textures/entity/sweeper_a_corpse_glowmask.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "5d090158b26601867b1be66e07283730ccf565f004cd10fac771414dc37b0b14",
+          "bytes": 1534
+        },
+        {
+          "source": "lobecorp/textures/entity/sweeper_a_glowmask.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "6b5c9cdcfe6b60403d33297edc1a0a5b65ef274800814e3cc1380a6630d90629",
+          "bytes": 880
+        },
+        {
+          "source": "lobecorp/textures/entity/the_queen_of_hatred.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "abd6c04404ce8b076dba083854ac08f58e38c0da91125e776ed1d169752c8253",
+          "bytes": 7339
+        },
+        {
+          "source": "lobecorp/textures/entity/the_queen_of_hatred_hysterical.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "4d218c44abcbe25b58f74fc18761f088385addb930523fd13ee522eee27b14c7",
+          "bytes": 7251
+        },
+        {
+          "source": "lobecorp/textures/item/sweeper/sweeper_spawn_egg.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "cc660e9ffceaa917ade3b60c31a55459667004449b5657ffddc3b454d303b58f",
+          "bytes": 313
+        },
+        {
+          "source": "lobecorp/textures/item/the_queen_of_hatred/the_queen_of_hatred_spawn_egg.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "cd3bb94538d89278e02b5d530ce4d8dda437d18c364c7b2663bae57a6a5c7f03",
+          "bytes": 465
+        },
+        {
+          "source": "lobecorp/textures/mob_effect/hatred_mark.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "8af860db07d81fd39617c6c3fefa70315291adc9a1f05672d6c2fe5c0910e7f3",
+          "bytes": 312
+        },
+        {
+          "source": "lobecorp/textures/mob_effect/stun.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "971eaadbc66cc4c4724d463a81fd12adeafdd537da47beb0c3a6ab0fe5f8c6f0",
+          "bytes": 264
+        },
+        {
+          "source": "lobecorp/textures/particle/blood.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "a9251fce04832179e7f21589ac7e42b4a9f6a902f444a976f59905f5c4ab34e3",
+          "bytes": 83
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_0.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "3abb18582fa4e51cbcbac15215f668d6db88778f96a6485836eb29e142a2f1d8",
+          "bytes": 119
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_1.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "ba7d1c0739501ed0a4c8a7e4e1450830587b0f87ac082dbf7a4306293011974e",
+          "bytes": 214
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "af714d80822dae5dfa516a03c193da44e3a62e382245f45db617f45d48ed5c47",
+          "bytes": 219
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "de114e6796d5f7a2708e62c5a96899379c8488fad50e51bd649a2a536c58f90a",
+          "bytes": 230
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_4.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "0255fa2fba1bdcbe678e7401cd6cdb1f4607979eda29c2b497a695c2bb2e4d94",
+          "bytes": 227
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/double_slash_5.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "32064f5a1e43e5c64f263738a78580adf0e4f0c91c19f40491cb542a643e763b",
+          "bytes": 133
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_0.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "470913ade0511b71085a91d023bc9ce0dc0b1409f57906201704c0f6b526d053",
+          "bytes": 111
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_1.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "2fb8dbbd52ef95f57d3b25c675a396e786d0627801971cc688114a28e854283f",
+          "bytes": 169
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "cf0289f9bcd16cf1b4d5d6b6c384590822c74b6898738f528613a71b06e212a9",
+          "bytes": 169
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "166c09ee1ae6ae9c3f325a60b0745a5dff616edbcf596b3b36e35879280fc102",
+          "bytes": 179
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_4.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "2702d30f6fcbf4926dece4f41afc48d1eed881c13278955b99d93b18f0ea732e",
+          "bytes": 185
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/long_slash_5.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "a2a8e76bdac4b3e3ae6d804f267f1ceb0fbf46adbface55e0188915abb50bca6",
+          "bytes": 120
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_0.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "16dd2e3d641373837fb5127070ee611277cfdcc38716a701272582815f9d19ed",
+          "bytes": 118
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_1.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "ca1fd90c4a0b5764b3617d74098b96e24a79ff2e446a32b93b6f27fc0341ae00",
+          "bytes": 184
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "80000896ba1d3e03a8c83497931a1aa13c5b1081b03012175438684a0c2d7bbd",
+          "bytes": 188
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "09e70b7f58d6fa3be1d4d61ae3dbd84bd099f1fe5f646d8484553f01a93aa9aa",
+          "bytes": 199
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_4.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "804bc6dc0d8bb3b6814676f7c6aba9543a910a92d5b8d26673b0343c76612552",
+          "bytes": 173
+        },
+        {
+          "source": "lobecorp/textures/particle/simple/short_slash_5.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "d474c2b759ab509d2a99d2aae8f90ccd098490a2efefd802730e9437727b2bff",
+          "bytes": 115
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "84bfbe42ce381ae5a1689fa29ea5b448c5c4c1db13871bf02dd8f9be686e06fe",
+          "bytes": 256
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "60351b4eefd06f8eada4c04b8b0aa708c7d4ca440bd24c13fce444e83b38324b",
+          "bytes": 1881
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/heart_break.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "88252fe7d87589479b4d682d5f215bcca3dd6a76370bd6a35a9991f8ff665448",
+          "bytes": 725
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/laser_tail.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "f2e26d73140bf24d14946c9df36e65d9b6b2a39c1db02e13eee6df9bcf123937",
+          "bytes": 252
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "4525f001da7008696e8a34c391ca5d7ec28d1b3d0a8947029e53808f3f47aa9a",
+          "bytes": 1131
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7dd5b19ca8fe9801c733014e3b675804c73205c7495f189abac915574f90bc0c",
+          "bytes": 253
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "6117193e1b66839c7eca39cd3d2874f28bb6ff48607b8cae8a8f8b3b024f0329",
+          "bytes": 983
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "86aa639895f6bb9852c7a354b9ba8f3cd0143adcc050b4bf4a69f23915a5c7fd",
+          "bytes": 253
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "37cb1fbfe0e63884a57b404ed687de8bc5a15892286269113c590fab2e9b43c6",
+          "bytes": 4074
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "7a6d3407b87e9e32de54948912da67b8c0c3dc3949c6e288a7cd15f4917ced48",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "678e52ddc3808748d35144b3d2d02479df64d0610fc6039bf427f2131c9a8fb8",
+          "bytes": 1225
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "374d57be8783626f310a19cb1fdea9b1844bc25e740de26d6ad398e6fe4808b6",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "3ab814ef404110cdd1d7e59dbb2c3491dad84a7162ca3fa3c448c575a40b1846",
+          "bytes": 540
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "6d7d28bf97476944317f5de5f739e9539dd46929574c63a9a62c36ba8641a986",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "98728142d9e211c80dac221e4b562c52b6bc45f3918b9d35920621fd97fb0e0c",
+          "bytes": 525
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "8b6c0739eb7a35dd8152fd3b01c8ad73dfe6dfe4bab628a3c52d379a370fc717",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "48544f2c6fcccd9aa57e5b5eae96d34e636bc71c727087d79f9469e348c1bb4d",
+          "bytes": 472
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "424e71e18a8f7c93908258c2d4879b98b45e7f174af4409016561e1b7e949f56",
+          "bytes": 254
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "df951ed31cc604a9e26d7eeea3fe35ddf5f5e2c9420b9bd5fe580be05fe5cae5",
+          "bytes": 524
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "c326220b64193b75dd2bce4ed49ade6daf6310d2f204f772e3ad5e851c7cf2e7",
+          "bytes": 254
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "751386b7d83d8756a933e12b78ec4cdac0c05af0a1a2caf69c79f9b41485fd62",
+          "bytes": 358
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "6428c66620308f9de5c8de9d722f99626f276220b2294a3c493cd3c6a686ca75",
+          "bytes": 226
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle2.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "037a74df9f0e56a083ccdcfd09887d40bb958470ac93fddae003da4cf50c8755",
+          "bytes": 227
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle3.material.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "425006e96120cc91e7a570615addc1a781ff5581420b4319a8000df11715f6b8",
+          "bytes": 227
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/shock_wave.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "5203f6042f38d63b815f9e5c53d860721115a0f53273ac5c667b469336c2f753",
+          "bytes": 1056
+        },
+        {
+          "source": "lobecorp/textures/particle/the_queen_of_hatred/treat.png",
+          "entry": "",
+          "kind": "BINARY",
+          "sha256": "e09e728bb367ddc7319c3916fe35a3fad06a85af2fffa3a23006c9dc8aa78eb0",
+          "bytes": 423
+        },
+        {
+          "source": "minecraft/atlases/particles.json",
+          "entry": "",
+          "kind": "JSON",
+          "sha256": "1cbdc5d29cd86b65dd69f87aac306f7c65b320cde890eeb4065a04411d65b1e6",
+          "bytes": 152
+        }
+      ]
+    },
+    {
+      "root": "source_packs",
+      "directory": "src/main/resources/fxpacks",
+      "entries": [
+        {
+          "source": "laser.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "000b3dcfc3938bd3798ca450192784184668d1312f91d69f366173589cabf4cd",
+          "bytes": 73560
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser.fx",
+          "kind": "FX",
+          "sha256": "5de620c08b06d9509d3193f2990a76bb639527bcdb3c0ce90a195da69b8f39ae",
+          "bytes": 33493
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "laser.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "34009f7149b45870974dae4e8e24261702cca2ac478bbde7b148dde2768e90c6",
+          "bytes": 243284
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fx",
+          "kind": "FX",
+          "sha256": "8fcfd23e01258b8c2d9cacc8a3efae77f793482a35408d467740bc7734952769",
+          "bytes": 4368
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle.fx",
+          "kind": "FX",
+          "sha256": "df0809e7ef564bf1e0e724047cb1f5e061f8d5ca44af918310c8a73044fc8077",
+          "bytes": 3012
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.png",
+          "kind": "BINARY",
+          "sha256": "df951ed31cc604a9e26d7eeea3fe35ddf5f5e2c9420b9bd5fe580be05fe5cae5",
+          "bytes": 524
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/39648f50cdf9371.material.nbt",
+          "kind": "NBT",
+          "sha256": "48e15cf4d106e8a4026ee04b4c147f11114e6143966e884f4f3b10a68b02bee7",
+          "bytes": 282
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.png",
+          "kind": "BINARY",
+          "sha256": "751386b7d83d8756a933e12b78ec4cdac0c05af0a1a2caf69c79f9b41485fd62",
+          "bytes": 358
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/c1d51378419a6f19.material.nbt",
+          "kind": "NBT",
+          "sha256": "87539bf585c6affa41c2fbfb2fa07a3c9eb47afc1334548bf748d771a3f8c3bf",
+          "bytes": 282
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle2.fx",
+          "kind": "FX",
+          "sha256": "3d100797cf9725b6598766d095b8968195743d3dcf12e5ce6aae0c815fe0b32e",
+          "bytes": 2725
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.png",
+          "kind": "BINARY",
+          "sha256": "6117193e1b66839c7eca39cd3d2874f28bb6ff48607b8cae8a8f8b3b024f0329",
+          "bytes": 983
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/a754c693c0ab3714.material.nbt",
+          "kind": "NBT",
+          "sha256": "8789d2df075b974e2f6fc6beb0a9bf6949fb45db9aa86cbddb0703a471d678d5",
+          "bytes": 281
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle3.fx",
+          "kind": "FX",
+          "sha256": "b15bb378e85e7b5965ce476c612280f48a66847e0c7fc95db933373f348081cf",
+          "bytes": 3340
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.png",
+          "kind": "BINARY",
+          "sha256": "678e52ddc3808748d35144b3d2d02479df64d0610fc6039bf427f2131c9a8fb8",
+          "bytes": 1225
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/338723adb2b56b47.material.nbt",
+          "kind": "NBT",
+          "sha256": "b508b4e444d827afdd654f3170cac6c3d12f3f822f8801859b7dd59cdfb6713e",
+          "bytes": 283
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.png",
+          "kind": "BINARY",
+          "sha256": "3ab814ef404110cdd1d7e59dbb2c3491dad84a7162ca3fa3c448c575a40b1846",
+          "bytes": 540
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/3543c6de61bd5058.material.nbt",
+          "kind": "NBT",
+          "sha256": "bdeff41b04c12ed6052b5e214a1c8531bf2e0e2c2f700550efd03b2e20eff8da",
+          "bytes": 283
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.png",
+          "kind": "BINARY",
+          "sha256": "98728142d9e211c80dac221e4b562c52b6bc45f3918b9d35920621fd97fb0e0c",
+          "bytes": 525
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/6bf69a6d1b6609b5.material.nbt",
+          "kind": "NBT",
+          "sha256": "14e0618b22951749a1ebc02682dae94cd12fbc1cf483117a442842f7457e3927",
+          "bytes": 283
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.png",
+          "kind": "BINARY",
+          "sha256": "48544f2c6fcccd9aa57e5b5eae96d34e636bc71c727087d79f9469e348c1bb4d",
+          "bytes": 472
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/79cd918a9f473c6e.material.nbt",
+          "kind": "NBT",
+          "sha256": "af3f65f271ab98ca47541a9e575f039597d71806ddfdb37fc3eff9258f2a8d29",
+          "bytes": 283
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/accumulate_light_ball.fx",
+          "kind": "FX",
+          "sha256": "f5dff158bfe0f3dba7ee2ef1ca6b1d0e2c42168ab4d80e0629d1e4436b21d355",
+          "bytes": 2530
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.png",
+          "kind": "BINARY",
+          "sha256": "60351b4eefd06f8eada4c04b8b0aa708c7d4ca440bd24c13fce444e83b38324b",
+          "bytes": 1881
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/7ddb58cb575e1cbb.material.nbt",
+          "kind": "NBT",
+          "sha256": "77cac2907fc487d3645ce481001eff2a2fb9e354fc15064a2f4439fd189accdd",
+          "bytes": 284
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/accumulate_particle.fx",
+          "kind": "FX",
+          "sha256": "7d1a21cfac33f96909bf2cd31d156103466b8b4dba814cf3336e3648c5c7a88d",
+          "bytes": 2787
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/light_ball.fx",
+          "kind": "FX",
+          "sha256": "1ba3546c75a68fcd7817807b5dc8da2377d9bfbc0d8200d2582e28d1aa9f068b",
+          "bytes": 88870
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser.fx",
+          "kind": "FX",
+          "sha256": "5de620c08b06d9509d3193f2990a76bb639527bcdb3c0ce90a195da69b8f39ae",
+          "bytes": 33493
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "laser_spell.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "b7d97d7d1807f5c08eb176b3d424e637d0ae65a7c9b5efe12c12583f6e4df20d",
+          "bytes": 137793
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/light_ball.fx",
+          "kind": "FX",
+          "sha256": "1ba3546c75a68fcd7817807b5dc8da2377d9bfbc0d8200d2582e28d1aa9f068b",
+          "bytes": 88870
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "light_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47.mfxpack",
+          "entry": "",
+          "kind": "MODEL_PACK",
+          "sha256": "9fb5e635621e02863e5c796a9a2b9ea26c0e0d3a09912e76ff23107717a9e5fd",
+          "bytes": 2723
+        },
+        {
+          "source": "mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47.mfxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47.mfxpack",
+          "entry": "assets/mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47/fx/probe_a.mfx",
+          "kind": "MODEL_FX",
+          "sha256": "da2063cb4f7e66593ba42ccabd8ae8e079380b6bfa4d4c0b8a6dc5ea1c646f4d",
+          "bytes": 1390
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "17fe3ce3313151415a64adef91707021102c2bc8e1bc67bf9307e49e1ed34be8",
+          "bytes": 208959
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/queen_star_beam.fx",
+          "kind": "FX",
+          "sha256": "9881daf23057e7053853f03be413099af6a6a66f1e5df140c630d0b1fcc75e33",
+          "bytes": 126449
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e6e8cae5fcc5c809.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "fc2bfed561fe55421b3ecd206191565128e4238d374f1870388b40eed07ad86f",
+          "bytes": 17621
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e35b7a8daaefbe6b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32124304fc76cbf1dfe7172d0402b085bdbce9fad11914a778fdcedae31394f9",
+          "bytes": 17955
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/1c8e07434ca12f60.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "755e1a6235fe933ff152112ac2c20d5f74cb371912cc7492cad4da1271008b1d",
+          "bytes": 16557
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/14a8a08bf9bb56a9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "6a182f6ec74208319f0cff8a4aacea05b516544d3b57ee71dc82798fe14f896c",
+          "bytes": 16383
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b5f50c4eaac8f85e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "6df093747aa8e4f0a2fa8e5803486df4a30a929e50ff1b5a86a7832055341439",
+          "bytes": 16382
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5baceb6bcd60e9e1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "02a0c456dfe432f75caf177fc8a65ea40c5b7f8f20290678ff4c0a3263526a64",
+          "bytes": 16498
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/be07da15b7feda34.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9a7a71e83203bf993c13fc62ba0a83d2badf2b72b00aa9444bb9326eaac2588c",
+          "bytes": 18103
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/ebdce288adac1d27.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "a5c6a91eff1f7f242a2a8e29eaad066b8a131412721c1025eefa7f30f9326016",
+          "bytes": 18540
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/7a41474bc904a037.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b84da2fb52cc18279c14fae831a260eee658ed852e3b51fae64e886261179ec0",
+          "bytes": 17107
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/59a62041ab37b2a4.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "3c3aca8429e494d81eb1d50a5d6038379d4de4a516cb13bacd03586c6198d484",
+          "bytes": 16892
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/1a1dca1e6113b523.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "1ca2b837a04a858b85aefca0c39fb592cdbd4822387fc6ffb67032b4d33d8c7a",
+          "bytes": 16705
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/17318856ce62aa13.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "1dd18d25cb27156ed970192f74f5100af3a65e6b7446ddefc2da3ab05253606e",
+          "bytes": 16529
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/53d0093499c2ba8.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "23cce0b7b867eb38e6457e054b1424d0b6de1eeb21c26e076be41f715815f2d1",
+          "bytes": 16837
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f99fefb9944d5c1f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7e8b53e8034a8a1d00036608320208185d77831ec81e89a837cc2a45359d7e89",
+          "bytes": 17222
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/734c6c0ad1ce00af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "121eef34da80d197fad9e28b1ad66137a75371aabf44e90434c634aaf9a33f90",
+          "bytes": 16776
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/7c4e4fee510fd85e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "98eec991644ddc3eb0b56e8f6ecf28d67ba7e0ca05c9900284e064c5876c5fd7",
+          "bytes": 18071
+        },
+        {
+          "source": "queen_star_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6b8b5561b92a837d.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9f220d02aaca5dc54e186bbdc7dca0a4474fbcb609c299d6014ba147c5e3a6d4",
+          "bytes": 16917
+        },
+        {
+          "source": "reference_star_trail.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "050d9650073d8b0590fd1eb20806b85b75cf41b90f9c1de3d2c736b54d4a555c",
+          "bytes": 3590
+        },
+        {
+          "source": "reference_star_trail.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "reference_star_trail.fxpack",
+          "entry": "assets/lobecorp/fx/reference_star_trail.fx",
+          "kind": "FX",
+          "sha256": "cb4b21efded5f3d2aa5615f723cd149d1406ea9c74857fa8fd2de9195c3a5e1d",
+          "bytes": 2545
+        },
+        {
+          "source": "reference_variable_laser.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "2f8d2c4ee9ba4446823ac6e49580ed9329978c68c79df528af5039ca9e2b7a37",
+          "bytes": 3118
+        },
+        {
+          "source": "reference_variable_laser.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "reference_variable_laser.fxpack",
+          "entry": "assets/lobecorp/fx/reference_variable_laser.fx",
+          "kind": "FX",
+          "sha256": "beb609822e41420bb7224601fa56d2f5d41c2b36df5b427ef9901736a6a50dba",
+          "bytes": 2065
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "9bfbeb8cf71a86b00d0819f8ffc2b136e5ef79572b1d275e6241ec14d365e402",
+          "bytes": 154017
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fx",
+          "kind": "FX",
+          "sha256": "1a268bdca445c192986c394564527773742907dc4b718b30f701905c50a68573",
+          "bytes": 3077
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle.fx",
+          "kind": "FX",
+          "sha256": "df0809e7ef564bf1e0e724047cb1f5e061f8d5ca44af918310c8a73044fc8077",
+          "bytes": 3012
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.png",
+          "kind": "BINARY",
+          "sha256": "df951ed31cc604a9e26d7eeea3fe35ddf5f5e2c9420b9bd5fe580be05fe5cae5",
+          "bytes": 524
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/39648f50cdf9371.material.nbt",
+          "kind": "NBT",
+          "sha256": "48e15cf4d106e8a4026ee04b4c147f11114e6143966e884f4f3b10a68b02bee7",
+          "bytes": 282
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.png",
+          "kind": "BINARY",
+          "sha256": "751386b7d83d8756a933e12b78ec4cdac0c05af0a1a2caf69c79f9b41485fd62",
+          "bytes": 358
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/c1d51378419a6f19.material.nbt",
+          "kind": "NBT",
+          "sha256": "87539bf585c6affa41c2fbfb2fa07a3c9eb47afc1334548bf748d771a3f8c3bf",
+          "bytes": 282
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.png",
+          "kind": "BINARY",
+          "sha256": "6117193e1b66839c7eca39cd3d2874f28bb6ff48607b8cae8a8f8b3b024f0329",
+          "bytes": 983
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/a754c693c0ab3714.material.nbt",
+          "kind": "NBT",
+          "sha256": "8789d2df075b974e2f6fc6beb0a9bf6949fb45db9aa86cbddb0703a471d678d5",
+          "bytes": 281
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.png",
+          "kind": "BINARY",
+          "sha256": "678e52ddc3808748d35144b3d2d02479df64d0610fc6039bf427f2131c9a8fb8",
+          "bytes": 1225
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/338723adb2b56b47.material.nbt",
+          "kind": "NBT",
+          "sha256": "b508b4e444d827afdd654f3170cac6c3d12f3f822f8801859b7dd59cdfb6713e",
+          "bytes": 283
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.png",
+          "kind": "BINARY",
+          "sha256": "3ab814ef404110cdd1d7e59dbb2c3491dad84a7162ca3fa3c448c575a40b1846",
+          "bytes": 540
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/3543c6de61bd5058.material.nbt",
+          "kind": "NBT",
+          "sha256": "bdeff41b04c12ed6052b5e214a1c8531bf2e0e2c2f700550efd03b2e20eff8da",
+          "bytes": 283
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.png",
+          "kind": "BINARY",
+          "sha256": "98728142d9e211c80dac221e4b562c52b6bc45f3918b9d35920621fd97fb0e0c",
+          "bytes": 525
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/6bf69a6d1b6609b5.material.nbt",
+          "kind": "NBT",
+          "sha256": "14e0618b22951749a1ebc02682dae94cd12fbc1cf483117a442842f7457e3927",
+          "bytes": 283
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.png",
+          "kind": "BINARY",
+          "sha256": "48544f2c6fcccd9aa57e5b5eae96d34e636bc71c727087d79f9469e348c1bb4d",
+          "bytes": 472
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/79cd918a9f473c6e.material.nbt",
+          "kind": "NBT",
+          "sha256": "af3f65f271ab98ca47541a9e575f039597d71806ddfdb37fc3eff9258f2a8d29",
+          "bytes": 283
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.png",
+          "kind": "BINARY",
+          "sha256": "60351b4eefd06f8eada4c04b8b0aa708c7d4ca440bd24c13fce444e83b38324b",
+          "bytes": 1881
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/7ddb58cb575e1cbb.material.nbt",
+          "kind": "NBT",
+          "sha256": "77cac2907fc487d3645ce481001eff2a2fb9e354fc15064a2f4439fd189accdd",
+          "bytes": 284
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fx",
+          "kind": "FX",
+          "sha256": "824b9c604f186825766fc09b47269eac6cff6f323f6df1cd005a6513bb64efe2",
+          "bytes": 25892
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fx",
+          "kind": "FX",
+          "sha256": "92f11a1daf9e78fd27d8818b2c7b6f162fc2d04f1786ca8e8921207802c4c172",
+          "bytes": 19882
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "star_beam_spell.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "9a67e082c433e6cd95be32c875d055d5b70c9014b41f7cab2cdd08a8272a5ea9",
+          "bytes": 50820
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fx",
+          "kind": "FX",
+          "sha256": "824b9c604f186825766fc09b47269eac6cff6f323f6df1cd005a6513bb64efe2",
+          "bytes": 25892
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "star_beam_spell_ball.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "82a0988d2fb372ffeffa2018e5f6504a83dfa1c7a4276d504ab117778fac2033",
+          "bytes": 48211
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fx",
+          "kind": "FX",
+          "sha256": "92f11a1daf9e78fd27d8818b2c7b6f162fc2d04f1786ca8e8921207802c4c172",
+          "bytes": 19882
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "star_beam_spell_beam.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        }
+      ]
+    },
+    {
+      "root": "development_assets",
+      "directory": "run/client/ldlib2/assets",
+      "entries": []
+    },
+    {
+      "root": "development_packs",
+      "directory": "run/client/photon/fxpacks",
+      "entries": []
+    },
+    {
+      "root": "pack_cache",
+      "directory": "run/client/photon/fxpack_cache",
+      "entries": [
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "000b3dcfc3938bd3798ca450192784184668d1312f91d69f366173589cabf4cd",
+          "bytes": 73560
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser.fx",
+          "kind": "FX",
+          "sha256": "5de620c08b06d9509d3193f2990a76bb639527bcdb3c0ce90a195da69b8f39ae",
+          "bytes": 33493
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "lobecorp-laser-dc3747f3342e3754.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "34009f7149b45870974dae4e8e24261702cca2ac478bbde7b148dde2768e90c6",
+          "bytes": 243284
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fx",
+          "kind": "FX",
+          "sha256": "8fcfd23e01258b8c2d9cacc8a3efae77f793482a35408d467740bc7734952769",
+          "bytes": 4368
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle.fx",
+          "kind": "FX",
+          "sha256": "df0809e7ef564bf1e0e724047cb1f5e061f8d5ca44af918310c8a73044fc8077",
+          "bytes": 3012
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.png",
+          "kind": "BINARY",
+          "sha256": "df951ed31cc604a9e26d7eeea3fe35ddf5f5e2c9420b9bd5fe580be05fe5cae5",
+          "bytes": 524
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/39648f50cdf9371.material.nbt",
+          "kind": "NBT",
+          "sha256": "48e15cf4d106e8a4026ee04b4c147f11114e6143966e884f4f3b10a68b02bee7",
+          "bytes": 282
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.png",
+          "kind": "BINARY",
+          "sha256": "751386b7d83d8756a933e12b78ec4cdac0c05af0a1a2caf69c79f9b41485fd62",
+          "bytes": 358
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/c1d51378419a6f19.material.nbt",
+          "kind": "NBT",
+          "sha256": "87539bf585c6affa41c2fbfb2fa07a3c9eb47afc1334548bf748d771a3f8c3bf",
+          "bytes": 282
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle2.fx",
+          "kind": "FX",
+          "sha256": "3d100797cf9725b6598766d095b8968195743d3dcf12e5ce6aae0c815fe0b32e",
+          "bytes": 2725
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.png",
+          "kind": "BINARY",
+          "sha256": "6117193e1b66839c7eca39cd3d2874f28bb6ff48607b8cae8a8f8b3b024f0329",
+          "bytes": 983
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/a754c693c0ab3714.material.nbt",
+          "kind": "NBT",
+          "sha256": "8789d2df075b974e2f6fc6beb0a9bf6949fb45db9aa86cbddb0703a471d678d5",
+          "bytes": 281
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle3.fx",
+          "kind": "FX",
+          "sha256": "b15bb378e85e7b5965ce476c612280f48a66847e0c7fc95db933373f348081cf",
+          "bytes": 3340
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.png",
+          "kind": "BINARY",
+          "sha256": "678e52ddc3808748d35144b3d2d02479df64d0610fc6039bf427f2131c9a8fb8",
+          "bytes": 1225
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/338723adb2b56b47.material.nbt",
+          "kind": "NBT",
+          "sha256": "b508b4e444d827afdd654f3170cac6c3d12f3f822f8801859b7dd59cdfb6713e",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.png",
+          "kind": "BINARY",
+          "sha256": "3ab814ef404110cdd1d7e59dbb2c3491dad84a7162ca3fa3c448c575a40b1846",
+          "bytes": 540
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/3543c6de61bd5058.material.nbt",
+          "kind": "NBT",
+          "sha256": "bdeff41b04c12ed6052b5e214a1c8531bf2e0e2c2f700550efd03b2e20eff8da",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.png",
+          "kind": "BINARY",
+          "sha256": "98728142d9e211c80dac221e4b562c52b6bc45f3918b9d35920621fd97fb0e0c",
+          "bytes": 525
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/6bf69a6d1b6609b5.material.nbt",
+          "kind": "NBT",
+          "sha256": "14e0618b22951749a1ebc02682dae94cd12fbc1cf483117a442842f7457e3927",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.png",
+          "kind": "BINARY",
+          "sha256": "48544f2c6fcccd9aa57e5b5eae96d34e636bc71c727087d79f9469e348c1bb4d",
+          "bytes": 472
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/79cd918a9f473c6e.material.nbt",
+          "kind": "NBT",
+          "sha256": "af3f65f271ab98ca47541a9e575f039597d71806ddfdb37fc3eff9258f2a8d29",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/accumulate_light_ball.fx",
+          "kind": "FX",
+          "sha256": "f5dff158bfe0f3dba7ee2ef1ca6b1d0e2c42168ab4d80e0629d1e4436b21d355",
+          "bytes": 2530
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.png",
+          "kind": "BINARY",
+          "sha256": "60351b4eefd06f8eada4c04b8b0aa708c7d4ca440bd24c13fce444e83b38324b",
+          "bytes": 1881
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/7ddb58cb575e1cbb.material.nbt",
+          "kind": "NBT",
+          "sha256": "77cac2907fc487d3645ce481001eff2a2fb9e354fc15064a2f4439fd189accdd",
+          "bytes": 284
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/accumulate_particle.fx",
+          "kind": "FX",
+          "sha256": "7d1a21cfac33f96909bf2cd31d156103466b8b4dba814cf3336e3648c5c7a88d",
+          "bytes": 2787
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/light_ball.fx",
+          "kind": "FX",
+          "sha256": "1ba3546c75a68fcd7817807b5dc8da2377d9bfbc0d8200d2582e28d1aa9f068b",
+          "bytes": 88870
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/laser.fx",
+          "kind": "FX",
+          "sha256": "5de620c08b06d9509d3193f2990a76bb639527bcdb3c0ce90a195da69b8f39ae",
+          "bytes": 33493
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "lobecorp-laser_spell-f5d1865c00e888aa.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "b7d97d7d1807f5c08eb176b3d424e637d0ae65a7c9b5efe12c12583f6e4df20d",
+          "bytes": 137793
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/light_ball.fx",
+          "kind": "FX",
+          "sha256": "1ba3546c75a68fcd7817807b5dc8da2377d9bfbc0d8200d2582e28d1aa9f068b",
+          "bytes": 88870
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "lobecorp-light_ball-ed3725dfa3901763.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "lobecorp-mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47-f2c679e28445a0dc.mfxpack",
+          "entry": "",
+          "kind": "MODEL_PACK",
+          "sha256": "9fb5e635621e02863e5c796a9a2b9ea26c0e0d3a09912e76ff23107717a9e5fd",
+          "bytes": 2723
+        },
+        {
+          "source": "lobecorp-mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47-f2c679e28445a0dc.mfxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47-f2c679e28445a0dc.mfxpack",
+          "entry": "assets/mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47/fx/probe_a.mfx",
+          "kind": "MODEL_FX",
+          "sha256": "da2063cb4f7e66593ba42ccabd8ae8e079380b6bfa4d4c0b8a6dc5ea1c646f4d",
+          "bytes": 1390
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "17fe3ce3313151415a64adef91707021102c2bc8e1bc67bf9307e49e1ed34be8",
+          "bytes": 208959
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/queen_star_beam.fx",
+          "kind": "FX",
+          "sha256": "9881daf23057e7053853f03be413099af6a6a66f1e5df140c630d0b1fcc75e33",
+          "bytes": 126449
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e6e8cae5fcc5c809.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "fc2bfed561fe55421b3ecd206191565128e4238d374f1870388b40eed07ad86f",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e35b7a8daaefbe6b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32124304fc76cbf1dfe7172d0402b085bdbce9fad11914a778fdcedae31394f9",
+          "bytes": 17955
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/1c8e07434ca12f60.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "755e1a6235fe933ff152112ac2c20d5f74cb371912cc7492cad4da1271008b1d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/14a8a08bf9bb56a9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "6a182f6ec74208319f0cff8a4aacea05b516544d3b57ee71dc82798fe14f896c",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b5f50c4eaac8f85e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "6df093747aa8e4f0a2fa8e5803486df4a30a929e50ff1b5a86a7832055341439",
+          "bytes": 16382
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5baceb6bcd60e9e1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "02a0c456dfe432f75caf177fc8a65ea40c5b7f8f20290678ff4c0a3263526a64",
+          "bytes": 16498
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/be07da15b7feda34.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9a7a71e83203bf993c13fc62ba0a83d2badf2b72b00aa9444bb9326eaac2588c",
+          "bytes": 18103
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/ebdce288adac1d27.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "a5c6a91eff1f7f242a2a8e29eaad066b8a131412721c1025eefa7f30f9326016",
+          "bytes": 18540
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/7a41474bc904a037.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b84da2fb52cc18279c14fae831a260eee658ed852e3b51fae64e886261179ec0",
+          "bytes": 17107
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/59a62041ab37b2a4.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "3c3aca8429e494d81eb1d50a5d6038379d4de4a516cb13bacd03586c6198d484",
+          "bytes": 16892
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/1a1dca1e6113b523.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "1ca2b837a04a858b85aefca0c39fb592cdbd4822387fc6ffb67032b4d33d8c7a",
+          "bytes": 16705
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/17318856ce62aa13.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "1dd18d25cb27156ed970192f74f5100af3a65e6b7446ddefc2da3ab05253606e",
+          "bytes": 16529
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/53d0093499c2ba8.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "23cce0b7b867eb38e6457e054b1424d0b6de1eeb21c26e076be41f715815f2d1",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f99fefb9944d5c1f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7e8b53e8034a8a1d00036608320208185d77831ec81e89a837cc2a45359d7e89",
+          "bytes": 17222
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/734c6c0ad1ce00af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "121eef34da80d197fad9e28b1ad66137a75371aabf44e90434c634aaf9a33f90",
+          "bytes": 16776
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/7c4e4fee510fd85e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "98eec991644ddc3eb0b56e8f6ecf28d67ba7e0ca05c9900284e064c5876c5fd7",
+          "bytes": 18071
+        },
+        {
+          "source": "lobecorp-queen_star_beam-cf860c2433000dc5.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6b8b5561b92a837d.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9f220d02aaca5dc54e186bbdc7dca0a4474fbcb609c299d6014ba147c5e3a6d4",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp-reference_star_trail-d1819cccd04045af.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "050d9650073d8b0590fd1eb20806b85b75cf41b90f9c1de3d2c736b54d4a555c",
+          "bytes": 3590
+        },
+        {
+          "source": "lobecorp-reference_star_trail-d1819cccd04045af.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-reference_star_trail-d1819cccd04045af.fxpack",
+          "entry": "assets/lobecorp/fx/reference_star_trail.fx",
+          "kind": "FX",
+          "sha256": "cb4b21efded5f3d2aa5615f723cd149d1406ea9c74857fa8fd2de9195c3a5e1d",
+          "bytes": 2545
+        },
+        {
+          "source": "lobecorp-reference_variable_laser-5800ab0483613920.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "2f8d2c4ee9ba4446823ac6e49580ed9329978c68c79df528af5039ca9e2b7a37",
+          "bytes": 3118
+        },
+        {
+          "source": "lobecorp-reference_variable_laser-5800ab0483613920.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-reference_variable_laser-5800ab0483613920.fxpack",
+          "entry": "assets/lobecorp/fx/reference_variable_laser.fx",
+          "kind": "FX",
+          "sha256": "beb609822e41420bb7224601fa56d2f5d41c2b36df5b427ef9901736a6a50dba",
+          "bytes": 2065
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "9bfbeb8cf71a86b00d0819f8ffc2b136e5ef79572b1d275e6241ec14d365e402",
+          "bytes": 154017
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fx",
+          "kind": "FX",
+          "sha256": "1a268bdca445c192986c394564527773742907dc4b718b30f701905c50a68573",
+          "bytes": 3077
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/magic_circle.fx",
+          "kind": "FX",
+          "sha256": "df0809e7ef564bf1e0e724047cb1f5e061f8d5ca44af918310c8a73044fc8077",
+          "bytes": 3012
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_1.png",
+          "kind": "BINARY",
+          "sha256": "df951ed31cc604a9e26d7eeea3fe35ddf5f5e2c9420b9bd5fe580be05fe5cae5",
+          "bytes": 524
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/39648f50cdf9371.material.nbt",
+          "kind": "NBT",
+          "sha256": "48e15cf4d106e8a4026ee04b4c147f11114e6143966e884f4f3b10a68b02bee7",
+          "bytes": 282
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle_2.png",
+          "kind": "BINARY",
+          "sha256": "751386b7d83d8756a933e12b78ec4cdac0c05af0a1a2caf69c79f9b41485fd62",
+          "bytes": 358
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/c1d51378419a6f19.material.nbt",
+          "kind": "NBT",
+          "sha256": "87539bf585c6affa41c2fbfb2fa07a3c9eb47afc1334548bf748d771a3f8c3bf",
+          "bytes": 282
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle2.png",
+          "kind": "BINARY",
+          "sha256": "6117193e1b66839c7eca39cd3d2874f28bb6ff48607b8cae8a8f8b3b024f0329",
+          "bytes": 983
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/a754c693c0ab3714.material.nbt",
+          "kind": "NBT",
+          "sha256": "8789d2df075b974e2f6fc6beb0a9bf6949fb45db9aa86cbddb0703a471d678d5",
+          "bytes": 281
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_1.png",
+          "kind": "BINARY",
+          "sha256": "678e52ddc3808748d35144b3d2d02479df64d0610fc6039bf427f2131c9a8fb8",
+          "bytes": 1225
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/338723adb2b56b47.material.nbt",
+          "kind": "NBT",
+          "sha256": "b508b4e444d827afdd654f3170cac6c3d12f3f822f8801859b7dd59cdfb6713e",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_2.png",
+          "kind": "BINARY",
+          "sha256": "3ab814ef404110cdd1d7e59dbb2c3491dad84a7162ca3fa3c448c575a40b1846",
+          "bytes": 540
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/3543c6de61bd5058.material.nbt",
+          "kind": "NBT",
+          "sha256": "bdeff41b04c12ed6052b5e214a1c8531bf2e0e2c2f700550efd03b2e20eff8da",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_3.png",
+          "kind": "BINARY",
+          "sha256": "98728142d9e211c80dac221e4b562c52b6bc45f3918b9d35920621fd97fb0e0c",
+          "bytes": 525
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/6bf69a6d1b6609b5.material.nbt",
+          "kind": "NBT",
+          "sha256": "14e0618b22951749a1ebc02682dae94cd12fbc1cf483117a442842f7457e3927",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/magic_circle3_4.png",
+          "kind": "BINARY",
+          "sha256": "48544f2c6fcccd9aa57e5b5eae96d34e636bc71c727087d79f9469e348c1bb4d",
+          "bytes": 472
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/79cd918a9f473c6e.material.nbt",
+          "kind": "NBT",
+          "sha256": "af3f65f271ab98ca47541a9e575f039597d71806ddfdb37fc3eff9258f2a8d29",
+          "bytes": 283
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/accumulate_power.png",
+          "kind": "BINARY",
+          "sha256": "60351b4eefd06f8eada4c04b8b0aa708c7d4ca440bd24c13fce444e83b38324b",
+          "bytes": 1881
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/7ddb58cb575e1cbb.material.nbt",
+          "kind": "NBT",
+          "sha256": "77cac2907fc487d3645ce481001eff2a2fb9e354fc15064a2f4439fd189accdd",
+          "bytes": 284
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/54d0f1b1414baed1.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "893c7d7758a972b5374dcb3fb2330013115c2a25b8d740d2449e6813e42db5b0",
+          "bytes": 17948
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/3721deb4087690d0.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "483f90a7534b791785291358321a30d2f798e91c9466d5ef790c5953d0177725",
+          "bytes": 16495
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f6734f3f15cca79a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "32b5b899351f771e6f97ab85fe59814f92f1876bd8f762eadfb70b2b272e8834",
+          "bytes": 18096
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/e049c8ee837f05af.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7506286fbbefc9e1e75ed04170e717a906689a8f420fabc9e3e86642d954b57c",
+          "bytes": 17106
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/cac34aae82dff2e5.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "4c4cf6b07689c411946dfd84172ac548851eeeecd62978543a2c6bcf57f4bd33",
+          "bytes": 16526
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/61ebd699f05e6e4f.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "736f333378e81aba6e896dc7e727d38c6fef2067511d6c117c8306d65ccbaa77",
+          "bytes": 16917
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/96c422a66a0bf8e2.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "75ec2fa2dfd92c70b3cf04684bb101b23f85a4aaf844614b51c3656e2a2576a2",
+          "bytes": 16766
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle.png",
+          "kind": "BINARY",
+          "sha256": "03651b57402bb72511700a76f4c5e81a5bc8aa1eccc16a92f74d2e3424b6e22d",
+          "bytes": 364
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/4295d16c115f26ef.material.nbt",
+          "kind": "NBT",
+          "sha256": "e197016354500a3c889d9b892d749398fad7fc5a4440a1592d18d87c46d896cf",
+          "bytes": 254
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle2.png",
+          "kind": "BINARY",
+          "sha256": "486b7ebf8583871f41ea0c06868df88f142276450131249fc341a4ff6c68ad63",
+          "bytes": 196
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/afdb12060c2f4578.material.nbt",
+          "kind": "NBT",
+          "sha256": "3188626ba6858e5f241891c8cd6beeb17febfe69299495ed4fb52495cfdba6e6",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/particle3.png",
+          "kind": "BINARY",
+          "sha256": "61adb95490d63c16815c1f940f8ab28bbde3646f9aa2a46f7ae68be17924ec9f",
+          "bytes": 149
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/4a50c8aeca8702d5.material.nbt",
+          "kind": "NBT",
+          "sha256": "d005000e4ae131aad24ceda3322ef5ae17cec56bc041a7d2e09fe4b136463fa4",
+          "bytes": 255
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fx",
+          "kind": "FX",
+          "sha256": "824b9c604f186825766fc09b47269eac6cff6f323f6df1cd005a6513bb64efe2",
+          "bytes": 25892
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fx",
+          "kind": "FX",
+          "sha256": "92f11a1daf9e78fd27d8818b2c7b6f162fc2d04f1786ca8e8921207802c4c172",
+          "bytes": 19882
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "lobecorp-star_beam_spell-d4dd68d624c86d87.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "9a67e082c433e6cd95be32c875d055d5b70c9014b41f7cab2cdd08a8272a5ea9",
+          "bytes": 50820
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fx",
+          "kind": "FX",
+          "sha256": "824b9c604f186825766fc09b47269eac6cff6f323f6df1cd005a6513bb64efe2",
+          "bytes": 25892
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/photon_fx/shader_graph/6e13060270cfd0ba.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d3d6d6d9fd827c369082ce41e04daef9a528721fe641bc2e900ff9b28456a65e",
+          "bytes": 17621
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d159951e79f92c6a.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "f6e4c3d935ca41f65b656d75d9f9810a36d9afaef907691e50e880f7346f1b7d",
+          "bytes": 16557
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/photon_fx/shader_graph/d97308b8e3bec985.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "25817da3097d65169936c5869460528e4535f83332d71133f56dc896f831b325",
+          "bytes": 16384
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/photon_fx/shader_graph/5eb5b9b525344e2e.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "b16497683cf9a0938934dfcd7c229df830d86c85b1405cf6f2a3c6827d5e7921",
+          "bytes": 16383
+        },
+        {
+          "source": "lobecorp-star_beam_spell_ball-49a3a883d9363fb3.fxpack",
+          "entry": "assets/photon_fx/shader_graph/826dd9bf68be5122.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "9c6b3083b20458a0ff14a76f814ae03ab9f3e3353bc757dbbd1d91c47fe45bfc",
+          "bytes": 16893
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "",
+          "kind": "FX_PACK",
+          "sha256": "82a0988d2fb372ffeffa2018e5f6504a83dfa1c7a4276d504ab117778fac2033",
+          "bytes": 48211
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "pack.mcmeta",
+          "kind": "JSON",
+          "sha256": "cf6cf66606e328ee54cdaeb6181cc9ec5ca7f0da98751aef5ee8d4e3718dadd3",
+          "bytes": 63
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fx",
+          "kind": "FX",
+          "sha256": "92f11a1daf9e78fd27d8818b2c7b6f162fc2d04f1786ca8e8921207802c4c172",
+          "bytes": 19882
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/shader_graph/f7a60f01febcd376.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "99fe1b8e9380ce48164bae4401a556cc0a67b899a4a1aea6a95b63a051f49b64",
+          "bytes": 16837
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/shader_graph/b71ecd450e0c6a41.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "7fadd7601a7b1af1d64b8fb7cb087956f4a95d6a33a11f737226c671708f6ad9",
+          "bytes": 17220
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/shader_graph/de20330a817d880b.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "d81cdd16d27ca7ae0b01cb501ab1b4b67d1a03fe426b932162745285677d1226",
+          "bytes": 16775
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/shader_graph/19e146c6e6f26508.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "28ce5d8aea7b0a0b31b37d92a2c2ebb0db90d8bcf981096715044719a3bde11d",
+          "bytes": 18070
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/shader_graph/db4e03c371c53cd9.shader_graph.nbt",
+          "kind": "NBT",
+          "sha256": "87f8d1e14ed8cfa75777406c02823c6388067256b3afb74c54bb84c8f4695a0a",
+          "bytes": 16538
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/lobecorp/textures/particle/the_queen_of_hatred/laser_tail.png",
+          "kind": "BINARY",
+          "sha256": "0c31441e2ad792e117c42cebe6df81be69846ecd496c1c9145a1d55a416f0ffa",
+          "bytes": 921
+        },
+        {
+          "source": "lobecorp-star_beam_spell_beam-baed9e503e31465e.fxpack",
+          "entry": "assets/photon_fx/material/c6ee09468d1ea60d.material.nbt",
+          "kind": "NBT",
+          "sha256": "6c5474828449bf3fd1c5b773cad35d2313c0507eb71782a049dfa44d5a9dd42c",
+          "bytes": 256
+        }
+      ]
+    },
+    {
+      "root": "editor_state",
+      "directory": "run/client/ldlib2/editor_layouts",
+      "entries": [
+        {
+          "source": "fx_project.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "e846c12fbcf247537e92a151c96e61a2f6348c85756e2f6b7441dc71d37a7c2e",
+          "bytes": 882
+        },
+        {
+          "source": "photon.lobecorp.model.project.type.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "64654d3332ef9c6e37080ffd396dbf8e8c710c2e71ea45d56bdb1421a7a3dba4",
+          "bytes": 912
+        },
+        {
+          "source": "project.xml.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "ba450d5e7f7faa46f3d55f82e24d1d51ee00d650210a969786fe47d8b34bb461",
+          "bytes": 832
+        },
+        {
+          "source": "projects.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "a31dc5f306e662f8bca1485f25a5ca7f9892ad9290570ce4cb7ee74466057017",
+          "bytes": 4702
+        },
+        {
+          "source": "resource_views.nbt",
+          "entry": "",
+          "kind": "NBT",
+          "sha256": "74dd975c44f36a321d9ef90251783f2081351849728dadf55fb6200ae4dc4402",
+          "bytes": 128
+        }
+      ]
+    }
+  ]
+}

@@ -18,18 +18,18 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.util.Set;
-import java.util.zip.ZipFile;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
-	private static final Set<String> REMOVED_TYPES = Set.of("lobecorp_animation_controller", "lobecorp_emitter_spawner",
-			"lobecorp_model_emitter", "lobecorp_child_animation", "lobecorp_animation_call", "lobecorp_model_animation");
 	private static final Set<String> MODEL_SUFFIXES = Set.of(".mfxproj", ".mfx", ".mfxpack");
 	public static final String REMOVED_DATA_KEY = "removed_runtime_data";
 	private static final int MAX_DEPTH = 128;
@@ -105,43 +105,36 @@ public class PhotonEditorProjectGuardUtil {
 			return false;
 		}
 
+		var kind = PhotonResourceDocument.Kind.of(name);
+
+		if (kind != PhotonResourceDocument.Kind.FX && kind != PhotonResourceDocument.Kind.FX_PROJECT
+				&& kind != PhotonResourceDocument.Kind.FX_PACK) {
+			return false;
+		}
+
 		try {
-			if (name.endsWith(".fxpack")) {
-				return containsPackExtensions(file);
-			}
-
-			if (name.endsWith(".fx")) {
-				try (var input = Files.newInputStream(file.toPath())) {
-					return containsTag(NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap()));
-				}
-			}
-
-			return name.endsWith(FXProject.TYPE.getSuffix()) && containsTag(NbtIo.read(file.toPath()));
+			return requiresAdapter(PhotonResourceReader.read(file.toPath()));
 		} catch (IOException failure) {
 			throw new IllegalArgumentException(message(), failure);
 		}
 	}
 
-	private static boolean containsPackExtensions(File file) throws IOException {
-		try (var pack = new ZipFile(file)) {
-			var entries = pack.entries();
-			while (entries.hasMoreElements()) {
-				var entry = entries.nextElement();
-				if (entry.isDirectory()) {
-					continue;
-				}
+	private static boolean requiresAdapter(PhotonResourceDocument document) {
+		if (document.kind() == PhotonResourceDocument.Kind.MODEL_FX
+				|| document.kind() == PhotonResourceDocument.Kind.MODEL_PROJECT
+				|| document.kind() == PhotonResourceDocument.Kind.MODEL_PACK) {
+			return true;
+		}
 
-				if (MODEL_SUFFIXES.stream().anyMatch(entry.getName()::endsWith)) {
-					return true;
-				}
+		if (document.kind() == PhotonResourceDocument.Kind.FX || document.kind() == PhotonResourceDocument.Kind.FX_PROJECT) {
+			if (containsTag(document.nbt())) {
+				return true;
+			}
+		}
 
-				if (entry.getName().endsWith(".fx")) {
-					try (var input = pack.getInputStream(entry)) {
-						if (containsTag(NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap()))) {
-							return true;
-						}
-					}
-				}
+		for (var entry : document.entries()) {
+			if (requiresAdapter(entry)) {
+				return true;
 			}
 		}
 
@@ -196,14 +189,12 @@ public class PhotonEditorProjectGuardUtil {
 
 		if (tag instanceof CompoundTag compound) {
 			var type = compound.getStringOr("type", "");
-			var separator = type.indexOf(':');
-			if (REMOVED_TYPES.contains(type) || separator >= 0 && REMOVED_TYPES.contains(type.substring(separator + 1))) {
+			if (PhotonResourceInspection.isLegacyType(type)) {
 				return true;
 			}
 
 			for (var entry : compound.entrySet()) {
-				if (entry.getKey().startsWith("lobecorp$") || entry.getKey().equals("lobecorpActivation")
-						|| entry.getKey().equals("lobecorp_animation_preview") || containsTag(entry.getValue(), depth + 1)) {
+				if (PhotonResourceInspection.isLegacyField(entry.getKey()) || containsTag(entry.getValue(), depth + 1)) {
 					return true;
 				}
 			}

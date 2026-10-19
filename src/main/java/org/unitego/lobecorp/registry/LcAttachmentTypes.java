@@ -20,6 +20,8 @@ import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectLevelData;
 import org.unitego.lobecorp.world.hitbox.HitboxLevelData;
 import org.unitego.lobecorp.particle.text.TextParticleLevelData;
+import org.unitego.lobecorp.world.entity.damage.LcResourceState;
+import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
 import java.util.Map;
 
@@ -27,6 +29,12 @@ import java.util.Map;
 public interface LcAttachmentTypes {
 	DeferredRegister<AttachmentType<?>> REGISTER =
 			DeferredRegister.create(NeoForgeRegistries.Keys.ATTACHMENT_TYPES, Lobecorp.NAMESPACE);
+
+	/// 当前精神与灵魂值持久化并沿用 Neo 附件同步，死亡重生不复制，其他正常复制沿用附件机制。
+	DeferredHolder<AttachmentType<?>, AttachmentType<LcResourceState>> LC_RESOURCES = REGISTER.register(
+			"lc_resources", () -> AttachmentType.builder(LcDamageUtil::fullResources)
+					.serialize(LcResourceState.CODEC.fieldOf("resources"))
+					.sync(LcResourceState.STREAM_CODEC).build());
 
 	/// 尸体上临时存储的重组进度
 	DeferredHolder<AttachmentType<?>, AttachmentType<Float>> REASSEMBLY_PROGRESS =

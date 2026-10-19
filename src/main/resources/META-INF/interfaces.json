@@ -1,5 +1,8 @@
 {
 	"net/minecraft/world/damagesource/DamageSource": [
 		"org/unitego/lobecorp/api/IDamageSourceExpand"
+	],
+	"net/minecraft/world/entity/LivingEntity": [
+		"org/unitego/lobecorp/api/ILivingEntityExpand"
 	]
 }

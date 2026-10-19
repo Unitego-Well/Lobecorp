@@ -5,8 +5,41 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 
 import java.util.Set;
+import java.util.EnumSet;
+import java.util.Objects;
 
 public interface IDamageSourceExpand {
+	/// 单色设置只清理四色标签，其他原版及动态标签保留。
+	default void lobecorp$setLcDamageType(LcDamageType type) {
+		Objects.requireNonNull(type);
+
+		for (LcDamageType candidate : LcDamageType.values()) {
+			lobecorp$remove(candidate.getTag());
+		}
+
+		lobecorp$add(type.getTag());
+	}
+
+	default void lobecorp$addLcDamageType(LcDamageType type) {
+		lobecorp$add(type.getTag());
+	}
+
+	default void lobecorp$removeLcDamageType(LcDamageType type) {
+		lobecorp$remove(type.getTag());
+	}
+
+	default Set<LcDamageType> lobecorp$getLcDamageTypes() {
+		var result = EnumSet.noneOf(LcDamageType.class);
+		Set<TagKey<DamageType>> tags = lobecorp$getAllTags();
+		for (LcDamageType type : LcDamageType.values()) {
+			if (tags.contains(type.getTag())) {
+				result.add(type);
+			}
+		}
+
+		return Set.copyOf(result);
+	}
+
 	/// 获取可修改的标签的集合
 	default Set<TagKey<DamageType>> lobecorp$getModifiableTags() {
 		throw new NoMixinException();

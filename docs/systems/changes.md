@@ -2,6 +2,14 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-19：四色伤害与精神／灵魂资源
+
+- 按逐项确认的规则新增 PHYSICS、SPIRIT、EROSION、THE_SOUL；有效伤害 Tag 支持混合，同次攻击每种使用相同基础值。伤害来源提供单色替换与类型追加／移除接口，原版扩展使用 Interface Injection。
+- 新增各色固定防御、承伤系数及默认 20 的精神／灵魂上限，复用 Neo 属性事件补齐。正系数先乘系数后扣防御，负防御增伤、零系数免疫、负系数跳过防御恢复对应资源；侵蚀只绕过护甲／韧性。精神／灵魂独立扣值、绕盾、共用无敌帧并保留受击反馈和仇恨；混合生命伤害与吸收合并一次结算。
+- 新资源附件持久化并由 Neo 自动同步，上限按比例变化，死亡重生填满，不自然恢复。新增资源变化事件预留后续效果；未配置现有攻击、归零惩罚、HUD 或自动恢复。关键文件为 LcDamageType、ILivingEntityExpand、LcDamageContext、LcDamageUtil、LcAttributes 及 LivingEntity／Player Mixin，规则与接口见 four-color-damage.md。
+- 已通过 IDEA 局部补丁修改、限定修改行格式化、编译和全部本次 Java 文件的错误检查；Interface Injection 产物更新后无 Java 错误，仍有预留 API／可选 final 等提示。IDEA Data 为 BUILD SUCCESSFUL：23 个输出中 written=6、removed=0，已只读核对四个空伤害 Tag 及中英文各 10 个属性名、4 个 Tag 名，日志确认两处受伤 Mixin 加载。未运行游戏／联机／测试，未将静态和 Data 检查视为战斗或存档验收。
+- 未删除文件，未另建备份；生成目录保留原忽略规则，仅提交本次实现和同步文档，保留其他工作与暂存。提交结果以本轮 Git 回执为准，未推送。
+
 ## 2026-10-19：模型重设计R1纯CPU准备与分阶段采样
 
 - 在R0提交f527ac3上新增PhotonModelTopologyUtil与PhotonModelPoseSampler及两份专项测试；按部件/材质准备不可变面角/三角形，独立求值TRS层级、Morph、伸长/宽度/锚点、透明度、法线和边界，不随时间重复三角化。

@@ -25,12 +25,14 @@ import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 import org.unitego.lobecorp.particle.damage.DamageParticles;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
+import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LivingEntityEvents {
 	@SubscribeEvent
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {
+			LcDamageUtil.refreshResources(livingEntity);
 			IEntitySkillAccess access = IEntitySkillAccess.get(livingEntity);
 
 			if (access != null) {

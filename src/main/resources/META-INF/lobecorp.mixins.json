@@ -12,6 +12,7 @@
 		"entity.DragonHoldingPatternPhaseMixin",
 		"entity.EntityMixin",
 		"entity.LivingEntityMixin",
+		"entity.PlayerMixin",
 		"entity.MobMixin",
 		"conductor.entity.MobConductorMixin",
 		"conductor.entity.PathNavigationConductorMixin",

@@ -34,6 +34,8 @@
 
 ## 原版与事件适配
 
+2026-10-19：明确标记的伤害来源可进入[四色伤害](four-color-damage.md)，无四色 Tag 的来源继续按本页原有流程处理。Incoming 的全局承伤倍率／阵营过滤顺序与 Post 仇恨入口保留；纯精神／灵魂受击同样进入一次 Post，屏幕伤害粒子仍只读取实际生命伤害。
+
 `EntityMixin` 仅对 ICombatant 或已编入战斗阵营的实体，在原版 `isAlliedTo(Entity)` 返回处合并关系；纯原版实体对保留原结果，涉及女皇二阶段起时允许突破友军身份的攻击限制。原版宠物拥有者关系只作为参与者关系的输入，不给纯原版实体新增伤害保护。关系查询不反调该桥接方法，避免递归。Sensor、Goal、Brain 和守望者现有桥接继续调用目标资格，守望者保留原版愤怒和战斗行为。
 
 事件仍沿用唯一订阅：`ConductorGameplayEvents.onTargetChange` 先调用 `CombatEvents` 的关系守卫，再调用指挥家控制守卫；`LivingEntityEvents.onLivingIncomingDamage` 先应用承伤倍率，再处理关系伤害过滤；伤害 Post 记录受击仇恨并继续原伤害粒子。清道夫完全由生物质吸收的伤害也经原回调记录仇恨。没有重复订阅或新增战斗 Payload。

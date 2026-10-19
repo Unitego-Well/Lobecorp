@@ -10,6 +10,7 @@ import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillHolder;
+import org.unitego.lobecorp.api.LcDamageType;
 
 public class EntityAttributeCreation {
 	public static void registry(EntityAttributeCreationEvent event) {
@@ -36,5 +37,24 @@ public class EntityAttributeCreation {
 
 	public static void addCommonAttributes(EntityAttributeModificationEvent event) {
 		event.getTypes().forEach(type -> event.add(type, LcAttributes.DAMAGE_TAKEN_MULTIPLIER));
+		for (var type : event.getTypes()) {
+			if (!event.has(type, LcAttributes.MAX_RATIONALITY)) {
+				event.add(type, LcAttributes.MAX_RATIONALITY);
+			}
+
+			if (!event.has(type, LcAttributes.MAX_THE_SOUL)) {
+				event.add(type, LcAttributes.MAX_THE_SOUL);
+			}
+
+			for (LcDamageType damageType : LcDamageType.values()) {
+				if (!event.has(type, damageType.getDefense())) {
+					event.add(type, damageType.getDefense());
+				}
+
+				if (!event.has(type, damageType.getVulnerable())) {
+					event.add(type, damageType.getVulnerable());
+				}
+			}
+		}
 	}
 }

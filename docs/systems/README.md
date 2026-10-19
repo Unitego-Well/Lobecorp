@@ -9,6 +9,7 @@
 | 注册与数据 | [注册、附件与数据契约](registration-data.md) |
 | 实体与 AI | [实体与 AI](entities-ai.md) |
 | 仇恨、群体与阵营 | [战斗关系](combat.md) |
+| 四色伤害与生物资源 | [四色伤害、固定防御、承伤系数与精神／灵魂值](four-color-damage.md) |
 | 临时抓取 | [实体抓取](entity-grab.md) |
 | 实体技能 | [技能系统](entity-skills.md) |
 | 命中框 | [命中框](hitbox.md) |

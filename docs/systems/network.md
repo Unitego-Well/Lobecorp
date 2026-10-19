@@ -42,6 +42,8 @@ ServerPlayer；network.tc 的 [IToClientPayload](../../src/main/java/org/unitego
 
 ## 简单附件与复杂状态
 
+2026-10-19：`LC_RESOURCES` 使用现有 Neo 附件同步四个固定基础值（精神／灵魂当前值及上次上限），不增加业务 Payload；资源属性使用原版属性同步。生命周期见[四色伤害](four-color-damage.md)。
+
 简单值或几个固定基础值沿用 Neo `.sync(codec)`：当前为 `ATTACK_COMBO` 和 `ENTITY_GRAB` 的客户端移动约束投影。复杂附件保留持久化及业务入口，通过所属功能域载荷发送；不拆分为多个附件，也不维护脏容器。
 
 `EntitySkillDataSyncPayload` 首次完整替换技能资格、技能组和冷却，后续只携带变化键及删除键。资格的 `false` 为显式禁用，删除键为恢复实体默认资格，两者不可混用。冷却仍发送原 Long 到期时间，速度和小数计时仅在服务端推进。

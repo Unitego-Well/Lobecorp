@@ -7,7 +7,7 @@
 - 用户批准推荐方案，先建立工作区/暂存及开发资源备份，再移除 240 个主源码和 8 个专用测试；自建特效、专用渲染、模型与专属界面移出编译/注册。原生 Photon、路径、命令、通用编辑器、资源、调试及实体动画/实体模型 LOD 保留。
 - 关键调整涉及 ClientRuntimeEvents、PhotonEditorTools、MCP automation、共享视觉配置、GeckoLib 接入及 Mixin 登记；新增原始 NBT 保护入口，缺失类型在加载/覆盖前拒绝操作。197 项受保护资源原始 blob 与备份一致；旧文件可用性兼容仍未完成。
 - IDEA 编译成功；Data 完整日志 BUILD SUCCESSFUL，19 输出、written=2/removed=0；相关 Java/JSON 诊断和过时调用已检查。本次未运行游戏、回归或性能基准，不把删除旧核心当作卡顿已解决。保留既有无关提示。
-- 完整范围、检查限制与本地三份备份引用见[实施记录](photon-removal-result.md)；最终删除清单在 backups/photon-removal-20261019-180102/result.json。按新规范准备本次提交，最终哈希以 Git 回执为准；未推送。
+- 完整范围、检查限制与本地备份引用见[实施记录](photon-removal-result.md)；最终删除清单在 backups/photon-removal-20261019-180102/result.json。移除提交 ea0fe9f7e514b40812f50536e00c355dbc251484 已完成（336 文件），未推送；独立 index 提交并核对其他暂存条目差异为 0，原有实体动画改动留在工作区。未另行构建隔离提交树。
 
 ## 2026-10-19：每次修改必须提交的项目规则
 

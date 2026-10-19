@@ -13,9 +13,15 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+
+import javax.annotation.Nullable;
+import java.io.IOException;
 
 @Mixin(FXRuntime.class)
-public abstract class FXRuntimeMixin {
+public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 
 
@@ -25,7 +31,52 @@ public abstract class FXRuntimeMixin {
 
 	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("RETURN"))
 	private void lobecorp$previewAfterRestart(CallbackInfo ci) {
+		if (lobecorp$named != null) {
+			lobecorp$named.begin();
+		}
+
 		PhotonEditorTools.applyPreview((FXRuntime) (Object) this);
+	}
+
+	@Unique
+	private @Nullable PhotonNamedRuntime lobecorp$named;
+
+	@Override
+	public @Nullable PhotonNamedRuntime lobecorp$namedRuntime() {
+		return lobecorp$named;
+	}
+
+	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("HEAD"))
+	private void lobecorp$prepareNamed(CallbackInfo ci) {
+		lobecorp$closeNamed();
+		var runtime = (FXRuntime) (Object) this;
+		var controllers = runtime.objects.values().stream().filter(PhotonNamedController.class::isInstance)
+				.map(PhotonNamedController.class::cast).toList();
+
+		if (controllers.size() > 1) {
+			throw new IllegalArgumentException("一个特效实例不能含多个命名控制器。");
+		}
+
+		if (!controllers.isEmpty()) {
+			try {
+				lobecorp$named = new PhotonNamedRuntime(runtime, controllers.getFirst());
+			} catch (IOException invalid) {
+				throw new IllegalArgumentException("命名动画库适配失败。", invalid);
+			}
+		}
+	}
+
+	@Inject(method = "destroy", at = @At("HEAD"))
+	private void lobecorp$stopNamed(CallbackInfo ci) {
+		lobecorp$closeNamed();
+	}
+
+	@Unique
+	private void lobecorp$closeNamed() {
+		if (lobecorp$named != null) {
+			lobecorp$named.close();
+			lobecorp$named = null;
+		}
 	}
 
 

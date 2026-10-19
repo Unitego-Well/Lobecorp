@@ -25,7 +25,7 @@
 | 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
 | 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[当前性能静态审查与优化计划](photon-performance-audit.md) |
-| 特效重设计实施 | [R0起的阶段证据与未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
+| 特效重设计实施 | [R0基础、R1纯CPU准备与未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
 | 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、[优化、基线与采样](photon-performance.md)、[世界前后稳定性对比](photon-world-performance-comparison.md)、[逐对象检测与关键优化计划](photon-detailed-performance-plan.md) |
 | 世界文本粒子 | [文本粒子](text-particles.md) |
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |

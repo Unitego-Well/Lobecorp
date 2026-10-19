@@ -8,6 +8,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Anchor;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Clip;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Part;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Rotation;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Transform;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.TransformKey;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.ValueKey;
@@ -34,13 +35,30 @@ public class PhotonModelPoseSampler {
 	private final boolean localControl;
 	private final float minimumDelta;
 
-	/// 时间沿用文件tick单位；片段为空表示基础姿态，Morph覆盖只作用于本次采样。
+	public record PartOverride(@Nullable Vector3 translation, @Nullable Rotation rotation, @Nullable Vector3 scale) {
+		public PartOverride {
+			if (translation != null && !vector(translation).isFinite() || scale != null && !vector(scale).isFinite()
+					|| rotation != null && (!Float.isFinite(rotation.x()) || !Float.isFinite(rotation.y())
+					|| !Float.isFinite(rotation.z()) || !Float.isFinite(rotation.w()))) {
+				throw new IllegalArgumentException("部件覆盖包含无效数值。");
+			}
+		}
+	}
+
+	/// 时间沿用文件tick单位；空片段为基础姿态。未覆盖的TRS分量继续使用该次片段采样值。
 	public record Input(float time, String clip, boolean loop, float length, float width,
-	                    Anchor anchor, float opacity, Map<String, Float> morphWeights) {
+	                    Anchor anchor, float opacity, Map<String, Float> morphWeights,
+	                    Map<String, PartOverride> partOverrides) {
+		public Input(float time, String clip, boolean loop, float length, float width,
+		             Anchor anchor, float opacity, Map<String, Float> morphWeights) {
+			this(time, clip, loop, length, width, anchor, opacity, morphWeights, Map.of());
+		}
+
 		public Input {
 			Objects.requireNonNull(clip);
 			Objects.requireNonNull(anchor);
 			morphWeights = Map.copyOf(morphWeights);
+			partOverrides = Map.copyOf(partOverrides);
 
 			if (!Float.isFinite(time) || !Float.isFinite(length) || length < 0
 					|| !Float.isFinite(width) || width < 0 || !Float.isFinite(opacity) || opacity < 0 || opacity > 1
@@ -129,6 +147,12 @@ public class PhotonModelPoseSampler {
 			}
 		}
 
+		for (var id : input.partOverrides().keySet()) {
+			if (definition.parts().stream().noneMatch(part -> part.id().equals(id))) {
+				throw new IllegalArgumentException("模型部件不存在：" + id);
+			}
+		}
+
 		long begin = measure ? System.nanoTime() : 0;
 		var clip = definition.clips().stream().filter(value -> value.id().equals(input.clip())).findFirst().orElse(null);
 
@@ -137,7 +161,7 @@ public class PhotonModelPoseSampler {
 		}
 
 		float time = clipTime(input, clip);
-		var matrices = partMatrices(definition, clip, time);
+		var matrices = partMatrices(definition, input.partOverrides(), clip, time);
 		var weights = morphWeights(definition, input, clip, time);
 		float opacity = input.opacity() * (clip == null ? 1 : sampleValue(clip.opacityKeys(), time, 1));
 		long curvesEnd = measure ? System.nanoTime() : 0;
@@ -207,14 +231,23 @@ public class PhotonModelPoseSampler {
 		return prepared;
 	}
 
-	private Matrix4f[] partMatrices(PhotonModelDefinition definition, @Nullable Clip clip, float time) {
+	private Matrix4f[] partMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides, @Nullable Clip clip, float time) {
 		var result = new Matrix4f[parents.length];
 
 		for (int index : parentOrder) {
 			checkCancelled();
 			var part = definition.parts().get(index);
 			var pivot = vector(part.pivot());
-			var matrix = sampleTransform(clip == null ? List.of() : clip.partTracks().getOrDefault(part.id(), List.of()), time, part.transform());
+			var sampled = sampleTransform(clip == null ? List.of() : clip.partTracks().getOrDefault(part.id(), List.of()), time, part.transform());
+			var override = overrides.get(part.id());
+
+			if (override != null) {
+				sampled = new Transform(override.translation() == null ? sampled.translation() : override.translation(),
+						override.rotation() == null ? sampled.rotation() : override.rotation(),
+						override.scale() == null ? sampled.scale() : override.scale());
+			}
+
+			var matrix = matrix(sampled);
 			result[index] = new Matrix4f().translation(pivot).mul(matrix).translate(pivot.negate());
 
 			if (parents[index] >= 0) {
@@ -399,28 +432,28 @@ public class PhotonModelPoseSampler {
 		return Math.fma((time - a.time()) / (b.time() - a.time()), b.value() - a.value(), a.value());
 	}
 
-	private static Matrix4f sampleTransform(List<TransformKey> keys, float time, Transform fallback) {
+	private static Transform sampleTransform(List<TransformKey> keys, float time, Transform fallback) {
 		if (keys.isEmpty()) {
-			return matrix(fallback);
+			return fallback;
 		}
 
 		int next = upperBound(keys, time, TransformKey::time);
 
 		if (next == 0) {
-			return matrix(keys.getFirst().transform());
+			return keys.getFirst().transform();
 		}
 
 		if (next == keys.size()) {
-			return matrix(keys.getLast().transform());
+			return keys.getLast().transform();
 		}
 
 		var a = keys.get(next - 1);
 		var b = keys.get(next);
 		float amount = (time - a.time()) / (b.time() - a.time());
-		return new Matrix4f().translationRotateScale(
-				vector(a.transform().translation()).lerp(vector(b.transform().translation()), amount),
-				rotation(a.transform()).slerp(rotation(b.transform()), amount),
-				vector(a.transform().scale()).lerp(vector(b.transform().scale()), amount));
+		var rotated = rotation(a.transform()).slerp(rotation(b.transform()), amount);
+		return new Transform(immutable(vector(a.transform().translation()).lerp(vector(b.transform().translation()), amount)),
+				new Rotation(rotated.x, rotated.y, rotated.z, rotated.w),
+				immutable(vector(a.transform().scale()).lerp(vector(b.transform().scale()), amount)));
 	}
 
 	private static <T> int upperBound(List<T> keys, float time, ToDoubleFunction<T> keyTime) {

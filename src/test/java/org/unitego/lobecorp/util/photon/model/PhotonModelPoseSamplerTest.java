@@ -5,6 +5,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Anchor;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler.Input;
+import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler.PartOverride;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -18,6 +19,30 @@ import java.util.concurrent.CancellationException;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class PhotonModelPoseSamplerTest {
+	@Test
+	public void overridesOneTrsComponentWhileKeepingOtherClipComponents() throws Exception {
+		var definition = PhotonModelCodec.read("""
+				{"version":1,"vertices":[[1,0,0],[0,1,0],[0,0,0]],
+				"faces":[{"vertices":[0,1,2],"uv":[[1,0],[0,1],[0,0]]}],
+				"parts":[{"id":"main","transform":{"translation":[0,2,0]}}],
+				"clips":[{"id":"grow","duration":10,"loop":false,"partTracks":{"main":[
+				{"time":0,"transform":{"translation":[0,2,0],"scale":[1,1,1]}},
+				{"time":10,"transform":{"translation":[0,4,0],"scale":[3,3,3]}}]}}]}
+				""");
+		var sampler = new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(definition));
+		var before = sampler.sample(new Input(5, "grow", false, 1, 1, Anchor.NONE, 1, Map.of()), false);
+		var input = new Input(5, "grow", false, 1, 1, Anchor.NONE, 1, Map.of(),
+				Map.of("main", new PartOverride(new Vector3(5, 0, 0), null, null)));
+		var overridden = sampler.sample(input, false);
+		assertEquals(new Vector3(2, 3, 0), before.groups().getFirst().vertices().getFirst().position());
+		assertEquals(new Vector3(7, 0, 0), overridden.groups().getFirst().vertices().getFirst().position());
+		assertEquals(before.groups(), sampler.sample(new Input(5, "grow", false, 1, 1, Anchor.NONE, 1, Map.of()), false).groups());
+		assertThrows(UnsupportedOperationException.class, () -> input.partOverrides().clear());
+		assertThrows(IllegalArgumentException.class, () -> new PartOverride(new Vector3(Float.NaN, 0, 0), null, null));
+		assertThrows(IllegalArgumentException.class, () -> sampler.sample(new Input(0, "", false, 1, 1, Anchor.NONE, 1,
+				Map.of(), Map.of("missing", new PartOverride(Vector3.ZERO, null, null))), false));
+	}
+
 	@Test
 	public void samplesHierarchyMorphAndIndependentClipTimes() throws Exception {
 		var definition = PhotonModelCodec.read("""

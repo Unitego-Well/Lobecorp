@@ -8,6 +8,9 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.resources.Identifier;
+import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
@@ -24,6 +27,11 @@ public class PhotonModelAssetUtil {
 
 		if (!(source.get("config") instanceof CompoundTag config)) {
 			throw new IOException("模型对象缺少配置。");
+		}
+
+		if (config.contains("resource") && !LDLibExtraCodecs.isEmptyOrStringNull(NbtOps.INSTANCE, config.get("resource"))
+				&& Identifier.CODEC.parse(NbtOps.INSTANCE, config.get("resource")).error().isPresent()) {
+			throw new IOException("模型资源标识无效。");
 		}
 
 		var result = source.copy();

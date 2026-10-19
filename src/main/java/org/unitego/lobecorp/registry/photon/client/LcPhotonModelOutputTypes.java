@@ -4,6 +4,8 @@ import com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigValueType;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
+import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.RuntimeBinding;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
@@ -13,12 +15,21 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
+import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
+import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrackEditor;
+import com.lowdragmc.photon.gui.editor.view.timeline.TrackType;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
+import javax.annotation.Nullable;
 
 public class LcPhotonModelOutputTypes {
 	public static final String TYPE_NAME = "lobecorp_model_emitter";
+	public static final String TRACK_NAME = "lobecorp_model_animation";
+	@LDLRegisterClient(name = TRACK_NAME, registry = "photon:timeline_track")
+	public static final TrackType MODEL_ANIMATION = new TrackType(PhotonModelClipTrack.class,
+			PhotonModelClipTrack::new, new PhotonModelClipTrackEditor());
 	private static final List<RuntimeBinding> BINDINGS = List.of(
 			binding("enabled", "enabled", ConfigValueType.BOOL),
 			binding("duration", "duration", ConfigValueType.INT),
@@ -52,6 +63,23 @@ public class LcPhotonModelOutputTypes {
 		}
 
 		@Override
+		public List<AnimatedPropertyType> animatableProperties(FXObject target) {
+			var result = new ArrayList<>(super.animatableProperties(target));
+
+			if (target instanceof PhotonModelOutput model) {
+				result.addAll(model.dynamicProperties());
+			}
+
+			return List.copyOf(result);
+		}
+
+		@Override
+		public @Nullable RuntimeBinding resolveRuntimeBinding(FXObject target, String path) {
+			var binding = super.resolveRuntimeBinding(target, path);
+			return binding != null ? binding : target instanceof PhotonModelOutput model ? model.dynamicBinding(path) : null;
+		}
+
+		@Override
 		public Codec<IFXObject> codec() {
 			var base = super.codec();
 			return CompoundTag.CODEC.comapFlatMap(tag -> {
@@ -74,7 +102,14 @@ public class LcPhotonModelOutputTypes {
 					throw new IllegalStateException("模型对象未编码为NBT复合标签。");
 				}
 
-				return ((PhotonModelOutput) object).source().merge(data);
+				var model = (PhotonModelOutput) object;
+				var preserved = model.source();
+
+				if (model.config.resource == null) {
+					preserved.getCompoundOrEmpty("config").remove("resource");
+				}
+
+				return preserved.merge(data);
 			});
 		}
 	};

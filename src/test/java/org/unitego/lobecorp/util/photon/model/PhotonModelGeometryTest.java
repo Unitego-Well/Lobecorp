@@ -14,6 +14,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class PhotonModelGeometryTest {
 	@Test
+	public void keepsFiniteGeometricNormalsWhenWorldScaleFlattensOneAxis() throws Exception {
+		var definition = PhotonModelCodec.read("""
+				{"version":1,"vertices":[[0,0,0],[1,0,0],[0,1,0]],
+				"faces":[{"vertices":[0,1,2],"uv":[[0,0],[1,0],[0,1]]}]}
+				""");
+		var sampler = new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(definition));
+		var frame = sampler.sample(new PhotonModelPoseSampler.Input(0, "", true, 1, 1, Anchor.NONE, 1, Map.of()), false);
+		var consumer = new Collector();
+		PhotonModelGeometryUtil.write(consumer, frame, 0, new Matrix4f().scaling(1, 1, 0), -1, 0);
+		assertEquals(4, consumer.normals.size());
+		assertTrue(consumer.normals.stream().allMatch(normal -> normal.z() == 1 && normal.x() == 0 && normal.y() == 0));
+	}
+
+	@Test
 	public void emitsCameraRelativeQuadTrianglesWithOriginalUvsAndOpacity() throws Exception {
 		var definition = PhotonModelCodec.read("""
 				{"version":1,"vertices":[[0,0,0],[1,0,0],[0,1,0]],

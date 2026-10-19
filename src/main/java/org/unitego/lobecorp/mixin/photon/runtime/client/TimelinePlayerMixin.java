@@ -14,6 +14,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
 
 
 @Mixin(TimelinePlayer.class)
@@ -23,6 +25,9 @@ public abstract class TimelinePlayerMixin {
 	private FXRuntime runtime;
 	@Shadow
 	private double lastEvalTime;
+	@Shadow
+	@Final
+	private Timeline timeline;
 
 
 
@@ -39,9 +44,21 @@ public abstract class TimelinePlayerMixin {
 
 
 
-	@Inject(method = {"evaluate", "frame"}, at = @At("RETURN"))
-	private void lobecorp$previewParameters(CallbackInfo ci) {
+	@Inject(method = "evaluate", at = @At("RETURN"))
+	private void lobecorp$previewParameters(double time, CallbackInfo ci) {
+		PhotonModelClipUtil.apply(this, runtime, timeline, time, PhotonModelClipUtil.SCENE_PRIORITY, 0);
 		PhotonEditorTools.applyPreview(runtime);
+	}
+
+	@Inject(method = "frame", at = @At("RETURN"))
+	private void lobecorp$previewFrameParameters(float partialTicks, CallbackInfo ci) {
+		PhotonModelClipUtil.apply(this, runtime, timeline, lastEvalTime + partialTicks, PhotonModelClipUtil.SCENE_PRIORITY, 0);
+		PhotonEditorTools.applyPreview(runtime);
+	}
+
+	@Inject(method = "stop", at = @At("RETURN"))
+	private void lobecorp$clearModelPlayback(CallbackInfo ci) {
+		PhotonModelClipUtil.clear(this, runtime);
 	}
 
 	@WrapMethod(method = "evaluate")

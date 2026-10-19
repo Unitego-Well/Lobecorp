@@ -22,6 +22,8 @@ public class PhotonModelGeometryUtil {
 		var indices = topology.indices();
 
 		for (int triangle = 0; triangle < indices.size(); triangle += 3) {
+			Vector3f fallback = null;
+
 			for (int corner = 0; corner < 4; corner++) {
 				int offset = Math.min(corner, 2);
 				int ordered = part.insideOut() && offset != 0 ? 3 - offset : offset;
@@ -35,7 +37,20 @@ public class PhotonModelGeometryUtil {
 				if (normal.lengthSquared() > 0 && normal.isFinite()) {
 					normal.normalize();
 				} else {
-					normal.zero();
+					if (fallback == null) {
+						var a = point(group.vertices().get(indices.get(triangle)), world);
+						var b = point(group.vertices().get(indices.get(triangle + (part.insideOut() ? 2 : 1))), world);
+						var c = point(group.vertices().get(indices.get(triangle + (part.insideOut() ? 1 : 2))), world);
+						fallback = b.sub(a).cross(c.sub(a));
+
+						if (fallback.isFinite() && fallback.lengthSquared() > 0) {
+							fallback.normalize();
+						} else {
+							fallback.zero();
+						}
+					}
+
+					normal.set(fallback);
 				}
 
 				float shade = part.shading() ? shade(normal) : 1;
@@ -49,6 +64,11 @@ public class PhotonModelGeometryUtil {
 		}
 
 		return indices.size() / 3;
+	}
+
+	private static Vector3f point(PhotonModelPoseSampler.Vertex vertex, Matrix4f world) {
+		var value = vertex.position();
+		return world.transformPosition(new Vector3f(value.x(), value.y(), value.z()));
 	}
 
 	private static float shade(Vector3f normal) {

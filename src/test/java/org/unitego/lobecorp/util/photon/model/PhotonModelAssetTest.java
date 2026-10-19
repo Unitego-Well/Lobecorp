@@ -4,6 +4,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.NbtOps;
+import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import org.junit.jupiter.api.Test;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
@@ -26,6 +28,7 @@ public class PhotonModelAssetTest {
 		config.put("renderer", renderer);
 		config.putString("assetJson", "{\"version\":1}");
 		source.put("config", config);
+		config.put("resource", LDLibExtraCodecs.createStringNull(NbtOps.INSTANCE));
 		var original = source.copy();
 		var adapted = PhotonModelAssetUtil.adaptObject(source);
 		assertEquals(renderer, adapted.getCompoundOrEmpty("config").getCompoundOrEmpty("modelRenderer"));
@@ -33,6 +36,9 @@ public class PhotonModelAssetTest {
 		assertFalse(config.contains("modelRenderer"));
 		adapted.getCompoundOrEmpty("config").getCompoundOrEmpty("modelRenderer").putString("saved_probe", "changed");
 		assertEquals("keep", renderer.getStringOr("saved_probe", ""));
+		config.putString("resource", "invalid id");
+		assertThrows(IOException.class, () -> PhotonModelAssetUtil.adaptObject(source));
+		config.put("resource", LDLibExtraCodecs.createStringNull(NbtOps.INSTANCE));
 		source.putInt("version", 1);
 		assertThrows(IOException.class, () -> PhotonModelAssetUtil.adaptObject(source));
 	}
@@ -93,7 +99,14 @@ public class PhotonModelAssetTest {
 		if (tag instanceof CompoundTag compound) {
 			if (compound.getStringOr("type", "").equals("lobecorp_model_emitter")) {
 				var original = compound.getCompoundOrEmpty("data").copy();
-				var data = PhotonModelAssetUtil.adaptObject(compound.getCompoundOrEmpty("data"));
+				CompoundTag data;
+
+				try {
+					data = PhotonModelAssetUtil.adaptObject(compound.getCompoundOrEmpty("data"));
+				} catch (IOException failure) {
+					var resource = original.getCompoundOrEmpty("config").get("resource");
+					throw new IOException("模型来源字段：" + original.getStringOr("name", "") + " resource=" + resource, failure);
+				}
 				var config = data.getCompoundOrEmpty("config");
 				var asset = config.get("assetJson");
 				assertNotNull(asset);

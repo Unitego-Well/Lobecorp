@@ -1,11 +1,20 @@
 package org.unitego.lobecorp.util.photon.model;
 
 import com.lowdragmc.photon.PhotonRegistries;
+import com.lowdragmc.photon.client.fx.FXData;
+import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
+import com.lowdragmc.photon.client.fx.timeline.property.ConfigPropertyType;
+import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
+import com.lowdragmc.lowdraglib2.utils.virtuallevel.TrackedDummyWorld;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.StringTag;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
+import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
+import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
@@ -21,6 +30,78 @@ import java.util.Objects;
 /// 在已启动客户端中核对真实模型对象与原生注册/复制链，不保存或覆盖原件。
 public class PhotonModelRuntimeCheckUtil {
 	public record Result(String source, boolean passed, String detail) {
+	}
+
+	/// 客户端内存夹具覆盖原生回调、循环末姿态、属性槽及贡献释放，不写入资源文件。
+	public static Result inspectTimelineFixture() {
+		try {
+			var model = new PhotonModelOutput();
+			model.config.setAssetSnapshot(StringTag.valueOf("""
+					{"version":1,"vertices":[[0,0,0],[1,0,0],[0,1,0]],
+					"faces":[{"vertices":[0,1,2],"uv":[[0,0],[1,0],[0,1]]}],
+					"morphs":[{"id":"rise","deltas":{"0":[0,0,1]}}],
+					"clips":[{"id":"grow","duration":10,"loop":true,
+					"partTracks":{"main":[{"time":0,"transform":{}},{"time":10,"transform":{"translation":[0,2,0],"scale":[3,3,3]}}]},
+					"morphTracks":{"rise":[{"time":0,"value":0},{"time":10,"value":1}]}}]}
+					"""));
+			model.prepare();
+			model.reset();
+			model.measure(true);
+			var staticFrame = model.sampleLocal(0);
+			model.updateTick(1);
+
+			if (staticFrame != model.sampleLocal(0.5f) || model.sampledFrame() != staticFrame) {
+				throw new IllegalStateException("无片段静态几何因时钟推进重复求值。");
+			}
+
+			var timeline = new Timeline();
+			var track = (PhotonModelClipTrack) LcPhotonModelOutputTypes.MODEL_ANIMATION.create();
+			track.targetId(model.id());
+			var clip = new PhotonModelClip(0, 10, 1);
+			clip.animation = "grow";
+			clip.loop = true;
+			clip.completion = PhotonModelClip.Completion.HOLD;
+			track.clips().add(clip);
+			timeline.tracks().add(track);
+			var runtime = new FXRuntime(new FXData(new ArrayList<>(List.of(model)), timeline));
+			runtime.timelinePlayer.setAudioDispatch(false);
+			runtime.timelinePlayer.setSignalDispatch(false);
+			runtime.timelinePlayer.begin(new FXProjectEffectExecutor(new TrackedDummyWorld()));
+			runtime.timelinePlayer.tick(5);
+			runtime.timelinePlayer.tick(0);
+			requirePoint(model, 0, 1, 1);
+			var position = ConfigPropertyType.fromBinding(Objects.requireNonNull(model.dynamicBinding("parts.main.position")));
+			position.apply(model, new float[]{5, 0, 0});
+			requirePoint(model, 5, 0, 1);
+			model.slot("parts.main.position").clear();
+			var morph = ConfigPropertyType.fromBinding(Objects.requireNonNull(model.dynamicBinding("morphs.rise.weight")));
+			morph.apply(model, new float[]{0});
+			requirePoint(model, 0, 1, 0);
+			model.slot("morphs.rise.weight").clear();
+			runtime.timelinePlayer.tick(5);
+			runtime.timelinePlayer.tick(0);
+			requirePoint(model, 0, 2, 3);
+			var owner = new Object();
+			model.playback(owner, new PhotonModelClip.Sample("grow", 0, false, false, 1, 1));
+			requirePoint(model, 0, 0, 0);
+			model.playback(owner, null);
+			requirePoint(model, 0, 2, 3);
+			runtime.timelinePlayer.stop();
+			requirePoint(model, 0, 0, 0);
+			runtime.destroy(true);
+			return new Result("runtime_model_clip_fixture", true, "原生轨道回调、TRS/Morph槽、HOLD末姿态、独立贡献释放与静态缓存通过；未计作可见画面验收");
+		} catch (IOException | RuntimeException failure) {
+			return new Result("runtime_model_clip_fixture", false, failure.toString());
+		}
+	}
+
+	private static void requirePoint(PhotonModelOutput model, float x, float y, float z) {
+		var frame = Objects.requireNonNull(model.sampleLocal(0));
+		var point = frame.groups().getFirst().vertices().getFirst().position();
+
+		if (point.x() != x || point.y() != y || point.z() != z) {
+			throw new IllegalStateException("模型局部帧不符：" + point + "，期望[" + x + "," + y + "," + z + "]");
+		}
 	}
 
 	public static List<Result> inspect(Path projectRoot) throws IOException {

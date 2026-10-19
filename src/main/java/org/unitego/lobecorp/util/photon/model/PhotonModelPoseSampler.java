@@ -203,6 +203,10 @@ public class PhotonModelPoseSampler {
 		return new Frame(prepared, groups, opacity, immutable(min), immutable(max), timings);
 	}
 
+	public PhotonModelTopologyUtil.Prepared prepared() {
+		return prepared;
+	}
+
 	private Matrix4f[] partMatrices(PhotonModelDefinition definition, @Nullable Clip clip, float time) {
 		var result = new Matrix4f[parents.length];
 

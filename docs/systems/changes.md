@@ -10,6 +10,15 @@
 - 已通过 IDEA 局部补丁修改、限定修改行格式化、编译和全部本次 Java 文件的错误检查；Interface Injection 产物更新后无 Java 错误，仍有预留 API／可选 final 等提示。IDEA Data 为 BUILD SUCCESSFUL：23 个输出中 written=6、removed=0，已只读核对四个空伤害 Tag 及中英文各 10 个属性名、4 个 Tag 名，日志确认两处受伤 Mixin 加载。未运行游戏／联机／测试，未将静态和 Data 检查视为战斗或存档验收。
 - 未删除文件，未另建备份；生成目录保留原忽略规则，仅提交本次实现和同步文档，保留其他工作与暂存。提交结果以本轮 Git 回执为准，未推送。
 
+## 2026-10-19：R1模型原生输出接线与100处客户端内存验证
+
+- 在既有无损定义/姿态层上新增PhotonModelOutputConfig、PhotonModelClock、PhotonModelMaterials、PhotonModelOutput、LcPhotonModelOutputTypes及Asset/Geometry/RuntimeCheck工具，复用Photon原生对象注册、RuntimeValue、材质批次和QUADS透明排序；不新增GL出口，不动实体动画/实体模型LOD或原资产。
+- 材质发布映射只应用到内存副本，assetJson保留原字节/字符串；同实例复用姿态结果，浅复制共享不可变准备数据、独占配置/运行槽/时钟。当前仅连接原生批次，尚未验收GPU可见画面及完整语义。
+- 真实客户端暴露本轮assetDependencies的不可变List不适合LDLib2反序列化clear，已改为实例ArrayList。首次对象包装读取被既有保护拦截，后改用已登记类型的只读内存Codec验证，文件加载/写入门禁未放开。
+- 第二次客户端99/100通过，唯一probe_a.mfx缺modelRenderer但保存renderer；对当前对象版本和已验证模型快照仅推导内存配置，原包不变。第三次100/100通过注册、准备、快照表示往返及复制隔离；没有将内存验证计作可见渲染或G1通过。
+- IDEA JUnit对象/材质适配3项、时钟3项、顶点提交1项通过；编译success=true，计数null不作零警告结论。最终Data日志ij_run__Data_404489747311025224.log为BUILD SUCCESSFUL，23输出written=0/removed=0；中英文生成文件各含258模型翻译键，IDEA仍有未索引键/可选final/预留API提示。Debug主窗maximized=1，本轮临时断点逐次删除，3个原有断点保留。
+- 继续接入前的工作区/暂存备份为refs/backups/before-photon-g1-runtime-20261019-worktree（2b905c2d1d21c9c07bffaff8ea858a7c91eff2ff）及-index（06175a88370979214401ce94f9b371bef11f2149），被忽略资源沿用R0备份，建立备份时主暂存未变。原件未删除/回写；阶段提交不推送，继续推进可见渲染、旧播放与兼容，G1未通过，高级扩展未开始。
+
 ## 2026-10-19：模型重设计R1纯CPU准备与分阶段采样
 
 - 在R0提交f527ac3上新增PhotonModelTopologyUtil与PhotonModelPoseSampler及两份专项测试；按部件/材质准备不可变面角/三角形，独立求值TRS层级、Morph、伸长/宽度/锚点、透明度、法线和边界，不随时间重复三角化。

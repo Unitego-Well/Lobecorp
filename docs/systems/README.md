@@ -24,6 +24,7 @@
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |
 | 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
+| 模型特效重设计 | [功能、架构、线程、诊断与兼容方案](photon-model-redesign.md)、[当前性能静态审查与优化计划](photon-performance-audit.md) |
 | 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、[优化、基线与采样](photon-performance.md)、[世界前后稳定性对比](photon-world-performance-comparison.md)、[逐对象检测与关键优化计划](photon-detailed-performance-plan.md) |
 | 世界文本粒子 | [文本粒子](text-particles.md) |
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |

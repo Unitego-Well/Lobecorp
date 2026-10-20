@@ -7,6 +7,9 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 
 import java.io.IOException;
+import java.util.UUID;
+
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion;
 
 /// 工程测试字段独立于FXData，保持原树和身份；发布定义与运行包不读取此字段。
 public class PhotonProjectPreviewUtil {
@@ -29,5 +32,30 @@ public class PhotonProjectPreviewUtil {
 		} catch (IOException invalid) {
 			throw new IllegalArgumentException("工程测试定义无法按当前协议读取。", invalid);
 		}
+	}
+
+	/// 只合并明确编辑的制作属性；已有身份、轨道及未知字段保持原值。
+	public static CompoundTag edit(CompoundTag source, String name, double duration, boolean autoDuration,
+	                               boolean loop, int priority, Completion completion) {
+		if (!name.equals(source.getStringOr("name", "")) && !name.matches("[a-z_]+")
+				|| !Double.isFinite(duration) || duration < 0) {
+			throw new IllegalArgumentException("名称仅允许小写字母和下划线，时长必须为有限非负数。");
+		}
+
+		var result = source.copy();
+		result.putString("name", name);
+		result.putDouble("duration", duration);
+		result.putBoolean("autoDuration", autoDuration);
+		result.putBoolean("loop", loop);
+		result.putInt("priority", priority);
+		result.putString("completion", completion.name());
+		return checkedCopy(result);
+	}
+
+	public static CompoundTag create() {
+		var source = new CompoundTag();
+		source.putString("id", UUID.randomUUID().toString());
+		source.putString("name", "project_test");
+		return checkedCopy(source);
 	}
 }

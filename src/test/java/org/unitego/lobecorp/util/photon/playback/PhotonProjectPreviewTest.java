@@ -135,4 +135,32 @@ public class PhotonProjectPreviewTest {
 		source.putDouble("duration", 20);
 		return source;
 	}
+
+	@Test
+	public void editsMetadataWithoutReplacingIdentityTracksOrUnknownFields() throws IOException {
+		var source = fixture();
+		source.putString("name", "existing-name-1");
+		source.putString("future", "keep");
+		var track = new CompoundTag();
+		track.putString("futureTrack", "keep");
+		var tracks = new ListTag();
+		tracks.add(track);
+		source.put("tracks", tracks);
+		var original = source.copy();
+		var edited = PhotonProjectPreviewUtil.edit(source, "existing-name-1", 50, false, true, 2,
+				PhotonNamedLibrary.Completion.RELEASE);
+		var definition = PhotonProjectPreviewUtil.read(edited);
+		assertEquals(original, source);
+		assertEquals(source.get("id"), edited.get("id"));
+		assertEquals(tracks, edited.get("tracks"));
+		assertEquals("keep", edited.getStringOr("future", ""));
+		assertTrue(definition.loop());
+		assertFalse(definition.autoDuration());
+		assertEquals(50, definition.duration());
+		assertEquals(PhotonNamedLibrary.Completion.RELEASE, definition.completion());
+		assertThrows(IllegalArgumentException.class, () -> PhotonProjectPreviewUtil.edit(source, "new-name", 20, true, false, 0, PhotonNamedLibrary.Completion.HOLD));
+		assertThrows(IllegalArgumentException.class, () -> PhotonProjectPreviewUtil.edit(source, "valid_name", Double.NaN, true, false, 0, PhotonNamedLibrary.Completion.HOLD));
+		assertNotEquals(PhotonProjectPreviewUtil.read(PhotonProjectPreviewUtil.create()).id(),
+				PhotonProjectPreviewUtil.read(PhotonProjectPreviewUtil.create()).id());
+	}
 }

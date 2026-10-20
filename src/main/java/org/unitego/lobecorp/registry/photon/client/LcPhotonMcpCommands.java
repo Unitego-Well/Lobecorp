@@ -9,10 +9,10 @@ public class LcPhotonMcpCommands {
 	public static final String MOD_ID = "mcpmod";
 	private static boolean registered;
 	private static final List<String> READ_COMMANDS = List.of("effect_capabilities", "effect_state",
-			"effect_resources", "effect_resource_read", "effect_view_state");
+			"effect_resources", "effect_resource_read", "effect_view_state", "effect_animation_state");
 	private static final List<String> WRITE_COMMANDS = List.of("effect_create", "effect_edit_batch", "effect_preview",
 			"effect_save", "effect_export", "effect_history", "effect_open", "effect_resource_write",
-			"effect_texture_import", "effect_view");
+			"effect_texture_import", "effect_view", "effect_animation_edit", "effect_animation_control");
 
 	public static void register() {
 		if (registered) {

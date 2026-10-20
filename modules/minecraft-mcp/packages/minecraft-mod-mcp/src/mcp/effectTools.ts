@@ -23,6 +23,44 @@ export const EFFECT_RESPONSE_SCHEMA = z.object({
 
 export const EFFECT_TOOLS: EffectToolDef[] = [
     {
+        name: "effect_animation_state",
+        description: "Read named libraries, parameter/binding/marker summaries, complete library and project-test SNBT, runtime generation, playback handle IDs, clocks, and parameters. Does not switch the edited animation or change the project.",
+        inputSchema: {projectId, controllerId: z.string().uuid().optional()},
+        readOnly: true,
+    },
+    {
+        name: "effect_animation_edit",
+        description: "Edit one named controller and its project-test references through the shared authoring API. Read animationOperations from effect_capabilities. Commit the complete batch as one undo step, or dryRun without changing data/history. Existing handles retain their definition snapshots; later plays use the new library. Requires control mode.",
+        inputSchema: {
+            projectId,
+            controllerId: z.string().uuid(),
+            expectedRevision: z.string().min(1),
+            operations: z.array(z.record(z.unknown())).min(1).max(256),
+            dryRun: z.boolean().default(false),
+        },
+        readOnly: false,
+    },
+    {
+        name: "effect_animation_control",
+        description: "Control named playback or the project-test cursor without editing definitions/history. Read expectedRuntimeId and handleId from effect_animation_state. Non-play handle actions require handleId; restarting an existing project test requires its current handleId. Seek moves authored curves only and does not resimulate particle/world history. Requires control mode.",
+        inputSchema: {
+            projectId,
+            controllerId: z.string().uuid(),
+            expectedRuntimeId: z.string().uuid(),
+            target: z.enum(["named", "project_test"]).default("named"),
+            action: z.enum(["play", "pause", "resume", "stop", "seek", "parameters", "duration", "trigger", "signal"]),
+            handleId: z.string().uuid().optional(),
+            name: z.string().optional(),
+            duration: z.number().finite().optional(),
+            restart: z.boolean().optional(),
+            inputs: z.record(z.array(z.number().finite())).optional(),
+            time: tick.optional(),
+            channel: z.string().optional(),
+            dataSnbt: z.string().optional(),
+        },
+        readOnly: false,
+    },
+    {
         name: "effect_capabilities",
         description: "Describe effect project kinds, editable operations, field types, units, ranges, enums, file formats, and permitted workspace. Read this before creating or editing an effect.",
         inputSchema: {},

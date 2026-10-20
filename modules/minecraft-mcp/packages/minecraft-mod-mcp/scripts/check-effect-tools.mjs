@@ -12,13 +12,17 @@ const effectToolNames = [
     "effect_preview", "effect_save", "effect_export", "effect_history",
     "effect_open", "effect_resources", "effect_resource_read", "effect_resource_write",
     "effect_texture_import", "effect_view_state", "effect_view",
+    "effect_animation_state", "effect_animation_edit", "effect_animation_control",
 ];
 const nativeToolCount = 46;
 const readOnlyEffectToolNames = new Set([
     "effect_capabilities", "effect_state", "effect_resources", "effect_resource_read", "effect_view_state",
+    "effect_animation_state",
 ]);
 const runtimeMode = process.argv.slice(2).includes("--runtime");
 const authoringMode = process.argv.slice(2).includes("--authoring");
+const animationMode = process.argv.slice(2).includes("--animation");
+const animationReadOnlyMode = process.argv.slice(2).includes("--animation-readonly");
 const authoringExample = {
     name: "MCP模型接口示例",
     playbackSpeed: 0.75,
@@ -46,7 +50,17 @@ try {
     await client.connect(transport);
     const {tools} = await client.listTools();
     validateToolMetadata(tools);
-    if (authoringMode) {
+    if (animationMode || animationReadOnlyMode) {
+        const ping = await client.callTool({name: "ping", arguments: {}});
+        if (ping.isError || !ping.content.some(item => item.type === "text" && item.text.toLowerCase().includes("pong"))) {
+            throw new Error("minecraft_ping: " + ping.content.filter(item => item.type === "text").map(item => item.text).join(" "));
+        }
+    }
+    if (animationReadOnlyMode) {
+        console.log(JSON.stringify(await checkAnimationReadOnly()));
+    } else if (animationMode) {
+        console.log(JSON.stringify(await checkAnimation()));
+    } else if (authoringMode) {
         console.log(JSON.stringify(await checkAuthoring()));
     } else if (runtimeMode) {
         console.log(JSON.stringify(await checkRuntime()));
@@ -150,6 +164,195 @@ function validateEffectResponse(response, name) {
 
 function isObject(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function checkAnimation() {
+    const previousProjects = (await callReadOnlyEffectTool("effect_state")).projects;
+    const capabilities = await callReadOnlyEffectTool("effect_capabilities");
+    requireCheck(capabilities.namedAuthoringAvailable === true && capabilities.namedRuntimeAvailable === true
+        && isObject(capabilities.animationOperations), "animation_capabilities");
+    const created = await callEffectTool("effect_create", {kind: "fx", name: "mcp_animation_api"});
+    const projectId = created.projectId;
+    const checks = ["animation_capabilities", "create_fx"];
+    authoringProgress = {projectId, checks};
+    const paused = await callEffectTool("effect_preview", {projectId, action: "pause"});
+    const added = await callEffectTool("effect_edit_batch", {
+        projectId, expectedRevision: paused.revision,
+        operations: [{op: "add_emitter", type: "lobecorp_animation_controller", name: "mcp_named"}],
+    });
+    const controllerId = added.objects.find(object => object.type === "lobecorp_animation_controller")?.objectId;
+    requireCheck(typeof controllerId === "string", "create_controller");
+    const state = () => callEffectTool("effect_animation_state", {projectId, controllerId});
+    const edit = async operations => {
+        const current = await state();
+        return callEffectTool("effect_animation_edit", {
+            projectId,
+            controllerId,
+            expectedRevision: current.revision,
+            operations
+        });
+    };
+    const initial = await state();
+    const dry = await callEffectTool("effect_animation_edit", {
+        projectId,
+        controllerId,
+        expectedRevision: initial.revision,
+        dryRun: true,
+        operations: [{op: "add", name: "dry_probe"}],
+    });
+    const afterDry = await state();
+    recordCheck(checks, dry.dryRun === true && dry.changed === true && initial.revision === afterDry.revision
+        && initial.undoCount === afterDry.undoCount && afterDry.controllers[0].animations.length === 0, "animation_dry_run");
+    let current = await edit([{op: "add", name: "alpha"}, {op: "add", name: "beta"}]);
+    const alpha = current.controllers[0].animations.find(animation => animation.name === "alpha").animationId;
+    const beta = current.controllers[0].animations.find(animation => animation.name === "beta").animationId;
+    const gain = randomUUID();
+    const definition = (id, name, parameterId) => `{id:"${id}",name:"${name}",duration:20d,autoDuration:0b,loop:1b,futureDefinition:"keep",parameters:[{id:"${parameterId}",name:"gain",type:"NUMBER",defaults:[1f],minimum:0f,maximum:4f}],tracks:[]}`;
+    current = await edit([
+        {op: "replace_definition", animationId: alpha, snbt: definition(alpha, "alpha", gain)},
+        {op: "replace_definition", animationId: beta, snbt: definition(beta, "beta", randomUUID())},
+    ]);
+    const runtimeId = current.controllers[0].runtime.runtimeId;
+    const control = args => callEffectTool("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: runtimeId, ...args
+    });
+    const handles = response => response.controllers[0].runtime.handles;
+    let playing = await control({action: "play", name: "alpha", inputs: {gain: [2]}});
+    const alphaHandle = handles(playing).find(handle => handle.animationId === alpha).handleId;
+    playing = await control({action: "play", name: "beta"});
+    const betaHandle = handles(playing).find(handle => handle.animationId === beta).handleId;
+    const beforeControl = playing.revision;
+    let updated = await control({action: "pause", handleId: alphaHandle});
+    recordCheck(checks, handles(updated).find(handle => handle.handleId === alphaHandle).state === "PAUSED", "pause_handle");
+    updated = await control({action: "seek", handleId: alphaHandle, time: 10});
+    recordCheck(checks, handles(updated).find(handle => handle.handleId === alphaHandle).authoredTime === 10, "seek_authored_cursor");
+    updated = await control({action: "parameters", handleId: alphaHandle, inputs: {gain: [3]}});
+    recordCheck(checks, handles(updated).find(handle => handle.handleId === alphaHandle).parameters[gain][0] === 3, "set_handle_parameters");
+    updated = await control({action: "duration", handleId: alphaHandle, duration: 60});
+    const changedHandle = handles(updated).find(handle => handle.handleId === alphaHandle);
+    recordCheck(checks, changedHandle.duration === 60 && changedHandle.authoredTime === 10, "duration_preserves_progress");
+    await expectEffectFailure("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: randomUUID(),
+        action: "stop",
+        handleId: alphaHandle
+    }, "RUNTIME_CONFLICT");
+    await expectEffectFailure("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: runtimeId,
+        action: "stop",
+        handleId: randomUUID()
+    }, "HANDLE_EXPIRED");
+    await expectEffectFailure("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: runtimeId,
+        action: "parameters",
+        handleId: alphaHandle,
+        inputs: {gain: [1, 2]}
+    }, "INVALID_ARGUMENT");
+    current = await state();
+    recordCheck(checks, current.revision === beforeControl && handles(current).find(handle => handle.handleId === alphaHandle).parameters[gain][0] === 3, "control_errors_atomic");
+    current = await edit([{op: "rename", animationId: alpha, name: "alpha_new"}]);
+    recordCheck(checks, current.controllers[0].runtime.runtimeId === runtimeId && current.controllers[0].runtime.libraryMatchesAuthored === true
+        && handles(current).some(handle => handle.handleId === alphaHandle && handle.name === "alpha")
+        && handles(current).some(handle => handle.handleId === betaHandle), "redefine_keeps_handles");
+    const staleRevision = initial.revision;
+    await expectEffectFailure("effect_animation_edit", {
+        projectId,
+        controllerId,
+        expectedRevision: staleRevision,
+        operations: [{op: "add", name: "stale_probe"}]
+    }, "REVISION_CONFLICT");
+    current = await edit([{op: "set_default", animation: beta}]);
+    await expectEffectFailure("effect_animation_edit", {
+        projectId,
+        controllerId,
+        expectedRevision: current.revision,
+        operations: [{op: "remove", animationId: beta}]
+    }, "INVALID_ARGUMENT");
+    recordCheck(checks, (await state()).revision === current.revision, "uuid_reference_delete_guard");
+    const previewId = randomUUID();
+    current = await edit([{
+        op: "set_project_preview",
+        snbt: `{id:"${previewId}",name:"mcp_test",duration:20d,autoDuration:0b,tracks:[],futurePreview:"keep"}`
+    }]);
+    updated = await control({target: "project_test", action: "play", time: 8});
+    const testHandle = handles(updated).find(handle => handle.projectTest).handleId;
+    await expectEffectFailure("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: runtimeId,
+        target: "project_test",
+        action: "play",
+        time: 0
+    }, "INVALID_ARGUMENT");
+    updated = await control({target: "project_test", action: "seek", handleId: testHandle, time: 3});
+    recordCheck(checks, handles(updated).find(handle => handle.handleId === testHandle).authoredTime === 3, "project_test_cursor");
+    updated = await control({target: "project_test", action: "stop", handleId: testHandle});
+    recordCheck(checks, !handles(updated).some(handle => handle.handleId === testHandle)
+        && handles(updated).some(handle => handle.handleId === betaHandle), "stop_test_keeps_named");
+    updated = await control({action: "stop", handleId: alphaHandle});
+    recordCheck(checks, !handles(updated).some(handle => handle.handleId === alphaHandle)
+        && handles(updated).some(handle => handle.handleId === betaHandle), "stop_one_keeps_other");
+    const copied = await callEffectTool("effect_edit_batch", {
+        projectId, expectedRevision: updated.revision, dryRun: true,
+        operations: [{op: "set_parameter", objectId: controllerId, path: "/name", value: "mcp_named_checked"}],
+    });
+    recordCheck(checks, copied.dryRun === true && copied.proposedSnapshotSnbt.includes("futurePreview"), "project_data_copy_keeps_test");
+    await callEffectTool("effect_history", {projectId, action: "undo"});
+    await callEffectTool("effect_history", {projectId, action: "redo"});
+    const restored = await state();
+    recordCheck(checks, restored.projectPreviewSnbt === current.projectPreviewSnbt
+        && restored.controllers[0].librarySnbt.includes("futureDefinition"), "history_keeps_raw_data");
+    await callEffectTool("effect_edit_batch", {
+        projectId, expectedRevision: restored.revision,
+        operations: [{op: "set_parameter", objectId: controllerId, path: "/name", value: "mcp_named_checked"}]
+    });
+    const rebuilt = await state();
+    recordCheck(checks, rebuilt.controllers[0].runtime.runtimeId !== runtimeId
+        && rebuilt.projectPreviewSnbt === restored.projectPreviewSnbt, "runtime_generation_changed");
+    await expectEffectFailure("effect_animation_control", {
+        projectId,
+        controllerId,
+        expectedRuntimeId: runtimeId,
+        action: "stop",
+        handleId: betaHandle
+    }, "RUNTIME_CONFLICT");
+    const active = rebuilt.controllers[0].runtime;
+    for (const handle of active.handles) {
+        await callEffectTool("effect_animation_control", {
+            projectId, controllerId, expectedRuntimeId: active.runtimeId,
+            target: handle.projectTest ? "project_test" : "named", action: "stop", handleId: handle.handleId
+        });
+    }
+    const remainingProjects = (await callReadOnlyEffectTool("effect_state")).projects;
+    recordCheck(checks, previousProjects.every(project => remainingProjects.some(current => current.projectId === project.projectId)), "preserve_open_projects");
+    return {ok: true, projectId, controllerId, checks};
+}
+
+async function checkAnimationReadOnly() {
+    const capabilities = await callReadOnlyEffectTool("effect_capabilities");
+    const projects = (await callReadOnlyEffectTool("effect_state")).projects;
+    const project = projects.find(value => value.name === "mcp_api_fixture");
+    requireCheck(project && capabilities.namedAuthoringAvailable === true, "readonly_fixture");
+    const projectId = project.projectId;
+    const projectState = await callEffectTool("effect_state", {projectId});
+    const controllerId = projectState.objects.find(object => object.type === "lobecorp_animation_controller").objectId;
+    const before = await callEffectTool("effect_animation_state", {projectId, controllerId});
+    const runtimeId = before.controllers[0].runtime.runtimeId;
+    await expectEffectFailure("effect_animation_edit", {projectId, controllerId, expectedRevision: before.revision,
+        operations: [{op: "add", name: "forbidden_probe"}]}, "CONTROL_REQUIRED");
+    await expectEffectFailure("effect_animation_control", {projectId, controllerId, expectedRuntimeId: runtimeId,
+        action: "play", name: "first"}, "CONTROL_REQUIRED");
+    const after = await callEffectTool("effect_animation_state", {projectId, controllerId});
+    requireCheck(before.revision === after.revision && before.undoCount === after.undoCount
+        && before.controllers[0].librarySnbt === after.controllers[0].librarySnbt, "control_gate_atomic");
+    return {ok: true, readOnlyOnly: true, projectId, controllerId, checks: ["readonly_state", "control_required", "control_gate_atomic"]};
 }
 
 async function checkAuthoring() {

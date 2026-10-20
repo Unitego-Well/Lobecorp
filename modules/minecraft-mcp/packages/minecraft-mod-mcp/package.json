@@ -28,6 +28,7 @@
     "check:tools": "node scripts/check-effect-tools.mjs",
     "check:runtime": "node scripts/check-effect-tools.mjs --runtime",
     "check:authoring": "node scripts/check-effect-tools.mjs --authoring",
+    "check:animation": "node scripts/check-effect-tools.mjs --animation",
     "reference:effects": "node scripts/create-reference-effects.mjs",
     "prepublishOnly": "npm run build"
   },

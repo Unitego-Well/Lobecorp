@@ -68,7 +68,8 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 	private final FXRuntime runtime;
 	private final PhotonNamedController controller;
-	private final PhotonNamedLibrary library;
+	private PhotonNamedLibrary library;
+	private final UUID id = UUID.randomUUID();
 	private final PhotonNamedMixer mixer = new PhotonNamedMixer();
 	private final PhotonNamedGates gates;
 	private final Map<String, PhotonNamedPlan> plans = new LinkedHashMap<>();
@@ -105,13 +106,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			}
 		}
 
-		for (var definition : library.animations()) {
-			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition);
-			plans.put(definition.name(), plan);
-			plans.put(definition.id().toString(), plan);
-		}
-
-		validateReferences();
+		plans.putAll(preparePlans(runtime, library));
 		previousTick = root.getOnUpdateTick();
 		previousFrame = root.getOnUpdateFrame();
 		root.setOnUpdateTick(tickCallback);
@@ -122,6 +117,111 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			}
 		});
 		controller.attach(this);
+	}
+
+	public UUID id() {
+		return id;
+	}
+
+	public UUID controllerId() {
+		return controller.id();
+	}
+
+	public PhotonNamedLibrary library() {
+		return library;
+	}
+
+	public List<PhotonNamedHandle> playbacks() {
+		return playing.values().stream().map(entry -> entry.handle).toList();
+	}
+
+	public long revision() {
+		return revision;
+	}
+
+	public void pause(PhotonNamedHandle handle, boolean paused) {
+		current(handle);
+		if (handle.controlled()) {
+			throw new IllegalArgumentException("受控播放由所属时间轴驱动。");
+		}
+
+		if (paused) {
+			handle.clock().pause();
+		} else {
+			handle.clock().resume();
+		}
+
+		revision++;
+		refresh();
+	}
+
+	/// 定位只更新该命名句柄的制作游标，不伪造粒子或世界的历史模拟。
+	public void seek(PhotonNamedHandle handle, double authoredTime) {
+		var entry = current(handle);
+		if (handle.controlled() || !Double.isFinite(authoredTime) || authoredTime < 0
+				|| handle.authoredDuration() == 0 && authoredTime != 0) {
+			throw new IllegalArgumentException("命名制作定位时间无效，受控播放须使用所属时间轴。");
+		}
+
+		double position = handle.authoredDuration() == 0 ? 0 : authoredTime / handle.authoredDuration();
+		if (!Double.isFinite(position)) {
+			throw new IllegalArgumentException("命名制作定位超出有效范围。");
+		}
+
+		handle.clock().seek(handle.definition().loop() ? position : Math.min(1, position));
+		entry.pendingTicks = 0;
+		entry.notifiedPosition = handle.position(0);
+		revision++;
+		refresh();
+	}
+
+	public void parameters(PhotonNamedHandle handle, Map<String, List<Float>> changes) {
+		current(handle);
+		handle.parameters(changes);
+		revision++;
+		refresh();
+	}
+
+	public void duration(PhotonNamedHandle handle, double duration) {
+		current(handle);
+		handle.duration(duration);
+		revision++;
+		refresh();
+	}
+
+	/// 仅更新后续播放和事件使用的库；现有句柄继续使用其准备时的定义和计划。
+	public void redefine(CompoundTag source) throws IOException {
+		requireOpen();
+		if (library.source().equals(source)) {
+			return;
+		}
+
+		var candidate = PhotonNamedCodecUtil.read(source);
+		var prepared = preparePlans(runtime, candidate);
+		if (preview != null && prepared.containsKey(preview.handle.definition().id().toString())) {
+			throw new IllegalArgumentException("命名动画身份与工程测试身份冲突。");
+		}
+
+		library = candidate;
+		plans.clear();
+		plans.putAll(prepared);
+		revision++;
+	}
+
+	public static void validateLibrary(FXRuntime runtime, CompoundTag source) throws IOException {
+		preparePlans(runtime, PhotonNamedCodecUtil.read(source));
+	}
+
+	private static Map<String, PhotonNamedPlan> preparePlans(FXRuntime runtime, PhotonNamedLibrary library) {
+		var prepared = new LinkedHashMap<String, PhotonNamedPlan>();
+		for (var definition : library.animations()) {
+			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition);
+			prepared.put(definition.name(), plan);
+			prepared.put(definition.id().toString(), plan);
+		}
+
+		validateReferences(library, prepared);
+		return prepared;
 	}
 
 	public void begin() {
@@ -593,7 +693,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		return Map.copyOf(result);
 	}
 
-	private void validateReferences() {
+	private static void validateReferences(PhotonNamedLibrary library, Map<String, PhotonNamedPlan> plans) {
 		if (!library.defaultAnimation().isEmpty() && !plans.containsKey(library.defaultAnimation())) {
 			throw new IllegalArgumentException("默认命名动画不存在。");
 		}

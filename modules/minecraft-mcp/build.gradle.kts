@@ -94,6 +94,14 @@ tasks.register<Exec>("probeEffectAuthoring") {
     commandLine(npmCommand + listOf("run", "check:authoring"))
 }
 
+tasks.register<Exec>("probeEffectAnimation") {
+    group = "minecraft mcp"
+    description = "Checks named authoring and handle control through the real MCP stdio bridge"
+    dependsOn("buildBridge")
+    workingDir(bridgeDirectory)
+    commandLine(npmCommand + listOf("run", "check:animation"))
+}
+
 listOf(
     "inspectReferenceEffects" to "inspect",
     "createReferenceEffects" to "apply",

@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /// 对制作原树执行无副作用编辑；工程测试调用与库内名称引用作为同一事务返回。
@@ -16,9 +17,13 @@ public class PhotonNamedAuthoringUtil {
 		public Document {
 			library = library.copy();
 			preview = preview == null ? null : preview.copy();
-			checked(library);
+			var parsed = checked(library);
 			if (preview != null) {
 				preview = PhotonProjectPreviewUtil.checkedCopy(preview);
+				var id = preview.getStringOr("id", "");
+				if (parsed.animations().stream().anyMatch(definition -> definition.id().toString().equals(id))) {
+					throw new IllegalArgumentException("工程测试身份不能与命名动画重复。");
+				}
 			}
 		}
 
@@ -41,6 +46,26 @@ public class PhotonNamedAuthoringUtil {
 		animations.add(definition);
 		library.putInt("version", PhotonNamedLibrary.VERSION);
 		library.put("animations", animations);
+		return new Document(library, source.preview());
+	}
+
+	public static Document defaultAnimation(Document source, String animation) {
+		var library = source.library();
+		if (library.isEmpty()) {
+			library.putInt("version", PhotonNamedLibrary.VERSION);
+		}
+
+		library.putString("defaultAnimation", animation);
+		return new Document(library, source.preview());
+	}
+
+	public static Document rules(Document source, ListTag rules) {
+		var library = source.library();
+		if (library.isEmpty()) {
+			library.putInt("version", PhotonNamedLibrary.VERSION);
+		}
+
+		library.put("rules", rules.copy());
 		return new Document(library, source.preview());
 	}
 
@@ -81,6 +106,38 @@ public class PhotonNamedAuthoringUtil {
 		return new Document(library, source.preview());
 	}
 
+	/// 只合并明确编辑的字段；身份与名称仍由专用事务管理，未涉及的未知字段保持原值。
+	public static Document patchDefinition(Document source, UUID id, CompoundTag patch) {
+		var library = source.library();
+		var current = (CompoundTag) animations(library).get(index(library, id));
+		return replaceDefinition(source, id, mergeDefinition(current, patch));
+	}
+
+	public static Document patchPreview(Document source, UUID id, CompoundTag patch) {
+		var current = source.preview();
+		if (current == null || !current.getStringOr("id", "").equals(id.toString())) {
+			throw new IllegalArgumentException("工程测试身份已失效：" + id);
+		}
+
+		return new Document(source.library(), mergeDefinition(current, patch));
+	}
+
+	private static CompoundTag mergeDefinition(CompoundTag current, CompoundTag patch) {
+		var allowed = List.of("duration", "autoDuration", "loop", "priority", "completion", "parameters", "bindings", "markers", "tracks");
+		for (var key : patch.keySet()) {
+			if (!allowed.contains(key)) {
+				throw new IllegalArgumentException("不支持局部编辑定义字段：" + key);
+			}
+		}
+
+		var result = current.copy();
+		for (var key : patch.keySet()) {
+			result.put(key, Objects.requireNonNull(patch.get(key)).copy());
+		}
+
+		return result;
+	}
+
 	public static Document rename(Document source, UUID id, String name) {
 		var library = source.library();
 		var definition = (CompoundTag) animations(library).get(index(library, id));
@@ -118,12 +175,10 @@ public class PhotonNamedAuthoringUtil {
 	public static List<String> references(Document source, UUID id) {
 		var library = source.library();
 		String name = checked(library).animations().get(index(library, id)).name();
-		if (name.isEmpty()) {
-			return List.of();
-		}
+		var aliases = name.isEmpty() ? List.of(id.toString()) : List.of(name, id.toString());
 
 		var result = new ArrayList<String>();
-		if (library.getStringOr("defaultAnimation", "").equals(name)) {
+		if (aliases.contains(library.getStringOr("defaultAnimation", ""))) {
 			result.add("library/defaultAnimation");
 		}
 
@@ -131,7 +186,7 @@ public class PhotonNamedAuthoringUtil {
 		for (int i = 0; i < rules.size(); i++) {
 			var rule = (CompoundTag) rules.get(i);
 			for (var key : List.of("animation", "target")) {
-				if (rule.getStringOr(key, "").equals(name)) {
+				if (aliases.contains(rule.getStringOr(key, ""))) {
 					result.add("library/rules/" + i + "/" + key);
 				}
 			}
@@ -139,10 +194,12 @@ public class PhotonNamedAuthoringUtil {
 
 		var preview = source.preview();
 		if (preview != null) {
-			visitCalls(preview.getListOrEmpty("tracks"), "preview/tracks", name, null, result);
+			for (var alias : aliases) {
+				visitCalls(preview.getListOrEmpty("tracks"), "preview/tracks", alias, null, result);
+			}
 		}
 
-		return List.copyOf(result);
+		return result.stream().distinct().toList();
 	}
 
 	public static Document remove(Document source, UUID id) {

@@ -5,12 +5,12 @@ import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedPlan;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
-import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil.Document;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
 import java.io.IOException;
@@ -61,22 +61,27 @@ public class PhotonNamedAuthoringSession {
 
 	/// 完整工程版本与目标原树共同校验，验证失败不写入数据或历史。
 	public void commit(long expectedRevision) {
-		requireOpen(expectedRevision);
-		if (editor.getCurrentProject() != project || !projectRevision.equals(PhotonEffectProjectUtil.revision(project))
-				|| !original.equals(read(project, controller))) {
-			throw new IllegalStateException("工程或命名定义已改变，请重新打开制作草稿。");
-		}
+		validate(expectedRevision);
 
 		if (draft.equals(original)) {
 			closed = true;
 			return;
 		}
 
-		validate();
 		var committed = draft;
 		editor.timelineView.pushEdit("photon.lobecorp.animation.inspector_panel",
 				() -> restore(editor, project, controller, committed), () -> restore(editor, project, controller, original));
 		closed = true;
+	}
+
+	public void validate(long expectedRevision) {
+		requireOpen(expectedRevision);
+		if (editor.getCurrentProject() != project || !projectRevision.equals(PhotonEffectProjectUtil.revision(project))
+				|| !original.equals(read(project, controller))) {
+			throw new IllegalStateException("工程或命名定义已改变，请重新打开制作草稿。");
+		}
+
+		validateDraft();
 	}
 
 	public void cancel() {
@@ -89,7 +94,7 @@ public class PhotonNamedAuthoringSession {
 		}
 	}
 
-	private void validate() {
+	private void validateDraft() {
 		if (editor.runtime == null) {
 			throw new IllegalStateException("制作预览实例已失效。");
 		}
@@ -97,15 +102,17 @@ public class PhotonNamedAuthoringSession {
 			throw new IllegalArgumentException(PhotonEditorProjectGuardUtil.message());
 		}
 
-		var wrapper = (CompoundTag) resolve(project, controller).serializeWrapper();
+		var wrapper = resolve(project, controller).serializeWrapper();
+		if (wrapper == null) {
+			throw new IllegalStateException("命名控制器无法序列化。");
+		}
+
 		wrapper.getCompoundOrEmpty("data").put("definition", draft.library());
 		PhotonEditorProjectGuardUtil.requireSupported(wrapper);
 		PhotonEditorProjectGuardUtil.requireSupported(draft.preview());
 
 		try {
-			for (var definition : PhotonNamedCodecUtil.read(draft.library()).animations()) {
-				new PhotonNamedPlan(Platform.getFrozenRegistry(), editor.runtime, definition);
-			}
+			PhotonNamedRuntime.validateLibrary(editor.runtime, draft.library());
 
 			var preview = draft.preview();
 			if (preview != null) {
@@ -145,6 +152,17 @@ public class PhotonNamedAuthoringSession {
 		}
 
 		var target = resolve(project, controller);
+		if (editor.runtime instanceof PhotonNamedAccess access) {
+			var playback = access.lobecorp$namedRuntime();
+			if (playback != null && !playback.closed() && playback.controllerId().equals(controller)) {
+				try {
+					playback.redefine(source.library());
+				} catch (IOException invalid) {
+					throw new IllegalArgumentException("命名运行库无法刷新。", invalid);
+				}
+			}
+		}
+
 		target.definition(source.library());
 		((PhotonProjectPreviewAccess) project).lobecorp$projectPreview(source.preview());
 	}

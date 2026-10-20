@@ -313,7 +313,7 @@ public class PhotonEffectProjectUtil {
 	}
 
 	public static void decode(IProject project, CompoundTag data) {
-		PhotonEditorProjectGuardUtil.requireSupported(data);
+		PhotonEditorProjectGuardUtil.requireSupportedProjectData(data);
 		var reporter = new ProblemReporter.Collector();
 		project.deserializeProject(TagValueInput.create(reporter, Platform.getFrozenRegistry(), data.copy()));
 

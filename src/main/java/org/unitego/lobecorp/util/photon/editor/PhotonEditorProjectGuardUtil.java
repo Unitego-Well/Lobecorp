@@ -188,6 +188,15 @@ public class PhotonEditorProjectGuardUtil {
 		}
 	}
 
+	/// 工程data快照保留项目测试字段的位置语义，不能按独立FX数据检查。
+	public static void requireSupportedProjectData(CompoundTag data) {
+		var wrapper = new CompoundTag();
+		wrapper.put("data", data);
+		if (containsProjectTag(wrapper)) {
+			throw new IllegalArgumentException(message());
+		}
+	}
+
 	public static void requireSupportedFile(File file) {
 		if (containsFileExtensions(file)) {
 			throw new IllegalArgumentException(message());

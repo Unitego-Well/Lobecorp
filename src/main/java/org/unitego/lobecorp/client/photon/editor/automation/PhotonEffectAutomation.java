@@ -16,6 +16,10 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUti
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectSchemaUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectViewUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedControlUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
@@ -205,6 +209,25 @@ public class PhotonEffectAutomation {
 				yield prepared::commit;
 			}
 			case "effect_preview" -> preview(handle(request), request);
+			case "effect_animation_state" -> {
+				var state = PhotonEffectNamedUtil.state(handle(request), request.has("controllerId") ? PhotonEffectNamedUtil.uuid(request, "controllerId") : null);
+				yield () -> state;
+			}
+			case "effect_animation_edit" -> {
+				var prepared = PhotonEffectNamedUtil.prepare(handle(request), request);
+				yield new Action() {
+					@Override
+					public JsonObject run() {
+						return prepared.commit();
+					}
+
+					@Override
+					public void close() {
+						prepared.close();
+					}
+				};
+			}
+			case "effect_animation_control" -> () -> PhotonEffectNamedControlUtil.control(handle(request), request);
 			case "effect_save" -> fileAction(PhotonEffectFileUtil.prepareSave(handle(request), request));
 			case "effect_export" -> fileAction(PhotonEffectFileUtil.prepareExport(handle(request), request));
 			case "effect_history" -> history(handle(request), request);
@@ -295,6 +318,20 @@ public class PhotonEffectAutomation {
 		var result = new JsonObject();
 		result.addProperty("protocolVersion", 1);
 		result.add("operations", JsonParser.parseString(OPERATION_SCHEMA));
+		result.add("animationOperations", PhotonEffectNamedUtil.operations());
+		result.addProperty("animationProtocolVersion", 1);
+		result.addProperty("namedAuthoringAvailable", true);
+		result.addProperty("namedRuntimeAvailable", true);
+		result.addProperty("namedSeekSemantics", "authored_cursor_without_particle_resimulation");
+		result.add("namedWritableTrackTypes", JsonParser.parseString("[\"activator\",\"control\",\"animation\",\"group\"]"));
+		var parameterTypes = new JsonArray();
+		for (var parameter : PhotonNamedLibrary.ParameterType.values()) {
+			var type = new JsonObject();
+			type.addProperty("name", parameter.name());
+			type.addProperty("channels", parameter.channels());
+			parameterTypes.add(type);
+		}
+		result.add("animationParameterTypes", parameterTypes);
 		result.addProperty("timeUnit", "tick");
 		result.addProperty("editWorkflow", "effect_preview pause → effect_state → effect_edit_batch；原生 FX 时间轴播放会更新持久变换，播放中 revision 可变化");
 		result.addProperty("maxSeekTicks", MAX_SEEK_TICKS);
@@ -311,6 +348,7 @@ public class PhotonEffectAutomation {
 			type.addProperty("type", entry.getKey());
 			var object = entry.getValue().create();
 			var data = object.serializeWrapper();
+			type.addProperty("writable", data != null && !PhotonEditorProjectGuardUtil.containsTag(data));
 
 			if (data != null) {
 				var metadata = PhotonEffectSchemaUtil.describe(object.getClass(), data.getCompoundOrEmpty("data"));

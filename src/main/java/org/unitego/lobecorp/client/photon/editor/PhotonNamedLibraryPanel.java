@@ -1,6 +1,9 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
@@ -12,6 +15,7 @@ import com.lowdragmc.photon.gui.editor.FXProject;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import dev.vfyjxf.taffy.style.TaffyDimension;
 import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
@@ -21,6 +25,8 @@ import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 /// 列表编辑只修改会话草稿；显式应用时一次提交库和工程测试引用。
@@ -124,6 +130,47 @@ public class PhotonNamedLibraryPanel {
 		var field = new StringConfigurator("photon.lobecorp.animation.name", () -> name, value -> name = value, name, false);
 		field.layout(layout -> layout.widthPercent(100).flexShrink(0));
 		properties.addChild(field);
+		if (selected != null) {
+			addDefinitionProperties(requireSelected());
+		}
+	}
+
+	private void addDefinitionProperties(UUID id) {
+		var definition = library().animations().stream().filter(value -> value.id().equals(id)).findFirst().orElseThrow();
+		var duration = new NumberConfigurator("photon.lobecorp.animation.duration", () -> currentDefinition(id).duration(),
+				value -> patch(id, tag -> tag.putDouble("duration", value.doubleValue())), definition.duration(), false)
+				.setRange(0, Double.MAX_VALUE);
+		var automatic = new BooleanConfigurator("photon.lobecorp.animation.auto_duration", () -> currentDefinition(id).autoDuration(),
+				value -> patch(id, tag -> tag.putBoolean("autoDuration", value)), definition.autoDuration(), false);
+		var loop = new BooleanConfigurator("photon.lobecorp.animation.loop", () -> currentDefinition(id).loop(),
+				value -> patch(id, tag -> tag.putBoolean("loop", value)), definition.loop(), false);
+		var priority = new NumberConfigurator("photon.lobecorp.animation.priority", () -> currentDefinition(id).priority(),
+				value -> patch(id, tag -> tag.putInt("priority", value.intValue())), definition.priority(), false)
+				.setRange(Integer.MIN_VALUE, Integer.MAX_VALUE);
+		var completion = new SelectorConfigurator<>("photon.lobecorp.animation.completion", () -> currentDefinition(id).completion(),
+				value -> patch(id, tag -> tag.putString("completion", value.name())), definition.completion(), false,
+				List.of(PhotonNamedLibrary.Completion.values()), value -> Component.translatable("photon.lobecorp.animation.enum." + value.name()).getString());
+		for (var property : List.of(duration, automatic, loop, priority, completion)) {
+			property.layout(layout -> layout.widthPercent(100).flexShrink(0));
+			properties.addChild(property);
+		}
+	}
+
+	private PhotonNamedLibrary.Definition currentDefinition(UUID id) {
+		return library().animations().stream().filter(value -> value.id().equals(id)).findFirst()
+				.orElseThrow(() -> new IllegalStateException("制作动画身份已失效。"));
+	}
+
+	/// 字段回调只改变草稿，不重建输入控件或提前提交历史。
+	private void patch(UUID id, Consumer<CompoundTag> operation) {
+		try {
+			var patch = new CompoundTag();
+			operation.accept(patch);
+			session.edit(session.revision(), source -> PhotonNamedAuthoringUtil.patchDefinition(source, id, patch));
+			status.setText(Component.empty());
+		} catch (IllegalArgumentException | IllegalStateException invalid) {
+			status.setText(Component.literal(invalid.getMessage()));
+		}
 	}
 
 	private void move(int offset) {

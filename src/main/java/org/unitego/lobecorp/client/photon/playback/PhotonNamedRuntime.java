@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -637,6 +638,12 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 	public boolean closed() {
 		return closed;
+	}
+
+	public void captureNativeState(Set<UUID> targets, @Nullable PhotonNamedGates activation) {
+		if (!closed) {
+			gates.captureNativeState(targets, activation);
+		}
 	}
 
 	private void requireOpen() {

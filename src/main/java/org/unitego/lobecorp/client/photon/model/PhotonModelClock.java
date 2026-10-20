@@ -16,6 +16,8 @@ public class PhotonModelClock {
 	private boolean started;
 	private boolean cleared;
 	private boolean stopped;
+	private boolean emissionStopped;
+	private float emissionEndAge = Float.POSITIVE_INFINITY;
 
 	public void reset(Settings settings, boolean preserve) {
 		boolean keep = preserve && started && !cleared;
@@ -26,6 +28,8 @@ public class PhotonModelClock {
 		cleared = false;
 		stopped = false;
 		stopAge = Float.POSITIVE_INFINITY;
+		emissionStopped = false;
+		emissionEndAge = Float.POSITIVE_INFINITY;
 	}
 
 	public void advance(float dt, Settings settings) {
@@ -36,7 +40,7 @@ public class PhotonModelClock {
 		float previous = age;
 		age += dt;
 
-		if (age >= settings.startDelay() && !started && !stopped && settings.enabled()) {
+		if (age >= settings.startDelay() && !started && !stopped && !emissionStopped && settings.enabled()) {
 			started = true;
 		}
 
@@ -44,7 +48,7 @@ public class PhotonModelClock {
 			animation += (Math.max(0, age - settings.startDelay()) - Math.max(0, previous - settings.startDelay())) * settings.speed();
 		}
 
-		if ((!settings.loop() && age - settings.startDelay() >= settings.duration()) || age >= stopAge) {
+		if ((!settings.loop() && age - settings.startDelay() >= settings.duration()) || age >= Math.min(stopAge, emissionEndAge)) {
 			clear();
 		}
 	}
@@ -63,6 +67,22 @@ public class PhotonModelClock {
 	public void clear() {
 		started = false;
 		cleared = true;
+	}
+
+	public boolean emissionStopped() {
+		return emissionStopped;
+	}
+
+	/// 激活停发与执行器停止各自拥有期限；释放激活贡献不撤销外部停止请求。
+	public void emissionStopped(Settings settings, boolean value) {
+		if (value && !emissionStopped) {
+			float active = Math.max(0, age - settings.startDelay());
+			emissionEndAge = settings.startDelay() + ((float) Math.floor(active / settings.duration()) + 1) * settings.duration();
+		} else if (!value) {
+			emissionEndAge = Float.POSITIVE_INFINITY;
+		}
+
+		emissionStopped = value;
 	}
 
 	public boolean visible(Settings settings) {

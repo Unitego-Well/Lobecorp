@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
@@ -26,7 +27,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /// 调度已有原生FX实例，自身没有几何输出；每实例独占槽、随机数、预算和子实例。
-public class PhotonChildSpawner extends Emitter {
+public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess {
 	@Persisted(subPersisted = true)
 	public final PhotonSpawnConfig config = new PhotonSpawnConfig();
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
@@ -39,6 +40,7 @@ public class PhotonChildSpawner extends Emitter {
 	private Set<String> path = Set.of();
 	private boolean paused;
 	private boolean stopped;
+	private boolean preserveParticles;
 	private int budget;
 	private long generated;
 	private @Nullable String failure;
@@ -223,6 +225,26 @@ public class PhotonChildSpawner extends Emitter {
 		stopped = value;
 	}
 
+	@Override
+	public boolean lobecorp$emissionStopped() {
+		return stopped;
+	}
+
+	@Override
+	public void lobecorp$emissionStopped(boolean stopped) {
+		stopEmission(stopped);
+	}
+
+	@Override
+	public void lobecorp$preserveParticles(boolean preserve) {
+		preserveParticles = preserve;
+	}
+
+	@Override
+	public void lobecorp$clearParticles() {
+		clearInstances();
+	}
+
 	public boolean paused() {
 		return paused;
 	}
@@ -239,7 +261,7 @@ public class PhotonChildSpawner extends Emitter {
 
 	@Override
 	public void reset() {
-		if (config.clearOnRestart) {
+		if (config.clearOnRestart && !preserveParticles) {
 			clearInstances();
 		}
 

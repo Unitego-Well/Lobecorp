@@ -58,4 +58,29 @@ public class PhotonModelClockTest {
 		assertEquals(0, clock.animationTime(0, 1, settings));
 		assertThrows(IllegalArgumentException.class, () -> new Settings(true, false, true, 0, 0, 1));
 	}
+
+	@Test
+	public void activationStopDrainsButReleaseDoesNotUndoExecutorStop() {
+		var clock = new PhotonModelClock();
+		var settings = new Settings(true, false, true, 10, 0, 1);
+		clock.reset(settings, false);
+		clock.advance(3, settings);
+		clock.emissionStopped(settings, true);
+		clock.advance(2, settings);
+		assertTrue(clock.visible(settings));
+		clock.emissionStopped(settings, false);
+		clock.advance(6, settings);
+		assertTrue(clock.visible(settings));
+		assertEquals(11, clock.animationTime(0, 1, settings));
+		clock.stop(settings, false);
+		clock.emissionStopped(settings, true);
+		clock.emissionStopped(settings, false);
+		clock.advance(9, settings);
+		assertTrue(clock.finished());
+		clock.reset(settings, false);
+		clock.advance(3, settings);
+		clock.emissionStopped(settings, true);
+		clock.advance(7, settings);
+		assertTrue(clock.finished());
+	}
 }

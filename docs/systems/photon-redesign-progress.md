@@ -99,6 +99,24 @@
 - 两轮客户端正常退出且BUILD SUCCESSFUL，日志已保留为client-gui-initial.log和client-gui-layout-disk.log；原始临时日志分别为ij_run__Client_10249724691152889811.log和ij_run__Client_5256740108241147824.log。最终工程路径限定修改通过静态诊断/编译/JUnit/Data，未再启动第三轮客户端；上述文件链与布局证据采集于该限定前，最终版本完整GUI/文件链仍需复核。临时工程已关闭，不保存原资产；本轮临时断点清除，3个原用户断点保留。
 - 退出阶段仍出现conductor_snapshot/text_particle_state同步任务报错，与前轮相同类别，尚未定位，未顺带修改；不称为无错误客户端运行。
 
+## 最终限制复核与旧激活恢复（2026-10-20）
+
+- 修改前建立refs/backups/before-photon-g1-activation-20261020，指向75c2140；沿用R0原资产/工作区备份，保留其他暂存和未暂存工作。先在该提交的最终路径限制下，完成原生工程重开/再保存的完整NBT相等及测试面板8tick重启/回拖3tick/关闭释放，日志为client-final-path-verification.log，标记G1_FINAL_GUARD_NATIVE_DISK/G1_FINAL_GUARD_GUI_CALLBACKS均passed。
+- 新增PhotonActivationOptions/StateUtil、轨道/发射/归属桥接、激活运行Mixin及扩展编辑器历史适配；原生无扩展字段保持CONTINUE/ORIGINAL，v6命名动画缺省激活在运行准备阶段采用历史RESTART语义，不改写原库。支持两端开关、旧singleFrame读取、RESTART/CONTINUE、ORIGINAL/STOP_EMISSION/CLEAR、保留粒子重启和单边点；同轨道区间并集只进入一次，最新单边命令覆盖持续区间，后续新入口才能恢复，同时间按保存顺序处理。
+- 原生TimelinePlayer过滤非区间命令后再处理扩展；NamedGates用归属令牌协调原生/命名控制，父级重启/清理跳过独立子级，并记录当帧原生基底用于命名贡献释放。ParticleEmitter只拦截新生成，保留残留模拟；空停发实例不以发射能力保活。模型停发期限与执行器停止各自独立，支持保留重启/清理；子生成器接入相同桥接，但真实子实例/依赖资源的完整生命周期验收仍未完成。
+- 激活区间边界仅在准备/编辑变化时重建，运行缓存不持有可变原树；没有增加线程池或GUI独立渲染，没有宣称帧率收益。当前Trace仍沿既有运行/时间轴范围计量，完整冷/热/多实例/拖动基准未通过。
+- 新增PhotonActivationPanel：“工具→激活行为”配置单个已选原生激活轨道，应用进入原生历史；撤销/重做按当前工程轨道路径定位，保持字段/绑定，不依赖历史恢复前的Java对象引用，不自动保存。此为原生激活制作界面，不代表历史命名/工程测试轨道制作工作区已整体恢复。
+- 激活轨道保存保留原始轨道、片段及激活容器未知字段，合并已知字段时删除旧绑定，避免解绑后复活。文件门禁仅允许经协议校验的原生activator包装；未知包装字段、错误类型/UUID/范围及其他旧扩展仍阻断，模型后缀和未恢复类型没有整体放开。
+- 客户端实际粒子检查通过停发后残留更新、直接生成拦截、残留保活/空实例结束、保留/清空重启和入口只重置一次；单边点、区间恢复、外部停用状态回拖及关闭两端也通过。完整activation_supported.fxproj→重开→另存NBT相等。G1_NATIVE_ACTIVATION_PARTICLES与G1_NATIVE_ACTIVATION_POINTS通过；首轮G1_ACTIVATION_GUI_HISTORY_DISK检查持有旧轨道引用，未复核当前工程，不能据此确认撤销/重做和磁盘未知字段通过，结论已撤回。
+- 父激活/父控制两种夹具均保留独立命名子级粒子，手动隐藏祖先仍隐藏子级，释放后恢复继承；另以真实命名运行时覆盖原生激活/控制、原生进入/退出两种边界，命名释放同tick恢复当帧原生基底。标记G1_ACTIVATION_PARENT_CHILD_OWNERSHIP及G1_NATIVE_NAMED_BASE_RELEASE均passed。模型内存夹具通过保留重启、周期末停发和立即清理；已有模型轨道/TRS/Morph/HOLD、命名混合和工程调用夹具也通过，不替代全量可见资源验收。
+- 压缩FX首轮文件NBT往返相等，但实际FX.createRuntime播放失败：Track.copy走独立copyExtra路径，没有传递激活设置，实例退回NATIVE。已新增无Provider依赖的复制桥接，连同原树/片段未知字段独立复制；后续带未知字段的浅/深复制及原生播放已通过，首轮失败证据保留，未覆盖原资源。
+- 复制修复后，从带三层未知字段的activation_unknown_seeded.fx实际重读，浅/深两种createRuntime均保持完整轨道数据，修改副本不改变模板，原生emit与停发行为通过；标记G1_ACTIVATION_COPY_NATIVE_FX_PLAYBACK=passed。一次“copy aliases template”检查错误地假定旧夹具含future字段；实测旧文件为ABSENT、复制前后模板树相同，该次失败属于夹具前提错误，不是别名根因。
+- GUI复核进一步发现：原生HistoryView.undo回到初始SerializableRecordAction时反序列化整个工程，旧轨道引用脱离当前数据，旧重做闭包写不到当前工程，运行时对象映射也会陈旧。已改为按当前工程轨道路径恢复激活字段，并仅在扩展编辑器历史恢复后、数据与运行时脱离时重建预览和层级，保留播放/暂停及时间目标；最终按当前工程重新取轨道，验证原始未知字段、撤销/重做、运行时对象映射与暂停、保存后修改读回及完整工程NBT一致，G1_ACTIVATION_CURRENT_HISTORY_DISK=passed。此处理不修改普通原生Photon编辑器或其他项目的历史行为。
+- 纯语义/保护/未知字段JUnit9项、模型时钟4项、工程测试字段4项通过；IDEA编译返回success=true、aborted=false，计数null不作零警告结论。Data日志ij_run__Data_9134491337992206456.log为BUILD SUCCESSFUL；真实资源原字节保护与最终生成目录检查分别记录，不由夹具推导。源资源、实体动画/LOD对原生接入前备份检查无差异。
+- 本轮仅普通无条件行断点；一次调用栈只读请求长时间未回执，取消请求后重新读取会话/栈恢复，未更换JDK/修改模块参数或清空断点。激活首轮末尾独立读取classRedefinedCount=0；窗口末尾max=0，故首张激活面板图只作布局证据，最终窗口状态与复制修复证据见下项。
+- 最终当前工程/历史修复验证后，再次确认主窗GLFW_MAXIMIZED=1、真实帧缓冲2560×1494，截图screenshots/activation-panel-final-maximized.png已读回检查，为游戏内嵌透视界面；独立读取classRedefinedCount仍0。最终Client日志ij_run__Client_17843290617460757301.log正常退出且BUILD SUCCESSFUL；全部本轮客户端关闭，临时断点清除，3个用户原断点保留。
+- 最终编译success=true、aborted=false，消息计数null；最后一轮JUnit9+4+4全部通过。最终Data日志ij_run__Data_3217596625298289299.log为BUILD SUCCESSFUL，23输出written=0/removed=0，生成目录无差异。主要日志已复制到本轮backups目录，含client-final-path-verification.log、client-activation-before-copy-fix.log、client-copy-fix-before-history-fix.log、client-final-history-fix.log及data-final-history-fix.log；退出阶段仍有既有配置阶段网络同步取玩家报错，未修复，不称为无错误客户端运行。
+
 ## 当前未完成
 
 - 实际来源优先级、递归依赖闭合与源/包版本差异解释；原始来源/条目清单及哈希已经记录，不能以清单替代引用解析。
@@ -108,7 +126,7 @@
 - 实体动画与实体模型LOD属于保护范围，本轮未修改这些文件；后续也不接管其实现。
 - G1完整运行/往返/性能门槛仍未通过；已通过的分项不代替完整门槛，高级扩展未开始。
 
-后续优先核对：命名/工程测试轨道制作界面及真实旧工程完整磁盘往返；原生激活的开始/结束/停止发射/重启保留粒子及子级覆盖、旧循环/渲染字段；实际发射生成器和受控/独立子动画的可见/生命周期检查；递归来源解析与独立包；模型工程/OBJ/UV及编辑事务；原文件另存/重开/发布；既有快照驱动的真实指挥家激光/星束及可取消拖动性能。当前生成器FX来源仍经过原FXHelper文件保护，完整旧文件播放不能直接放行；真正Beam目标的旧长度覆盖仍明确拒绝。工程调用的世界内夹具、测试运行面板、8份测试字段原生ValueIO内存往返和隔离原生工程文件链已有分项证据，完整旧工程及G1尚未通过。
+后续优先核对：命名/工程测试轨道完整制作工作区及真实旧工程完整磁盘往返；激活在全部真实组合资源中的可见等价与旧循环/渲染字段；实际发射生成器和受控/独立子动画的可见/生命周期检查；递归来源解析与独立包；模型工程/OBJ/UV及编辑事务；原文件另存/重开/发布；既有快照驱动的真实指挥家激光/星束及可取消拖动性能。当前生成器FX来源仍经过原FXHelper文件保护，完整旧文件播放不能直接放行；真正Beam目标的旧长度覆盖仍明确拒绝。工程调用、原生激活制作/历史、带未知字段的隔离原生工程及压缩FX复制播放已有分项证据，完整真实资源链和G1仍未通过，高级扩展未开始。
 
 ## 检查过程
 

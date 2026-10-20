@@ -8,9 +8,34 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.unitego.lobecorp.client.photon.playback.PhotonActivationOverrideAccess;
+import javax.annotation.Nullable;
 
 @Mixin(FXObject.class)
-public abstract class FXObjectMixin {
+public abstract class FXObjectMixin implements PhotonActivationOverrideAccess {
+	@Unique
+	private @Nullable Object lobecorp$activationOwner;
+
+	@Override
+	public boolean lobecorp$ownActivation() {
+		return lobecorp$activationOwner != null;
+	}
+
+	@Override
+	public void lobecorp$ownActivation(boolean own) {
+		lobecorp$activationOwner = own ? this : null;
+	}
+
+	@Override
+	public @Nullable Object lobecorp$activationOwner() {
+		return lobecorp$activationOwner;
+	}
+
+	@Override
+	public void lobecorp$activationOwner(@Nullable Object owner) {
+		lobecorp$activationOwner = owner;
+	}
 
 
 

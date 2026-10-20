@@ -33,6 +33,7 @@ import org.joml.Matrix4f;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Tint;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
+import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
@@ -62,7 +63,7 @@ import java.util.function.Supplier;
 
 /// 独立模型输出复用Photon生命周期与原生材质批次；绘制回调只消费准备后的数据。
 @ParametersAreNonnullByDefault
-public class PhotonModelOutput extends Emitter {
+public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	@Persisted(subPersisted = true)
 	public final PhotonModelOutputConfig config = new PhotonModelOutputConfig();
 	private final RendererSetting.Runtime modelRenderer = new RendererSetting.Runtime(config.modelRenderer) {
@@ -84,6 +85,7 @@ public class PhotonModelOutput extends Emitter {
 	private @Nullable String failure;
 	private boolean preparedOverride;
 	private boolean measure;
+	private boolean preserveParticles;
 
 	public PhotonModelOutput() {
 		bind("enabled", () -> config.enabled);
@@ -284,7 +286,7 @@ public class PhotonModelOutput extends Emitter {
 
 		try {
 			prepare();
-			clock.reset(settings(), false);
+			clock.reset(settings(), preserveParticles);
 		} catch (IOException | RuntimeException error) {
 			failure = error.getMessage();
 			clock.clear();
@@ -328,6 +330,28 @@ public class PhotonModelOutput extends Emitter {
 	@Override
 	public int getParticleAmount() {
 		return sampler != null && clock.visible(settings()) ? 1 : 0;
+	}
+
+	@Override
+	public boolean lobecorp$emissionStopped() {
+		return clock.emissionStopped();
+	}
+
+	@Override
+	public void lobecorp$emissionStopped(boolean stopped) {
+		clock.emissionStopped(settings(), stopped);
+	}
+
+	@Override
+	public void lobecorp$preserveParticles(boolean preserve) {
+		preserveParticles = preserve;
+	}
+
+	@Override
+	public void lobecorp$clearParticles() {
+		clock.clear();
+		frame = null;
+		sampledInput = null;
 	}
 
 	@Override

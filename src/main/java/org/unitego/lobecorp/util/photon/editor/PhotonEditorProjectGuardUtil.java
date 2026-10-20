@@ -23,6 +23,11 @@ import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.nbt.ByteTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.NumericTag;
 
 import java.io.File;
 import java.io.IOException;
@@ -214,6 +219,11 @@ public class PhotonEditorProjectGuardUtil {
 
 		if (tag instanceof CompoundTag compound) {
 			var type = compound.getStringOr("type", "");
+
+			if (type.equals("activator") && compound.get("data") instanceof CompoundTag data
+					&& data.contains(PhotonActivationOptions.TAG)) {
+				return requiresActivationAdapter(compound, data, depth);
+			}
 			if (PhotonResourceInspection.isLegacyType(type)) {
 				return true;
 			}
@@ -232,6 +242,60 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		return false;
+	}
+
+	/// 激活扩展仅在原生激活轨道包装中放行，内部未知扩展仍保留保护。
+	private static boolean requiresActivationAdapter(CompoundTag wrapper, CompoundTag data, int depth) {
+		if (!Set.of("type", "data").containsAll(wrapper.keySet()) || !validActivationData(data)) {
+			return true;
+		}
+		if (!(data.get(PhotonActivationOptions.TAG) instanceof CompoundTag source)) {
+			return true;
+		}
+
+		try {
+			PhotonActivationOptions.read(source);
+			if (containsTag(source, depth + 2)) {
+				return true;
+			}
+
+			var checked = wrapper.copy();
+			checked.getCompoundOrEmpty("data").remove(PhotonActivationOptions.TAG);
+			return containsTag(checked, depth);
+		} catch (IllegalArgumentException invalid) {
+			return true;
+		}
+	}
+
+	private static boolean validActivationData(CompoundTag data) {
+		if (data.contains("target") && data.read("target", UUIDUtil.CODEC).isEmpty()
+				|| data.contains("name") && !(data.get("name") instanceof StringTag)
+				|| data.contains("mute") && !(data.get("mute") instanceof ByteTag)
+				|| data.contains("lock") && !(data.get("lock") instanceof ByteTag)
+				|| data.contains("clips") && !(data.get("clips") instanceof ListTag)) {
+			return false;
+		}
+
+		for (var value : data.getListOrEmpty("clips")) {
+			if (!(value instanceof CompoundTag clip)
+					|| clip.contains("clipTarget") && clip.read("clipTarget", UUIDUtil.CODEC).isEmpty()
+					|| clip.contains("randomSeed") && !(clip.get("randomSeed") instanceof ByteTag)
+					|| clip.contains("seed") && !(clip.get("seed") instanceof NumericTag)) {
+				return false;
+			}
+
+			for (var key : new String[]{"start", "duration", "speed"}) {
+				if (clip.contains(key) && (!(clip.get(key) instanceof NumericTag number) || !Double.isFinite(number.doubleValue()))) {
+					return false;
+				}
+			}
+
+			if (clip.getDoubleOr("start", 0) < 0 || clip.getDoubleOr("duration", 0) < 0) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/// 只放行已保留的工程测试容器，内部未恢复的类型和旧字段仍逐项阻断。

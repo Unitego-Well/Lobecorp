@@ -18,6 +18,7 @@ import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonCallTrack;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Binding;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Blend;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
@@ -142,6 +143,10 @@ public class PhotonNamedPlan {
 
 		// 内存计划直接进入已登记类型；文件入口及保存保护仍由独立门禁负责。
 		track.readData(provider, known);
+
+		if (track instanceof ActivatorTrack && !data.contains(PhotonActivationOptions.TAG)) {
+			((PhotonActivationTrackAccess) track).lobecorp$activationOptions(PhotonActivationOptions.LEGACY);
+		}
 
 		if (track instanceof AnimationTrack animation && animation.properties().size() != data.getListOrEmpty("properties").size()) {
 			throw new IllegalArgumentException("命名轨道含未解析的属性。");

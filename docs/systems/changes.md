@@ -2,6 +2,12 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-20：记录JBR断点对照并继续G1
+
+- 普通Run与仅无条件行断点Debug均在同一“新的世界 (8)”正常进入/退出且BUILD SUCCESSFUL；Debug目标类两次classRedefinedCount=0，增强重定义/捕获代理仍启用，无新增hs_err。历史条件断点两次在目标类重定义后约306/329ms崩溃，强烈支持插桩路径为触发因素，尚未确认JBR内部根因。
+- 详细日志、配置、源码差异哈希及Run误操作改变局部砂岩的对照限制见[实施进度](photon-redesign-progress.md#条件断点对照与后续调试约束2026-10-20)。后续仅普通无条件行断点，保留3个原断点；继续G1，原文件、实体动画/LOD及高级扩展边界不变。沿用既有备份。
+- G1工程调用夹具在原世界passed=true；8份真实测试定义通过临时空FXProject原生ValueIO内存往返，副本隔离/缺字段清除/坏类型拒绝/不进入FX发布数据通过。日志g1-preview-unconditional.log保留；Client正常退出、BUILD SUCCESSFUL，退出阶段另有配置阶段网络取玩家失败及Spark取消异常，记录未修。仅文档变更，无原资源/实体动画/LOD改动，G1和完整工程GUI/磁盘往返仍未通过。
+
 ## 2026-10-20：恢复G1工程测试调用与字段适配
 
 - 新增PhotonProjectPreviewUtil/Access，既有FXProjectMixin保留工程专用lobecorp_animation_preview原树并独立于FXData发布；NamedRuntime增加独立测试/定位/停止，ChildWindows仅允许归属有效的本实例测试调用。受控更新区分模拟/帧，关闭使用快照，普通场景/发布动画不开放自调用；原文件门禁未解除。

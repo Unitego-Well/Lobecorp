@@ -70,6 +70,23 @@
 - 新工程调用夹具在标题页创建TrackedDummyWorld时因缺少minecraft:dimension_type注册中止。随后复用既有“新的世界 (8)”验证，IDEA Debug恢复进入世界和临时Quick Play重试均发生JVM原生EXCEPTION_ACCESS_VIOLATION；栈为java.lang.invoke.DirectMethodHandle$Holder.invokeStatic，根因未确认，不归因为本次Java逻辑已出错或已正常。日志ij_run__Client_8436095788376394266.log、ij_run__Client_17991510831972487223.log及run/client/hs_err_pid51856.log、hs_err_pid3016.log保留。未完成世界/GUI/画面/生命周期与性能验收，未继续重复启动或改JDK/存档配置；临时断点按ID移除，3个原断点保留，客户端已退出。
 - IDEA编译success=true、aborted=false，计数null不作零警告结论；相关代码诊断无错误，保留预留API/既有检查工具空值提示。Data日志ij_run__Data_544338832770161951.log为BUILD SUCCESSFUL，23个输出written=0/removed=0，生成目录无新增工作区差异。原资源/实体动画/实体LOD对原生接入前备份检查无差异。G1未通过，高级扩展未开始。
 
+## 条件断点对照与后续调试约束（2026-10-20）
+
+- 在同一JBR 25.0.4.1+1-b610.67及同一存档“新的世界 (8)”进行普通Run和仅普通无条件行断点的Debug对照。Run于18:30:35进入、18:32:52正常退出，BUILD SUCCESSFUL；Debug于18:34:49进入、18:38:56正常退出，BUILD SUCCESSFUL，两组均无新增hs_err。
+- Debug两次读取ClientRuntimeEvents.class.classRedefinedCount均为0，世界已加载；AllowEnhancedClassRedefinition和debugger-agent.jar仍启用，未更换JDK或修改持久启动配置。对照前后Java/构建文件现有差异的SHA-256一致：691AC51ED2AFC0ACBFA0D657152FEB88B339364F847F312F294D59DA94F5CEEE。
+- 历史两次条件断点崩溃分别在目标类重定义后约306/329ms发生，Render thread栈均为DirectMethodHandle$Holder.invokeStatic原生访问异常。结合JetBrains关于条件断点/日志点自动插桩的说明，结果强烈支持插桩/类重定义路径为触发因素；尚未定位JBR内部确切缺陷，不宣称全部Debug负载已安全或G1已通过。参考：https://blog.jetbrains.com/idea/2026/08/println-debugging-done-right/ 。
+- 对照并非逐字节冻结世界：Run首次最大化尝试在鼠标捕获中误破坏砂岩，玩家下落一格；已告知用户，未猜测恢复。Debug复用该次保存后的同一存档。以后先暂停释放鼠标，再最大化。
+- 原始证据保存在backups/jbr-conditional-compare-20261020/：comparison-observations.json、run-no-debug.log、debug-unconditional.log、两份baseline-conditional客户端日志及两份hs_err。临时断点均移除，3个用户原断点保留，客户端正常关闭。
+- 后续仅使用普通无条件行断点；不设置条件、日志表达式、日志点或自动插桩探针。暂停后读取当前栈再手动求值；不因本次规避而更改JDK、捕获代理或增强重定义设置。继续先在原隔离世界验证工程测试调用，再补GUI/原生ValueIO往返；原文件保护、实体动画及实体模型LOD保持，高级扩展不做。
+
+## G1工程调用与原生ValueIO运行复核（2026-10-20）
+
+- 在既有“新的世界 (8)”通过普通无条件断点进入当前项目栈，确认world=true、GLFW_MAXIMIZED=1、ClientRuntimeEvents.class.classRedefinedCount=0。inspectProjectPreviewFixture返回passed=true：受控映射、正向定位/回拖、停止释放、独立句柄和时长、RELEASE及非工程来源拒绝通过。此为内存夹具，不替代可见组合效果或GUI验收。
+- 通过只读有界资源读取，取出源资源及包中8份真实工程测试字段，分别注入临时空FXProject，再调用原生serializeProject/deserializeProject与TagValueOutput/Input。8份原始测试定义逐树相等，日志记录G1_PROJECT_PREVIEW_NATIVE_VALUEIO=8；没有加载完整旧工程、写回源文件或绕过文件保护。
+- 额外临时夹具确认传入/读出副本隔离、无字段反序列化清除旧测试、错误字段类型拒绝，以及FX.serializeNBT不携带工程测试定义，日志G1_PROJECT_PREVIEW_BOUNDARIES=passed。未知字段/UUID的保留包含在树相等检查；不等于完整工程其他未知字段、磁盘文件往返或包发布全部通过。
+- 客户端日志ij_run__Client_11263211762789435760.log已复制到backups/jbr-conditional-compare-20261020/g1-preview-unconditional.log，正常退出且BUILD SUCCESSFUL in 3m 10s，结束目标类重定义计数仍0；本轮临时断点清除，3个原用户断点保留。退出阶段日志还记录conductor_snapshot/text_particle_state配置阶段取玩家失败及Spark CancellationException，未定位根因、未顺带修改，不称为无错误运行。
+- 本轮仅修改实施进度和修改记录；没有新增Java、构建配置或资源修改，未额外执行编译/Data/JUnit。源资源、实体动画/LOD对原生接入前备份比较无差异，沿用R0/原生接入/工程预览阶段备份。G1仍未通过，高级扩展未开始。
+
 ## 当前未完成
 
 - 实际来源优先级、递归依赖闭合与源/包版本差异解释；原始来源/条目清单及哈希已经记录，不能以清单替代引用解析。
@@ -79,7 +96,7 @@
 - 实体动画与实体模型LOD属于保护范围，本轮未修改这些文件；后续也不接管其实现。
 - G1所有运行/往返/性能门槛保持未通过；高级扩展未开始。
 
-后续优先核对：工程测试调用的GUI入口/原生ValueIO往返及运行验证；原生激活的开始/结束/停止发射/重启保留粒子及子级覆盖、旧循环/渲染字段；实际发射生成器和受控/独立子动画的可见/生命周期检查；递归来源解析与独立包；模型工程/OBJ/UV及编辑事务；原文件另存/重开/发布；既有快照驱动的真实指挥家激光/星束及可取消拖动性能。当前生成器FX来源仍经过原FXHelper文件保护，完整文件播放不能直接放行；真正Beam目标的旧长度覆盖仍明确拒绝。工程调用只接入受约束的测试运行API，原工程GUI功能恢复和世界验证尚未完成。
+后续优先核对：工程测试调用的GUI入口及完整工程磁盘往返；原生激活的开始/结束/停止发射/重启保留粒子及子级覆盖、旧循环/渲染字段；实际发射生成器和受控/独立子动画的可见/生命周期检查；递归来源解析与独立包；模型工程/OBJ/UV及编辑事务；原文件另存/重开/发布；既有快照驱动的真实指挥家激光/星束及可取消拖动性能。当前生成器FX来源仍经过原FXHelper文件保护，完整文件播放不能直接放行；真正Beam目标的旧长度覆盖仍明确拒绝。工程调用的世界内夹具与8份测试字段原生ValueIO内存往返已通过，原工程GUI与完整文件验收尚未完成。
 
 ## 检查过程
 

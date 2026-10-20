@@ -27,6 +27,7 @@ import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorRenameUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 
 @Mixin(FXHierarchyView.class)
 public abstract class FXHierarchyViewMixin {
@@ -51,6 +52,12 @@ public abstract class FXHierarchyViewMixin {
 	@ModifyReturnValue(method = "createMenu", at = @At("RETURN"))
 	private TreeBuilder.Menu lobecorp$clipboardMenu(TreeBuilder.Menu menu) {
 		if (menu == null || !(fxEditor instanceof PhotonEffectEditor)) {
+			return menu;
+		}
+		if (fxEditor.getCurrentProject() instanceof PhotonModelProject) {
+			menu.remove("ldlib.gui.editor.menu.new");
+			menu.remove("ldlib.gui.editor.menu.remove");
+			menu.remove("ldlib.gui.editor.menu.copy");
 			return menu;
 		}
 

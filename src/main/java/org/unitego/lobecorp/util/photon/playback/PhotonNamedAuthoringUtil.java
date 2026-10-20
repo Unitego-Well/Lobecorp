@@ -123,7 +123,7 @@ public class PhotonNamedAuthoringUtil {
 	}
 
 	private static CompoundTag mergeDefinition(CompoundTag current, CompoundTag patch) {
-		var allowed = List.of("duration", "autoDuration", "loop", "priority", "completion", "parameters", "bindings", "markers", "tracks");
+		var allowed = List.of("duration", "autoDuration", "autoEnableModules", "durationParameter", "loop", "priority", "completion", "parameters", "bindings", "markers", "tracks");
 		for (var key : patch.keySet()) {
 			if (!allowed.contains(key)) {
 				throw new IllegalArgumentException("不支持局部编辑定义字段：" + key);

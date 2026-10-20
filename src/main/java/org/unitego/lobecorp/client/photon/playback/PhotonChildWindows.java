@@ -153,8 +153,10 @@ public class PhotonChildWindows implements AutoCloseable {
 					}
 
 					var inputs = PhotonNamedRuntime.inputs(clip.inputs, parent);
-					var handle = clip.mode == PhotonChildClip.Mode.CONTROLLED
-							? runtime.playControlled(clip.animation, clip.duration(), inputs)
+					var handle = track instanceof PhotonCallTrack
+							? runtime.playProjectCall(clip.animation, clip.mode == PhotonChildClip.Mode.CONTROLLED ? clip.duration() : clip.playbackDuration,
+							clip.mode == PhotonChildClip.Mode.CONTROLLED, inputs)
+							: clip.mode == PhotonChildClip.Mode.CONTROLLED ? runtime.playControlled(clip.animation, clip.duration(), inputs)
 							: runtime.play(clip.animation, clip.playbackDuration, true, inputs);
 
 					if (parent != null) {
@@ -189,7 +191,7 @@ public class PhotonChildWindows implements AutoCloseable {
 
 	private Map<UUID, PhotonNamedRuntime> targets(PhotonChildTrack track) {
 		if (track instanceof PhotonCallTrack) {
-			if (callHost == null || parent == null || !callHost.ownsPreview(parent)) {
+			if (callHost == null || parent == null || !callHost.ownsPreview(parent) && !callHost.ownsAuthoring(parent)) {
 				throw new IllegalArgumentException("动画调用只能来自本实例独立的工程测试定义。");
 			}
 
@@ -221,7 +223,7 @@ public class PhotonChildWindows implements AutoCloseable {
 
 	private static boolean current(@Nullable PhotonNamedRuntime runtime, @Nullable PhotonNamedHandle handle) {
 		return runtime != null && handle != null && !runtime.closed() && !handle.disposed()
-				&& runtime.playback(handle.definition().id().toString()) == handle;
+				&& runtime.ownsPlayback(handle);
 	}
 
 	@Override

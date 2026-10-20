@@ -5,6 +5,7 @@ import com.lowdragmc.photon.client.gameobject.emitter.beam.BeamEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
+import org.unitego.lobecorp.client.photon.runtime.PhotonBeamLengthAccess;
 
 import javax.annotation.Nullable;
 
@@ -63,7 +64,7 @@ public class PhotonSpawnOverrides {
 			}
 
 			if (length != null) {
-				throw new IllegalStateException("旧光束长度覆盖尚待原生等价适配。");
+				((PhotonBeamLengthAccess) beam.runtime()).lobecorp$setBeamLength(length);
 			}
 		}
 	}

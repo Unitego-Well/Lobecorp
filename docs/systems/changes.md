@@ -62,6 +62,12 @@
   68 个文件及改动块，共用的 Lobecorp.java、LcPayloads.java 原修改不纳入提交。Git 备份引用为
   `refs/backups/before-player-hud-20261021-nm_x6kcu`；原索引与暂存差异另有临时快照，位置见迁移页。
 
+## 2026-10-21：G1代码补齐与统一正确性检查
+
+- 按用户顺序先编写轨道工作区、旧播放/渲染兼容、模型/资源来源及读写、游戏快照接入和对应API/MCP，再处理145处修改范围格式；无导入优化或成员重排。备份refs/backups/before-photon-workspace-completion-20261021指向6567bf6。
+- 首轮IDEA批分析84文件为0错误/101警告，修正后统一检查90文件为0错误/23警告；IDEA编译、Data（written=2/removed=0，生成目录无净差异）及Bridge构建/65工具发现通过。自动检查首轮68通过/1失败，记录后修正旧契约测试并回归，共69项覆盖通过。游戏首轮被HUD异常阻断，隐藏HUD的第二轮MCP写入返回CONTROL_REQUIRED，需用户游戏内激活。日志已留存，G1未通过；备份和具体问题见[G1代码阶段](photon-g1-code-stage-20261021.md)，未修改实体动画、实体模型LOD或原特效资源。
+- 只在既有ClientRuntimeEvents分发中消费权威动画快照，不改实体动画、实体模型LOD、玩法时序或同步协议。原特效/模型/材质/ShaderGraph/粒子贴图及包目录对既有备份无差异；另有用户HUD贴图修改，保留并排除在本任务提交之外。高级线程/GUI独立呈现及性能收益尚未实现/验证；视觉交人工审查。
+
 ## 2026-10-20：命名制作API、MCP与代码优先推进
 
 - 新增effect_animation_state/edit/control及共享命名制作/运行适配，运行库刷新保留已有播放句柄，工程测试按独立句柄控制。新增patch_definition和patch_project_preview按UUID合并已支持字段，保留未涉及原树，拒绝身份/名称覆盖和失效测试目标；仍保留原文件保护。

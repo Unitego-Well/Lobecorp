@@ -6,7 +6,6 @@ import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXHelper;
-import com.lowdragmc.photon.client.fx.fxpack.FXPackExporter;
 import com.lowdragmc.photon.client.fx.fxpack.FXPacks;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.NbtIo;
@@ -17,6 +16,17 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import org.unitego.lobecorp.mixin.photon.editor.client.PhotonEffectEditorAccessor;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.client.photon.model.project.PhotonExportDefinition;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelObjUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
+import net.minecraft.nbt.ByteArrayTag;
+import net.minecraft.nbt.StringTag;
+
+import java.nio.charset.StandardCharsets;
 
 import java.nio.file.Files;
 import java.io.IOException;
@@ -84,19 +94,26 @@ public class PhotonEffectFileUtil {
 	public static Prepared prepareExport(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
 		var kind = PhotonEffectJsonUtil.string(request, "kind");
+		if (kind.equals("obj") || kind.equals("json")) {
+			return prepareModelExchange(handle, request, kind);
+		}
 		boolean pack = switch (kind) {
 			case "definition" -> false;
 			case "pack" -> true;
 			default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, kind);
 		};
-		var suffix = pack ? FXPacks.SUFFIX : FX.SUFFIX;
+		var suffix = handle.project() instanceof PhotonModelProject ? pack ? ".mfxpack" : ".mfx" : pack ? FXPacks.SUFFIX : FX.SUFFIX;
 		var target = destination(request, suffix);
 
 		if (pack && FXPacks.isFileLocked(target.toFile())) {
 			throw new PhotonEffectCommandException(Code.FILE_LOCKED);
 		}
 
-		var fx = ((FXProject) handle.project()).getFx();
+		var exportCopy = PhotonEffectProjectUtil.copy(handle.project());
+		var rawFx = exportCopy instanceof PhotonModelProject model ? model.exportFX().serializeNBT(Platform.getFrozenRegistry())
+				: PhotonEffectProjectUtil.snapshot(exportCopy).getCompoundOrEmpty("fx");
+		var fx = new PhotonExportDefinition(rawFx, Platform.getFrozenRegistry());
+		PhotonModelPackExportUtil.prepare(fx);
 		Files.createDirectories(target.getParent());
 		var temporary = temporary(target, suffix);
 		var result = new JsonObject();
@@ -109,9 +126,12 @@ public class PhotonEffectFileUtil {
 				}
 
 				var name = target.getFileName().toString();
-				var exported = FXPackExporter.exportInto(temporary.toFile(), Lobecorp.NAMESPACE,
-						name.substring(0, name.length() - suffix.length()), fx, Platform.getFrozenRegistry());
+				var exported = PhotonModelPackExportUtil.export(temporary.toFile(), Lobecorp.NAMESPACE,
+						name.substring(0, name.length() - suffix.length()), fx, Platform.getFrozenRegistry(), handle.project() instanceof PhotonModelProject);
 				exported.warnings().forEach(warnings::add);
+				if (!exported.warnings().isEmpty()) {
+					throw new PhotonEffectCommandException(Code.INVALID_DATA, "包依赖未闭合：" + exported.warnings());
+				}
 				result.addProperty("fxId", exported.fxId().toString());
 				result.addProperty("fileCount", exported.fileCount());
 			} else {
@@ -124,6 +144,7 @@ public class PhotonEffectFileUtil {
 			result.addProperty("path", target.toString());
 			result.addProperty("kind", kind);
 			result.add("warnings", warnings);
+			PhotonResourceReader.read(temporary);
 			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
 		} catch (Exception | Error failure) {
 			Files.deleteIfExists(temporary);
@@ -150,6 +171,37 @@ public class PhotonEffectFileUtil {
 		}
 
 		return target;
+	}
+
+	private static Prepared prepareModelExchange(Handle handle, JsonObject request, String kind) throws Exception {
+		if (!(handle.project() instanceof PhotonModelProject model)) {
+			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, kind);
+		}
+		var target = destination(request, "." + kind);
+		var value = model.document().get("asset");
+		byte[] bytes = switch (value) {
+			case ByteArrayTag array -> array.getAsByteArray();
+			case StringTag(var text) -> text.getBytes(StandardCharsets.UTF_8);
+			case null, default -> throw new PhotonEffectCommandException(Code.INVALID_DATA, "asset");
+		};
+		if (kind.equals("obj")) {
+			var asset = PhotonResourceJsonUtil.read(bytes, PhotonResourceLimits.DEFAULT).getAsJsonObject();
+			bytes = PhotonModelObjUtil.write(asset, PhotonEffectJsonUtil.bool(request, "flipV", false)).getBytes(StandardCharsets.UTF_8);
+		}
+		Files.createDirectories(target.getParent());
+		var temporary = temporary(target, "." + kind);
+		try {
+			Files.write(temporary, bytes, StandardOpenOption.CREATE_NEW);
+			var result = new JsonObject();
+			result.addProperty("projectId", handle.id());
+			result.addProperty("kind", kind);
+			result.addProperty("path", target.toString());
+			result.addProperty("completeProjectBackup", false);
+			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
+		} catch (Exception | Error failure) {
+			Files.deleteIfExists(temporary);
+			throw failure;
+		}
 	}
 
 	public static Path source(JsonObject request, String suffix) throws IOException {

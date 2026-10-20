@@ -13,11 +13,13 @@ const effectToolNames = [
     "effect_open", "effect_resources", "effect_resource_read", "effect_resource_write",
     "effect_texture_import", "effect_view_state", "effect_view",
     "effect_animation_state", "effect_animation_edit", "effect_animation_control",
+    "effect_resource_audit",
 ];
 const nativeToolCount = 46;
 const readOnlyEffectToolNames = new Set([
     "effect_capabilities", "effect_state", "effect_resources", "effect_resource_read", "effect_view_state",
     "effect_animation_state",
+    "effect_resource_audit",
 ]);
 const runtimeMode = process.argv.slice(2).includes("--runtime");
 const authoringMode = process.argv.slice(2).includes("--authoring");

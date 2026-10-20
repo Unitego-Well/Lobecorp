@@ -23,6 +23,15 @@ export const EFFECT_RESPONSE_SCHEMA = z.object({
 
 export const EFFECT_TOOLS: EffectToolDef[] = [
     {
+        name: "effect_resource_audit",
+        description: "Read only explicitly declared permitted files/packs and report source versions, hashes, recursive reference candidates, missing/ambiguous dependencies, and cycles. Sources are ordered, first source wins. No undeclared development directory fallback, package mounting, writing, or runtime acceptance is performed. Unknown and builtin references remain unverified.",
+        inputSchema: {
+            sources: z.array(z.object({path: z.string().min(1), logicalPath: z.string().min(1)})).min(1).max(64),
+            roots: z.array(z.string().min(1)).min(1).optional(),
+        },
+        readOnly: true,
+    },
+    {
         name: "effect_animation_state",
         description: "Read named libraries, parameter/binding/marker summaries, complete library and project-test SNBT, runtime generation, playback handle IDs, clocks, and parameters. Does not switch the edited animation or change the project.",
         inputSchema: {projectId, controllerId: z.string().uuid().optional()},
@@ -30,7 +39,7 @@ export const EFFECT_TOOLS: EffectToolDef[] = [
     },
     {
         name: "effect_animation_edit",
-        description: "Edit one named controller and its project-test references through the shared authoring API. Read animationOperations from effect_capabilities. Commit the complete batch as one undo step, or dryRun without changing data/history. Existing handles retain their definition snapshots; later plays use the new library. Requires control mode.",
+        description: "Edit one named controller and its project-test references through the shared authoring API. Read animationOperations from effect_capabilities. edit_list inserts, patches, removes, or moves parameters, bindings, markers, tracks, and nested track/clip lists using a definition UUID and a revision-scoped path. Commit the complete batch as one undo step, or dryRun without changing data/history. Existing handles retain their definition snapshots; later plays use the new library. Requires control mode.",
         inputSchema: {
             projectId,
             controllerId: z.string().uuid(),
@@ -42,12 +51,15 @@ export const EFFECT_TOOLS: EffectToolDef[] = [
     },
     {
         name: "effect_animation_control",
-        description: "Control named playback or the project-test cursor without editing definitions/history. Read expectedRuntimeId and handleId from effect_animation_state. Non-play handle actions require handleId; restarting an existing project test requires its current handleId. Seek moves authored curves only and does not resimulate particle/world history. Requires control mode.",
+        description: "Control named playback, the project-test cursor, or independent authoring previews without editing definitions/history. Read expectedRuntimeId and handleId from effect_animation_state. Authoring play requires animationId, definitionTarget, and expectedRevision; returns createdHandleId and leaves other tests running. Authoring seek/stop require that handleId. Non-play named actions require handleId; restarting an existing project test requires its current handleId. Seek moves authored curves only and does not resimulate particle/world history. Requires control mode.",
         inputSchema: {
             projectId,
             controllerId: z.string().uuid(),
             expectedRuntimeId: z.string().uuid(),
-            target: z.enum(["named", "project_test"]).default("named"),
+            target: z.enum(["named", "project_test", "authoring"]).default("named"),
+            animationId: z.string().uuid().optional(),
+            definitionTarget: z.enum(["named", "project_test"]).optional(),
+            expectedRevision: z.string().optional(),
             action: z.enum(["play", "pause", "resume", "stop", "seek", "parameters", "duration", "trigger", "signal"]),
             handleId: z.string().uuid().optional(),
             name: z.string().optional(),
@@ -114,7 +126,8 @@ export const EFFECT_TOOLS: EffectToolDef[] = [
         inputSchema: {
             projectId,
             path,
-            kind: z.enum(["definition", "pack"]).describe("Runtime effect definition or bundled resource pack."),
+            kind: z.enum(["definition", "pack", "obj", "json"]).describe("Runtime definition, bundled resource pack, or geometry/JSON exchange from a model project. Exchange formats are not complete project backups."),
+            flipV: z.boolean().optional(),
             overwrite,
         },
         readOnly: false,

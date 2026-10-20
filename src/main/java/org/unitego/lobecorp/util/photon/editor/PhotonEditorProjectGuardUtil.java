@@ -21,7 +21,9 @@ import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
+import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
@@ -44,6 +46,9 @@ public class PhotonEditorProjectGuardUtil {
 	private static final int MAX_DEPTH = 128;
 
 	public static boolean rejectOpen(Editor editor, IProject project, @Nullable File file) {
+		if (file == null && project instanceof PhotonModelProject) {
+			return false;
+		}
 		if (!(editor instanceof FXEditor) || !containsExtensions(project) && (file == null || !containsFileExtensions(file))) {
 			return false;
 		}
@@ -243,6 +248,9 @@ public class PhotonEditorProjectGuardUtil {
 			}
 
 			for (var entry : compound.entrySet()) {
+				if (PhotonResourceInspection.isLegacyField(entry.getKey()) && PhotonInactiveLegacyFieldUtil.allowed(compound, entry.getKey(), entry.getValue())) {
+					continue;
+				}
 				if (PhotonResourceInspection.isLegacyField(entry.getKey()) || containsTag(entry.getValue(), depth + 1)) {
 					return true;
 				}

@@ -7,6 +7,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.TagParser;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -169,7 +171,16 @@ public class PhotonResourceInspection {
 						types.merge(value.getAsString(), 1, Integer::sum);
 					}
 
-					json(value, child, depth + 1);
+					if (entry.getKey().equals("materialData") && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
+							&& !value.getAsString().isEmpty()) {
+						try {
+							nbt(TagParser.parseCompoundFully(value.getAsString()), child + "/$snbt", depth + 1);
+						} catch (CommandSyntaxException invalid) {
+							throw new IOException("内嵌模型材质无法解析：" + child, invalid);
+						}
+					} else {
+						json(value, child, depth + 1);
+					}
 				}
 			} else if (element.isJsonArray()) {
 				var array = element.getAsJsonArray();

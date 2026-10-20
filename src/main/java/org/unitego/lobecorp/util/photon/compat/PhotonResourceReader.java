@@ -43,6 +43,15 @@ public class PhotonResourceReader {
 		}
 	}
 
+	public static PhotonResourceDocument read(String origin, Kind kind, InputStream input, PhotonResourceLimits limits) throws IOException {
+		var bytes = readBytes(input, limits.sourceBytes());
+		try {
+			return decode(origin, kind, bytes, new Budget(limits), 0);
+		} catch (RuntimeException invalid) {
+			throw new IOException("资源无法无损读取：" + origin, invalid);
+		}
+	}
+
 	private static PhotonResourceDocument decode(String origin, Kind kind, byte[] bytes, Budget budget, int depth) throws IOException {
 		if (depth > budget.limits.depth()) {
 			throw new IOException("资源包嵌套超出深度预算：" + origin);

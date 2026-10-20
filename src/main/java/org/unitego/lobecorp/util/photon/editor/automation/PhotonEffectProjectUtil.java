@@ -24,9 +24,16 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.client.photon.editor.PhotonProjectRawAccess;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
+import net.minecraft.nbt.ByteArrayTag;
+import net.minecraft.nbt.StringTag;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -135,11 +142,11 @@ public class PhotonEffectProjectUtil {
 		}
 
 		var path = PhotonEffectJsonUtil.string(request, "path");
-		if (!path.endsWith(FXProject.TYPE.getSuffix())) {
+		if (!path.endsWith(FXProject.TYPE.getSuffix()) && !path.endsWith(PhotonModelProject.TYPE.getSuffix())) {
 			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, path);
 		}
 
-		var type = FXProject.TYPE;
+		var type = path.endsWith(PhotonModelProject.TYPE.getSuffix()) ? PhotonModelProject.TYPE : FXProject.TYPE;
 		var file = PhotonEffectFileUtil.source(request, type.getSuffix()).toFile();
 		PhotonEditorProjectGuardUtil.requireSupportedFile(file);
 		var data = NbtIo.read(file.toPath());
@@ -224,7 +231,7 @@ public class PhotonEffectProjectUtil {
 	}
 
 	public static Handle create(String kind, String name) {
-		if (!kind.equals("fx")) {
+		if (!kind.equals("fx") && !kind.equals("model")) {
 			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, kind);
 		}
 
@@ -251,7 +258,12 @@ public class PhotonEffectProjectUtil {
 				editor = current instanceof PhotonEffectEditor fx
 						&& current.getCurrentProject() == null ? fx : (FXEditor) window.createNewEditor(PhotonEffectEditor::new);
 			}
-			case "model" -> throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, kind);
+			case "model" -> {
+				project = new PhotonModelProject();
+				var current = window.getCurrentEditor();
+				editor = current instanceof PhotonEffectEditor fx && current.getCurrentProject() == null
+						? fx : (FXEditor) window.createNewEditor(PhotonEffectEditor::new);
+			}
 			default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, kind);
 		}
 
@@ -313,6 +325,10 @@ public class PhotonEffectProjectUtil {
 	}
 
 	public static void decode(IProject project, CompoundTag data) {
+		if (project instanceof PhotonModelProject model) {
+			model.restore(data);
+			return;
+		}
 		PhotonEditorProjectGuardUtil.requireSupportedProjectData(data);
 		var reporter = new ProblemReporter.Collector();
 		project.deserializeProject(TagValueInput.create(reporter, Platform.getFrozenRegistry(), data.copy()));
@@ -323,8 +339,15 @@ public class PhotonEffectProjectUtil {
 	}
 
 	public static IProject copy(IProject original) {
+		if (original instanceof PhotonModelProject model) {
+			return model.copy();
+		}
 		IProject copy = new FXProject();
 		decode(copy, snapshot(original));
+		if (original instanceof PhotonProjectRawAccess source) {
+			// 原生FXProject在客户端经Mixin获得桥接，静态声明不携带该接口。
+			((PhotonProjectRawAccess) (Object) copy).lobecorp$rawContainer(source.lobecorp$rawContainer());
+		}
 		return copy;
 	}
 
@@ -333,7 +356,7 @@ public class PhotonEffectProjectUtil {
 		var editor = handle.editor();
 		var result = new JsonObject();
 		result.addProperty("projectId", handle.id());
-		result.addProperty("kind", "fx");
+		result.addProperty("kind", project instanceof PhotonModelProject ? "model" : "fx");
 		result.addProperty("revision", revision(project));
 		result.addProperty("editorPath", editor.getCurrentProjectFile() == null ? "" : editor.getCurrentProjectFile().getAbsolutePath());
 		result.addProperty("dirty", editor.isCurrentProjectDirty());
@@ -342,7 +365,20 @@ public class PhotonEffectProjectUtil {
 		result.addProperty("undoCount", editor.historyView.getUndoStack().size());
 		result.addProperty("redoCount", editor.historyView.getRedoStack().size());
 		var data = snapshot(project);
-		boolean containsModel = false;
+		boolean containsModel = project instanceof PhotonModelProject;
+		if (project instanceof PhotonModelProject model) {
+			var asset = model.document().get("asset");
+			try {
+				result.add("modelAsset", switch (asset) {
+					case ByteArrayTag bytes ->
+							PhotonResourceJsonUtil.read(bytes.getAsByteArray(), PhotonResourceLimits.DEFAULT);
+					case StringTag(var text) -> PhotonResourceJsonUtil.read(text, PhotonResourceLimits.DEFAULT);
+					case null, default -> throw new IllegalArgumentException("模型工程资产缺失。");
+				});
+			} catch (IOException invalid) {
+				throw new PhotonEffectCommandException(Code.INVALID_DATA, invalid.getMessage());
+			}
+		}
 
 
 		// 模型 JSON 已单独返回；重复展开其 NBT 字节数组会使状态回复超过 MCP 通道上限。
@@ -369,6 +405,9 @@ public class PhotonEffectProjectUtil {
 				}
 
 				var parameters = wrapper.getCompoundOrEmpty("data");
+				if (containsModel) {
+					parameters.remove("assetJson");
+				}
 
 
 				entry.add("parameters", PhotonEffectJsonUtil.json(parameters));

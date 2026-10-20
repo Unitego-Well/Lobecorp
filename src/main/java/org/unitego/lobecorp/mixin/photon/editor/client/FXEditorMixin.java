@@ -12,6 +12,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.PhotonSceneAxisView;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelAuthoringPanel;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelSourceProjectType;
 
 import java.io.File;
 
@@ -32,6 +35,16 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 
 		lobecorp$editorTools = new PhotonEditorTools(editor);
 		PhotonEditorTools.installMenus(editor);
+		editor.fileMenu.addProjectProvider(PhotonModelProject.TYPE);
+		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.OBJ);
+		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.JSON);
+		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.DEFINITION);
+		editor.fileMenu.registerNewMenuCreator((_, menu) -> {
+			menu.remove(PhotonModelSourceProjectType.OBJ.getName());
+			menu.remove(PhotonModelSourceProjectType.JSON.getName());
+			menu.remove(PhotonModelSourceProjectType.DEFINITION.getName());
+		});
+		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf("photon.lobecorp.model.project.type", () -> PhotonModelAuthoringPanel.open(editor)));
 	}
 
 

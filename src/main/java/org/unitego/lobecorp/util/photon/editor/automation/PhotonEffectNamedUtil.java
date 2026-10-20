@@ -21,10 +21,12 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUti
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil.Document;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.UUID;
+import java.util.ArrayList;
 
 /// 界面制作会话的结构化适配；MCP调度、控制门禁和文件保护沿用现有入口。
 public class PhotonEffectNamedUtil {
@@ -39,6 +41,7 @@ public class PhotonEffectNamedUtil {
 				  "replace_definition":{"required":["animationId","snbt"],"snbt":"完整定义原树，含参数/绑定/标记/轨道；身份和名称不变，调用方保留未知字段"},
 				  "patch_definition":{"required":["animationId","snbt"],"snbt":"局部定义字段，保留其他原树；列表字段整体替换"},
 				  "patch_project_preview":{"required":["animationId","snbt"],"snbt":"按工程测试UUID局部编辑；不创建测试，不进入发布FX"},
+				  "edit_list":{"required":["animationId","path","action","index"],"optional":["target","destination","snbt"],"path":"tracks/parameters/bindings/markers起始的字段名与整数数组；嵌套轨道示例[tracks,0,data,children]","action":"insert/patch/remove/move/duplicate；insert/patch需snbt，move需destination；duplicate仅轨道列表，复制到紧邻位置并重建子窗口局部UUID；下标以本批当前草稿为准"},
 				  "set_default":{"required":["animation"],"animation":"名称或UUID，空字符串表示手动播放"},
 				  "set_rules":{"required":["snbt"],"snbt":"仅含rules列表的复合标签，完整替换触发规则"},
 				  "set_project_preview":{"required":["snbt"],"snbt":"完整工程测试定义，不进入发布FX"},
@@ -137,9 +140,42 @@ public class PhotonEffectNamedUtil {
 			}
 			case "set_project_preview" -> new Document(source.library(), snbt(operation, "snbt"));
 			case "clear_project_preview" -> new Document(source.library(), null);
+			case "edit_list" -> editList(source, operation);
 			default ->
 					throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, PhotonEffectJsonUtil.string(operation, "op"));
 		};
+	}
+
+	private static Document editList(Document source, JsonObject operation) {
+		var target = PhotonEffectJsonUtil.optionalString(operation, "target", "named");
+		if (!target.equals("named") && !target.equals("project_test")) {
+			throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "target");
+		}
+
+		var path = new ArrayList<>();
+		for (var segment : PhotonEffectJsonUtil.array(operation, "path")) {
+			if (segment.isJsonPrimitive() && segment.getAsJsonPrimitive().isString()) {
+				path.add(segment.getAsString());
+			} else if (segment.isJsonPrimitive() && segment.getAsJsonPrimitive().isNumber()) {
+				var entry = new JsonObject();
+				entry.add("index", segment);
+				path.add(index(entry));
+			} else {
+				throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "path");
+			}
+		}
+
+		var action = PhotonEffectJsonUtil.string(operation, "action");
+		var value = action.equals("insert") || action.equals("patch") ? snbt(operation, "snbt") : new CompoundTag();
+		int destination = -1;
+		if (action.equals("move")) {
+			var entry = new JsonObject();
+			entry.add("index", operation.get("destination"));
+			destination = index(entry);
+		}
+
+		return PhotonNamedTrackAuthoringUtil.edit(source, uuid(operation, "animationId"), target.equals("project_test"),
+				path, action, index(operation), destination, value);
 	}
 
 	public static JsonObject state(Handle handle, @Nullable UUID controllerId) {

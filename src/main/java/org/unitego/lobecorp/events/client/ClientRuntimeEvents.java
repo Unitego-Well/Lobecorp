@@ -16,6 +16,7 @@ import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
+import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
@@ -37,6 +38,7 @@ public class ClientRuntimeEvents {
 		LcClientAttachments.clear();
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
+		QueenBeamEffects.clear();
 	}
 
 	@SubscribeEvent
@@ -51,6 +53,7 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
+		QueenBeamEffects.clear();
 		PhotonFrameCapture.cancel();
 		LcModelLodUtil.clear();
 	}
@@ -68,6 +71,7 @@ public class ClientRuntimeEvents {
 			TextParticleClient.clear();
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
+			QueenBeamEffects.clear();
 			LcAttachments.clear(level);
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();
@@ -93,6 +97,7 @@ public class ClientRuntimeEvents {
 		PlayerScreenFilters.INSTANCE.tick();
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
+		QueenBeamEffects.tick();
 	}
 
 	@SubscribeEvent

@@ -20,11 +20,8 @@ import com.lowdragmc.photon.client.render.PhotonWorldRenderState;
 import com.lowdragmc.photon.gui.editor.view.scene.SceneView;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.level.GrassColor;
@@ -36,13 +33,10 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
-import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelCodec;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
@@ -51,8 +45,6 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.M
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -214,46 +206,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private PhotonModelDefinition loadDefinition() throws IOException {
-		var snapshot = config.assetSnapshot();
-		boolean empty = snapshot instanceof ByteArrayTag bytes && bytes.getAsByteArray().length == 0
-				|| snapshot instanceof StringTag(var text) && text.isBlank();
-		var key = config.source.name() + "|" + config.resource + "|" + config.file + "|" + config.flipObjV;
-
-		if (!empty && (config.source == PhotonModelOutputConfig.Source.EMBEDDED || key.equals(config.snapshotSource))) {
-			return PhotonModelAssetUtil.read(snapshot, config.assetMaterialDependencies);
-		}
-
-		if (config.source == PhotonModelOutputConfig.Source.EMBEDDED) {
-			throw new IOException("模型实例没有内嵌资产。");
-		}
-
-		byte[] source;
-
-		if (config.source == PhotonModelOutputConfig.Source.FILE) {
-			var path = Path.of(config.file);
-
-			if (Files.size(path) > PhotonResourceLimits.DEFAULT.sourceBytes()) {
-				throw new IOException("模型来源超过读取预算。");
-			}
-
-			try (var input = Files.newInputStream(path)) {
-				source = input.readNBytes((int) PhotonResourceLimits.DEFAULT.sourceBytes() + 1);
-			}
-		} else {
-			if (config.resource == null) {
-				throw new IOException("模型资源ID为空。");
-			}
-
-			try (var input = Minecraft.getInstance().getResourceManager().open(config.resource)) {
-				source = input.readNBytes((int) PhotonResourceLimits.DEFAULT.sourceBytes() + 1);
-			}
-		}
-
-		if (source.length > PhotonResourceLimits.DEFAULT.sourceBytes()) {
-			throw new IOException("模型来源超过读取预算。");
-		}
-
-		return PhotonModelCodec.read(PhotonResourceJsonUtil.read(source, PhotonResourceLimits.DEFAULT).getAsJsonObject());
+		return PhotonModelSourceUtil.load(config).definition();
 	}
 
 	private PhotonModelDefinition definition() {

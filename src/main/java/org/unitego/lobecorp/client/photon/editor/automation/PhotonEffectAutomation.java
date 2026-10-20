@@ -15,6 +15,7 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectJsonUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectSchemaUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceAuditUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectViewUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedControlUtil;
@@ -24,6 +25,7 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUti
 import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +45,12 @@ public class PhotonEffectAutomation {
 			  "remove_emitter":{"projectKind":"fx","required":["objectId"]},
 			  "set_parameter":{"projectKind":"fx","required":["objectId","path","value"],"path":"相对 parameters 的 JSON Pointer；只允许已有字段，保留原生 NBT 类型"},
 			  "set_timeline":{"projectKind":"fx","required":["timeline"],"timeline":"effect_state 返回的原生时间轴 JSON 格式；时间单位 tick"},
+			  "set_model_asset":{"projectKind":"model","required":["asset"],"asset":"当前version=1完整JSON资产；保持需要保留的未知字段"},
+			  "patch_model_asset":{"projectKind":"model","required":["patch"],"patch":"JSON对象递归合并，列表整体替换；未涉及字段保留"},
+			  "edit_model_value":{"projectKind":"model或fx内嵌模型","required":["path","value"],"optional":["objectId"],"path":"已有模型JSON字段的JSON Pointer，例如/vertices/0或/faces/0/uv/2；fx需objectId；身份字段须使用完整引用事务"},
+			  "set_model_playback":{"projectKind":"model","required":["values"],"values":"enabled/duration/startDelay/looping/paused/clip/playbackSpeed/animationOffset的局部设置"},
+			  "import_model_obj":{"projectKind":"model","required":["text"],"optional":["flipV"],"text":"OBJ文本；保留几何、分组、面角UV和法线，其他能力不作为完整工程备份"},
+			  "set_model_renderer":{"projectKind":"model","required":["snbt"],"snbt":"原生renderer复合标签局部合并，保留未涉及字段"},
 			  "set_project_data":{"required":["snbt"],"snbt":"完整 snapshotSnbt，仅支持当前原生 FX 工程字段；必须精确往返"}
 			}
 			""";
@@ -209,6 +217,10 @@ public class PhotonEffectAutomation {
 				yield prepared::commit;
 			}
 			case "effect_preview" -> preview(handle(request), request);
+			case "effect_resource_audit" -> {
+				var report = PhotonEffectResourceAuditUtil.audit(request);
+				yield () -> report;
+			}
 			case "effect_animation_state" -> {
 				var state = PhotonEffectNamedUtil.state(handle(request), request.has("controllerId") ? PhotonEffectNamedUtil.uuid(request, "controllerId") : null);
 				yield () -> state;
@@ -318,10 +330,17 @@ public class PhotonEffectAutomation {
 		var result = new JsonObject();
 		result.addProperty("protocolVersion", 1);
 		result.add("operations", JsonParser.parseString(OPERATION_SCHEMA));
+		for (var key : List.of("set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer", "import_model_obj")) {
+			var operation = result.getAsJsonObject("operations").getAsJsonObject(key);
+			operation.addProperty("projectKind", "model_or_fx");
+			operation.addProperty("objectIdRequiredFor", "fx");
+		}
 		result.add("animationOperations", PhotonEffectNamedUtil.operations());
 		result.addProperty("animationProtocolVersion", 1);
 		result.addProperty("namedAuthoringAvailable", true);
 		result.addProperty("namedRuntimeAvailable", true);
+		result.addProperty("modelAuthoringAvailable", true);
+		result.addProperty("modelFileAcceptancePending", true);
 		result.addProperty("namedSeekSemantics", "authored_cursor_without_particle_resimulation");
 		result.add("namedWritableTrackTypes", JsonParser.parseString("[\"activator\",\"control\",\"animation\",\"group\"]"));
 		var parameterTypes = new JsonArray();

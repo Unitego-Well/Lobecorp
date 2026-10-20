@@ -7,6 +7,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.view.FXHierarchyView;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import com.lowdragmc.photon.gui.editor.view.FXObjectTreeNode;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -94,6 +95,9 @@ public class PhotonObjectClipboardUtil {
 	}
 
 	public static void paste(FXHierarchyView view) {
+		if (view.fxEditor.getCurrentProject() instanceof PhotonModelProject) {
+			throw new IllegalArgumentException("模型工程只管理一个模型资产，组合对象请使用FX工程。");
+		}
 		try {
 			var runtime = view.getRuntime();
 			var data = PhotonSystemClipboardUtil.read(OBJECTS);

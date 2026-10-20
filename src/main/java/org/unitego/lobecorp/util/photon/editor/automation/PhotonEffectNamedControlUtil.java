@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
+import org.unitego.lobecorp.client.photon.editor.PhotonNamedAuthoringSession;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
@@ -40,18 +42,68 @@ public class PhotonEffectNamedControlUtil {
 
 		String target = PhotonEffectJsonUtil.optionalString(request, "target", "named");
 		String action = PhotonEffectJsonUtil.string(request, "action");
-		if (target.equals("project_test")) {
-			projectTest(handle, playback, request, action);
-		} else if (target.equals("named")) {
-			named(playback, request, action);
-		} else {
-			throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "target");
-		}
+		String createdHandle = switch (target) {
+			case "project_test" -> {
+				projectTest(handle, playback, request, action);
+				yield null;
+			}
+			case "named" -> {
+				named(playback, request, action);
+				yield null;
+			}
+			case "authoring" -> authoring(handle, playback, request, action);
+			default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "target");
+		};
 
 		var result = PhotonEffectNamedUtil.state(handle, playback.controllerId());
 		result.addProperty("action", action);
 		result.addProperty("target", target);
+		if (createdHandle != null) {
+			result.addProperty("createdHandleId", createdHandle);
+		}
 		return result;
+	}
+
+	private static String authoring(Handle project, PhotonNamedRuntime runtime, JsonObject request, String action) {
+		if (action.equals("play")) {
+			allowed(request, Set.of("animationId", "definitionTarget", "expectedRevision", "time"));
+			if (!PhotonEffectProjectUtil.revision(project.project()).equals(PhotonEffectJsonUtil.string(request, "expectedRevision"))) {
+				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
+			}
+
+			var target = PhotonEffectJsonUtil.optionalString(request, "definitionTarget", "named");
+			if (!target.equals("named") && !target.equals("project_test")) {
+				throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "definitionTarget");
+			}
+
+			var session = new PhotonNamedAuthoringSession(project.editor(), runtime.controllerId());
+			try {
+				var source = PhotonNamedTrackAuthoringUtil.definition(session.document(),
+						PhotonEffectNamedUtil.uuid(request, "animationId"), target.equals("project_test"));
+				var handle = runtime.previewAuthoring(PhotonProjectPreviewUtil.read(source),
+						request.has("time") ? PhotonEffectJsonUtil.number(request, "time") : 0);
+				return handle.id().toString();
+			} catch (IOException invalid) {
+				throw new PhotonEffectCommandException(Code.INVALID_DATA, invalid.getMessage());
+			} finally {
+				session.cancel();
+			}
+		}
+
+		if (!action.equals("seek") && !action.equals("stop")) {
+			throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "action");
+		}
+		allowed(request, action.equals("seek") ? Set.of("handleId", "time") : Set.of("handleId"));
+		var handle = requireHandle(runtime, request);
+		if (!runtime.ownsAuthoring(handle)) {
+			throw new PhotonEffectCommandException(Code.HANDLE_EXPIRED);
+		}
+		if (action.equals("stop")) {
+			runtime.stop(handle);
+		} else {
+			runtime.seekAuthoring(handle, PhotonEffectJsonUtil.number(request, "time"));
+		}
+		return null;
 	}
 
 	private static void named(PhotonNamedRuntime runtime, JsonObject request, String action) {
@@ -197,12 +249,14 @@ public class PhotonEffectNamedControlUtil {
 		for (var handle : runtime.playbacks()) {
 			var entry = new JsonObject();
 			entry.addProperty("handleId", handle.id().toString());
-			entry.addProperty("animationId", handle.definition().id().toString());
+			entry.addProperty("animationId", runtime.sourceDefinitionId(handle).toString());
+			entry.addProperty("runtimeDefinitionId", handle.definition().id().toString());
 			entry.addProperty("name", handle.definition().name());
 			entry.addProperty("state", handle.clock().state().name());
 			entry.addProperty("disposed", handle.disposed());
 			entry.addProperty("controlled", handle.controlled());
 			entry.addProperty("projectTest", runtime.ownsPreview(handle));
+			entry.addProperty("authoring", runtime.ownsAuthoring(handle));
 			entry.addProperty("duration", handle.clock().duration());
 			entry.addProperty("authoredTime", handle.authoredTime(0));
 			entry.addProperty("progress", handle.progress(0));

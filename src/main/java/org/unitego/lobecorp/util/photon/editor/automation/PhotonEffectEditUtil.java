@@ -16,6 +16,9 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
+import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+
+import java.util.Set;
 
 import java.util.HashSet;
 import java.util.HashMap;
@@ -92,12 +95,16 @@ public class PhotonEffectEditUtil {
 	}
 
 	private static void applyOperation(IProject project, JsonObject operation) throws Exception {
+		if (project instanceof PhotonModelProject
+				&& Set.of("add_emitter", "remove_emitter").contains(PhotonEffectJsonUtil.string(operation, "op"))) {
+			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, "模型工程只管理一个模型资产，组合对象请使用FX工程。");
+		}
 		switch (PhotonEffectJsonUtil.string(operation, "op")) {
 			case "add_emitter" -> addEmitter(fx(project), operation);
 			case "remove_emitter" -> removeEmitter(fx(project), operation);
 			case "set_parameter" -> setParameter(fx(project), operation);
-			case "set_model_asset", "patch_model_asset", "set_model_playback" ->
-					throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);
+			case "set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer",
+			     "import_model_obj" -> PhotonEffectModelAuthoringUtil.apply(project, operation);
 			case "set_timeline" -> setTimeline(fx(project), operation);
 			case "set_project_data" -> {
 				var data = TagParser.parseCompoundFully(PhotonEffectJsonUtil.string(operation, "snbt"));

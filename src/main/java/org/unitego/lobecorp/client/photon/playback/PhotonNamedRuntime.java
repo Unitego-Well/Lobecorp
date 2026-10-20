@@ -16,6 +16,7 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Input;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
@@ -56,6 +57,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		private double pendingTicks;
 		private double notifiedPosition = -Double.MIN_VALUE;
 		private Completion completion;
+		private boolean authoring;
 		private final PhotonChildWindows children;
 
 		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime, @Nullable PhotonNamedRuntime callHost) {
@@ -294,6 +296,84 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		revision++;
 		refresh();
 		return handle;
+	}
+
+	/// 每个制作工作区拥有独立的临时身份，不替换发布动画或其他工作区的贡献。
+	public PhotonNamedHandle previewAuthoring(Definition definition, double authoredTime) {
+		requireOpen();
+		if (!(root.getEffectExecutor() instanceof FXProjectEffectExecutor) || !Double.isFinite(authoredTime) || authoredTime < 0) {
+			throw new IllegalArgumentException("制作预览来源或时间无效。");
+		}
+
+		var source = definition.source();
+		source.putString("id", UUID.randomUUID().toString());
+		try {
+			var isolated = PhotonProjectPreviewUtil.read(source);
+			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, isolated, true);
+			var handle = new PhotonNamedHandle(isolated, definition.id(), plan.authoredDuration, sequence++, plan.authoredDuration, false, true, Map.of());
+			handle.drive(Math.clamp(authoredTime / plan.authoredDuration, 0, 1));
+			var entry = new Entry(handle, plan, runtime, this);
+			entry.authoring = true;
+			entry.completion = Completion.HOLD;
+			entry.notifiedPosition = handle.position(0);
+			playing.put(isolated.id(), entry);
+			revision++;
+			refresh();
+			return handle;
+		} catch (IOException invalid) {
+			throw new IllegalArgumentException("制作预览定义无法读取。", invalid);
+		}
+	}
+
+	public boolean ownsAuthoring(PhotonNamedHandle handle) {
+		var entry = playing.get(handle.definition().id());
+		return !closed && entry != null && entry.handle == handle && entry.authoring && !handle.disposed();
+	}
+
+	public UUID sourceDefinitionId(PhotonNamedHandle handle) {
+		return handle.sourceDefinitionId();
+	}
+
+	public boolean ownsPlayback(PhotonNamedHandle handle) {
+		var entry = playing.get(handle.definition().id());
+		return !closed && entry != null && entry.handle == handle && !handle.disposed();
+	}
+
+	/// 工程调用拥有独立播放身份，不能替换另一个测试窗口或同名的全局播放。
+	public PhotonNamedHandle playProjectCall(String name, double duration, boolean controlled, Map<String, List<Float>> inputs) {
+		requireOpen();
+		var original = plans.get(name);
+		if (original == null) {
+			throw new IllegalArgumentException("工程调用动画不存在：" + name);
+		}
+		var source = original.definition.source();
+		source.putString("id", UUID.randomUUID().toString());
+		try {
+			var definition = PhotonProjectPreviewUtil.read(source);
+			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition);
+			var handle = new PhotonNamedHandle(definition, original.definition.id(), plan.authoredDuration, sequence++, duration,
+					definition.loop(), controlled, inputs);
+			playing.put(definition.id(), new Entry(handle, plan, runtime, null));
+			revision++;
+			queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
+			drainEvents();
+			refresh();
+			return handle;
+		} catch (IOException invalid) {
+			throw new IllegalArgumentException("工程调用定义无法读取。", invalid);
+		}
+	}
+
+	public void seekAuthoring(PhotonNamedHandle handle, double authoredTime) {
+		if (!ownsAuthoring(handle) || !Double.isFinite(authoredTime) || authoredTime < 0) {
+			throw new IllegalArgumentException("制作预览句柄或时间已失效。");
+		}
+
+		var entry = current(handle);
+		handle.drive(Math.clamp(authoredTime / entry.plan.authoredDuration, 0, 1));
+		entry.notifiedPosition = handle.position(0);
+		revision++;
+		refresh();
 	}
 
 	public void seekPreview(double authoredTime) {
@@ -660,8 +740,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 					if (rule.event() != event.event() || !rule.channel().isEmpty() && !rule.channel().equals(event.channel())
 							|| !rule.name().isEmpty() && !rule.name().equals(event.name())
 							|| !rule.animation().isEmpty() && (event.source() == null
-							|| !rule.animation().equals(event.source().definition().name())
-							&& !rule.animation().equals(event.source().definition().id().toString()))) {
+							|| !matchesSource(rule.animation(), event.source()))) {
 						continue;
 					}
 
@@ -679,7 +758,16 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 	}
 
-	static Map<String, List<Float>> inputs(List<Input> inputs, @Nullable PhotonNamedHandle parent) {
+	private boolean matchesSource(String alias, PhotonNamedHandle source) {
+		if (alias.equals(source.definition().name()) || alias.equals(source.sourceDefinitionId().toString())) {
+			return true;
+		}
+		var current = plans.get(alias);
+		return current != null && current.definition.id().equals(source.sourceDefinitionId());
+	}
+
+	public static Map<String, List<Float>> inputs(List<Input> inputs, @Nullable PhotonNamedHandle parent) {
+
 		var result = new LinkedHashMap<String, List<Float>>();
 
 		for (var input : inputs) {

@@ -23,6 +23,7 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 
 import java.math.BigDecimal;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
@@ -38,7 +39,9 @@ public class PhotonEffectJsonUtil {
 
 	public static JsonObject failure(Throwable failure) {
 		var error = new JsonObject();
-		error.addProperty("code", failure instanceof PhotonEffectCommandException command ? command.code() : Code.INTERNAL_ERROR.name());
+		error.addProperty("code", failure instanceof PhotonEffectCommandException command ? command.code()
+				: failure instanceof IllegalArgumentException ? Code.INVALID_ARGUMENT.name()
+				: failure instanceof IOException ? Code.INVALID_DATA.name() : Code.INTERNAL_ERROR.name());
 		error.addProperty("message", String.valueOf(failure.getMessage()));
 		var result = new JsonObject();
 		result.addProperty("ok", false);

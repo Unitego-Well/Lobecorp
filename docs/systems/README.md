@@ -28,6 +28,7 @@
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
 | 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[当前性能静态审查与优化计划](photon-performance-audit.md) |
 | 特效重设计实施 | [模型输出、命名制作事务、工程测试验收与G1未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
+| G1代码阶段 | [全部代码优先的编写范围、API/MCP和未验证边界](photon-g1-code-stage-20261021.md) |
 | 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、[优化、基线与采样](photon-performance.md)、[世界前后稳定性对比](photon-world-performance-comparison.md)、[逐对象检测与关键优化计划](photon-detailed-performance-plan.md) |
 | 世界文本粒子 | [文本粒子](text-particles.md) |
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |

@@ -165,6 +165,17 @@ public class PhotonResourceReaderTest {
 		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
 		tag.putBoolean("lobecorp$fixedRendering", false);
 		Files.write(path, nbt(tag, false));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		tag.putInt("lobecorp$fixedRendering", 0);
+		Files.write(path, nbt(tag, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		tag.putBoolean("lobecorp$fixedRendering", false);
+		tag.putBoolean("lobecorp$unrecognized", false);
+		Files.write(path, nbt(tag, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		tag.remove("lobecorp$unrecognized");
+		tag.putBoolean("lobecorp$fixedRendering", true);
+		Files.write(path, nbt(tag, false));
 		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
 		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(directory.resolve("model.mfxproj").toFile()));
 		archive(directory.resolve("legacy.fxpack"), Map.of("assets/test/fx/effect.fx", nbt(tag, true)));

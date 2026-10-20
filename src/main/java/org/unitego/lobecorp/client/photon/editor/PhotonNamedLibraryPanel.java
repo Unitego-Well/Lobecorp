@@ -21,6 +21,11 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil.Document;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -53,6 +58,25 @@ public class PhotonNamedLibraryPanel {
 
 			var controllers = project.getFx().getFxData().objects().stream().filter(PhotonNamedController.class::isInstance)
 					.map(PhotonNamedController.class::cast).toList();
+			if (controllers.isEmpty()) {
+				var handle = PhotonEffectProjectUtil.projects().stream().filter(value -> value.editor() == editor && value.project() == project).findFirst()
+						.orElseThrow(() -> new IllegalStateException("当前特效工程已关闭。"));
+				var operation = new JsonObject();
+				operation.addProperty("op", "add_emitter");
+				operation.addProperty("type", "lobecorp_animation_controller");
+				var operations = new JsonArray();
+				operations.add(operation);
+				var request = new JsonObject();
+				request.addProperty("projectId", handle.id());
+				request.addProperty("expectedRevision", PhotonEffectProjectUtil.revision(project));
+				request.add("operations", operations);
+				try {
+					PhotonEffectEditUtil.prepare(request).commit();
+				} catch (Exception invalid) {
+					throw new IllegalArgumentException("命名控制器创建失败。", invalid);
+				}
+				controllers = project.getFx().getFxData().objects().stream().filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
+			}
 			if (controllers.size() != 1) {
 				throw new IllegalArgumentException("当前制作入口要求工程包含一个命名控制器。");
 			}
@@ -84,6 +108,9 @@ public class PhotonNamedLibraryPanel {
 		actions.addChild(new Button().setText(Component.literal("↓")).setOnClick(_ -> move(1)));
 		actions.addChild(new Button().setText("photon.lobecorp.animation.delete").setOnClick(_ -> edit(source -> PhotonNamedAuthoringUtil.remove(source, requireSelected()))));
 		dialog.addContent(actions);
+		dialog.addContent(new Button().setText("rules").setOnClick(_ -> PhotonNamedDefinitionFieldsPanel.openLibrary(editor, session)));
+		dialog.addContent(new Button().setText("photon.lobecorp.animation.inspector_panel").setOnClick(_ -> openTracks(false)));
+		dialog.addContent(new Button().setText(PhotonProjectPreviewPanel.TITLE).setOnClick(_ -> openTracks(true)));
 		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
 			try {
 				session.commit(session.revision());
@@ -96,6 +123,28 @@ public class PhotonNamedLibraryPanel {
 		dialog.setOnClose(session::cancel);
 		rebuild();
 		dialog.show(editor);
+	}
+
+	@SuppressWarnings("resource") // 对话框关闭回调接管工作区生命周期，不在show返回时提前释放。
+	private void openTracks(boolean projectTest) {
+		try {
+			UUID id;
+			if (projectTest) {
+				var preview = session.document().preview();
+				if (preview == null) {
+					preview = PhotonProjectPreviewUtil.create();
+					var created = preview;
+					session.edit(session.revision(), source -> new Document(source.library(), created));
+				}
+				id = UUID.fromString(preview.getStringOr("id", ""));
+			} else {
+				id = requireSelected();
+			}
+
+			new PhotonNamedTrackWorkspace(editor, session, id, projectTest).show();
+		} catch (IllegalArgumentException | IllegalStateException invalid) {
+			status.setText(Component.literal(invalid.getMessage()));
+		}
 	}
 
 	private void edit(UnaryOperator<Document> operation) {
@@ -130,6 +179,13 @@ public class PhotonNamedLibraryPanel {
 		var field = new StringConfigurator("photon.lobecorp.animation.name", () -> name, value -> name = value, name, false);
 		field.layout(layout -> layout.widthPercent(100).flexShrink(0));
 		properties.addChild(field);
+		properties.addChild(new Button().setText("photon.lobecorp.animation.inspector_panel").setOnClick(_ -> {
+			try {
+				PhotonNamedDefinitionFieldsPanel.open(editor, session, requireSelected(), false);
+			} catch (IllegalArgumentException | IllegalStateException invalid) {
+				status.setText(Component.literal(invalid.getMessage()));
+			}
+		}));
 		if (selected != null) {
 			addDefinitionProperties(requireSelected());
 		}

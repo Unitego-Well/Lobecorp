@@ -21,6 +21,10 @@
 - 战斗关系通过现有唯一事件入口分发：目标变化先处理 CombatEvents 关系资格，再处理指挥家控制资格；LivingIncomingDamageEvent 先应用承伤倍率，再处理 CombatEvents 阵营伤害过滤。伤害 Post 先记录仇恨，再执行原伤害粒子逻辑。
 - 若不同优先级监听器不能在单一入口中保留原有的全部相对时序，检查内部行为依赖，选择能保留关键依赖的唯一优先级，并记录其对其他监听器相对时序的影响；若没有明确的依赖依据，先确认再改。
 
+## 技能客户端生命周期
+
+女皇 Photon 技能表现从现有 LcClientAnimations 权威快照消费阶段与实例身份，不新增技能监听或同步通道。ClientRuntimeEvents 的既有 tick、登录、退出和世界卸载入口统一推进和清理 QueenBeamEffects，资源重载同步清理宿主；实体动画与实体模型LOD保持。2026-10-21已完成静态检查和编译，真实技能链仍受游戏HUD异常和MCP控制激活阻断，未宣称运行通过。历史 EntitySkillClientEvents 的五个阶段监听已移除，不恢复重复入口；NeoForge抽象 EntitySkillEvent 仍不得直接注册监听。
+
 ## 检查
 
 - 用 IDEA 搜索 @EventBusSubscriber 和 @SubscribeEvent，确认订阅类只出现在 events 包及其子包，并按功能域拆分。

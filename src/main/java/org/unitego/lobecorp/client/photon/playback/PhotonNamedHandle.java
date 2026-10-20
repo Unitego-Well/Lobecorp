@@ -18,6 +18,7 @@ public class PhotonNamedHandle {
 
 	private final UUID id = UUID.randomUUID();
 	private final Definition definition;
+	private final UUID sourceDefinitionId;
 	private final double authoredDuration;
 	private final long order;
 	private final PhotonPlaybackClock clock;
@@ -32,7 +33,13 @@ public class PhotonNamedHandle {
 
 	public PhotonNamedHandle(Definition definition, double authoredDuration, long order, double requestedDuration,
 	                         boolean loop, boolean controlled, Map<String, List<Float>> inputs) {
+		this(definition, definition.id(), authoredDuration, order, requestedDuration, loop, controlled, inputs);
+	}
+
+	public PhotonNamedHandle(Definition definition, UUID sourceDefinitionId, double authoredDuration, long order,
+	                         double requestedDuration, boolean loop, boolean controlled, Map<String, List<Float>> inputs) {
 		this.definition = definition;
+		this.sourceDefinitionId = sourceDefinitionId;
 
 		if (!Double.isFinite(authoredDuration) || authoredDuration < 0) {
 			throw new IllegalArgumentException("命名播放制作时长无效。");
@@ -57,7 +64,7 @@ public class PhotonNamedHandle {
 			throw new IllegalArgumentException("命名播放请求时长无效。");
 		}
 
-		clock = new PhotonPlaybackClock(duration, controlled ? false : loop);
+		clock = new PhotonPlaybackClock(duration, !controlled && loop);
 	}
 
 	public UUID id() {
@@ -66,6 +73,10 @@ public class PhotonNamedHandle {
 
 	public Definition definition() {
 		return definition;
+	}
+
+	public UUID sourceDefinitionId() {
+		return sourceDefinitionId;
 	}
 
 	public long order() {

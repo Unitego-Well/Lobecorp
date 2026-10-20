@@ -2,6 +2,23 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：旧 GUI 工具、通用 HUD 层与单实例设计
+
+- 按用户追加要求迁移 ImaginaryCraft 1.21.1 的 GuiUtil 浮点绘制能力和通用 HUD 设计到当前 26.1.2／NeoForge 26.1.2.100／Java
+  25。新增
+  GuiUtil、HudLayer、BasicHudLayer、CompositeHudLayer、StatusBarLayer、HorizontalStatusBar，以及独立生命／理智／护盾条、通用滤镜组件和两种滤镜层；详细入口见[GUI 工具与通用 HUD 层](player-hud-shields.md#gui-工具与通用-hud-层2026-10-21)。
+- PlayerStatusHud 和 PlayerScreenFilters 改为私有构造器加公开
+  INSTANCE，所有注册、通知、tick、护甲位移与清理调用统一访问实例；没有新增事件订阅、网络字段、配置键或资源。组合布局、浮点填充、损失拖尾、两段闪光、金色吸收生命文字及独立闪光、低理智背景与动态图按旧设计恢复；理智仍维持当前
+  0～上限，护盾结算和世界特效留空不变。
+- GuiUtil 用 GuiElementRenderState 冻结矩阵、UV、颜色、裁剪与浮点边界，复用 GUI 图集及当前 stretchInner 元数据，未移植旧即时
+  BufferUploader／RenderSystem 调用或无效 z 参数。未给已缺失的精神／灵魂滤镜生成替代图。
+- 所有代码及格式处理完成后统一检查，发现的本次 switch 与可空注解问题已修正；未执行编译、构建、Data、测试、同步、重载或游戏。修改前五份
+  Java 快照保留在 backups/hud-design-20261021，未删除文件。
+- IDEA 统一检查 18 个 Java 与 3 个文档，0 错误；Java 保留三个公共复用入口未使用及两个原有借用世界提示，修改记录的三处历史失效链接未扩展修复。INSTANCE
+  语义引用已核对，分别为 5／7 处。
+- 使用独立 Git 索引收录本次 21 个文件；ClientRuntimeEvents 中并行的五行女皇特效代码不纳入提交，保留原有工作区与暂存。提交前
+  HEAD 备份为 `refs/backups/before-hud-design-20261021-89fv5zhg`，原 Git 索引及暂存差异快照位置见迁移页。
+
 ## 2026-10-21：ImaginaryCraft 玩家 HUD、滤镜与护盾迁移
 
 - 用户确认参考

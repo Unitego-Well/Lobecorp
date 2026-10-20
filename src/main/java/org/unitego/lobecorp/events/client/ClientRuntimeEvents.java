@@ -28,8 +28,8 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
-		PlayerStatusHud.clear();
-		PlayerScreenFilters.clear();
+		PlayerStatusHud.INSTANCE.clear();
+		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
@@ -41,8 +41,8 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
-		PlayerStatusHud.clear();
-		PlayerScreenFilters.clear();
+		PlayerStatusHud.INSTANCE.clear();
+		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
@@ -62,8 +62,8 @@ public class ClientRuntimeEvents {
 		}
 
 		if (event.getLevel() instanceof ClientLevel level) {
-			PlayerStatusHud.clear();
-			PlayerScreenFilters.clear();
+			PlayerStatusHud.INSTANCE.clear();
+			PlayerScreenFilters.INSTANCE.clear();
 			ScreenParticles.clear();
 			TextParticleClient.clear();
 			LcModelLodUtil.clear();
@@ -90,7 +90,7 @@ public class ClientRuntimeEvents {
 
 		LcPlayerAnimationRuntime.tick();
 		ScreenParticles.tick();
-		PlayerScreenFilters.tick();
+		PlayerScreenFilters.INSTANCE.tick();
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 	}

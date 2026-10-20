@@ -30,6 +30,66 @@
 `config/LibClientConfig.kt`、`LibServerConfig.kt`、
 `init/LibAbsorptionShieldsRegistry.kt` 和旧生物／伤害事件实现。
 
+## GUI 工具与通用 HUD 层（2026-10-21）
+
+本轮以 ImaginaryCraft 的 Minecraft 1.21.1 源码为设计依据，目标仍为当前锁定的
+Minecraft 26.1.2／NeoForge 26.1.2.100／Java 25。迁移的是浮点绘制能力和分层设计，
+不保留已经失效的 GuiGraphics、RenderType、三维 GUI z 偏移或即时 BufferUploader 调用。
+
+### 复用入口
+
+| 入口                                                                                                                                                                                                                                                                                                        | 职责                                                      |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| [GuiUtil](../../src/main/java/org/unitego/lobecorp/util/client/gui/GuiUtil.java)                                                                                                                                                                                                                            | 浮点精灵、UV 裁切、平铺、九宫格、原生纹理、纯色及垂直渐变 |
+| [HudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/HudLayer.java)、[BasicHudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/BasicHudLayer.java)                                                                                                                          | 玩家会话、字体、屏幕尺寸、位置与绘制入口                  |
+| [CompositeHudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/CompositeHudLayer.java)                                                                                                                                                                                                       | 有序子层、独立显示条件、统一初始化、上堆叠与尺寸计算      |
+| [StatusBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/StatusBarLayer.java)、[HorizontalStatusBar](../../src/main/java/org/unitego/lobecorp/client/hud/widget/HorizontalStatusBar.java)                                                                                                 | 数据／文本与背景、浮点填充、损失拖尾、两段闪光分开维护    |
+| [HealthBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/HealthBarLayer.java)、[RationalityBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/RationalityBarLayer.java)、[ShieldBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/ShieldBarLayer.java) | 独立生命、理智与按伤害类型复用的护盾状态条                |
+| [ScreenFilter](../../src/main/java/org/unitego/lobecorp/client/hud/widget/ScreenFilter.java)、[ScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/ScreenFilterLayer.java)                                                                                                         | 可组合的全屏纹理和透明度，缺图跳过                        |
+| [DamageScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/DamageScreenFilterLayer.java)、[RationalityScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/RationalityScreenFilterLayer.java)                                                              | 首次命中顺序叠加／复位／逐帧淡出，以及三层理智交叉淡变    |
+
+GuiUtil 使用当前 AtlasIds.GUI、SpriteId、GuiMetadataSection 与 RenderPipeline。
+九宫格识别当前版本的 stretchInner；GuiSpriteScaling 非封闭，默认分支按普通拉伸处理。
+浮点坐标保留到顶点提取，矩阵、UV、颜色和裁剪冻结为 GuiElementRenderState；
+延迟绘制不读取可变 HUD 状态，不操作全局着色器、混合或深度开关。自定义填充管线需采用 GUI 的无纹理位置／颜色顶点布局。
+零上限和非正尺寸跳过填充，边界使用保守取整后再应用当前矩阵与裁剪。
+旧接口中的 z 不映射成被忽略的参数；前后关系由 GuiLayer 注册顺序及当前 GUI 分层负责。
+
+### 单实例与旧 HUD 设计
+
+PlayerStatusHud、PlayerScreenFilters 均只有公开 INSTANCE 和私有构造器。
+生命、理智、四种护盾及两个滤镜层的可变状态由各自实例持有，不再使用全局静态动画状态。
+注册、护甲位移、受击通知、tick 和会话清理的既有调用点全部访问同一实例，没有增加事件监听或网络字段。
+
+玩家 HUD 使用组合层按生命→理智→物理→精神→侵蚀→灵魂顺序向上堆叠，间距 2 GUI 像素。
+锚点仍为屏幕中线左移 105、底部上移 30；创造模式下移 5，关闭新生命条时上移 10。
+组合高度按实际间距计算，护甲层上移组合高度加 1。子层在不可见时仍刷新当前数值；
+玩家实例、字体或屏幕尺寸变化后同步到子层，登录／退出／卸载继续使用已有清理链。
+
+生命条保留 90×9、填充偏移 11／1 和 78×7；生命条图像整体右移 3，文本仍以组合锚点右对齐。
+吸收生命显示金色附加数值，变化后先显示 2 tick 的独立闪光纹理；中毒、凋零、冰冻外观沿用当前 NeoForge
+PlayerHeartTypeEvent 钩子，未调用当前版本私有的 HeartType.forPlayer。
+理智与护盾条保留 93×11、填充偏移 14／2 和 78×7；低理智背景为 −1／−2、94×14。
+零理智的 98×14 动态纹理替换普通条，不再叠画；当前 0～上限的理智语义及此前三分之一区间适配保持。
+
+受伤滤镜恢复旧设计的 LinkedHashSet 叠加顺序、同类型再次命中复位和实时帧增量的平滑淡出，
+不再用固定的客户端 tick 直接线性扣透明度；tick 只检查会话和配置失效。
+暂停时不推进动画，隐藏 GUI 时不提取滤镜。两张缺失源滤镜继续跳过，未生成替代素材。
+本轮不改变护盾结算、六项配置默认值、资源 ID、语言键、协议版本或护盾世界特效留空的约定。
+
+### 本轮检查与备份
+
+全部代码修改和 IDEA 格式处理完成后统一读取静态诊断；本轮未运行编译、构建、Data、测试、同步、重载或游戏。
+首次诊断发现的非封闭类型 switch 及嵌套静态类型可空注解问题已在本轮范围修正；
+补丁未匹配时先读回实际状态再按上下文处理，没有整文件覆盖。
+五个既有 Java 文件修改前的文本快照位于 backups/hud-design-20261021/*.java.bak，未删除源码。
+本轮统一读取 18 个 Java 与 3 个文档的 IDEA 诊断，0 错误；
+保留三个公开复用入口未使用提示及载荷原有两个借用世界提示，修改记录仍有三处历史失效链接警告。
+INSTANCE 的语义引用已核对，状态 HUD 为 5 处、滤镜入口为 7 处。
+独立 Git 索引只收录本次 21 个文件，ClientRuntimeEvents 中并行的五行女皇特效代码保留在工作区，不纳入本次提交。
+提交前 HEAD 备份为 `refs/backups/before-hud-design-20261021-89fv5zhg`，原索引与暂存差异另存于
+`C:/Users/wang_/AppData/Local/Temp/lobecorp-hud-design-20261021-89fv5zhg`。独立提交记录见[修改记录](changes.md)。
+
 ## 配置迁移
 
 迁移的是定义、键、默认值与对应行为，未读取、覆盖或迁移用户旧运行目录中的个人 TOML。

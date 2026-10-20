@@ -10,7 +10,7 @@ import org.unitego.lobecorp.config.client.PlayerHudConfig;
 
 public class PlayerHudRegistration {
 	public static void register(RegisterGuiLayersEvent event) {
-		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, Lobecorp.id("player_status_hud"), PlayerStatusHud::extract);
+		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, Lobecorp.id("player_status_hud"), PlayerStatusHud.INSTANCE);
 		event.wrapLayer(VanillaGuiLayers.PLAYER_HEALTH, original -> (graphics, delta) -> {
 			var player = Minecraft.getInstance().player;
 			if (!PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() || player == null || player.isSpectator() || player.isCreative()) {
@@ -21,13 +21,13 @@ public class PlayerHudRegistration {
 			var pose = graphics.pose();
 			pose.pushMatrix();
 			try {
-				pose.translate(0, -PlayerStatusHud.armorOffset());
+				pose.translate(0, -PlayerStatusHud.INSTANCE.armorOffset());
 				original.render(graphics, delta);
 			} finally {
 				pose.popMatrix();
 			}
 		});
-		event.registerAbove(VanillaGuiLayers.CAMERA_OVERLAYS, Lobecorp.id("damage_screen_filter"), PlayerScreenFilters::extractDamage);
-		event.registerAboveAll(Lobecorp.id("rationality_screen_filter"), PlayerScreenFilters::extractRationality);
+		event.registerAbove(VanillaGuiLayers.CAMERA_OVERLAYS, Lobecorp.id("damage_screen_filter"), PlayerScreenFilters.INSTANCE::extractDamage);
+		event.registerAboveAll(Lobecorp.id("rationality_screen_filter"), PlayerScreenFilters.INSTANCE::extractRationality);
 	}
 }

@@ -10,6 +10,10 @@
 代码已接入，38 张现存 PNG 已按授权复制，精神／灵魂滤镜原图在旧项目缺失；未运行游戏或测试。
 实现、配置、资源状态与静态检查边界见[玩家 HUD、滤镜与护盾](player-hud-shields.md)。
 
+同日按旧项目设计补齐 GuiUtil、HUD 基础／组合／状态条层与滤镜组件；
+PlayerStatusHud、PlayerScreenFilters 使用 INSTANCE，绘制适配 26.1.2 的提取管线。
+复用入口及版本差异见[GUI 工具与通用 HUD 层](player-hud-shields.md#gui-工具与通用-hud-层2026-10-21)，未执行游戏或测试。
+
 客户端负责消费同步状态、提取渲染数据、提交绘制、组织输入和显示界面。服务器的技能状态、命中判断和控制资格不能由 Renderer 或 UI
 反向决定。客户端实现放在 `client`；注册仍归 `registry`；自动事件入口归 `events.client`；Mixin 只负责版本相关桥接。
 

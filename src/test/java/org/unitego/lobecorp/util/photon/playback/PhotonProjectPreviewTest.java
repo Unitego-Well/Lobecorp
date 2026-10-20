@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -97,6 +98,33 @@ public class PhotonProjectPreviewTest {
 		}
 
 		return count;
+	}
+
+	@Test
+	public void permitsOnlyValidatedPreviewContainersWithoutUnsupportedContents() {
+		var project = new CompoundTag();
+		var source = fixture();
+		source.putString("future", "keep");
+		var data = new CompoundTag();
+		data.put(PhotonProjectPreviewUtil.PROJECT_FIELD, source);
+		project.put("data", data);
+		assertFalse(PhotonEditorProjectGuardUtil.containsProjectTag(project));
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(project));
+		assertEquals("keep", source.getStringOr("future", ""));
+		source.putString("lobecorp$future", "unsupported");
+		assertTrue(PhotonEditorProjectGuardUtil.containsProjectTag(project));
+		source.remove("lobecorp$future");
+		var track = new CompoundTag();
+		track.putString("type", "lobecorp_animation_call");
+		var tracks = new ListTag();
+		tracks.add(track);
+		source.put("tracks", tracks);
+		assertTrue(PhotonEditorProjectGuardUtil.containsProjectTag(project));
+		source.remove("tracks");
+		source.putInt("version", PhotonNamedLibrary.VERSION + 1);
+		assertTrue(PhotonEditorProjectGuardUtil.containsProjectTag(project));
+		data.putString(PhotonProjectPreviewUtil.PROJECT_FIELD, "broken");
+		assertTrue(PhotonEditorProjectGuardUtil.containsProjectTag(project));
 	}
 
 	private static CompoundTag fixture() {

@@ -455,6 +455,7 @@ public class PhotonEditorTools {
 	}
 
 	private void toolMenu(TreeBuilder.Menu menu) {
+		menu.leaf(PhotonProjectPreviewPanel.TITLE, () -> PhotonProjectPreviewPanel.open(editor));
 		menu.leaf(PhotonPerformanceTextUtil.key("title"), () -> PhotonPerformancePanel.open(editor));
 		if (enabled(PhotonEditorTextUtil.TEST_FEATURE)) {
 			PhotonEditorTestMenu.append(editor, menu);

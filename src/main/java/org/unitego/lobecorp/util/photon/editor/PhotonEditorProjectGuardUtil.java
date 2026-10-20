@@ -21,6 +21,8 @@ import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
+import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
+import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,7 +83,13 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	public static boolean containsExtensions(IProject project) {
-		return project instanceof FXProject fxProject && containsDataExtensions(fxProject.getFx().getFxData());
+		if (!(project instanceof FXProject fxProject)) {
+			return false;
+		}
+
+		var preview = ((PhotonProjectPreviewAccess) fxProject).lobecorp$projectPreview();
+		return containsDataExtensions(fxProject.getFx().getFxData())
+				|| preview != null && requiresPreviewAdapter(preview, 0);
 	}
 
 	private static boolean containsDataExtensions(FXData data) {
@@ -127,7 +135,8 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		if (document.kind() == PhotonResourceDocument.Kind.FX || document.kind() == PhotonResourceDocument.Kind.FX_PROJECT) {
-			if (containsTag(document.nbt())) {
+			if (document.kind() == PhotonResourceDocument.Kind.FX_PROJECT
+					? containsProjectTag(document.nbt()) : containsTag(document.nbt())) {
 				return true;
 			}
 		}
@@ -182,6 +191,22 @@ public class PhotonEditorProjectGuardUtil {
 		return containsTag(tag, 0);
 	}
 
+	/// 工程测试字段只允许出现在工程data层，FX发布数据及其他位置仍按旧字段阻断。
+	public static boolean containsProjectTag(@Nullable CompoundTag project) {
+		if (project == null || !(project.get("data") instanceof CompoundTag data)
+				|| !data.contains(PhotonProjectPreviewUtil.PROJECT_FIELD)) {
+			return containsTag(project);
+		}
+
+		if (requiresPreviewAdapter(data.get(PhotonProjectPreviewUtil.PROJECT_FIELD), 2)) {
+			return true;
+		}
+
+		var checked = project.copy();
+		checked.getCompoundOrEmpty("data").remove(PhotonProjectPreviewUtil.PROJECT_FIELD);
+		return containsTag(checked);
+	}
+
 	private static boolean containsTag(@Nullable Tag tag, int depth) {
 		if (depth > MAX_DEPTH) {
 			throw new IllegalArgumentException(message());
@@ -207,6 +232,20 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		return false;
+	}
+
+	/// 只放行已保留的工程测试容器，内部未恢复的类型和旧字段仍逐项阻断。
+	private static boolean requiresPreviewAdapter(Tag tag, int depth) {
+		if (!(tag instanceof CompoundTag source)) {
+			return true;
+		}
+
+		try {
+			PhotonProjectPreviewUtil.read(source);
+			return containsTag(source, depth);
+		} catch (IOException | IllegalArgumentException invalid) {
+			return true;
+		}
 	}
 
 	public static String message() {

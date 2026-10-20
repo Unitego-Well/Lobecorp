@@ -39,6 +39,10 @@ public class PhotonNamedPlan {
 	final int unusedBindings;
 
 	public PhotonNamedPlan(HolderLookup.Provider provider, FXRuntime runtime, Definition definition) {
+		this(provider, runtime, definition, false);
+	}
+
+	public PhotonNamedPlan(HolderLookup.Provider provider, FXRuntime runtime, Definition definition, boolean projectPreview) {
 		this.definition = definition;
 
 		for (var source : definition.tracks()) {
@@ -77,7 +81,7 @@ public class PhotonNamedPlan {
 						}
 					}
 				}
-			} else if (track instanceof PhotonCallTrack || !(track instanceof ActivatorTrack || track instanceof ControlTrack
+			} else if (track instanceof PhotonCallTrack && !projectPreview || !(track instanceof ActivatorTrack || track instanceof ControlTrack
 					|| track instanceof PhotonModelClipTrack || track instanceof PhotonChildTrack)) {
 				throw new IllegalArgumentException("命名播放尚未支持该轨道：" + track.name());
 			}

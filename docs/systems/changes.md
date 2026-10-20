@@ -2,6 +2,12 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-20：恢复G1工程测试调用与字段适配
+
+- 新增PhotonProjectPreviewUtil/Access，既有FXProjectMixin保留工程专用lobecorp_animation_preview原树并独立于FXData发布；NamedRuntime增加独立测试/定位/停止，ChildWindows仅允许归属有效的本实例测试调用。受控更新区分模拟/帧，关闭使用快照，普通场景/发布动画不开放自调用；原文件门禁未解除。
+- IDEA工程测试字段JUnit3项通过（8份真实字段，原文件字节不变），基础原生混合夹具再次通过。新调用夹具在标题页缺维度注册而中止；进入原隔离世界及Quick Play重试均发生JBR原生访问异常，根因未确认，受控/独立/RELEASE、GUI、文件往返及可见性能未验收。两次Client日志和hs_err_pid51856/3016保留，临时断点已移除，3原断点保留，未改JDK/存档。
+- IDEA编译success=true、计数null；Data日志ij_run__Data_544338832770161951.log为BUILD SUCCESSFUL，23输出written=0/removed=0，生成目录无新增差异；诊断无错误，预留API和既有检查工具提示保留。原资源/实体动画/LOD对原生接入前备份无差异；新增备份refs/backups/before-photon-g1-preview-20261020指向46f855c。仅提交本轮授权内容，不推送，G1未通过，高级扩展未开始。
+
 ## 2026-10-20：命名播放、生成器及子轨道基础接线（按用户要求停止）
 
 - 新增playback定义/严格Codec、独占时钟/形参/跟随、原生属性混合、事件预算、控制器/生成器注册、子片段窗口及模板/实例调度；FXRuntime和TimelinePlayer现有Mixin承接生命周期，未新增独立渲染出口或工作线程。旋转跨周期、粒子生命周期函数、同属性多绑定及有效但未使用绑定分别保持旧语义；详细边界见photon-redesign-progress.md。

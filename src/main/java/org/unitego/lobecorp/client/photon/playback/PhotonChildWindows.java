@@ -30,7 +30,7 @@ public class PhotonChildWindows implements AutoCloseable {
 			this.clip = clip;
 		}
 
-		private void drive(double time) {
+		private void drive(double time, boolean simulation) {
 			if (completed || clip.mode != PhotonChildClip.Mode.CONTROLLED) {
 				return;
 			}
@@ -40,7 +40,7 @@ public class PhotonChildWindows implements AutoCloseable {
 				var handle = child.handle().get();
 
 				if (current(runtime, handle)) {
-					handle.drive(clip.windowProgress(time));
+					runtime.driveControlled(handle, clip.windowProgress(time), simulation);
 				}
 			}
 		}
@@ -88,12 +88,18 @@ public class PhotonChildWindows implements AutoCloseable {
 
 	private final FXRuntime source;
 	private final @Nullable PhotonNamedHandle parent;
+	private final @Nullable PhotonNamedRuntime callHost;
 	private final Map<UUID, Window> windows = new HashMap<>();
 	private double previous = Double.NEGATIVE_INFINITY;
 
 	public PhotonChildWindows(FXRuntime source, @Nullable PhotonNamedHandle parent) {
+		this(source, parent, null);
+	}
+
+	public PhotonChildWindows(FXRuntime source, @Nullable PhotonNamedHandle parent, @Nullable PhotonNamedRuntime callHost) {
 		this.source = source;
 		this.parent = parent;
+		this.callHost = callHost;
 	}
 
 	public void evaluate(List<Track> tracks, double time) {
@@ -108,13 +114,7 @@ public class PhotonChildWindows implements AutoCloseable {
 				continue;
 			}
 
-			if (track instanceof PhotonCallTrack) {
-				throw new IllegalArgumentException("工程动画调用轨道尚待测试时间轴入口适配。");
-			}
-
-			if (!(source.objects.get(track.targetId()) instanceof PhotonChildSpawner spawner)) {
-				throw new IllegalArgumentException("子动画轨道没有有效的生成器目标：" + track.targetId());
-			}
+			var targets = targets(track);
 
 			for (var value : track.clips()) {
 				var clip = (PhotonChildClip) value;
@@ -140,12 +140,13 @@ public class PhotonChildWindows implements AutoCloseable {
 					continue;
 				}
 
-				for (var id : spawner.instanceIds()) {
+				for (var target : targets.entrySet()) {
+					var id = target.getKey();
 					if (window.children.containsKey(id)) {
 						continue;
 					}
 
-					var runtime = spawner.animations(id);
+					var runtime = target.getValue();
 
 					if (runtime == null) {
 						throw new IllegalArgumentException("子动画生成实例缺少控制器：" + id);
@@ -167,7 +168,7 @@ public class PhotonChildWindows implements AutoCloseable {
 					window.children.put(id, new Child(new WeakReference<>(runtime), new WeakReference<>(handle)));
 				}
 
-				window.drive(time);
+				window.drive(time, true);
 
 				if (crossed) {
 					window.complete();
@@ -186,8 +187,36 @@ public class PhotonChildWindows implements AutoCloseable {
 		previous = time;
 	}
 
+	private Map<UUID, PhotonNamedRuntime> targets(PhotonChildTrack track) {
+		if (track instanceof PhotonCallTrack) {
+			if (callHost == null || parent == null || !callHost.ownsPreview(parent)) {
+				throw new IllegalArgumentException("动画调用只能来自本实例独立的工程测试定义。");
+			}
+
+			return Map.of(FXRuntime.ROOT_UUID, callHost);
+		}
+
+		if (!(source.objects.get(track.targetId()) instanceof PhotonChildSpawner spawner)) {
+			throw new IllegalArgumentException("子动画轨道没有有效的生成器目标：" + track.targetId());
+		}
+
+		var result = new HashMap<UUID, PhotonNamedRuntime>();
+
+		for (var id : spawner.instanceIds()) {
+			var runtime = spawner.animations(id);
+
+			if (runtime == null) {
+				throw new IllegalArgumentException("子动画生成实例缺少控制器：" + id);
+			}
+
+			result.put(id, runtime);
+		}
+
+		return result;
+	}
+
 	public void frame(double time) {
-		windows.values().forEach(window -> window.drive(time));
+		windows.values().forEach(window -> window.drive(time, false));
 	}
 
 	private static boolean current(@Nullable PhotonNamedRuntime runtime, @Nullable PhotonNamedHandle handle) {

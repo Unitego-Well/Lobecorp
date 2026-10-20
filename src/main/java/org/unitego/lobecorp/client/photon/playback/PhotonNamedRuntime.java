@@ -4,9 +4,11 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.Photon;
 import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Binding;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Blend;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Event;
@@ -55,11 +57,11 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		private Completion completion;
 		private final PhotonChildWindows children;
 
-		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime) {
+		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime, @Nullable PhotonNamedRuntime callHost) {
 			this.handle = handle;
 			this.plan = plan;
 			completion = handle.definition().completion();
-			children = new PhotonChildWindows(runtime, handle);
+			children = new PhotonChildWindows(runtime, handle, callHost);
 		}
 	}
 
@@ -87,6 +89,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	private boolean applying;
 	private long revision;
 	private @Nullable String failure;
+	private @Nullable Entry preview;
 
 	public PhotonNamedRuntime(FXRuntime runtime, PhotonNamedController controller) throws IOException {
 		this.runtime = runtime;
@@ -156,7 +159,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			release(current);
 		}
 
-		playing.put(plan.definition.id(), new Entry(handle, plan, runtime));
+		playing.put(plan.definition.id(), new Entry(handle, plan, runtime, null));
 		revision++;
 		queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
 		drainEvents();
@@ -168,6 +171,61 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		return play(name, duration, true, inputs, true);
 	}
 
+	/// 工程专用测试定义不进入发布动画索引；调用者保管原工程，运行时只持有独立准备数据。
+	public PhotonNamedHandle preview(Definition definition, double authoredTime) {
+		requireOpen();
+
+		if (!(root.getEffectExecutor() instanceof FXProjectEffectExecutor) || !Double.isFinite(authoredTime)
+				|| authoredTime < 0 || plans.containsKey(definition.id().toString())) {
+			throw new IllegalArgumentException("工程测试定义身份或制作时间无效。");
+		}
+
+		var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition, true);
+		var handle = new PhotonNamedHandle(definition, plan.authoredDuration, sequence++, plan.authoredDuration,
+				false, true, Map.of());
+		handle.drive(Math.clamp(authoredTime / plan.authoredDuration, 0, 1));
+		stopPreview();
+		var entry = new Entry(handle, plan, runtime, this);
+		entry.completion = Completion.HOLD;
+		entry.notifiedPosition = handle.position(0);
+		preview = entry;
+		playing.put(definition.id(), entry);
+		revision++;
+		refresh();
+		return handle;
+	}
+
+	public void seekPreview(double authoredTime) {
+		requireOpen();
+		var entry = preview;
+
+		if (entry == null || !Double.isFinite(authoredTime) || authoredTime < 0) {
+			throw new IllegalArgumentException("没有有效的工程测试播放或制作时间。");
+		}
+
+		entry.handle.drive(Math.clamp(authoredTime / entry.plan.authoredDuration, 0, 1));
+		entry.notifiedPosition = entry.handle.position(0);
+		revision++;
+		refresh();
+	}
+
+	public void stopPreview() {
+		var entry = preview;
+		preview = null;
+
+		if (entry != null) {
+			playing.remove(entry.handle.definition().id(), entry);
+			release(entry);
+			revision++;
+			refresh();
+		}
+	}
+
+	public boolean ownsPreview(PhotonNamedHandle handle) {
+		return !closed && preview != null && preview.handle == handle && !handle.disposed()
+				&& playing.get(handle.definition().id()) == preview && !plans.containsKey(handle.definition().id().toString());
+	}
+
 	public void completeControlled(PhotonNamedHandle handle, Completion completion) {
 		var entry = current(handle);
 		entry.completion = completion;
@@ -176,9 +234,31 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		refresh();
 	}
 
+	public void driveControlled(PhotonNamedHandle handle, double position, boolean simulation) {
+		current(handle);
+
+		if (Double.compare(handle.progress(0), position) == 0) {
+			return;
+		}
+
+		handle.drive(position);
+		revision++;
+
+		if (simulation) {
+			refresh();
+		} else if (!applying) {
+			mixer.begin();
+			sample(0, false);
+		}
+	}
+
 	public void stop(PhotonNamedHandle handle) {
 		requireOpen();
 		var entry = current(handle);
+
+		if (entry == preview) {
+			preview = null;
+		}
 		playing.remove(handle.definition().id());
 		release(entry);
 		revision++;
@@ -288,7 +368,10 @@ public class PhotonNamedRuntime implements AutoCloseable {
 				}
 
 				mixer.begin();
-				gates.begin();
+
+				if (simulation) {
+					gates.begin();
+				}
 			}
 
 			throw new IllegalStateException("命名播放切换超过单次重采样预算。");
@@ -569,9 +652,10 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 
 		closed = true;
+		preview = null;
 		mixer.clear();
 		gates.clear();
-		playing.values().forEach(this::release);
+		List.copyOf(playing.values()).forEach(this::release);
 		playing.clear();
 		events.clear();
 		retention.forEach(FXObject::setKeepAlive);

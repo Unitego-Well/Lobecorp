@@ -2,6 +2,8 @@
 
 > 2026-10-19 当前状态：本文描述的自建命名动画实现与专用界面已移除，原生时间轴与实体动画保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
+2026-10-20恢复进度：新playback已接入受约束的工程测试调用API和工程专用字段保留，8份真实测试定义通过原树读取；旧专用GUI、完整文件往返、世界播放及G1仍未完成，当前实现/崩溃阻断见[重设计实施进度](photon-redesign-progress.md)。下文历史功能不据此全部恢复。
+
 ## 独立回归测试入口
 
 2026-10-10 起，不启动游戏的时钟／参数及 GUI 数据检查由 `src/test/java` 中的 `PhotonAnimationRegressionTest` 两个 JUnit Jupiter 测试调用，通过 IDEA 测试入口或 Gradle `test` 执行。原 `PhotonAnimationRegression.main` 已移除；菜单共用的 `runIndependent`、`runPropertySlots`、`runInstances` 及加载检查目录保留。测试框架仅进入测试类路径，不进入模组运行依赖或发布包。

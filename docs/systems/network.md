@@ -1,7 +1,7 @@
 # 网络协议与同步
 
 核对日期：2026-10-13。协议登记由 [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java) 决定，当前
-NETWORK_VERSION 为 20；本文不代表联机测试通过。
+NETWORK_VERSION 为 21；本文不代表联机测试通过。
 
 2026-10-18 女皇整数阶段与战斗关系重写同步更新协议版本，指挥家继续复用既有目录／实体附件快照，没有新增战斗关系 Payload；存档边界见[战斗关系](combat.md)。
 
@@ -31,8 +31,9 @@ ServerPlayer；network.tc 的 [IToClientPayload](../../src/main/java/org/unitego
 | S → C | [LcAttachmentStatePayload](../../src/main/java/org/unitego/lobecorp/network/tc/attachment/LcAttachmentStatePayload.java) | 通用绑定全量／更新／移除及物品显示描述 |
 | S → C | [TextParticleStatePayload](../../src/main/java/org/unitego/lobecorp/network/tc/text/TextParticleStatePayload.java) | 当前 Level 的文本展示实例全量／更新／移除 |
 | S → C | [DamageParticlePayload](../../src/main/java/org/unitego/lobecorp/network/tc/damage/DamageParticlePayload.java) | 一次已结算伤害的维度、来源／目标 UUID、类型、固定位置、数值及近战语义 |
+| S → C | [PlayerDamageFilterPayload](../../src/main/java/org/unitego/lobecorp/network/tc/damage/PlayerDamageFilterPayload.java) | 仅受击玩家接收的一次性四色通道滤镜通知，包含纯资源伤害 |
 
-当前登记为 2 项 C2S、14 项 S2C，不能把存在 tsc 接口解释为已登记双向业务包。
+当前登记为 2 项 C2S、15 项 S2C，不能把存在 tsc 接口解释为已登记双向业务包。
 
 ## 状态权威与复用
 
@@ -79,6 +80,10 @@ remove 载荷不注销独立模型／物品显示；重追踪后可恢复原登�
 客户端校验当前维度，并仅在 `melee` 且攻击者 UUID 等于本地玩家 UUID 时使用屏幕中心；其他玩家的近战同样投影服务端给出的世界发生位置。合并与动画在客户端推进，不增加周期包、客户端回传或服务器粒子实例。精确碰撞点、估算点和中心回退的来源及限制见[屏幕伤害粒子](screen-damage-particles.md)。
 
 ## 修改前与收尾检查
+
+2026-10-21：协议 21 新增受击玩家滤镜通知，仅发给本人，校验维度和 UUID；护盾的八个固定值走 Neo
+附件自动同步，不增加护盾状态包。理智滤镜直接读取既有同步资源，不额外发包。
+本轮未运行编译、Data、测试或联机；资源与实施状态见[玩家 HUD、滤镜与护盾](player-hud-shields.md)。
 
 检查 LcPayloads 的版本和登记方向、具体
 TYPE/STREAM_CODEC、双方处理器、发送点、缓存失效和世界卸载。变更结构或协议需按大型修改验证，并同步 [注册与数据](registration-data.md)

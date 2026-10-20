@@ -5,6 +5,8 @@ import net.minecraft.world.entity.LivingEntity;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
+import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
+import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -21,6 +23,7 @@ public class LcDamageContext {
 	private float pendingHealing;
 	private boolean prepared;
 	private boolean accepted;
+	private int filterChannels;
 
 	private LcDamageContext(Set<LcDamageType> types) {
 		this.types = types;
@@ -62,6 +65,10 @@ public class LcDamageContext {
 		return erosionDamage;
 	}
 
+	public void setPhysicsAfterArmor(float remaining) {
+		physicsDamage = remaining;
+	}
+
 	public float prepare(LivingEntity entity, float amount) {
 		float healthAmount = Math.max(0.0F, amount - shieldReduction);
 		float physics = calculate(entity, LcDamageType.PHYSICS, healthAmount);
@@ -99,11 +106,30 @@ public class LcDamageContext {
 	}
 
 	/// 在原版护甲、保护、抗性及 Pre 阶段完成后合并回血，不向 DamageContainer 写入负伤害。
-	public float combineHealth(float damage) {
+	public float combineHealth(LivingEntity entity, float damage) {
 		double remaining = (double) damage - healthRecovery;
 		pendingHealing = finiteDamage(Math.max(0.0, -remaining));
 		accepted = true;
-		return finiteDamage(Math.max(0.0, remaining));
+		float positive = finiteDamage(Math.max(0.0, remaining));
+		double total = (double) physicsDamage + erosionDamage;
+		if (positive <= 0 || total <= 0) {
+			return positive;
+		}
+
+		// 共同减伤与 Pre 处理后按护甲后的通道权重分摊，回血先抵消，不消耗护盾。
+		float physics = finiteDamage(positive * (physicsDamage / total));
+		float erosion = positive - physics;
+		physics = LcShieldUtil.absorb(entity, LcDamageType.PHYSICS, physics);
+		erosion = LcShieldUtil.absorb(entity, LcDamageType.EROSION, erosion);
+		if (physics > 0) {
+			filterChannels |= 1 << LcDamageType.PHYSICS.ordinal();
+		}
+
+		if (erosion > 0) {
+			filterChannels |= 1 << LcDamageType.EROSION.ordinal();
+		}
+
+		return finiteDamage((double) physics + erosion);
 	}
 
 	public void finish(LivingEntity entity, DamageSource source) {
@@ -117,11 +143,21 @@ public class LcDamageContext {
 		}
 
 		if (spiritDamage != 0.0F) {
+			spiritDamage = LcShieldUtil.absorb(entity, LcDamageType.SPIRIT, spiritDamage);
 			LcDamageUtil.applyResourceDamage(entity, LcDamageType.SPIRIT, spiritDamage, source);
+			if (spiritDamage > 0) {
+				filterChannels |= 1 << LcDamageType.SPIRIT.ordinal();
+			}
 		}
 
 		if (soulDamage != 0.0F) {
+			soulDamage = LcShieldUtil.absorb(entity, LcDamageType.THE_SOUL, soulDamage);
 			LcDamageUtil.applyResourceDamage(entity, LcDamageType.THE_SOUL, soulDamage, source);
+			if (soulDamage > 0) {
+				filterChannels |= 1 << LcDamageType.THE_SOUL.ordinal();
+			}
 		}
+
+		PlayerDamageFilterPayload.send(entity, filterChannels);
 	}
 }

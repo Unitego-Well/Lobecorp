@@ -13,11 +13,21 @@ import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.effect.LcMobEffects;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
+import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class MobEffectEvents {
 	@SubscribeEvent(priority = EventPriority.LOWEST)
+	public static void onMobEffectAdded(MobEffectEvent.Added event) {
+		LcShieldUtil.added(event);
+	}
+
+	@SubscribeEvent(priority = EventPriority.LOWEST)
 	public static void onMobEffectRemoved(MobEffectEvent.Remove event) {
+		if (!event.isCanceled()) {
+			LcShieldUtil.removed(event.getEntity(), event.getEffect());
+		}
+
 		if (!event.isCanceled() && event.getEffect().equals(LcMobEffects.STUN)) {
 			LcMobEffects.STUN.get().restoreAi(event.getEntity());
 		}
@@ -26,6 +36,10 @@ public class MobEffectEvents {
 	@SubscribeEvent(priority = EventPriority.LOWEST)
 	public static void onMobEffectExpired(MobEffectEvent.Expired event) {
 		MobEffectInstance effect = event.getEffectInstance();
+		if (!event.isCanceled() && effect != null) {
+			LcShieldUtil.removed(event.getEntity(), effect.getEffect());
+		}
+
 
 		if (!event.isCanceled() && effect != null && effect.getEffect().equals(LcMobEffects.STUN)) {
 			LcMobEffects.STUN.get().restoreAi(event.getEntity());

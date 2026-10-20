@@ -42,6 +42,15 @@ public interface LcMobEffects {
 					.addAttributeModifier(LcAttributes.DAMAGE_TAKEN_MULTIPLIER, Lobecorp.id("effect.queen_damage_reduction"),
 							Operation.ADD_MULTIPLIED_TOTAL, _ -> REDUCTION_DAMAGE_MULTIPLIER));
 
+	DeferredHolder<MobEffect, BasicMobEffect> PHYSICS_ABSORPTION_SHIELD = register(
+			"physics_absorption_shield", "Physical Shield", "物理护盾", MobEffectCategory.BENEFICIAL, 0xFF5555, UnaryOperator.identity());
+	DeferredHolder<MobEffect, BasicMobEffect> SPIRIT_ABSORPTION_SHIELD = register(
+			"spirit_absorption_shield", "Spirit Shield", "精神护盾", MobEffectCategory.BENEFICIAL, 0xFFFFFF, UnaryOperator.identity());
+	DeferredHolder<MobEffect, BasicMobEffect> EROSION_ABSORPTION_SHIELD = register(
+			"erosion_absorption_shield", "Erosion Shield", "侵蚀护盾", MobEffectCategory.BENEFICIAL, 0xAA55AA, UnaryOperator.identity());
+	DeferredHolder<MobEffect, BasicMobEffect> SOUL_ABSORPTION_SHIELD = register(
+			"soul_absorption_shield", "Soul Shield", "灵魂护盾", MobEffectCategory.BENEFICIAL, 0x55FFFF, UnaryOperator.identity());
+
 	private static <T extends MobEffect> DeferredHolder<MobEffect, T> register(
 			String id, String en, String zh,
 			MobEffectCategory category, int color,

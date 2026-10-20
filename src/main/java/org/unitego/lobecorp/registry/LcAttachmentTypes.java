@@ -21,6 +21,7 @@ import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectLevelData
 import org.unitego.lobecorp.world.hitbox.HitboxLevelData;
 import org.unitego.lobecorp.particle.text.TextParticleLevelData;
 import org.unitego.lobecorp.world.entity.damage.LcResourceState;
+import org.unitego.lobecorp.world.entity.damage.LcShieldState;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
 import java.util.Map;
@@ -35,6 +36,11 @@ public interface LcAttachmentTypes {
 			"lc_resources", () -> AttachmentType.builder(LcDamageUtil::fullResources)
 					.serialize(LcResourceState.CODEC.fieldOf("resources"))
 					.sync(LcResourceState.STREAM_CODEC).build());
+
+	/// 固定四色护盾容量与剩余量持久化并同步，死亡重生不复制。
+	DeferredHolder<AttachmentType<?>, AttachmentType<LcShieldState>> LC_SHIELDS = REGISTER.register(
+			"lc_shields", () -> AttachmentType.builder(() -> LcShieldState.EMPTY)
+					.serialize(LcShieldState.CODEC.fieldOf("shields")).sync(LcShieldState.STREAM_CODEC).build());
 
 	/// 尸体上临时存储的重组进度
 	DeferredHolder<AttachmentType<?>, AttachmentType<Float>> REASSEMBLY_PROGRESS =

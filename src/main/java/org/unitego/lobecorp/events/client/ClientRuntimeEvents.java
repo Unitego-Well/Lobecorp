@@ -18,6 +18,8 @@ import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
+import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
+import org.unitego.lobecorp.client.hud.PlayerStatusHud;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
@@ -26,6 +28,8 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+		PlayerStatusHud.clear();
+		PlayerScreenFilters.clear();
 		ScreenParticles.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
@@ -37,6 +41,8 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+		PlayerStatusHud.clear();
+		PlayerScreenFilters.clear();
 		ScreenParticles.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
@@ -56,6 +62,8 @@ public class ClientRuntimeEvents {
 		}
 
 		if (event.getLevel() instanceof ClientLevel level) {
+			PlayerStatusHud.clear();
+			PlayerScreenFilters.clear();
 			ScreenParticles.clear();
 			TextParticleClient.clear();
 			LcModelLodUtil.clear();
@@ -82,6 +90,7 @@ public class ClientRuntimeEvents {
 
 		LcPlayerAnimationRuntime.tick();
 		ScreenParticles.tick();
+		PlayerScreenFilters.tick();
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 	}

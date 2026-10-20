@@ -15,6 +15,11 @@ entity_skill 和 entity_skill_group 自定义注册表。实体、AI、技能、
 
 ## 已有附件
 
+2026-10-21：新增固定四色护盾附件 `lc_shields / LC_SHIELDS`，四个 Pool 各保存当前量和授予时容量，
+通过 Codec 持久化及 Neo 附件自动同步，死亡重生不复制。四个护盾 MobEffect 经 LcMobEffects 延迟注册，
+效果期限与剩余量分别由效果和附件持有；同步容量供 HUD 使用，不额外同步服务端配置副本。
+对应配置与实施边界见[玩家 HUD、滤镜与护盾](player-hud-shields.md)。
+
 2026-10-19：新增 `lc_resources / LC_RESOURCES`，四个固定浮点数保存精神／灵魂当前值和上次上限，Codec 持久化并通过 Neo 附件同步，死亡重生不复制。全部生物通过现有属性修改事件补齐缺失的四色防御／承伤系数及两个资源上限；默认、接口、上限比例与效果入口见[四色伤害](four-color-damage.md)。
 
 | 注册 ID / 字段                                | 数据归属与生命周期                         |

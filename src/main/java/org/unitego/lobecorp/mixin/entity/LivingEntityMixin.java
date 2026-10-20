@@ -97,6 +97,7 @@ public abstract class LivingEntityMixin implements ILivingEntityExpand {
 
 		float physics = context.getPhysicsDamage();
 		float remainingPhysics = physics > 0.0F ? original.call(damageSource, physics) : 0.0F;
+		context.setPhysicsAfterArmor(remainingPhysics);
 		return remainingPhysics + context.getErosionDamage();
 	}
 

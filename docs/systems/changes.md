@@ -2,6 +2,27 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：ImaginaryCraft 玩家 HUD、滤镜与护盾迁移
+
+- 用户确认参考
+  ImaginaryCraft，迁移生命条、理智条、四色护盾条、对应客户端／服务端配置，并追加屏幕滤镜；护盾世界特效留空，不迁移枪械蓄力、斩味或自然恢复玩法。旧项目只读路径、实现契约和资源清单见[玩家 HUD、滤镜与护盾](player-hud-shields.md)。
+- 已通过 IDEA 新增
+  PlayerStatusHud、PlayerScreenFilters、PlayerHudRegistration、PlayerHudConfig、ShieldConfig、LcShieldState、LcShieldUtil 和
+  PlayerDamageFilterPayload；在现有客户端／生物／效果事件入口分发，LcAttachmentTypes 与 LcMobEffects 注册护盾，协议更新为
+  21。原有伤害上下文在护甲后记录物理权重，共同减伤后分配生命通道护盾，精神／灵魂在接受命中后结算。
+- 六个对应配置保留旧键和默认值；HUD 容量读取同步附件。当前理智仍为 0～上限，最低三分之一映射旧滤镜三层效果；该适配及混合伤害护盾分配未做视觉／战斗验收。
+- 已通过 IDEA 写入两份动画元数据；用户明确授权后用 PowerShell 新增 38 张旧 PNG，逐份 SHA-256 相同，覆盖 0
+  份。旧项目不存在精神／灵魂受伤滤镜图，缺图层跳过，未使用其他同名素材冒充。
+- IDEA 静态检查未发现本次语法／类型错误；保留既有未检查转换、可选
+  final、未使用和借用世界提示。未执行编译、构建、Data、测试、同步、重载或游戏；新增效果翻译仅登记生成源，未宣称资源或联机可用。
+- 用户要求将格式纳入编辑规则，已同步 AGENTS.md、workflow.md；最初格式化被自动审批拒绝且未执行，明确授权后新文件及既有修改行已通过
+  IDEA 格式化，关闭额外导入优化与成员重排。保留其他排版及用户修改。
+- 新建迁移记录的整页 Markdown 格式化最初被自动审批拒绝，未执行该次操作；用户随后明确授权 Markdown 格式化，已按 IDEA
+  项目格式处理本次范围。
+- 未删除文件；旧来源只读，原有暂存／未暂存内容保留。精神／灵魂受伤滤镜原图仍缺失，后续运行与视觉验收未执行。通过独立 Git 索引隔离本次
+  68 个文件及改动块，共用的 Lobecorp.java、LcPayloads.java 原修改不纳入提交。Git 备份引用为
+  `refs/backups/before-player-hud-20261021-nm_x6kcu`；原索引与暂存差异另有临时快照，位置见迁移页。
+
 ## 2026-10-20：命名制作API、MCP与代码优先推进
 
 - 新增effect_animation_state/edit/control及共享命名制作/运行适配，运行库刷新保留已有播放句柄，工程测试按独立句柄控制。新增patch_definition和patch_project_preview按UUID合并已支持字段，保留未涉及原树，拒绝身份/名称覆盖和失效测试目标；仍保留原文件保护。

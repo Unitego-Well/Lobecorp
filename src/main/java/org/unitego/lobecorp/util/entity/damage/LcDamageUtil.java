@@ -139,7 +139,7 @@ public class LcDamageUtil {
 			return damage;
 		}
 
-		float remaining = context.combineHealth(damage);
+		float remaining = context.combineHealth(entity, damage);
 		container.setNewDamage(remaining);
 		return remaining;
 	}

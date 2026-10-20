@@ -26,6 +26,8 @@ import org.unitego.lobecorp.particle.damage.DamageParticles;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
+import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
+import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LivingEntityEvents {
@@ -33,6 +35,7 @@ public class LivingEntityEvents {
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {
 			LcDamageUtil.refreshResources(livingEntity);
+			LcShieldUtil.tick(livingEntity);
 			IEntitySkillAccess access = IEntitySkillAccess.get(livingEntity);
 
 			if (access != null) {
@@ -59,12 +62,19 @@ public class LivingEntityEvents {
 				sweeper.trySetAttackTargetFromDamage(attacker);
 			}
 		}
+
+		if (event.getEntity().lobecorp$getDamageContext() == null) {
+			event.setNewDamage(LcShieldUtil.absorbUntyped(event.getEntity(), event.getNewDamage()));
+		}
 	}
 
 	@SubscribeEvent
 	public static void onLivingDamagePost(LivingDamageEvent.Post event) {
 		CombatEvents.onDamagePost(event);
 		DamageParticles.onDamage(event);
+		if (event.getEntity().lobecorp$getDamageContext() == null && event.getHealthDamage() > 0) {
+			PlayerDamageFilterPayload.send(event.getEntity(), 1);
+		}
 	}
 
 	@SubscribeEvent

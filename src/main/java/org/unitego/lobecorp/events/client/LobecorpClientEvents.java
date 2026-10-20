@@ -2,6 +2,7 @@ package org.unitego.lobecorp.events.client;
 
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import org.unitego.lobecorp.registry.client.VisualQualityConfigScreens;
+import org.unitego.lobecorp.registry.client.PlayerHudRegistration;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -106,5 +107,6 @@ public class LobecorpClientEvents {
 	public static void registerHud(RegisterGuiLayersEvent event) {
 		ConductorHudRegistration.register(event);
 		ScreenParticleRegistration.register(event);
+		PlayerHudRegistration.register(event);
 	}
 }

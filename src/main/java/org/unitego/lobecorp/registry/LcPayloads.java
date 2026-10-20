@@ -7,6 +7,7 @@ import org.unitego.lobecorp.network.tc.animation.LcAnimationStatePayload;
 import org.unitego.lobecorp.network.tc.animation.LcAnimationRemovePayload;
 import org.unitego.lobecorp.network.tc.attachment.LcAttachmentStatePayload;
 import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
+import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
 import org.unitego.lobecorp.network.tc.text.TextParticleStatePayload;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
@@ -14,7 +15,7 @@ import org.unitego.lobecorp.network.ts.IToServerPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "20";
+	private static final String NETWORK_VERSION = "21";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		event.registrar(NETWORK_VERSION).playToServer(
@@ -80,6 +81,10 @@ public class LcPayloads {
 		).playToClient(
 				DamageParticlePayload.TYPE,
 				DamageParticlePayload.STREAM_CODEC,
+				IToClientPayload::handle
+		).playToClient(
+				PlayerDamageFilterPayload.TYPE,
+				PlayerDamageFilterPayload.STREAM_CODEC,
 				IToClientPayload::handle
 		);
 	}

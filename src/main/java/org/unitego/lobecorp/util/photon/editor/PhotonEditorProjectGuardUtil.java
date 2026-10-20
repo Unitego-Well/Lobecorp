@@ -23,11 +23,13 @@ import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.NumericTag;
+import net.minecraft.nbt.IntTag;
 
 import java.io.File;
 import java.io.IOException;
@@ -219,6 +221,9 @@ public class PhotonEditorProjectGuardUtil {
 
 		if (tag instanceof CompoundTag compound) {
 			var type = compound.getStringOr("type", "");
+			if (type.equals("lobecorp_animation_controller")) {
+				return requiresNamedAdapter(compound, depth);
+			}
 
 			if (type.equals("activator") && compound.get("data") instanceof CompoundTag data
 					&& data.contains(PhotonActivationOptions.TAG)) {
@@ -242,6 +247,54 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		return false;
+	}
+
+	/// 仅接受当前控制器包装和可保留的原生轨道库，未恢复的内部扩展继续阻断。
+	private static boolean requiresNamedAdapter(CompoundTag wrapper, int depth) {
+		if (!Set.of("type", "data").containsAll(wrapper.keySet())
+				|| !(wrapper.get("data") instanceof CompoundTag data)
+				|| data.contains("version") && (!(data.get("version") instanceof IntTag version) || version.intValue() != 0)
+				|| !(data.get("definition") instanceof CompoundTag definition)) {
+			return true;
+		}
+
+		try {
+			var library = PhotonNamedCodecUtil.read(definition);
+			for (var animation : library.animations()) {
+				for (var track : animation.tracks()) {
+					if (requiresNamedTrackAdapter(track, depth + 3)) {
+						return true;
+					}
+				}
+			}
+
+			return containsTag(data, depth + 1);
+		} catch (IOException | IllegalArgumentException invalid) {
+			return true;
+		}
+	}
+
+	private static boolean requiresNamedTrackAdapter(CompoundTag track, int depth) {
+		if (depth > MAX_DEPTH || !(track.get("data") instanceof CompoundTag data)) {
+			return true;
+		}
+
+		var type = track.getStringOr("type", "");
+		if (type.equals("group")) {
+			if (data.contains("children") && !(data.get("children") instanceof ListTag)) {
+				return true;
+			}
+
+			for (var child : data.getListOrEmpty("children")) {
+				if (!(child instanceof CompoundTag nested) || requiresNamedTrackAdapter(nested, depth + 2)) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		return !Set.of("activator", "control", "animation").contains(type);
 	}
 
 	/// 激活扩展仅在原生激活轨道包装中放行，内部未知扩展仍保留保护。

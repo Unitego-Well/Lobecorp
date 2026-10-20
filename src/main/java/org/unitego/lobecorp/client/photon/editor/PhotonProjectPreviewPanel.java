@@ -92,6 +92,7 @@ public class PhotonProjectPreviewPanel {
 			int[] priority = {definition.priority()};
 			Completion[] completion = {definition.completion()};
 			var group = new ConfiguratorGroup("", false).hideTitle();
+			group.layout(layout -> layout.widthPercent(100).flexShrink(0));
 			group.addConfigurator(new StringConfigurator("photon.lobecorp.animation.name", () -> name[0], value -> name[0] = value, name[0], false));
 			group.addConfigurator(new NumberConfigurator("photon.lobecorp.animation.duration", () -> duration[0], value -> duration[0] = value.doubleValue(), duration[0], false).setRange(0, Double.MAX_VALUE));
 			group.addConfigurator(new BooleanConfigurator("photon.lobecorp.animation.auto_duration", () -> flags[0], value -> flags[0] = value, flags[0], false));
@@ -99,6 +100,7 @@ public class PhotonProjectPreviewPanel {
 			group.addConfigurator(new NumberConfigurator("photon.lobecorp.animation.priority", () -> priority[0], value -> priority[0] = value.intValue(), priority[0], false).setRange(Integer.MIN_VALUE, Integer.MAX_VALUE));
 			group.addConfigurator(new SelectorConfigurator<>("photon.lobecorp.animation.completion", () -> completion[0], value -> completion[0] = value, completion[0], false, List.of(Completion.values()), value -> Component.translatable("photon.lobecorp.animation.enum." + value.name()).getString()));
 			var message = new TextElement().textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP));
+			message.layout(layout -> layout.widthPercent(100).flexShrink(0));
 			var dialog = new Dialog().setTitle(TITLE).width(TaffyDimension.length(400));
 			dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
 			dialog.addContent(group);

@@ -45,7 +45,9 @@ entity_skill 和 entity_skill_group 自定义注册表。实体、AI、技能、
 
 2026-10-07 新增冷却计时附件，原技能到 Long 到期时间的冷却 Codec 保持；旧存档缺少计时附件时从当前游戏时间建立基准。抓取的同步 Codec 只发送抓取者 UUID 与世界轴偏移，脱离阈值、旧锚点和持有目标集合仅在服务端，使用现有附件同步，不新增 Payload。生命周期与维护规则见[技能](entity-skills.md)和[实体抓取](entity-grab.md)。
 
-`LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED` 默认 1、最小 0、最大 1024、可同步。`EntityAttributeCreation` 在既有 NeoForge `EntityAttributeCreationEvent` 中，按登记的实体实现类识别 `IEntitySkillHolder`，补齐该属性和原版 `ATTACK_SPEED`；先检查 Builder 中是否已有属性，不覆盖手动注册值。女皇、清道夫与尸体统一通过带实现类的属性注册辅助方法登记，尸体不实现接口，因此不补齐。其他实体由属性创建入口显式添加。中英文属性名称通过 `LcAttributes.init` 的 `LangHandler` 数据生成登记。
+`LcAttributes.ENTITY_SKILL_COOLDOWN_SPEED` 默认 1、最小 0、最大 1024、可同步。`EntityAttributeCreation` 在既有 NeoForge `EntityAttributeCreationEvent` 中，按登记的实体实现类识别 `IEntitySkillHolder`，补齐该属性和原版 `ATTACK_SPEED`；先检查 Builder 中是否已有属性，不覆盖手动注册值。女皇、清道夫与尸体统一通过带实现类的属性注册辅助方法登记，尸体不实现接口，因此不补齐。其他实体由属性创建入口显式添加。中英文属性名称在各属性注册调用中传入，由注册方法通过 `LangHandler` 数据生成登记；`init` 只挂接注册表。
+
+维护要点（2026-10-21）：属性翻译与注册项在同一处声明，沿用其他注册类的中英文参数写法，不在 `init` 另建翻译清单。翻译登记保存延迟 holder，不在注册绑定前调用 `get()`；本次迁移保留原有 11 条翻译键、文本和属性参数，未给原本无翻译的属性补键。
 
 `TEXT_PARTICLE_LEVEL_DATA` 通过 `AttachmentType.builder(TextParticleLevelData::new)` 登记，不配置序列化或 Neo 附件自动同步。服务端保存公共文本数据和可修改实例，不依赖客户端 `Particle` 类；创建、修改、移除及每 20 tick 的完整补发由 `TextParticles` 通过专用 S2C 载荷完成。客户端粒子组和资源重载监听由 `registry.particle.client.TextParticleRegistration` 经已有客户端事件入口登记。接口与生命周期见[文本展示粒子](text-particles.md)。
 

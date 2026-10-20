@@ -24,32 +24,32 @@ public interface LcAttributes {
 	double DEFAULT_RESOURCE_MAXIMUM = 20.0;
 
 	DeferredHolder<Attribute, RangedAttribute> PHYSICS_VULNERABLE = registerRanged(
-			"physics_vulnerable", 1.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"physics_vulnerable", "Physical Damage Multiplier", "物理承伤系数", 1.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> SPIRIT_VULNERABLE = registerRanged(
-			"spirit_vulnerable", 1.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"spirit_vulnerable", "Spirit Damage Multiplier", "精神承伤系数", 1.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> EROSION_VULNERABLE = registerRanged(
-			"erosion_vulnerable", 1.5, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"erosion_vulnerable", "Erosion Damage Multiplier", "侵蚀承伤系数", 1.5, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> THE_SOUL_VULNERABLE = registerRanged(
-			"the_soul_vulnerable", 2.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"the_soul_vulnerable", "Soul Damage Multiplier", "灵魂承伤系数", 2.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> PHYSICS_DEFENSE = registerRanged(
-			"physics_defense", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"physics_defense", "Physical Defense", "物理防御", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> SPIRIT_DEFENSE = registerRanged(
-			"spirit_defense", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"spirit_defense", "Spirit Defense", "精神防御", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> EROSION_DEFENSE = registerRanged(
-			"erosion_defense", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"erosion_defense", "Erosion Defense", "侵蚀防御", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, RangedAttribute> THE_SOUL_DEFENSE = registerRanged(
-			"the_soul_defense", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
+			"the_soul_defense", "Soul Defense", "灵魂防御", 0.0, -LC_DAMAGE_ATTRIBUTE_LIMIT, LC_DAMAGE_ATTRIBUTE_LIMIT, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, MinAttribute> MAX_RATIONALITY = registerMin(
-			"max_rationality", DEFAULT_RESOURCE_MAXIMUM, 0.0, attribute -> attribute.setSyncable(true));
+			"max_rationality", "Maximum Rationality", "精神值上限", DEFAULT_RESOURCE_MAXIMUM, 0.0, attribute -> attribute.setSyncable(true));
 	DeferredHolder<Attribute, MinAttribute> MAX_THE_SOUL = registerMin(
-			"max_the_soul", DEFAULT_RESOURCE_MAXIMUM, 0.0, attribute -> attribute.setSyncable(true));
+			"max_the_soul", "Maximum Soul", "灵魂值上限", DEFAULT_RESOURCE_MAXIMUM, 0.0, attribute -> attribute.setSyncable(true));
 
 	DeferredHolder<Attribute, RangedAttribute> ENTITY_SKILL_COOLDOWN_MULTIPLIER = registerRanged(
 			"entity_skill_cooldown_multiplier", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
 
 	/// 每 tick 推进的技能冷却 tick 数；1 为正常速度，0 暂停，实体须显式持有该属性。
 	DeferredHolder<Attribute, RangedAttribute> ENTITY_SKILL_COOLDOWN_SPEED = registerRanged(
-			"entity_skill_cooldown_speed", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
+			"entity_skill_cooldown_speed", "Entity Skill Cooldown Speed", "实体技能冷却速度", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
 
 	DeferredHolder<Attribute, RangedAttribute> DAMAGE_TAKEN_MULTIPLIER = registerRanged(
 			"damage_taken_multiplier", 1.0, 0.0, 1024.0, attribute -> attribute.setSyncable(true));
@@ -95,33 +95,27 @@ public interface LcAttributes {
 		return register(id, descriptionId -> new BooleanAttribute(descriptionId, defaultValue), configurator);
 	}
 
+	static @NonNull DeferredHolder<Attribute, MinAttribute> registerMin(
+			String id, String enUs, String zhCn, double defaultValue, double minValue, Consumer<MinAttribute> configurator
+	) {
+		var holder = registerMin(id, defaultValue, minValue, configurator);
+		LangHandler.creates(REGISTER, enUs, zhCn, (langSet, text) -> langSet.attributeText(holder, text));
+		return holder;
+	}
+
+	static @NonNull DeferredHolder<Attribute, RangedAttribute> registerRanged(
+			String id, String enUs, String zhCn, double defaultValue, double minValue, double maxValue, Consumer<RangedAttribute> configurator
+	) {
+		var holder = registerRanged(id, defaultValue, minValue, maxValue, configurator);
+		LangHandler.creates(REGISTER, enUs, zhCn, (langSet, text) -> langSet.attributeText(holder, text));
+		return holder;
+	}
+
 	private static String descriptionId(String id) {
 		return "attribute.name." + Lobecorp.NAMESPACE + "." + id;
 	}
 
 	static void init(IEventBus eventBus) {
-		LangHandler.creates(REGISTER, "Physical Damage Multiplier", "物理承伤系数",
-				(langSet, text) -> langSet.attributeText(PHYSICS_VULNERABLE, text));
-		LangHandler.creates(REGISTER, "Spirit Damage Multiplier", "精神承伤系数",
-				(langSet, text) -> langSet.attributeText(SPIRIT_VULNERABLE, text));
-		LangHandler.creates(REGISTER, "Erosion Damage Multiplier", "侵蚀承伤系数",
-				(langSet, text) -> langSet.attributeText(EROSION_VULNERABLE, text));
-		LangHandler.creates(REGISTER, "Soul Damage Multiplier", "灵魂承伤系数",
-				(langSet, text) -> langSet.attributeText(THE_SOUL_VULNERABLE, text));
-		LangHandler.creates(REGISTER, "Physical Defense", "物理防御",
-				(langSet, text) -> langSet.attributeText(PHYSICS_DEFENSE, text));
-		LangHandler.creates(REGISTER, "Spirit Defense", "精神防御",
-				(langSet, text) -> langSet.attributeText(SPIRIT_DEFENSE, text));
-		LangHandler.creates(REGISTER, "Erosion Defense", "侵蚀防御",
-				(langSet, text) -> langSet.attributeText(EROSION_DEFENSE, text));
-		LangHandler.creates(REGISTER, "Soul Defense", "灵魂防御",
-				(langSet, text) -> langSet.attributeText(THE_SOUL_DEFENSE, text));
-		LangHandler.creates(REGISTER, "Maximum Rationality", "精神值上限",
-				(langSet, text) -> langSet.attributeText(MAX_RATIONALITY, text));
-		LangHandler.creates(REGISTER, "Maximum Soul", "灵魂值上限",
-				(langSet, text) -> langSet.attributeText(MAX_THE_SOUL, text));
-		LangHandler.creates(REGISTER, "Entity Skill Cooldown Speed", "实体技能冷却速度",
-				(langSet, text) -> langSet.attributeText(ENTITY_SKILL_COOLDOWN_SPEED, text));
 		REGISTER.register(eventBus);
 	}
 }

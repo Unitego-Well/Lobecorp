@@ -14,6 +14,10 @@
 PlayerStatusHud、PlayerScreenFilters 使用 INSTANCE，绘制适配 26.1.2 的提取管线。
 复用入口及版本差异见[GUI 工具与通用 HUD 层](player-hud-shields.md#gui-工具与通用-hud-层2026-10-21)，未执行游戏或测试。
 
+同日再次对照旧源码，补齐精灵直接裁切、管线矩形、HUD 扩展与手动表现接口，
+修正空护盾绘制、数字格式和理智滤镜恢复后的清空；适用项与未迁移边界见
+[GUI 与 HUD 二次对照](player-hud-shields.md#gui-与-hud-二次对照补齐2026-10-21)。仅静态检查，未测试。
+
 客户端负责消费同步状态、提取渲染数据、提交绘制、组织输入和显示界面。服务器的技能状态、命中判断和控制资格不能由 Renderer 或 UI
 反向决定。客户端实现放在 `client`；注册仍归 `registry`；自动事件入口归 `events.client`；Mixin 只负责版本相关桥接。
 

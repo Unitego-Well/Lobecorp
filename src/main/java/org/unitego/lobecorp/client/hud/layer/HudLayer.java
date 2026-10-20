@@ -9,6 +9,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 /// 单个 HUD 层的会话、字体、屏幕尺寸与位置；组合层统一初始化子层后再绘制。
 @NullMarked
 public abstract class HudLayer implements GuiLayer {
@@ -25,8 +27,16 @@ public abstract class HudLayer implements GuiLayer {
 		playerChanged(nextPlayer);
 
 		font = minecraft.font;
-		screenWidth = graphics.guiWidth();
-		screenHeight = graphics.guiHeight();
+		int nextWidth = graphics.guiWidth();
+		int nextHeight = graphics.guiHeight();
+		if (nextWidth != screenWidth || nextHeight != screenHeight) {
+			sizeChanged(nextWidth, nextHeight);
+		}
+	}
+
+	protected void sizeChanged(int width, int height) {
+		screenWidth = width;
+		screenHeight = height;
 	}
 
 	public void playerChanged(@Nullable LocalPlayer nextPlayer) {
@@ -39,6 +49,26 @@ public abstract class HudLayer implements GuiLayer {
 	public void setPosition(int left, int top) {
 		leftPos = left;
 		topPos = top;
+	}
+
+	public int getLeftPos() {
+		return leftPos;
+	}
+
+	public int getTopPos() {
+		return topPos;
+	}
+
+	public void setLeftPos(int left) {
+		setPosition(left, topPos);
+	}
+
+	public void setTopPos(int top) {
+		setPosition(leftPos, top);
+	}
+
+	public LocalPlayer requirePlayer() {
+		return Objects.requireNonNull(player);
 	}
 
 	public abstract int getWidth();

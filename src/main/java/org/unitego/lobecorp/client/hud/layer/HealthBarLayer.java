@@ -15,18 +15,25 @@ import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar;
 import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar.TextureLayer;
 import org.unitego.lobecorp.util.client.gui.GuiUtil;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import java.math.RoundingMode;
+
 @NullMarked
 public class HealthBarLayer extends StatusBarLayer {
 	private static final Identifier LIGHT = texture("light");
 	private static final Identifier ABSORPTION = texture("absorbing");
 	private static final Identifier ABSORPTION_LIGHT = texture("absorbing_light");
 	private static final int ABSORPTION_TEXT_COLOR = 0xFFE400;
+	private final DecimalFormat absorptionNumber = new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(Locale.ROOT));
 	private @Nullable HeartType heartType;
 	private float absorption;
 	private float absorptionLightTicks;
 
 	public HealthBarLayer() {
 		super(new HorizontalStatusBar(90, 9, bottom("full"), internal("full"), new TextureLayer(LIGHT, 0, 0, 90, 9)));
+		absorptionNumber.setRoundingMode(RoundingMode.HALF_UP);
 	}
 
 	@Override
@@ -87,7 +94,7 @@ public class HealthBarLayer extends StatusBarLayer {
 	protected MutableComponent getValueText() {
 		var value = super.getValueText();
 		if (absorption > 0) {
-			value.append(Component.literal("+" + format(absorption)).withColor(ABSORPTION_TEXT_COLOR));
+			value.append(Component.literal("+" + absorptionNumber.format(absorption)).withColor(ABSORPTION_TEXT_COLOR));
 		}
 
 		return value;

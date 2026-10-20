@@ -6,6 +6,7 @@ import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar;
 import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar.TextureLayer;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 @NullMarked
 public class ShieldBarLayer extends StatusBarLayer {
@@ -14,6 +15,17 @@ public class ShieldBarLayer extends StatusBarLayer {
 	public ShieldBarLayer(LcDamageType type) {
 		super(createBar(type));
 		this.type = type;
+	}
+
+	public LcDamageType getDamageType() {
+		return type;
+	}
+
+	@Override
+	protected void renderStatusBar(GuiGraphicsExtractor graphics, float delta) {
+		if (currentValue != 0) {
+			super.renderStatusBar(graphics, delta);
+		}
 	}
 
 	@Override

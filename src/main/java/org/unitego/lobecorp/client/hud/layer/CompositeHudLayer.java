@@ -3,6 +3,8 @@ package org.unitego.lobecorp.client.hud.layer;
 import net.minecraft.client.DeltaTracker;
 import org.jspecify.annotations.NullMarked;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,16 +16,36 @@ public class CompositeHudLayer extends BasicHudLayer {
 	private static final int LAYER_GAP = 2;
 	private final List<Entry> layers = new ArrayList<>();
 
-	public void addLayer(HudLayer layer, BooleanSupplier visible) {
+	public CompositeHudLayer addLayer(HudLayer layer, BooleanSupplier visible) {
+		for (int index = 0; index < layers.size(); index++) {
+			if (layers.get(index).layer().equals(layer)) {
+				layers.set(index, new Entry(layer, visible));
+				return this;
+			}
+		}
+
 		layers.add(new Entry(layer, visible));
+		return this;
 	}
 
-	public void addLayer(HudLayer layer) {
-		addLayer(layer, () -> true);
+	public CompositeHudLayer addLayer(HudLayer layer) {
+		return addLayer(layer, () -> true);
+	}
+
+	public boolean removeLayer(HudLayer layer) {
+		return layers.removeIf(entry -> entry.layer().equals(layer));
 	}
 
 	public List<HudLayer> getLayers() {
 		return layers.stream().map(Entry::layer).toList();
+	}
+
+	@Override
+	public void playerChanged(@Nullable LocalPlayer nextPlayer) {
+		super.playerChanged(nextPlayer);
+		for (var entry : layers) {
+			entry.layer().playerChanged(nextPlayer);
+		}
 	}
 
 	@Override

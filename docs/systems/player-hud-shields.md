@@ -90,6 +90,56 @@ INSTANCE 的语义引用已核对，状态 HUD 为 5 处、滤镜入口为 7 处
 提交前 HEAD 备份为 `refs/backups/before-hud-design-20261021-89fv5zhg`，原索引与暂存差异另存于
 `C:/Users/wang_/AppData/Local/Temp/lobecorp-hud-design-20261021-89fv5zhg`。独立提交记录见[修改记录](changes.md)。
 
+## GUI 与 HUD 二次对照补齐（2026-10-21）
+
+本次只读对照 GoldenBoughsLib 中的 GuiUtil、HUD 基类／组合层／状态条／滤镜、四个护盾包装类、
+相关数字格式方法、GUI 注册事件及两个旧 GUI Mixin；核对范围共 21 份旧源码的适用部分。
+当前仍锁定 Minecraft 26.1.2、NeoForge 26.1.2.100、Java 25，全部写入通过 IDEA 完成。
+
+| 对照项                              | 发现与处理                                                                                                                                                           |
+|-------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| GuiUtil 精灵绘制                    | 补齐 TextureAtlasSprite 的直接浮点裁切入口（含颜色重载），以及九宫格／平铺的默认白色入口；已有完整绘制、UV、颜色与矩阵快照继续复用                                   |
+| 非 Stretch 精灵裁切回退             | 旧实现对该重载直接拉伸精灵，原迁移再次分派元数据可能变为重复平铺／九宫格；现恢复直接精灵回退                                                                         |
+| GuiUtil 管线矩形及渐变              | 补齐 fillRenderType 的 RenderPipeline／TextureSetup 提取式入口；反向 Y 坐标保持颜色与原端点对应，不颠倒渐变                                                          |
+| HudLayer／CompositeHudLayer         | 补齐位置访问、requirePlayer 和尺寸变化钩子；恢复链式 addLayer、同层更新条件而不重复插入、显式移除及玩家变更立即传播                                                  |
+| StatusBarLayer／HorizontalStatusBar | 补齐完整文字、最大值文字及绘字扩展点，手动闪光／拖尾控制、独立纹理层访问与替换；TextureLayer 保持不可变，使用 withPosition／withSize／withTexture 后显式设置回状态条 |
+| 数值与低值拖尾                      | 按旧 HUD 恢复整数不带小数、非整数固定两位；吸收生命固定两位且带千位分隔，采用 HALF_UP 舍入与固定 Locale；插值数值 0～1 时清除拖尾                                    |
+| ShieldBarLayer                      | 零护盾只保留文字，不绘条图；补充伤害类型读取，四个旧包装类继续等价映射为 ShieldBarLayer(type)                                                                        |
+| 理智滤镜结束                        | 修正插值前丢失符号导致内部 Alpha 长期非零的差异：健康区间保留负偏移，阈值尾数按浮点精度结束，上限为零立即清空；可见效果未运行验证                                    |
+
+### 等价实现与版本边界
+
+- 旧 IHudLayer 对应 HudLayer；BasicHudLayer、CompositeHudLayer、StatusBarLayer 与 HorizontalStatusBar
+  均已有当前实现，不重复创建同义类。旧公开可变集合改为只读视图加 addLayer／removeLayer，
+  同一子层重复加入保留顺序并更新显示条件，避免额外绘制和重复推进动画。
+- 旧 LeftBarLayer 对应 PlayerStatusHud.INSTANCE；生命、理智及四种护盾的顺序、尺寸、偏移、可见性、
+  独立闪光与布局已核对。PlayerScreenFilters.INSTANCE 持有独立受伤／理智滤镜层，颜色、透明度、首次命中顺序、
+  再次命中复位、帧增量淡出及会话清理链已有对应实现。
+- 旧 z、RenderType 和调用方直接写 VertexConsumer 的重载不做旧版兼容壳；
+  当前使用 GuiLayer 顺序、RenderPipeline、TextureSetup 和冻结的 GuiElementRenderState。
+  fillRenderType 接收位置或位置／颜色布局的管线，不补充 UV、法线或其他该布局未提供的顶点属性；
+  当前 BufferBuilder 对不存在的 COLOR 元素会跳过写入，已通过 IDEA 阅读该实现。
+- 九宫格尺寸相等／单轴相等的旧专用分支由现有区域算法等价覆盖，继续遵守当前 stretchInner；
+  不恢复旧右侧宽度混用或 x／y 对调等异常。位置访问使用 left／top 的明确语义。
+- 组合总高继续按实际 2 像素间距计算，不恢复旧总高只累计 1 像素、绘制却移动 2 像素的不一致。
+  旧 AbstractWidget 的装饰绘制由状态条／滤镜组件和层显示条件覆盖，不新增旧空旁白或无实际用途的交互逻辑。
+- 旧 SAVING_INDICATOR 图层名不直接复制到 26.1.2，理智滤镜沿用当前可用的上层注册；
+  新生命条开关、护甲位移和两个滤镜开关已有当前注册／分发实现，没有重复事件入口。
+- 两个旧 GUI Mixin 分别服务物品独立 GUI 模型与枪械准星；枪械蓄力、斩味及物品模型系统继续不在本次范围。
+  两张源项目缺失的精神／灵魂滤镜不冒充遗漏代码或重新制图，保持记录和缺图跳过。
+- 不改变理智 0～上限、资源同步、护盾伤害结算、配置默认值、协议版本、资源 ID 或世界特效留空规则。
+
+### 本次实际检查
+
+补齐 8 个既有 Java 文件，新增复用 API 尚无当前调用时保留 IDE 未使用提示。
+完成全部代码及修改行格式后，统一读取 18 个 Java 的 IDEA 诊断：0 错误，22 个公开复用入口提示及 2 个原有借用世界提示。
+未运行编译、构建、Data、测试、同步、资源重载或游戏；以上为源码和静态诊断证据，不作为视觉或运行验收。
+8 份修改前文本快照保留在 backups/hud-audit-20261021/*.java.bak，未删除文件。
+本次通过独立 Git 索引仅提交补齐代码与三份同步文档，保留用户其他修改和原暂存；备份信息见下文。
+
+提交前 HEAD 已备份为 `refs/backups/before-hud-audit-20261021-k26u66fp`，原 Git 索引与暂存差异快照位于
+`C:/Users/wang_/AppData/Local/Temp/lobecorp-hud-audit-20261021-k26u66fp`。本轮未删除文件，旧项目保持只读。
+
 ## 配置迁移
 
 迁移的是定义、键、默认值与对应行为，未读取、覆盖或迁移用户旧运行目录中的个人 TOML。

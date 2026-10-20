@@ -48,8 +48,20 @@ public class GuiUtil {
 		if (scaling(sprite) instanceof GuiSpriteScaling.Stretch) {
 			blitRegion(graphics, sprite, x, y, width, height, u, v, width, height, textureWidth, textureHeight, -1);
 		} else {
-			blitSprite(graphics, id, x, y, width, height);
+			blitSprite(graphics, sprite, x, y, width, height);
 		}
+	}
+
+	public static void blitSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
+	                              float textureWidth, float textureHeight, float u, float v,
+	                              float x, float y, float width, float height) {
+		blitSprite(graphics, sprite, textureWidth, textureHeight, u, v, x, y, width, height, -1);
+	}
+
+	public static void blitSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
+	                              float textureWidth, float textureHeight, float u, float v,
+	                              float x, float y, float width, float height, int color) {
+		blitRegion(graphics, sprite, x, y, width, height, u, v, width, height, textureWidth, textureHeight, color);
 	}
 
 	public static void blitSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
@@ -61,6 +73,11 @@ public class GuiUtil {
 	                              float x, float y, float width, float height, int color) {
 		blit(graphics, sprite.atlasLocation(), x, y, width, height, sprite.getU0(), sprite.getV0(),
 				sprite.getU1(), sprite.getV1(), color);
+	}
+
+	public static void blitNineSlicedSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
+	                                        GuiSpriteScaling.NineSlice slice, float x, float y, float width, float height) {
+		blitNineSlicedSprite(graphics, sprite, slice, x, y, width, height, -1);
 	}
 
 	public static void blitNineSlicedSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
@@ -94,6 +111,12 @@ public class GuiUtil {
 				}
 			}
 		}
+	}
+
+	public static void blitTiledSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
+	                                   float x, float y, float width, float height, float u, float v,
+	                                   float tileWidth, float tileHeight, float textureWidth, float textureHeight) {
+		blitTiledSprite(graphics, sprite, x, y, width, height, u, v, tileWidth, tileHeight, textureWidth, textureHeight, -1);
 	}
 
 	public static void blitTiledSprite(GuiGraphicsExtractor graphics, TextureAtlasSprite sprite,
@@ -156,8 +179,24 @@ public class GuiUtil {
 	                                float x0, float y0, float x1, float y1, int topColor, int bottomColor) {
 		float left = Math.min(x0, x1);
 		float top = Math.min(y0, y1);
+		int firstColor = y0 <= y1 ? topColor : bottomColor;
+		int lastColor = y0 <= y1 ? bottomColor : topColor;
 		submit(graphics, pipeline, TextureSetup.noTexture(), left, top, Math.abs(x1 - x0), Math.abs(y1 - y0),
-				0, 0, 0, 0, topColor, bottomColor, false);
+				0, 0, 0, 0, firstColor, lastColor, false);
+	}
+
+	/// 当前版本的管线矩形提取入口；管线使用位置或位置／颜色顶点，绑定纹理由 TextureSetup 明确提供。
+	public static void fillRenderType(GuiGraphicsExtractor graphics, RenderPipeline pipeline,
+	                                  float x0, float y0, float x1, float y1) {
+		fillRenderType(graphics, pipeline, TextureSetup.noTexture(), x0, y0, x1, y1);
+	}
+
+	public static void fillRenderType(GuiGraphicsExtractor graphics, RenderPipeline pipeline, TextureSetup textures,
+	                                  float x0, float y0, float x1, float y1) {
+		float left = Math.min(x0, x1);
+		float top = Math.min(y0, y1);
+		submit(graphics, pipeline, textures, left, top, Math.abs(x1 - x0), Math.abs(y1 - y0),
+				0, 0, 0, 0, -1, -1, false);
 	}
 
 	private static GuiSpriteScaling scaling(TextureAtlasSprite sprite) {

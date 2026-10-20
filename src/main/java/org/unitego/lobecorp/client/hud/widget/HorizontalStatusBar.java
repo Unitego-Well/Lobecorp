@@ -10,6 +10,8 @@ public class HorizontalStatusBar {
 	private static final float TRAIL_LERP_SPEED = 0.2F;
 	private static final float FLASH_TICKS = 2;
 	private static final int TRAIL_COLOR = 0xB2FFFFFF;
+	/// 沿用旧状态条：插值数值处于 0～1 时不保留损失拖尾。
+	private static final float TRAIL_VALUE_THRESHOLD = 1;
 	private final int width;
 	private final int height;
 	private TextureLayer bottom;
@@ -35,15 +37,34 @@ public class HorizontalStatusBar {
 		maximum = Float.isFinite(nextMaximum) ? Math.max(0, nextMaximum) : 0;
 		next = Float.isFinite(next) ? Math.clamp(next, 0, maximum) : 0;
 		if (next != currentValue) {
-			lightTicks = FLASH_TICKS;
-			if (maximum > 0) {
-				lightWidth = Math.max(0, lightWidth + (currentValue - next) / maximum * internal.width());
-			}
-
-			currentValue = next;
+			setLight();
+			setLightWidth(currentValue, next);
 		}
 
 		renderedValue += (next - renderedValue) * Math.clamp(delta * VALUE_LERP_SPEED, 0, 1);
+		if (renderedValue <= TRAIL_VALUE_THRESHOLD) {
+			lightWidth = 0;
+		}
+	}
+
+	public void setLight() {
+		lightTicks = FLASH_TICKS;
+	}
+
+	public void setLightWidth(float oldValue, float newValue) {
+		if (!Float.isFinite(oldValue) || !Float.isFinite(newValue)) {
+			return;
+		}
+
+		if (maximum <= 0) {
+			lightWidth = 0;
+			currentValue = 0;
+			return;
+		}
+
+		float change = Math.clamp((oldValue - newValue) / maximum * internal.width(), -internal.width(), internal.width());
+		lightWidth = Math.max(0, lightWidth + change);
+		currentValue = Math.clamp(newValue, 0, maximum);
 	}
 
 	public void render(GuiGraphicsExtractor graphics, float delta) {
@@ -86,6 +107,30 @@ public class HorizontalStatusBar {
 		this.light = light;
 	}
 
+	public TextureLayer getBottomLayer() {
+		return bottom;
+	}
+
+	public TextureLayer getInternalLayer() {
+		return internal;
+	}
+
+	public TextureLayer getLightLayer() {
+		return light;
+	}
+
+	public void setBottomLayer(TextureLayer layer) {
+		bottom = layer;
+	}
+
+	public void setInternalLayer(TextureLayer layer) {
+		internal = layer;
+	}
+
+	public void setLightLayer(TextureLayer layer) {
+		light = layer;
+	}
+
 	public void setPosition(int x, int y) {
 		this.x = x;
 		this.y = y;
@@ -112,5 +157,16 @@ public class HorizontalStatusBar {
 	}
 
 	public record TextureLayer(Identifier texture, float x, float y, float width, float height) {
+		public TextureLayer withPosition(float left, float top) {
+			return new TextureLayer(texture, left, top, width, height);
+		}
+
+		public TextureLayer withSize(float nextWidth, float nextHeight) {
+			return new TextureLayer(texture, x, y, nextWidth, nextHeight);
+		}
+
+		public TextureLayer withTexture(Identifier nextTexture) {
+			return new TextureLayer(nextTexture, x, y, width, height);
+		}
 	}
 }

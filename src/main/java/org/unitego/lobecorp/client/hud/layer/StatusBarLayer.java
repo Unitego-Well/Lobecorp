@@ -10,16 +10,19 @@ import org.jspecify.annotations.NullMarked;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
+import java.math.RoundingMode;
 
 @NullMarked
 public abstract class StatusBarLayer extends HudLayer {
-	private final DecimalFormat number = new DecimalFormat("0.##", DecimalFormatSymbols.getInstance(Locale.ROOT));
+	private final DecimalFormat number = new DecimalFormat("0.00", DecimalFormatSymbols.getInstance(Locale.ROOT));
+	private final DecimalFormat integer = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ROOT));
 	protected final HorizontalStatusBar statusBar;
 	protected float currentValue;
 	protected float maximumValue;
 
 	protected StatusBarLayer(HorizontalStatusBar statusBar) {
 		this.statusBar = statusBar;
+		number.setRoundingMode(RoundingMode.HALF_UP);
 	}
 
 	@Override
@@ -34,8 +37,20 @@ public abstract class StatusBarLayer extends HudLayer {
 	@Override
 	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		renderStatusBar(graphics, deltaTicks(deltaTracker));
-		var text = getValueText().append("/").append(format(maximumValue));
+		renderValueText(graphics);
+	}
+
+	protected void renderValueText(GuiGraphicsExtractor graphics) {
+		var text = getRenderText();
 		graphics.text(font, text, leftPos - font.width(text), topPos + font.lineHeight / 2 - 3, 0xFFFFFFFF);
+	}
+
+	protected MutableComponent getRenderText() {
+		return getValueText().append("/").append(getMaxValueText());
+	}
+
+	protected MutableComponent getMaxValueText() {
+		return Component.literal(format(maximumValue));
 	}
 
 	protected void renderStatusBar(GuiGraphicsExtractor graphics, float delta) {
@@ -47,7 +62,7 @@ public abstract class StatusBarLayer extends HudLayer {
 	}
 
 	protected String format(float value) {
-		return number.format(value);
+		return value == Math.rint(value) ? integer.format(value) : number.format(value);
 	}
 
 	protected abstract float getValueFromSource();

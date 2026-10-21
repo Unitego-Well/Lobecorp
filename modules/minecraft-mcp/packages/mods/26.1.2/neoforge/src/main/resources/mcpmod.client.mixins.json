@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "xyz.langyo.minecraft.mcp.mod.mixin.client",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "FramerateLimitTrackerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

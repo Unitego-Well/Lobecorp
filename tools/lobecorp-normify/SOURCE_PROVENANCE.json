@@ -1,0 +1,161 @@
+{
+  "upstream": {
+    "repository": "https://github.com/yan-mc/dsh-normify",
+    "commit": "ed404e5b8db0010ff57ec8486ec8749421072545",
+    "version": "0.5.4",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 yan-mc",
+    "retrievedOn": "2026-10-21"
+  },
+  "vendoring": {
+    "contentChanges": false,
+    "lineEndings": "IDEA applied project CRLF line endings. LF-normalized SHA-256 matches upstream archive bytes.",
+    "omitted": [
+      "DSH plugin entry src/index.ts",
+      "DSH cordis.patch.yml",
+      "upstream skills (local Skill authored separately)",
+      "vendor/schemastery"
+    ],
+    "files": [
+      {
+        "upstreamPath": "LICENSE",
+        "localPath": "LICENSE",
+        "upstreamSha256": "c69003dfcca6c9e24bd0c4e8897b297dd3bc10aaca711494ac3e0e6d96fc8897",
+        "localSha256": "683b7d8d0f730d4b3f3adf8b235a0f3e92e1e86e313f842f28ab6a94deaa03f4",
+        "lfNormalizedSha256": "c69003dfcca6c9e24bd0c4e8897b297dd3bc10aaca711494ac3e0e6d96fc8897"
+      },
+      {
+        "upstreamPath": "src/engine/changes.ts",
+        "localPath": "vendor/normify/src/engine/changes.ts",
+        "upstreamSha256": "f9ef6925e877a588d9dfdaaf713e8eb0ef078a7aa53f37eb8177f3affdcb015d",
+        "localSha256": "37cffb4d1b1852e2dec43c7fcd8b5668fd59b7b7a704b0a79fa7ab62bc714e29",
+        "lfNormalizedSha256": "f9ef6925e877a588d9dfdaaf713e8eb0ef078a7aa53f37eb8177f3affdcb015d"
+      },
+      {
+        "upstreamPath": "src/engine/companion.ts",
+        "localPath": "vendor/normify/src/engine/companion.ts",
+        "upstreamSha256": "6979beb20e7a7678a98430953cad56aaf8e583b08592925c55ee49758c0d02e8",
+        "localSha256": "a3916f493a3c77be3551ea388528e79399b84872cc64d193130f390d80d4c6a8",
+        "lfNormalizedSha256": "6979beb20e7a7678a98430953cad56aaf8e583b08592925c55ee49758c0d02e8"
+      },
+      {
+        "upstreamPath": "src/engine/compile.ts",
+        "localPath": "vendor/normify/src/engine/compile.ts",
+        "upstreamSha256": "0bb6be9fb9beb8acad1ff6ff676472fb8c4e76e4e70c375434ea3579d8bc96da",
+        "localSha256": "95d13b42322df8b07f81b7077609e4f2f63ead74bb6af9a62db21830cca46445",
+        "lfNormalizedSha256": "0bb6be9fb9beb8acad1ff6ff676472fb8c4e76e4e70c375434ea3579d8bc96da"
+      },
+      {
+        "upstreamPath": "src/engine/diag.ts",
+        "localPath": "vendor/normify/src/engine/diag.ts",
+        "upstreamSha256": "625035531f1eacedf0ee6b380377238daea92fb619ccf0940694ca9bcc4e3d12",
+        "localSha256": "2deea938267dd19c8c0283d5c6f669ffabc52d458f400a57eeff8ec901b70212",
+        "lfNormalizedSha256": "625035531f1eacedf0ee6b380377238daea92fb619ccf0940694ca9bcc4e3d12"
+      },
+      {
+        "upstreamPath": "src/engine/edit.ts",
+        "localPath": "vendor/normify/src/engine/edit.ts",
+        "upstreamSha256": "81f34d68eb854180e3fe7877f9615e783841a7a13ee49ec7b8b51586c6c25269",
+        "localSha256": "7f649ac70ac7b6d67ceaaedbfb728fe2599bc9208ed6118a4f9b9297604de5fd",
+        "lfNormalizedSha256": "81f34d68eb854180e3fe7877f9615e783841a7a13ee49ec7b8b51586c6c25269"
+      },
+      {
+        "upstreamPath": "src/engine/frontmatter.ts",
+        "localPath": "vendor/normify/src/engine/frontmatter.ts",
+        "upstreamSha256": "30f275954a72b4b92bc63eb953a642994cda8c591677542d6126160e3ff68a6b",
+        "localSha256": "a8c221664ece9db8329ea9693b4847bee7d3beba0a6c20d08e98bda4790fc39a",
+        "lfNormalizedSha256": "30f275954a72b4b92bc63eb953a642994cda8c591677542d6126160e3ff68a6b"
+      },
+      {
+        "upstreamPath": "src/engine/ids.ts",
+        "localPath": "vendor/normify/src/engine/ids.ts",
+        "upstreamSha256": "47536fdfea95464b3fbb7466623169ab2b42764527d01700f2768e7eaff80159",
+        "localSha256": "5932b79f88fa62ee387b84c805aefb11ad8b0aad6b771ba61b73c9ace7f89b14",
+        "lfNormalizedSha256": "47536fdfea95464b3fbb7466623169ab2b42764527d01700f2768e7eaff80159"
+      },
+      {
+        "upstreamPath": "src/engine/layout.ts",
+        "localPath": "vendor/normify/src/engine/layout.ts",
+        "upstreamSha256": "97e0e6b026ee1a73682a0314ddb0dc0d4b4ef8aafdfc3ab30981b943014579cf",
+        "localSha256": "912278ba07d42c9cbefb1f465e1a4b81bc0af7699cdcbd469b6e1ad6b003714b",
+        "lfNormalizedSha256": "97e0e6b026ee1a73682a0314ddb0dc0d4b4ef8aafdfc3ab30981b943014579cf"
+      },
+      {
+        "upstreamPath": "src/engine/policy.ts",
+        "localPath": "vendor/normify/src/engine/policy.ts",
+        "upstreamSha256": "4d9220ad501cb280845b9babb0ba4f6156ebcc6e37943c62663cca9c5db3c9f3",
+        "localSha256": "050ad35c08a96923158f010932608b007612b3a5e9dd65e019d546e70848142c",
+        "lfNormalizedSha256": "4d9220ad501cb280845b9babb0ba4f6156ebcc6e37943c62663cca9c5db3c9f3"
+      },
+      {
+        "upstreamPath": "src/engine/reference.ts",
+        "localPath": "vendor/normify/src/engine/reference.ts",
+        "upstreamSha256": "cb7fe0d85fd3de4d26750fcfd7225e2e26d53511dd7e08dc904ce8a6086f6543",
+        "localSha256": "1ec7f09db26d82b457fe442e6b99d2f89e05ce45963cecf6ec68038627b20b66",
+        "lfNormalizedSha256": "cb7fe0d85fd3de4d26750fcfd7225e2e26d53511dd7e08dc904ce8a6086f6543"
+      },
+      {
+        "upstreamPath": "src/engine/render.ts",
+        "localPath": "vendor/normify/src/engine/render.ts",
+        "upstreamSha256": "02e26e3c174a52cab776dfb18499cf397ec8f07232d40e8485f57740ce88cebc",
+        "localSha256": "f2d7a43545fdf2575a5c3591e63337a243af8b063a5dcbd54fc410f14a38427c",
+        "lfNormalizedSha256": "02e26e3c174a52cab776dfb18499cf397ec8f07232d40e8485f57740ce88cebc"
+      },
+      {
+        "upstreamPath": "src/engine/store.ts",
+        "localPath": "vendor/normify/src/engine/store.ts",
+        "upstreamSha256": "f17bf7ced40b1e668dadaee3a8c761861d9e87bf0624db36fd291858fffc81ef",
+        "localSha256": "0b539d595ffb3f78aa15277fefe9143858ed6d3cec365ce53494900b7b604168",
+        "lfNormalizedSha256": "f17bf7ced40b1e668dadaee3a8c761861d9e87bf0624db36fd291858fffc81ef"
+      },
+      {
+        "upstreamPath": "src/engine/template.ts",
+        "localPath": "vendor/normify/src/engine/template.ts",
+        "upstreamSha256": "2376ea6f221b97cf1fb85b7ec44b391e1283b3c295c9eb8d303787c6ffe0245d",
+        "localSha256": "6ad424e809b4041cecd52df24d4b9f5ae6c2f7f29bc1c074a2b02cbba36d5c80",
+        "lfNormalizedSha256": "2376ea6f221b97cf1fb85b7ec44b391e1283b3c295c9eb8d303787c6ffe0245d"
+      },
+      {
+        "upstreamPath": "src/engine/types.ts",
+        "localPath": "vendor/normify/src/engine/types.ts",
+        "upstreamSha256": "be6d09c18c4a71963daeff1c10a2bbbcfcd6d0ff4cef933c769de38c63d3ce40",
+        "localSha256": "b007469ee7703f8c71d6fbf0ab4998c4aa9024672abf13ae74642f42dbdaaff0",
+        "lfNormalizedSha256": "be6d09c18c4a71963daeff1c10a2bbbcfcd6d0ff4cef933c769de38c63d3ce40"
+      },
+      {
+        "upstreamPath": "src/engine/validate.ts",
+        "localPath": "vendor/normify/src/engine/validate.ts",
+        "upstreamSha256": "ad0e259740e047b134c68712ea942fa5b8db9865b6b51eac6e480f1238282874",
+        "localSha256": "0ef489ebe02497d9204b73ed4f6ac27e526b7488fc040ab6c95757ba37f871c5",
+        "lfNormalizedSha256": "ad0e259740e047b134c68712ea942fa5b8db9865b6b51eac6e480f1238282874"
+      },
+      {
+        "upstreamPath": "src/tools.ts",
+        "localPath": "vendor/normify/src/tools.ts",
+        "upstreamSha256": "1d6d0f22e6e7b72f4843e6951b85cbc53456fd4e755638bf60c608b460b90d96",
+        "localSha256": "ab42c5b006253b07aaf8a9e9bc82526409fcfeb760701345af301a8ce0b7add4",
+        "lfNormalizedSha256": "1d6d0f22e6e7b72f4843e6951b85cbc53456fd4e755638bf60c608b460b90d96"
+      }
+    ]
+  },
+  "localAdditions": [
+    "src/config.ts",
+    "src/sandbox.ts",
+    "src/catalog.ts",
+    "src/server.ts",
+    "src/cli.ts",
+    "src/dsh-types.d.ts",
+    "scripts/verify-protocol.mjs"
+  ],
+  "verification": {
+    "build": "Passed: npm run build via IDEA; initial attempt before dependency installation completed failed with missing tsc.",
+    "protocol": "Passed: MCP initialize, tools/list (31), read-only tool help, workspace escape rejected.",
+    "ideDiagnostics": "IDEA batch completed: no returned errors; verify-protocol.mjs has 6 SDK import-resolution warnings and 2 weak module-not-installed warnings despite successful Node protocol execution. Earlier sandbox inspection timed out; later batch completed.",
+    "notRun": [
+      "upstream engine regression suite",
+      "Lobecorp structure init or generation",
+      "HTML visual acceptance",
+      "Minecraft build, Data or game operations"
+    ]
+  }
+}

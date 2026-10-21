@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.IntTag;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnShape;
@@ -13,7 +14,7 @@ import org.unitego.lobecorp.config.photon.playback.PhotonSpawnShape;
 /// 适配当前生成器对象协议；严格校验控制字段，未知字段留在原树。
 public class PhotonSpawnConfigUtil {
 	public static void validate(CompoundTag object) {
-		if (object.getIntOr("version", 0) != 0 || !(object.get("config") instanceof CompoundTag config)) {
+		if (object.contains("version") && (!(object.get("version") instanceof IntTag version) || version.intValue() != 0) || !(object.get("config") instanceof CompoundTag config)) {
 			throw new IllegalArgumentException("子发射对象版本或配置无效。");
 		}
 

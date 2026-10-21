@@ -30,6 +30,8 @@
 	"client": [
 		"photon.editor.client.PhotonDefinitionWriteGuardMixin",
 		"photon.editor.client.PhotonPackWriteGuardMixin",
+		"photon.editor.client.FXPackExporterAccessor",
+		"photon.editor.client.TimelinePlayerAccessor",
 		"photon.editor.client.PhotonTimelineDataGuardMixin",
 		"photon.editor.client.PhotonProjectLoadGuardMixin",
 		"photon.editor.client.PhotonFXDataGuardMixin",

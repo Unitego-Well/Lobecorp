@@ -11,6 +11,15 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
+import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
+import com.lowdragmc.photon.gui.editor.FXProject;
+import net.minecraft.nbt.NbtIo;
+
+import java.nio.file.Path;
+import java.util.Arrays;
+
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 
 import java.io.File;
 import java.io.IOException;
@@ -100,13 +109,78 @@ public class PhotonModelPackExportUtil {
 		}
 	}
 
+	/// 所有可变内容均为本次请求独占副本；不能把FX、注册表或资源管理器交给写入线程。
+	public record Archive(Identifier fxId, Map<String, CompoundTag> definitions, Map<String, byte[]> resources,
+	                      String metadata) {
+		public void write(Path target) throws IOException {
+			try (var zip = FileSystems.newFileSystem(target, Map.of("create", "true"))) {
+				var mcmeta = zip.getPath("pack.mcmeta");
+				if (!Files.exists(mcmeta)) {
+					Files.writeString(mcmeta, metadata);
+				}
+				for (var entry : resources.entrySet()) {
+					var path = zip.getPath(entry.getKey());
+					Files.createDirectories(path.getParent());
+					Files.write(path, entry.getValue());
+				}
+				for (var entry : definitions.entrySet()) {
+					var path = zip.getPath(entry.getKey());
+					Files.createDirectories(path.getParent());
+					NbtIo.writeCompressed(entry.getValue(), path);
+					if (entry.getKey().endsWith(".mfx")) {
+						Files.deleteIfExists(zip.getPath(entry.getKey().substring(0, entry.getKey().length() - 4) + ".fx"));
+					}
+				}
+			}
+		}
+	}
+
+	public static Archive capture(String namespace, String name, FX copy, HolderLookup.Provider provider, boolean modelDefinition) throws IOException {
+		var dependencies = new LinkedHashMap<Identifier, FX>();
+		collect(copy.serializeNBT(provider), dependencies, new LinkedHashSet<>(), 0);
+		var definitions = new LinkedHashMap<String, CompoundTag>();
+		var resources = new LinkedHashMap<String, byte[]>();
+		for (var entry : dependencies.entrySet()) {
+			var dependency = new FX();
+			dependency.deserializeNBT(provider, entry.getValue().serializeNBT(provider));
+			prepare(dependency);
+			captureDefinition(entry.getKey(), dependency, provider, false, definitions, resources);
+		}
+		var id = Identifier.fromNamespaceAndPath(FXPackExporterAccessor.lobecorp$sanitize(namespace),
+				FXPackExporterAccessor.lobecorp$sanitize(name));
+		captureDefinition(id, copy, provider, modelDefinition, definitions, resources);
+		return new Archive(id, Map.copyOf(definitions), Map.copyOf(resources), FXPackExporterAccessor.lobecorp$metadata());
+	}
+
+	private static void captureDefinition(Identifier id, FX fx, HolderLookup.Provider provider, boolean modelDefinition,
+	                                      Map<String, CompoundTag> definitions, Map<String, byte[]> resources) throws IOException {
+		var root = fx.serializeNBT(provider);
+		PhotonEditorProjectGuardUtil.requireSupported(root);
+		var exporter = (FXPackExporterAccessor) (Object) FXPackExporterAccessor.lobecorp$create(provider);
+		exporter.lobecorp$walk(root);
+		if (!exporter.lobecorp$warnings().isEmpty()) {
+			throw new IOException("包依赖未闭合：" + exporter.lobecorp$warnings());
+		}
+		root.putInt("version", FXProject.VERSION);
+		definitions.put("assets/" + id.getNamespace() + "/fx/" + id.getPath() + (modelDefinition ? ".mfx" : ".fx"), root.copy());
+		for (var entry : exporter.lobecorp$files().entrySet()) {
+			var path = "assets/" + entry.getKey().getNamespace() + "/" + entry.getKey().getPath();
+			var bytes = entry.getValue().clone();
+			var previous = resources.putIfAbsent(path, bytes);
+			if (previous != null && !Arrays.equals(previous, bytes)) {
+				throw new IOException("包依赖存在同路径不同内容：" + path);
+			}
+		}
+	}
+
 	private static void collect(Tag tag, Map<Identifier, FX> dependencies, Set<Identifier> active, int depth) throws IOException {
 		if (depth > 64 || dependencies.size() > 256) {
 			throw new IOException("子特效导出依赖超出预算。");
 		}
 		if (tag instanceof CompoundTag compound) {
 			var text = compound.getStringOr("fxLocation", "");
-			if (!text.isEmpty() && compound.getStringOr("source", "FX").equals("FX")) {
+			var source = compound.getStringOr("source", "FX");
+			if (!text.isEmpty() && (source.equals("FX") || source.equals(PhotonSpawnConfig.Source.FX.getSerializedName()))) {
 				var id = Identifier.tryParse(text);
 				if (id == null) {
 					throw new IOException("子特效资源ID无效：" + text);

@@ -4,11 +4,7 @@ import com.lowdragmc.photon.client.fx.timeline.Clip;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.core.UUIDUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonPlaybackTagUtil;
 
 import javax.annotation.Nullable;
 import java.util.IdentityHashMap;
@@ -33,60 +29,7 @@ public class PhotonModelClipTrack extends Track {
 	}
 
 	private static void validateSource(CompoundTag source) {
-		uuid(source, "target");
-		text(source, "name");
-		bool(source, "mute");
-		bool(source, "lock");
-
-		if (source.contains("clips") && !(source.get("clips") instanceof ListTag)) {
-			throw new IllegalArgumentException("模型轨道的片段列表类型无效。");
-		}
-
-		for (var entry : source.getListOrEmpty("clips")) {
-			if (!(entry instanceof CompoundTag clip)) {
-				throw new IllegalArgumentException("模型轨道包含非片段数据。");
-			}
-
-			var checked = new PhotonModelClip(number(clip, "start"), number(clip, "duration"),
-					(float) number(clip, "speed"));
-			checked.offset = number(clip, "offset");
-			checked.validate();
-			text(clip, "animation");
-			text(clip, "completion");
-			bool(clip, "loop");
-			bool(clip, "randomSeed");
-			uuid(clip, "clipTarget");
-		}
-	}
-
-	private static double number(CompoundTag tag, String key) {
-		if (!tag.contains(key)) {
-			return 0;
-		}
-
-		if (!(tag.get(key) instanceof NumericTag number) || !Double.isFinite(number.doubleValue())) {
-			throw new IllegalArgumentException("模型片段数值类型无效：" + key);
-		}
-
-		return number.doubleValue();
-	}
-
-	private static void text(CompoundTag tag, String key) {
-		if (tag.contains(key) && !(tag.get(key) instanceof StringTag)) {
-			throw new IllegalArgumentException("模型轨道文本类型无效：" + key);
-		}
-	}
-
-	private static void bool(CompoundTag tag, String key) {
-		if (tag.contains(key) && (!(tag.get(key) instanceof ByteTag value) || value.byteValue() != 0 && value.byteValue() != 1)) {
-			throw new IllegalArgumentException("模型轨道布尔值无效：" + key);
-		}
-	}
-
-	private static void uuid(CompoundTag tag, String key) {
-		if (tag.contains(key) && tag.read(key, UUIDUtil.CODEC).isEmpty()) {
-			throw new IllegalArgumentException("模型轨道对象标识无效：" + key);
-		}
+		PhotonPlaybackTagUtil.validateModelTrack(source);
 	}
 
 	@Override

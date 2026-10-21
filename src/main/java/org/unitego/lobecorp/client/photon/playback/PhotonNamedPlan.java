@@ -6,6 +6,10 @@ import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.fx.timeline.ControlTrack;
+import com.lowdragmc.photon.client.fx.timeline.SpeedTrack;
+import com.lowdragmc.photon.client.fx.timeline.SignalTrack;
+import com.lowdragmc.photon.client.fx.timeline.AudioTrack;
+import com.lowdragmc.photon.client.fx.timeline.PostProcessTrack;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
@@ -18,6 +22,8 @@ import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonCallTrack;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
+import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Binding;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Blend;
@@ -45,6 +51,9 @@ public class PhotonNamedPlan {
 
 	public PhotonNamedPlan(HolderLookup.Provider provider, FXRuntime runtime, Definition definition, boolean projectPreview) {
 		this.definition = definition;
+		var sourceTracks = new ListTag();
+		sourceTracks.addAll(definition.tracks());
+		PhotonTimelineDecodeUtil.checkTracks(sourceTracks);
 
 		for (var source : definition.tracks()) {
 			timeline.tracks().add(read(provider, source));
@@ -83,7 +92,8 @@ public class PhotonNamedPlan {
 					}
 				}
 			} else if (track instanceof PhotonCallTrack && !projectPreview || !(track instanceof ActivatorTrack || track instanceof ControlTrack
-					|| track instanceof PhotonModelClipTrack || track instanceof PhotonChildTrack)) {
+					|| track instanceof PhotonModelClipTrack || track instanceof PhotonChildTrack
+					|| track instanceof SpeedTrack || track instanceof SignalTrack || track instanceof AudioTrack || track instanceof PostProcessTrack)) {
 				throw new IllegalArgumentException("命名播放尚未支持该轨道：" + track.name());
 			}
 		}

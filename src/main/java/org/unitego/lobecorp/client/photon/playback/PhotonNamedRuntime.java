@@ -2,6 +2,8 @@ package org.unitego.lobecorp.client.photon.playback;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.SignalTrack;
+import com.lowdragmc.photon.client.fx.timeline.PhotonSignals;
 import com.lowdragmc.photon.Photon;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
@@ -59,12 +61,14 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		private Completion completion;
 		private boolean authoring;
 		private final PhotonChildWindows children;
+		private final PhotonNamedNativeTracks nativeTracks;
 
 		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime, @Nullable PhotonNamedRuntime callHost) {
 			this.handle = handle;
 			this.plan = plan;
 			completion = handle.definition().completion();
 			children = new PhotonChildWindows(runtime, handle, callHost);
+			nativeTracks = new PhotonNamedNativeTracks(runtime, plan.timeline);
 		}
 	}
 
@@ -74,6 +78,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	private final UUID id = UUID.randomUUID();
 	private final PhotonNamedMixer mixer = new PhotonNamedMixer();
 	private final PhotonNamedGates gates;
+	private final PhotonNamedNativeTracks.Speeds speeds;
 	private final Map<String, PhotonNamedPlan> plans = new LinkedHashMap<>();
 	private final Map<UUID, Entry> playing = new LinkedHashMap<>();
 	private final Map<FXObject, BooleanSupplier> retention = new LinkedHashMap<>();
@@ -100,6 +105,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		this.controller = controller;
 		library = PhotonNamedCodecUtil.read(controller.definition());
 		gates = new PhotonNamedGates(runtime);
+		speeds = new PhotonNamedNativeTracks.Speeds(runtime);
 		root = (FXObject) runtime.root;
 
 		for (var object : runtime.objects.values()) {
@@ -573,6 +579,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		var entries = ordered();
 
 		if (simulation) {
+			speeds.begin();
 			for (var entry : entries) {
 				gates.collect(entry.plan, entry.handle, entry.handle.authoredTime(0));
 			}
@@ -604,6 +611,10 @@ public class PhotonNamedRuntime implements AutoCloseable {
 				}
 
 				PhotonModelClipUtil.apply(handle, runtime, entry.plan.timeline, time, priority, handle.order());
+				entry.nativeTracks.sample(time, simulation, handle.clock().state() == PhotonPlaybackClock.State.PLAYING);
+				if (simulation) {
+					speeds.apply(entry.plan.leaves, time);
+				}
 
 				for (var property : entry.plan.properties) {
 					var binding = property.binding();
@@ -631,6 +642,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		mixer.commit();
 
 		if (simulation) {
+			speeds.finish();
 			for (var entry : entries) {
 				if (entry.handle.clock().takeCompletion()) {
 					queue(new Notification(Event.COMPLETE, entry.handle, "", "", new CompoundTag()));
@@ -694,6 +706,28 @@ public class PhotonNamedRuntime implements AutoCloseable {
 					if (++count > EVENT_BUDGET) {
 						throw new IllegalStateException("命名标记超过单次事件预算。");
 					}
+				}
+			}
+
+			for (var track : entry.plan.leaves) {
+				if (!(track instanceof SignalTrack signals) || track.mute()) {
+					continue;
+				}
+				for (var signal : signals.signals()) {
+					double at = cycle + signal.time() / entry.plan.authoredDuration;
+					if (at <= entry.notifiedPosition || at > position || !entry.handle.clock().looping() && at > 1) {
+						continue;
+					}
+					if (++count > EVENT_BUDGET) {
+						throw new IllegalStateException("命名信号超过单次事件预算。");
+					}
+					var channel = signals.displayName();
+					queue(new Notification(Event.SIGNAL, entry.handle, channel, signal.name(), signal.data()));
+					var effect = entry.nativeTracks.executor();
+					if (effect != null) {
+						effect.onTimelineSignal(channel, signal.name(), signal.data(), signal.time());
+					}
+					PhotonSignals.fire(effect, channel, signal.name(), signal.data(), signal.time());
 				}
 			}
 
@@ -805,6 +839,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 	private void release(Entry entry) {
 		entry.children.close();
+		entry.nativeTracks.close();
 		PhotonModelClipUtil.clear(entry.handle, runtime);
 		entry.handle.dispose();
 	}
@@ -850,6 +885,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		preview = null;
 		mixer.clear();
 		gates.clear();
+		speeds.clear();
 		List.copyOf(playing.values()).forEach(this::release);
 		playing.clear();
 		events.clear();

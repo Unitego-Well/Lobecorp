@@ -7,6 +7,7 @@ import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
 import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonTrackCopyUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
@@ -25,6 +26,7 @@ public class PhotonNamedTrackDraft {
 	private final Map<Track, CompoundTag> baselines = new IdentityHashMap<>();
 
 	public PhotonNamedTrackDraft(ListTag source) {
+		PhotonTimelineDecodeUtil.checkTracks(source);
 		read(timeline.tracks(), source);
 	}
 

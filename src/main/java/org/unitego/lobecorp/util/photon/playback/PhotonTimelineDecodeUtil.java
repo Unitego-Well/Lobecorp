@@ -18,6 +18,10 @@ public class PhotonTimelineDecodeUtil {
 		return result;
 	}
 
+	public static void checkTracks(ListTag tracks) {
+		check(tracks, 0);
+	}
+
 	private static void check(ListTag tracks, int depth) {
 		if (depth > 64) {
 			throw new IllegalArgumentException("制作轨道嵌套超出预算。");
@@ -30,6 +34,7 @@ public class PhotonTimelineDecodeUtil {
 			if (PhotonRegistries.TIMELINE_TRACKS.get(name) == null) {
 				throw new IllegalArgumentException("未知轨道不能跳过：" + name);
 			}
+			PhotonPlaybackTagUtil.validateNativeTrack(data);
 			if (name.equals("group")) {
 				if (data.contains("children") && !(data.get("children") instanceof ListTag)) {
 					throw new IllegalArgumentException("子轨道容器不是列表。");

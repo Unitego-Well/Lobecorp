@@ -47,6 +47,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	private final FXEditor editor;
 	private final FXRuntime runtime;
+	private final boolean projectTest;
 	private UIElement origin;
 	private final Runnable rebuild;
 	private final Consumer<ListTag> publish;
@@ -73,12 +74,13 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	private boolean closed;
 
 	public PhotonNamedTimelineContext(FXEditor editor, UIElement origin, ListTag source,
-	                                  Runnable rebuild, Consumer<ListTag> publish, Runnable preview) {
+	                                  Runnable rebuild, Consumer<ListTag> publish, Runnable preview, boolean projectTest) {
 		if (editor.runtime == null) {
 			throw new IllegalStateException("工程预览实例未创建。");
 		}
 
 		this.editor = editor;
+		this.projectTest = projectTest;
 		runtime = editor.runtime;
 		this.origin = origin;
 		this.rebuild = rebuild;
@@ -98,7 +100,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 			throw new IllegalArgumentException("轨道已属于当前草稿。");
 		}
 
-		PhotonEditorProjectGuardUtil.requireSupported(Timeline.writeTrack(track, Platform.getFrozenRegistry()));
+		PhotonEditorProjectGuardUtil.requireSupportedAuthoringTrack(Timeline.writeTrack(track, Platform.getFrozenRegistry()), projectTest);
 		pushEdit("add_track", () -> {
 			draft.timeline().tracks().add(track);
 			requestRebuild();
@@ -207,20 +209,35 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	}
 
 	private void history(ArrayDeque<ListTag> source, ArrayDeque<ListTag> destination) {
+		requireCurrent();
 		setRecordingTrack(null);
+		cancelScrub();
 		if (source.isEmpty()) {
 			return;
 		}
 
-		destination.push(checkpoint.copy());
-		restore(source.pop());
-		publish.accept(checkpoint.copy());
+		var before = checkpoint.copy();
+		var candidate = source.getFirst().copy();
+		try {
+			restore(candidate);
+			publish.accept(checkpoint.copy());
+		} catch (RuntimeException failure) {
+			restore(before);
+			throw failure;
+		}
+
+		source.pop();
+		destination.push(before);
 		preview.run();
 	}
 
 	private void restore(ListTag source) {
 		draft = new PhotonNamedTrackDraft(source);
 		checkpoint = source.copy();
+		dragAnchor = null;
+		dragStarts.clear();
+		invalidDrag = false;
+		scrubBefore = null;
 		selectedTrack = null;
 		primary = null;
 		selectedClips.clear();
@@ -239,8 +256,10 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		}
 
 		publish.accept(after.copy());
-		undo.push(before.copy());
-		redo.clear();
+		if (scrubBefore == null) {
+			undo.push(before.copy());
+			redo.clear();
+		}
 		checkpoint = after;
 	}
 
@@ -332,6 +351,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void beginScrub() {
+		requireCurrent();
 		if (scrubBefore == null) {
 			scrubBefore = checkpoint.copy();
 		}
@@ -339,14 +359,21 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void endScrub() {
+		requireCurrent();
+		if (scrubBefore != null && !scrubBefore.equals(checkpoint)) {
+			undo.push(scrubBefore.copy());
+			redo.clear();
+		}
 		scrubBefore = null;
 	}
 
 	public void cancelScrub() {
+		requireCurrent();
 		if (scrubBefore != null) {
 			restore(scrubBefore);
 			scrubBefore = null;
 			publish.accept(checkpoint.copy());
+			preview.run();
 		}
 	}
 
@@ -383,6 +410,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void selectTrack(Track track) {
+		requireOwned(track);
 		INSPECTORS.put(editor, new WeakReference<>(this));
 		selectedTrack = track;
 		primary = null;
@@ -393,11 +421,13 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void setActiveTrack(Track track) {
+		requireOwned(track);
 		selectedTrack = track;
 	}
 
 	@Override
 	public void inspectProperty(Track track, IConfigurable configurable) {
+		requireOwned(track);
 		INSPECTORS.put(editor, new WeakReference<>(this));
 		selectedTrack = track;
 		editor.inspectorView.inspect(configurable, null, () -> {
@@ -411,6 +441,9 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void setRecordingTrack(@Nullable Track track) {
+		if (track != null) {
+			requireOwned(track);
+		}
 		if (recording == track) {
 			return;
 		}
@@ -425,6 +458,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	}
 
 	public void pollRecording() {
+		requireCurrent();
 		if (recording != null) {
 			editorFor(recording).pollRecording(this, recording, state(recording));
 		}
@@ -437,6 +471,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void selectClip(Track track, Clip clip) {
+		requireClip(track, clip);
 		INSPECTORS.put(editor, new WeakReference<>(this));
 		selectedTrack = track;
 		primary = clip;
@@ -470,6 +505,10 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void selectClips(Collection<Clip> clips, boolean additive) {
+		requireCurrent();
+		for (var clip : clips) {
+			requireClip(clipTracks.get(clip), clip);
+		}
 		if (!additive) {
 			selectedClips.clear();
 		}
@@ -480,6 +519,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void toggleClipSelection(Track track, Clip clip) {
+		requireClip(track, clip);
 		if (!selectedClips.remove(clip)) {
 			selectedClips.add(clip);
 		}
@@ -494,6 +534,10 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void beginClipGroupDrag(Clip anchor, double grabOffsetTicks) {
+		requireClip(clipTracks.get(anchor), anchor);
+		if (!selectedClips.contains(anchor)) {
+			throw new IllegalArgumentException("拖动锚点不属于当前选择。");
+		}
 		dragAnchor = anchor;
 		dragOffset = grabOffsetTicks;
 		dragStarts.clear();
@@ -505,6 +549,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void updateClipGroupDrag(float cursorX, float cursorY, boolean ctrl) {
+		requireCurrent();
 		if (dragAnchor == null) {
 			return;
 		}
@@ -535,6 +580,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 			for (var entry : dragStarts.entrySet()) {
 				entry.getKey().start(entry.getValue());
 			}
+			preview.run();
 		}
 		dragAnchor = null;
 		dragStarts.clear();
@@ -666,6 +712,10 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void addClip(Track track, Clip clip) {
+		requireOwned(track);
+		if (draft.timeline().leafTracks(true).stream().anyMatch(candidate -> candidate.clips().contains(clip))) {
+			throw new IllegalArgumentException("片段已属于当前草稿。");
+		}
 		if (track.lock()) {
 			throw new IllegalStateException("轨道已锁定。");
 		}
@@ -685,6 +735,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void removeClip(Track track, Clip clip) {
+		requireClip(track, clip);
 		if (track.lock()) {
 			throw new IllegalStateException("轨道已锁定。");
 		}
@@ -697,6 +748,11 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void addChildTrack(TrackGroup group, Track child) {
+		requireOwned(group);
+		if (draft.timeline().parentListOf(child) != null || child == group || Timeline.isDescendant(child, group)) {
+			throw new IllegalArgumentException("子轨道已属于当前草稿。");
+		}
+		PhotonEditorProjectGuardUtil.requireSupportedAuthoringTrack(Timeline.writeTrack(child, Platform.getFrozenRegistry()), projectTest);
 		if (group.lock()) {
 			throw new IllegalStateException("轨道组已锁定。");
 		}
@@ -709,6 +765,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void bind(Track track, @Nullable UUID targetId) {
+		requireOwned(track);
 		if (track.lock()) {
 			throw new IllegalStateException("轨道已锁定。");
 		}
@@ -727,10 +784,22 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	}
 
 	public void close() {
-		setRecordingTrack(null);
-		cancelScrub();
-		clearInspector();
-		closed = true;
+		if (closed) {
+			return;
+		}
+		try {
+			if (editor.runtime == runtime) {
+				setRecordingTrack(null);
+				cancelScrub();
+			}
+		} finally {
+			recording = null;
+			scrubBefore = null;
+			dragAnchor = null;
+			dragStarts.clear();
+			closed = true;
+			clearInspector();
+		}
 	}
 
 	private void clearInspector() {
@@ -738,6 +807,21 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		if (inspector != null && inspector.get() == this) {
 			INSPECTORS.remove(editor);
 			editor.inspectorView.clear();
+		}
+	}
+
+	private Track requireOwned(@Nullable Track track) {
+		requireCurrent();
+		if (track == null || draft.timeline().parentListOf(track) == null) {
+			throw new IllegalStateException("轨道不属于当前草稿，请重新读取当前轨道。");
+		}
+		return track;
+	}
+
+	private void requireClip(@Nullable Track track, Clip clip) {
+		var current = requireOwned(track);
+		if (!current.clips().contains(clip)) {
+			throw new IllegalStateException("片段不属于当前轨道。");
 		}
 	}
 

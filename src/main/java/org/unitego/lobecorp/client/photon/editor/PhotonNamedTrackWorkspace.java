@@ -62,7 +62,7 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		original = PhotonNamedTrackAuthoringUtil.definition(session.document(), definitionId, projectTest);
 		tracks = original.getListOrEmpty("tracks").copy();
 		context = new PhotonNamedTimelineContext(editor, rows, tracks, this::rebuild,
-				value -> tracks = value.copy(), this::refreshPreview);
+				value -> tracks = value.copy(), this::refreshPreview, projectTest);
 	}
 
 	public void show() {

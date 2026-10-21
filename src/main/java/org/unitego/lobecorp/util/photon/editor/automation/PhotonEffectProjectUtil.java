@@ -26,12 +26,15 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.editor.PhotonProjectRawAccess;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.IntArrayTag;
+import net.minecraft.nbt.LongArrayTag;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 
 import java.io.File;
@@ -285,33 +288,66 @@ public class PhotonEffectProjectUtil {
 
 	/// 工程内容而非调用计数决定版本，用户手工编辑同样使旧版本失效。
 	public static String revision(IProject project) {
+		return fingerprint(snapshot(project));
+	}
+
+	public static String fingerprint(CompoundTag data) {
 		try {
 			var digest = MessageDigest.getInstance("SHA-256");
-			return HexFormat.of().formatHex(digest.digest(canonical(snapshot(project)).getBytes(StandardCharsets.UTF_8)));
+			updateFingerprint(digest, data);
+			return HexFormat.of().formatHex(digest.digest());
 		} catch (NoSuchAlgorithmException failure) {
 			throw new IllegalStateException(failure);
 		}
 	}
 
-	private static String canonical(Tag value) {
-		if (value instanceof CompoundTag compound) {
-			var result = new StringBuilder("{");
-			compound.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> result.append(entry.getKey().length())
-					.append(':').append(entry.getKey()).append('=').append(canonical(entry.getValue())).append(';'));
-			return result.append('}').toString();
-		}
-
-		if (value instanceof ListTag list) {
-			var result = new StringBuilder("[");
-
-			for (var child : list) {
-				result.append(canonical(child)).append(';');
+	private static void updateFingerprint(MessageDigest digest, Tag value) {
+		digest.update(value.getId());
+		switch (value) {
+			case CompoundTag compound -> {
+				numberFingerprint(digest, compound.size());
+				compound.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+					textFingerprint(digest, entry.getKey());
+					updateFingerprint(digest, entry.getValue());
+				});
 			}
-
-			return result.append(']').toString();
+			case ListTag list -> {
+				numberFingerprint(digest, list.size());
+				list.forEach(child -> updateFingerprint(digest, child));
+			}
+			case ByteArrayTag bytes -> {
+				var array = bytes.getAsByteArray();
+				numberFingerprint(digest, array.length);
+				digest.update(array);
+			}
+			case IntArrayTag integers -> {
+				var array = integers.getAsIntArray();
+				numberFingerprint(digest, array.length);
+				for (int number : array) {
+					numberFingerprint(digest, number);
+				}
+			}
+			case LongArrayTag longs -> {
+				var array = longs.getAsLongArray();
+				numberFingerprint(digest, array.length);
+				for (long number : array) {
+					numberFingerprint(digest, number);
+				}
+			}
+			default -> textFingerprint(digest, value.toString());
 		}
+	}
 
-		return value.toString();
+	private static void textFingerprint(MessageDigest digest, String value) {
+		var bytes = value.getBytes(StandardCharsets.UTF_8);
+		numberFingerprint(digest, bytes.length);
+		digest.update(bytes);
+	}
+
+	private static void numberFingerprint(MessageDigest digest, long value) {
+		for (int shift = 56; shift >= 0; shift -= 8) {
+			digest.update((byte) (value >>> shift));
+		}
 	}
 
 	public static CompoundTag snapshot(IProject project) {
@@ -324,6 +360,25 @@ public class PhotonEffectProjectUtil {
 		}
 
 		return output.buildResult();
+	}
+
+	public static CompoundTag container(IProject project) {
+		var reporter = new ProblemReporter.Collector();
+		var output = TagValueOutput.createWithContext(reporter, Platform.getFrozenRegistry());
+		project.serialize(output);
+		if (!reporter.isEmpty()) {
+			throw new PhotonEffectCommandException(Code.INVALID_DATA, reporter.getReport());
+		}
+		return output.buildResult();
+	}
+
+	public static void verifyContainer(IProject project, CompoundTag container) {
+		var restored = copy(project);
+		var reporter = new ProblemReporter.Collector();
+		restored.deserialize(TagValueInput.create(reporter, Platform.getFrozenRegistry(), container.copy()));
+		if (!reporter.isEmpty() || !container.equals(container(restored))) {
+			throw new PhotonEffectCommandException(Code.INVALID_DATA, "完整工程容器经原生读取后不一致。");
+		}
 	}
 
 	public static void decode(IProject project, CompoundTag data) {
@@ -356,18 +411,19 @@ public class PhotonEffectProjectUtil {
 	public static JsonObject describe(Handle handle) {
 		var project = handle.project();
 		var editor = handle.editor();
+		var data = snapshot(project);
 		var result = new JsonObject();
 		result.addProperty("projectId", handle.id());
 		result.addProperty("kind", project instanceof PhotonModelProject ? "model" : "fx");
-		result.addProperty("revision", revision(project));
+		result.addProperty("revision", fingerprint(data));
 		result.addProperty("editorPath", editor.getCurrentProjectFile() == null ? "" : editor.getCurrentProjectFile().getAbsolutePath());
 		result.addProperty("dirty", editor.isCurrentProjectDirty());
 		result.addProperty("playing", editor.sceneView.particleManager.isPlaying());
 		result.addProperty("time", editor.sceneView.particleManager.getTime(0));
 		result.addProperty("undoCount", editor.historyView.getUndoStack().size());
 		result.addProperty("redoCount", editor.historyView.getRedoStack().size());
-		var data = snapshot(project);
-		boolean containsModel = project instanceof PhotonModelProject;
+		boolean containsModel = project instanceof PhotonModelProject || project instanceof FXProject fxProject
+				&& fxProject.getFx().getFxData().objects().stream().anyMatch(object -> object instanceof PhotonModelOutput);
 		if (project instanceof PhotonModelProject model) {
 			var configuration = PersistedParser.serializeNBT(model.model().config, Platform.getFrozenRegistry());
 			var playback = new CompoundTag();
@@ -416,7 +472,20 @@ public class PhotonEffectProjectUtil {
 				}
 
 				var parameters = wrapper.getCompoundOrEmpty("data");
-				if (containsModel) {
+				if (object instanceof PhotonModelOutput modelOutput) {
+					if (!(project instanceof PhotonModelProject)) {
+						try {
+							entry.add("modelAsset", switch (modelOutput.config.assetSnapshot()) {
+								case ByteArrayTag bytes ->
+										PhotonResourceJsonUtil.read(bytes.getAsByteArray(), PhotonResourceLimits.DEFAULT);
+								case StringTag(var text) ->
+										PhotonResourceJsonUtil.read(text, PhotonResourceLimits.DEFAULT);
+								case null, default -> throw new IOException("模型快照缺失。");
+							});
+						} catch (IOException invalid) {
+							throw new PhotonEffectCommandException(Code.INVALID_DATA, invalid.getMessage());
+						}
+					}
 					parameters.remove(PhotonModelOutputConfig.ASSET_KEY);
 					parameters.getCompoundOrEmpty("config").remove(PhotonModelOutputConfig.ASSET_KEY);
 				}

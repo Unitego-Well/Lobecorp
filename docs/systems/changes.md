@@ -2,6 +2,12 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：独立 Normify MCP 与 Codex Skill
+
+- 基于 yan-mc/dsh-normify 的 ed404e5b8db0010ff57ec8486ec8749421072545，保留 MIT 许可和 31 个架构工具；以独立 stdio MCP、CLI、项目 Skill 交付，来源与文件哈希见 tools/lobecorp-normify/SOURCE_PROVENANCE.json。
+- 显式 workspaceRoot 限制架构数据与源码引用，拒绝跨工作区目录和内部符号链接；单进程工具请求串行执行。IDEA 包内构建、标准 SDK 初始化／工具枚举／只读帮助／越界拒绝检查通过。
+- IDEA 未报告 ERROR；协议脚本存在 SDK 导入解析提示，实际 Node 执行成功。未生成 Lobecorp 架构、未进行 HTML 视觉或引擎完整回归。详见[包说明](../../tools/lobecorp-normify/README.md)。
+
 ## 2026-10-21：Minecraft MCP 双模式 GUI、玩家、实体与方块操控
 
 - 在 MCP 模块接入 gui_control、player_control、entity_control、block_control 四项结构化工具；复用扩展注册器与错误协议，模拟操作使用游戏内事件和正常交互，直接世界修改在本地集成服务端线程执行。

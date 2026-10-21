@@ -1,0 +1,28 @@
+{
+  "name": "@lobecorp/normify",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lobecorp 的独立架构树 MCP、CLI 与 Codex Skill",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "lobecorp-normify": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify:protocol": "node scripts/verify-protocol.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "yaml": "2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

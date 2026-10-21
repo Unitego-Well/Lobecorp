@@ -3,7 +3,10 @@ package xyz.langyo.minecraft.mcp.mod;
 import xyz.langyo.minecraft.mcp.common.*;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 @Mod("mcpmod")
 public class ModDevMcpMod {
@@ -13,6 +16,18 @@ public class ModDevMcpMod {
     public ModDevMcpMod(IEventBus modBus) {
         INSTANCE = this;
         modBus.addListener(this::commonSetup);
+        if (FMLEnvironment.getDist() == Dist.CLIENT && !FMLEnvironment.isProduction()) {
+            modBus.addListener(this::clientSetup);
+        }
+    }
+
+    private void clientSetup(final FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            var minecraft = ReflectionHelper.getMinecraftInstance();
+            if (minecraft != null) {
+                ControlModeHelper.enterMcpControlMode(minecraft);
+            }
+        });
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

@@ -64,7 +64,7 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: "enter_control_mode",
-    description: "Enter MCP control mode — releases mouse cursor, enables click/type/keyboard input. User must have activated via PauseScreen button or overlay click first.",
+      description: "Enter MCP control mode — releases mouse cursor, enables click/type/keyboard input. The project NeoForge development client activates once during startup; production clients retain manual activation via PauseScreen button or overlay click.",
     inputSchema: z.object({}),
   },
   {

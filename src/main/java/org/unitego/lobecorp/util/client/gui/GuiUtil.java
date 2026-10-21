@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
-import net.minecraft.client.resources.model.sprite.SpriteId;
 import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix3x2f;
@@ -31,7 +30,7 @@ public class GuiUtil {
 			return;
 		}
 
-		var sprite = graphics.getSprite(new SpriteId(AtlasIds.GUI, id));
+		var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.GUI).getSprite(id);
 		switch (scaling(sprite)) {
 			case GuiSpriteScaling.Tile tile -> blitTiledSprite(graphics, sprite, x, y, width, height,
 					0, 0, tile.width(), tile.height(), tile.width(), tile.height(), color);
@@ -44,7 +43,7 @@ public class GuiUtil {
 	/// 裁切尺寸同时是目标尺寸，浮点宽度保留到提取顶点阶段。
 	public static void blitSprite(GuiGraphicsExtractor graphics, Identifier id, float textureWidth, float textureHeight,
 	                              float u, float v, float x, float y, float width, float height) {
-		var sprite = graphics.getSprite(new SpriteId(AtlasIds.GUI, id));
+		var sprite = Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(AtlasIds.GUI).getSprite(id);
 		if (scaling(sprite) instanceof GuiSpriteScaling.Stretch) {
 			blitRegion(graphics, sprite, x, y, width, height, u, v, width, height, textureWidth, textureHeight, -1);
 		} else {

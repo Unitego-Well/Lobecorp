@@ -2,6 +2,12 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：MCP开发客户端默认激活与G1启动阻断修正
+
+- 用户明确要求开发环境默认激活MCP：ModDevMcpMod在客户端且非生产环境的一次初始化任务中进入现有控制模式，手动退出仍有效，正式环境保留原初始状态；tools.ts同步说明，不改HTTP或文件权限。
+- 集中游戏测试复现GUI图集崩溃后按用户授权修正GuiUtil的两处逻辑图集ID/纹理地址混用；默认HUD的新客户端已进入原存档并通过MCP取得pong、玩家和能力状态。视觉、完整制作/往返、旧播放和资源兼容仍未验收，G1未通过；没有本轮实体动画、实体模型LOD或原特效资源编辑。
+- IDEA处理修改行格式，Java检查无错误、GuiUtil保留4项既有警告，TypeScript后续错误检查无问题；IDEA编译、Data（written=0/removed=0，生成目录无Git差异）、Bridge构建及65工具发现通过。自动控制启动行为须重启客户端验证，未冒充已通过。备份before-photon-g1-hud-fix-20261021及before-mcp-development-control-20261021；完整日志和检查边界见[本轮记录](photon-g1-code-stage-20261021.md)。
+
 ## 2026-10-21：GUI 工具与 HUD 二次对照补齐
 
 - 对照 ImaginaryCraft 中 21 份适用旧源码，补齐 GuiUtil 的精灵对象裁切、默认九宫格／平铺及当前 RenderPipeline／TextureSetup

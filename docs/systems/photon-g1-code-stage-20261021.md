@@ -1,6 +1,6 @@
 # G1 全部代码优先实施记录
 
-日期：2026-10-21。功能代码编写和145处修改范围格式处理后，已进入统一正确性检查；尚未执行本轮编译、Data、自动测试或游戏验证。本页不宣告G1通过，不以旧轮测试替代本轮结果。
+日期：2026-10-21。功能代码和格式已完成，统一正确性检查、自动验证及游戏轮次的实际结果分别记录如下。本页不宣告G1通过，不以旧轮测试替代本轮结果。
 
 ## 本次授权与边界
 
@@ -77,3 +77,12 @@
 - G02：第二轮同存档客户端仍在运行，hideGui仅在内存设为true以避开G01，未保存设置。真实stdio集成测试已连接游戏，但effect_create返回CONTROL_REQUIRED：Enter MCP control mode before calling this command。该轮不能计为MCP写入通过；需用户通过游戏暂停界面的MCP入口激活，不通过调试器绕过控制状态。
 - 待验证：轨道工作区实际交互与历史、完整磁盘往返/独立包、旧激活与循环组合、模型工程编辑/导出、指挥家激光/星束及停止卸载。视觉另交人工，HUD问题未越界修改。
 - 第二轮日志client-round2-control-required.log及真实集成日志mcp-round2-control-required.log保留在同一备份目录。恢复默认HUD状态需结束本轮隐藏HUD测试后处理，当前尚未恢复。
+
+## 后续集中游戏测试与开发控制默认值
+
+- 本次恢复时原客户端已经退出，IDEA无Debug会话；通过现有Client配置重进同一存档。MCP曾返回pong，随后再次遇到G01图集异常，日志ij_run__Client_9057780628777897985.log、crash-2026-10-21_08.39.47-client.txt；后续请求transport_error，不能计为特效验收失败或通过。
+- 用户授权修复已发现问题后，IDEA依赖源码确认AtlasIds.GUI是逻辑图集ID，而SpriteId使用图集纹理地址。GuiUtil的两个入口改为与原生GUI相同的getAtlasOrThrow(AtlasIds.GUI).getSprite；保留裁切/缩放/浮点绘制。修改行已格式化，IDEA无错误、4项既有未使用接口警告。备份refs/backups/before-photon-g1-hud-fix-20261021。重新以普通Client运行后，默认HUD条件下进入原存档，MCP取得pong、玩家信息及effect_capabilities；effect_state为工程列表空。该结果只证明此启动路径不再立即触发已知崩溃，不替代视觉验收。
+- 本轮代理普通无条件断点均已移除，原3用户断点保留。后续普通Client不附加Debug。电脑控制被用户Escape停止，未完成新客户端窗口最大化确认，也未创建或保存工程。原特效资源、实体动画和实体模型LOD没有本轮编辑。
+- 用户随后明确要求开发环境默认激活MCP。ModDevMcpMod仅在Dist.CLIENT且!FMLEnvironment.isProduction()时注册一次FMLClientSetupEvent，enqueueWork在客户端线程调用现有enterMcpControlMode；不将NeoForge依赖放入common，不改HTTP监听、文件许可或逐命令检查。手动退出不被逐帧覆盖；正式环境不自动进入。Bridge工具说明同步开发环境例外。
+- 修改前备份refs/backups/before-mcp-development-control-20261021。Java及TypeScript错误检查无问题；首次TypeScript完整检查超时，后续错误检查完成，不能把超时当作完整检查通过。IDEA编译success=true/aborted=false，计数null不报零警告。当前旧客户端未重启，自动进入及手动退出行为尚未游戏验证；G1仍未通过。
+- 本次Data日志ij_run__Data_11331088982182637309.log为BUILD SUCCESSFUL，23输出written=0/removed=0，src/generated无Git差异；Bridge日志ij_run__Minecraft_MCP_Bridge_11554690430195009977.log为BUILD SUCCESSFUL，实际stdio发现65工具。本轮没有新增翻译键、依赖或资源。

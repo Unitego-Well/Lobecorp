@@ -45,7 +45,7 @@
 | 激光 | [工程、变量与资源](queen-arcana-beam.md) |
 | 激光法术 | [组合时序与对象索引](laser-spell.md) |
 | 女皇技能特效与瞬时星束 | [代码动画阶段、中心起点与精简星束](queen-beam-skill-effects.md) |
-| Minecraft MCP | [Minecraft MCP](minecraft-mcp.md) |
+| Minecraft MCP | [Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |
 | AI 特效制作 | [制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |

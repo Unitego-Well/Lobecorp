@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { ModClient } from "../api/modClient.js";
 import {registerHandlers} from "./handlers.js";
 import {registerEffectHandlers} from "./effectHandlers.js";
+import {registerControlHandlers} from "./controlHandlers.js";
 import { LAUNCHER } from "../mc/defaults.js";
 
 export function createMcpServer(mod: ModClient): McpServer {
@@ -13,6 +14,7 @@ export function createMcpServer(mod: ModClient): McpServer {
 
     registerHandlers(mcpServer, mod);
     registerEffectHandlers(mcpServer, mod);
+  registerControlHandlers(mcpServer, mod);
 
   return mcpServer;
 }

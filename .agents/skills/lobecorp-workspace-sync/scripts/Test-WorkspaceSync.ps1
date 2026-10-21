@@ -10,6 +10,7 @@ if (-not $ReportRoot)
 $fixture = Join-Path $ReportRoot ('workspace-sync-fixture-' + [guid]::NewGuid().ToString('N'))
 $source = Join-Path $fixture 'source'
 $target = Join-Path $fixture 'target'
+$cleanTarget = Join-Path $fixture 'clean-target'
 $utf8 = [Text.UTF8Encoding]::new($false)
 $lf = [string][char]10
 function Put
@@ -117,18 +118,38 @@ MC_MCP_PORT = "19878"
     G $source @('add', 'hook.txt') | Out-Null
     G $source @('commit', '-m', 'fixture hook') | Out-Null
     Assert-That (Test-Path -LiteralPath (Join-Path $source '.git/workspace-sync/hook.log')) 'Hook did not execute.'
-    $passed.Add('Post-commit trigger executed and retained existing pause.')
+    $hookResult = Get-Content -LiteralPath (Join-Path $source '.git/workspace-sync/hook.log') -Raw | ConvertFrom-Json
+    Assert-That ($hookResult.Status -eq 'Paused') 'Hook did not return its actual synchronization result.'
+    $passed.Add('Post-commit trigger executed and returned its retained pause as valid JSON.')
+    G $source @('worktree', 'add', '-b', 'fixture/clean', $cleanTarget) | Out-Null
+    $cleanConfig = [IO.File]::ReadAllText((Join-Path $cleanTarget '.codex/config.toml')).Replace($source.Replace('\', '/'),$cleanTarget.Replace('\', '/')).Replace('19878', '19112')
+    Put (Join-Path $cleanTarget '.codex/config.toml') $cleanConfig
+    G $cleanTarget @('add', '.codex/config.toml') | Out-Null
+    G $cleanTarget @('commit', '-m', 'fixture isolated clean config') | Out-Null
+    Put (Join-Path $source 'hook-clean.txt') 'automatic clean target'
+    G $source @('add', 'hook-clean.txt') | Out-Null
+    G $source @('commit', '-m', 'fixture automatic clean sync') | Out-Null
+    $latestSource = G $source @('rev-parse', 'HEAD')
+    G $cleanTarget @('merge-base', '--is-ancestor', $latestSource, 'HEAD') | Out-Null
+    $hookLatest = Get-Content -LiteralPath (Join-Path $source '.git/workspace-sync/latest.json') -Raw | ConvertFrom-Json
+    $cleanResult = @($hookLatest | Where-Object { $_.Target -eq $cleanTarget })
+    Assert-That ($cleanResult.Count -eq 1 -and $cleanResult[0].Status -eq 'Synced') 'Automatic clean sync did not finish.'
+    Assert-That ([IO.File]::ReadAllText((Join-Path $cleanTarget '.codex/config.toml')).Contains('19112')) 'Automatic sync changed local port.'
+    $passed.Add('Actual commit hook merged a clean secondary branch and preserved its dedicated configuration.')
 }
 finally
 {
-    if (Test-Path -LiteralPath $target)
+    foreach ($target in @($target, $cleanTarget))
     {
-        $absolute = [IO.Path]::GetFullPath($target)
-        if (-not $absolute.StartsWith([IO.Path]::GetFullPath($fixture) + [IO.Path]::DirectorySeparatorChar))
+        if (Test-Path -LiteralPath $target)
         {
-            throw 'Cleanup escaped fixture root.'
+            $absolute = [IO.Path]::GetFullPath($target)
+            if (-not $absolute.StartsWith([IO.Path]::GetFullPath($fixture) + [IO.Path]::DirectorySeparatorChar))
+            {
+                throw 'Cleanup escaped fixture root.'
+            }
+            G $source @('worktree', 'remove', '--force', $absolute) | Out-Null
         }
-        G $source @('worktree', 'remove', '--force', $absolute) | Out-Null
     }
     $absoluteFixture = [IO.Path]::GetFullPath($fixture)
     $allowedParent = [IO.Path]::GetFullPath($ReportRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar

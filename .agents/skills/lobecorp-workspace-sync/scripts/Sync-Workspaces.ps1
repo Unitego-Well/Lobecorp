@@ -13,8 +13,20 @@ $ErrorActionPreference = 'Stop'
 $ConfigPath = '.codex/config.toml'
 $RuntimePattern = '^(\.idea/|\.run/|\.gradle/|run/|build/|.*?/node_modules/)'
 $Utf8 = [Text.UTF8Encoding]::new($false)
-$GitExecutable = (Get-Command git -CommandType Application -ErrorAction Stop).Source
+$GitExecutable = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 [Console]::OutputEncoding = $Utf8
+foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR', 'GIT_PREFIX',
+'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_IMPLICIT_WORK_TREE', 'GIT_SHALLOW_FILE', 'GIT_GRAFT_FILE'))
+{
+    if ($FromHook)
+    {
+        [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+    }
+    elseif ([Environment]::GetEnvironmentVariable($name, 'Process'))
+    {
+        throw "Explicit Git environment must be cleared before synchronization: $name"
+    }
+}
 $Lf = [string][char]10
 $CrLf = [string][char]13 + [char]10
 $env:GIT_TERMINAL_PROMPT = '0'

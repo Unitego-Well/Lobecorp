@@ -143,7 +143,7 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 				event.stopPropagation();
 			}
 		});
-		dialog.addEventListener(UIEvents.TICK, _ -> attempt(context::pollRecording));
+		dialog.addEventListener(UIEvents.TICK, _ -> attempt(context::pollRecording, false));
 		rebuild();
 		dialog.show(editor);
 	}
@@ -253,9 +253,15 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 	}
 
 	private void attempt(Runnable action) {
+		attempt(action, true);
+	}
+
+	private void attempt(Runnable action, boolean clearStatus) {
 		try {
 			action.run();
-			status.setText(Component.empty());
+			if (clearStatus) {
+				status.setText(Component.empty());
+			}
 		} catch (IllegalArgumentException | IllegalStateException invalid) {
 			status.setText(Component.literal(invalid.getMessage()));
 		}

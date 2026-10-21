@@ -9,6 +9,7 @@ import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import net.minecraft.client.Minecraft;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
+import org.unitego.lobecorp.client.photon.editor.PhotonPreviewTimeAccess;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectJsonUtil;
@@ -301,7 +302,7 @@ public class PhotonEffectAutomation {
 		var action = PhotonEffectJsonUtil.string(request, "action");
 		double time = "seek".equals(action) ? PhotonEffectJsonUtil.number(request, "time") : 0;
 
-		if (time < 0 || time > MAX_SEEK_TICKS || !"play".equals(action) && !"pause".equals(action)
+		if (!Double.isFinite(time) || time < 0 || time > MAX_SEEK_TICKS || !"play".equals(action) && !"pause".equals(action)
 				&& !"stop".equals(action) && !"seek".equals(action)) {
 			throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, action);
 		}
@@ -317,6 +318,7 @@ public class PhotonEffectAutomation {
 					var view = PhotonEffectViewUtil.prepare(handle, new JsonObject());
 					editor.sceneView.particleManager.pause();
 					editor.sceneView.simulateTo((long) time);
+					((PhotonPreviewTimeAccess) editor.sceneView.particleManager).lobecorp$seekFraction((float) (time - (long) time));
 					view.commit();
 				}
 				default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT);

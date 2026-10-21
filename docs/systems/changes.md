@@ -2,6 +2,12 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：G1真实MCP复测、模型状态及小数预览修正
+
+- 无人工激活的真实命名播放MCP测试两轮17项通过，模型制作依次记录model_state、preview_seek失败后修正；第三轮12项通过，随后被模型保存保护拒绝。G1未通过，全部剩余代码未完成，不整体关闭文件保护。
+- PhotonEffectProjectUtil补模型有效播放摘要；check-effect-tools.mjs同步values契约及运行目录隔离输出；PhotonPreviewTimeAccess/PhotonParticleManagerMixin与Automation补暂停小数时间、粒子/Shader一致呈现及重置清理，拒绝非有限时间。工作区后台轮询不再抹掉前台错误，最后该修正尚未游戏复测。
+- IDEA处理新增文件和修改行格式，相关错误检查及编译通过；Data、真实MCP、GUI/磁盘/视觉结果分开，证据见[本轮实施记录](photon-g1-code-stage-20261021.md#集中mcp复测与模型预览修正)。备份before-photon-model-state-20261021；日志存backups/photon-g1-concentrated-20261021。原资源、实体动画、实体模型LOD未编辑，未自动推送。
+
 ## 2026-10-21：MCP开发客户端默认激活与G1启动阻断修正
 
 - 用户明确要求开发环境默认激活MCP：ModDevMcpMod在客户端且非生产环境的一次初始化任务中进入现有控制模式，手动退出仍有效，正式环境保留原初始状态；tools.ts同步说明，不改HTTP或文件权限。

@@ -86,3 +86,20 @@
 - 用户随后明确要求开发环境默认激活MCP。ModDevMcpMod仅在Dist.CLIENT且!FMLEnvironment.isProduction()时注册一次FMLClientSetupEvent，enqueueWork在客户端线程调用现有enterMcpControlMode；不将NeoForge依赖放入common，不改HTTP监听、文件许可或逐命令检查。手动退出不被逐帧覆盖；正式环境不自动进入。Bridge工具说明同步开发环境例外。
 - 修改前备份refs/backups/before-mcp-development-control-20261021。Java及TypeScript错误检查无问题；首次TypeScript完整检查超时，后续错误检查完成，不能把超时当作完整检查通过。IDEA编译success=true/aborted=false，计数null不报零警告。当前旧客户端未重启，自动进入及手动退出行为尚未游戏验证；G1仍未通过。
 - 本次Data日志ij_run__Data_11331088982182637309.log为BUILD SUCCESSFUL，23输出written=0/removed=0，src/generated无Git差异；Bridge日志ij_run__Minecraft_MCP_Bridge_11554690430195009977.log为BUILD SUCCESSFUL，实际stdio发现65工具。本轮没有新增翻译键、依赖或资源。
+
+## 集中MCP复测与模型预览修正
+
+本节是71615ec之后的实际执行记录；剩余G1代码和验收未全部完成，不将保护拒绝写为直接可用。
+
+- 同一存档重新通过IDEA启动。只读进程/线程与/api/status最终确认游戏监听9876正常，Node工具进程回环访问返回EACCES；早先“端口未监听/线程停留”的判断撤回，不能据此认定游戏HTTP启动失败。改用IDEA既有运行配置执行标准stdio MCP；必要的单项调用仍通过同一SDK和Bridge，仅允许本机回环访问，不改协议/端口。
+- 开发环境默认控制已取得两类证据：无人工激活的真实effect_create及后续写事务成功；普通无条件断点读取production=false/control=true。主窗在编辑器打开后重新用Debug最大化并确认maximized=1；MCP视角状态active=true/embedded=true/orthographic=false。
+- Minecraft MCP Animation首轮及小数预览修正后的复测均17项通过：dry-run、句柄控制、运行代次/过期引用拒绝、库刷新保留句柄、UUID引用删除保护、工程测试隔离、原树历史及原工程保留。Runtime只读检查通过，9类发射对象。二者不替代GUI或文件验收。
+- 模型制作首轮在model_state失败：状态缺少playback摘要；补有效原生配置的8项播放字段，测试set_model_playback同步当前values契约。第二轮10项通过后在preview_seek失败，确认旧实现将5.5截为5。
+- 新增PhotonPreviewTimeAccess及PhotonParticleManagerMixin：暂停时钟与Shader时间、粒子提取统一使用持久帧内小数，原生整数模拟不替换；play/clear/setTime清理小数。seek提交小数，非有限时间在模拟前拒绝。第三轮12项通过，包含preview_seek与fractional_model_time；没有降低断言。原生实时播放仍以整数模拟步进。
+- 第三轮下一项effect_save被模型保护拒绝（INVALID_ARGUMENT/已移除功能提示），项目0ecedc79-2b24-4fd5-a41e-3aa86950bea9，目标为run/client/ldlib2/assets/mcp-authoring-3fd74900-c01c-45ad-af00-b195681cf4c9/model.mfxproj。没有回写原件，也没有将拒绝计为完整往返通过。测试输出根目录已改为隔离的运行资产目录，缺该许可根则失败，不回退源码assets。
+- Debug实际打开命名工作区，MCP加号能展开注册轨道菜单；选择轨道后未观察到新增行，尚未定位完成，不能标为制作验收通过。另确认TICK成功轮询会清空操作错误，已改为后台成功不清空、前台成功才清空；该最后修正IDEA检查/编译通过，尚未重启验证。
+- 视觉记录交人工：工作区撤销/重做显示原始翻译键、标题/文字与控件布局待审查；截图g1-named-workspace-20261021.png、g1-track-menu-scaled-20261021.png、g1-track-added-20261021.png均在run/client/screenshots，未因视觉记录扩改资源。MCP点击工具说明称screen pixels，但实际回执/命中使用GUI坐标，本轮按guiScale=2重新定位，不把首次未命中算作轨道实现失败。
+- 本轮有一次进入世界前构造FXEditor的Debug探针因dimension_type注册表缺失而失败，另一次含lambda的探针编译失败；两次均为验证设置失败，不作为功能通过。清理/恢复执行自动审批曾超时，单次重试后已移除代理断点并确认running，原3用户断点保留。用户限定Debug/MCP后未再使用电脑界面控制。
+- 备份refs/backups/before-photon-model-state-20261021指向71615ec。原始失败/复测/Client/Data日志保存在backups/photon-g1-concentrated-20261021；最后IDEA编译success=true/aborted=false，errors/warnings为null。相关7项代码/配置错误检查无问题；ProjectUtil原有3项警告不作零警告报告。最后Data日志data-final.log为BUILD SUCCESSFUL，23输出written=0/removed=0，生成目录无Git差异；无新增依赖、翻译键或原资源修改。
+
+剩余：模型保存/重开/定义与独立包组合的逐项放行及全量验收，GUI轨道新增/编辑/拖动/历史/关闭清理，完整旧激活/循环/生成器/渲染组合，真实指挥家激光/星束及来源/停止/卸载清理，冷/热/多实例和拖动性能证据。高级多线程与独立GUI呈现未实施。实体动画和实体模型LOD由其他AI负责，本轮不编辑。

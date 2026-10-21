@@ -363,7 +363,9 @@ async function checkAuthoring() {
     requireCheck(Array.isArray(capabilities.allowedRoots) && capabilities.allowedRoots.length > 0
         && capabilities.allowedRoots.every(root => typeof root === "string" && isAbsolute(root))
         && Array.isArray(previous.projects), "authoring_capabilities");
-    const directory = resolve(capabilities.allowedRoots[0], "mcp-authoring-" + randomUUID());
+    const acceptanceRoot = capabilities.allowedRoots.find(root => root.replaceAll("\\", "/").endsWith("/run/client/ldlib2/assets"));
+    requireCheck(typeof acceptanceRoot === "string", "isolated_acceptance_root");
+    const directory = resolve(acceptanceRoot, "mcp-authoring-" + randomUUID());
     const created = await callEffectTool("effect_create", {kind: "model", name: authoringExample.name});
     requireCheck(typeof created.projectId === "string" && created.projectId.length > 0
         && created.kind === "model" && created.name === authoringExample.name
@@ -394,7 +396,7 @@ async function getModelState(projectId) {
 }
 
 async function checkModelEditing(projectId, checks) {
-    const operations = [{op: "set_model_playback", playback: {playbackSpeed: authoringExample.playbackSpeed}}];
+    const operations = [{op: "set_model_playback", values: {playbackSpeed: authoringExample.playbackSpeed}}];
     const original = await getModelState(projectId);
     requireCheck(original.playback.playbackSpeed !== authoringExample.playbackSpeed, "distinct_playback_edit");
     const dry = await callEffectTool("effect_edit_batch", {

@@ -58,6 +58,7 @@
 		"geckolib.client.CuboidModelLodMixin",
 		"photon.render.client.EmitterMixin",
 		"photon.editor.client.FXTimelineViewMixin",
+		"photon.editor.client.PhotonParticleManagerMixin",
 		"photon.editor.client.AnimationTrackUIStateAccessor",
 		"photon.editor.client.AnimationTrackEditorMixin",
 		"photon.editor.client.EditorMixin",

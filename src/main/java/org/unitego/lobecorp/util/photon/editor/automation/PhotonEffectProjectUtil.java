@@ -3,6 +3,7 @@ package org.unitego.lobecorp.util.photon.editor.automation;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.editor.ui.EditorWindow;
@@ -367,6 +368,15 @@ public class PhotonEffectProjectUtil {
 		var data = snapshot(project);
 		boolean containsModel = project instanceof PhotonModelProject;
 		if (project instanceof PhotonModelProject model) {
+			var configuration = PersistedParser.serializeNBT(model.model().config, Platform.getFrozenRegistry());
+			var playback = new CompoundTag();
+			for (var key : List.of("enabled", "duration", "startDelay", "looping", "paused", "clip", "playbackSpeed", "animationOffset")) {
+				var value = configuration.get(key);
+				if (value != null) {
+					playback.put(key, value.copy());
+				}
+			}
+			result.add("playback", PhotonEffectJsonUtil.json(playback));
 			var asset = model.document().get("asset");
 			try {
 				result.add("modelAsset", switch (asset) {

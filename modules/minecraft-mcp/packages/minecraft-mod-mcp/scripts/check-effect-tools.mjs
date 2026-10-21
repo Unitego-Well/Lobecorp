@@ -16,6 +16,7 @@ const effectToolNames = [
     "effect_resource_audit",
 ];
 const nativeToolCount = 46;
+const controlToolNames = ["gui_control", "player_control", "entity_control", "block_control"];
 const readOnlyEffectToolNames = new Set([
     "effect_capabilities", "effect_state", "effect_resources", "effect_resource_read", "effect_view_state",
     "effect_animation_state",
@@ -88,8 +89,14 @@ try {
 
 function validateToolMetadata(tools) {
     const names = new Set(tools.map(tool => tool.name));
-    if (tools.length !== nativeToolCount + effectToolNames.length || names.size !== tools.length) {
-        throw new Error(`The bridge must expose ${nativeToolCount} native tools and ${effectToolNames.length} distinct effect tools.`);
+    if (tools.length !== nativeToolCount + effectToolNames.length + controlToolNames.length || names.size !== tools.length) {
+        throw new Error(`The bridge must expose ${nativeToolCount} native tools and ${effectToolNames.length} distinct effect tools and ${controlToolNames.length} control tools.`);
+    }
+    for (const name of controlToolNames) {
+        const tool = tools.find(candidate => candidate.name === name);
+        if (!tool || !tool.inputSchema || !tool.outputSchema || tool.annotations?.readOnlyHint !== false) {
+            throw new Error("Control tool metadata is incomplete: " + name);
+        }
     }
     for (const name of effectToolNames) {
         const tool = tools.find(candidate => candidate.name === name);

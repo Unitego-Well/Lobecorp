@@ -31,6 +31,45 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：恢复工作区 MCP 配置预检，业务冲突暂停
+
+- 修复同步脚本临时配置副本末尾换行不一致导致的 Normify 追加冲突；不改变目标端口、路径和原始配置排版。回归覆盖旧基线无端口段的实际配置形态，四组检查通过并清理临时 Git 仓库，IDEA 未报告问题。
+- 恢复同步固定源 c76e045 后，7903／90be 均通过配置预检；随后分别在女王动画 Java／资源及两份动画资源等代码冲突处暂停，未执行目标 stash push／merge。配置 SHA256 与备份相等，HEAD 保留、未合并索引项0。
+- 备份和冲突记录见[同步恢复记录](workspace-sync.md#2026-10-21-配置冲突恢复)及原始 .git/workspace-sync/20261021-203502-4ffec374；未解决业务冲突，未运行构建／Data／游戏。
+
+
+## 2026-10-21：dev 已提交地基自动同步
+
+- 新增项目 lobecorp-workspace-sync Skill、Sync-Workspaces.ps1 和临时 Git 仓库回归脚本；Git post-commit 驱动原始 dev 向现有独立工作区同步，不反向自动合并任务分支，不传播源工作区 WIP。
+- 增加预检、备份、索引／工作文件恢复、MCP 路径和端口归一化、运行目录保护及持久暂停；原始 Git 元数据中安装钩子，无常驻进程或 AI 定时任务。
+- 临时仓库的改动保留／配置重定位、冲突不改目标、钩子返回有效暂停结果、真实钩子自动合并干净工作区四组检查通过；已修复初次真实钩子的 Git 多候选启动失败，并隔离继承的 Git 索引环境；IDEA 静态检查无问题。首次实际同步 aa1c3c3 到 7903／90be 均因 MCP 配置冲突暂停，未执行目标 stash／merge，未改目标 HEAD／索引／工作文件，不报告同步完成。
+- [方案与实际记录](workspace-sync.md)包含备份位置、端口独立与恢复步骤；聊天协调工具 Transport closed，未声称其他聊天已暂停。未执行构建／Data／游戏。
+
+
+每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
+
+## 2026-10-21：Minecraft MCP 运行验收、鼠标释放与后台节流
+
+- 修复桥接 CONTROL_TOOLS 类型推断造成的 tsc 错误；固定原始项目 MC_MCP_PORT=19878，项目 MCP 配置改为当前 E 盘路径并登记独立 Normify 服务。无原始实例时不回落其他工作区端口。
+- 通过 IDEA 构建桥接及游戏端并启动原始 Client；专用测试世界中取得 GUI、玩家、实体、方块的直接／模拟回读证据，详见[控制验收](minecraft-mcp-controls.md#2026-10-21-运行验收)。保存退出超时后只读确认完成，没有盲目重试。
+- 原始构建缺少女皇动画依赖，按最小闭包补定义、effectId、automaticStop、技能生命周期与两份 data 资源；保留技能伤害／时长／LOD，两资源与当前 assets Git blob 相等。基线 refs/backups/before-queen-mcp-build-fix-20261021。
+- 移除退出接管主动 grabMouse／lockCursor／setGrabbed(true)，退出释放鼠标；客户端 Pre tick 维持接管期间鼠标释放。开发接管时 getThrottleReason 为 NONE，退出恢复原版分支，不保存 Options、不改优化 Mod 配置。
+- IDEA 诊断无新增错误，项目构建成功，新客户端 PID43400 归属原始 run/client／19878。真实 MCP 无 GUI 失焦退出后 control=false、grabbed=false、cursor普通模式、forward=false；AFK／最小化条件注入分支通过并恢复原值，不冒充真实最小化或610秒持续测量。Sodium 内部独立限帧未完全排除。
+- 新增[方案和实际边界](minecraft-mcp-background-control.md)及项目 Skill。备份 refs/backups/before-mcp-background-control-20261021；未执行 Data、未控制其他工作区、未检索归档聊天。本次整文件格式化被自动审批拒绝后，已改为仅处理新增行。
+
+## 2026-10-21：独立 Normify MCP 与 Codex Skill
+
+- 基于 yan-mc/dsh-normify 的 ed404e5b8db0010ff57ec8486ec8749421072545，保留 MIT 许可和 31 个架构工具；以独立 stdio MCP、CLI、项目 Skill 交付，来源与文件哈希见 tools/lobecorp-normify/SOURCE_PROVENANCE.json。
+- 显式 workspaceRoot 限制架构数据与源码引用，拒绝跨工作区目录和内部符号链接；单进程工具请求串行执行。IDEA 包内构建、标准 SDK 初始化／工具枚举／只读帮助／越界拒绝检查通过。
+- IDEA 未报告 ERROR；协议脚本存在 SDK 导入解析提示，实际 Node 执行成功。未生成 Lobecorp 架构、未进行 HTML 视觉或引擎完整回归。详见[包说明](../../tools/lobecorp-normify/README.md)。
+
+## 2026-10-21：Minecraft MCP 双模式 GUI、玩家、实体与方块操控
+
+- 在 MCP 模块接入 gui_control、player_control、entity_control、block_control 四项结构化工具；复用扩展注册器与错误协议，模拟操作使用游戏内事件和正常交互，直接世界修改在本地集成服务端线程执行。
+- GUI 使用当前 screenId/widgetId；按键有界保持并自动清理，实体动作校验准星、距离及视线，方块填充限制为 4096 个已加载方块。工具发现脚本更新为 69 项定义；尚未重新构建或进行运行发现。
+- AGENTS.md 记录不检索、恢复或唤醒已归档聊天。修改前基线保存在 refs/backups/before-mcp-world-controls-20261021；保留已有未跟踪的独立工作区 Skill 和脚本，不修改其他聊天目录。
+- IDEA 完成新增代码及修改行格式处理；11 个 Java／TypeScript 文件未报告错误，保留 3 条借用 Level 的资源归属提示。Git diff --check 无输出。本轮未执行 Java/bridge 构建、Data、测试或游戏；既有文档链接／脚本依赖定位提示保留。详见[操控契约](minecraft-mcp-controls.md)。
+
 ## 2026-10-21：G1模型文件内容校验、稳定身份与核心往返
 
 - 接通当前内嵌模型的.mfxproj/.mfx/.mfxpack内容校验，保留未知版本、未闭合来源和未支持旧字段的保护；修正首次保存未写入模型身份、原生关闭遮挡编码被误拒绝，以及新增对象的部分config替换掉默认渲染设置。MCP状态避免重复展开模型字节，新增参数改为递归合并。

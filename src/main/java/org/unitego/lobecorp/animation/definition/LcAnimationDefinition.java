@@ -29,7 +29,8 @@ public record LcAnimationDefinition(Identifier modelId, Identifier animationId, 
                                     List<TimedAction> actions,
                                     List<Consumer<LcAnimationContext>> tickActions,
                                     List<Consumer<LcAnimationInstance>> stopActions,
-                                    @Nullable LcRootMotion rootMotion, @Nullable LcPlayerAnimationPolicy playerPolicy) {
+                                    @Nullable LcRootMotion rootMotion, @Nullable LcPlayerAnimationPolicy playerPolicy,
+                                    @Nullable Identifier effectId) {
 	public LcAnimationDefinition {
 		modelEdits = List.copyOf(modelEdits);
 		animationEdits = List.copyOf(animationEdits);
@@ -87,6 +88,8 @@ public record LcAnimationDefinition(Identifier modelId, Identifier animationId, 
 		private LcRootMotion rootMotion;
 		@Nullable
 		private LcPlayerAnimationPolicy playerPolicy;
+		@Nullable
+		private Identifier effectId;
 
 		private Builder(Identifier modelId, Identifier animationId, String animationName) {
 			this.modelId = modelId;
@@ -148,9 +151,15 @@ public record LcAnimationDefinition(Identifier modelId, Identifier animationId, 
 			return this;
 		}
 
+		/// 关联客户端特效定义；客户端从既有动画快照安装，不执行服务端行为回调。
+		public Builder effect(Identifier id) {
+			effectId = id;
+			return this;
+		}
+
 		public LcAnimationDefinition build() {
 			return new LcAnimationDefinition(modelId, animationId, animationName, modelEdits, animationEdits,
-					modifiers, queries, actions, tickActions, stopActions, rootMotion, playerPolicy);
+					modifiers, queries, actions, tickActions, stopActions, rootMotion, playerPolicy, effectId);
 		}
 	}
 }

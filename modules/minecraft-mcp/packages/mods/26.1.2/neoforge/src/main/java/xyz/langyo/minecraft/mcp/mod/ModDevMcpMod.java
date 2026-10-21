@@ -1,6 +1,7 @@
 package xyz.langyo.minecraft.mcp.mod;
 
 import xyz.langyo.minecraft.mcp.common.*;
+import xyz.langyo.minecraft.mcp.mod.client.ClientControlCommands;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.api.distmarker.Dist;
@@ -31,6 +32,9 @@ public class ModDevMcpMod {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+		if (FMLEnvironment.getDist() == Dist.CLIENT) {
+			ClientControlCommands.register();
+		}
         ReflectedInputHandler handler = new ReflectedInputHandler(ReflectedInputHandler::executeOnRenderThread);
         int port = McpConfig.getServerPort();
         httpServer = new McpHttpServer(handler, port);

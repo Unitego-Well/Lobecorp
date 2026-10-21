@@ -3,6 +3,10 @@
 核对日期：2026-10-13。本文记录本地桥接结构、快速使用路径与本轮实际结果，避免每次游戏检查重复排查。项目技能入口为 [lobecorp-minecraft-mcp](../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md)
 ；版本、工具配置或 Mod 改变时再核对对应源码。
 
+## 结构化游戏操控
+
+GUI、玩家、实体与方块的 direct / simulate 接口见[操控契约](minecraft-mcp-controls.md)。新增接口的源码、静态检查和运行验收分别记录，不以旧 bridge 的工具数量代替新连接发现结果。
+
 ## 当前结构与入口
 
 - 项目客户端使用 Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java `25`，通过 IDEA 的 `Debug` 配置启动。

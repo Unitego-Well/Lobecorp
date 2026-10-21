@@ -17,6 +17,7 @@ import org.unitego.lobecorp.config.server.ShieldConfig;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 import org.unitego.lobecorp.registry.block.LcBlocks;
 import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
@@ -47,6 +48,7 @@ public class Lobecorp {
 		LcAttachmentTypes.init(iEventBus);
 		LcTags.init();
 		LcAnimationExampleDefinitions.init();
+		TheQueenOfHatredAnimationDefinitions.init();
 		LcMemoryModuleTypes.init(iEventBus);
 		LcSensorTypes.init(iEventBus);
 		LcMobEffects.init(iEventBus);

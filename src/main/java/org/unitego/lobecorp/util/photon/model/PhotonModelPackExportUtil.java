@@ -14,6 +14,10 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.server.packs.metadata.pack.PackMetadataSection;
+import com.mojang.serialization.JsonOps;
+import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -112,6 +116,73 @@ public class PhotonModelPackExportUtil {
 	/// 所有可变内容均为本次请求独占副本；不能把FX、注册表或资源管理器交给写入线程。
 	public record Archive(Identifier fxId, Map<String, CompoundTag> definitions, Map<String, byte[]> resources,
 	                      String metadata) {
+		public void verify(PhotonResourceDocument document, @Nullable PhotonResourceDocument original) throws IOException {
+			var actual = entries(document);
+			var previous = original == null ? Map.<String, PhotonResourceDocument>of() : entries(original);
+			var mcmeta = actual.get("pack.mcmeta");
+			var metadataJson = mcmeta == null ? null : mcmeta.json();
+			if (metadataJson == null || !metadataJson.isJsonObject() || !metadataJson.getAsJsonObject().has("pack")) {
+				throw new IOException("导出包缺少合法的 pack.mcmeta。");
+			}
+			var packMetadata = PackMetadataSection.CLIENT_TYPE.codec().parse(JsonOps.INSTANCE,
+							metadataJson.getAsJsonObject().get("pack")).result()
+					.orElseThrow(() -> new IOException("导出包的 pack.mcmeta 不符合资源包协议。"));
+			if (packMetadata.supportedFormats().minInclusive().major() < 0) {
+				throw new IOException("导出包的资源包格式不能为负数。");
+			}
+
+			for (var entry : definitions.entrySet()) {
+				var found = actual.get(entry.getKey());
+				var definition = found == null ? null : found.nbt();
+				if (definition == null || !entry.getValue().equals(definition)) {
+					throw new IOException("导出定义完整NBT往返不一致：" + entry.getKey());
+				}
+			}
+
+			for (var entry : resources.entrySet()) {
+				var found = actual.get(entry.getKey());
+				if (found == null || !Arrays.equals(entry.getValue(), found.bytes())) {
+					throw new IOException("导出资源字节往返不一致：" + entry.getKey());
+				}
+			}
+
+			var expected = new LinkedHashSet<>(previous.keySet());
+			for (var name : definitions.keySet()) {
+				if (name.endsWith(".mfx")) {
+					expected.remove(name.substring(0, name.length() - 4) + ".fx");
+				}
+			}
+			for (var name : expected) {
+				if (!definitions.containsKey(name) && !resources.containsKey(name)
+						&& (actual.get(name) == null || !Arrays.equals(previous.get(name).bytes(), actual.get(name).bytes()))) {
+					throw new IOException("增量导出改变了未替换的包条目：" + name);
+				}
+			}
+
+			expected.add("pack.mcmeta");
+			expected.addAll(definitions.keySet());
+			expected.addAll(resources.keySet());
+			if (!expected.equals(actual.keySet())) {
+				throw new IOException("导出包条目集合与预期不一致。");
+			}
+		}
+
+		private static Map<String, PhotonResourceDocument> entries(PhotonResourceDocument document) throws IOException {
+			if (document.kind() != PhotonResourceDocument.Kind.FX_PACK && document.kind() != PhotonResourceDocument.Kind.MODEL_PACK) {
+				throw new IOException("导出读回不是特效包。");
+			}
+
+			var entries = new LinkedHashMap<String, PhotonResourceDocument>();
+			var prefix = document.origin() + "!/";
+			for (var entry : document.entries()) {
+				if (!entry.origin().startsWith(prefix) || entries.put(entry.origin().substring(prefix.length()), entry) != null) {
+					throw new IOException("导出包条目来源或身份无效。");
+				}
+			}
+
+			return entries;
+		}
+
 		public void write(Path target) throws IOException {
 			try (var zip = FileSystems.newFileSystem(target, Map.of("create", "true"))) {
 				var mcmeta = zip.getPath("pack.mcmeta");

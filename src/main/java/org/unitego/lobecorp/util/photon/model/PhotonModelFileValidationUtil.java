@@ -12,6 +12,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
 
 /// 当前内嵌模型文件的结构入口；来源未闭合或字段不受支持时拒绝，不代表整批G1已通过。
 public class PhotonModelFileValidationUtil {
@@ -48,6 +49,29 @@ public class PhotonModelFileValidationUtil {
 
 		var definition = definition(config.get("assetJson"), config.getCompoundOrEmpty("assetMaterialDependencies"));
 		playback(config, definition);
+	}
+
+	/// 旧工程首次加载只允许增加本次生成的对象身份，其他原始字段必须逐项完全相等。
+	public static void requireGeneratedEmitterData(CompoundTag original, CompoundTag normalized, CompoundTag generated, UUID objectId) throws IOException {
+		if (original.contains("emitterData") || !original.contains("asset")
+				|| !(normalized.get("emitterData") instanceof CompoundTag added) || !added.equals(generated)) {
+			throw new IOException("模型工程不符合首次生成对象身份的条件。");
+		}
+		var withoutIdentity = normalized.copy();
+		withoutIdentity.remove("emitterData");
+		if (!original.equals(withoutIdentity)) {
+			throw new IOException("生成模型对象身份时改变了原始工程字段。");
+		}
+
+		emitterData(added);
+		var config = added.getCompoundOrEmpty("config");
+		var transform = added.getCompoundOrEmpty("transform");
+		var identity = transform.get("id") instanceof StringTag(var text)
+				? UUID.fromString(text) : transform.read("id", UUIDUtil.CODEC).orElseThrow();
+		if (!identity.equals(objectId) || !config.getStringOr("source", "").equals("EMBEDDED")
+				|| !Objects.equals(original.get("asset"), config.get("assetJson"))) {
+			throw new IOException("生成模型对象的身份或内嵌资产与本次加载不一致。");
+		}
 	}
 
 	private static PhotonModelDefinition definition(Tag asset, CompoundTag dependencies) throws IOException {

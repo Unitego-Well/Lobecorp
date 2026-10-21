@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.repository.RepositorySource;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
 
@@ -94,6 +95,11 @@ public abstract class FXPacksMixin {
 	@ModifyReturnValue(method = "getFxPacksDir", at = @At("RETURN"))
 	private static File lobecorp$sourcePacks(File original) {
 		return DevelopmentResourceUtil.packsDirectory(original);
+	}
+
+	@ModifyReturnValue(method = "repositorySource", at = @At("RETURN"))
+	private static RepositorySource lobecorp$isolatePackSource(RepositorySource original) {
+		return DevelopmentResourceUtil.isolatedFxPacks(original);
 	}
 
 

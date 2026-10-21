@@ -19,6 +19,7 @@ import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.client.photon.model.project.PhotonExportDefinition;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelObjUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
@@ -162,9 +163,11 @@ public class PhotonEffectFileUtil {
 			var temporary = temporary(target, suffix);
 			try {
 				var result = new JsonObject();
+				PhotonResourceDocument originalPack = null;
 				if (archive != null) {
 					if (Files.exists(target)) {
 						Files.copy(target, temporary);
+						originalPack = PhotonResourceReader.read(temporary);
 					}
 					archive.write(temporary);
 					result.addProperty("fxId", archive.fxId().toString());
@@ -177,6 +180,7 @@ public class PhotonEffectFileUtil {
 					throw new PhotonEffectCommandException(Code.INVALID_DATA, "完整定义磁盘往返不一致。");
 				}
 				if (archive != null) {
+					archive.verify(document, originalPack);
 					result.addProperty("fileCount", document.entries().size());
 				}
 				result.addProperty("projectId", handle.id());

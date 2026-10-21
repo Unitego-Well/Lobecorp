@@ -277,6 +277,10 @@ public class PhotonEffectAutomation {
 				var prepared = PhotonEffectProjectUtil.prepareOpen(request);
 				yield prepared::commit;
 			}
+			case "effect_close" -> {
+				var prepared = PhotonEffectProjectUtil.prepareClose(request);
+				yield prepared::commit;
+			}
 			case "effect_resources" -> {
 				var resources = PhotonEffectResourceUtil.list(request);
 				yield () -> resources;
@@ -441,6 +445,7 @@ public class PhotonEffectAutomation {
 	private static JsonObject capabilities() {
 		var result = new JsonObject();
 		result.addProperty("protocolVersion", 1);
+		result.addProperty("projectCloseAvailable", true);
 		result.add("operations", JsonParser.parseString(OPERATION_SCHEMA));
 		for (var key : List.of("set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer", "import_model_obj")) {
 			var operation = result.getAsJsonObject("operations").getAsJsonObject(key);

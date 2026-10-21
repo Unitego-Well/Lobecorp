@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.util.Set;
+import java.util.HashSet;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
@@ -267,14 +268,15 @@ public class PhotonEditorProjectGuardUtil {
 				}
 				try {
 					PhotonModelFileValidationUtil.emitterData(data);
-					return containsTag(checkedRendererData(data, true), depth + 1);
+					return containsTag(checkedRendererData(data, true, false), depth + 1);
 				} catch (IOException | RuntimeException invalid) {
 					return true;
 				}
 			}
-			if (type.equals("particle_emitter") && compound.get("data") instanceof CompoundTag data) {
+			if (Set.of("particle_emitter", "beam_emitter", "trail_emitter").contains(type)
+					&& compound.get("data") instanceof CompoundTag data) {
 				compound = compound.copy();
-				compound.put("data", checkedRendererData(data, false));
+				compound.put("data", checkedRendererData(data, false, type.equals("particle_emitter")));
 			}
 
 			if (Set.of("activator", "control", "animation", "speed", "signal", "audio", "post_process", "group").contains(type)
@@ -339,8 +341,8 @@ public class PhotonEditorProjectGuardUtil {
 		return false;
 	}
 
-	/// 只在已有粒子和内嵌模型发射器的真实渲染槽中放行完整固定渲染组合。
-	private static CompoundTag checkedRendererData(CompoundTag data, boolean model) {
+	/// 只在已适配发射器的真实渲染槽中放行完整固定渲染组合。
+	private static CompoundTag checkedRendererData(CompoundTag data, boolean model, boolean particle) {
 		if (!(data.get("version") instanceof IntTag version) || version.intValue() != (model ? 0 : 2)) {
 			return data;
 		}
@@ -357,9 +359,10 @@ public class PhotonEditorProjectGuardUtil {
 			renderer.remove("lobecorp$occlusion");
 		}
 
-		if (!model) {
+		if (particle) {
 			checkCycleModule(config, "rotationOverLifetime", "rotation", new String[]{"Roll", "Pitch", "Yaw"});
 			checkCycleModule(config, "sizeOverLifetime", "lifetime", new String[]{"X", "Y", "Z"});
+			checkCycleModule(config, "uvAnimation", "lifetime", new String[]{"UV"});
 		}
 
 		return checked;
@@ -379,8 +382,12 @@ public class PhotonEditorProjectGuardUtil {
 			return;
 		}
 
-		var fields = Set.of("lobecorp$" + cycle + "CycleEnabled", "lobecorp$" + cycle + "CycleTicks",
-				"lobecorp$cycleOffset" + axes[0], "lobecorp$cycleOffset" + axes[1], "lobecorp$cycleOffset" + axes[2]);
+		var fields = new HashSet<String>();
+		fields.add("lobecorp$" + cycle + "CycleEnabled");
+		fields.add("lobecorp$" + cycle + "CycleTicks");
+		for (var axis : axes) {
+			fields.add("lobecorp$cycleOffset" + axis);
+		}
 		for (var key : module.keySet()) {
 			if (PhotonResourceInspection.isLegacyField(key) && !fields.contains(key)) {
 				return;

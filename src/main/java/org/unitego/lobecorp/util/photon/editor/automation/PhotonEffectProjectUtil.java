@@ -16,7 +16,6 @@ import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -36,6 +35,8 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.LongArrayTag;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class PhotonEffectProjectUtil {
 	public record Handle(String id, FXEditor editor, IProject project) {
 	}
 
-	public record PreparedOpen(IProject project, File file) {
+	public record PreparedOpen(IProject project, File file, JsonObject sourceReceipt) {
 		public JsonObject commit() throws Exception {
 			if (Minecraft.getInstance().level == null) {
 				throw new PhotonEffectCommandException(Code.WORLD_REQUIRED);
@@ -96,6 +97,7 @@ public class PhotonEffectProjectUtil {
 				}
 
 				var result = describe(new Handle(IDS.computeIfAbsent(project, _ -> UUID.randomUUID().toString()), editor, project));
+				result.add("sourceReceipt", sourceReceipt.deepCopy());
 
 				if (newWindow) {
 					window.hostAsScreen();
@@ -140,6 +142,52 @@ public class PhotonEffectProjectUtil {
 
 	// 工程打开流程参考 photon2mcp（Apache-2.0），已改为当前版本的独立标签与受限文件事务。
 
+	public record PreparedClose(Handle handle, String expectedRevision, boolean discardUnsaved) {
+		public JsonObject commit() {
+			var current = require(handle.id());
+			if (current.project() != handle.project() || current.editor() != handle.editor()) {
+				throw new PhotonEffectCommandException(Code.PROJECT_CLOSED);
+			}
+			if (!expectedRevision.equals(revision(current.project()))) {
+				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
+			}
+			var editor = current.editor();
+			if (editor.isCurrentProjectDirty() && !discardUnsaved) {
+				throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, "discardUnsaved");
+			}
+
+			var window = editor.getWindow();
+			var selected = window == null ? null : window.getCurrentEditor();
+			if (editor.runtime != null) {
+				editor.runtime.destroy(true);
+			}
+			editor.closeCurrentProject(false, () -> {
+				IDS.remove(current.project());
+				NAMES.remove(current.project());
+				editor.removeSelf();
+				if (window != null && window.getEditors().containsKey(editor)) {
+					window.removeEditor(editor);
+					if (selected != null && selected != editor && window.getEditors().containsKey(selected)) {
+						window.showEditor(selected);
+					}
+				}
+			});
+			if (editor.getCurrentProject() != null) {
+				throw new PhotonEffectCommandException(Code.INTERNAL_ERROR);
+			}
+
+			var result = new JsonObject();
+			result.addProperty("closed", true);
+			result.addProperty("projectId", handle.id());
+			return result;
+		}
+	}
+
+	public static PreparedClose prepareClose(JsonObject request) {
+		return new PreparedClose(require(PhotonEffectJsonUtil.string(request, "projectId")),
+				PhotonEffectJsonUtil.string(request, "expectedRevision"), PhotonEffectJsonUtil.bool(request, "discardUnsaved", false));
+	}
+
 	/// 文件读取与完整内容校验先于标签创建，失败不影响用户现有工程。
 	public static PreparedOpen prepareOpen(JsonObject request) throws Exception {
 		if (Minecraft.getInstance().level == null) {
@@ -154,7 +202,8 @@ public class PhotonEffectProjectUtil {
 		var type = path.endsWith(PhotonModelProject.TYPE.getSuffix()) ? PhotonModelProject.TYPE : FXProject.TYPE;
 		var file = PhotonEffectFileUtil.source(request, type.getSuffix()).toFile();
 		PhotonEditorProjectGuardUtil.requireSupportedFile(file);
-		var data = NbtIo.read(file.toPath());
+		var source = PhotonResourceReader.read(file.toPath());
+		var data = source.nbt();
 
 		if (data == null || !(data.get("data") instanceof CompoundTag contents)) {
 			throw new PhotonEffectCommandException(Code.INVALID_DATA);
@@ -163,11 +212,25 @@ public class PhotonEffectProjectUtil {
 		var project = type.loadProjectFromFile(file);
 		PhotonEffectEditUtil.validate(project);
 
-		if (!contents.equals(snapshot(project))) {
-			throw new PhotonEffectCommandException(Code.INVALID_DATA);
+		var actual = snapshot(project);
+		var receipt = new JsonObject();
+		receipt.addProperty("sourceSha256", source.sha256());
+		receipt.addProperty("sourcePath", source.origin());
+		if (!contents.equals(actual)) {
+			if (!(project instanceof PhotonModelProject model)) {
+				throw new PhotonEffectCommandException(Code.INVALID_DATA);
+			}
+			var wrapper = model.model().serializeWrapper();
+			if (wrapper == null) {
+				throw new PhotonEffectCommandException(Code.INVALID_DATA);
+			}
+			var generated = wrapper.getCompoundOrEmpty("data");
+			PhotonModelFileValidationUtil.requireGeneratedEmitterData(contents, actual, generated, model.model().id());
+			receipt.addProperty("normalization", "generated_model_emitter_identity");
+			receipt.addProperty("generatedObjectId", model.model().id().toString());
 		}
 
-		return new PreparedOpen(project, file);
+		return new PreparedOpen(project, file, receipt);
 	}
 
 	public static List<Handle> projects() {

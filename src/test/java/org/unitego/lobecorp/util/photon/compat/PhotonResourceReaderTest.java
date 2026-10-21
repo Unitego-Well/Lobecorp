@@ -22,6 +22,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.Objects;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -503,6 +506,118 @@ public class PhotonResourceReaderTest {
 		wrapper = renderedEmitter("lobecorp_model_emitter");
 		wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").put("rotationOverLifetime", rotation);
 		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+	}
+
+	@Test
+	public void beamAndTrailOnlyAdmitVersionTwoRendererFields() {
+		for (var type : new String[]{"beam_emitter", "trail_emitter"}) {
+			var wrapper = renderedEmitter(type);
+			var original = wrapper.copy();
+			assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			assertEquals(original, wrapper);
+			var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+			config.put("sizeOverLifetime", cycledEmitter().getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty("sizeOverLifetime"));
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			wrapper = renderedEmitter(type);
+			wrapper.getCompoundOrEmpty("data").putInt("version", 1);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			wrapper = renderedEmitter(type);
+			wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty("renderer")
+					.putBoolean("lobecorp$unknown", true);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		}
+	}
+
+	@Test
+	public void uvCycleOnlyAdmitsParticleUvSlotAndExactAxis() {
+		var wrapper = renderedEmitter("particle_emitter");
+		var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		var uv = new CompoundTag();
+		uv.putBoolean("_enable", true);
+		uv.putBoolean("lobecorp$lifetimeCycleEnabled", true);
+		uv.putInt("lobecorp$lifetimeCycleTicks", 5);
+		uv.putFloat("lobecorp$cycleOffsetUV", 0);
+		config.put("uvAnimation", uv);
+		var original = wrapper.copy();
+		assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		assertEquals(original, wrapper);
+		uv.putFloat("lobecorp$cycleOffsetX", 0);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		uv.remove("lobecorp$cycleOffsetX");
+		uv.putFloat("lobecorp$cycleOffsetUV", Float.NaN);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		uv.putFloat("lobecorp$cycleOffsetUV", 0);
+		uv.putInt("lobecorp$lifetimeCycleEnabled", 1);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		uv.putBoolean("lobecorp$lifetimeCycleEnabled", true);
+		for (var type : new String[]{"beam_emitter", "trail_emitter"}) {
+			var unsupported = renderedEmitter(type);
+			unsupported.getCompoundOrEmpty("data").getCompoundOrEmpty("config").put("uvAnimation", uv.copy());
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(unsupported));
+		}
+		config.remove("uvAnimation");
+		config.put("colorOverLifetime", uv);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+	}
+
+	@Test
+	public void generatedModelIdentityOnlyAddsExactEmitterAndSurvivesDiskReadback() throws Exception {
+		var original = modelProject().getCompoundOrEmpty("data");
+		var generated = renderedEmitter("lobecorp_model_emitter").getCompoundOrEmpty("data");
+		generated.getCompoundOrEmpty("config").put("assetJson", Objects.requireNonNull(original.get("asset")).copy());
+		var id = UUID.fromString(generated.getCompoundOrEmpty("transform").getStringOr("id", ""));
+		var normalized = original.copy();
+		normalized.put("emitterData", generated.copy());
+		var before = original.copy();
+		PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, normalized, generated, id);
+		assertEquals(before, original);
+		var project = modelProject();
+		project.put("data", normalized);
+		var file = Files.write(directory.resolve("generated.mfxproj"), nbt(project, false));
+		var reopened = Objects.requireNonNull(PhotonResourceReader.read(file).nbt()).getCompoundOrEmpty("data");
+		assertEquals(normalized, reopened);
+		assertEquals(id.toString(), reopened.getCompoundOrEmpty("emitterData").getCompoundOrEmpty("transform").getStringOr("id", ""));
+		assertEquals(original.get("asset"), reopened.get("asset"));
+		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(reopened, normalized, generated, id));
+		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, normalized, generated, UUID.randomUUID()));
+		var changed = normalized.copy();
+		changed.putInt("extra", 1);
+		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, changed, generated, id));
+		changed.remove("extra");
+		changed.remove("future");
+		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, changed, generated, id));
+		var alteredEmitter = generated.copy();
+		alteredEmitter.getCompoundOrEmpty("config").putString("assetJson", "{\"version\":1,\"vertices\":[],\"faces\":[]}");
+		var altered = original.copy();
+		altered.put("emitterData", alteredEmitter);
+		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, altered, alteredEmitter, id));
+	}
+
+	@Test
+	public void unsafeDependencyReferencesStayUnresolvedWithoutHidingSafeEdges() throws Exception {
+		var root = new CompoundTag();
+		var invalid = List.of("file(./../../src/main/resources/assets/probe/graph.nbt)",
+				"file(/outside/graph.nbt)", "file(C:/outside/graph.nbt)", "file(assets/probe/../graph.nbt)",
+				"file(assets/probe/graph.nbt");
+		for (int index = 0; index < invalid.size(); index++) {
+			root.putString("bad" + index, invalid.get(index));
+		}
+		root.putString("safe", "file(assets/probe/graph.nbt)");
+		var source = PhotonResourceReader.read(Files.write(directory.resolve("references.fx"), nbt(root, true)));
+		var target = PhotonResourceReader.read(Files.write(directory.resolve("graph.nbt"), nbt(new CompoundTag(), false)));
+		var report = PhotonResourceDependencyUtil.resolve(List.of(
+						new PhotonResourceDependencyUtil.Source("assets/probe/fx/references.fx", source.origin(), source.sha256(), source),
+						new PhotonResourceDependencyUtil.Source("assets/probe/graph.nbt", target.origin(), target.sha256(), target)),
+				List.of("assets/probe/fx/references.fx"), PhotonResourceLimits.DEFAULT);
+		assertFalse(report.closed());
+		for (var reference : invalid) {
+			var edge = report.edges().stream().filter(value -> value.reference().equals(reference)).findFirst().orElseThrow();
+			assertEquals("unresolved", edge.status());
+			assertTrue(edge.candidates().isEmpty());
+		}
+		assertTrue(report.edges().stream().anyMatch(edge -> edge.reference().equals("file(assets/probe/graph.nbt)")
+				&& edge.status().equals("resolved") && edge.candidates().equals(List.of("assets/probe/graph.nbt"))));
+		assertThrows(IllegalArgumentException.class, () -> PhotonResourceDependencyUtil.normalize("../outside"));
 	}
 
 	private static CompoundTag cycledEmitter() {

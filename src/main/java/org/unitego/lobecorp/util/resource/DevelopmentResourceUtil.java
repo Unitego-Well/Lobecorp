@@ -9,6 +9,7 @@ import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.repository.PackSource;
+import net.minecraft.server.packs.repository.RepositorySource;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
@@ -23,6 +24,10 @@ import java.util.Optional;
 public class DevelopmentResourceUtil {
 	/// 可为自定义运行目录指定源码资源根目录，值为包含 assets 的绝对路径。
 	public static final String SOURCE_ROOT_PROPERTY = "lobecorp.developmentResources";
+	/// 独立包验收设为 true，禁用源码重定向与额外开发资源包；须在资源路径首次初始化前设置。
+	public static final String DISABLE_SOURCE_PROPERTY = "lobecorp.disableDevelopmentResources";
+	/// 隔离验收时选择唯一完整 FX 包 ID；每次仓库加载重新读取，未设置时保持原生发现。
+	public static final String ISOLATED_FX_PACK_PROPERTY = "lobecorp.isolatedFxPack";
 	private static final String SOURCE_ROOT_FROM_GAME = "../../src/main/resources";
 	private static final String ASSETS_DIRECTORY = "assets";
 	private static final String EDITOR_DIRECTORY = "ldlib2";
@@ -31,6 +36,8 @@ public class DevelopmentResourceUtil {
 	/// run 目录作为独立资源包加载在源码资源之前，重复资源由 src 覆盖。
 	private static final String RUN_PACK_ID = "lobecorp_development_run";
 	private static final String INVALID_SOURCE_DIRECTORY = "Invalid development resources directory: ";
+	private static final String FX_PACK_ID_PREFIX = "fxpack/";
+	private static final String INVALID_ISOLATED_PACK = "Isolated FX pack requires disabled development resources and a complete fxpack/ ID";
 
 	private static final class Paths {
 		private static final Path GAME = Platform.getGamePath().toAbsolutePath().normalize();
@@ -38,6 +45,10 @@ public class DevelopmentResourceUtil {
 	}
 
 	private static @Nullable Path findSourceDirectory() {
+		if (Boolean.getBoolean(DISABLE_SOURCE_PROPERTY)) {
+			return null;
+		}
+
 		if (!Platform.isDevEnv()) {
 			return null;
 		}
@@ -81,6 +92,11 @@ public class DevelopmentResourceUtil {
 	}
 
 	public static List<PackResources> runtimePacks(PackType type, List<PackResources> original) {
+		var selected = System.getProperty(ISOLATED_FX_PACK_PROPERTY);
+		if (type == PackType.CLIENT_RESOURCES && selected != null) {
+			return PhotonAcceptancePackResourcesUtil.isolate(original, selected);
+		}
+
 		if (Paths.SOURCE == null || type != PackType.CLIENT_RESOURCES) {
 			return original;
 		}
@@ -106,6 +122,27 @@ public class DevelopmentResourceUtil {
 
 	public static File packsDirectory(File original) {
 		return Paths.SOURCE == null ? original : Paths.SOURCE.resolve(PACKS_DIRECTORY).toFile();
+	}
+
+	public static RepositorySource isolatedFxPacks(RepositorySource original) {
+		return consumer -> {
+			var selected = System.getProperty(ISOLATED_FX_PACK_PROPERTY);
+			if (selected == null) {
+				original.loadPacks(consumer);
+				return;
+			}
+
+			if (!Platform.isDevEnv() || !Boolean.getBoolean(DISABLE_SOURCE_PROPERTY) || sourceDirectory() != null
+					|| !selected.startsWith(FX_PACK_ID_PREFIX) || selected.substring(FX_PACK_ID_PREFIX.length()).isBlank()) {
+				throw new IllegalStateException(INVALID_ISOLATED_PACK);
+			}
+
+			original.loadPacks(pack -> {
+				if (selected.equals(pack.getId())) {
+					consumer.accept(pack);
+				}
+			});
+		};
 	}
 
 	public static File packRoot(File original) {

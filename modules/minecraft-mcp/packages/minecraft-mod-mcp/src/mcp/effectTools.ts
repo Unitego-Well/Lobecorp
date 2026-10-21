@@ -148,6 +148,16 @@ export const EFFECT_TOOLS: EffectToolDef[] = [
         readOnly: false,
     },
     {
+        name: "effect_close",
+        description: "Close only the specified effect project and its editor tab, release its preview runtime, and immediately invalidate its project ID. Requires the latest revision; dirty projects require explicit discardUnsaved=true. Other projects and windows remain open. Requires control mode.",
+        inputSchema: {
+            projectId,
+            expectedRevision: z.string().min(1),
+            discardUnsaved: z.boolean().default(false),
+        },
+        readOnly: false,
+    },
+    {
         name: "effect_resources",
         description: "List native resource categories, provider entries, workspace files, and resource limits. Optionally restrict to a project, category, or workspace directory. Native resource paths returned here can be passed to effect_resource_read or used as a copy source.",
         inputSchema: {

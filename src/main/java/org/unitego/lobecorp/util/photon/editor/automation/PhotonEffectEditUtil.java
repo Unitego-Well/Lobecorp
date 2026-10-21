@@ -17,6 +17,7 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 
 import java.util.Set;
 
@@ -154,17 +155,15 @@ public class PhotonEffectEditUtil {
 			}
 
 			var data = wrapper.getCompoundOrEmpty("data");
-			var json = PhotonEffectJsonUtil.json(data).getAsJsonObject();
-
-			for (var entry : PhotonEffectJsonUtil.object(operation, "parameters").entrySet()) {
-				if (!json.has(entry.getKey())) {
-					throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, entry.getKey());
+			var parameters = PhotonEffectJsonUtil.object(operation, "parameters");
+			for (var key : parameters.keySet()) {
+				if (!data.contains(key)) {
+					throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, key);
 				}
-
-				json.add(entry.getKey(), entry.getValue().deepCopy());
 			}
 
-			wrapper.put("data", PhotonEffectJsonUtil.tag(json, data));
+			var patch = (CompoundTag) PhotonEffectJsonUtil.tag(parameters, data);
+			wrapper.put("data", PhotonNamedTrackAuthoringUtil.merge(data, patch));
 			replaceObject(project, object, wrapper, null);
 		}
 	}

@@ -34,7 +34,8 @@ public class PhotonInactiveLegacyFieldUtil {
 			return value instanceof NumericTag numeric && Float.isFinite(numeric.floatValue());
 		}
 		if (key.equals("lobecorp$occlusion") && value instanceof CompoundTag config) {
-			return Set.of("enable", "alphaCutoff").containsAll(config.keySet()) && offOrAbsent(config, "enable")
+			return Set.of("enable", "_enable", "alphaCutoff").containsAll(config.keySet())
+					&& offOrAbsent(config, "enable") && offOrAbsent(config, "_enable")
 					&& (!config.contains("alphaCutoff") || config.get("alphaCutoff") instanceof NumericTag number
 					&& Float.isFinite(number.floatValue()) && number.floatValue() >= 0 && number.floatValue() <= 1);
 		}

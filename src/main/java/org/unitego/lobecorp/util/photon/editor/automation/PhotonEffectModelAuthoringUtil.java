@@ -99,6 +99,7 @@ public class PhotonEffectModelAuthoringUtil {
 		temporary.restore(data);
 		apply(temporary, operation);
 		PersistedParser.deserializeNBT(PersistedParser.serializeNBT(temporary.model().config, Platform.getFrozenRegistry()), model.config, Platform.getFrozenRegistry());
+		model.config.setAssetSnapshot(temporary.model().config.assetSnapshot());
 	}
 
 	private static JsonObject merge(JsonObject source, JsonObject patch) {

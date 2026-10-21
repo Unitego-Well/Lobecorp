@@ -22,6 +22,7 @@ import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
@@ -41,7 +42,6 @@ import java.util.Set;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
-	private static final Set<String> MODEL_SUFFIXES = Set.of(".mfxproj", ".mfx", ".mfxpack");
 	public static final String REMOVED_DATA_KEY = "removed_runtime_data";
 	private static final int MAX_DEPTH = 128;
 
@@ -95,6 +95,9 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	public static boolean containsExtensions(IProject project) {
+		if (project instanceof PhotonModelProject model) {
+			return requiresModelProjectData(model.document());
+		}
 		if (!(project instanceof FXProject fxProject)) {
 			return false;
 		}
@@ -117,9 +120,6 @@ public class PhotonEditorProjectGuardUtil {
 
 	public static boolean containsFileExtensions(File file) {
 		var name = file.getName();
-		if (MODEL_SUFFIXES.stream().anyMatch(name::endsWith)) {
-			return true;
-		}
 
 		if (!file.isFile()) {
 			return false;
@@ -128,7 +128,8 @@ public class PhotonEditorProjectGuardUtil {
 		var kind = PhotonResourceDocument.Kind.of(name);
 
 		if (kind != PhotonResourceDocument.Kind.FX && kind != PhotonResourceDocument.Kind.FX_PROJECT
-				&& kind != PhotonResourceDocument.Kind.FX_PACK) {
+				&& kind != PhotonResourceDocument.Kind.FX_PACK && kind != PhotonResourceDocument.Kind.MODEL_PROJECT
+				&& kind != PhotonResourceDocument.Kind.MODEL_FX && kind != PhotonResourceDocument.Kind.MODEL_PACK) {
 			return false;
 		}
 
@@ -140,9 +141,20 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	private static boolean requiresAdapter(PhotonResourceDocument document) {
-		if (document.kind() == PhotonResourceDocument.Kind.MODEL_FX
-				|| document.kind() == PhotonResourceDocument.Kind.MODEL_PROJECT
-				|| document.kind() == PhotonResourceDocument.Kind.MODEL_PACK) {
+		if (document.kind() == PhotonResourceDocument.Kind.MODEL_PROJECT) {
+			return requiresModelProject(document.nbt());
+		}
+		if (document.kind() == PhotonResourceDocument.Kind.MODEL_FX) {
+			var tag = document.nbt();
+			if (tag == null || !(tag.get("version") instanceof IntTag version) || version.intValue() != PhotonModelFileValidationUtil.DEFINITION_VERSION
+					|| !(tag.get("fxData") instanceof CompoundTag data) || !(data.get("objects") instanceof ListTag objects)
+					|| objects.stream().noneMatch(value -> value instanceof CompoundTag object && object.getStringOr("type", "").equals("lobecorp_model_emitter"))) {
+				return true;
+			}
+			return containsTag(tag);
+		}
+		if (document.kind() == PhotonResourceDocument.Kind.MODEL_PACK
+				&& document.entries().stream().noneMatch(entry -> entry.kind() == PhotonResourceDocument.Kind.MODEL_FX)) {
 			return true;
 		}
 
@@ -170,13 +182,9 @@ public class PhotonEditorProjectGuardUtil {
 					while (entries.hasNext()) {
 						var entry = entries.next();
 						var name = entry.getFileName().toString();
-						if (MODEL_SUFFIXES.stream().anyMatch(name::endsWith)) {
-							throw new IllegalArgumentException(message());
-						}
-
-						if (name.endsWith(FX.SUFFIX)) {
-							try (var input = Files.newInputStream(entry)) {
-								requireSupported(NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap()));
+						if (name.endsWith(FX.SUFFIX) || name.endsWith(".mfx") || name.endsWith(".mfxproj")) {
+							if (requiresAdapter(PhotonResourceReader.read(entry))) {
+								throw new IllegalArgumentException(message());
 							}
 						}
 					}
@@ -214,6 +222,9 @@ public class PhotonEditorProjectGuardUtil {
 
 	/// 工程测试字段只允许出现在工程data层，FX发布数据及其他位置仍按旧字段阻断。
 	public static boolean containsProjectTag(@Nullable CompoundTag project) {
+		if (project != null && project.getCompoundOrEmpty("meta").getStringOr("suffix", "").equals(".mfxproj")) {
+			return requiresModelProject(project);
+		}
 		if (project == null || !(project.get("data") instanceof CompoundTag data)
 				|| !data.contains(PhotonProjectPreviewUtil.PROJECT_FIELD)) {
 			return containsTag(project);
@@ -237,6 +248,17 @@ public class PhotonEditorProjectGuardUtil {
 			var type = compound.getStringOr("type", "");
 			if (type.equals("lobecorp_animation_controller")) {
 				return requiresNamedAdapter(compound, depth);
+			}
+			if (type.equals("lobecorp_model_emitter")) {
+				if (!(compound.get("data") instanceof CompoundTag data)) {
+					return true;
+				}
+				try {
+					PhotonModelFileValidationUtil.emitterData(data);
+					return containsTag(data, depth + 1);
+				} catch (IOException | RuntimeException invalid) {
+					return true;
+				}
 			}
 
 			if (type.equals("activator") && compound.get("data") instanceof CompoundTag data
@@ -264,6 +286,24 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		return false;
+	}
+
+	private static boolean requiresModelProject(@Nullable CompoundTag project) {
+		if (project == null || !(project.get("data") instanceof CompoundTag data)
+				|| !project.getCompoundOrEmpty("meta").getStringOr("version", "").equals("1.0")
+				|| !project.getCompoundOrEmpty("meta").getStringOr("suffix", "").equals(".mfxproj")) {
+			return true;
+		}
+		return requiresModelProjectData(data) || containsTag(project);
+	}
+
+	private static boolean requiresModelProjectData(CompoundTag data) {
+		try {
+			PhotonModelFileValidationUtil.projectData(data);
+			return containsTag(data, 1);
+		} catch (IOException | RuntimeException invalid) {
+			return true;
+		}
 	}
 
 	/// 仅接受当前控制器包装和可保留的原生轨道库，未恢复的内部扩展继续阻断。

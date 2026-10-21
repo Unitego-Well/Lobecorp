@@ -2,6 +2,10 @@ package org.unitego.lobecorp.util.photon.compat;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.IntArrayTag;
+import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
@@ -177,7 +181,7 @@ public class PhotonResourceReaderTest {
 		tag.putBoolean("lobecorp$fixedRendering", true);
 		Files.write(path, nbt(tag, false));
 		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
-		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(directory.resolve("model.mfxproj").toFile()));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(directory.resolve("model.mfxproj").toFile()));
 		archive(directory.resolve("legacy.fxpack"), Map.of("assets/test/fx/effect.fx", nbt(tag, true)));
 		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(directory.resolve("legacy.fxpack").toFile()));
 	}
@@ -193,6 +197,135 @@ public class PhotonResourceReaderTest {
 		} finally {
 			Thread.interrupted();
 		}
+	}
+
+	@Test
+	public void modelFileAdmissionChecksCurrentContainerAssetAndPlaybackWithoutMutation() throws Exception {
+		var project = modelProject();
+		var before = project.copy();
+		var path = directory.resolve("current.mfxproj");
+		Files.write(path, nbt(project, false));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		assertEquals(before, project);
+		assertEquals(before, PhotonResourceReader.read(path).nbt());
+
+		project.getCompoundOrEmpty("meta").putString("version", "2.0");
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		project = modelProject();
+		project.getCompoundOrEmpty("data").putString("asset", "{\"version\":2,\"vertices\":[],\"faces\":[]}");
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		project = modelProject();
+		project.getCompoundOrEmpty("data").getCompoundOrEmpty("playback").putInt("looping", 1);
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		project = modelProject();
+		project.getCompoundOrEmpty("data").getCompoundOrEmpty("renderer").putBoolean("lobecorp$unrecognized", false);
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+	}
+
+	@Test
+	public void modelDefinitionsAndPacksRejectMissingIdentityAndUnclosedSources() throws Exception {
+		var wrapper = new CompoundTag();
+		wrapper.putString("type", "lobecorp_model_emitter");
+		var emitter = new CompoundTag();
+		emitter.putInt("version", 0);
+		var transform = new CompoundTag();
+		transform.putString("id", "00000000-0000-0000-0000-000000000001");
+		emitter.put("transform", transform);
+		var config = new CompoundTag();
+		config.putString("source", "EMBEDDED");
+		config.putString("assetJson", "{\"version\":1,\"vertices\":[],\"faces\":[]}");
+		config.put("modelRenderer", new CompoundTag());
+		emitter.put("config", config);
+		wrapper.put("data", emitter);
+		var objects = new ListTag();
+		objects.add(wrapper);
+		var data = new CompoundTag();
+		data.put("objects", objects);
+		var definition = new CompoundTag();
+		definition.putInt("version", PhotonModelFileValidationUtil.DEFINITION_VERSION);
+		definition.put("fxData", data);
+		var path = directory.resolve("model.mfx");
+		Files.write(path, nbt(definition, true));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		var pack = directory.resolve("model.mfxpack");
+		archive(pack, Map.of("assets/test/fx/model.mfx", nbt(definition, true)));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(pack.toFile()));
+		transform.put("id", new IntArrayTag(new int[]{0, 0, 0, 1}));
+		Files.write(path, nbt(definition, true));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		config.putString("source", "FILE");
+		Files.write(path, nbt(definition, true));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		archive(pack, Map.of("assets/test/fx/model.mfx", nbt(definition, true)));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(pack.toFile()));
+		config.putString("source", "EMBEDDED");
+		transform.putString("id", "invalid");
+		Files.write(path, nbt(definition, true));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+	}
+
+	@Test
+	public void assetOnlyModelProjectKeepsOptionalGroupsAbsentAndRejectsWrongTypes() throws Exception {
+		var project = modelProject();
+		var data = project.getCompoundOrEmpty("data");
+		data.remove("playback");
+		data.remove("renderer");
+		var original = project.copy();
+		var path = directory.resolve("asset-only.mfxproj");
+		Files.write(path, nbt(project, false));
+		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		assertEquals(original, PhotonResourceReader.read(path).nbt());
+		assertEquals(original, project);
+		data.putInt("playback", 0);
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+		data.remove("playback");
+		data.putString("renderer", "invalid");
+		Files.write(path, nbt(project, false));
+		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
+	}
+
+	private static CompoundTag modelProject() {
+		var result = new CompoundTag();
+		var meta = new CompoundTag();
+		meta.putString("version", "1.0");
+		meta.putString("suffix", ".mfxproj");
+		result.put("meta", meta);
+		var data = new CompoundTag();
+		data.put("asset", StringTag.valueOf("{\"version\":1,\"vertices\":[],\"faces\":[],\"future\":\"preserve\"}"));
+		data.put("playback", new CompoundTag());
+		data.put("renderer", new CompoundTag());
+		data.putString("future", "preserve");
+		result.put("data", data);
+		return result;
+	}
+
+	@Test
+	public void nativeDisabledOcclusionDoesNotAdmitEnabledMalformedOrUnknownFields() {
+		var renderer = new CompoundTag();
+		var occlusion = new CompoundTag();
+		renderer.put("lobecorp$occlusion", occlusion);
+		occlusion.putBoolean("_enable", false);
+		assertFalse(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.putBoolean("_enable", true);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.putInt("_enable", 0);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.putBoolean("_enable", false);
+		occlusion.putBoolean("future", false);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.remove("future");
+		occlusion.putBoolean("enable", true);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.remove("enable");
+		occlusion.putFloat("alphaCutoff", Float.NaN);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
+		occlusion.putFloat("alphaCutoff", 0.99f);
+		assertFalse(PhotonEditorProjectGuardUtil.containsTag(renderer));
 	}
 
 	private static byte[] nbt(CompoundTag tag, boolean compressed) throws IOException {

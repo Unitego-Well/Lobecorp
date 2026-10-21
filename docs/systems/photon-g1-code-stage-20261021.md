@@ -103,3 +103,28 @@
 - 备份refs/backups/before-photon-model-state-20261021指向71615ec。原始失败/复测/Client/Data日志保存在backups/photon-g1-concentrated-20261021；最后IDEA编译success=true/aborted=false，errors/warnings为null。相关7项代码/配置错误检查无问题；ProjectUtil原有3项警告不作零警告报告。最后Data日志data-final.log为BUILD SUCCESSFUL，23输出written=0/removed=0，生成目录无Git差异；无新增依赖、翻译键或原资源修改。
 
 剩余：模型保存/重开/定义与独立包组合的逐项放行及全量验收，GUI轨道新增/编辑/拖动/历史/关闭清理，完整旧激活/循环/生成器/渲染组合，真实指挥家激光/星束及来源/停止/卸载清理，冷/热/多实例和拖动性能证据。高级多线程与独立GUI呈现未实施。实体动画和实体模型LOD由其他AI负责，本轮不编辑。
+
+## 核心文件能力续做与人工GUI交接
+
+本节以4d2ad64为代码基线。用户最新明确GUI有功能入口即可，视觉、布局和界面交互交人工；不再以截图或点击验收推进本轮。核心API、文件与运行语义继续验证，G1仍未通过。
+
+- 轨道新增收进PhotonNamedTimelineContext.addTrack，GUI调用同一事务。游戏Render线程实际验证added=1、undone=0、copied=2、mainTracks=0；这是原生制作上下文的功能证据，不冒充GUI点击验收。撤销恢复和关闭仅清理该上下文拥有的检视内容，保留其他工作区的检视。已有菜单改为Dialog内部子节点，工作区尺寸受宿主限制；这些界面接线留给人工审查。
+- PhotonModelProject.document在原数据缺少emitterData时也保存当前UUID及原生对象数据，避免另存重开生成新身份；已有emitterData按已知变更合并，保留未知数据。对缺失对象身份的当前工程，另存增加该字段属于本次明确记录的结构补全，原件不自动覆盖。
+- 文件门禁从模型后缀一律拒绝改为内容校验：.mfxproj容器版本1.0、资产版本1、内嵌模型；.mfx发布容器版本5，包内逐条递归检查。版本5通过IDEA核对当前Photon 26.1.2.3声明，纯校验层不读取会初始化编辑器图标的FXProject静态字段。FILE/RESOURCE来源未闭合、未知版本、无效拓扑/UUID/播放字段及未放行的生效旧字段继续拒绝；没有整体关闭保护或改原资源。
+- 新PhotonModelFileValidationUtil检查拓扑和播放字段，UUID兼容既有字符串与原版整数数组编码。关闭遮挡的原生编码是_enable:0b，已修正保护只识别enable而误拒绝默认配置的问题；启用态、伪布尔、未知字段及非有限/越界阈值仍拒绝。
+- MCP模型状态只返回一份模型JSON，去掉parameters.config中重复展开的资产字节；add_emitter的parameters对象递归合并、列表/数组整体替换，保留未涉及的默认设置。测试脚本补实际三角形资产、未知JSON字段及重开UUID/资产/播放一致断言，输出仍在隔离运行目录。
+- 资源测试经历两次已记录失败：首次引用FXProject.VERSION触发无FML Loader的图标初始化；改为明确格式常量后，字符串UUID被仅接受整数数组的校验误拒绝。均修正而未删除断言，随后15/15通过；补关闭遮挡回归后，通过IDEA索引测试回执a7d43e3a-50c8-4918-a322-353cf8117436确认16/16通过、exitCode=0、无超时。编辑器检查保留原有弱提示，不报零警告。
+- 真实MCP本轮已推进到23项通过：创建/编辑/历史/小数播放、模型保存干净状态、重开保持UUID/资产未知字段/播放、.mfx与.mfxpack导出、重复文件和越界拒绝。源项目e3b5de43-88c2-4656-be5a-bceb24b3ae9b，目录run/client/ldlib2/assets/mcp-authoring-89a0c045-290e-4112-a64a-3e193d64ce21。下一项普通FX工程新增模型失败，已确认部分config整段替换丢掉默认渲染设置，修正为递归合并；修正后的整链结果另记，不把23项写成整组通过。
+- 曾有一次Client在ConductorPortraitCache$State缺失时启动失败；IDEA确认现有内部类和源码诊断正常，State.class产物时间晚于报错，随后重编译和串行启动恢复。指挥家源文件有其他任务改动，本轮未编辑。后续先结束JUnit/编译/Data再启动游戏，不在运行验证时重写Java产物。正常关闭使用已核对的Minecraft.stop()，只清理本轮普通无条件断点，用户原3断点保留。
+- 阶段备份before-photon-workspace-transaction-20261021、before-photon-model-file-adapter-20261021均指向4d2ad64代码基线；旧R0资源与工作区备份继续保留。编译、Data和Bridge有成功回执，最后新增参数合并修正的编译68594899-cebf-4cd5-aa33-fde53752c363为success=true/aborted=false；Data与后续MCP整链结果按最终日志补充。
+
+未完成：全量现有文件逐项往返/依赖与独立包运行，尚受保护的来源/旧字段组合、子播放/生成器、真实指挥家调用/停止/卸载和性能对照。GUI由人工验证，不以视觉调节替代这些核心工作；高级扩展仍未实现。
+
+### 本轮后续修正与当前验证阻断
+
+- 在已通过模型文件链23项之后，修正add_emitter的嵌套参数合并；下一轮通过fx_add_model_emitter，累计24项后在fx_set_model_asset断言失败。API当时返回成功，但配置复制绕过了自定义资产快照序列化，实际资产未更新。PhotonEffectModelAuthoringUtil.applyEmbedded现显式复制assetSnapshot，覆盖模型替换、局部模型编辑和OBJ导入的共同提交路径；该最后修正尚未运行复测，不能报整链通过。
+- 对真实原件counterattack.mfxproj的只读Debug结果为meta{name:photon.lobecorp.model.project.type,suffix:.mfxproj,version:1.0}，data仅有asset。PhotonModelProject.restore与纯文件校验已支持缺省playback/renderer，在内存应用原生默认值，类型错误仍拒绝；document不因读取而无故补写空playback。增加asset-only断言，原件没有写入。
+- 17项版本的资源测试runId=652c007d-35c6-458e-82d5-f7cec1ad84ff在before-launch阶段失败，未启动测试进程。最后整体验证编译c4647f5f-883d-4c3d-90e5-e9d813375ddf报告world/horde的6个错误：canTargetInLevel、SWEEPER、HordeRuntime及HORDE_PARTICIPANT。指定仅构建本任务文件后，委托构建仍报告HordeSync等8个外部错误，说明不能据此完成隔离编译；未通过命令行绕过，也未修改或排除Horde代码。
+- 当前候选各修改文件的IDEA错误检查无问题；此前16/16是关闭遮挡修正后的实际通过回执，不作为最新asset-only及嵌入资产补丁的重新验收。最后成功Data日志ij_run__Data_508130266748186305.log为BUILD SUCCESSFUL，23输出written=0/removed=0；发生在上述最后补丁之前，生成目录无本轮Git差异。最后补丁后的编译、Data及游戏验证均未通过/未执行，等待外部构建恢复后按原断言继续。
+- 当前没有本轮Debug会话，代理断点已移除；保留原3用户断点。GUI与视觉留给人工，实体动画、实体模型LOD及其他任务的Horde/指挥家改动不纳入本轮提交。
+- 本节原始日志已复制到backups/photon-g1-files-20261021，共7份，包含初始化/UUID失败、15项通过的JUnit原始日志，23项和24项后的MCP失败日志、最后补丁前Data及Client日志。16项结构化测试回执按上文runId定位；最新17项没有实际执行结果。

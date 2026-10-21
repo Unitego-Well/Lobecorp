@@ -42,7 +42,7 @@ public class PhotonEffectAutomation {
 	public static final long MAX_SEEK_TICKS = 1200;
 	private static final String OPERATION_SCHEMA = """
 			{
-			  "add_emitter":{"projectKind":"fx","required":["type"],"optional":["name","parameters"],"parameters":"原生对象 data 字段的局部替换；type 从 emitterTypes 选择"},
+			  "add_emitter":{"projectKind":"fx","required":["type"],"optional":["name","parameters"],"parameters":"原生对象data字段递归合并，对象未涉及字段保留，列表和数组整体替换；type从emitterTypes选择"},
 			  "remove_emitter":{"projectKind":"fx","required":["objectId"]},
 			  "set_parameter":{"projectKind":"fx","required":["objectId","path","value"],"path":"相对 parameters 的 JSON Pointer；只允许已有字段，保留原生 NBT 类型"},
 			  "set_timeline":{"projectKind":"fx","required":["timeline"],"timeline":"effect_state 返回的原生时间轴 JSON 格式；时间单位 tick"},
@@ -395,7 +395,8 @@ public class PhotonEffectAutomation {
 
 		result.add("emitterTypes", types);
 		result.addProperty("customRuntimeAvailable", false);
-		result.addProperty("modelProjectsAvailable", false);
+		result.addProperty("modelProjectsAvailable", true);
+		result.addProperty("modelFileSupport", "validated_embedded_v1");
 		var tracks = new JsonArray();
 		PhotonRegistries.TIMELINE_TRACKS.keys().forEach(tracks::add);
 		result.add("timelineTypes", tracks);

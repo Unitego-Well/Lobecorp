@@ -1,7 +1,10 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
+import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Menu;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
@@ -18,6 +21,8 @@ import com.lowdragmc.photon.gui.editor.view.timeline.ClipTrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 import net.minecraft.nbt.ListTag;
+import org.joml.Vector2f;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
@@ -85,6 +90,20 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	public PhotonNamedTrackDraft draft() {
 		return draft;
+	}
+
+	public void addTrack(Track track) {
+		requireCurrent();
+		if (draft.timeline().parentListOf(track) != null) {
+			throw new IllegalArgumentException("轨道已属于当前草稿。");
+		}
+
+		PhotonEditorProjectGuardUtil.requireSupported(Timeline.writeTrack(track, Platform.getFrozenRegistry()));
+		pushEdit("add_track", () -> {
+			draft.timeline().tracks().add(track);
+			requestRebuild();
+		}, () -> {
+		});
 	}
 
 	public void origin(UIElement lane) {
@@ -208,7 +227,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		states.clear();
 		clipTracks.clear();
 		laneItems.clear();
-		editor.inspectorView.clear();
+		clearInspector();
 		rebuild.run();
 	}
 
@@ -333,7 +352,26 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	@Override
 	public void openMenu(float x, float y, TreeBuilder.Menu menu) {
-		editor.openMenu(x, y, menu);
+		if (menu.isEmpty()) {
+			return;
+		}
+
+		UIElement host = origin;
+		while (host != null && !(host instanceof Dialog)) {
+			host = host.getParent();
+		}
+		if (host == null) {
+			editor.openMenu(x, y, menu);
+			return;
+		}
+
+		var point = host.worldToLocal(new Vector2f(x, y));
+		var popup = new Menu<>(menu.build(), TreeBuilder.Menu::uiProvider)
+				.setHoverTextureProvider(TreeBuilder.Menu::hoverTextureProvider)
+				.setOnNodeClicked(TreeBuilder.Menu::handle)
+				.setCloseOnClick(true);
+		popup.layout(layout -> layout.left(point.x).top(point.y));
+		host.addChild(popup);
 	}
 
 	@Override
@@ -691,12 +729,16 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	public void close() {
 		setRecordingTrack(null);
 		cancelScrub();
+		clearInspector();
+		closed = true;
+	}
+
+	private void clearInspector() {
 		var inspector = INSPECTORS.get(editor);
 		if (inspector != null && inspector.get() == this) {
 			INSPECTORS.remove(editor);
 			editor.inspectorView.clear();
 		}
-		closed = true;
 	}
 
 	private void requireCurrent() {

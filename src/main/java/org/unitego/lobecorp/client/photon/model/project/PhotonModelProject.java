@@ -85,7 +85,9 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 				playback.put(key, Objects.requireNonNull(serialized.get(key)).copy());
 			}
 		}
-		result.put("playback", playback);
+		if (source.contains("playback") || !playback.isEmpty()) {
+			result.put("playback", playback);
+		}
 		if (!Objects.equals(model.config.assetSnapshot(), source.get("asset"))) {
 			result.put("asset", model.config.assetSnapshot());
 		}
@@ -98,8 +100,10 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 			throw new IllegalStateException("模型对象无法序列化。");
 		}
 		var emitter = wrapper.getCompoundOrEmpty("data");
-		if (!emitter.equals(emitterBaseline)) {
+		if (!source.contains("emitterData")) {
 			result.put("emitterData", emitter.copy());
+		} else if (!emitter.equals(emitterBaseline)) {
+			result.put("emitterData", PhotonLosslessNbtUtil.changed(source.getCompoundOrEmpty("emitterData"), emitterBaseline, emitter));
 		}
 		var timeline = getFx().getFxData().timeline().serializeNBT(Platform.getFrozenRegistry());
 		if (!timeline.equals(timelineBaseline)) {
@@ -109,7 +113,9 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 			}
 			definition.getCompoundOrEmpty("fxData").put("timeline", PhotonLosslessNbtUtil.changed(rawTimeline, timelineBaseline, timeline));
 			result.put("definitionSource", definition);
-			result.put("emitterData", emitter.copy());
+			if (!result.contains("emitterData")) {
+				result.put("emitterData", emitter.copy());
+			}
 		}
 		return result;
 	}
@@ -160,9 +166,12 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 			throw new IllegalArgumentException("模型工程资产无效。", invalid);
 		}
 
-		if (!(data.get("playback") instanceof CompoundTag playback) || !(data.get("renderer") instanceof CompoundTag renderer)) {
-			throw new IllegalArgumentException("模型工程缺少播放或渲染配置。");
+		if (data.contains("playback") && !(data.get("playback") instanceof CompoundTag)
+				|| data.contains("renderer") && !(data.get("renderer") instanceof CompoundTag)) {
+			throw new IllegalArgumentException("模型工程播放或渲染配置类型无效。");
 		}
+		var playback = data.getCompoundOrEmpty("playback");
+		var renderer = data.getCompoundOrEmpty("renderer");
 		var next = data.get("emitterData") instanceof CompoundTag originalEmitter
 				? (PhotonModelOutput) LcPhotonModelOutputTypes.MODEL.codec().parse(NbtOps.INSTANCE, originalEmitter).getOrThrow()
 				: new PhotonModelOutput();

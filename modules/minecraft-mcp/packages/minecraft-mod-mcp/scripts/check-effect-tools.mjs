@@ -35,6 +35,12 @@ const authoringExample = {
     fxName: "MCP粒子接口示例",
     modelEmitterType: "lobecorp_model_emitter",
     fxSeekTime: 5,
+    modelAsset: {
+        version: 1,
+        vertices: [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+        faces: [{vertices: [0, 1, 2], uv: [[0, 0], [1, 0], [0, 1]]}],
+        futureModel: "preserve",
+    },
     fxProjectFile: "effect.fxproj",
     fxDefinitionFile: "effect.fx",
 };
@@ -391,12 +397,16 @@ async function getModelState(projectId) {
     requireCheck(state.projectId === projectId && state.kind === "model"
         && typeof state.revision === "string" && state.revision.length > 0
         && Number.isInteger(state.undoCount) && Number.isInteger(state.redoCount)
-        && isObject(state.playback) && Number.isFinite(state.playback.playbackSpeed), "model_state");
+        && isObject(state.playback) && Number.isFinite(state.playback.playbackSpeed)
+        && isObject(state.modelAsset) && Array.isArray(state.objects) && state.objects.length === 1, "model_state");
     return state;
 }
 
 async function checkModelEditing(projectId, checks) {
-    const operations = [{op: "set_model_playback", values: {playbackSpeed: authoringExample.playbackSpeed}}];
+    const operations = [
+        {op: "set_model_asset", asset: authoringExample.modelAsset},
+        {op: "set_model_playback", values: {playbackSpeed: authoringExample.playbackSpeed}},
+    ];
     const original = await getModelState(projectId);
     requireCheck(original.playback.playbackSpeed !== authoringExample.playbackSpeed, "distinct_playback_edit");
     const dry = await callEffectTool("effect_edit_batch", {
@@ -469,6 +479,12 @@ async function checkModelFiles(progress, allowedRoots) {
     const savedState = await getModelState(projectId);
     recordCheck(checks, saved.dirty === false && savedState.dirty === false
         && saved.savedPath === projectPath && savedState.editorPath === projectPath, "save_clean_project");
+    const reopened = await callEffectTool("effect_open", {path: projectPath});
+    const reopenedState = await getModelState(reopened.projectId);
+    recordCheck(checks, reopenedState.objects[0].objectId === savedState.objects[0].objectId
+        && isDeepStrictEqual(reopenedState.modelAsset, savedState.modelAsset)
+        && reopenedState.modelAsset.futureModel === "preserve"
+        && isDeepStrictEqual(reopenedState.playback, savedState.playback), "reopen_keeps_identity_asset_and_playback");
 
     const definition = await callEffectTool("effect_export", {projectId, path: definitionPath, kind: "definition"});
     recordCheck(checks, definition.path === definitionPath && definition.kind === "definition"
@@ -503,7 +519,7 @@ async function checkFxAuthoring(progress, capabilities) {
     recordCheck(progress.checks, paused.playing === false, "fx_initial_pause");
     const objectId = await addFxModelEmitter(progress);
     const sourceModel = await getModelState(progress.projectId);
-    await setFxModelAsset(progress, objectId, sourceModel.asset);
+    await setFxModelAsset(progress, objectId, sourceModel.modelAsset);
     await checkFxPreview(progress);
     await checkFxFiles(progress);
 }
@@ -524,7 +540,10 @@ async function addFxModelEmitter(progress) {
     const edited = await callEffectTool("effect_edit_batch", {
         projectId,
         expectedRevision: before.revision,
-        operations: [{op: "add_emitter", type: authoringExample.modelEmitterType}],
+        operations: [{
+            op: "add_emitter", type: authoringExample.modelEmitterType,
+            parameters: {config: {assetJson: [...Buffer.from('{"version":1,"vertices":[],"faces":[]}', "utf8")]}},
+        }],
     });
     const after = await getFxState(projectId);
     const added = after.objects.filter(object => !previousIds.has(object.objectId));
@@ -533,6 +552,8 @@ async function addFxModelEmitter(progress) {
         && before.objects.every(object => after.objects.some(candidate => candidate.objectId === object.objectId))
         && new Set(after.objects.map(object => object.objectId)).size === after.objects.length
         && added[0].type === authoringExample.modelEmitterType
+        && added[0].parameters?.config?.source === "EMBEDDED"
+        && isObject(added[0].parameters.config.modelRenderer)
         && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(added[0].objectId)
         && after.undoCount === before.undoCount + 1 && after.redoCount === 0
         && edited.revision === after.revision && after.revision !== before.revision

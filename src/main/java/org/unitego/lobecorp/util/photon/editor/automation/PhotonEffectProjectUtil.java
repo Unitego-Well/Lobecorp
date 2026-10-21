@@ -26,6 +26,7 @@ import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandE
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
+import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.editor.PhotonProjectRawAccess;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
@@ -416,7 +417,8 @@ public class PhotonEffectProjectUtil {
 
 				var parameters = wrapper.getCompoundOrEmpty("data");
 				if (containsModel) {
-					parameters.remove("assetJson");
+					parameters.remove(PhotonModelOutputConfig.ASSET_KEY);
+					parameters.getCompoundOrEmpty("config").remove(PhotonModelOutputConfig.ASSET_KEY);
 				}
 
 

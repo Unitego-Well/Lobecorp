@@ -8,14 +8,13 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
-import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
-import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.FlexDirection;
+import dev.vfyjxf.taffy.style.FlexWrap;
 import dev.vfyjxf.taffy.style.TaffyDimension;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -23,7 +22,6 @@ import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
@@ -52,6 +50,8 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 	private @Nullable PhotonNamedRuntime playback;
 	private @Nullable PhotonNamedHandle previewHandle;
 	private @Nullable ListTag previewTracks;
+	private float viewportWidth = -1;
+	private float viewportHeight = -1;
 
 	public PhotonNamedTrackWorkspace(FXEditor editor, PhotonNamedAuthoringSession session, UUID definitionId, boolean projectTest) {
 		this.editor = editor;
@@ -66,25 +66,16 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 	}
 
 	public void show() {
-		var dialog = new Dialog().setTitle(projectTest ? PhotonProjectPreviewPanel.TITLE : PhotonNamedLibraryPanel.TITLE)
-				.width(TaffyDimension.length(1000));
+		var dialog = new Dialog().setTitle(projectTest ? PhotonProjectPreviewPanel.TITLE : PhotonNamedLibraryPanel.TITLE);
 		dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
-		var toolbar = new UIElement().layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.ROW).gapAll(3));
+		var toolbar = new UIElement().layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.ROW).flexWrap(FlexWrap.WRAP).gapAll(3));
 		toolbar.addChild(new TextElement().setText(Component.literal(original.getStringOr("name", "") + " / " + definitionId)));
 		toolbar.addChild(new Button().setText("+").setOnClick(event -> {
 			var menu = TreeBuilder.Menu.start();
 			for (var type : PhotonRegistries.TIMELINE_TRACKS) {
-				menu.leaf(Component.translatable("photon.timeline_track." + type.name()), () -> attempt(() -> {
-					var track = type.create();
-					PhotonEditorProjectGuardUtil.requireSupported(Timeline.writeTrack(track, Platform.getFrozenRegistry()));
-					context.pushEdit("add_track", () -> {
-						context.draft().timeline().tracks().add(track);
-						context.requestRebuild();
-					}, () -> {
-					});
-				}));
+				menu.leaf(Component.translatable("photon.timeline_track." + type.name()), () -> attempt(() -> context.addTrack(type.create())));
 			}
-			editor.openMenu(event.x, event.y, menu);
+			context.openMenu(event.x, event.y, menu);
 		}));
 		toolbar.addChild(new Button().setText("ldlib.gui.editor.menu.undo").setOnClick(_ -> attempt(context::undo)));
 		toolbar.addChild(new Button().setText("ldlib.gui.editor.menu.redo").setOnClick(_ -> attempt(context::redo)));
@@ -120,7 +111,8 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		dialog.addContent(rulerRow);
 		rows.layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(3));
 		var scroll = new ScrollerView();
-		scroll.layout(layout -> layout.widthPercent(100).height(400));
+		scroll.layout(layout -> layout.widthPercent(100));
+		fitToHost(dialog, scroll);
 		scroll.addScrollViewChild(rows);
 		dialog.addContent(scroll);
 		dialog.addContent(status);
@@ -143,7 +135,10 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 				event.stopPropagation();
 			}
 		});
-		dialog.addEventListener(UIEvents.TICK, _ -> attempt(context::pollRecording, false));
+		dialog.addEventListener(UIEvents.TICK, _ -> attempt(() -> {
+			fitToHost(dialog, scroll);
+			context.pollRecording();
+		}, false));
 		rebuild();
 		dialog.show(editor);
 	}
@@ -153,6 +148,20 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		for (var track : context.draft().timeline().tracks()) {
 			row(track, 0);
 		}
+	}
+
+	private void fitToHost(Dialog dialog, ScrollerView scroll) {
+		float width = editor.getContentWidth();
+		float height = editor.getContentHeight();
+		if (width == viewportWidth && height == viewportHeight) {
+			return;
+		}
+
+		viewportWidth = width;
+		viewportHeight = height;
+		dialog.width(TaffyDimension.length(Math.clamp(width - 24, 1, 1000)));
+		// 给标题、换行工具栏、标尺、状态和确认按钮保留空间，滚动区域不挤掉操作入口。
+		scroll.layout(layout -> layout.height(Math.clamp(height - 160, 1, 400)));
 	}
 
 	private void row(Track track, int depth) {
@@ -178,7 +187,7 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 			menu.leaf("photon.lobecorp.editor.action.duplicate", () -> attempt(() -> context.duplicate(track)));
 			menu.leaf("↑", () -> attempt(() -> context.move(track, -1)));
 			menu.leaf("↓", () -> attempt(() -> context.move(track, 1)));
-			editor.openMenu(event.x, event.y, menu);
+			context.openMenu(event.x, event.y, menu);
 		}));
 		row.addChild(headerColumn);
 		var lane = nativeEditor.buildLane(context, track, state);

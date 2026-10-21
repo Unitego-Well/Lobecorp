@@ -58,9 +58,10 @@ try
 [mcp_servers.minecraft]
 cwd = "D:/base/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp"
 args = ["D:/base/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp/dist/cli.js"]
-[mcp_servers.minecraft.env]
-MC_MCP_PORT = "19878"
+[mcp_servers.minecraft.tools.effect_edit_batch]
+approval_mode = "approve"
 '@
+    $withPort = $config.Replace('[mcp_servers.minecraft.tools.effect_edit_batch]', '[mcp_servers.minecraft.env]' + $lf + 'MC_MCP_PORT = "19878"' + $lf + $lf + '[mcp_servers.minecraft.tools.effect_edit_batch]')
     Put (Join-Path $source '.codex/config.toml') $config
     foreach ($file in @('local.txt', 'staged.txt', 'shared.txt'))
     {
@@ -73,14 +74,14 @@ MC_MCP_PORT = "19878"
     G $target @('add', 'task.txt') | Out-Null
     G $target @('commit', '-m', 'fixture task') | Out-Null
     $taskHead = G $target @('rev-parse', 'HEAD')
-    Put (Join-Path $target '.codex/config.toml') ($config.Replace('D:/base/Lobecorp',$target.Replace('\', '/')).Replace('19878', '19111'))
+    Put (Join-Path $target '.codex/config.toml') ($withPort.Replace('D:/base/Lobecorp',$target.Replace('\', '/')).Replace('19878', '19111') + $lf)
     Put (Join-Path $target 'staged.txt') 'staged'
     G $target @('add', 'staged.txt') | Out-Null
     Put (Join-Path $target 'staged.txt') ('staged' + $lf + 'unstaged')
     Put (Join-Path $target 'local.txt') 'task worktree'
     Put (Join-Path $target 'untracked.txt') 'keep untracked'
     Put (Join-Path $target 'run/client/saves/keep.dat') 'keep ignored save'
-    $incoming = $config.Replace('D:/base/Lobecorp',$source.Replace('\', '/'))
+    $incoming = $withPort.Replace('D:/base/Lobecorp',$source.Replace('\', '/'))
     $incoming += $lf + '[mcp_servers.normify]' + $lf + 'cwd = "' + $source.Replace('\', '/') + '/tools/lobecorp-normify"' + $lf
     Put (Join-Path $source '.codex/config.toml') $incoming
     Put (Join-Path $source 'shared.txt') 'source change'

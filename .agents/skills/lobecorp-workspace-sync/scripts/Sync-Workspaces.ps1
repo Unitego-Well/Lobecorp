@@ -238,7 +238,8 @@ function Normalize-Config
             $text = $text.Replace($root, '__WORKSPACE_ROOT__')
         }
     }
-    return [regex]::Replace($text, '(?m)^(MC_MCP_PORT\s*=\s*)"\d+"', '$1"__MCP_PORT__"')
+    $text = [regex]::Replace($text, '(?m)^(MC_MCP_PORT\s*=\s*)"\d+"', '$1"__MCP_PORT__"')
+    return $text.TrimEnd([char]13, [char]10) + $Lf
 }
 function Merge-LocalConfig
 {

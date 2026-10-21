@@ -7,6 +7,10 @@ import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
+import org.unitego.lobecorp.client.horde.HordeRendering;
+import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import net.minecraft.client.Minecraft;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRenderingEvents {
@@ -19,12 +23,19 @@ public class ClientRenderingEvents {
 	public static void onExtract(ExtractLevelRenderStateEvent event) {
 		ConductorRendering.onExtract(event);
 		LcAnimationDisplays.onExtract(event);
+		HordeRendering.extract(event);
 	}
 
 	@SubscribeEvent
 	public static void onCustomGeometry(SubmitCustomGeometryEvent event) {
 		ConductorRendering.onCustomGeometry(event);
 		LcAnimationDisplays.onSubmit(event);
+		HordeRendering.submit(event);
+	}
+
+	@SubscribeEvent
+	public static void onHordeWorld(RenderLevelStageEvent.AfterLevel event) {
+		HordeRendering.render(event);
 	}
 
 	@SubscribeEvent
@@ -35,5 +46,9 @@ public class ClientRenderingEvents {
 	@SubscribeEvent
 	public static void onGui(RenderGuiEvent.Post event) {
 		ConductorRendering.onGui(event);
+		if (HordeVisualConfig.STATISTICS.get() && Minecraft.getInstance().screen == null) {
+			event.getGuiGraphics().text(Minecraft.getInstance().font, HordeClient.statistics(), 8, 8, -1);
+			event.getGuiGraphics().text(Minecraft.getInstance().font, HordeRendering.statistics(), 8, 20, -1);
+		}
 	}
 }

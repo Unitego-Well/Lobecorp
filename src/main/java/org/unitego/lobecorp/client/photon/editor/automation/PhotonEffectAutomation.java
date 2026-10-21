@@ -27,6 +27,7 @@ import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -201,6 +202,23 @@ public class PhotonEffectAutomation {
 				}
 			}
 		}
+	}
+
+	/// 手动编辑器操作沿用同一准备/提交管线，不阻塞客户端线程，也不借用远程接管权限。
+	public static void exportFromEditor(Handle handle, JsonObject arguments, Consumer<String> onFailure) {
+		if (!Minecraft.getInstance().isSameThread()) {
+			throw new IllegalStateException("编辑器导出必须从客户端线程发起。");
+		}
+		var request = arguments.deepCopy();
+		request.addProperty("projectId", handle.id());
+		var action = new Request("effect_export", request, false);
+		action.result.thenAccept(response -> {
+			if (!response.get("ok").getAsBoolean()) {
+				var error = response.getAsJsonObject("error").get("message").getAsString();
+				Minecraft.getInstance().execute(() -> onFailure.accept(error));
+			}
+		});
+		action.run();
 	}
 
 	public static JsonObject execute(String command, JsonObject arguments, boolean writes) {

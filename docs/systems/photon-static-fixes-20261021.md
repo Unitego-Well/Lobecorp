@@ -36,3 +36,13 @@
 Git差异确认assets/resources/src/generated、实体动画、GeckoLib/模型LOD及VisualQualityConfig没有本轮变化；git diff --check无输出。新增6项JUnit用例仅完成源码和静态分析，未执行。未执行构建、Data、自动测试、游戏或视觉验收；G1未通过。文件保护仍按字段和类型保留，未知版本、错误格式、外部模型来源和未验收旧生效渲染字段不整体放行。
 
 后续运行验收必须覆盖完整轨道的添加/复制/历史/磁盘往返，音频暂停与周期边界，信号重复和跳转，速度多实例叠加与恢复，后期关闭清理，文件取消/过期竞争与未知容器字段，以及真实包独立加载。视觉单独交人工。
+
+## 用户授权构建后的集中检查
+
+用户随后明确允许在独立工作区构建和运行游戏；此授权覆盖本节，前述“不构建”记录保留为当时边界。Client Photon/Data Photon/Server Photon工作目录、modFolders和moddev参数均指向7903；客户端MCP端口19877，服务端25572。已检查参数文件中没有旧主目录或90be的build/run引用，但未启动客户端，不能宣称游戏监听或桥接连接已通过。
+
+- 首次IDEA构建54ffdee6-c219-4664-8364-0ae51be7cda7失败：26错误。2项由本轮prepareExport返回Job后漏接PhotonModelAuthoringPanel调用造成，另24项为QueenBeamEffects依赖的实体动画契约缺失。此前静态批分析仅覆盖修改文件，未覆盖这个未修改的GUI调用方，因此无错误结果不能等同于完整编译成功。
+- 修正GUI导出为exportFromEditor异步入口，共用有界文件准备/主线程提交，不阻塞GUI，也不要求人工GUI操作进入远程MCP接管模式。IDEA引用检查确认prepareExport的两个调用方、prepareSave的单一调用方；两份修改文件静态分析无错误，保留命名Prepared既有所有权提示。新增代码及修改行完成格式处理。
+- 第二次IDEA构建5fdf17b5-9bf6-4810-a995-5f696ecd15d1失败：24错误，全部落在QueenBeamEffects。缺失TheQueenOfHatredAnimationDefinitions、TheQueenOfHatredBeamAnimation（含Phase与阶段参数）和LcAnimationDefinition.effectId()；原af77096备份有这些动画任务增量，2559a01基线没有。没有恢复混合快照、复制/改写实体动画，亦未删除特效调用或改成空实现绕过。
+- 首轮工具回执摘要保留为backups/photon-build-followup-20261021/compile-round1-summary.json（原始构建缓存已失效，不能补取完整原始日志），第二轮完整日志为同目录compile-round2.log；跟进修改前备份refs/backups/before-photon-build-followup-20261021指向ed3857e。
+- 当前不能启动含新代码的游戏或运行依赖主源码编译的测试；没有用旧产物冒充验收，没有执行Data。需要实体动画任务提供上述契约及必要关联改动的可集成版本后再继续，原资源与实体模型LOD保持不动。G1仍未通过。

@@ -2,6 +2,11 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：特效工作区MCP恢复复核
+
+- 读取恢复后的Minecraft MCP Skill，经IDEA终端官方SDK连接7903固定19877端口bridge；实际发现65工具，按真实schema调用ping与status。客户端未启动，ping返回Mod not connected，status成功返回connected=false/processAlive=false；不把未启动状态当作MCP恢复失败。
+- 只读复核QueenBeamEffects仍有23处动画契约无法解析，与上一轮编译24错误分开记录。未修改/提交协调者的MCP配置和consts.ts，未启动游戏或重复已知失败构建；详情见[恢复复核](photon-static-fixes-20261021.md#mcp恢复后复核)。
+
 ## 2026-10-21：独立工作区构建与模型GUI导出跟进
 
 - 用户授权构建/运行后核对7903独立参数与运行目录。首轮构建26错误，修复本轮prepareExport异步返回类型漏接GUI的2项错误；模型GUI导出改为共用后台文件管线。修改行格式及两文件静态检查无错误，保留既有Prepared所有权提示。

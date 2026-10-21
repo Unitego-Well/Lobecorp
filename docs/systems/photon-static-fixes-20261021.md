@@ -46,3 +46,9 @@ Git差异确认assets/resources/src/generated、实体动画、GeckoLib/模型LO
 - 第二次IDEA构建5fdf17b5-9bf6-4810-a995-5f696ecd15d1失败：24错误，全部落在QueenBeamEffects。缺失TheQueenOfHatredAnimationDefinitions、TheQueenOfHatredBeamAnimation（含Phase与阶段参数）和LcAnimationDefinition.effectId()；原af77096备份有这些动画任务增量，2559a01基线没有。没有恢复混合快照、复制/改写实体动画，亦未删除特效调用或改成空实现绕过。
 - 首轮工具回执摘要保留为backups/photon-build-followup-20261021/compile-round1-summary.json（原始构建缓存已失效，不能补取完整原始日志），第二轮完整日志为同目录compile-round2.log；跟进修改前备份refs/backups/before-photon-build-followup-20261021指向ed3857e。
 - 当前不能启动含新代码的游戏或运行依赖主源码编译的测试；没有用旧产物冒充验收，没有执行Data。需要实体动画任务提供上述契约及必要关联改动的可集成版本后再继续，原资源与实体模型LOD保持不动。G1仍未通过。
+
+### MCP恢复后复核
+
+协调任务恢复本工作区Skill及固定端口bridge后，本任务重新读取Skill和连接参考；通过IDEA集成终端的官方MCP SDK连接7903自己的dist/cli.js，显式MC_MCP_PORT=19877，未使用launcher或另一客户端。tools/list实际发现65工具，并读取ping/status的真实空参数schema后依次调用。ping返回Mod not connected；get_minecraft_status成功返回connected=false、port=null、processAlive=false，符合未启动客户端的状态；该结果证明标准MCP协议和管理调用可用，不证明65项业务工具或游戏链已验证。
+
+继续只读核对QueenBeamEffects，IDEA报告23处无法解析的动画契约引用，未截断；与前轮编译的24项错误计数来源不同，不能互相替代。没有重复启动已知失败构建，也未将此归因于MCP。协调者拥有的.codex/config.toml和bridge consts.ts改动保持原有未暂存状态，本任务没有编辑或提交这些文件。依赖集成仍须保持实体动画/LOD的任务边界。

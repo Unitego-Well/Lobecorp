@@ -2,6 +2,13 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：女皇最小依赖、集中游戏验证与字段适配
+
+- 本聊天子代理按af77096逐文件提供最小依赖：四个原有女皇定义及Beam阶段契约、effectId/automaticStop支持和技能生命周期接线；两份data资源与来源blob完全相同，原assets及实体动画/LOD逻辑不改，星束duration=0不改。
+- 集中先记录GA01/GB01/GQ01–GQ06，再修制作脚本modelAsset断言、工程测试轨道作用域解码、瞬时输出消费、严格渲染字段与粒子周期保护，以及首次窗口结束漏接迟生子实例。保留未知字段、坏值、错版本/模块、外部来源和发布隔离保护，未整体解除文件保护。
+- 已确认制作MCP30项、命名MCP17项、资源保护JUnit23项/轨道5项；真实11类工作区与嵌套调用未知字段、10份递归FX加载通过。激光/星束真实指挥家调用及清理已有分项证据，迟生子参数跟随补丁已在真实星束受控终点读回正确参数；普通阶段重复伤害、激光手动释放和卸载清理通过，二阶段两种定义的真实施放/客户端输出和退出清理也已通过；G1仍未通过，视觉交人工。
+- 修改行IDEA格式、统一静态检查与多轮构建已执行；Data实际BUILD SUCCESSFUL，written23/removed0，生成目录无Git净差异。备份before-photon-minimal-deps-{head,index,worktree}-20261021及before-photon-queen-validation-fixes-20261021，原始日志/断点回执和具体边界见[集中记录](photon-static-fixes-20261021.md#最小依赖协调与新验证轮次)。不推送。
+
 ## 2026-10-21：特效工作区MCP恢复复核
 
 - 读取恢复后的Minecraft MCP Skill，经IDEA终端官方SDK连接7903固定19877端口bridge；实际发现65工具，按真实schema调用ping与status。客户端未启动，ping返回Mod not connected，status成功返回connected=false/processAlive=false；不把未启动状态当作MCP恢复失败。

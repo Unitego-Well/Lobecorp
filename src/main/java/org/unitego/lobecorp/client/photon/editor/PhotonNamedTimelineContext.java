@@ -86,7 +86,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		this.rebuild = rebuild;
 		this.publish = publish;
 		this.preview = preview;
-		draft = new PhotonNamedTrackDraft(source);
+		draft = new PhotonNamedTrackDraft(source, projectTest);
 		checkpoint = source.copy();
 	}
 
@@ -232,7 +232,7 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	}
 
 	private void restore(ListTag source) {
-		draft = new PhotonNamedTrackDraft(source);
+		draft = new PhotonNamedTrackDraft(source, projectTest);
 		checkpoint = source.copy();
 		dragAnchor = null;
 		dragStarts.clear();

@@ -267,10 +267,14 @@ public class PhotonEditorProjectGuardUtil {
 				}
 				try {
 					PhotonModelFileValidationUtil.emitterData(data);
-					return containsTag(data, depth + 1);
+					return containsTag(checkedRendererData(data, true), depth + 1);
 				} catch (IOException | RuntimeException invalid) {
 					return true;
 				}
+			}
+			if (type.equals("particle_emitter") && compound.get("data") instanceof CompoundTag data) {
+				compound = compound.copy();
+				compound.put("data", checkedRendererData(data, false));
 			}
 
 			if (Set.of("activator", "control", "animation", "speed", "signal", "audio", "post_process", "group").contains(type)
@@ -333,6 +337,89 @@ public class PhotonEditorProjectGuardUtil {
 		}
 
 		return false;
+	}
+
+	/// 只在已有粒子和内嵌模型发射器的真实渲染槽中放行完整固定渲染组合。
+	private static CompoundTag checkedRendererData(CompoundTag data, boolean model) {
+		if (!(data.get("version") instanceof IntTag version) || version.intValue() != (model ? 0 : 2)) {
+			return data;
+		}
+
+		var checked = data.copy();
+		var config = checked.getCompoundOrEmpty("config");
+		for (var key : model ? new String[]{"renderer", "modelRenderer"} : new String[]{"renderer"}) {
+			if (!(config.get(key) instanceof CompoundTag renderer) || !supportedFixedRenderer(renderer)) {
+				continue;
+			}
+
+			renderer.remove("lobecorp$fixedRendering");
+			renderer.remove("lobecorp$viewDepthSort");
+			renderer.remove("lobecorp$occlusion");
+		}
+
+		if (!model) {
+			checkCycleModule(config, "rotationOverLifetime", "rotation", new String[]{"Roll", "Pitch", "Yaw"});
+			checkCycleModule(config, "sizeOverLifetime", "lifetime", new String[]{"X", "Y", "Z"});
+		}
+
+		return checked;
+	}
+
+	/// 已实现的循环只匹配对应粒子模块，不借用相同字段名放行其他模块。
+	private static void checkCycleModule(CompoundTag config, String moduleName, String cycle, String[] axes) {
+		if (!(config.get(moduleName) instanceof CompoundTag module)
+				|| !strictBoolean(module.get("_enable"))
+				|| !strictBoolean(module.get("lobecorp$" + cycle + "CycleEnabled"))
+				|| !(module.get("lobecorp$" + cycle + "CycleTicks") instanceof IntTag ticks) || ticks.intValue() <= 0) {
+			return;
+		}
+
+		if (module.contains("enable") && (!strictBoolean(module.get("enable"))
+				|| module.getBooleanOr("enable", false) != module.getBooleanOr("_enable", false))) {
+			return;
+		}
+
+		var fields = Set.of("lobecorp$" + cycle + "CycleEnabled", "lobecorp$" + cycle + "CycleTicks",
+				"lobecorp$cycleOffset" + axes[0], "lobecorp$cycleOffset" + axes[1], "lobecorp$cycleOffset" + axes[2]);
+		for (var key : module.keySet()) {
+			if (PhotonResourceInspection.isLegacyField(key) && !fields.contains(key)) {
+				return;
+			}
+		}
+
+		for (var axis : axes) {
+			if (!(module.get("lobecorp$cycleOffset" + axis) instanceof NumericTag value) || !Float.isFinite(value.floatValue())) {
+				return;
+			}
+		}
+
+		module.remove("lobecorp$" + cycle + "CycleEnabled");
+		module.remove("lobecorp$" + cycle + "CycleTicks");
+		for (var axis : axes) {
+			module.remove("lobecorp$cycleOffset" + axis);
+		}
+	}
+
+	private static boolean supportedFixedRenderer(CompoundTag renderer) {
+		if (!strictBoolean(renderer.get("lobecorp$fixedRendering"))
+				|| !strictBoolean(renderer.get("lobecorp$viewDepthSort"))
+				|| !(renderer.get("lobecorp$occlusion") instanceof CompoundTag occlusion)
+				|| !Set.of("enable", "_enable", "alphaCutoff").containsAll(occlusion.keySet())
+				|| !strictBoolean(occlusion.get("_enable"))) {
+			return false;
+		}
+
+		if (occlusion.contains("enable") && (!strictBoolean(occlusion.get("enable"))
+				|| occlusion.getBooleanOr("enable", false) != occlusion.getBooleanOr("_enable", false))) {
+			return false;
+		}
+
+		return occlusion.get("alphaCutoff") instanceof NumericTag cutoff && Double.isFinite(cutoff.doubleValue())
+				&& cutoff.doubleValue() >= 0 && cutoff.doubleValue() <= 1;
+	}
+
+	private static boolean strictBoolean(@Nullable Tag value) {
+		return value instanceof ByteTag number && (number.byteValue() == 0 || number.byteValue() == 1);
 	}
 
 	private static boolean requiresModelProject(@Nullable CompoundTag project) {

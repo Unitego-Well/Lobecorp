@@ -8,7 +8,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillManualControl;
@@ -21,7 +21,6 @@ import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
-import org.unitego.lobecorp.particle.QueenChannelLaserParticleOptions;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
@@ -183,7 +182,7 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	@Override
 	public void onWindupStart(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		runtime.setCooldownTicks(cooldownTicks());
-		queen.playActionAnimation(queen.isPhaseTwo() ? TheQueenOfHatredAnim.AIM_2 : TheQueenOfHatredAnim.AIM);
+		TheQueenOfHatredBeamAnimation.start(queen, runtime);
 		aim(queen, runtime);
 	}
 
@@ -194,6 +193,7 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		TheQueenOfHatredBeamAnimation.activate(runtime);
 		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
 		}
@@ -203,9 +203,6 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 		hitbox.setLineOfSightMode(HitboxLineOfSightMode.UNRESTRICTED);
 		runtime.setData(HITBOX_ID, hitbox.id());
 		updateBeam(queen, hitbox);
-		Vec3 start = origin(queen);
-		level.sendParticles(new QueenChannelLaserParticleOptions(queen.getId(), runtime.id(), level.getGameTime(), durationTicks()),
-				start.x, start.y, start.z, 1, 0.0, 0.0, 0.0, 0.0);
 	}
 
 	private static void updateBeam(TheQueenOfHatred queen, HitboxInstance hitbox) {
@@ -242,6 +239,7 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		TheQueenOfHatredBeamAnimation.recover(runtime);
 		Integer id = runtime.removeData(HITBOX_ID);
 		if (queen.level() instanceof ServerLevel level && id != null) {
 			HitboxManager.remove(level, id);
@@ -250,12 +248,12 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onRecoveryEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		queen.stopActionAnimation();
+		TheQueenOfHatredBeamAnimation.stop(runtime);
 	}
 
 	@Override
 	public void onCancel(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		runtime.setCooldownTicks(SHORT_COOLDOWN_TICKS);
-		queen.stopActionAnimation();
+		TheQueenOfHatredBeamAnimation.stop(runtime);
 	}
 }

@@ -122,12 +122,9 @@ public class PhotonChildWindows implements AutoCloseable {
 				var window = windows.get(clip.id);
 				boolean active = time >= clip.start() && time < clip.end();
 				boolean crossed = previous < clip.start() && time >= clip.end();
+				boolean finishing = window != null && !window.completed && time >= clip.end();
 
-				if (!active && !crossed) {
-					if (window != null && time >= clip.end()) {
-						window.complete();
-					}
-
+				if (!active && !crossed && !finishing) {
 					continue;
 				}
 
@@ -170,9 +167,9 @@ public class PhotonChildWindows implements AutoCloseable {
 					window.children.put(id, new Child(new WeakReference<>(runtime), new WeakReference<>(handle)));
 				}
 
-				window.drive(time, true);
+				window.drive(finishing || crossed ? clip.end() : time, true);
 
-				if (crossed) {
+				if (crossed || finishing) {
 					window.complete();
 				}
 			}

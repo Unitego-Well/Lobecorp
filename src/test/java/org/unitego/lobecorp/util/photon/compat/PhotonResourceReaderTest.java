@@ -5,6 +5,9 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.IntArrayTag;
+import net.minecraft.nbt.ByteTag;
+import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.Tag;
 import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -326,6 +329,235 @@ public class PhotonResourceReaderTest {
 		assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderer));
 		occlusion.putFloat("alphaCutoff", 0.99f);
 		assertFalse(PhotonEditorProjectGuardUtil.containsTag(renderer));
+	}
+
+	@Test
+	public void fixedRendererAdmissionKeepsOriginalDataAndUnknownFieldProtection() {
+		for (var type : new String[]{"particle_emitter", "lobecorp_model_emitter"}) {
+			var wrapper = renderedEmitter(type);
+			var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+			if (type.equals("lobecorp_model_emitter")) {
+				config.put("modelRenderer", fixedRenderer());
+			}
+
+			var before = wrapper.copy();
+			assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			assertEquals(before, wrapper);
+			config.getCompoundOrEmpty("renderer").putBoolean("lobecorp$unrecognized", false);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		}
+	}
+
+	@Test
+	public void fixedRendererAdmissionRejectsWrongTypesShapesAndConflictingToggles() {
+		for (var key : new String[]{"lobecorp$fixedRendering", "lobecorp$viewDepthSort"}) {
+			for (Tag value : new Tag[]{ByteTag.valueOf((byte) 2), IntTag.valueOf(1), StringTag.valueOf("true")}) {
+				var wrapper = renderedEmitter("particle_emitter");
+				wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty("renderer").put(key, value);
+				assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			}
+		}
+
+		for (double value : new double[]{Double.NaN, Double.POSITIVE_INFINITY, -0.01, 1.01}) {
+			var wrapper = renderedEmitter("particle_emitter");
+			var occlusion = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config")
+					.getCompoundOrEmpty("renderer").getCompoundOrEmpty("lobecorp$occlusion");
+			occlusion.putDouble("alphaCutoff", value);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		}
+
+		var wrapper = renderedEmitter("particle_emitter");
+		var occlusion = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config")
+				.getCompoundOrEmpty("renderer").getCompoundOrEmpty("lobecorp$occlusion");
+		occlusion.putBoolean("enable", false);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.putBoolean("enable", true);
+		assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.putInt("_enable", 1);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.putBoolean("_enable", true);
+		occlusion.putBoolean("future", false);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.remove("future");
+		occlusion.remove("_enable");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.putBoolean("_enable", true);
+		occlusion.putString("alphaCutoff", "0.99");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		occlusion.remove("alphaCutoff");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		for (double value : new double[]{0, 1}) {
+			occlusion.putDouble("alphaCutoff", value);
+			assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		}
+
+		var renderer = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty("renderer");
+		renderer.remove("lobecorp$viewDepthSort");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		renderer.putBoolean("lobecorp$viewDepthSort", true);
+		renderer.putString("lobecorp$occlusion", "invalid");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+	}
+
+	@Test
+	public void fixedRendererAdmissionDoesNotEscapeEmitterContextOrOtherGuards() {
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(fixedRenderer()));
+		for (var type : new String[]{"empty", "future_emitter", "lobecorp_emitter_spawner"}) {
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(renderedEmitter(type)));
+		}
+
+		var particle = renderedEmitter("particle_emitter");
+		var config = particle.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		config.put("modelRenderer", fixedRenderer());
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(particle));
+		config.remove("modelRenderer");
+		config.putBoolean("lobecorp$lifetimeCycleEnabled", true);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(particle));
+		var model = renderedEmitter("lobecorp_model_emitter");
+		model.getCompoundOrEmpty("data").getCompoundOrEmpty("config").putString("source", "FILE");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(model));
+		particle = renderedEmitter("particle_emitter");
+		var data = particle.getCompoundOrEmpty("data");
+		data.put("renderer", fixedRenderer());
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(particle));
+		particle = renderedEmitter("particle_emitter");
+		particle.getCompoundOrEmpty("data").putInt("version", 1);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(particle));
+		particle.getCompoundOrEmpty("data").remove("version");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(particle));
+	}
+
+	@Test
+	public void particleCycleAdmissionPreservesMagicCircleFieldsAndUnknownValues() {
+		var wrapper = cycledEmitter();
+		var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		config.getCompoundOrEmpty("sizeOverLifetime").putString("future", "preserve");
+		var original = wrapper.copy();
+		assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		assertEquals(original, wrapper);
+		config.getCompoundOrEmpty("rotationOverLifetime").putBoolean("lobecorp$unknownCycle", true);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+	}
+
+	@Test
+	public void particleCycleAdmissionRejectsInvalidFlagsPeriodsAndOffsets() {
+		for (var moduleName : new String[]{"rotationOverLifetime", "sizeOverLifetime"}) {
+			String cycle = moduleName.equals("rotationOverLifetime") ? "rotation" : "lifetime";
+			for (var key : new String[]{"_enable", "lobecorp$" + cycle + "CycleEnabled"}) {
+				for (Tag value : new Tag[]{ByteTag.valueOf((byte) 2), IntTag.valueOf(1), StringTag.valueOf("true")}) {
+					var wrapper = cycledEmitter();
+					wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty(moduleName).put(key, value);
+					assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+				}
+			}
+
+			for (int ticks : new int[]{0, -1}) {
+				var wrapper = cycledEmitter();
+				wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty(moduleName)
+						.putInt("lobecorp$" + cycle + "CycleTicks", ticks);
+				assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			}
+
+			var wrapper = cycledEmitter();
+			var module = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty(moduleName);
+			module.putFloat("lobecorp$" + cycle + "CycleTicks", 20);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			for (double offset : new double[]{Double.NaN, Double.POSITIVE_INFINITY, Double.MAX_VALUE}) {
+				wrapper = cycledEmitter();
+				module = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty(moduleName);
+				module.putDouble(moduleName.equals("rotationOverLifetime") ? "lobecorp$cycleOffsetRoll" : "lobecorp$cycleOffsetX", offset);
+				assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			}
+
+			wrapper = cycledEmitter();
+			module = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty(moduleName);
+			module.putBoolean("enable", false);
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+			module.remove("enable");
+			module.remove(moduleName.equals("rotationOverLifetime") ? "lobecorp$cycleOffsetYaw" : "lobecorp$cycleOffsetZ");
+			assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		}
+	}
+
+	@Test
+	public void particleCycleAdmissionRejectsOtherModulesTypesAndVersions() {
+		var wrapper = cycledEmitter();
+		var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		var rotation = config.getCompoundOrEmpty("rotationOverLifetime").copy();
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(rotation));
+		config.put("colorOverLifetime", rotation);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		config.remove("colorOverLifetime");
+		config.put("sizeOverLifetime", rotation);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		wrapper = cycledEmitter();
+		wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getCompoundOrEmpty("sizeOverLifetime")
+				.putFloat("lobecorp$cycleOffsetUV", 0);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		wrapper = cycledEmitter();
+		wrapper.getCompoundOrEmpty("data").putInt("version", 1);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		wrapper = cycledEmitter();
+		wrapper.putString("type", "future_emitter");
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+		wrapper = renderedEmitter("lobecorp_model_emitter");
+		wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").put("rotationOverLifetime", rotation);
+		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+	}
+
+	private static CompoundTag cycledEmitter() {
+		var wrapper = renderedEmitter("particle_emitter");
+		var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		var rotation = new CompoundTag();
+		rotation.putBoolean("_enable", true);
+		rotation.putBoolean("lobecorp$rotationCycleEnabled", true);
+		rotation.putInt("lobecorp$rotationCycleTicks", 40);
+		for (var axis : new String[]{"Roll", "Pitch", "Yaw"}) {
+			rotation.putFloat("lobecorp$cycleOffset" + axis, 0);
+		}
+
+		config.put("rotationOverLifetime", rotation);
+		var size = new CompoundTag();
+		size.putBoolean("_enable", true);
+		size.putBoolean("lobecorp$lifetimeCycleEnabled", true);
+		size.putInt("lobecorp$lifetimeCycleTicks", 20);
+		size.putFloat("lobecorp$cycleOffsetX", 0.2f);
+		size.putFloat("lobecorp$cycleOffsetY", 0.2f);
+		size.putFloat("lobecorp$cycleOffsetZ", 0.3f);
+		config.put("sizeOverLifetime", size);
+		return wrapper;
+	}
+
+	private static CompoundTag renderedEmitter(String type) {
+		var wrapper = new CompoundTag();
+		wrapper.putString("type", type);
+		var data = new CompoundTag();
+		data.putInt("version", type.equals("lobecorp_model_emitter") ? 0 : 2);
+		var config = new CompoundTag();
+		config.put("renderer", fixedRenderer());
+		if (type.equals("lobecorp_model_emitter")) {
+			var transform = new CompoundTag();
+			transform.putString("id", "00000000-0000-0000-0000-000000000001");
+			data.put("transform", transform);
+			config.putString("source", "EMBEDDED");
+			config.putString("assetJson", "{\"version\":1,\"vertices\":[],\"faces\":[]}");
+			config.put("modelRenderer", new CompoundTag());
+		}
+
+		data.put("config", config);
+		wrapper.put("data", data);
+		return wrapper;
+	}
+
+	private static CompoundTag fixedRenderer() {
+		var renderer = new CompoundTag();
+		renderer.putBoolean("lobecorp$fixedRendering", true);
+		renderer.putBoolean("lobecorp$viewDepthSort", true);
+		var occlusion = new CompoundTag();
+		occlusion.putBoolean("_enable", true);
+		occlusion.putFloat("alphaCutoff", 0.99f);
+		renderer.put("lobecorp$occlusion", occlusion);
+		return renderer;
 	}
 
 	private static byte[] nbt(CompoundTag tag, boolean compressed) throws IOException {

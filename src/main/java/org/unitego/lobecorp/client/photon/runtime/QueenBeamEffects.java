@@ -115,6 +115,7 @@ public class QueenBeamEffects {
 		private Vec3 frozenStart;
 		private Vec3 frozenEnd;
 		private boolean active;
+		private boolean witnessedCharge;
 
 		private Beam(TheQueenOfHatred owner, LcAnimationSnapshot snapshot) {
 			this.owner = owner;
@@ -228,19 +229,18 @@ public class QueenBeamEffects {
 		private void update(LcAnimationSnapshot snapshot) {
 			var value = parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE);
 			var next = value == Phase.OUTPUT.ordinal() ? Phase.OUTPUT : value == Phase.RECOVERY.ordinal() ? Phase.RECOVERY : Phase.CHARGE;
+			witnessedCharge |= next == Phase.CHARGE;
+			// 瞬时技能同刻进入恢复；只为已见蓄力的实例保留一次发射呈现，不补播晚追踪的历史输出。
+			if (star && next == Phase.RECOVERY && !active && witnessedCharge) {
+				phase = Phase.OUTPUT;
+				beginOutput(snapshot);
+				return;
+			}
+
 			if (next != phase) {
 				phase = next;
 				if (next == Phase.OUTPUT) {
-					active = true;
-					if (star) {
-						frozenStart = StarBeamSkill.origin(owner);
-						frozenEnd = StarBeamSkill.endpoint(owner, frozenStart.add(owner.getLookAngle()));
-					}
-					if (effect.runtime().findObject("accumulate_particle") instanceof PhotonChildSpawner charge) {
-						charge.clearInstances();
-					}
-					anchor();
-					animations().play("laser_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.ENTRY_TICKS), true, Map.of());
+					beginOutput(snapshot);
 				} else if (next == Phase.RECOVERY) {
 					frozenStart = sourceStart();
 					frozenEnd = sourceEnd(frozenStart);
@@ -254,6 +254,22 @@ public class QueenBeamEffects {
 			if (active && phase != Phase.RECOVERY) {
 				inputs();
 			}
+		}
+
+		private void beginOutput(LcAnimationSnapshot snapshot) {
+			active = true;
+			if (star) {
+				frozenStart = StarBeamSkill.origin(owner);
+				frozenEnd = StarBeamSkill.endpoint(owner, frozenStart.add(owner.getLookAngle()));
+			}
+
+			if (effect.runtime().findObject("accumulate_particle") instanceof PhotonChildSpawner charge) {
+				charge.clearInstances();
+			}
+
+			anchor();
+			animations().play("laser_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.ENTRY_TICKS), true, Map.of());
+			inputs();
 		}
 
 		private void inputs() {

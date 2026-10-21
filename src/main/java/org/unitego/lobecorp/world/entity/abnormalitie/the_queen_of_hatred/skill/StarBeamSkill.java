@@ -7,7 +7,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
@@ -18,7 +18,6 @@ import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 女皇远程瞄准后发射瞬时星束，方块截断而敌人不截断光束。
@@ -52,7 +51,7 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 		super(properties);
 	}
 
-	/// 服务端命中框、HUD 和一次性粒子共用法杖起点，不依赖客户端动画数据。
+	/// 服务端命中框、HUD 与技能特效共用法杖起点，不依赖客户端动画数据。
 	public static Vec3 origin(Mob mob) {
 		return QueenSkillUtil.staffOrigin(mob);
 	}
@@ -90,7 +89,7 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 	@Override
 	public void onWindupStart(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		aim(queen, runtime);
-		queen.playActionAnimation(queen.isPhaseTwo() ? TheQueenOfHatredAnim.AIM_2 : TheQueenOfHatredAnim.AIM);
+		TheQueenOfHatredBeamAnimation.start(queen, runtime);
 	}
 
 	@Override
@@ -100,6 +99,7 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onActivate(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		TheQueenOfHatredBeamAnimation.activate(runtime);
 		if (!(queen.level() instanceof ServerLevel level)) {
 			return;
 		}
@@ -120,8 +120,6 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 			hitbox.activate();
 		}
 
-		level.sendParticles(LcParticleTypes.QUEEN_LASER.get(), start.x, start.y, start.z,
-				0, beam.x, beam.y, beam.z, 1.0);
 	}
 
 	@Override
@@ -131,15 +129,16 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 
 	@Override
 	public void onEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		TheQueenOfHatredBeamAnimation.recover(runtime);
 	}
 
 	@Override
 	public void onRecoveryEnd(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		queen.stopActionAnimation();
+		TheQueenOfHatredBeamAnimation.stop(runtime);
 	}
 
 	@Override
 	public void onCancel(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		queen.stopActionAnimation();
+		TheQueenOfHatredBeamAnimation.stop(runtime);
 	}
 }

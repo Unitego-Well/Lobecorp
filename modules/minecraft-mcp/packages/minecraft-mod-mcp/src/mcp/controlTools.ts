@@ -18,7 +18,7 @@ const inputKeys = z.object({
 
 export const CONTROL_TOOL_NAMES = ["gui_control", "player_control", "entity_control", "block_control"] as const;
 
-export const CONTROL_TOOLS = [
+export const CONTROL_TOOLS: Array<{ name: string; description: string; inputSchema: z.ZodRawShape }> = [
     {
         name: "gui_control",
         description: "Inspect GUI widgets with screenId/widgetId. Direct mode invokes visible enabled buttons, focuses widgets or sets EditBox text. Simulate mode sends click/drag/scroll/type/key/close through the current screen. Mutations require the latest screenId and MCP control mode. Coordinates explicitly use GUI units or framebuffer pixels; no OS input is used. accepted means the GUI handled the event, not that a workflow completed.",
@@ -100,4 +100,4 @@ export const CONTROL_TOOLS = [
             hand,
         },
     },
-] satisfies Array<{ name: string; description: string; inputSchema: z.ZodRawShape }>;
+];

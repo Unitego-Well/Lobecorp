@@ -2,6 +2,15 @@
 
 每次修改后更新本文件与对应系统文档。记录实际执行结果，不把计划或旧一轮验证写成本轮成功。
 
+## 2026-10-21：Minecraft MCP 运行验收、鼠标释放与后台节流
+
+- 修复桥接 CONTROL_TOOLS 类型推断造成的 tsc 错误；固定原始项目 MC_MCP_PORT=19878，项目 MCP 配置改为当前 E 盘路径并登记独立 Normify 服务。无原始实例时不回落其他工作区端口。
+- 通过 IDEA 构建桥接及游戏端并启动原始 Client；专用测试世界中取得 GUI、玩家、实体、方块的直接／模拟回读证据，详见[控制验收](minecraft-mcp-controls.md#2026-10-21-运行验收)。保存退出超时后只读确认完成，没有盲目重试。
+- 原始构建缺少女皇动画依赖，按最小闭包补定义、effectId、automaticStop、技能生命周期与两份 data 资源；保留技能伤害／时长／LOD，两资源与当前 assets Git blob 相等。基线 refs/backups/before-queen-mcp-build-fix-20261021。
+- 移除退出接管主动 grabMouse／lockCursor／setGrabbed(true)，退出释放鼠标；客户端 Pre tick 维持接管期间鼠标释放。开发接管时 getThrottleReason 为 NONE，退出恢复原版分支，不保存 Options、不改优化 Mod 配置。
+- IDEA 诊断无新增错误，项目构建成功，新客户端 PID43400 归属原始 run/client／19878。真实 MCP 无 GUI 失焦退出后 control=false、grabbed=false、cursor普通模式、forward=false；AFK／最小化条件注入分支通过并恢复原值，不冒充真实最小化或610秒持续测量。Sodium 内部独立限帧未完全排除。
+- 新增[方案和实际边界](minecraft-mcp-background-control.md)及项目 Skill。备份 refs/backups/before-mcp-background-control-20261021；未执行 Data、未控制其他工作区、未检索归档聊天。本次整文件格式化被自动审批拒绝后，已改为仅处理新增行。
+
 ## 2026-10-21：独立 Normify MCP 与 Codex Skill
 
 - 基于 yan-mc/dsh-normify 的 ed404e5b8db0010ff57ec8486ec8749421072545，保留 MIT 许可和 31 个架构工具；以独立 stdio MCP、CLI、项目 Skill 交付，来源与文件哈希见 tools/lobecorp-normify/SOURCE_PROVENANCE.json。

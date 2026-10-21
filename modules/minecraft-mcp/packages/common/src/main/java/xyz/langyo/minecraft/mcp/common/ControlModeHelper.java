@@ -75,29 +75,9 @@ public final class ControlModeHelper {
 		try {
 			mcpControlMode = false;
 			mcpControlModeExitTime = System.currentTimeMillis();
-			mouseReleaseActive = false;
-			var hasScreen = ReflectionCache.getCurrentScreen(mc) != null;
-			waitingForRelease = !hasScreen;
-
-			if (hasScreen) {
-				forceCursorAndReleaseMouse(mc);
-			} else if (ReflectionCache.LWJGL3) {
-				var mouseHandler = ReflectionCache.getMouseHandler(mc);
-				if (mouseHandler != null) {
-					// 原生抓取方法会检查窗口是否活动，不能强写抓取标记或 GLFW 状态。
-					for (var method : mouseHandler.getClass().getMethods()) {
-						var name = method.getName();
-						if (method.getParameterCount() == 0 && (name.equals("grabMouse") || name.equals("lockCursor")
-								|| name.equals("method_1611") || name.equals("func_224798_b"))) {
-							method.invoke(mouseHandler);
-							break;
-						}
-					}
-				}
-			} else {
-				var mouseClass = Class.forName("org.lwjgl.input.Mouse");
-				mouseClass.getMethod("setGrabbed", boolean.class).invoke(null, true);
-			}
+			mouseReleaseActive = true;
+			waitingForRelease = false;
+			forceCursorAndReleaseMouse(mc);
 
 			logModEvent("exit_control_mode", "Manual control restored");
 			return JsonHelper.kv("control_mode", false);

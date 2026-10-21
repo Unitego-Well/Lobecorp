@@ -1,7 +1,13 @@
 import { MCP, MOD } from "./mc/defaults.js";
 
-export const PORT_START = MCP.portStart;
-export const PORT_END = MCP.portEnd;
+const configuredPort = process.env.MC_MCP_PORT;
+const fixedPort = configuredPort === undefined ? undefined : Number(configuredPort);
+if (fixedPort !== undefined && (!Number.isInteger(fixedPort) || fixedPort < 1 || fixedPort > 65535)) {
+    throw new Error("MC_MCP_PORT must be an integer between 1 and 65535");
+}
+
+export const PORT_START = fixedPort ?? MCP.portStart;
+export const PORT_END = fixedPort ?? MCP.portEnd;
 export const HEARTBEAT_TIMEOUT_MS = MCP.heartbeatTimeoutMs;
 
 export interface ModStatus {

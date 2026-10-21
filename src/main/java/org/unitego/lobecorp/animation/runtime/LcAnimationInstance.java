@@ -72,6 +72,7 @@ public class LcAnimationInstance {
 	private boolean paused;
 	private boolean stopped;
 	private boolean finishPending;
+	private boolean automaticStop = true;
 	private long lastTick = Long.MIN_VALUE;
 	private long timelineRevision;
 	private double lastDeltaSeconds;
@@ -184,6 +185,14 @@ public class LcAnimationInstance {
 		}
 
 		speed = value;
+	}
+
+	/// 技能持有的播放可保持末帧，由技能完成或取消显式停止；默认仍按片段结束。
+	public void setAutomaticStop(boolean value) {
+		automaticStop = value;
+		if (!value) {
+			finishPending = false;
+		}
 	}
 
 	public void setPaused(boolean value) {
@@ -333,7 +342,7 @@ public class LcAnimationInstance {
 		fireActions(previousTime, timeSeconds);
 
 		if (!stopped && revision == timelineRevision) {
-			finishPending = !clip.looping() && timeSeconds >= clip.durationSeconds();
+			finishPending = automaticStop && !clip.looping() && timeSeconds >= clip.durationSeconds();
 		}
 	}
 

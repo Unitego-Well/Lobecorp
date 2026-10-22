@@ -1,6 +1,6 @@
 # 深夜清扫性能、CPU 侧与冗余工作审计
 
-日期：2026-10-22。对象为当前 `horde-recovery` 工作区。记录开始时 HEAD 为 `fbfdcd0`；本文初版随文档提交 `6aabf40`，此后补充任务记录并实施首个骨骼矩阵优化。工作区中仍存在未提交的 motion 着色器、粗高度、BenchMod 等改动；本文按工作区当前文件读取。
+日期：2026-10-22。对象为当前 `horde-recovery` 工作区。记录开始时 HEAD 为 `fbfdcd0`；本文初版随文档提交 `6aabf40`，此后补充任务记录并实施首个烘焙帧动画优化。工作区中仍存在未提交的 motion 着色器、粗高度、BenchMod 等改动；本文按工作区当前文件读取。
 
 本文初版是只读静态审计，不是性能验收：当时没有构建、Data、启动游戏、JFR、Spark 或 GPU 计时。文中的“高/中/低”是静态优先级，不是实测耗时。正确性问题（例如清除后客户端可能收不到 remove、目标表只增不减、骨骼 X 平移符号）另见文末非性能问题摘要和任务记录。第 9 节记录随后的首个优化实施；该实施有 IDEA 编译和 Data 检查，但没有游戏内着色器或视觉验证。
 
@@ -23,9 +23,9 @@
 
 ## 2. 性能热点
 
-### P1：每顶点骨骼链是最大的 GPU 顶点成本（本轮已实施首个切片）
+### P1：每顶点骨骼链是最大的 GPU 顶点成本（本轮已改为烘焙静态帧）
 
-[horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L25-L50) 的 `animate()` 对每个顶点沿父骨骼链逐层计算变换：
+原实现的 [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) `animate()` 对每个顶点沿父骨骼链逐层计算变换：
 
 - 每层读取两帧的平移、四元数、缩放和父索引，约 22 次数据纹理读取；
 - 层级最多 64；
@@ -33,12 +33,12 @@
 
 motion pass 只把位置、让行、朝向和光照降到逐实例，骨骼动画仍然是逐顶点。以 5 层骨骼、每顶点约 110 次纹理读取估算，5000 个实例、数百顶点时每帧就是数千万到上亿次纹理读取；实际值取决于 Sweeper 模型顶点数和骨骼深度，必须实测，但结构上这是第一优先级。
 
-本轮已实现首个切片：烘焙阶段预计算每帧模型空间骨骼矩阵，顶点阶段只读相邻两帧的 3×4 位置矩阵和 3×3 法线矩阵并混合结果，不再执行父链循环和逐骨骼四元数插值；详见第 9 节。
+本轮已改为烘焙静态帧：烘焙阶段把每帧所有骨骼变换后的顶点位置/法线写入数据纹理，顶点阶段只按单位相位选帧并读取该帧的 6 个 float，不再执行父链循环、骨骼矩阵或四元数插值；帧号取整后循环切换，不是连续插值。详见第 9 节。
 
 后续方向（不在本轮）：
 
-- 逐实例预计算骨骼矩阵，进一步降低每顶点读取量；
-- 降低每顶点矩阵读取量或改用更紧凑的矩阵编码；
+- 如果帧切换出现明显跳变，可评估相邻帧插值或提高烘焙帧率；
+- 逐顶点仍需要读取 6 个浮点，可进一步评估更紧凑的帧数据编码；
 - 评估是否需要对远距离实例降低动画采样，但这会重新引入当前已删除的 LOD 分支。
 
 ### P1：客户端每帧重建批次和光场区段集合
@@ -160,7 +160,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 | 优先级 | 项目 | 预期收益 | 风险/前置 |
 |---|---|---|---|
-| P1 | 预计算模型空间骨骼矩阵，避免每顶点走父链（首个切片已实施） | 父链和四元数插值移出顶点阶段；顶点改为读取两帧矩阵 | 插值语义改变，需视觉验收；逐实例矩阵尚未实现 |
+| P1 | 烘焙每帧静态顶点，循环切换帧（本轮已实施） | 父链、骨骼矩阵和四元数插值移出顶点阶段；顶点改为读取 6 个浮点 | 帧切换无插值，可能有跳变；需视觉验收 |
 | P1 | 光场区段集合与批次缓存 | 降低客户端每帧 CPU/分配 | 需要失效条件正确 |
 | P1 | 全线路同步改为待发送队列/局部窗口 | 降低每 tick 扫描和首次延迟 | 客户端完整性约定要同步调整 |
 | P1 | `covers()`/`assignment` 索引化 | 长线路、多目标时降 CPU | 需要保持区域/配额语义不变 |
@@ -175,7 +175,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 - `/clear` 后如果运行时已经没有事件和加载实体，[HordeRuntime.tick](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L166-L168) 会提前返回，跳过 [HordeSync.tick](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java#L43)，客户端可能收不到 `remove`，虚拟浪潮在客户端时间冻结后残留。
 - [HordeTargetAssignment.seenAt](../../src/main/java/org/unitego/lobecorp/world/horde/HordeTargetAssignment.java#L29) 没有 TTL 使用方；[HordeRuntime.prune](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L690-L696) 只清理当前没有事件覆盖的 domain，同 profile 的新事件会保留旧目标。
-- [HordeMeshCache.writePose](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L101-L155) 对骨骼平移使用 `+position.x`，而普通实体路径 [LcAnimationBoneAdapter](../../src/main/java/org/unitego/lobecorp/client/animation/LcAnimationBoneAdapter.java#L53-L65) 经 GeckoLib `BoneSnapshot.translate` 实际得到 `-position.x`；带横向平移的动画可能左右镜像。
+- [HordeMeshCache.buildBoneMatrices/bakeVertex](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L106-L164) 对骨骼平移使用 `+position.x`，而普通实体路径 [LcAnimationBoneAdapter](../../src/main/java/org/unitego/lobecorp/client/animation/LcAnimationBoneAdapter.java#L53-L65) 经 GeckoLib `BoneSnapshot.translate` 实际得到 `-position.x`；带横向平移的动画可能左右镜像。
 - 战斗范围判定使用 `rules.margin()`，渲染高度和让行使用 `regionMargin`；配置不同时会出现“画得到但不算覆盖”或相反的情况，见 [HordeEvent.covers](../../src/main/java/org/unitego/lobecorp/world/horde/HordeEvent.java#L106-L110) 与 [HordeRoute.prepare](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRoute.java#L140-L142)。
 - 客户端 header 解析在 [HordeClient.apply](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L50-L76) 中先创建事件再校验；解析失败会留下半初始化事件，后续 route 包不会再触发重同步请求。
 - [HordeLightField.ensureAtlas](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java#L148-L156) 在区段数超过约 4096 时会抛异常，[HordeGpuRenderer.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L84-L92) 会把该事件标记为失败并停止显示。
@@ -188,32 +188,32 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - Git：初版文档和任务记录已单独提交；代码实施的提交状态见第 9 节。
 - 备份：本次未新增备份。
 
-## 9. 本轮实施记录：预计算模型空间骨骼矩阵
+## 9. 本轮实施记录：烘焙静态帧与循环切换
 
-实施日期：2026-10-22，对应第 6 节 P1 第一项的首个切片。
+实施日期：2026-10-22，对应第 6 节 P1 第一项。
 
 ### 改动
 
-- [HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L155) 在烘焙阶段为每帧每个骨骼计算模型空间矩阵：3×4 位置矩阵 12 个 float，3×3 法线矩阵 9 个 float，每骨骼每帧 21 个 float。父骨骼矩阵在烘焙时乘入，保留层级、枢轴、旋转和缩放。
-- [HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L240-L246) 的动画数据纹理改为矩阵纹理，纹理标签同步。
-- [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L53) 的 `animate()` 改为读取相邻两帧矩阵并混合顶点位置和法线；移除父链循环、四元数最短路径插值和逐骨骼 inverse scale 计算。
-- 行为差异：插值方式从“逐骨骼 TRS 插值后沿父链变换”改为“相邻帧矩阵结果混合”。位置和法线的帧间混合是线性的，与旧的逐骨骼四元数插值不完全等价。
-- 顶点侧成本：从每顶点约 `22 × 骨骼链深度` 次数据纹理读取，变为固定 42 次（两帧 × (12 位置 + 9 法线)）。逐实例矩阵尚未实现，顶点仍逐实例逐顶点读取矩阵。
+- [HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在烘焙阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据：每顶点每帧保存模型空间位置和法线，共 6 个 float。父链、枢轴、旋转、缩放和法线矩阵只在 CPU 资源准备阶段计算。
+- [HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L205-L246) 的 `HordeAnimation` 纹理改为帧顶点纹理；`AnimationInfo.x` 从骨骼数改为顶点数，帧数仍为 `AnimationInfo.y`，时长仍为 `AnimationInfo.z`。
+- [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 的 `animate()` 改为按单位相位选择帧号，读取该帧的 6 个 float 后直接作为位置和法线；帧号取整后循环切换。顶点阶段不再有骨骼索引、父链循环、骨骼矩阵或四元数插值。
+- 行为差异：从连续骨骼动画变为每秒 20 帧的静态帧切换，可能出现明显跳变；每个单位仍保留由行列决定的相位差，不会全部同步。
+- 顶点侧成本：从每顶点约 `22 × 骨骼链深度` 次数据纹理读取，变为固定 6 次。静态顶点缓冲和索引不变，仍保留原有的 Position/UV/Color/Normal 顶点格式。
 
 ### 实际检查
 
 - IDEA 静态诊断：HordeMeshCache、HordeGpuRenderer 均 0 error。
-- IDEA 项目构建：成功，耗时约 37.8 秒，无编译器消息。
-- `runData`：BUILD SUCCESSFUL，耗时约 5 分 11 秒；23 个缓存输出，written=0、removed stale=0。
+- IDEA 项目构建：成功，耗时约 25.8 秒，无编译器消息。
+- `runData`：BUILD SUCCESSFUL，耗时约 37 秒；23 个缓存输出，written=0、removed stale=0。
 - 未启动游戏、未编译运行时着色器、未做视觉或性能采样。因此不能声称帧率提升或动画视觉通过。
 
 ### 未验证与风险
 
-- 矩阵混合与旧四元数插值的关节/肢体视觉差异；
+- 20 帧/秒的帧切换与旧动画的视觉差异，尤其关节和快速动作；
+- 帧数据位置/法线的烘焙单位、旋转方向和镜像是否正确，必须游戏内确认；
 - 预计算法线矩阵在非均匀缩放和极端骨骼下的表现；
 - 着色器语法和运行时管线只能靠游戏内加载验证；
-- 顶点仍读取两帧矩阵，逐实例骨骼矩阵仍是后续优化；
-- 单骨骼或双骨骼模型可能收益有限，甚至可能因固定 42 次读取而不占优；Sweeper 模型的骨骼数与收益需实测；
+- 帧切换无插值，低帧率下可能显得卡顿；若不可接受，需要提高烘焙帧率或恢复相邻帧插值；
 - `HordeMeshCache` 的骨骼 X 平移符号问题未在本轮修改，仍保留在附录。
 
 ### Git

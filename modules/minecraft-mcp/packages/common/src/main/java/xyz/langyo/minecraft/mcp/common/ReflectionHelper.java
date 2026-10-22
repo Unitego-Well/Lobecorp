@@ -284,9 +284,6 @@ public final class ReflectionHelper {
     public static void tickMouseRelease(Object mc) {
     }
 
-    public static void tickMcpControlMode(Object mc) {
-        ControlModeHelper.tickMcpControlMode(mc);
-    }
 
     public static void setVideoCaptureActive(boolean v) { ScreenshotHelper.setVideoCaptureActive(v); }
     public static boolean isVideoCaptureActive() { return ScreenshotHelper.isVideoCaptureActive(); }

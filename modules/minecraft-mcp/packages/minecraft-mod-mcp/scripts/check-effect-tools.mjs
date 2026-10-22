@@ -50,8 +50,9 @@ const bridgeDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const client = new Client({name: "lobecorp-effect-tool-discovery", version: "1.0.0"}, {capabilities: {}});
 const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [resolve(bridgeDirectory, "dist/cli.js")],
+    args: [resolve(bridgeDirectory, "dist/cli.js"), "mcp", "--no-discover"],
     cwd: bridgeDirectory,
+    ...(process.env.MC_MCP_PORT ? {env: {MC_MCP_PORT: process.env.MC_MCP_PORT}} : {}),
     stderr: "pipe",
 });
 
@@ -59,7 +60,7 @@ try {
     await client.connect(transport);
     const {tools} = await client.listTools();
     validateToolMetadata(tools);
-    if (animationMode || animationReadOnlyMode) {
+    if (runtimeMode || authoringMode || animationMode || animationReadOnlyMode) {
         const ping = await client.callTool({name: "ping", arguments: {}});
         if (ping.isError || !ping.content.some(item => item.type === "text" && item.text.toLowerCase().includes("pong"))) {
             throw new Error("minecraft_ping: " + ping.content.filter(item => item.type === "text").map(item => item.text).join(" "));
@@ -582,8 +583,11 @@ async function setFxModelAsset(progress, objectId, asset) {
     const historyDelta = edited.changed === true ? 1 : 0;
     recordCheck(progress.checks, typeof edited.changed === "boolean" && target
         && target.type === authoringExample.modelEmitterType && target.parameters?.config
-        && Array.isArray(target.parameters.config["assetJson"])
-        && isDeepStrictEqual(asset, JSON.parse(Buffer.from(target.parameters.config["assetJson"]).toString("utf8")))
+        && after.snapshotIncluded === false
+        && target.parameters.config.assetJson === undefined
+        && isObject(target.parameterSchema)
+        && !JSON.stringify(target.parameterSchema).includes('"assetJson"')
+        && isDeepStrictEqual(asset, target.modelAsset)
         && after.objects.length === before.objects.length
         && after.undoCount === before.undoCount + historyDelta
         && after.redoCount === (edited.changed ? 0 : before.redoCount)

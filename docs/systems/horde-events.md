@@ -77,3 +77,9 @@ HordeGpuRenderer将两帧三维姿态网格驻留GPU，顶点程序插值并变�
 根因是启用HORDE_IMPOSTOR后，整数视角索引int view与共同阶段的vec4 view位于同一个main作用域。普通三维分支不包含前一个声明，因而可能先正常绘制、待烘焙图集准备完成后才崩溃。该次Loaded Shaderpack为(off)，未发现将此异常归因于Minecraft MCP或鼠标接管的依据。
 
 限定修改为将共同坐标变量及三处引用改为viewPosition；不改变视角选择、矩阵、发光、数量或范围，不继续此前暂停的B方案收尾。修改前源码和崩溃报告快照在.backups/horde-crash-20261022/before-shader-fix.json。未主动构建、Data、编译着色器或启动游戏，因此不声称运行复验通过；其余烘焙优化仍按horde-impostor-progress.md记录保持未完成状态。
+
+## 2026-10-22：夜间5000单位烘焙切换复验
+
+IDEA构建及资源处理成功。Client LOD普通Run通过一次性QuickPlay进入既有测试世界，夜间、128格宽、5000显示上限、12区块范围下，确认同一进程从5000个纯三维提交切换到约4037个烘焙提交；117秒后仍显示5000个单位、约4030个烘焙提交。新日志未出现目标着色器错误，也没有新增崩溃报告。测试后全部维度保存并正常关闭游戏，运行输出BUILD SUCCESSFUL。
+
+本轮未修改业务代码或Minecraft MCP。两次Debug观察异常结束尚未定因，不计入通过结论；普通Run通过不代表60FPS验收。临时配置值已还原，但IDEA工具造成的CRLF到LF差异尚未恢复，需要另行授权定向恢复换行。完整证据及边界见[复验记录](horde-shader-retest-20261022.md)。

@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-22：清道夫着色器修复运行复验
+
+- 先完成复验计划，再通过IDEA构建并运行Client LOD。普通Run夜间5000单位实测烘焙数0→4037，约117秒后仍为5000可见、4030烘焙；没有新增目标着色器错误或Minecraft崩溃报告。
+- 通过游戏内菜单正常保存全部维度并关闭客户端，运行输出BUILD SUCCESSFUL。未改业务代码或MCP，未执行Data。两次Debug异常中断另行记录，不宣称Debug稳定或60FPS通过。
+- 统计与烘焙配置值已恢复；IDEA工具留下CRLF→LF换行差异，已验证仅此差异并记录，未用脚本绕过。截图、配置备份与进程记录位于.backups/horde-retest-20261022；详见[复验记录](horde-shader-retest-20261022.md)。
+
 ## 2026-10-22：清道夫烘焙顶点程序名称冲突
 
 - 最新报告crash-2026-10-21_23.49.14-client.txt与latest.log第391行确认：HORDE_IMPOSTOR分支的int view与后面的vec4 view同作用域重名，导致horde_solid_baked顶点程序编译失败，并在HordeGpuRenderer.draw抛出Pipeline contains invalid shader program；该次光影包关闭，没有证据将根因归为Minecraft MCP或鼠标接管。

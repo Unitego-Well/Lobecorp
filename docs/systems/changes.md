@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-22：Minecraft MCP 独立仓库与鼠标输入隔离
+
+- 独立源码仓库位于 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，保留 dev 与特效工作区的模块提交历史、许可证及已提交的 effect_close／资源验收脚本。固定版本为 aa8289a485cfaf2b90eca073f2ce1eb719328b6c，原始项目保留 modules/minecraft-mcp 的本地源码快照，锁定记录见 modules/minecraft-mcp.lock.json。
+- 保留开发客户端默认激活，取消每 tick 强制释放鼠标；进入／退出不再改变系统鼠标捕获。内部模拟输入移除 AWT／GLFW 系统指针移动回退，并通过作用域内 MouseCaptureMixin 阻止模拟回调重新抓取居中；真人输入不全局禁用。
+- 独立仓库相关文件 IDEA 错误诊断为空；已执行修改行格式处理及 Git 差异检查，尚未执行本次编译、Data、bridge 构建或游戏验收。源码修复不代表旧进程已加载。保留各工作区端口、构建输出、运行配置和存档，不共享运行环境。
+- 清道夫最近崩溃日志调查已转交对应未归档聊天，未将崩溃归因为 MCP。备份 refs/backups/before-minecraft-mcp-extraction-20261022；此前同步脚本和文档 WIP 保留，不混入本次提交。详见[拆分与修复记录](minecraft-mcp-standalone.md)。
+
+
 ## 2026-10-21：恢复工作区 MCP 配置预检，业务冲突暂停
 
 - 修复同步脚本临时配置副本末尾换行不一致导致的 Normify 追加冲突；不改变目标端口、路径和原始配置排版。回归覆盖旧基线无端口段的实际配置形态，四组检查通过并清理临时 Git 仓库，IDEA 未报告问题。

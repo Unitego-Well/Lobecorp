@@ -28,10 +28,11 @@ public class ControlRequestUtil {
 	public static JsonObject client(boolean mutation, Supplier<JsonObject> operation) {
 		var minecraft = Minecraft.getInstance();
 		var result = new CompletableFuture<JsonObject>();
+		Runnable request = () -> ControlModeHelper.runSyntheticInput(() -> complete(result, mutation, operation));
 		if (minecraft.isSameThread()) {
-			complete(result, mutation, operation);
+			request.run();
 		} else {
-			minecraft.execute(() -> complete(result, mutation, operation));
+            minecraft.execute(request);
 		}
 		return await(result);
 	}

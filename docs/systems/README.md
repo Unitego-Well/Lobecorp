@@ -11,6 +11,7 @@
 | 群体事件与清道夫浪潮 | [深夜清扫、固定间距、参战配额与配置](horde-events.md) |
 | 群体渲染讨论 | [2026-10-22聊天反馈、sparkc链接与待验证问题](horde-rendering-discussion-20261022.md) |
 | 群体事件渲染实现 | [固定线路、GPU让行与骨骼动画、区段光场](horde-rendering-implementation.md) |
+| 群体渲染性能审计 | [性能、CPU侧工作与冗余功能静态审计](horde-performance-audit-20261022.md) |
 | 仇恨、群体与阵营 | [战斗关系](combat.md) |
 | 四色伤害与生物资源 | [四色伤害、固定防御、承伤系数与精神／灵魂值](four-color-damage.md) |
 | 临时抓取 | [实体抓取](entity-grab.md) |

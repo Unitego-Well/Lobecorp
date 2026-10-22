@@ -69,3 +69,11 @@ HordeGpuRenderer将两帧三维姿态网格驻留GPU，顶点程序插值并变�
 可恢复Git补丁、日志归档、IDEA文本快照与截图位于 `.backups/horde-isolation-20261021`，未手工暂存或提交。相关50份Java错误检查、后续修改文件复查及IDEA构建通过；Data成功（written=23，removed=0），7项HordeRulesTest通过。独立端口19876实测虚拟浪潮、真实参战、配额1→2→3及死亡后立即升配额并重置计时。正常关服确认保存全部维度，重启恢复事件ID、进度和目标配额；完整实体归属恢复仍需专项验收。修正管理员命令的IdentifierArgument及UUID翻译参数后，成功启动提示已复验。最新密集场景采样为2000个显示对象、1个主体批次、32个阴影、网格缓存约1397KiB；表现精度25%时仍保留2000个主体。该采样受调试暂停及后台帧率影响，不构成帧率或规模性能承诺。最高密度截图为horde-dense-high.png，本轮结束保留客户端运行。完整玩法、联机及Iris光影包兼容尚未验收；CPU合批不等于GPU实例化。
 
 新增协议为事件状态与快照请求，正常实体沿用原版追踪和附件同步；技能动画继续沿用现有生命周期同步，不使用自定义实体事件编号。
+
+## 2026-10-22：最新崩溃的限定修复
+
+已核对最新文件：run/client/crash-reports/crash-2026-10-21_23.49.14-client.txt、latest.log及debug.log均停在2026-10-21 23:49:14。崩溃为Pipeline contains invalid shader program，直接调用来自HordeGpuRenderer.draw；latest.log第391行首先报告horde_instanced顶点程序的view重复声明，随后是vec4向int收窄和对标量取xyz/xz/y的级联错误。
+
+根因是启用HORDE_IMPOSTOR后，整数视角索引int view与共同阶段的vec4 view位于同一个main作用域。普通三维分支不包含前一个声明，因而可能先正常绘制、待烘焙图集准备完成后才崩溃。该次Loaded Shaderpack为(off)，未发现将此异常归因于Minecraft MCP或鼠标接管的依据。
+
+限定修改为将共同坐标变量及三处引用改为viewPosition；不改变视角选择、矩阵、发光、数量或范围，不继续此前暂停的B方案收尾。修改前源码和崩溃报告快照在.backups/horde-crash-20261022/before-shader-fix.json。未主动构建、Data、编译着色器或启动游戏，因此不声称运行复验通过；其余烘焙优化仍按horde-impostor-progress.md记录保持未完成状态。

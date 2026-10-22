@@ -30,10 +30,10 @@ void main() {
     mat2 rotation = mat2(state.x, -state.y, state.y, state.x);
     position.xz = rotation * position.xz;
     normal.xz = rotation * normal.xz;
-    vec4 view = ModelViewMat * vec4(position + location.xyz, 1.0);
-    gl_Position = ProjMat * view;
-    sphericalDistance = length(view.xyz);
-    cylindricalDistance = max(length(view.xz), abs(view.y));
+    vec4 viewPosition = ModelViewMat * vec4(position + location.xyz, 1.0);
+    gl_Position = ProjMat * viewPosition;
+    sphericalDistance = length(viewPosition.xyz);
+    cylindricalDistance = max(length(viewPosition.xz), abs(viewPosition.y));
     glowing = state.w >= 0.0 ? 1.0 : 0.0;
     int packedLight = int(state.w >= 0.0 ? state.w : -state.w - 1.0);
     ivec2 lightUv = ivec2(packedLight & 65535, packedLight >> 16) / 16;

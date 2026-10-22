@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-22：清道夫烘焙顶点程序名称冲突
+
+- 最新报告crash-2026-10-21_23.49.14-client.txt与latest.log第391行确认：HORDE_IMPOSTOR分支的int view与后面的vec4 view同作用域重名，导致horde_solid_baked顶点程序编译失败，并在HordeGpuRenderer.draw抛出Pipeline contains invalid shader program；该次光影包关闭，没有证据将根因归为Minecraft MCP或鼠标接管。
+- 只将共同的视图空间坐标变量改名为viewPosition，并更新其三处读取；不恢复此前暂停的性能优化、不改鼠标或MCP。备份位于.backups/horde-crash-20261022/before-shader-fix.json，诊断及未复验边界见horde-events.md末尾。
+- 本轮未启动游戏、构建、Data或着色器主动编译；源码修复不代表运行复验通过。
+
 ## 2026-10-21：深夜清扫GPU实例化与遮挡
 
 - 新增HordeGpuRenderer及horde_instanced顶点/片元程序，两帧三维网格常驻GPU，每单位32字节参数，256实例分块；保留完整3D，主体和发光共次提交，删除全部虚拟阴影提交及配置。

@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-22：其他工作区全部接入独立 Minecraft MCP
+
+- Git 注册的 7903、90be 均固定消费独立仓库 aa8289a；接入提交分别为 2403dea、2ad1e1e。锁文件明确使用独立仓库绝对路径，各自保留本地源码和运行输出。
+- 两边分别核对112个源码文件与源相同，相关10／11文件IDEA错误诊断为空；11份运行／MCP配置SHA256未变，端口19877／19876保留。未构建、测试、Data、安装、重连或启动游戏。
+- 保留consts.ts原有未提交文案、MCP配置修改和90be业务暂存；独立Git索引限定本次提交并核对其他索引条目未变，临时对象已清理。备份、接入细节和运行未验证边界见[工作区完成记录](minecraft-mcp-standalone.md#其他工作区接入完成2026-10-22)。
+
+
 ## 2026-10-22：Minecraft MCP 独立仓库与鼠标输入隔离
 
 - 独立源码仓库位于 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，保留 dev 与特效工作区的模块提交历史、许可证及已提交的 effect_close／资源验收脚本。固定版本为 aa8289a485cfaf2b90eca073f2ce1eb719328b6c，原始项目保留 modules/minecraft-mcp 的本地源码快照，锁定记录见 modules/minecraft-mcp.lock.json。

@@ -45,6 +45,7 @@
 | 激光 | [工程、变量与资源](queen-arcana-beam.md) |
 | 激光法术 | [组合时序与对象索引](laser-spell.md) |
 | 女皇技能特效与瞬时星束 | [代码动画阶段、中心起点与精简星束](queen-beam-skill-effects.md) |
+| BenchMod 基准测试 | [工具链、清道夫 AI 与客户端渲染场景](benchmod.md) |
 | 工作区共同地基 | [dev 提交自动同步、保护与暂停恢复](workspace-sync.md) |
 | 架构建图 MCP | [独立 Normify MCP、CLI 与 Skill](../../tools/lobecorp-normify/README.md) |
 | Minecraft MCP | [独立仓库与鼠标修复](minecraft-mcp-standalone.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |

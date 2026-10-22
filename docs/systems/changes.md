@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-22：安装 BenchMod 并接入清道夫基准场景
+
+- 固定JitPack BenchMod 0.1.5-beta，接入插件解析、限定仓库和bench专用API/Runtime；保留当前Minecraft26.1.2、NeoForge26.1.2.100及Java25。新增独立src/bench Provider、64清道夫服务端AI和客户端本地渲染场景，按配置／注册／服务端／客户端分包。
+- 新增BenchMod Compile／Server／Client IDEA入口、权威报告的场景／指标／JSONL／JFR／截图期望和生产JAR隔离检查。基准运行使用build/modBench隔离目录；bench运行不继承普通Client的开发调试JVM标志，不迁移其他工作区。
+- 修改行和新增Java经IDEA格式处理，统一7文件错误检查为空；compileJava、compileBenchJava及verifyProductionJarHasNoBenchContent通过，Data成功，23份生成资源written0／removed0且SHA256未变。保留6条借用世界资源提示与既有Kotlin建议；原reserveBuildIdentity配置缓存问题导致Compile缓存丢弃但不影响成功，未扩展修复。
+- 真实服务端／客户端基准未运行，不报告性能、截图视觉或FPS达标。Data进程已结束，旧同步脚本和文档WIP保留。修改前备份refs/backups/before-benchmod-integration-20261022；[接入与运行说明](benchmod.md)记录实际边界。
+
+
 ## 2026-10-22：其他工作区全部接入独立 Minecraft MCP
 
 - Git 注册的 7903、90be 均固定消费独立仓库 aa8289a；接入提交分别为 2403dea、2ad1e1e。锁文件明确使用独立仓库绝对路径，各自保留本地源码和运行输出。

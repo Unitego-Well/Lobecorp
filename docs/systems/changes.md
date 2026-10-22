@@ -12,7 +12,7 @@
 
 - [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L406-L451) 的目标让行区域刷新加密：远目标最大延迟从 8 tick 降到 4 tick，距离阈值从 32 格降到 24 格；移动超过约 0.5 格的目标立即刷新，静止目标才走延迟；区域中心/半宽改用目标 AABB + `regionMargin`，与服务端区域口径一致。
 - 真实实体未生成排查：读取测试世界玩家 NBT，`playerGameType=1`（创造模式）。[CombatUtil.canTargetInLevel](../../src/main/java/org/unitego/lobecorp/util/entity/combat/CombatUtil.java#L93-L97) 排除创造玩家，[MidnightCleanup.acceptsTarget](../../src/main/java/org/unitego/lobecorp/world/horde/definition/MidnightCleanup.java#L51-L63) 调用该检查，因此扫描不会建立目标，后续不会创建生成请求。这不是客户端分割或出生距离直接导致；本轮未改战斗目标规则，测试需切生存或使用非创造目标。
-- IDEA 项目构建成功（约 5.8 秒）；`runData` 成功（BUILD SUCCESSFUL，约 30 秒，23 缓存输出，written=0，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
+- IDEA 项目构建成功（约 5.8 秒）；`runData` 成功（BUILD SUCCESSFUL，约 26 秒，23 缓存输出，written=0，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
 - 同步更新[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计第10、11节](horde-performance-audit-20261022.md#L223)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 

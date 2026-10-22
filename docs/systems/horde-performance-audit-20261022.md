@@ -236,7 +236,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 - IDEA 项目构建：成功，约 5.8 秒，无编译器消息。
 - `HordeRegionTest`：2/2 通过；`HordeRulesTest`：9/9 通过。
-- `runData`：BUILD SUCCESSFUL，约 30 秒；23 缓存输出，written=0，removed stale=0。
+- `runData`：BUILD SUCCESSFUL，约 26 秒；23 缓存输出，written=0，removed stale=0。
 - 未做分割视觉或性能采样。
 
 ### 未验证与风险

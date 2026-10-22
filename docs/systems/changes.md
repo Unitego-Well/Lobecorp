@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-10-22：深夜清扫渲染讨论整理
+
+- 根据用户提供的聊天记录整理[渲染性能讨论](horde-rendering-discussion-20261022.md)，保留时间线、两份sparkc链接、参与者意见、动画数据贴图建议和待验证问题。
+- 本轮只编写文档，IDEA检查无错误或警告；未修改渲染代码、未运行游戏或新增性能采样，未新增备份。
+
 ## 2026-10-22：Minecraft MCP 接入独立仓库固定版本
 
 - 使用绝对仓库路径 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，固定 aa8289a485cfaf2b90eca073f2ce1eb719328b6c，保留 modules/minecraft-mcp 的独立源码副本。接入鼠标输入隔离、独立构建入口与已提交的特效桥接扩展。

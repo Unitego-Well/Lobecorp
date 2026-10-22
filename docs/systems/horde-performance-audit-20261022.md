@@ -231,13 +231,14 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - [HordeSamplingUtil.loop](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 使用向心 Catmull-Rom 和 8—64 自适应采样，长线段和转角获得更密节点。
 - [HordeSpawnPlanner.candidate](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 生成距离至少 16 格，保持在目标后方并沿虚拟潮来向一侧；[HordeRuntime.processRequests](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，在加入世界前保留 `bind`，立即设置攻击目标和 Brain 记忆。
 - [HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地更新入口；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定 16 样本数。
+- 新增调试线框：`debugRanges` 打开后由 [HordeClient.debugRanges](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L106-L121) 提供青色事件线路 AABB 和黄色本地 `rangeBlocks` 精细范围，[HordeRendering](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRendering.java#L21-L100) 用 `RenderTypes.lines()` 绘制。
 
 ### 实际检查
 
-- IDEA 项目构建：成功，约 5.8 秒，无编译器消息。
+- IDEA 项目构建：成功，约 18.1 秒，无编译器消息。
 - `HordeRegionTest`：2/2 通过；`HordeRulesTest`：9/9 通过。
-- `runData`：BUILD SUCCESSFUL，约 26 秒；23 缓存输出，written=0，removed stale=0。
-- 未做分割视觉或性能采样。
+- `runData`：BUILD SUCCESSFUL，约 37 秒；23 缓存输出，written=2，removed stale=0。
+- 未做分割视觉、真实生成或性能采样。
 
 ### 未验证与风险
 
@@ -264,12 +265,13 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - [CombatUtil.canTargetInLevel](../../src/main/java/org/unitego/lobecorp/util/entity/combat/CombatUtil.java#L93-L97) 明确排除创造玩家；
 - [MidnightCleanup.acceptsTarget](../../src/main/java/org/unitego/lobecorp/world/horde/definition/MidnightCleanup.java#L51-L63) 在扫描阶段调用该检查，因此不会建立目标分配，也不会进入 `createRequests` 和 `processRequests`。
 
-结论：本轮测试中的“真实实体不生成”首先是**没有可接受目标**，不是客户端分割、网络区域页移除或 16 格出生距离直接导致。日志只记录事件启动，没有目标数/生成请求计数，不能从现有日志进一步确认后续步骤。
+结论：创造模式测试中的“真实实体不生成”首先是**没有可接受目标**，不是客户端分割、网络区域页移除或出生距离直接导致。用户随后改用其他实体仍不生成，因此又对出生候选增加距离回退：前 4 次仍优先 16 格，之后退到 12/8/4 格，避免远处候选全部 `safe`/`reachable` 失败时完全不生成。真实原因尚未在运行时确认。
 
 若要继续验证生成链路：
 
 1. 切换到生存模式，或使用可被攻击的非创造目标；
-2. 确认目标在 `event.covers()` 的当前浪潮路段内；
-3. 若生存模式仍无生成，再检查 `HordeSpawnPlanner.candidate` 的 `safe`/`reachable`、`hidden` 重试和 `HordeRuntime.processRequests` 的预算/接受目标检查。
+2. 打开客户端 `debugRanges`，确认目标是否在青色事件线路范围和当前浪潮路段内；
+3. 确认目标实体仍在已加载区块、可被 `MidnightCleanup.acceptsTarget` 接受；
+4. 若仍无生成，再检查 `HordeSpawnPlanner.candidate` 的 `safe`/`reachable`、`hidden` 重试和 `HordeRuntime.processRequests` 的预算/接受目标检查。
 
-本轮未修改战斗目标规则，也没有为创造模式增加测试豁免；直接放宽会让创造玩家成为真实清道夫目标，属于玩法变更。
+本轮未修改战斗目标规则，也没有为创造模式增加测试豁免；直接放宽会让创造玩家成为真实清道夫目标，属于玩法变更。调试范围线框只提供视觉辅助，不代表目标或生成请求已经建立。

@@ -12,7 +12,9 @@
 
 - [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L406-L451) 的目标让行区域刷新加密：远目标最大延迟从 8 tick 降到 4 tick，距离阈值从 32 格降到 24 格；移动超过约 0.5 格的目标立即刷新，静止目标才走延迟；区域中心/半宽改用目标 AABB + `regionMargin`，与服务端区域口径一致。
 - 真实实体未生成排查：读取测试世界玩家 NBT，`playerGameType=1`（创造模式）。[CombatUtil.canTargetInLevel](../../src/main/java/org/unitego/lobecorp/util/entity/combat/CombatUtil.java#L93-L97) 排除创造玩家，[MidnightCleanup.acceptsTarget](../../src/main/java/org/unitego/lobecorp/world/horde/definition/MidnightCleanup.java#L51-L63) 调用该检查，因此扫描不会建立目标，后续不会创建生成请求。这不是客户端分割或出生距离直接导致；本轮未改战斗目标规则，测试需切生存或使用非创造目标。
-- IDEA 项目构建成功（约 5.8 秒）；`runData` 成功（BUILD SUCCESSFUL，约 26 秒，23 缓存输出，written=0，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
+- 另外改用其他实体仍不生成时，[HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L17-L38) 增加出生距离回退：前 4 次仍优先 16 格，之后依次退到 12/8/4 格，避免远处候选全部不安全/不可达时完全不生成。
+- 新增客户端调试渲染：`lobecorp-horde-visuals.toml` 的 `debugRanges` 打开后，青色线框绘制事件整条线路范围，黄色线框绘制本地玩家 `rangeBlocks` 精细范围；实现位于 [HordeRendering](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRendering.java#L21-L100) 和 [HordeClient.debugRanges](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L106-L121)。
+- IDEA 项目构建成功（约 18.1 秒）；`runData` 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=2，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
 - 同步更新[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计第10、11节](horde-performance-audit-20261022.md#L223)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 
@@ -20,7 +22,7 @@
 
 - [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) tick 只检测本地玩家和附近真实战斗目标是否进入线路走廊；本地玩家每 tick，其他目标按距离延长，命中后更新事件的 GPU 让行区域。tick 不缓存绘制批次，[extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 仍逐帧生成行列批次。服务端不再发送客户端显示区域。
 - [HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom 和按长度自适应采样（8—64），改善转弯平滑度；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定样本数；[HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地区域更新入口。
-- [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离至少 16 格，保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
+- [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离优先 16 格（后续已增加 12/8/4 格失败回退），保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
 - IDEA 项目构建成功（约 6.7 秒）；`HordeRegionTest` 2/2、`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 35 秒，23 缓存输出，written=0，removed stale=0）。
 - 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-performance-audit-20261022.md#L223)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
 - 按用户选择 B，保留客户端宽目标筛选，不新增目标 UUID 同步；普通生物可能触发让行缺口，作为已知代价记录。

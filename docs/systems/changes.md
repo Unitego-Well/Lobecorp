@@ -1,12 +1,12 @@
 # 系统修改记录
 
-## 2026-10-22：虚拟潮客户端分段、线路平滑与出生调整
+## 2026-10-22：虚拟潮客户端目标区域检测、线路平滑与出生调整
 
-- [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L81-L161) 新增客户端 tick 分段调度：本地玩家约 32 格内每 tick 重算，远处按距离延长到最多 8 tick；每块缓存 `Batch`，[extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L161) 每帧只做视锥/范围/区块/显示上限过滤。服务端不再决定客户端显示分段。
-- [HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom 和按长度自适应采样（8—64），改善转弯平滑度；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定样本数。
+- [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) tick 只检测本地玩家和附近真实战斗目标是否进入线路走廊；本地玩家每 tick，其他目标按距离延长，命中后更新事件的 GPU 让行区域。tick 不缓存绘制批次，[extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 仍逐帧生成行列批次。服务端不再发送客户端显示区域。
+- [HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom 和按长度自适应采样（8—64），改善转弯平滑度；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定样本数；[HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地区域更新入口。
 - [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离至少 16 格，保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
-- IDEA 静态诊断无 error；IDEA 项目构建成功（约 5.1 秒）；`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=0，removed stale=0）。
-- 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-performance-audit-20261022.md#L221)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端分段按 tick 缓存可能产生阶梯感，出生距离和朝向需实机确认。
+- IDEA 项目构建成功（约 6.7 秒）；`HordeRegionTest` 2/2、`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 35 秒，23 缓存输出，written=0，removed stale=0）。
+- 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-performance-audit-20261022.md#L223)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交。
 
 ## 2026-10-22：深夜清扫烘焙帧动画优化

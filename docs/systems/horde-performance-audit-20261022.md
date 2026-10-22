@@ -41,14 +41,14 @@ motion pass 只把位置、让行、朝向和光照降到逐实例，骨骼动�
 - 逐顶点仍需要读取 6 个浮点，可进一步评估更紧凑的帧数据编码；
 - 评估是否需要对远距离实例降低动画采样，但这会重新引入当前已删除的 LOD 分支。
 
-### P1：客户端每帧重建批次和光场区段集合（本轮已部分处理）
+### P1：客户端每帧重建批次和光场区段集合（本轮改为 tick 区域检测）
 
-[HordeClient.extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 现在只对客户端 tick 缓存的批次做距离、视锥、已加载区块和显示上限过滤；行号区间和 `Batch` 由 [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L78-L110) 按分段刷新。本地玩家附近的分段每客户端 tick 重算，远段按距离延长刷新间隔，服务端不再决定客户端显示分段。
+[HordeClient.extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 仍每帧从时间、线路块生成行列批次，并做距离、视锥、已加载区块和显示上限过滤；[HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) 本轮只检测本地玩家和附近真实战斗目标是否进入线路走廊，命中后更新事件的 GPU 让行区域。tick 不再缓存绘制批次；本地玩家每 tick 更新，其他目标按距离延长检测/更新间隔。
 
 仍保留的成本：
 
-- `extract` 每帧仍遍历全部绘制块以做过滤；
-- 每个分段缓存一组 `Batch`，刷新时仍创建新对象；
+- `extract` 每帧遍历全部绘制块并计算活动行号；
+- 目标区域检测每 tick 扫描附近可渲染实体，并对每个事件遍历绘制块判断走廊；
 - [HordeLightField.prepare](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java#L39-L99) 仍每帧重建 `HashSet<Section>`、排序并处理区段槽位。
 
 区段集合在大多数帧是稳定的，可以按绘制块缓存，只有批次集合或相机范围变化时重建；当前光照侧仍每帧从头做。
@@ -107,7 +107,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 | 工作 | 位置 | 频次 | 判断 | 备注 |
 |---|---|---|---|---|
-| 分段批次缓存 | [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L78-L110) | 本地每 tick，远段按距离延迟 | 已实施 | 每块缓存 `Batch`；`extract` 只过滤缓存 |
+| 玩家/目标区域检测 | [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) | 本地每 tick，远目标延迟 | 已实施 | 只更新 GPU 让行区域，不缓存绘制批次 |
 | 光场区段 `HashSet`/排序 | [HordeLightField.prepare](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java#L39-L99) | 每帧 | 可缓存 | 区段集合按块缓存，变化时重建 |
 | 每批参数上传 | [HordeGpuRenderer.writeParameters](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L194-L218) | 每帧 | 必要 | 时间/相机/光照每帧变化；可减少每批 UBO 数量 |
 | 全线路 revision 扫描 | [HordeSync.tick](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java#L104-L126) | 每 tick/玩家/事件 | 可优化 | 维护待发送队列，只处理未发送节点 |
@@ -220,35 +220,39 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 本次代码改动所在文件在工作区已有其他未提交修改。为避免把既有改动混入，本次实现暂未单独提交；文档与实现状态在本节和修改记录中如实标注。
 
-## 10. 本轮实施记录：客户端分段调度、线路平滑与出生调整
+## 10. 本轮实施记录：客户端目标区域检测、线路平滑与出生调整
 
-实施日期：2026-10-22。对应本轮新增需求：虚拟潮显示分段下放客户端、本地玩家优先、线路转弯平滑、服务端只负责生成与出生朝向/目标。
+实施日期：2026-10-22。对应本轮新增需求：tick 只做区域检测、检测到玩家/真实战斗目标后通知 GPU 分割、线路转弯平滑、服务端只负责生成与出生朝向/目标。
 
 ### 改动
 
-- [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L81-L110) 新增客户端 tick 分段调度：按绘制块到本地玩家的距离计算刷新间隔，本地约 32 格内每 tick 重算，远段逐级延长到最多 8 tick 一次。每块结果缓存为 `Batch` 列表，[extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L161) 每帧只做视锥、范围、区块和显示上限过滤，不再逐帧重算所有行号。
-- [HordeSamplingUtil.loop](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom，采样数按线段长度自适应提升（8—64），转角处获得更密的样本。
-- [HordeSpawnPlanner.candidate](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 生成距离至少 16 格，保持在目标后方并沿虚拟潮来向一侧；例如向左移动时在目标右侧生成。
-- [HordeRuntime.processRequests](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即 `lookAt` 目标，并在加入世界前保留现有 `bind`，立即设置攻击目标和 Brain 记忆。
-- [HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 的显式闭环断言不再绑定固定 16 样本数，改为检查闭环且只在首尾重复起始点。
+- [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) 不再缓存绘制批次，只做目标区域检测：本地玩家每 tick 检查是否进入线路走廊，附近其他 `LivingEntity` 按到本地玩家的距离延长检测/更新间隔；命中后通过 [ClientEvent.updateGaps](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L409-L470) 更新事件的让行区域并提升 `regionVersion`，GPU 下一帧读取新区域。
+- [HordeClient.extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 恢复逐帧从时间、线路块生成行列批次；tick 不保存 `Batch`，也不重算所有行号。
+- [HordeClient.Region](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L478-L516) 增加本地 `Vec3 + 半径` 更新入口，保留原有平滑进出和过期规则。
+- [HordeSync](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java) 不再准备或发送 `regions` 页面；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java) 也移除了 GPU 显示区域的序列化缓存。服务端仍保留目标扫描和区域分组供参战转派，客户端显示分割由本地目标检测产生。
+- [HordeSamplingUtil.loop](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 使用向心 Catmull-Rom 和 8—64 自适应采样，长线段和转角获得更密节点。
+- [HordeSpawnPlanner.candidate](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 生成距离至少 16 格，保持在目标后方并沿虚拟潮来向一侧；[HordeRuntime.processRequests](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，在加入世界前保留 `bind`，立即设置攻击目标和 Brain 记忆。
+- [HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地更新入口；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定 16 样本数。
 
 ### 实际检查
 
-- IDEA 静态诊断：HordeClient、HordeRuntime、HordeSamplingUtil 无 error。
-- IDEA 项目构建：成功，约 5.1 秒，无编译器消息。
-- `HordeRulesTest`：9/9 通过。
-- `runData`：在客户端分段/出生改动后运行成功，BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=0，removed stale=0。
+- IDEA 项目构建：成功，约 6.7 秒，无编译器消息。
+- `HordeRegionTest`：2/2 通过；`HordeRulesTest`：9/9 通过。
+- `runData`：BUILD SUCCESSFUL，约 35 秒；23 缓存输出，written=0，removed stale=0。
 - 未启动游戏、未编译运行时着色器、未做视觉或性能采样。
 
 ### 未验证与风险
 
-- 客户端分段改为 tick 级缓存，本地帧动画与单位运动由 60 FPS 降为 20 Hz 更新；远段按距离进一步延迟，可能看起来阶梯化，需要实机确认。
-- 本地“优先”目前体现为近距离块每 tick 更新；不是严格的每 tick 预算队列。
+- 客户端目标筛选目前是“存活、非旁观、非事件参战、非尸体、非 Indigo 试炼”，比服务端实际接受目标的规则更宽，可能给普通生物生成让行缺口。
+- 每个目标一个区域，没有像服务端那样按 32 格单元合并近距离目标；目标密集时 GPU 区域数量可能偏高。
+- 区域检测每 tick 扫描附近实体，并对每个事件遍历绘制块判断是否在走廊内，性能需要实测；尚未加入空间索引。
+- 本地玩家始终参与检测，旁观/未参战状态是否应排除仍需确认。
 - 向心 Catmull-Rom 的自适应样本会提高线路节点数；超长或锚点过多的线路可能触发 `HordeRoute` 的 8192 节点上限。
 - 出生距离固定最小 16 格，具体观感与接敌时间需要实机调参；朝向只在生成瞬间设置，后续仍由 AI 导航接管。
-- 着色器/烘焙帧动画仍未经游戏内加载验证。
+- 服务端已停止发送显示区域，但本地目标检测与 GPU 分割没有运行时验证；旧客户端/服务端不兼容风险未测试。
+- 烘焙帧动画仍未经游戏内加载验证。
 - 代码所在文件仍有既有未提交改动，本轮代码暂未单独提交。
 
 ### Git
 
-客户端分段、线路采样、出生与测试改动均写入工作区；因目标文件已有其他未提交修改，未单独提交，避免混入既有改动。
+客户端目标区域检测、线路采样、出生、网络区域同步移除和测试改动均写入工作区；因目标文件已有其他未提交修改，未单独提交，避免混入既有改动。

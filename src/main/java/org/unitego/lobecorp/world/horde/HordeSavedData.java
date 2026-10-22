@@ -16,7 +16,7 @@ import java.util.UUID;
 public class HordeSavedData extends SavedData {
     public static final Codec<HordeSavedData> CODEC = CompoundTag.CODEC.xmap(HordeSavedData::load, HordeSavedData::save);
     private static final SavedDataType<HordeSavedData> TYPE =
-            new SavedDataType<>(Lobecorp.id("horde_events"), HordeSavedData::new, CODEC);
+		    new SavedDataType<>(Lobecorp.id("horde_events_gpu_v1"), HordeSavedData::new, CODEC);
     private final Map<UUID, HordeEvent> events = new LinkedHashMap<>();
     private final Map<String, HordeTargetAssignment> targets = new LinkedHashMap<>();
     private long clock;

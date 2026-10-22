@@ -6,43 +6,16 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import org.unitego.lobecorp.Lobecorp;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.HashMap;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
-import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
-/// 近处提取三维姿态，远处使用四视角动画；在世界颜色完成后绘制，不提交虚拟阴影。
+/// 提取固定空间块的编号区间；在世界颜色完成后批量绘制，不提交虚拟阴影。
 public class HordeRendering {
-	private static final ContextKey<List<Draw>> FRAMES = new ContextKey<>(Lobecorp.id("horde_frames"));
-	private static List<Draw> pending = List.of();
+	private static final ContextKey<List<HordeClient.Batch>> FRAMES = new ContextKey<>(Lobecorp.id("horde_frames"));
+	private static List<HordeClient.Batch> pending = List.of();
 
 	public static void extract(ExtractLevelRenderStateEvent event) {
-		var draws = new ArrayList<Draw>();
-		var instances = HordeClient.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false), event.getFrustum());
-		HordeImpostorAtlas.beginFrame();
-		var atlases = new HashMap<HordeVisualDefinition, HordeImpostorAtlas.Atlas>();
-		for (var instance : instances) {
-			if (!atlases.containsKey(instance.visual())) {
-				atlases.put(instance.visual(), HordeImpostorAtlas.get(instance.visual()));
-			}
-			var atlas = atlases.get(instance.visual());
-			float blend = atlas == null ? 0 : (float) HordeSamplingUtil.smooth(
-					(instance.distance() - HordeVisualConfig.IMPOSTOR_DISTANCE.get()) / HordeImpostorAtlas.TRANSITION_BLOCKS);
-			if (blend < 1) {
-				var meshes = HordeMeshCache.meshes(instance);
-				if (meshes != null) {
-					draws.add(new Draw(instance, meshes, null, 1 - blend));
-				}
-			}
-			if (blend > 0) {
-				draws.add(new Draw(instance, HordeImpostorAtlas.QUAD_PAIR, atlas, blend));
-			}
-		}
-		draws.sort(Comparator.comparingDouble((Draw draw) -> draw.instance().distance()).reversed());
-		event.getRenderState().setRenderData(FRAMES, List.copyOf(draws));
+		var batches = HordeClient.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false), event.getFrustum());
+		event.getRenderState().setRenderData(FRAMES, batches);
 	}
 
 	public static void submit(SubmitCustomGeometryEvent event) {
@@ -60,10 +33,7 @@ public class HordeRendering {
 	}
 
 	public static String statistics() {
-		return HordeGpuRenderer.statistics() + ", " + HordeVisibility.statistics() + ", " + HordeImpostorAtlas.statistics();
-	}
-
-	public record Draw(HordeClient.Instance instance, HordeMeshCache.Pair meshes, HordeImpostorAtlas.Atlas atlas, float opacity) {
+		return HordeGpuRenderer.statistics();
 	}
 
 	public static void clear() {

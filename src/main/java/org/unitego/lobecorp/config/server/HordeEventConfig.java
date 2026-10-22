@@ -9,8 +9,8 @@ public class HordeEventConfig {
 	public static final ModConfigSpec SPEC;
 	public static final ModConfigSpec.IntValue DURATION, INITIAL_QUOTA, MAXIMUM_MULTIPLIER, REINFORCE,
 			UNREACHABLE, RETRY, OUTSIDE, SCAN, FADE, TRANSITION, SPLIT, SOFT_BUDGET, CREATES_PER_TICK,
-			WORK_PER_TICK, SCAN_WORK, ROUTE_WORK, ROUTE_RECHECK, SEND_BYTES, MAX_SEGMENTS_PER_PACKET;
-	public static final ModConfigSpec.DoubleValue WIDTH, DENSITY, MARGIN, REGION_MARGIN, SPAWN_DISTANCE,
+			WORK_PER_TICK, SCAN_WORK, SEND_BYTES, MAX_SEGMENTS_PER_PACKET;
+	public static final ModConfigSpec.DoubleValue WIDTH, ROW_SPACING, COLUMN_SPACING, MARGIN, REGION_MARGIN, SPAWN_DISTANCE,
 			GRID_SIZE, SUBSCRIBE_DISTANCE, SUBSCRIBE_HYSTERESIS;
 	public static final ModConfigSpec.BooleanValue STATISTICS;
 
@@ -19,7 +19,8 @@ public class HordeEventConfig {
 		b.push("event");
 		DURATION = b.translation(HordeLang.config("server.duration", "Generation ticks", "生成阶段刻数")).comment("生成阶段的逻辑刻数；收尾预计使用相同时长。").defineInRange("durationTicks", 6000, 20, 1728000);
 		WIDTH = b.translation(HordeLang.config("server.width", "Width", "浪潮宽度")).defineInRange("width", 128d, 1d, 512d);
-		DENSITY = b.translation(HordeLang.config("server.density", "Base density", "基础视觉密度")).comment("128格宽时默认每平方格1个影像，以几乎贴合的最高密度为基准；其他宽度按平方根增长换算总量。").defineInRange("density", 1d, 0.001d, 4d);
+		ROW_SPACING = b.translation(HordeLang.config("server.row_spacing", "Row spacing", "纵向间距")).defineInRange("rowSpacing", 1d, 0.25d, 16d);
+		COLUMN_SPACING = b.translation(HordeLang.config("server.column_spacing", "Column spacing", "横向间距")).defineInRange("columnSpacing", 1d, 0.25d, 16d);
 		MARGIN = b.translation(HordeLang.config("server.margin", "Corridor margin", "线路走廊余量")).defineInRange("corridorMargin", 8d, 0d, 128d);
 		b.pop().push("combat");
 		INITIAL_QUOTA = b.translation(HordeLang.config("server.initial_quota", "Initial quota", "初始参战配额")).defineInRange("initialQuota", 1, 1, 16);
@@ -39,9 +40,7 @@ public class HordeEventConfig {
 		SCAN_WORK = b.translation(HordeLang.config("server.scan_work", "Scan nodes per tick", "每刻共享目标扫描节点预算")).defineInRange("scanNodesPerTick", 8, 1, 128);
 		b.pop().push("route");
 		GRID_SIZE = b.translation(HordeLang.config("server.grid_size", "Coarse grid size", "路线粗网格尺寸")).defineInRange("gridSize", 8d, 2d, 32d);
-		TRANSITION = b.translation(HordeLang.config("server.transition", "Transition ticks", "路线与让行过渡刻数")).defineInRange("transitionTicks", 20, 1, 200);
-		ROUTE_WORK = b.translation(HordeLang.config("server.route_work", "Route nodes per tick", "每刻路线节点预算")).defineInRange("nodesPerTick", 2, 1, 128);
-		ROUTE_RECHECK = b.translation(HordeLang.config("server.route_recheck", "Route recheck ticks", "地形复查间隔")).defineInRange("recheckTicks", 100, 20, 72000);
+		TRANSITION = b.translation(HordeLang.config("server.transition", "Transition ticks", "让行过渡刻数")).defineInRange("transitionTicks", 20, 1, 200);
 		b.pop().push("network");
 		SUBSCRIBE_DISTANCE = b.translation(HordeLang.config("server.subscribe_distance", "Subscription distance", "事件订阅距离")).defineInRange("subscribeDistance", 288d, 32d, 1024d);
 		SUBSCRIBE_HYSTERESIS = b.translation(HordeLang.config("server.subscribe_hysteresis", "Subscription hysteresis", "订阅距离迟滞")).defineInRange("subscribeHysteresis", 32d, 0d, 256d);

@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class HordeRulesTest {
 	private static HordeRules rules() {
-		return new HordeRules(6000, 64, 0.25, 8, 1, 3, 100, 100, 100,
+		return new HordeRules(6000, 64, 1, 1, 8, 1, 3, 100, 100, 100,
 				40, 20, 5, 20, 8, 40, 4);
 	}
 
@@ -66,23 +66,12 @@ public class HordeRulesTest {
 	}
 
 	@Test
-	public void widthIncreasesTotalDensitySublinearly() {
-		double narrow = HordeSamplingUtil.density(64, 0.25) * 64;
-		double wide = HordeSamplingUtil.density(256, 0.25) * 256;
-		assertEquals(narrow * 2, wide, 0.000001);
-	}
-
-	@Test
-	public void seededSamplingDoesNotDependOnVisitOrder() {
-		double value = HordeSamplingUtil.unit(1234, 42, 17);
-		for (int i = 0; i < 100; i++) {
-			HordeSamplingUtil.unit(1234, i, 17);
-		}
-		assertEquals(value, HordeSamplingUtil.unit(1234, 42, 17));
-		assertTrue(value >= 0 && value < 1);
-		double before = HordeSamplingUtil.noise(1234, 42, 0.999999);
-		double after = HordeSamplingUtil.noise(1234, 42, 1.000001);
-		assertEquals(before, after, 0.00001);
+	public void spacingSurvivesRuleRoundTrip() {
+		var original = rules();
+		var restored = HordeRules.load(original.save());
+		assertEquals(original, restored);
+		assertEquals(1, restored.rowSpacing());
+		assertEquals(1, restored.columnSpacing());
 	}
 
 	@Test
@@ -106,12 +95,9 @@ public class HordeRulesTest {
 	}
 
 	@Test
-	public void virtualEndpointsFadeByTravelTime() {
-		assertEquals(0, HordeSamplingUtil.endpointAlpha(0, 100, 1, 5));
-		assertEquals(0.5f, HordeSamplingUtil.endpointAlpha(2.5, 100, 1, 5));
-		assertEquals(1, HordeSamplingUtil.endpointAlpha(50, 100, 1, 5));
-		assertEquals(0.5f, HordeSamplingUtil.endpointAlpha(97.5, 100, 1, 5));
-		assertEquals(0, HordeSamplingUtil.endpointAlpha(100, 100, 1, 5));
+	public void invalidSpacingIsRejected() {
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 0, 1, 8, 1, 3,
+				100, 100, 100, 40, 20, 5, 20, 8, 40, 4));
 	}
 
 	@Test

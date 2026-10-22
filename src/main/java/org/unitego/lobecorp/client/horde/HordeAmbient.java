@@ -24,20 +24,20 @@ public class HordeAmbient {
 			return;
 		}
 		tick++;
-		var nearest = HordeClient.instances().stream()
-				.filter(instance -> instance.distance() < HordeVisualConfig.NEAR.get()).toList();
+		var nearest = HordeClient.batches().stream()
+				.filter(batch -> batch.block().bounds().distanceToSqr(minecraft.player.position()) < 32 * 32).toList();
 		if (nearest.isEmpty()) {
 			SOURCES.clear();
 			return;
 		}
 		if (HordeVisualConfig.SOUND.get() && tick % 6 == 0) {
-			int count = Math.min((int) Math.ceil(HordeVisualConfig.SOUND_VOICES.get() * HordeClient.quality()), nearest.size());
+			int count = Math.min(HordeVisualConfig.SOUND_VOICES.get(), nearest.size());
 			while (SOURCES.size() < count) {
 				SOURCES.add(new Source());
 			}
 			for (int i = 0; i < count; i++) {
 				var source = SOURCES.get(i);
-				var point = nearest.get(i * nearest.size() / count).position();
+				var point = nearest.get(i * nearest.size() / count).block().center();
 				if (tick - source.checkedAt >= 20) {
 					source.blocked = minecraft.level.clip(new ClipContext(minecraft.player.getEyePosition(), point.add(0, 1, 0),
 							ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, minecraft.player)).getType() != HitResult.Type.MISS;
@@ -49,10 +49,10 @@ public class HordeAmbient {
 			}
 		}
 		if (HordeVisualConfig.DUST.get()) {
-			int count = Math.min(nearest.size(), (int) Math.ceil(HordeVisualConfig.DUST_PER_TICK.get() * HordeClient.quality()));
+			int count = Math.min(nearest.size(), HordeVisualConfig.DUST_PER_TICK.get());
 			for (int i = 0; i < count; i++) {
 				var instance = nearest.get((int) Math.floorMod(tick * 31 + i * 17, nearest.size()));
-				var point = instance.position();
+				var point = instance.block().bounds().getCenter();
 				var block = minecraft.level.getBlockState(BlockPos.containing(point).below());
 				if (!block.isAir()) {
 					minecraft.level.addParticle(new BlockParticleOption(ParticleTypes.BLOCK, block),

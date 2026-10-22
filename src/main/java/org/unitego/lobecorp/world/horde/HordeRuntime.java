@@ -154,7 +154,6 @@ public class HordeRuntime {
 		if (!active.isEmpty()) {
 			java.util.Collections.rotate(active, -(int) (data.clock() % active.size()));
 		}
-		var routeBudgets = new HashMap<ServerLevel, Integer>();
 		for (var event : active) {
 			var profile = HordeEvents.profile(event.profile());
 			ServerLevel level = server.getLevel(event.dimension());
@@ -172,13 +171,6 @@ public class HordeRuntime {
 				data.events().remove(event.id());
 				scanCursors.remove(event.id());
 				continue;
-			}
-			int routeWork = routeBudgets.getOrDefault(level, 0);
-			if (routeWork < HordeEventConfig.ROUTE_WORK.get()) {
-				if (event.route().refine(level, event.rules(), event.tick(), 1)) {
-					event.changed();
-				}
-				routeBudgets.put(level, routeWork + 1);
 			}
 		}
 		tickParticipants(data);
@@ -271,7 +263,7 @@ public class HordeRuntime {
 				int index = first + Math.floorMod(cursor++ - first, Math.max(1, last - first + 1));
 				var routeTag = event.route().slice(index, 1).getListOrEmpty("nodes");
 				var node = HordeRoute.Node.load((CompoundTag) routeTag.getFirst());
-				var center = node.at(event.tick(), event.rules().transitionTicks());
+				var center = node.at();
 				BlockPos block = BlockPos.containing(center);
 				if (level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4) == null) {
 					continue;
@@ -335,7 +327,7 @@ public class HordeRuntime {
 			var profile = HordeEvents.profile(event.profile());
 			return profile != null && domain(event, profile).equals(target.domain) && event.covers(target.position);
 		}).min(Comparator.comparingDouble((HordeEvent event) -> event.route().point(event.station(target.position),
-						0, event.tick(), event.rules().transitionTicks()).distanceToSqr(target.position))
+						0).distanceToSqr(target.position))
 				.thenComparing(HordeEvent::id)).orElse(null);
 	}
 
@@ -393,7 +385,7 @@ public class HordeRuntime {
 			Mob mob;
 			try {
 				mob = profile.createParticipant(level,
-						new HordeSpawnContext(event.id(), target, request.fallback, event.seed()));
+						new HordeSpawnContext(event.id(), target, request.fallback));
 			} catch (RuntimeException exception) {
 				Lobecorp.LOGGER.warn("停止无法创建战斗实体的群体事件 {}", event.id(), exception);
 				stop(event, HordeStopMode.CLEAR);

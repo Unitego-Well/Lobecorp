@@ -1,7 +1,6 @@
 package org.unitego.lobecorp.client.horde;
 
 import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -21,280 +20,336 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
+import java.util.UUID;
 
-/// 两帧三维网格常驻 GPU；每帧只写实例参数，由顶点着色器插值和变换。
+/// 常驻模型、线路和骨骼动画；每批只上传时间与编号区间，不上传逐单位变换。
 public class HordeGpuRenderer {
-	private static final int INSTANCES_PER_DRAW = 256, INSTANCE_BYTES = 32;
-	private static final int BLOCK_BYTES = INSTANCES_PER_DRAW * INSTANCE_BYTES, VERTEX_BYTES = 40;
-	private static final VertexFormatElement NEXT_POSITION = VertexFormatElement.register(
-			VertexFormatElement.findNextId(), 0, VertexFormatElement.Type.FLOAT, false, 3);
+	private static final int PARAMETER_BYTES = 160;
+	private static final int VERTEX_BYTES = 28;
+	private static final int INSTANCES_PER_DRAW = 65536;
 	private static final VertexFormat FORMAT = VertexFormat.builder()
 			.add("Position", VertexFormatElement.POSITION).add("UV0", VertexFormatElement.UV0)
-			.add("Color", VertexFormatElement.COLOR).add("NextPosition", NEXT_POSITION)
-			.add("Normal", VertexFormatElement.NORMAL).padding(1).build();
-	private static final RenderPipeline NORMAL = pipeline(false, false, false);
-	private static final RenderPipeline FADE = pipeline(true, false, false);
-	private static final RenderPipeline REVERSE = pipeline(false, true, false);
-	private static final RenderPipeline REVERSE_FADE = pipeline(true, true, false);
-	private static final RenderPipeline BAKED_NORMAL = pipeline(false, false, true);
-	private static final RenderPipeline BAKED_FADE = pipeline(true, false, true);
-	private static final RenderPipeline BAKED_REVERSE = pipeline(false, true, true);
-	private static final RenderPipeline BAKED_REVERSE_FADE = pipeline(true, true, true);
-	private static final LinkedHashMap<MeshKey, Geometry> GEOMETRY = new LinkedHashMap<>(16, 0.75f, true);
-	private static final Map<Identifier, Boolean> GLOW = new HashMap<>();
-	private static final Matrix4f IDENTITY = new Matrix4f();
-	private static final Vector4f WHITE = new Vector4f(1);
-	private static final Vector3f ZERO = new Vector3f();
-	private static GpuBuffer instances;
+			.add("Color", VertexFormatElement.COLOR).add("Normal", VertexFormatElement.NORMAL).padding(1).build();
+	private static final RenderPipeline NORMAL = pipeline(false);
+	private static final RenderPipeline REVERSE = pipeline(true);
+	private static final Map<HordeVisualDefinition, Geometry> GEOMETRY = new HashMap<>();
+	private static final Map<UUID, EventData> EVENTS = new HashMap<>();
+	private static final HordeLightField LIGHT = new HordeLightField();
+	private static GpuBuffer parameters;
 	private static ByteBuffer upload;
-	private static long residentBytes;
-	private static long uploadedBytes;
-	private static long frame;
+	private static long drawn;
 	private static int batches;
-	private static int drawn;
-	private static int bakedInstances;
+	private static long uploadedBytes;
+	private static long preparations;
 
-	private static RenderPipeline pipeline(boolean fade, boolean reverse, boolean baked) {
-		var builder = RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
-				.withLocation(Lobecorp.id("pipeline/horde_" + (fade ? "fade" : "solid")
-						+ (reverse ? "_reverse" : "") + (baked ? "_baked" : "")))
-				.withVertexShader(Lobecorp.id("core/horde_instanced"))
-				.withFragmentShader(Lobecorp.id("core/horde_instanced"))
+	private static RenderPipeline pipeline(boolean reverse) {
+		return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_LIGHT_DIR_SNIPPET)
+				.withLocation(Lobecorp.id(reverse ? "pipeline/horde_gpu_reverse" : "pipeline/horde_gpu"))
+				.withVertexShader(Lobecorp.id("core/horde_instanced")).withFragmentShader(Lobecorp.id("core/horde_instanced"))
 				.withSampler("Sampler0").withSampler("Sampler2").withSampler("Glowmask")
-				.withUniform("HordeInstances", UniformType.UNIFORM_BUFFER)
-				.withVertexFormat(FORMAT, VertexFormat.Mode.QUADS)
-				.withCull(false)
-				.withDepthStencilState(new DepthStencilState(reverse ? CompareOp.GREATER_THAN_OR_EQUAL : CompareOp.LESS_THAN_OR_EQUAL, !fade))
-				.withColorTargetState(fade ? new ColorTargetState(BlendFunction.TRANSLUCENT) : ColorTargetState.DEFAULT);
-		if (baked) {
-			builder.withShaderDefine("HORDE_IMPOSTOR").withUniform("HordeBillboard", UniformType.UNIFORM_BUFFER);
-		}
-		return builder.build();
+				.withSampler("HordeRoute").withSampler("HordeAnimation").withSampler("HordeRegions")
+				.withSampler("HordeLight").withSampler("HordeLightIndex")
+				.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
+				.withVertexFormat(FORMAT, VertexFormat.Mode.QUADS).withCull(false)
+				.withDepthStencilState(new DepthStencilState(reverse ? CompareOp.GREATER_THAN_OR_EQUAL : CompareOp.LESS_THAN_OR_EQUAL, true))
+				.withColorTargetState(ColorTargetState.DEFAULT).build();
 	}
 
-	/// TextureManager 持有纹理；本方法只借用，不关闭它们。
+	public static void draw(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
+		try {
+			drawPrepared(source, modelView, reverse);
+		} catch (RuntimeException exception) {
+			source.forEach(batch -> batch.event().failed = true);
+			clear();
+			Lobecorp.LOGGER.error("停止当前群体虚拟显示：GPU 资源或光场准备失败", exception);
+		}
+	}
+
 	@SuppressWarnings("resource")
-	public static void draw(List<HordeRendering.Draw> draws, Matrix4fc modelView, boolean reverse) {
-		frame++;
-		batches = 0;
+	private static void drawPrepared(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
 		drawn = 0;
-		bakedInstances = 0;
+		batches = 0;
 		uploadedBytes = 0;
-		if (draws.isEmpty()) {
-			trim();
+		if (source.isEmpty()) {
 			return;
 		}
 		var minecraft = Minecraft.getInstance();
 		var target = minecraft.getMainRenderTarget();
-		if (target.getDepthTextureView() == null || target.getColorTextureView() == null) {
+		if (target.getColorTextureView() == null || target.getDepthTextureView() == null) {
 			return;
 		}
-		var groups = new LinkedHashMap<GroupKey, List<HordeRendering.Draw>>();
-		for (var draw : draws) {
-			var key = new GroupKey(new MeshKey(draw.meshes().first(), draw.meshes().second()),
-					draw.atlas() == null ? draw.instance().visual().texture() : draw.atlas().color(),
-					draw.instance().alpha() * draw.opacity() < 0.999f, draw.atlas());
-			groups.computeIfAbsent(key, _ -> new ArrayList<>()).add(draw);
+		var prepared = prepare(source);
+		if (prepared.isEmpty()) {
+			return;
 		}
-		var prepared = new ArrayList<Batch>();
-		int blocks = 0;
-		for (var group : groups.entrySet()) {
-			var geometry = GEOMETRY.computeIfAbsent(group.getKey().mesh(), HordeGpuRenderer::uploadGeometry);
-			geometry.lastFrame = frame;
-			for (int first = 0; first < group.getValue().size(); first += INSTANCES_PER_DRAW) {
-				int count = Math.min(INSTANCES_PER_DRAW, group.getValue().size() - first);
-				prepared.add(new Batch(group.getKey(), geometry, group.getValue(), first, count, blocks++));
-			}
-		}
-		int stride = Math.ceilDiv(BLOCK_BYTES, RenderSystem.getDevice().getUniformOffsetAlignment())
-				* RenderSystem.getDevice().getUniformOffsetAlignment();
-		int required = Math.multiplyExact(blocks, stride);
-		ensureInstances(required);
+		LIGHT.prepare(prepared.stream().map(Prepared::batch).toList());
+		int alignment = RenderSystem.getDevice().getUniformOffsetAlignment();
+		int stride = Math.ceilDiv(PARAMETER_BYTES, alignment) * alignment;
+		int required = Math.multiplyExact(prepared.size(), stride);
+		ensureParameters(required);
 		upload.clear().limit(required);
-		var camera = minecraft.gameRenderer.getMainCamera().position();
-		for (var batch : prepared) {
-			upload.position(batch.block() * stride);
-			Identifier glowId = batch.key().texture().withPath(path -> path.replace(".png", "_glowmask.png"));
-			boolean hasGlow = batch.key().atlas() != null
-					|| GLOW.computeIfAbsent(glowId, id -> minecraft.getResourceManager().getResource(id).isPresent());
-			for (int i = 0; i < batch.count(); i++) {
-				var draw = batch.draws().get(batch.first() + i);
-				var instance = draw.instance();
-				double yaw = Math.PI - Math.atan2(-instance.direction().x, instance.direction().z);
-				upload.putFloat((float) (instance.position().x - camera.x))
-						.putFloat((float) (instance.position().y - camera.y + 0.01))
-						.putFloat((float) (instance.position().z - camera.z)).putFloat(instance.alpha() * draw.opacity());
-				upload.putFloat((float) Math.cos(yaw)).putFloat((float) Math.sin(yaw))
-						.putFloat(draw.atlas() == null ? draw.meshes().weight() : draw.atlas().phase(instance))
-						.putFloat(hasGlow ? instance.light() : -instance.light() - 1);
-			}
+		for (int i = 0; i < prepared.size(); i++) {
+			upload.position(i * stride);
+			writeParameters(prepared.get(i));
 		}
 		upload.position(0).limit(required);
-		RenderSystem.getDevice().createCommandEncoder().writeToBuffer(instances.slice(0, required), upload);
+		RenderSystem.getDevice().createCommandEncoder().writeToBuffer(parameters.slice(0, required), upload);
 		uploadedBytes = required;
-		var transforms = RenderSystem.getDynamicUniforms().writeTransform(modelView, WHITE, ZERO, IDENTITY);
+		var transforms = RenderSystem.getDynamicUniforms().writeTransform(modelView, new Vector4f(1), new Vector3f(), new Matrix4f());
 		var indices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS);
-		int maximumIndices = prepared.stream().mapToInt(batch -> batch.geometry().indices).max().orElse(0);
-		var indexBuffer = indices.getBuffer(maximumIndices);
-		var lightmap = minecraft.gameRenderer.lightmap();
-		var lightSampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
-		var textures = new HashMap<Identifier, TexturePair>();
-		for (var key : groups.keySet()) {
-			textures.computeIfAbsent(key.texture(), id -> {
-				var base = minecraft.getTextureManager().getTexture(id);
-				Identifier glowId = id.withPath(path -> path.replace(".png", "_glowmask.png"));
-				var glow = key.atlas() != null || GLOW.getOrDefault(glowId, false)
-						? minecraft.getTextureManager().getTexture(glowId) : base;
-				return new TexturePair(base, glow);
-			});
-		}
-		// 所有缓冲上传必须在 RenderPass 开始前完成。
+		int maximum = prepared.stream().mapToInt(item -> item.geometry().indices).max().orElse(0);
+		var indexBuffer = indices.getBuffer(maximum);
+		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+		var linear = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+
 		try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
-				() -> "Lobecorp horde instances", target.getColorTextureView(), OptionalInt.empty(),
+				() -> "Lobecorp GPU horde", target.getColorTextureView(), OptionalInt.empty(),
 				target.getDepthTextureView(), OptionalDouble.empty())) {
-			// 实体淡出按由远到近的实例顺序提交，不再逐四边形排序整个浪潮。
-			for (int phase = 0; phase < 2; phase++) {
-				for (var batch : prepared) {
-					if (batch.key().fade() != (phase == 1)) {
-						continue;
-					}
-					pass.setPipeline(selectPipeline(batch.key(), reverse));
-					RenderSystem.bindDefaultUniforms(pass);
-					if (batch.key().atlas() != null) {
-						pass.setUniform("HordeBillboard", batch.key().atlas().bounds());
-					}
-					pass.setUniform("DynamicTransforms", transforms);
-					pass.setUniform("HordeInstances", instances.slice((long) batch.block() * stride, BLOCK_BYTES));
-					var texture = textures.get(batch.key().texture()).base();
-					var glow = textures.get(batch.key().texture()).glow();
-					pass.bindTexture("Sampler0", texture.getTextureView(), texture.getSampler());
-					pass.bindTexture("Glowmask", glow.getTextureView(), glow.getSampler());
-					pass.bindTexture("Sampler2", lightmap, lightSampler);
-					pass.setVertexBuffer(0, batch.geometry().vertices);
-					pass.setIndexBuffer(indexBuffer, indices.type());
-					pass.drawIndexed(0, 0, batch.geometry().indices, batch.count());
-					batches++;
-					drawn += batch.count();
-					bakedInstances += batch.key().atlas() == null ? 0 : batch.count();
-				}
+			pass.setPipeline(reverse ? REVERSE : NORMAL);
+			RenderSystem.bindDefaultUniforms(pass);
+			pass.setUniform("DynamicTransforms", transforms);
+			pass.bindTexture("Sampler2", minecraft.gameRenderer.lightmap(), linear);
+			pass.bindTexture("HordeLight", LIGHT.atlas().getTextureView(), nearest);
+			pass.bindTexture("HordeLightIndex", LIGHT.lookup().getTextureView(), nearest);
+			pass.setIndexBuffer(indexBuffer, indices.type());
+			for (int i = 0; i < prepared.size(); i++) {
+				var item = prepared.get(i);
+				pass.setUniform("HordeParameters", parameters.slice((long) i * stride, PARAMETER_BYTES));
+				pass.bindTexture("Sampler0", item.geometry().base.getTextureView(), item.geometry().base.getSampler());
+				pass.bindTexture("Glowmask", item.geometry().glow.getTextureView(), item.geometry().glow.getSampler());
+				pass.bindTexture("HordeRoute", item.event().route.texture().getTextureView(), nearest);
+				pass.bindTexture("HordeRegions", item.event().regions.texture().getTextureView(), nearest);
+				pass.bindTexture("HordeAnimation", item.geometry().animation.texture().getTextureView(), nearest);
+				pass.setVertexBuffer(0, item.geometry().vertices);
+				pass.drawIndexed(0, 0, item.geometry().indices, item.count());
+				drawn += item.count();
+				batches++;
 			}
 		}
-		trim();
 	}
 
-	private static RenderPipeline selectPipeline(GroupKey key, boolean reverse) {
-		if (key.atlas() != null) {
-			return reverse ? (key.fade() ? BAKED_REVERSE_FADE : BAKED_REVERSE) : (key.fade() ? BAKED_FADE : BAKED_NORMAL);
-		}
-		return reverse ? (key.fade() ? REVERSE_FADE : REVERSE) : (key.fade() ? FADE : NORMAL);
-	}
-
-	private static Geometry uploadGeometry(MeshKey key) {
-		float[] a = key.first().vertices(), b = key.second().vertices();
-		int count = a.length / 8;
-		var data = MemoryUtil.memAlloc(Math.multiplyExact(count, VERTEX_BYTES));
-		try {
-			for (int i = 0; i < a.length; i += 8) {
-				data.putFloat(a[i]).putFloat(a[i + 1]).putFloat(a[i + 2]);
-				data.putFloat(a[i + 3]).putFloat(a[i + 4]);
-				for (int n = 5; n < 8; n++) {
-					data.put((byte) Math.round((Math.clamp(a[i + n], -1, 1) * 0.5f + 0.5f) * 255));
+	private static List<Prepared> prepare(List<HordeClient.Batch> source) {
+		var prepared = new ArrayList<Prepared>();
+		for (var batch : source) {
+			var event = batch.event();
+			if (event.failed) {
+				continue;
+			}
+			try {
+				var geometry = GEOMETRY.computeIfAbsent(event.visual, HordeGpuRenderer::geometry);
+				var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
+				data.updateRegions(event);
+				for (int offset = 0; offset < batch.count(); ) {
+					int count = Math.min(INSTANCES_PER_DRAW, batch.count() - offset);
+					prepared.add(new Prepared(batch, geometry, data, offset, count));
+					offset += count;
 				}
-				data.put((byte) 255);
-				data.putFloat(b[i]).putFloat(b[i + 1]).putFloat(b[i + 2]);
-				for (int n = 5; n < 8; n++) {
-					data.put((byte) Math.round(Math.clamp(b[i + n], -1, 1) * 127));
+			} catch (RuntimeException exception) {
+				event.failed = true;
+				remove(event.id);
+				prepared.removeIf(item -> item.batch().event() == event);
+				Lobecorp.LOGGER.error("停止群体事件虚拟显示 {}：资源准备失败", event.id, exception);
+			}
+		}
+		return prepared;
+	}
+
+	@SuppressWarnings("resource")
+	private static void writeParameters(Prepared item) {
+		var batch = item.batch();
+		var event = batch.event();
+		var camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+		var origin = event.origin.subtract(camera);
+		long offset = batch.offset() + item.offset();
+		long row = batch.firstRow() + offset / batch.block().columns();
+		int columnOffset = (int) (offset % batch.block().columns());
+		var span = item.event().spans.get(batch.block().index());
+		put((float) origin.x, (float) origin.y, (float) origin.z, (float) batch.time());
+		put((float) camera.x, (float) camera.y, (float) camera.z, (float) event.speed);
+		put((float) event.rules.rowSpacing(), (float) event.rules.columnSpacing(), event.columns, (float) event.length);
+		put((float) (batch.time() * event.speed - row * event.rules.rowSpacing()), batch.block().firstColumn(), batch.block().columns(), columnOffset);
+		put((float) batch.block().first(), (float) batch.block().last(), span.offset(), span.count());
+		put(item.geometry().model.bones(), item.geometry().model.frames(), item.geometry().model.duration(), item.geometry().hasGlow ? 1 : 0);
+		put(LIGHT.mask(), event.nodes.length, event.rules.transitionTicks(), (float) event.rules.regionMargin());
+		int sx = (int) Math.floor(event.origin.x / 16);
+		int sy = (int) Math.floor(event.origin.y / 16);
+		int sz = (int) Math.floor(event.origin.z / 16);
+		put(sx, sy, sz, (float) (row % 1024));
+		put((float) (event.rules.width() + event.rules.regionMargin() * 2),
+				(float) (event.origin.x - sx * 16d), (float) (event.origin.y - sy * 16d), (float) (event.origin.z - sz * 16d));
+		put(event.lightProbeHeight, 0, 0, 0);
+	}
+
+	private static void put(float a, float b, float c, float d) {
+		upload.putFloat(a).putFloat(b).putFloat(c).putFloat(d);
+	}
+
+	private static Geometry geometry(HordeVisualDefinition visual) {
+		var model = HordeMeshCache.get(visual);
+		float[] vertices = model.vertices();
+		var data = MemoryUtil.memAlloc(Math.multiplyExact(vertices.length / HordeMeshCache.VERTEX_STRIDE, VERTEX_BYTES));
+		GpuBuffer buffer = null;
+		HordeDataTexture animation = null;
+		try {
+			for (int i = 0; i < vertices.length; i += HordeMeshCache.VERTEX_STRIDE) {
+				data.putFloat(vertices[i]).putFloat(vertices[i + 1]).putFloat(vertices[i + 2]);
+				data.putFloat(vertices[i + 3]).putFloat(vertices[i + 4]);
+				int bone = (int) vertices[i + 8];
+				data.put((byte) bone).put((byte) (bone >>> 8)).put((byte) (bone >>> 16)).put((byte) 255);
+				for (int normal = 5; normal < 8; normal++) {
+					data.put((byte) Math.round(Math.clamp(vertices[i + normal], -1, 1) * 127));
 				}
 				data.put((byte) 0);
 			}
 			data.flip();
-			GpuBuffer buffer = RenderSystem.getDevice().createBuffer(() -> "Horde shared pose", GpuBuffer.USAGE_VERTEX, data);
-			residentBytes += data.remaining();
-			return new Geometry(buffer, count / 4 * 6);
+			buffer = RenderSystem.getDevice().createBuffer(() -> "Horde static model", GpuBuffer.USAGE_VERTEX, data);
+			animation = new HordeDataTexture("Horde shared skeletal cycle", model.animation());
+			var minecraft = Minecraft.getInstance();
+			var base = minecraft.getTextureManager().getTexture(visual.texture());
+			Identifier glowId = visual.texture().withPath(path -> path.replace(".png", "_glowmask.png"));
+			boolean hasGlow = minecraft.getResourceManager().getResource(glowId).isPresent();
+			var glow = hasGlow ? minecraft.getTextureManager().getTexture(glowId) : base;
+			preparations++;
+			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, model, base, glow, hasGlow);
+		} catch (RuntimeException exception) {
+			if (buffer != null) {
+				buffer.close();
+			}
+			if (animation != null) {
+				animation.close();
+			}
+			throw exception;
 		} finally {
 			MemoryUtil.memFree(data);
 		}
 	}
 
-	private static void ensureInstances(int size) {
-		if (instances != null && instances.size() >= size) {
+	private static void ensureParameters(int required) {
+		if (parameters != null && parameters.size() >= required) {
 			return;
 		}
-		if (instances != null) {
-			instances.close();
+		int capacity = Math.multiplyExact(Integer.highestOneBit(Math.max(1, required - 1)), 2);
+		var replacement = RenderSystem.getDevice().createBuffer(() -> "Horde batch parameters",
+				GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, capacity);
+		var memory = MemoryUtil.memAlloc(capacity);
+		if (parameters != null) {
+			parameters.close();
 			MemoryUtil.memFree(upload);
 		}
-		int capacity = Math.max(BLOCK_BYTES, Integer.highestOneBit(Math.max(1, size - 1)) << 1);
-		instances = RenderSystem.getDevice().createBuffer(() -> "Horde instance parameters",
-				GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, capacity);
-		upload = MemoryUtil.memAlloc(capacity);
+		parameters = replacement;
+		upload = memory;
 	}
 
-	private static void trim() {
-		long budget = HordeVisualConfig.CACHE_MIB.get() * 1024L * 1024;
-		var iterator = GEOMETRY.entrySet().iterator();
-		while (iterator.hasNext()) {
-			var geometry = iterator.next().getValue();
-			if (geometry.lastFrame != frame && (residentBytes > budget || frame - geometry.lastFrame > 1200)) {
-				residentBytes -= geometry.vertices.size();
-				geometry.vertices.close();
-				iterator.remove();
-			}
+	public static void remove(UUID id) {
+		var data = EVENTS.remove(id);
+		if (data != null) {
+			data.close();
 		}
-	}
-
-	public static String statistics() {
-		return "GPU submissions=" + drawn + ", baked=" + bakedInstances + ", batches=" + batches + ", upload=" + uploadedBytes
-				+ "B, resident=" + residentBytes / 1024 + "KiB, shadows=0";
 	}
 
 	public static void clear() {
-		GEOMETRY.values().forEach(geometry -> geometry.vertices.close());
+		EVENTS.values().forEach(EventData::close);
+		EVENTS.clear();
+		GEOMETRY.values().forEach(geometry -> {
+			geometry.vertices.close();
+			geometry.animation.close();
+		});
 		GEOMETRY.clear();
-		GLOW.clear();
-		if (instances != null) {
-			instances.close();
-			instances = null;
+		LIGHT.close();
+		if (parameters != null) {
+			parameters.close();
+			parameters = null;
 			MemoryUtil.memFree(upload);
 			upload = null;
 		}
-		residentBytes = 0;
 		drawn = 0;
-		bakedInstances = 0;
 		batches = 0;
 	}
 
-	private record TexturePair(AbstractTexture base, AbstractTexture glow) {
+	public static String statistics() {
+		return "GPU instances=" + drawn + ", batches=" + batches + ", upload=" + uploadedBytes
+				+ "B, lightSections=" + LIGHT.sections() + ", modelBuilds=" + preparations + ", shadows=0";
 	}
 
-	private record MeshKey(HordeMeshCache.Mesh first, HordeMeshCache.Mesh second) {
+	private record Geometry(GpuBuffer vertices, int indices, HordeDataTexture animation, HordeMeshCache.Model model,
+	                        AbstractTexture base, AbstractTexture glow, boolean hasGlow) {
 	}
 
-	private record GroupKey(MeshKey mesh, Identifier texture, boolean fade, HordeImpostorAtlas.Atlas atlas) {
+	private record Prepared(HordeClient.Batch batch, Geometry geometry, EventData event, int offset, int count) {
 	}
 
-	private record Batch(GroupKey key, Geometry geometry, List<HordeRendering.Draw> draws,
-	                     int first, int count, int block) {
+	private record Span(int offset, int count) {
 	}
 
-	private static class Geometry {
-		private final GpuBuffer vertices;
-		private final int indices;
-		private long lastFrame;
+	private static class EventData implements AutoCloseable {
+		private final HordeDataTexture route;
+		private HordeDataTexture regions;
+		private long version = Long.MIN_VALUE;
+		private final Map<Integer, Span> spans = new HashMap<>();
 
-		private Geometry(GpuBuffer vertices, int indices) {
-			this.vertices = vertices;
-			this.indices = indices;
+		private EventData(HordeClient.ClientEvent event) {
+			route = new HordeDataTexture("Horde fixed route " + event.id, event.routeData);
+		}
+
+		private void updateRegions(HordeClient.ClientEvent event) {
+			if (version == event.regionVersion) {
+				return;
+			}
+			var entries = new ArrayList<>(event.regions.values());
+			var values = new ArrayList<Float>();
+			for (var region : entries) {
+				var from = region.from.subtract(event.origin);
+				var to = region.to.subtract(event.origin);
+				for (float value : new float[]{(float) from.x, (float) from.y, (float) from.z, (float) region.changed,
+						(float) to.x, (float) to.y, (float) to.z, 0,
+						(float) region.fromX, (float) region.fromZ, (float) region.toX, (float) region.toZ}) {
+					values.add(value);
+				}
+			}
+			for (var block : event.blocks) {
+				int offset = values.size();
+				int count = 0;
+				for (int i = 0; i < entries.size(); i++) {
+					var region = entries.get(i);
+					double radiusX = Math.max(region.fromX, region.toX) * 2;
+					double radiusZ = Math.max(region.fromZ, region.toZ) * 2;
+					if (Math.min(region.from.x, region.to.x) - radiusX <= block.bounds().maxX
+							&& Math.max(region.from.x, region.to.x) + radiusX >= block.bounds().minX
+							&& Math.min(region.from.z, region.to.z) - radiusZ <= block.bounds().maxZ
+							&& Math.max(region.from.z, region.to.z) + radiusZ >= block.bounds().minZ) {
+						values.add((float) i);
+						count++;
+					}
+				}
+				spans.put(block.index(), new Span(offset, count));
+			}
+			var data = new float[Math.max(1, values.size())];
+			for (int i = 0; i < values.size(); i++) {
+				data[i] = values.get(i);
+			}
+			var replacement = new HordeDataTexture("Horde region targets", data);
+			if (regions != null) {
+				regions.close();
+			}
+			regions = replacement;
+			version = event.regionVersion;
+		}
+
+		@Override
+		public void close() {
+			route.close();
+			if (regions != null) {
+				regions.close();
+			}
 		}
 	}
 }

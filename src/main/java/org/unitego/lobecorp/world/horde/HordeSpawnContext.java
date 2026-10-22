@@ -5,5 +5,5 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.UUID;
 
-public record HordeSpawnContext(UUID eventId, LivingEntity target, Vec3 position, long seed) {
+public record HordeSpawnContext(UUID eventId, LivingEntity target, Vec3 position) {
 }

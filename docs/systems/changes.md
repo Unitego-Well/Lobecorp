@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-22：固定线路 GPU 浪潮重写
+
+- 基于恢复快照6328b11和BenchMod接入1f30bde，在horde-recovery实施；构建文件、src/bench和BenchMod文档不变。
+- 移除密度、种子、动态线路修订、逐单位CPU候选选择与排序、图片图集、LOD渐变和主体射线遮挡；新增固定间距、GPU线路运动/平滑让行/共享骨骼循环，数量和范围默认-1。
+- 新增原版BLOCK/SKY区段光场，GPU按让行后位置及实体眼高采样lightmap；不声称完整Iris材质或动态光源兼容。存档更换为horde_events_gpu_v1，不兼容旧活动事件。
+- 已新增规则和区域中断过渡回归用例但未执行JUnit；IDEA对24份Java及两份着色器未报告错误，编译成功。最后Data于12:23:21正常退出（0），BUILD SUCCESSFUL，23缓存输出/written=0/removed stale=0（首次written=23）；中英间距翻译已核对，生成目录无Git差异。未启动游戏、运行时着色器或性能验收。
+- 删除前三份旧源文件已通过IDEA备份到backups/horde-gpu-before-20261022；其余修改可由上述Git基线恢复。Data原始日志为ij_run__Data_1219713044419175072.log，进程已正常结束。详情见[当前渲染实现](horde-rendering-implementation.md)。
+
 ## 2026-10-22：恢复工作区接入 BenchMod
 
 - 将原始dev 278c418的BenchMod 0.1.5-beta配置、独立Provider和两个普通清道夫基准场景局部接入horde-recovery，保留原资源输出排除规则、恢复快照和深夜清扫重写业务，维持detached状态。

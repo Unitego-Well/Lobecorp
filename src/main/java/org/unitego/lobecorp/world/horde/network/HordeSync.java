@@ -62,10 +62,8 @@ public class HordeSync {
 				var subscription = subscriptions.computeIfAbsent(event.id(), _ -> new Subscription());
 				int center = event.route().segment(event.station(player.position()));
 				if (subscription.reset || data.clock() - subscription.lastHeader >= 20) {
-					int[] range = event.route().nearbyRange(player.position(), subscriptionDistance(player)
-							+ event.rules().width() / 2, event.tick(), event.rules().transitionTicks());
-					subscription.first = range[0];
-					subscription.last = range[1];
+					subscription.first = 0;
+					subscription.last = event.route().size() - 1;
 				}
 				int first = subscription.first;
 				int last = subscription.last;
@@ -89,6 +87,7 @@ public class HordeSync {
 						header.putString("animation", profile.visuals().animation().toString());
 						header.putString("run", profile.visuals().runAnimation());
 						header.putString("texture", profile.visuals().texture().toString());
+						header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
 					}
 					if (header.sizeInBytes() + ENVELOPE_BUDGET > remaining) {
 						continue;
@@ -107,7 +106,7 @@ public class HordeSync {
 					if (index < first || index > last) {
 						continue;
 					}
-					long nodeRevision = event.route().slice(index, 1).hashCode();
+					long nodeRevision = 0;
 					if (subscription.sent.getOrDefault(index, Long.MIN_VALUE) == nodeRevision) {
 						continue;
 					}
@@ -122,7 +121,7 @@ public class HordeSync {
 					send(player, event.id(), subscription, "route", slice, data.clock());
 					remaining -= slice.sizeInBytes() + ENVELOPE_BUDGET;
 					for (int i = index; i < index + count; i++) {
-						subscription.sent.put(i, (long) event.route().slice(i, 1).hashCode());
+						subscription.sent.put(i, nodeRevision);
 					}
 				}
 				subscription.sent.keySet().removeIf(index -> index < first || index > last);
@@ -146,7 +145,7 @@ public class HordeSync {
 
 	private static double distance(ServerPlayer player, HordeEvent event) {
 		double station = event.station(player.position());
-		return event.route().point(station, 0, event.tick(), event.rules().transitionTicks())
+		return event.route().point(station, 0)
 				.distanceTo(player.position());
 	}
 

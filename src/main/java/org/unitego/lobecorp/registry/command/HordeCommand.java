@@ -3,7 +3,6 @@ package org.unitego.lobecorp.registry.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -20,7 +19,6 @@ import org.unitego.lobecorp.world.horde.HordeSavedData;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 
 import java.util.ArrayList;
-import java.util.OptionalLong;
 import java.util.UUID;
 
 public class HordeCommand {
@@ -34,10 +32,8 @@ public class HordeCommand {
 												.executes(context -> start(context, 1))
 												.then(Commands.argument("width", DoubleArgumentType.doubleArg(1, 512))
 														.executes(context -> start(context, 2))
-														.then(Commands.argument("seed", LongArgumentType.longArg())
-																.executes(context -> start(context, 3))
 																.then(Commands.argument("waypoints", StringArgumentType.greedyString())
-																		.executes(context -> start(context, 4)))))))));
+																		.executes(context -> start(context, 3))))))));
 		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("horde")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 				.then(start)
@@ -62,7 +58,7 @@ public class HordeCommand {
 	private static int start(CommandContext<CommandSourceStack> context, int depth) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
 		var source = context.getSource();
 		var points = new ArrayList<Vec3>();
-		if (depth >= 4) {
+		if (depth >= 3) {
 			for (String point : StringArgumentType.getString(context, "waypoints").split(";")) {
 				String[] xyz = point.trim().split(",");
 				if (xyz.length != 3 || points.size() >= 126) {
@@ -83,7 +79,7 @@ public class HordeCommand {
 			return 0;
 		}
 		var request = new HordeStartRequest(Vec3Argument.getVec3(context, "from"), Vec3Argument.getVec3(context, "to"),
-				points, depth >= 3 ? OptionalLong.of(LongArgumentType.getLong(context, "seed")) : OptionalLong.empty(),
+				points,
 				depth >= 1 ? IntegerArgumentType.getInteger(context, "ticks") : 0,
 				depth >= 2 ? DoubleArgumentType.getDouble(context, "width") : 0);
 		var result = HordeEvents.start(source.getLevel(), profile, request);

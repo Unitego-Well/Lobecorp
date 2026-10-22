@@ -57,11 +57,11 @@ public class HordeEvents {
 			}
 			var route = HordeRoute.create(loop);
 			if (!route.prepare(level, rules)) {
-				return new HordeStartResult(null, "起始路段尚未加载或无法准备地面采样");
+				return new HordeStartResult(null, "线路所需区块尚未加载或无法准备完整地面采样");
 			}
 			var id = UUID.randomUUID();
 			var event = new HordeEvent(id, profileId, level.dimension(),
-					request.seed().orElseGet(() -> level.getRandom().nextLong()), rules, route);
+					rules, route);
 			var data = HordeSavedData.get(level.getServer());
 			data.events().put(id, event);
 			data.setDirty();

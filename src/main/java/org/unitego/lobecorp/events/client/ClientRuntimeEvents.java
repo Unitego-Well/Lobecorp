@@ -24,7 +24,6 @@ import org.unitego.lobecorp.client.hud.PlayerStatusHud;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
@@ -91,9 +90,6 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
-		if (HordeVisualConfig.SPEC.isLoaded()) {
-			HordeVisualConfig.refreshPreset();
-		}
 		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;
 		if (level != null) {

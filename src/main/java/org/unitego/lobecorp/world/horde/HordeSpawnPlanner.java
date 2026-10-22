@@ -22,7 +22,7 @@ public class HordeSpawnPlanner {
 	public static @Nullable Vec3 candidate(ServerLevel level, HordeEvent event, LivingEntity target, int attempt, EntityDimensions dimensions) {
 		attempt = Math.floorMod(attempt, POSITION_ATTEMPTS);
 		double station = event.station(target.position());
-		Vec3 direction = event.route().direction(station, event.tick(), event.rules().transitionTicks());
+		Vec3 direction = event.route().direction(station);
 		Vec3 side = new Vec3(-direction.z, 0, direction.x);
 		double distance = event.rules().spawnDistance() + target.getBbWidth() / 2 + dimensions.width() / 2;
 		int lateralStep = (attempt + 1) / 2;

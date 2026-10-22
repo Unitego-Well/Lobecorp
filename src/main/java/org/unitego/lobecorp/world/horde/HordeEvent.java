@@ -13,7 +13,6 @@ public class HordeEvent {
 	private final UUID id;
 	private final Identifier profile;
 	private final ResourceKey<Level> dimension;
-	private final long seed;
 	private final HordeRules rules;
 	private final HordeRoute route;
 	private double speed;
@@ -21,11 +20,10 @@ public class HordeEvent {
 	private long stopAt;
 	private long revision;
 
-	public HordeEvent(UUID id, Identifier profile, ResourceKey<Level> dimension, long seed, HordeRules rules, HordeRoute route) {
+	public HordeEvent(UUID id, Identifier profile, ResourceKey<Level> dimension, HordeRules rules, HordeRoute route) {
 		this.id = id;
 		this.profile = profile;
 		this.dimension = dimension;
-		this.seed = seed;
 		this.rules = rules;
 		this.route = route;
 		var definition = HordeEvents.profile(profile);
@@ -46,10 +44,6 @@ public class HordeEvent {
 
 	public ResourceKey<Level> dimension() {
 		return dimension;
-	}
-
-	public long seed() {
-		return seed;
 	}
 
 	public HordeRules rules() {
@@ -110,21 +104,21 @@ public class HordeEvent {
 	}
 
 	public boolean covers(Vec3 point) {
-		double station = route.nearest(point, tail(), head(), tick, rules.transitionTicks());
-		return route.point(station, 0, tick, rules.transitionTicks()).distanceToSqr(point)
+		double station = route.nearest(point, tail(), head());
+		return route.point(station, 0).distanceToSqr(point)
 				<= Math.pow(rules.width() / 2 + rules.margin(), 2);
 	}
 
 	public double station(Vec3 point) {
-		return route.nearest(point, tail(), head(), tick, rules.transitionTicks());
+		return route.nearest(point, tail(), head());
 	}
 
 	public CompoundTag header() {
 		var tag = new CompoundTag();
+		tag.putInt("format", 1);
 		tag.putString("id", id.toString());
 		tag.putString("profile", profile.toString());
 		tag.putString("dimension", dimension.identifier().toString());
-		tag.putLong("seed", seed);
 		tag.putLong("tick", tick);
 		tag.putLong("stop", stopAt);
 		tag.putLong("revision", revision);
@@ -142,10 +136,13 @@ public class HordeEvent {
 	}
 
 	public static HordeEvent load(CompoundTag tag) {
+		if (tag.getIntOr("format", 0) != 1) {
+			throw new IllegalArgumentException("不支持的群体事件数据版本");
+		}
 		var event = new HordeEvent(UUID.fromString(tag.getStringOr("id", "")),
 				Identifier.parse(tag.getStringOr("profile", "")),
 				ResourceKey.create(Registries.DIMENSION, Identifier.parse(tag.getStringOr("dimension", ""))),
-				tag.getLongOr("seed", 0), HordeRules.load(tag.getCompoundOrEmpty("rules")),
+				HordeRules.load(tag.getCompoundOrEmpty("rules")),
 				HordeRoute.load(tag.getCompoundOrEmpty("route")));
 		event.tick = Math.max(0, tag.getLongOr("tick", 0));
 		event.speed = tag.getDoubleOr("speed", event.speed);

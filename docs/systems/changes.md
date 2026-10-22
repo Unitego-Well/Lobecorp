@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-22：Minecraft MCP 接入独立仓库固定版本
+
+- 新增 modules/minecraft-mcp.lock.json，repository 使用 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，commit 固定 aa8289a485cfaf2b90eca073f2ce1eb719328b6c；112 个工作文件 blob 与源相同，保留 consts.ts 既有未提交文案。
+- 通过 IDEA 接入鼠标输入隔离、独立构建入口与许可来源；相关 10 个文件 IDEA 错误检查为空，wrapper JAR 复制后 SHA256 相同。未构建、测试、Data、安装、重连或启动游戏。
+- 保留端口19877、原有 MCP 配置修改及独立运行环境，备份 refs/backups/before-mcp-snapshot-7903-20261022/{head,wip}；[接入记录](minecraft-mcp-workspace.md)说明边界。特效业务保持停止。
+
+
 ## 2026-10-21：全量资源往返、独立包验收与停止保存
 
 - 先备份HEAD/index/worktree及af77096资源归档；全部输入和输出放隔离目录，496条raw结构/字节往返通过、5条历史缓存缺来源。补严格包读回/旧条目校验、独立来源隔离、effect_close、旧Beam/Trail渲染与粒子UV保护适配、模型首次身份精确适配和逐文件脚本。

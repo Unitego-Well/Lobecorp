@@ -30,6 +30,7 @@ public final class ControlModeHelper {
     private static Field accumulatedDYField = null;
     private static boolean mouseFieldsInit = false;
     private static boolean hadScreenOnEnter = false;
+    private static ThreadLocal<Integer> syntheticInputDepth = ThreadLocal.withInitial(() -> 0);
 
     private ControlModeHelper() {}
 
@@ -63,9 +64,8 @@ public final class ControlModeHelper {
                 hadScreenOnEnter = (s != null);
             } catch (Exception ignored) {}
             mouseReleaseActive = false;
-            forceCursorAndReleaseMouse(mc);
-            logModEvent("enter_control_mode", "MCP took control");
-            ReflectionHelper.dbg("enterMcpControlMode: cursor forced to NORMAL, no hook");
+            logModEvent("enter_control_mode", "MCP actions enabled; native mouse ownership unchanged");
+            ReflectionHelper.dbg("enterMcpControlMode: internal actions enabled without native cursor changes");
             return JsonHelper.builder().put("control_mode", true).put("platform", "internal").put("hook", false).build();
         } catch (Exception e) { return JsonHelper.error(e.getMessage()); }
     }
@@ -75,9 +75,8 @@ public final class ControlModeHelper {
 		try {
 			mcpControlMode = false;
 			mcpControlModeExitTime = System.currentTimeMillis();
-			mouseReleaseActive = true;
+            mouseReleaseActive = false;
 			waitingForRelease = false;
-			forceCursorAndReleaseMouse(mc);
 
 			logModEvent("exit_control_mode", "Manual control restored");
 			return JsonHelper.kv("control_mode", false);
@@ -147,23 +146,21 @@ public final class ControlModeHelper {
 
     public static boolean isMouseReleaseActive() { return mouseReleaseActive; }
 
-    public static void tickMcpControlMode(Object mc) {
-        if (!mcpControlMode) return;
+    public static boolean isSyntheticInput() {
+        return syntheticInputDepth.get() > 0;
+    }
+
+    public static void runSyntheticInput(Runnable operation) {
+        int previous = syntheticInputDepth.get();
+        syntheticInputDepth.set(previous + 1);
         try {
-            if (ReflectionCache.LWJGL3) {
-                forceCursorAndReleaseMouse(mc);
+            operation.run();
+        } finally {
+            if (previous == 0) {
+                syntheticInputDepth.remove();
+            } else {
+                syntheticInputDepth.set(previous);
             }
-            Object mouseHandler = ReflectionCache.getMouseHandler(mc);
-            if (mouseHandler != null) {
-                initMouseFields(mouseHandler);
-                if (mouseGrabbedField != null && mouseGrabbedField.getBoolean(mouseHandler)) {
-                    mouseGrabbedField.setBoolean(mouseHandler, false);
-                }
-                if (accumulatedDXField != null) accumulatedDXField.setDouble(mouseHandler, 0.0);
-                if (accumulatedDYField != null) accumulatedDYField.setDouble(mouseHandler, 0.0);
-            }
-        } catch (Exception e) {
-            ReflectionHelper.dbg("tickMcpControlMode: " + e.getMessage());
         }
     }
 
@@ -191,7 +188,7 @@ public final class ControlModeHelper {
                 }
             }
             mouseReleaseActive = true;
-            return JsonHelper.builder().put("mouse_released", true).put("continuous", true).build();
+            return JsonHelper.builder().put("mouse_released", true).put("continuous", false).build();
         } catch (Exception e) {
             return JsonHelper.error(e.getMessage());
         }

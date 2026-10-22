@@ -48,7 +48,7 @@
 | 女皇技能特效与瞬时星束 | [代码动画阶段、中心起点与精简星束](queen-beam-skill-effects.md) |
 | 工作区共同地基 | [dev 提交自动同步、保护与暂停恢复](workspace-sync.md) |
 | 架构建图 MCP | [独立 Normify MCP、CLI 与 Skill](../../tools/lobecorp-normify/README.md) |
-| Minecraft MCP | [Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
+| Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |
 | AI 特效制作 | [制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |

@@ -120,8 +120,8 @@ tasks.register<Copy>("importIcons") {
     group = "minecraft mcp"
     description = "Imports the original MCP icon assets without replacing existing files"
     val iconNames = listOf("resume.png", "transfer.png")
-    val sourceDirectory = rootProject.layout.projectDirectory
-        .dir("run/client/.mcp-repair-build/packages/common/src/main/resources/assets/mcpmod/icons")
+    val iconSource = providers.gradleProperty("mcp.iconSource")
+    val sourceDirectory = layout.projectDirectory.dir(iconSource.orElse("missing-icon-source").get())
     val targetDirectory = layout.projectDirectory
         .dir("packages/common/src/main/resources/assets/mcpmod/icons")
     from(sourceDirectory) {
@@ -129,8 +129,8 @@ tasks.register<Copy>("importIcons") {
     }
     into(targetDirectory)
     doFirst {
-        check(iconNames.all { sourceDirectory.file(it).asFile.isFile }) {
-            "MCP icon sources are missing from the original repair workspace."
+        check(iconSource.isPresent && iconNames.all { sourceDirectory.file(it).asFile.isFile }) {
+            "Set -Pmcp.iconSource to a directory containing resume.png and transfer.png."
         }
         check(iconNames.none { targetDirectory.file(it).asFile.exists() }) {
             "MCP icon imports do not overwrite existing assets."

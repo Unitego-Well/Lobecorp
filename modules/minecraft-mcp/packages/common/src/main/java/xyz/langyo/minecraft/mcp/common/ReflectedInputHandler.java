@@ -16,37 +16,38 @@ public class ReflectedInputHandler extends McpMessageHandler implements McpProto
     }
 
     public static void executeOnRenderThread(Runnable task) {
+        Runnable scopedTask = () -> ControlModeHelper.runSyntheticInput(task);
         try {
             Object mc = ReflectionHelper.getMinecraftInstance();
             try {
                 java.lang.reflect.Method execute = mc.getClass().getMethod("execute", Runnable.class);
-                execute.invoke(mc, task);
+                execute.invoke(mc, scopedTask);
                 return;
             } catch (NoSuchMethodException e) {}
             try {
                 java.lang.reflect.Method m = mc.getClass().getMethod("addScheduledTask", Runnable.class);
-                m.invoke(mc, task);
+                m.invoke(mc, scopedTask);
                 return;
             } catch (NoSuchMethodException e) {}
             for (java.lang.reflect.Method m : mc.getClass().getMethods()) {
                 if ((m.getName().contains("Schedule") || m.getName().contains("schedule"))
                     && m.getParameterCount() == 1
                     && Runnable.class.isAssignableFrom(m.getParameterTypes()[0])) {
-                    m.invoke(mc, task);
+                    m.invoke(mc, scopedTask);
                     return;
                 }
             }
             for (java.lang.reflect.Method m : mc.getClass().getMethods()) {
                 if (m.getName().contains("Task") && m.getParameterCount() == 1
                     && Runnable.class.isAssignableFrom(m.getParameterTypes()[0])) {
-                    m.invoke(mc, task);
+                    m.invoke(mc, scopedTask);
                     return;
                 }
             }
             for (java.lang.reflect.Method m : mc.getClass().getMethods()) {
                 if (m.getParameterCount() == 1 && Runnable.class.isAssignableFrom(m.getParameterTypes()[0])
                         && java.lang.reflect.Modifier.isPublic(m.getModifiers())) {
-                    m.invoke(mc, task);
+                    m.invoke(mc, scopedTask);
                     return;
                 }
             }

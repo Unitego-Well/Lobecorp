@@ -1,5 +1,6 @@
 @file:Suppress("AvoidDuplicateDependencies")
 
+import com.zhongbai233.bench.gradle.VerifyBenchReportTask
 import org.gradle.api.plugins.ExtensionAware
 import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.gradle.ext.Gradle
@@ -16,6 +17,7 @@ plugins {
     idea
     alias(libs.plugins.moddev)
     alias(libs.plugins.mixinmcpdecompile)
+    alias(libs.plugins.minecraftbench)
 }
 
 tasks.wrapper {
@@ -112,6 +114,10 @@ repositories {
         }
     }
     maven { url = uri("https://maven.confluence.ink/releases") }
+    exclusiveContent {
+        forRepository { maven("https://jitpack.io") }
+        filter { includeGroup("com.github.zhongbai2333.BenchMod") }
+    }
 }
 
 dependencies {
@@ -204,17 +210,19 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
             logLevel = org.slf4j.event.Level.DEBUG
-            jvmArguments.addAll(
-                "-Dterminal.ansi=true",
-                "-DMC_DEBUG_ENABLED=true",
-                "-DMC_DEBUG_PATHFINDING=true",
-                "-DMC_DEBUG_GOAL_SELECTOR=true",
-                "-DMC_DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES=true",
-                "-DMC_DEBUG_SHAPES=true",
-                "-DMC_DEBUG_MONITOR_TICK_TIMES=true",
-                "-XX:+IgnoreUnrecognizedVMOptions",
-                "-XX:+AllowEnhancedClassRedefinition"
-            )
+            if (!name.startsWith("bench")) {
+                jvmArguments.addAll(
+                    "-Dterminal.ansi=true",
+                    "-DMC_DEBUG_ENABLED=true",
+                    "-DMC_DEBUG_PATHFINDING=true",
+                    "-DMC_DEBUG_GOAL_SELECTOR=true",
+                    "-DMC_DEBUG_SHOW_LOCAL_SERVER_ENTITY_HIT_BOXES=true",
+                    "-DMC_DEBUG_SHAPES=true",
+                    "-DMC_DEBUG_MONITOR_TICK_TIMES=true",
+                    "-XX:+IgnoreUnrecognizedVMOptions",
+                    "-XX:+AllowEnhancedClassRedefinition"
+                )
+            }
         }
     }
     mods {
@@ -231,6 +239,41 @@ neoForge {
     runs.named("client") {
         loadedMods.set(listOf(mods[modId], mods["mcpmod"]))
     }
+}
+
+modBench {
+    targetMod = modId
+    expectedProviderCount = 1
+    seed = 7
+    jfrEnabled = true
+    serverLevelType = "minecraft:flat"
+    clientWorldPreset = "flat"
+    clientWorldId = "lobecorp-bench"
+}
+
+tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
+    expectedScenarioIds.set(listOf("lobecorp.sweeper-ai"))
+    expectedMetricNames.set(listOf("server.tick.duration", "lobecorp.sweeper_ai.loaded_entities"))
+    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
+    expectedArtifactPaths.set(
+        listOf(
+            "artifacts/samples/lobecorp.sweeper-ai.jsonl",
+            "artifacts/jfr/lobecorp.sweeper-ai.jfr"
+        )
+    )
+}
+
+tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
+    expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
+    expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
+    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
+    expectedArtifactPaths.set(
+        listOf(
+            "artifacts/samples/lobecorp.sweeper-render.jsonl",
+            "artifacts/jfr/lobecorp.sweeper-render.jfr",
+            "artifacts/screenshots/sweeper-render.png"
+        )
+    )
 }
 
 tasks.processResources {
@@ -303,6 +346,16 @@ Install Minecraft $minecraftVersion with NeoForge $neoforgeVersion, then copy ev
 plugins.withType<IdeaExtPlugin> {
     val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
     val runConfigurations = (projectSettings as ExtensionAware).extensions.getByType<RunConfigurationContainer>()
+    listOf(
+        "BenchMod Compile" to listOf("compileBenchJava", "verifyProductionJarHasNoBenchContent"),
+        "BenchMod Server" to listOf("verifyBenchServer"),
+        "BenchMod Client" to listOf("verifyBenchClient"),
+    ).forEach { (name, benchTasks) ->
+        runConfigurations.create(name, Gradle::class.java).apply {
+            projectPath = rootDir.absolutePath
+            taskNames = benchTasks
+        }
+    }
     runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
         taskNames = listOf(":minecraft-mcp:checkBridge", ":minecraft-mcp:buildBridge", ":minecraft-mcp:probeBridge")

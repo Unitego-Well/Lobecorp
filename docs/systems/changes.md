@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-22：同步 BenchMod 到特效工作区
+
+- 局部接入原始dev 278c418的BenchMod 0.1.5-beta插件、独立src/bench Provider和64清道夫服务端AI／客户端渲染场景，没有合并整个dev。三个构建配置与ServiceLoader保持同源，Java仅按本地IDE排版处理。
+- Gradle依赖导入成功，BenchMod Compile／Server／Client入口已生成；7个相关文件IDEA错误检查为空，6份原有运行／MCP配置SHA256不变，端口19877和独立build/modBench目录保留。
+- Photon UI Java正在另一聊天收尾，按协调请求暂缓本工作区Compile和Data；未启动真实基准游戏，不以原始dev的通过结果代替本工作区运行验证。没有恢复或唤醒归档聊天。
+- 修改前head／wip／index备份refs/backups/before-benchmod-sync-7903-20261022；既有业务代码、暂存和MCP修改不混入本次提交。[接入和使用说明](benchmod.md)记录实际边界。
+
+
 ## 2026-10-22：Minecraft MCP 接入独立仓库固定版本
 
 - 新增 modules/minecraft-mcp.lock.json，repository 使用 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，commit 固定 aa8289a485cfaf2b90eca073f2ce1eb719328b6c；112 个工作文件 blob 与源相同，保留 consts.ts 既有未提交文案。

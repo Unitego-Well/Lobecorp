@@ -205,12 +205,11 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 - IDEA 项目构建：成功，约 14.3 秒，无编译器消息。
 - `runData`：BUILD SUCCESSFUL，约 30 秒；23 个缓存输出，written=0、removed stale=0。
-- 未启动游戏、未编译运行时着色器、未做视觉或性能采样。因此不能声称动画视觉通过。
+- 用户已实机确认烘焙朝向和动画正常；未做自动截图、独立性能采样或更多模型/场景验收。
 
 ### 未验证与风险
 
 - 20 帧/秒的帧切换与旧动画的视觉差异，尤其关节和快速动作；
-- GeckoLib snapshot 路径的朝向、镜像和法线仍需游戏内确认；
 - 烘焙期临时挂载 `BoneSnapshot` 依赖单线程资源准备，未验证并发或热重载场景；
 - 着色器语法和运行时管线只能靠游戏内加载验证；
 - 帧切换无插值，低帧率下可能显得卡顿；若不可接受，需要提高烘焙帧率或恢复相邻帧插值。
@@ -225,7 +224,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 ### 改动
 
-- [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) 不再缓存绘制批次，只做目标区域检测：本地玩家每 tick 检查是否进入线路走廊，附近其他 `LivingEntity` 按到本地玩家的距离延长检测/更新间隔；命中后通过 [ClientEvent.updateGaps](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L409-L470) 更新事件的让行区域并提升 `regionVersion`，GPU 下一帧读取新区域。
+- [HordeClient.tick](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) 不再缓存绘制批次，只做目标区域检测：本地玩家每 tick 检查是否进入线路走廊，附近其他 `LivingEntity` 按到本地玩家的距离延长检测/更新间隔，移动超过约 0.5 格的目标立即刷新；命中后通过 [ClientEvent.updateGaps](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L406-L451) 更新事件的让行区域并提升 `regionVersion`，GPU 下一帧读取新区域。远目标最大延迟为 4 tick、距离阈值为 24 格，区域使用目标 AABB 中心与半宽加 `regionMargin`。
 - [HordeClient.extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 恢复逐帧从时间、线路块生成行列批次；tick 不保存 `Batch`，也不重算所有行号。
 - [HordeClient.Region](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L478-L516) 增加本地 `Vec3 + 半径` 更新入口，保留原有平滑进出和过期规则。
 - [HordeSync](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java) 不再准备或发送 `regions` 页面；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java) 也移除了 GPU 显示区域的序列化缓存。服务端仍保留目标扫描和区域分组供参战转派，客户端显示分割由本地目标检测产生。
@@ -235,10 +234,10 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 ### 实际检查
 
-- IDEA 项目构建：成功，约 6.7 秒，无编译器消息。
+- IDEA 项目构建：成功，约 5.8 秒，无编译器消息。
 - `HordeRegionTest`：2/2 通过；`HordeRulesTest`：9/9 通过。
-- `runData`：BUILD SUCCESSFUL，约 35 秒；23 缓存输出，written=0，removed stale=0。
-- 未启动游戏、未编译运行时着色器、未做视觉或性能采样。
+- `runData`：BUILD SUCCESSFUL，约 30 秒；23 缓存输出，written=0，removed stale=0。
+- 未做分割视觉或性能采样。
 
 ### 未验证与风险
 
@@ -249,9 +248,28 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - 向心 Catmull-Rom 的自适应样本会提高线路节点数；超长或锚点过多的线路可能触发 `HordeRoute` 的 8192 节点上限。
 - 出生距离固定最小 16 格，具体观感与接敌时间需要实机调参；朝向只在生成瞬间设置，后续仍由 AI 导航接管。
 - 服务端已停止发送显示区域，但本地目标检测与 GPU 分割没有运行时验证；旧客户端/服务端不兼容风险未测试。
-- 烘焙帧动画仍未经游戏内加载验证。
 - 代码所在文件仍有既有未提交改动，本轮代码暂未单独提交。
 
 ### Git
 
 客户端目标区域检测、线路采样、出生、网络区域同步移除和测试改动均写入工作区；因目标文件已有其他未提交修改，未单独提交，避免混入既有改动。
+
+## 11. 真实实体未触发排查（2026-10-23）
+
+现象：事件能启动，虚拟潮可见，但没有真实清道夫生成。
+
+确认原因：
+
+- 读取测试世界玩家 NBT，`playerGameType=1`，即创造模式；
+- [CombatUtil.canTargetInLevel](../../src/main/java/org/unitego/lobecorp/util/entity/combat/CombatUtil.java#L93-L97) 明确排除创造玩家；
+- [MidnightCleanup.acceptsTarget](../../src/main/java/org/unitego/lobecorp/world/horde/definition/MidnightCleanup.java#L51-L63) 在扫描阶段调用该检查，因此不会建立目标分配，也不会进入 `createRequests` 和 `processRequests`。
+
+结论：本轮测试中的“真实实体不生成”首先是**没有可接受目标**，不是客户端分割、网络区域页移除或 16 格出生距离直接导致。日志只记录事件启动，没有目标数/生成请求计数，不能从现有日志进一步确认后续步骤。
+
+若要继续验证生成链路：
+
+1. 切换到生存模式，或使用可被攻击的非创造目标；
+2. 确认目标在 `event.covers()` 的当前浪潮路段内；
+3. 若生存模式仍无生成，再检查 `HordeSpawnPlanner.candidate` 的 `safe`/`reachable`、`hidden` 重试和 `HordeRuntime.processRequests` 的预算/接受目标检查。
+
+本轮未修改战斗目标规则，也没有为创造模式增加测试豁免；直接放宽会让创造玩家成为真实清道夫目标，属于玩法变更。

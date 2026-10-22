@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-22：恢复工作区接入 BenchMod
+
+- 将原始dev 278c418的BenchMod 0.1.5-beta配置、独立Provider和两个普通清道夫基准场景局部接入horde-recovery，保留原资源输出排除规则、恢复快照和深夜清扫重写业务，维持detached状态。
+- 仅导入依赖／生成IDEA入口并读取静态信息；不编译、Data或启动真实基准游戏，不把原始dev通过结果视为本工作区验收。场景不替代GPU浪潮专用负载。
+- 修改前head／index备份refs/backups/before-benchmod-sync-horde-recovery-20261022；[工具链说明](benchmod.md)区分本工作区状态和历史检查。归档的旧90be聊天未恢复或唤醒。
+
+
 +## 2026-10-22：深夜清扫渲染讨论整理
 
 - 根据用户提供的聊天记录整理[渲染性能讨论](horde-rendering-discussion-20261022.md)，保留时间线、两份sparkc链接、参与者意见、动画数据贴图建议和待验证问题。

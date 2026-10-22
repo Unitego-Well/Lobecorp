@@ -1,6 +1,7 @@
 [versions]
 moddev = "2.0.142"
 mixinmcpdecompile = "1.5.0"
+benchmod = "0.1.5-beta"
 minecraft = "26.1.2"
 neoforge = "26.1.2.100"
 
@@ -40,6 +41,7 @@ particlestorm = { module = "org.mesdag:ParticleStorm-neoforge-26.1.2", version.r
 [bundles]
 
 [plugins]
+minecraftbench = { id = "com.zhongbai233.minecraft-bench", version.ref = "benchmod" }
 moddev = { id = "net.neoforged.moddev", version.ref = "moddev" }
 # 让AI或外界获取更详细的mixin数据
 mixinmcpdecompile = { id = "dev.mixinmcp.decompile", version.ref = "mixinmcpdecompile" }

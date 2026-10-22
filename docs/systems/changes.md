@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-23：烘焙帧改用 GeckoLib 骨骼变换
+
+- 修正烘焙动画的朝向和动画错误：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L109) 不再自写骨骼矩阵，改用 GeckoLib `BoneSnapshot`、`LcAnimationBoneAdapter`、`RenderUtil.prepMatrixForBone` 链和 `GeoCube.render` 生成每帧静态顶点位置/法线；父链、枢轴、基础旋转、缩放和法线由 GeckoLib 处理，并修正 `transformToBone` 额外枢轴平移导致的变换错误。`BoneSnapshot`、帧捕获器和 `PoseStack` 只创建一次并复用，每帧结果写入一次分配好的 `frameData` 后缓存在 `Model`。
+- GPU 端布局不变：仍由 [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按相位选帧并读取 6 个 float，循环切换。
+- IDEA 项目构建成功（约 14.3 秒）；`runData` 成功（BUILD SUCCESSFUL，约 30 秒，23 缓存输出，written=0，removed stale=0）。未启动游戏，未做运行时着色器/视觉验收；朝向、镜像、法线和 20fps 跳变仍需实机确认。
+- 同步更新[渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计第9节](horde-performance-audit-20261022.md#L191)。
+- 代码所在文件已有其他未提交修改，本次代码未单独提交。
+
 ## 2026-10-22：虚拟潮客户端目标区域检测、线路平滑与出生调整
 
 - [HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L85-L105) tick 只检测本地玩家和附近真实战斗目标是否进入线路走廊；本地玩家每 tick，其他目标按距离延长，命中后更新事件的 GPU 让行区域。tick 不缓存绘制批次，[extract](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L112-L166) 仍逐帧生成行列批次。服务端不再发送客户端显示区域。

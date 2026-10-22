@@ -188,13 +188,14 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - Git：初版文档和任务记录已单独提交；代码实施的提交状态见第 9 节。
 - 备份：本次未新增备份。
 
-## 9. 本轮实施记录：烘焙静态帧与循环切换
+## 9. 本轮实施记录：GeckoLib 烘焙静态帧与循环切换
 
 实施日期：2026-10-22，对应第 6 节 P1 第一项。
 
 ### 改动
 
-- [HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在烘焙阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据：每顶点每帧保存模型空间位置和法线，共 6 个 float。父链、枢轴、旋转、缩放和法线矩阵只在 CPU 资源准备阶段计算。
+- [HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在烘焙阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据：每顶点每帧保存模型空间位置和法线，共 6 个 float。每帧通过 GeckoLib `BoneSnapshot`、`LcAnimationBoneAdapter` 和 `RenderUtil.prepMatrixForBone` 链/`GeoCube.render` 直接生成顶点，父链、枢轴、基础旋转、缩放和法线均由 GeckoLib 处理；不再自写骨骼矩阵，也不使用会额外平移到骨骼枢轴的 `transformToBone`。`BoneSnapshot`、帧捕获器和 `PoseStack` 只创建一次，在帧循环内复用，每帧结果写入一次分配好的 `frameData` 并由 `Model` 缓存。
+- 此前的自写矩阵在 X 平移符号和旋转顺序上有误，导致烘焙朝向与动画不正确；现改为 GeckoLib 的同一套 snapshot 入口，并复用现有实体动画适配器。
 - [HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L205-L246) 的 `HordeAnimation` 纹理改为帧顶点纹理；`AnimationInfo.x` 从骨骼数改为顶点数，帧数仍为 `AnimationInfo.y`，时长仍为 `AnimationInfo.z`。
 - [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 的 `animate()` 改为按单位相位选择帧号，读取该帧的 6 个 float 后直接作为位置和法线；帧号取整后循环切换。顶点阶段不再有骨骼索引、父链循环、骨骼矩阵或四元数插值。
 - 行为差异：从连续骨骼动画变为每秒 20 帧的静态帧切换，可能出现明显跳变；每个单位仍保留由行列决定的相位差，不会全部同步。
@@ -202,19 +203,17 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 ### 实际检查
 
-- IDEA 静态诊断：HordeMeshCache、HordeGpuRenderer 均 0 error。
-- IDEA 项目构建：成功，耗时约 25.8 秒，无编译器消息。
-- `runData`：BUILD SUCCESSFUL，耗时约 37 秒；23 个缓存输出，written=0、removed stale=0。
-- 未启动游戏、未编译运行时着色器、未做视觉或性能采样。因此不能声称帧率提升或动画视觉通过。
+- IDEA 项目构建：成功，约 14.3 秒，无编译器消息。
+- `runData`：BUILD SUCCESSFUL，约 30 秒；23 个缓存输出，written=0、removed stale=0。
+- 未启动游戏、未编译运行时着色器、未做视觉或性能采样。因此不能声称动画视觉通过。
 
 ### 未验证与风险
 
 - 20 帧/秒的帧切换与旧动画的视觉差异，尤其关节和快速动作；
-- 帧数据位置/法线的烘焙单位、旋转方向和镜像是否正确，必须游戏内确认；
-- 预计算法线矩阵在非均匀缩放和极端骨骼下的表现；
+- GeckoLib snapshot 路径的朝向、镜像和法线仍需游戏内确认；
+- 烘焙期临时挂载 `BoneSnapshot` 依赖单线程资源准备，未验证并发或热重载场景；
 - 着色器语法和运行时管线只能靠游戏内加载验证；
-- 帧切换无插值，低帧率下可能显得卡顿；若不可接受，需要提高烘焙帧率或恢复相邻帧插值；
-- `HordeMeshCache` 的骨骼 X 平移符号问题未在本轮修改，仍保留在附录。
+- 帧切换无插值，低帧率下可能显得卡顿；若不可接受，需要提高烘焙帧率或恢复相邻帧插值。
 
 ### Git
 

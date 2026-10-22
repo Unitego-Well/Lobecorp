@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.client.photon.editor.PhotonEditorDockedPanel;
 import org.unitego.lobecorp.client.photon.editor.PhotonSceneAxisView;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelAuthoringPanel;
@@ -50,6 +51,7 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 
 	@Inject(method = "closeCurrentProject", at = @At("HEAD"))
 	private void lobecorp$clearTools(CallbackInfo ci) {
+		PhotonEditorDockedPanel.closeAll((FXEditor) (Object) this);
 		if (getCurrentProject() instanceof FXProject && lobecorp$editorTools != null) {
 			lobecorp$editorTools.clearPreview();
 		}
@@ -57,6 +59,7 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 
 	@Inject(method = "loadNewProject", at = @At("HEAD"))
 	private void lobecorp$clearPrevious(IProject project, File projectFile, CallbackInfo ci) {
+		PhotonEditorDockedPanel.closeAll((FXEditor) (Object) this);
 		if (project instanceof FXProject && lobecorp$editorTools != null) {
 			lobecorp$editorTools.clearPreview();
 		}

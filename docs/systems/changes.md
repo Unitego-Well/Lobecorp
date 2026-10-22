@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-22：恢复原始 Photon 编辑器设计
+
+- 按用户确认的04a3bab恢复模型左右／中央／底部停靠布局、原生层级／检视／历史／时间轴、UV框选缩放平移和命名列表／四页属性；复用当前工程事务、原生预览和独立轨道上下文，补所属面板／场景／监听清理。没有恢复旧渲染后端，旧高级网格操作未全部移植。
+- 19个代码／Mixin文件IDEA诊断0错误0警告，新增及修改行格式已处理；IDEA构建success=true/aborted=false，编译错误／警告计数null不作零计数结论。Data BUILD SUCCESSFUL in 28s、23输出written0/removed0，生成目录含缓存29文件SHA256无变化；未游戏、JUnit或真实基准，视觉交人工，G1仍未通过。
+- 备份refs/backups/before-editor-design-restore-20261022/{head,wip}及backups/editor-design-restore-20261022保留诊断、构建和Data日志片段／哈希清单。原资源、实体动画、模型LOD和两份既有MCP修改保留，不推送；[来源映射与未验收边界](photon-editor-design-restore-20261022.md)。
+
 ## 2026-10-22：同步 BenchMod 到特效工作区
 
 - 局部接入原始dev 278c418的BenchMod 0.1.5-beta插件、独立src/bench Provider和64清道夫服务端AI／客户端渲染场景，没有合并整个dev。三个构建配置与ServiceLoader保持同源，Java仅按本地IDE排版处理。

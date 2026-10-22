@@ -35,6 +35,7 @@ public class PhotonModelAuthoringPanel {
 			branch.leaf(".mfxpack", () -> export(editor, "pack", ".mfxpack"));
 			branch.leaf("OBJ", () -> export(editor, "obj", ".obj"));
 			branch.leaf("JSON", () -> export(editor, "json", ".json"));
+			branch.leaf("photon.lobecorp.model.editor.model_data", () -> openAdvanced(editor));
 		}));
 	}
 
@@ -55,6 +56,12 @@ public class PhotonModelAuthoringPanel {
 	}
 
 	public static void open(FXEditor editor) {
+		if (editor.getCurrentProject() instanceof PhotonModelProject project) {
+			project.showWorkspace(editor);
+		}
+	}
+
+	public static void openAdvanced(FXEditor editor) {
 		if (!(editor.getCurrentProject() instanceof PhotonModelProject project)) {
 			return;
 		}

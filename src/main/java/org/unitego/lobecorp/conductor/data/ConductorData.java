@@ -16,6 +16,7 @@ import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import net.minecraft.world.entity.LivingEntity;
 
@@ -128,6 +129,9 @@ public class ConductorData extends SavedData {
 	}
 
 	public void remember(Mob mob) {
+		if (HordeParticipant.isEvent(mob)) {
+			return;
+		}
 		var next = new MemberInfo(BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).toString(),
 				mob.getDisplayName().getString(), Position.of(mob.position()));
 		if (!next.equals(memberInfo.put(mob.getUUID().toString(), next))) {
@@ -157,6 +161,9 @@ public class ConductorData extends SavedData {
 	}
 
 	public boolean join(Mob mob, String team) {
+		if (HordeParticipant.isEvent(mob)) {
+			return false;
+		}
 		if (!teams.containsKey(team) || ConductorUtil.get(mob) == null) {
 			return false;
 		}
@@ -229,6 +236,9 @@ public class ConductorData extends SavedData {
 	}
 
 	public void commit(Mob mob) {
+		if (HordeParticipant.isEvent(mob)) {
+			return;
+		}
 		if (!ConductorAttachmentUtil.hasUnit(mob)) {
 			return;
 		}
@@ -268,6 +278,9 @@ public class ConductorData extends SavedData {
 	}
 
 	public void attach(Mob mob) {
+		if (HordeParticipant.isEvent(mob)) {
+			return;
+		}
 		String key = mob.getUUID().toString();
 		Pending delivery = pending.get(key);
 		if (delivery != null && delivery.released()) {

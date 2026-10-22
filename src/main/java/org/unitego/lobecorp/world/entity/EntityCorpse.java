@@ -23,6 +23,7 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -77,6 +78,9 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 
 	public static <T extends Entity> EntityCorpse<T> createCorpse(T entity) {
 		EntityCorpse<T> entityCorpse = new EntityCorpse<>(LcEntityTypes.ENTITY_CORPSE.get(), entity.level());
+		if (HordeParticipant.isEvent(entity)) {
+			HordeParticipant.set(entityCorpse, HordeParticipant.get(entity));
+		}
 		clearTemporaryState(entity);
 		entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
 		entityCorpse.updateOwnerEntity(entityCorpse.createOwnerEntity(entityCorpse.getOwnerEntityTag()));
@@ -363,6 +367,9 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 
 	@Nullable
 	public T createRevivedOwnerEntity() {
+		if (HordeParticipant.isEvent(this)) {
+			return null;
+		}
 		T ownerEntity = createOwnerEntity(getOwnerEntityTag());
 		if (ownerEntity == null) {
 			return null;

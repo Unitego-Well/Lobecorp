@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.pose.LcAnimationClip;
+import org.unitego.lobecorp.animation.pose.ILcAnimationQueries;
 import org.unitego.lobecorp.animation.pose.LcSkeleton;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
 
@@ -31,6 +32,44 @@ public class LcClientAnimationResources {
 	private static final Map<ContentClipKey, LcAnimationClip> CONTENT_CLIPS = new HashMap<>();
 	private static final Map<String, LcSkeleton> SKELETONS = new HashMap<>();
 	private static @Nullable Object generation;
+
+	/// 只准备客户端已有的视觉资源；不伪造或提前安装服务器同步内容，也不执行行为回调。
+	public static boolean prepareLocal(Identifier modelId, Identifier animationId, String animationName) {
+		refresh();
+		var model = read(modelId.withPath(MODEL_PREFIX + modelId.getPath() + ".geo.json"));
+		var animation = read(animationId.withPath(ANIMATION_PREFIX + animationId.getPath() + ".animation.json"));
+		if (model == null || animation == null) {
+			return false;
+		}
+		var content = LcAnimationContent.of(modelId, animationId, model, animation);
+		skeleton(content);
+		var clip = visualClip(content, animationName);
+		if (clip == null) {
+			return false;
+		}
+		var queries = new PreparationQueries();
+		for (int sample = 0; sample <= 4; sample++) {
+			queries.time = clip.durationSeconds() * sample / 4;
+			clip.sample(queries.time, queries);
+		}
+		return true;
+	}
+
+	private static class PreparationQueries implements ILcAnimationQueries {
+		private final Map<String, Double> variables = new HashMap<>();
+		private double time;
+
+		@Override
+		public double get(String name) {
+			return name.equals("q.anim_time") || name.equals("query.anim_time") ? time
+					: variables.getOrDefault(name, 0.0);
+		}
+
+		@Override
+		public void set(String name, double value) {
+			variables.put(name, value);
+		}
+	}
 
 	public static BakedGeoModel model(LcAnimationContent content) {
 		refresh();

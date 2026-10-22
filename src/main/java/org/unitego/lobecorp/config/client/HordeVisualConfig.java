@@ -15,6 +15,9 @@ public class HordeVisualConfig {
 			POOL_IDLE, CACHE_MIB, POSE_GROUPS, BUILD_PER_FRAME, SOUND_VOICES, DUST_PER_TICK;
 	public static final ModConfigSpec.DoubleValue NEAR, FAR, MIN_QUALITY, TARGET_FPS;
 	public static final ModConfigSpec.BooleanValue ENABLED, ADAPTIVE, STATISTICS, SOUND, DUST;
+	public static final ModConfigSpec.BooleanValue IMPOSTORS;
+	public static final ModConfigSpec.DoubleValue IMPOSTOR_DISTANCE;
+	public static final ModConfigSpec.IntValue IMPOSTOR_FRAMES, IMPOSTOR_RESOLUTION;
 	private static Preset applied;
 	private static String signature;
 
@@ -30,6 +33,11 @@ public class HordeVisualConfig {
 		NEAR_FPS = b.translation(HordeLang.config("visual.near_fps", "Near pose FPS", "近距姿态采样率")).defineInRange("nearSampleFps", 20, 1, 120);
 		MEDIUM_FPS = b.translation(HordeLang.config("visual.medium_fps", "Medium pose FPS", "中距姿态采样率")).defineInRange("mediumSampleFps", 8, 1, 60);
 		POSE_GROUPS = b.translation(HordeLang.config("visual.pose_groups", "Pose groups", "共享姿态分组")).defineInRange("poseGroups", 8, 1, 32);
+		b.pop().push("impostors");
+		IMPOSTORS = b.translation(HordeLang.config("visual.impostors", "Distant baked animation", "远处烘焙动画")).define("enabled", true);
+		IMPOSTOR_DISTANCE = b.translation(HordeLang.config("visual.impostor_distance", "3D to baked transition distance", "三维转烘焙距离")).defineInRange("distance", 32d, 8d, 512d);
+		IMPOSTOR_FRAMES = b.translation(HordeLang.config("visual.impostor_frames", "Baked frames per running cycle", "每个奔跑周期的烘焙帧数")).defineInRange("frames", 12, 4, 32);
+		IMPOSTOR_RESOLUTION = b.translation(HordeLang.config("visual.impostor_resolution", "Baked view resolution", "单视角烘焙分辨率")).defineInRange("resolution", 96, 32, 256);
 		b.pop().push("budget");
 		POOL_IDLE = b.translation(HordeLang.config("visual.pool_idle", "Idle pool capacity", "闲置对象池容量")).defineInRange("idlePoolCapacity", 256, 0, 4096);
 		CACHE_MIB = b.translation(HordeLang.config("visual.cache_mib", "Mesh cache MiB", "网格缓存 MiB")).defineInRange("meshCacheMiB", 32, 1, 512);
@@ -96,6 +104,8 @@ public class HordeVisualConfig {
 				+ ":" + SOUND_VOICES.get() + ":" + DUST_PER_TICK.get()
 				+ ":" + POOL_IDLE.get() + ":" + CACHE_MIB.get() + ":" + POSE_GROUPS.get()
 				+ ":" + BUILD_PER_FRAME.get() + ":" + ADAPTIVE.get() + ":" + TARGET_FPS.get()
-				+ ":" + MIN_QUALITY.get() + ":" + SOUND.get() + ":" + DUST.get();
+				+ ":" + MIN_QUALITY.get() + ":" + SOUND.get() + ":" + DUST.get()
+				+ ":" + IMPOSTORS.get() + ":" + IMPOSTOR_DISTANCE.get()
+				+ ":" + IMPOSTOR_FRAMES.get() + ":" + IMPOSTOR_RESOLUTION.get();
 	}
 }

@@ -68,6 +68,7 @@ sourceSets.main {
     resources {
         srcDir("src/generated/resources")
         exclude("src/generated/**/.cache")
+        exclude("**/*.fxproj", "**/*.mfxproj", "**/*.zip", "**/*.bbmodel")
     }
 }
 

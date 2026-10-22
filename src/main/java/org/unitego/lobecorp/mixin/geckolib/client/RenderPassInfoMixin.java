@@ -30,6 +30,9 @@ public abstract class RenderPassInfoMixin {
 		Class<? extends GeoAnimatable> animatableClass =
 				renderPassInfo.renderState().getGeckolibData(DataTickets.ANIMATABLE_CLASS);
 		if (LcAnimationBoneAdapter.hasEntityAnimation(renderPassInfo)) {
+			if (LcAnimationBoneAdapter.blendsEntityAnimation(renderPassInfo)) {
+				renderPassInfo.addBoneUpdater(LcAnimationControllerIntegration::apply);
+			}
 			renderPassInfo.addBoneUpdater(LcAnimationBoneAdapter::applyEntity);
 		} else if (animatableClass != null && ILcCustomAnimatable.class.isAssignableFrom(animatableClass)) {
 			renderPassInfo.addBoneUpdater(LcAnimationControllerIntegration::apply);

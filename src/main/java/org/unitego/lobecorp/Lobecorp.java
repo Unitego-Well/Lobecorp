@@ -15,6 +15,9 @@ import org.unitego.lobecorp.config.client.DamageParticleConfig;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
 import org.unitego.lobecorp.config.server.ShieldConfig;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.config.server.HordeEventConfig;
+import org.unitego.lobecorp.generator.lang.HordeLang;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
@@ -44,6 +47,9 @@ public class Lobecorp {
 		modContainer.registerConfig(ModConfig.Type.CLIENT, PlayerHudConfig.SPEC, PlayerHudConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, ShieldConfig.SPEC, ShieldConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.CLIENT, VisualQualityConfig.SPEC, VisualQualityConfig.FILE_NAME);
+		modContainer.registerConfig(ModConfig.Type.CLIENT, HordeVisualConfig.SPEC, HordeVisualConfig.FILE_NAME);
+		modContainer.registerConfig(ModConfig.Type.SERVER, HordeEventConfig.SPEC, HordeEventConfig.FILE_NAME);
+		HordeLang.init();
 
 		LcAttachmentTypes.init(iEventBus);
 		LcTags.init();

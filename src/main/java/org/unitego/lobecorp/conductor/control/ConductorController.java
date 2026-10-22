@@ -781,13 +781,13 @@ public class ConductorController {
 				LaserSkill.enableManualControl(result.runtime());
 			}
 
-			boolean aiming = result.status() == EntitySkillCastResult.Status.AIMING;
-			ConductorUnitRuntime.get(mob).pendingSkill = aiming ? new PendingSkillCast(skill, target, targetPosition) : null;
-			return result.started() || aiming;
-		} finally {
-			casts.pop();
-			if (casts.isEmpty()) {
-				EXPLICIT_SKILL_CASTS.remove();
+            boolean aiming = result.status() == EntitySkillCastResult.Status.AIMING;
+            ConductorUnitRuntime.get(mob).pendingSkill = aiming ? new PendingSkillCast(skill, target, targetPosition) : null;
+            return result.started() || aiming;
+        } finally {
+            casts.pop();
+            if (casts.isEmpty()) {
+                EXPLICIT_SKILL_CASTS.remove();
 			}
 		}
 	}

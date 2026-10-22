@@ -91,6 +91,10 @@ Mob 当前有效攻击目标，没有目标时保持当前朝向。它不重启�
 
 手动能力需要具体技能接入；当前核对了激光技能的准备、更新与释放入口，不能推断全部技能默认支持手动控制。请求权限与指挥家选择资格在相应服务端控制入口检查。
 
+## 女皇激光与瞬时星束的客户端表现
+
+激光与星束使用现有 EntitySkillSyncPayload 派发的 Started／Activated／RecoveryStarted／Completed／Cancelled，客户端独占 Photon 播放实例，不新增 Payload。激光从实体包围盒中心发射，命中框、截断与预览共享 LaserSkill.origin；星束保留原法杖起点和激活当刻的单次伤害，注册 ACTIVE 为 2t 以显示闪光。全部阶段时长来自技能配置及同步快照，详见[技能特效](queen-beam-skill-effects.md)。
+
 ## 独立轻量技能效果
 
 [EntitySkillEffect](../../src/main/java/org/unitego/lobecorp/world/entity/skill/effect/EntitySkillEffect.java)是由

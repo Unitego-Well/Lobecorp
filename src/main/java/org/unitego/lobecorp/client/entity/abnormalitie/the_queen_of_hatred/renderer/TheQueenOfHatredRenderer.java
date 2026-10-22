@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.renderer;
 
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.geckolib.constant.DataTickets;
 import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -12,6 +13,8 @@ import org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.model
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
+import org.unitego.lobecorp.client.animation.LcClientAnimations;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 
 public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred, LivingEntityRenderState> {
 	public TheQueenOfHatredRenderer(EntityRendererProvider.Context context) {
@@ -23,6 +26,8 @@ public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred
 	public void addRenderData(TheQueenOfHatred animatable, Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
 		LcModelLodUtil.capture(animatable, renderState);
 		renderState.addGeckolibData(LcDataTickets.QUEEN_PHASE, animatable.getPhase());
+		renderState.addGeckolibData(LcDataTickets.QUEEN_BEAM_ANIMATION, LcClientAnimations.hasEntityAnimation(animatable.getId(),
+				snapshot -> TheQueenOfHatredAnimationDefinitions.isBeam(snapshot.definitionId())));
 	}
 
 	@Override
@@ -33,7 +38,11 @@ public class TheQueenOfHatredRenderer extends GeoEntityRenderer<TheQueenOfHatred
 //			rot.add(snapshot.getRotX(), snapshot.getRotY());
 //		});
 		snapshots.ifPresent("Head", snapshot -> {
-			snapshot.setRotX(snapshot.getRotX() + -renderState.xRot * Mth.DEG_TO_RAD);
+			var id = renderPassInfo.getGeckolibData(DataTickets.ANIMATABLE_INSTANCE_ID);
+			var partialTick = renderPassInfo.getOrDefaultGeckolibData(DataTickets.PARTIAL_TICK, 1F);
+			var beamWeight = renderState.getOrDefaultGeckolibData(LcDataTickets.QUEEN_BEAM_ANIMATION, false) && id != null
+					? LcClientAnimations.beamPoseWeight(id.intValue(), partialTick) : 0;
+			snapshot.setRotX(snapshot.getRotX() - renderState.xRot * Mth.DEG_TO_RAD * (float) (1 - beamWeight));
 			snapshot.setRotY(snapshot.getRotY() + -renderState.yRot * Mth.DEG_TO_RAD);
 			rot.add(snapshot.getRotX(), snapshot.getRotY());
 		});

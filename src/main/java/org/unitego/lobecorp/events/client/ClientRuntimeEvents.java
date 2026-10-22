@@ -22,6 +22,9 @@ import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
 import org.unitego.lobecorp.client.hud.PlayerStatusHud;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
+import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.horde.HordeAmbient;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
@@ -29,6 +32,7 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+		HordeClient.clear();
 		PlayerStatusHud.INSTANCE.clear();
 		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
@@ -43,6 +47,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+		HordeClient.clear();
 		PlayerStatusHud.INSTANCE.clear();
 		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
@@ -86,6 +91,9 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
+		if (HordeVisualConfig.SPEC.isLoaded()) {
+			HordeVisualConfig.refreshPreset();
+		}
 		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;
 		if (level != null) {
@@ -98,6 +106,7 @@ public class ClientRuntimeEvents {
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 		QueenBeamEffects.tick();
+		HordeAmbient.tick();
 	}
 
 	@SubscribeEvent

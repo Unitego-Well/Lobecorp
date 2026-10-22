@@ -7,6 +7,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.entity.ai.ActivityData;
 import net.minecraft.world.entity.ai.Brain;
 import net.minecraft.world.entity.ai.behavior.*;
@@ -34,6 +36,8 @@ import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
 import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCastResult;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.world.horde.HordeRuntime;
 
 import java.util.List;
 import java.util.Map;
@@ -169,6 +173,14 @@ public final class SweeperAi {
 		return new SweeperAi(sweeper);
 	}
 
+	/// 按MoveControl每刻写入的速度及前进输入、原版平地加速度和摩擦换算稳定奔跑位移，单位为格/tick。
+	public static double runningGroundSpeed() {
+		double friction = Blocks.STONE.getFriction();
+		float speed = (float) (Sweeper.createAttributes().build().getBaseValue(Attributes.MOVEMENT_SPEED) * TARGET_WALK_SPEED);
+		double acceleration = speed * Math.min(1, speed) * 0.21600002 / (friction * friction * friction);
+		return acceleration / (1 - friction * 0.91);
+	}
+
 	/// 创建并初始化清道夫的 Brain。
 	public static Brain<Sweeper> makeBrain(Sweeper sweeper, Brain.Packed packedBrain) {
 		return BRAIN_PROVIDER.makeBrain(sweeper, packedBrain);
@@ -179,7 +191,8 @@ public final class SweeperAi {
 				ActivityData.create(Activity.CORE, CORE_ACTIVITY_PRIORITY, ImmutableList.of(
 						new LookAtTargetSink(MINIMUM_LOOK_ANGLE, MAXIMUM_LOOK_ANGLE), new MoveToTargetSink())
 				), ActivityData.create(Activity.IDLE, IDLE_ACTIVITY_PRIORITY, ImmutableList.of(
-						StartAttacking.create((_, sweeper) -> sweeper.ai().isRecoveryCleanup()
+						StartAttacking.create((_, sweeper) -> HordeParticipant.isEvent(sweeper)
+								? Optional.ofNullable(HordeRuntime.assignedTarget(sweeper)) : sweeper.ai().isRecoveryCleanup()
 								&& sweeper.getBrain().getMemory(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get())
 								.filter(target -> isValidCleanupTarget(sweeper, target)).isPresent()
 								? Optional.empty()
@@ -335,7 +348,7 @@ public final class SweeperAi {
 	}
 
 	private static boolean isValidCleanupTarget(Sweeper sweeper, Entity target) {
-		return target.isAlive() && (target instanceof EntityCorpse<?> corpse
+		return !HordeParticipant.isEvent(sweeper) && target.isAlive() && (target instanceof EntityCorpse<?> corpse
 				&& (!(corpse.getOwnerEntity() instanceof Sweeper) || ReassembleSkill.canReassemble(sweeper, corpse))
 				|| target instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty());
 	}
@@ -380,7 +393,9 @@ public final class SweeperAi {
 
 	/// 根据当前生命、目标和技能状态更新恢复清理与活动。
 	protected void updateActivity() {
-		updateRecoveryCleanup();
+		if (!HordeParticipant.isEvent(sweeper)) {
+			updateRecoveryCleanup();
+		}
 		if (sweeper.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()
 				&& (EntitySkillUtil.isCasting(sweeper, SweeperSkills.SWEEP.get())
 				|| EntitySkillUtil.isCasting(sweeper, SweeperSkills.REASSEMBLE.get()))) {

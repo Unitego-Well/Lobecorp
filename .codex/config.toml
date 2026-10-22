@@ -21,16 +21,16 @@ approval_mode = "approve"
 
 [mcp_servers.minecraft]
 command = "C:/Program Files/nodejs/node.exe"
-args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp/dist/cli.js"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp"
+args = ["C:/Users/wang_/.codex/worktrees/90be/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp/dist/cli.js"]
+cwd = "C:/Users/wang_/.codex/worktrees/90be/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp"
 
 [mcp_servers.minecraft.env]
-MC_MCP_PORT = "19878"
+MC_MCP_PORT = "19876"
 
 [mcp_servers.minecraft.tools.effect_edit_batch]
 approval_mode = "approve"
 
 [mcp_servers.lobecorp_normify]
 command = "C:/Program Files/nodejs/node.exe"
-args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js", "serve", "--workspace-root", "E:/xm/mc/mod/Unitego-Well/Lobecorp"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify"
+args = ["C:/Users/wang_/.codex/worktrees/90be/Lobecorp/tools/lobecorp-normify/dist/src/cli.js", "serve", "--workspace-root", "C:/Users/wang_/.codex/worktrees/90be/Lobecorp"]
+cwd = "C:/Users/wang_/.codex/worktrees/90be/Lobecorp/tools/lobecorp-normify"

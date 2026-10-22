@@ -31,7 +31,10 @@ public class QueenSkillUtil {
 	}
 
 	public static Vec3 beamEndpoint(Mob mob, Vec3 position, double range) {
-		Vec3 start = staffOrigin(mob);
+		return beamEndpoint(mob, staffOrigin(mob), position, range);
+	}
+
+	public static Vec3 beamEndpoint(Mob mob, Vec3 start, Vec3 position, double range) {
 		Vec3 offset = position.subtract(start);
 		Vec3 direction = offset.lengthSqr() > 0.0 ? offset.normalize() : mob.getLookAngle();
 		return mob.level().clip(new ClipContext(start, start.add(direction.scale(range)),

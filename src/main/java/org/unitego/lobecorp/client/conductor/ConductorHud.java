@@ -1870,7 +1870,7 @@ public class ConductorHud implements ModularHudLayer {
 			}
 		}
 
-		graphics.disableScissor();
+        graphics.disableScissor();
 	}
 
 	private void renderTooltipAtPointer(GuiGraphicsExtractor graphics) {

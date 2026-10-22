@@ -2,6 +2,8 @@ package org.unitego.lobecorp.util.entity.combat;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.OwnableEntity;
@@ -28,7 +30,8 @@ public class CombatUtil {
 	}
 
 	public static boolean acceptsControl(Entity entity) {
-		return !(entity instanceof ICombatant combatant) || combatant.acceptsConductorControl();
+		return !HordeParticipant.isEvent(entity)
+				&& (!(entity instanceof ICombatant combatant) || combatant.acceptsConductorControl());
 	}
 
 	public static boolean participates(Entity entity) {
@@ -79,15 +82,18 @@ public class CombatUtil {
 
 	/// 客户端可传入目录中的阵营快照，服务端仍独立查询权威归属。
 	public static boolean canTarget(Entity attacker, Entity target, boolean allied) {
-		if (target == attacker || target.level() != attacker.level() || !target.isAlive()
-				|| !target.isAttackable() || target.isSpectator()
-				|| target instanceof LivingEntity living && !living.attackable()
-				|| target instanceof Player player && player.isCreative()) {
+		if (target == attacker || !canTargetInLevel(attacker.level(), target)) {
 			return false;
 		}
 
 		return isIndiscriminate(attacker) || isIndiscriminate(target)
 				|| !allied && !attacker.isAlliedTo(target);
+	}
+
+	public static boolean canTargetInLevel(Level level, Entity target) {
+		return target.level() == level && target.isAlive() && target.isAttackable() && !target.isSpectator()
+				&& (!(target instanceof LivingEntity living) || living.attackable())
+				&& (!(target instanceof Player player) || !player.isCreative());
 	}
 
 	public static boolean wantsTarget(Mob attacker, Entity target) {

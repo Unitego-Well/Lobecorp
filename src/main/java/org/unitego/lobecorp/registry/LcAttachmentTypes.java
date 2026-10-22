@@ -11,6 +11,7 @@ import org.unitego.lobecorp.conductor.ability.ConductorAbilityState;
 import org.unitego.lobecorp.conductor.control.ConductorUnitRuntime;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
 import org.unitego.lobecorp.world.entity.combat.CombatMemory;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCooldownClock;
 import org.unitego.lobecorp.world.entity.control.EntityGrabState;
@@ -108,6 +109,11 @@ public interface LcAttachmentTypes {
 	/// 实体指挥控制的运行期上下文，不作为持久化状态保存。
 	DeferredHolder<AttachmentType<?>, AttachmentType<ConductorUnitRuntime>> CONDUCTOR_RUNTIME = REGISTER.register(
 			"conductor_runtime", () -> AttachmentType.builder(ConductorUnitRuntime::new).build());
+
+	DeferredHolder<AttachmentType<?>, AttachmentType<HordeParticipant>> HORDE_PARTICIPANT = REGISTER.register(
+			"horde_participant", () -> AttachmentType.builder(() -> HordeParticipant.EMPTY)
+					.serialize(HordeParticipant.CODEC.fieldOf("participant"))
+					.sync(HordeParticipant.STREAM_CODEC).build());
 
 	static void init(IEventBus iEventBus) {
 		REGISTER.register(iEventBus);

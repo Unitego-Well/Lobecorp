@@ -19,6 +19,11 @@ import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 import java.util.List;
 import java.util.Map;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
+import com.geckolib.constant.DataTickets;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 
 public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRenderState> {
 
@@ -35,6 +40,28 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 	@Override
 	public int getPackedOverlay(Sweeper animatable, @Nullable Void relatedObject, float u, float partialTick) {
 		return super.getPackedOverlay(animatable, relatedObject, u, partialTick);
+	}
+
+	@Override
+	public int getRenderColor(Sweeper entity, @Nullable Void relatedObject, float partialTick) {
+		int color = super.getRenderColor(entity, relatedObject, partialTick);
+		if (!entity.isAlive() || !HordeParticipant.isEvent(entity)) {
+			return color;
+		}
+		int alpha = (int) (HordeParticipant.get(entity).alpha(entity.level().getGameTime() + partialTick) * 255);
+		return (color & 0xFFFFFF) | alpha << 24;
+	}
+
+	@Override
+	public RenderType getRenderType(LivingEntityRenderState state, Identifier texture) {
+		int color = state.getOrDefaultGeckolibData(DataTickets.RENDER_COLOR, -1);
+		return (color >>> 24) < 255 ? RenderTypes.entityTranslucent(texture) : super.getRenderType(state, texture);
+	}
+
+	@Override
+	protected float getShadowStrength(LivingEntityRenderState state) {
+		int color = state.getOrDefaultGeckolibData(DataTickets.RENDER_COLOR, -1);
+		return super.getShadowStrength(state) * (color >>> 24) / 255f;
 	}
 
 	@Override

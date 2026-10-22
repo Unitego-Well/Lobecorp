@@ -20,11 +20,10 @@ import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -33,6 +32,8 @@ public class HordeClient {
 	private static final Map<UUID, ClientEvent> EVENTS = new HashMap<>();
 	private static final Map<Key, Display> ACTIVE = new HashMap<>();
 	private static final ArrayDeque<Display> POOL = new ArrayDeque<>();
+	private static final Selection SELECTION = new Selection();
+	private static final int INITIAL_CANDIDATES = 256;
 	private static long frame;
 	private static long lastFrameNanos;
 	private static double quality = 1;
@@ -114,42 +115,47 @@ public class HordeClient {
 			generation = GeckoLibResources.getBakedModels();
 			HordeMeshCache.clear();
 			HordeGpuRenderer.clear();
+			HordeImpostorAtlas.clear();
 		}
 		Vec3 camera = minecraft.gameRenderer.getMainCamera().position();
 		HordeVisibility.begin(camera, minecraft.level.getGameTime());
 		int configured = HordeVisualConfig.MAX_VISIBLE.get();
-		int limit = configured == -1 ? Integer.MAX_VALUE : configured;
-		var selected = new PriorityQueue<>(Comparator.comparingDouble(Candidate::score).reversed());
+		SELECTION.begin(configured == -1 ? Integer.MAX_VALUE : configured);
 		candidates = 0;
 		for (var event : EVENTS.values()) {
-			event.select(camera, partialTick, limit, selected, frustum);
+			event.select(camera, partialTick, SELECTION, frustum);
 		}
 		HordeVisibility.end();
-		var ordered = new ArrayList<>(selected);
-		ordered.sort(Comparator.comparingDouble(Candidate::distance));
-		var instances = new ArrayList<Instance>();
-		for (var candidate : ordered) {
-			var display = ACTIVE.get(candidate.key());
+		var instances = new ArrayList<Instance>(SELECTION.size);
+		for (var candidate : SELECTION.ordered()) {
+			Key key = new Key(candidate.event.id, candidate.number);
+			Vec3 point = new Vec3(candidate.x, candidate.y, candidate.z);
+			var display = ACTIVE.get(key);
 			if (display == null) {
 				display = POOL.pollFirst();
 				if (display == null) {
 					display = new Display();
 				}
-				display.position = candidate.position();
 				display.joinedAt = minecraft.level.getGameTime();
-				ACTIVE.put(candidate.key(), display);
+				display.lightAt = Long.MIN_VALUE / 2;
+				ACTIVE.put(key, display);
 			}
 			display.seen = frame;
-			display.position = candidate.position();
+			display.position = point;
 			double detailScale = Math.max(0.25, quality);
-			int band = candidate.distance() < HordeVisualConfig.NEAR.get() * detailScale ? 0
-					: candidate.distance() < HordeVisualConfig.FAR.get() * detailScale ? 1 : 2;
+			int band = candidate.distance < HordeVisualConfig.NEAR.get() * detailScale ? 0
+					: candidate.distance < HordeVisualConfig.FAR.get() * detailScale ? 1 : 2;
 			float alpha = (float) HordeSamplingUtil.smooth((minecraft.level.getGameTime() + partialTick - display.joinedAt)
-					/ candidate.event().rules.fadeTicks()) * candidate.alpha();
-			int light = LevelRenderer.getLightCoords(minecraft.level,
-					BlockPos.containing(display.position.add(0, 1, 0)));
-			instances.add(new Instance(candidate.key(), candidate.event().visual, display.position,
-					candidate.direction(), candidate.time(), band, candidate.phase(), alpha, light, candidate.distance()));
+					/ candidate.event.rules.fadeTicks()) * candidate.alpha;
+			int x = (int) Math.floor(point.x), y = (int) Math.floor(point.y + 1), z = (int) Math.floor(point.z);
+			if (display.lightPosition.getX() != x || display.lightPosition.getY() != y || display.lightPosition.getZ() != z
+					|| minecraft.level.getGameTime() - display.lightAt >= 5) {
+				display.lightPosition.set(x, y, z);
+				display.light = LevelRenderer.getLightCoords(minecraft.level, display.lightPosition);
+				display.lightAt = minecraft.level.getGameTime();
+			}
+			instances.add(new Instance(key, candidate.event.visual, point, new Vec3(candidate.dx, 0, candidate.dz),
+					candidate.time, band, candidate.phase, alpha, display.light, candidate.distance));
 		}
 		var iterator = ACTIVE.entrySet().iterator();
 		while (iterator.hasNext()) {
@@ -201,6 +207,9 @@ public class HordeClient {
 		EVENTS.clear();
 		ACTIVE.clear();
 		POOL.clear();
+		SELECTION.heap = new Candidate[INITIAL_CANDIDATES];
+		SELECTION.size = 0;
+		HordeImpostorAtlas.clear();
 		lastInstances = List.of();
 		quality = 1;
 		lastFrameNanos = 0;
@@ -211,23 +220,107 @@ public class HordeClient {
 	}
 
 	public record Key(UUID eventId, long number) {
+		@Override
+		public int hashCode() {
+			long mixed = HordeSamplingUtil.mix(number ^ eventId.getMostSignificantBits() ^ eventId.getLeastSignificantBits());
+			return (int) (mixed ^ mixed >>> 32);
+		}
 	}
 
 	public record Instance(Key key, HordeVisualDefinition visual, Vec3 position, Vec3 direction,
 	                       double time, int band, int phase, float alpha, int light, double distance) {
 	}
 
-	private record Candidate(Key key, ClientEvent event, Vec3 position, Vec3 direction, double time,
-	                         int phase, double distance, double score, float alpha) {
+	private static class Candidate {
+		private ClientEvent event;
+		private long number;
+		private double x, y, z, dx, dz, time, distance, score;
+		private int phase;
+		private float alpha;
+
+		private void copy(Candidate value) {
+			event = value.event;
+			number = value.number;
+			x = value.x; y = value.y; z = value.z;
+			dx = value.dx; dz = value.dz;
+			time = value.time;
+			distance = value.distance;
+			score = value.score;
+			phase = value.phase;
+			alpha = value.alpha;
+		}
+	}
+
+	/// 有界最大堆复用候选槽位；无限模式只取消配额，不另设数量硬上限。
+	private static class Selection {
+		private Candidate[] heap = new Candidate[INITIAL_CANDIDATES];
+		private int size, limit;
+
+		private void begin(int maximum) {
+			size = 0;
+			limit = maximum;
+		}
+
+		private boolean accepts(double score) {
+			return limit > 0 && (size < limit || heap[0].score > score);
+		}
+
+		private void offer(Candidate value) {
+			if (!accepts(value.score)) {
+				return;
+			}
+			if (size < limit) {
+				if (size == heap.length) {
+					heap = Arrays.copyOf(heap, Math.multiplyExact(heap.length, 2));
+				}
+				Candidate slot = heap[size];
+				if (slot == null) {
+					slot = new Candidate();
+				}
+				slot.copy(value);
+				int index = size++;
+				while (index > 0 && heap[(index - 1) / 2].score < slot.score) {
+					heap[index] = heap[(index - 1) / 2];
+					index = (index - 1) / 2;
+				}
+				heap[index] = slot;
+				return;
+			}
+			Candidate slot = heap[0];
+			slot.copy(value);
+			int index = 0;
+			while (index * 2 + 1 < size) {
+				int child = index * 2 + 1;
+				if (child + 1 < size && heap[child + 1].score > heap[child].score) {
+					child++;
+				}
+				if (heap[child].score <= slot.score) {
+					break;
+				}
+				heap[index] = heap[child];
+				index = child;
+			}
+			heap[index] = slot;
+		}
+
+		private List<Candidate> ordered() {
+			var result = Arrays.asList(heap).subList(0, size);
+			result.sort((a, b) -> Double.compare(a.distance, b.distance));
+			return result;
+		}
 	}
 
 	private static class Display {
 		private Vec3 position = Vec3.ZERO;
 		private long seen;
 		private long joinedAt;
+		private final BlockPos.MutableBlockPos lightPosition = new BlockPos.MutableBlockPos();
+		private int light;
+		private long lightAt;
 	}
 
 	private static class ClientEvent {
+		private final Candidate scratch = new Candidate();
 		private final UUID id;
 		private final TreeMap<Integer, HordeRoute.Node> nodes = new TreeMap<>();
 		private final Map<String, Region> regions = new HashMap<>();
@@ -288,7 +381,7 @@ public class HordeClient {
 			}
 		}
 
-		private void select(Vec3 camera, float partial, int limit, PriorityQueue<Candidate> selected, Frustum frustum) {
+		private void select(Vec3 camera, float partial, Selection selected, Frustum frustum) {
 			if (rules == null || visual == null || length <= 0 || speed <= 0) {
 				return;
 			}
@@ -298,11 +391,11 @@ public class HordeClient {
 			}
 			double now = targetTick + Math.clamp(level.getGameTime() - receivedAt + partial, 0, 40);
 			double clock = serverClock + Math.clamp(level.getGameTime() - clockReceivedAt + partial, 0, 20);
-			double head = now * speed;
 			double spacing = 1 / Math.sqrt(HordeSamplingUtil.density(rules.width(), rules.density()));
-			int columns = Math.max(1, (int) Math.ceil(rules.width() / spacing));
-			long emitted = (long) Math.floor(Math.min(stop, now) * speed / spacing);
-			double maximumDistance = HordeVisualConfig.rangeBlocks();
+			var sampling = new SamplingFrame(camera, now, clock, spacing,
+					Math.max(1, (int) Math.ceil(rules.width() / spacing)),
+					(long) Math.floor(Math.min(stop, now) * speed / spacing),
+					HordeVisualConfig.rangeBlocks(), HordeVisualConfig.POSE_GROUPS.get(), selected, frustum);
 			var entries = new ArrayList<>(nodes.entrySet());
 			for (int index = 0; index < entries.size() - 1; index++) {
 				var entry = entries.get(index);
@@ -312,72 +405,110 @@ public class HordeClient {
 				}
 				var a = entry.getValue();
 				var b = following.getValue();
-				Vec3 start = a.at(now, rules.transitionTicks());
-				Vec3 end = b.at(now, rules.transitionTicks());
-				double range = maximumDistance + rules.width();
-				double distanceToSegment = HordeSamplingUtil.segmentDistanceSqr(camera, start, end);
+				Vec3 start = a.at(now, rules.transitionTicks()), end = b.at(now, rules.transitionTicks());
+				double range = sampling.distance + rules.width();
 				double padding = rules.width() / 2 + 3;
-				if (distanceToSegment > range * range || !frustum.isVisible(new AABB(
-						Math.min(start.x, end.x) - padding, Math.min(start.y, end.y) - padding, Math.min(start.z, end.z) - padding,
+				if (HordeSamplingUtil.segmentDistanceSqr(camera, start, end) > range * range
+						|| !frustum.isVisible(new AABB(Math.min(start.x, end.x) - padding,
+						Math.min(start.y, end.y) - padding, Math.min(start.z, end.z) - padding,
 						Math.max(start.x, end.x) + padding, Math.max(start.y, end.y) + padding, Math.max(start.z, end.z) + padding))) {
 					continue;
 				}
-				long firstRow = Math.max(0, (long) Math.ceil((head - b.distance()) / spacing - 0.35));
-				long last = Math.min(emitted, (long) Math.floor((head - a.distance()) / spacing + 0.35));
+				Vec3 direction = end.subtract(start).multiply(1, 0, 1).normalize();
 				Vec3 incoming = index > 0 && entries.get(index - 1).getKey() == entry.getKey() - 1
-						? end.subtract(entries.get(index - 1).getValue().at(now, rules.transitionTicks())) : end.subtract(start);
+						? end.subtract(entries.get(index - 1).getValue().at(now, rules.transitionTicks())).multiply(1, 0, 1).normalize() : direction;
 				Vec3 outgoing = index + 2 < entries.size() && entries.get(index + 2).getKey() == following.getKey() + 1
-						? entries.get(index + 2).getValue().at(now, rules.transitionTicks()).subtract(start) : end.subtract(start);
-				incoming = incoming.multiply(1, 0, 1).normalize();
-				outgoing = outgoing.multiply(1, 0, 1).normalize();
-				for (long row = firstRow; row <= last; row++) {
-					Vec3 direction = new Vec3(end.x - start.x, 0, end.z - start.z).normalize();
-					for (int column = 0; column < columns; column++) {
-						long number = row * 65536 + column;
-						double station = head - row * spacing
-								+ (HordeSamplingUtil.unit(seed, number, 61) - 0.5) * spacing * 0.7;
-						if (station < a.distance() || station >= b.distance()) {
-							continue;
-						}
-						double weight = Math.clamp((station - a.distance()) / Math.max(0.001, b.distance() - a.distance()), 0, 1);
-						Vec3 heading = incoming.lerp(outgoing, weight).normalize();
-						if (heading.lengthSqr() < 0.001) {
-							heading = direction;
-						}
-						Vec3 side = new Vec3(-heading.z, 0, heading.x);
-						double baseLateral = ((column + 0.5) / columns - 0.5) * rules.width();
-						double lateral = baseLateral
-								+ HordeSamplingUtil.noise(seed, number, now / 40) * spacing * 0.35;
-						Vec3 origin = start.lerp(end, weight);
-						double y = a.height(lateral, now, rules.transitionTicks()) * (1 - weight)
-								+ b.height(lateral, now, rules.transitionTicks()) * weight;
-						Vec3 point = new Vec3(origin.x, y, origin.z).add(side.scale(lateral));
-						for (var region : regions.values()) {
-							point = region.deflect(point, side, clock, rules.transitionTicks(), baseLateral >= 0 ? 1 : -1);
-						}
-						double adjustedLateral = point.subtract(origin).dot(side);
-						double adjustedY = a.height(adjustedLateral, now, rules.transitionTicks()) * (1 - weight)
-								+ b.height(adjustedLateral, now, rules.transitionTicks()) * weight;
-						point = new Vec3(point.x, adjustedY, point.z);
-						double distance = point.distanceTo(camera);
-						if (distance > maximumDistance || !HordeVisibility.visible(point, frustum)) {
-							continue;
-						}
-						double score = distance + HordeSamplingUtil.unit(seed, number, 31) * 8;
-						candidates++;
-						Candidate worst = selected.peek();
-						if (selected.size() < limit || worst != null && worst.score() > score) {
-							var candidate = new Candidate(new Key(id, number), this, point, heading, now,
-									(int) (HordeSamplingUtil.unit(seed, number, 47) * HordeVisualConfig.POSE_GROUPS.get()),
-									distance, score, HordeSamplingUtil.endpointAlpha(station, length, speed, rules.fadeTicks()));
-							if (selected.size() >= limit) {
-								selected.poll();
-							}
-							selected.add(candidate);
-						}
+						? entries.get(index + 2).getValue().at(now, rules.transitionTicks()).subtract(start).multiply(1, 0, 1).normalize() : direction;
+				var segment = new SamplingSegment(start, end, incoming, outgoing, direction, a.distance(), b.distance(),
+						heightBand(a, now), heightBand(b, now));
+				long first = Math.max(0, (long) Math.ceil((now * speed - b.distance()) / spacing - 0.35));
+				long last = Math.min(sampling.emitted, (long) Math.floor((now * speed - a.distance()) / spacing + 0.35));
+				for (long row = first; row <= last; row++) {
+					for (int column = 0; column < sampling.columns; column++) {
+						sampleCandidate(sampling, segment, row, column);
 					}
 				}
 			}
+		}
+
+		private HeightBand heightBand(HordeRoute.Node node, double now) {
+			var values = new double[5];
+			for (int i = 0; i < values.length; i++) {
+				values[i] = node.height((i / 4d - 0.5) * rules.width(), now, rules.transitionTicks());
+			}
+			return new HeightBand(values, rules.width());
+		}
+
+		private void sampleCandidate(SamplingFrame frame, SamplingSegment segment, long row, int column) {
+			long number = row * 65536 + column;
+			double station = frame.now * speed - row * frame.spacing
+					+ (HordeSamplingUtil.unit(seed, number, 61) - 0.5) * frame.spacing * 0.7;
+			if (station < segment.first || station >= segment.last) {
+				return;
+			}
+			double weight = Math.clamp((station - segment.first) / Math.max(0.001, segment.last - segment.first), 0, 1);
+			double hx = segment.incoming.x + (segment.outgoing.x - segment.incoming.x) * weight;
+			double hz = segment.incoming.z + (segment.outgoing.z - segment.incoming.z) * weight;
+			double magnitude = Math.sqrt(hx * hx + hz * hz);
+			if (magnitude < 0.001) {
+				hx = segment.direction.x;
+				hz = segment.direction.z;
+			} else {
+				hx /= magnitude;
+				hz /= magnitude;
+			}
+			double baseLateral = ((column + 0.5) / frame.columns - 0.5) * rules.width();
+			double lateral = baseLateral + HordeSamplingUtil.noise(seed, number, frame.now / 40) * frame.spacing * 0.35;
+			double ox = segment.start.x + (segment.end.x - segment.start.x) * weight;
+			double oz = segment.start.z + (segment.end.z - segment.start.z) * weight;
+			double x = ox - hz * lateral, z = oz + hx * lateral;
+			double y = segment.a.height(lateral) * (1 - weight) + segment.b.height(lateral) * weight;
+			if (!regions.isEmpty()) {
+				var point = new Vec3(x, y, z);
+				var side = new Vec3(-hz, 0, hx);
+				for (var region : regions.values()) {
+					point = region.deflect(point, side, frame.clock, rules.transitionTicks(), baseLateral >= 0 ? 1 : -1);
+				}
+				x = point.x;
+				z = point.z;
+				double adjusted = (x - ox) * -hz + (z - oz) * hx;
+				y = segment.a.height(adjusted) * (1 - weight) + segment.b.height(adjusted) * weight;
+			}
+			double cx = x - frame.camera.x, cy = y - frame.camera.y, cz = z - frame.camera.z;
+			double distanceSquared = cx * cx + cy * cy + cz * cz;
+			if (distanceSquared > frame.distance * frame.distance) {
+				return;
+			}
+			double distance = Math.sqrt(distanceSquared);
+			double score = distance + HordeSamplingUtil.unit(seed, number, 31) * 8;
+			candidates++;
+			if (!frame.selected.accepts(score) || !HordeVisibility.visible(x, y, z, frame.frustum)) {
+				return;
+			}
+			scratch.event = this;
+			scratch.number = number;
+			scratch.x = x; scratch.y = y; scratch.z = z;
+			scratch.dx = hx; scratch.dz = hz;
+			scratch.time = frame.now;
+			scratch.distance = distance;
+			scratch.score = score;
+			scratch.phase = (int) (HordeSamplingUtil.unit(seed, number, 47) * frame.phaseGroups);
+			scratch.alpha = HordeSamplingUtil.endpointAlpha(station, length, speed, rules.fadeTicks());
+			frame.selected.offer(scratch);
+		}
+	}
+
+	private record SamplingFrame(Vec3 camera, double now, double clock, double spacing, int columns, long emitted,
+	                             double distance, int phaseGroups, Selection selected, Frustum frustum) {}
+
+	private record SamplingSegment(Vec3 start, Vec3 end, Vec3 incoming, Vec3 outgoing, Vec3 direction,
+	                               double first, double last, HeightBand a, HeightBand b) {}
+
+	private record HeightBand(double[] values, double width) {
+		private double height(double lateral) {
+			double position = Math.clamp(lateral / width + 0.5, 0, 1) * 4;
+			int low = Math.min(3, (int) position);
+			return values[low] + (values[low + 1] - values[low]) * (position - low);
 		}
 	}
 

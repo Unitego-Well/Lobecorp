@@ -83,7 +83,7 @@ public interface TheQueenOfHatredSkills {
 					.locksNavigation()
 					.locksMovement()
 					.windupTicks(STAR_BEAM_WINDUP_TICKS)
-					.durationTicks(0)
+					.durationTicks(2)
 					.recoveryTicks(STAR_BEAM_RECOVERY_TICKS)
 					.cooldownTicks(STAR_BEAM_COOLDOWN_TICKS));
 

@@ -9,18 +9,36 @@ import org.unitego.lobecorp.Lobecorp;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.HashMap;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
+import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
-/// 只提取完整三维实例，在世界颜色完成后绘制；不登记任何虚拟阴影回调。
+/// 近处提取三维姿态，远处使用四视角动画；在世界颜色完成后绘制，不提交虚拟阴影。
 public class HordeRendering {
 	private static final ContextKey<List<Draw>> FRAMES = new ContextKey<>(Lobecorp.id("horde_frames"));
 	private static List<Draw> pending = List.of();
 
 	public static void extract(ExtractLevelRenderStateEvent event) {
 		var draws = new ArrayList<Draw>();
-		for (var instance : HordeClient.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false), event.getFrustum())) {
-			var meshes = HordeMeshCache.meshes(instance);
-			if (meshes != null) {
-				draws.add(new Draw(instance, meshes));
+		var instances = HordeClient.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false), event.getFrustum());
+		HordeImpostorAtlas.beginFrame();
+		var atlases = new HashMap<HordeVisualDefinition, HordeImpostorAtlas.Atlas>();
+		for (var instance : instances) {
+			if (!atlases.containsKey(instance.visual())) {
+				atlases.put(instance.visual(), HordeImpostorAtlas.get(instance.visual()));
+			}
+			var atlas = atlases.get(instance.visual());
+			float blend = atlas == null ? 0 : (float) HordeSamplingUtil.smooth(
+					(instance.distance() - HordeVisualConfig.IMPOSTOR_DISTANCE.get()) / HordeImpostorAtlas.TRANSITION_BLOCKS);
+			if (blend < 1) {
+				var meshes = HordeMeshCache.meshes(instance);
+				if (meshes != null) {
+					draws.add(new Draw(instance, meshes, null, 1 - blend));
+				}
+			}
+			if (blend > 0) {
+				draws.add(new Draw(instance, HordeImpostorAtlas.QUAD_PAIR, atlas, blend));
 			}
 		}
 		draws.sort(Comparator.comparingDouble((Draw draw) -> draw.instance().distance()).reversed());
@@ -42,10 +60,10 @@ public class HordeRendering {
 	}
 
 	public static String statistics() {
-		return HordeGpuRenderer.statistics() + ", " + HordeVisibility.statistics();
+		return HordeGpuRenderer.statistics() + ", " + HordeVisibility.statistics() + ", " + HordeImpostorAtlas.statistics();
 	}
 
-	public record Draw(HordeClient.Instance instance, HordeMeshCache.Pair meshes) {
+	public record Draw(HordeClient.Instance instance, HordeMeshCache.Pair meshes, HordeImpostorAtlas.Atlas atlas, float opacity) {
 	}
 
 	public static void clear() {

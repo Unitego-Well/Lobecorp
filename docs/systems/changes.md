@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-22：深夜清扫首个骨骼矩阵优化
+
+- 按[性能审计](horde-performance-audit-20261022.md)的 P1 第一项实施首个切片：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L155) 在烘焙阶段预计算每帧每骨骼的 3×4 位置矩阵和 3×3 法线矩阵，[horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L53) 读取相邻两帧矩阵并混合顶点位置/法线，不再逐顶点沿父链遍历或做四元数插值。
+- 插值语义由逐骨骼 TRS 插值改为相邻帧矩阵结果混合；顶点读取量从约 22×骨骼链深度次降为固定 42 次。逐实例矩阵仍未实现。本次未修改骨骼 X 平移符号等已知问题。
+- IDEA 静态诊断 HordeMeshCache、HordeGpuRenderer 无错误；IDEA 项目构建成功（约 37.8 秒）；runData 成功（BUILD SUCCESSFUL，23 缓存输出，written=0，removed stale=0）。
+- 同步更新[当前渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计](horde-performance-audit-20261022.md#L191)。未启动游戏、未编译运行时着色器、未做视觉或性能采样；不能声称帧率或视觉通过。
+- 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交，提交受阻场景已如实记录。
+
 ## 2026-10-22：深夜清扫性能与 CPU 侧审计
 
 - 新增[性能、CPU侧工作与冗余功能静态审计](horde-performance-audit-20261022.md)，按当前工作区只读核对服务端调度、网络同步、客户端提取/光场和 GPU 管线。

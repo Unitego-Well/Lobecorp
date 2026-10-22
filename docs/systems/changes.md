@@ -7,6 +7,7 @@
 - [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离至少 16 格，保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
 - IDEA 项目构建成功（约 6.7 秒）；`HordeRegionTest` 2/2、`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 35 秒，23 缓存输出，written=0，removed stale=0）。
 - 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-performance-audit-20261022.md#L223)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
+- 按用户选择 B，保留客户端宽目标筛选，不新增目标 UUID 同步；普通生物可能触发让行缺口，作为已知代价记录。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交。
 
 ## 2026-10-22：深夜清扫烘焙帧动画优化

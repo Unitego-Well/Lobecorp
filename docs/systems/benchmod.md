@@ -30,6 +30,21 @@ Gradle／IDEA 入口：
 
 客户端保留上游严格环境门禁：失焦、最小化、暂停、界面打开、窗口变化等会使结果不可比，不以降低门禁制造成功。截图、JSONL、JFR必须登记在权威summary.json中；构建成功不代表真实游戏、图形或性能验收成功。
 
+## 其他工作区同步（2026-10-22）
+
+已将原始dev 278c418局部接入当前其他独立工作区：
+
+| 工作区 | 本次接入提交 | 本轮核对 |
+| --- | --- | --- |
+| 7903／特效 | 0d1b2f1 | Gradle导入成功、三个BenchMod入口已生成、7文件IDEA错误检查为空；原有6份运行/MCP配置SHA256不变 |
+| horde-recovery／清道夫事件2.0 | 1f30bde | Gradle导入成功、三个BenchMod入口已生成、7文件IDEA错误检查为空；原有MCP配置及资源输出排除规则保留 |
+
+旧90be在同步期间已归档并移除工作树，本轮没有重建或唤醒旧聊天；随后用户在新聊天恢复出horde-recovery，故将BenchMod接入该新实施目录。恢复工作区保持detached状态，原快照6328b11保留为parent和备份，不改写深夜清扫重写业务。
+
+两个工作区都使用自己的build/modBench目录，不共享运行产物；4个Java场景文件与源提交仅有本地IDE排版空白差异。7903业务正在收尾，按协调请求暂缓Compile/Data；恢复工作区也未执行构建或Data。两边没有运行真实基准游戏，不以原始dev结果代替它们的本轮验收。
+
+备份分别为refs/backups/before-benchmod-sync-7903-20261022/{head,wip,index}及refs/backups/before-benchmod-sync-horde-recovery-20261022/{head,index}。两次提交使用临时独立Git索引，只收录本次工具链、场景及文档，并核对其他索引条目未变；临时索引、空钩子目录和任务自建Git进程均已结束并清理。文件与提交占用已通知对应未归档聊天解除。
+
 ## 实际检查
 
 已通过 IDEA 导入固定版本插件，POM可访问（HTTP 200）；修改行及新增Java格式处理完成。7个Java／Gradle／版本文件统一错误检查为空；6条借用世界的资源归属提示及1条既有Kotlin限定名提示保留，不关闭游戏拥有的世界。已通过 IDEA 的 BenchMod Compile 执行 compileJava、compileBenchJava、verifyProductionJarHasNoBenchContent，日志为 BUILD SUCCESSFUL（17秒）。原有 reserveBuildIdentity 不支持配置缓存序列化，缓存被丢弃但构建成功；没有扩大范围修复该既有问题。

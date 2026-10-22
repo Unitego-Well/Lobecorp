@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-22：其他独立工作区使用 BenchMod
+
+- 将dev 278c418的BenchMod配置、Provider及两个场景局部接入7903与新恢复的horde-recovery，提交分别0d1b2f1／1f30bde。两边Gradle依赖导入成功、三个BenchMod入口已生成，7个相关文件IDEA错误检查均为空。
+- 保留7903原有6份运行/MCP配置、恢复目录原MCP配置和资源排除规则；Java仅适配本地IDE排版，工作区使用各自build/modBench。其他业务改动与索引条目保留，提交临时对象已清理。
+- 业务仍在对应聊天修改中，未在两边触发编译／Data或真实基准游戏；原始dev检查结果不代替本轮验证。旧90be已移除且未恢复／唤醒；新恢复目录继续保持detached。备份和边界见[工作区同步说明](benchmod.md#其他工作区同步2026-10-22)。
+
+
 ## 2026-10-22：安装 BenchMod 并接入清道夫基准场景
 
 - 固定JitPack BenchMod 0.1.5-beta，接入插件解析、限定仓库和bench专用API/Runtime；保留当前Minecraft26.1.2、NeoForge26.1.2.100及Java25。新增独立src/bench Provider、64清道夫服务端AI和客户端本地渲染场景，按配置／注册／服务端／客户端分包。

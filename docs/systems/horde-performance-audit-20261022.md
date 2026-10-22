@@ -1,8 +1,8 @@
 # 深夜清扫性能、CPU 侧与冗余工作审计
 
-日期：2026-10-22。对象为当前 `horde-recovery` 工作区。HEAD 为 `fbfdcd0`，工作区中仍存在未提交的 motion 着色器、粗高度、BenchMod 等改动；本文按工作区当前文件读取。
+日期：2026-10-22。对象为当前 `horde-recovery` 工作区。记录开始时 HEAD 为 `fbfdcd0`；本文初版随文档提交 `6aabf40`，本次补充记录另提交。工作区中仍存在未提交的 motion 着色器、粗高度、BenchMod 等改动；本文按工作区当前文件读取。
 
-本文是只读静态审计，不是性能验收：没有构建、Data、启动游戏、JFR、Spark 或 GPU 计时。文中的“高/中/低”是静态优先级，不是实测耗时。正确性问题（例如清除后客户端可能收不到 remove、目标表只增不减、骨骼 X 平移符号）另见本次检查记录，本文只在它们直接影响 CPU、网络或资源占用时提及。
+本文是只读静态审计，不是性能验收：没有构建、Data、启动游戏、JFR、Spark 或 GPU 计时。文中的“高/中/低”是静态优先级，不是实测耗时。正确性问题（例如清除后客户端可能收不到 remove、目标表只增不减、骨骼 X 平移符号）另见文末非性能问题摘要和本次任务记录，本文只在它们直接影响 CPU、网络或资源占用时提及。
 
 ## 1. 当前工作分布
 
@@ -177,5 +177,13 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 - 战斗范围判定使用 `rules.margin()`，渲染高度和让行使用 `regionMargin`；配置不同时会出现“画得到但不算覆盖”或相反的情况，见 [HordeEvent.covers](../../src/main/java/org/unitego/lobecorp/world/horde/HordeEvent.java#L106-L110) 与 [HordeRoute.prepare](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRoute.java#L140-L142)。
 - 客户端 header 解析在 [HordeClient.apply](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L50-L76) 中先创建事件再校验；解析失败会留下半初始化事件，后续 route 包不会再触发重同步请求。
 - [HordeLightField.ensureAtlas](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java#L148-L156) 在区段数超过约 4096 时会抛异常，[HordeGpuRenderer.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java#L84-L92) 会把该事件标记为失败并停止显示。
+
+## 8. 本次任务记录
+
+- 2026-10-22：按当前工作区只读复查深夜清扫的服务端调度、网络同步、客户端提取/光场和 GPU 管线，形成本文。
+- 检查方式：读取 Java、GLSL、配置和系统文档；未构建、Data、启动游戏、JFR 或 Spark 采样；未修改源码、资源和配置。
+- 文档落地：通过 IDEA 创建/更新 Markdown，并同步[系统文档索引](README.md#L14)与[修改记录](changes.md#L3-L8)。
+- Git：文档变更与工作区其他未提交源码分开提交，避免把既有修改混入本次记录。
+- 备份：本次未新增备份。
 
 本文不包含代码修改建议以外的实施。

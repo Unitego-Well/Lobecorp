@@ -52,6 +52,7 @@
 | BenchMod 基准测试 | [工具链、清道夫 AI 与客户端渲染场景](benchmod.md) |
 | 工作区共同地基 | [dev 提交自动同步、保护与暂停恢复](workspace-sync.md) |
 | 架构建图 MCP | [独立 Normify MCP、CLI 与 Skill](../../tools/lobecorp-normify/README.md) |
+| Minecraft MCP 外部制品 | [外部构建、lib、Git 分发与端口隔离](minecraft-mcp-artifacts.md) |
 | Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |

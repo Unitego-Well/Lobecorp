@@ -2,6 +2,7 @@
 
 import com.zhongbai233.bench.gradle.VerifyBenchReportTask
 import org.gradle.api.plugins.ExtensionAware
+import org.jetbrains.gradle.ext.Application
 import org.jetbrains.gradle.ext.Gradle
 import org.jetbrains.gradle.ext.IdeaExtPlugin
 import org.jetbrains.gradle.ext.ProjectSettings
@@ -23,6 +24,7 @@ tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
 
+val photonBenchEnabled = providers.gradleProperty("photonBench").map(String::toBoolean).orElse(false)
 val minecraftMcpJar = files("lib/minecraft-mcp-0.3.0.jar")
 val minecraftMcpBridge = layout.projectDirectory.dir("lib/minecraft-mcp/bridge")
 val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT").orElse(
@@ -35,6 +37,10 @@ val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT").orElse(
 val minecraftMcpClient = sourceSets.create("mcpClient") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().runtimeClasspath + minecraftMcpJar
+}
+
+val photonBenchClient = sourceSets.create("photonBenchClient") {
+    runtimeClasspath += sourceSets["bench"].runtimeClasspath + minecraftMcpJar
 }
 
 val minecraftVersion = libs.versions.minecraft.get()
@@ -131,6 +137,9 @@ repositories {
 
 dependencies {
     compileOnly(minecraftMcpJar)
+    if (photonBenchEnabled.get()) {
+        add("benchRuntimeMod", minecraftMcpJar)
+    }
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -214,6 +223,9 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
             logLevel = org.slf4j.event.Level.DEBUG
+            if (name == "benchClient" && photonBenchEnabled.get()) {
+                systemProperty("mcp.port", minecraftMcpGamePort.get())
+            }
             if (!name.startsWith("bench")) {
                 jvmArguments.addAll(
                     "-Dterminal.ansi=true",
@@ -251,6 +263,9 @@ modBench {
     serverLevelType = "minecraft:flat"
     clientWorldPreset = "flat"
     clientWorldId = "lobecorp-bench"
+    if (photonBenchEnabled.get()) {
+        scenarioFilter = "lobecorp.photon-*"
+    }
 }
 
 tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
@@ -266,16 +281,61 @@ tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
 }
 
 tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
-    expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
-    expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
-    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
-    expectedArtifactPaths.set(
-        listOf(
-            "artifacts/samples/lobecorp.sweeper-render.jsonl",
-            "artifacts/jfr/lobecorp.sweeper-render.jfr",
-            "artifacts/screenshots/sweeper-render.png"
+    if (photonBenchEnabled.get()) {
+        expectedScenarioIds.set(
+            listOf(
+                "lobecorp.photon-00-empty",
+                "lobecorp.photon-10-static-one",
+                "lobecorp.photon-20-animated-one",
+                "lobecorp.photon-30-static-sixteen",
+                "lobecorp.photon-40-animated-sixteen",
+                "lobecorp.photon-50-cold-sixteen",
+                "lobecorp.photon-60-static-repeat",
+                "lobecorp.photon-70-empty-repeat"
+            )
         )
-    )
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.photon.loaded_models"))
+        expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime", "sodium", "mcpmod"))
+        expectedArtifactPaths.set(
+            listOf(
+                "artifacts/samples/lobecorp.photon-00-empty.jsonl",
+                "artifacts/jfr/lobecorp.photon-00-empty.jfr",
+                "artifacts/custom/photon-00-empty-workload.json",
+                "artifacts/samples/lobecorp.photon-10-static-one.jsonl",
+                "artifacts/jfr/lobecorp.photon-10-static-one.jfr",
+                "artifacts/custom/photon-10-static-one-workload.json",
+                "artifacts/samples/lobecorp.photon-20-animated-one.jsonl",
+                "artifacts/jfr/lobecorp.photon-20-animated-one.jfr",
+                "artifacts/custom/photon-20-animated-one-workload.json",
+                "artifacts/samples/lobecorp.photon-30-static-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-30-static-sixteen.jfr",
+                "artifacts/custom/photon-30-static-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-40-animated-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-40-animated-sixteen.jfr",
+                "artifacts/custom/photon-40-animated-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-50-cold-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-50-cold-sixteen.jfr",
+                "artifacts/custom/photon-50-cold-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-60-static-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-60-static-repeat.jfr",
+                "artifacts/custom/photon-60-static-repeat-workload.json",
+                "artifacts/samples/lobecorp.photon-70-empty-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-70-empty-repeat.jfr",
+                "artifacts/custom/photon-70-empty-repeat-workload.json"
+            )
+        )
+    } else {
+        expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
+        expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
+        expectedArtifactPaths.set(
+            listOf(
+                "artifacts/samples/lobecorp.sweeper-render.jsonl",
+                "artifacts/jfr/lobecorp.sweeper-render.jfr",
+                "artifacts/screenshots/sweeper-render.png"
+            )
+        )
+    }
 }
 
 tasks.processResources {
@@ -389,6 +449,29 @@ val projectSettings = (idea.project as ExtensionAware).extensions.getByType<Proj
             projectPath = rootDir.absolutePath
             taskNames = benchTasks
         }
+    }
+    runConfigurations.create("Photon Bench Debug", Application::class.java).apply {
+        mainClass = "net.neoforged.devlaunch.Main"
+        moduleRef(project, photonBenchClient)
+        workingDirectory =
+            layout.buildDirectory.dir("modBench/runs/default/client").get().asFile.invariantSeparatorsPath
+        programParameters = "@" + layout.buildDirectory.file("moddev/benchClientRunProgramArgs.txt")
+            .get().asFile.invariantSeparatorsPath
+        val folders = (sourceSets.main.get().output.files + sourceSets["bench"].output.files)
+            .joinToString(";") { "$modId%%${it.invariantSeparatorsPath}" }
+        jvmArgs =
+            "@" + layout.buildDirectory.file("moddev/benchClientRunVmArgs.txt").get().asFile.invariantSeparatorsPath +
+                    " -Dfml.modFolders=$folders"
+    }
+    runConfigurations.create("BenchMod Photon Prepare", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf("benchClasses", "prepareBenchClientRun", "prepareBenchClientOptions")
+        scriptParameters = "-PphotonBench=true"
+    }
+    runConfigurations.create("BenchMod Photon", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf("verifyBenchClient")
+        scriptParameters = "-PphotonBench=true"
     }
     runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath

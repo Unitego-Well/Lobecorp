@@ -20,6 +20,14 @@ Gradle／IDEA 入口：
 
 这些运行说明不代表任务已经执行。真实 Server／Client 基准须取得当次运行授权。插件每次运行会清理对应旧报告；做版本对比前先保存完整结果目录。普通 check 不等于已经运行真实基准。
 
+## Photon 模型诊断入口
+
+Provider 仅在 `modBench.scenarios` 显式包含 `lobecorp.photon-` 前缀时登记 Photon 诊断场景，普通基准保留清道夫默认集合。本工作区通过 `-PphotonBench=true` 启用 `lobecorp.photon-*` 场景过滤、仅该 profile 的 MCP 运行依赖和端口 19877；普通服务端／客户端基准保持原入口。IDEA 的 `BenchMod Photon Prepare` 编译 bench、生成客户端参数并准备隔离 options，`BenchMod Photon` 运行并校验报告。`Photon Bench Debug` 使用独立 `photonBenchClient` 类路径包含 bench 与 MCP，不依赖普通 Gradle 导入时未启用的 profile 依赖。
+
+夹具 `PhotonModelRenderScenario` 固定 17×17 顶点网格、256 个四边面和单骨骼；静态与动画使用同一资产，区别仅是是否选择 `turn` 片段。包含空场景、1／16 模型、静态／动画、测量开始时创建 16 模型及末尾静态／空场景重复；预热 100 tick，测量 300 tick，截图完成后等待稳定窗口。首次创建场景是当前 JVM 中该用例的创建成本，不能当作进程冷启动；模型负载不能替代真实激光。生命周期只清理各场景创建的 FX 与相机句柄。
+
+原始帧 JSONL、JFR、自定义负载 JSON 和截图应以当次权威报告为准。Debug 路径核对在测量之外完成，断点暂停、失焦或窗口变化导致的样本不得用于对比。实际进度见 [Photon 总览](photon-workspace.md#当前任务进度)，实验判读见 [性能审查](photon-performance-audit.md)。
+
 ## 首批场景
 
 参数集中在 LobecorpBenchConfig：固定 seed=7，默认64个普通清道夫，8×8网格、间隔3格，稳定40tick、预热至少60tick、测量200tick；每阶段超时60秒。客户端另等待20个稳定帧，截图后再留恢复窗口。没有预设“5000单位60FPS通过”等结论或性能门槛。

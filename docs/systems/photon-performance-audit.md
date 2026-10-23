@@ -8,6 +8,101 @@
 配套[模型特效与高级特性重设计方案](photon-model-redesign.md)。旧自建模型/动画/专用渲染核心已移除；本页审查的是仍生效的项目工具及锁定
 Photon，不把已经删除的旧实现当作当前热点。
 
+## 2026-10-24：Sodium／BenchMod 与真实激光实测
+
+本节是当前运行证据；下文 2026-10-19 的 S01–S23 保留为历史候选。用户已授权基准、Minecraft MCP 和 Debug，本轮只增加 bench 夹具与运行配置，没有优化生产渲染器、改实体动画、LOD 或特效内容。代码基线为 1a5c2c3＋本轮未提交 bench 改动（报告 dirty=true）。
+
+### 环境与方法
+
+Minecraft 26.1.2、NeoForge 26.1.2.100、Photon 26.1.2.3、BenchMod 0.1.5-beta、Sodium 0.9.2、Java 25.0.2；RTX 3060 Laptop GPU，OpenGL／NVIDIA 616.64。窗口真实最大化，帧缓冲 2560×1494，VSync=false，配置帧上限 260，视距／模拟距离 12。帧间隔实测可低于该配置上限对应的间隔，不能据配置值假定实际按 260 FPS 限帧。保留 Iris、JEI、Jade、Spark 等既有依赖，不能推广为纯 Sodium 环境。
+
+模型夹具固定同一 289 顶点／256 四边面／单骨骼资产，唯一动画差异为 turn 片段；先稳定 40 tick、预热 100 tick、截图后恢复，再测量 300 tick。使用生产 PhotonModelOutput／PhotonGeoEffect；截图已核对模型网格实际可见。首次创建用例在当前 JVM 中测量开始时发射，不能称为进程全冷启动。
+
+首次普通 BenchClient Debug 因默认导入类路径无 MCP 而停止。补齐专用 photonBenchClient 类路径后，Debug setup 确认 Sodium=true、MCP=true、GLFW_MAXIMIZED=1；临时断点先移除再继续。含 Debug 的成绩仅作探索，不用于主表。随后通过 IDEA 独立执行 BenchMod Photon，无 Debug，权威 summary.json 为 PASSED（8 个 Photon 用例通过、清道夫用例按过滤器 SKIPPED）；verifyBenchClientReport 与制品收集成功，构建结束为 BUILD SUCCESSFUL。原生 MCP 工具未连接到本工作区时，使用本工作区既有桥接的标准 MCP 协议，固定 19877，实际得到 pong／connected=true；没有扫描或操控其他实例。
+
+### 无 Debug 模型结果
+
+下表单位均为毫秒，使用各用例 MEASURE 原始帧，不平均不同会话的 P99。
+
+| 负载 | 均值 | P50 | P95 | P99 | 最长帧 |
+|---|---:|---:|---:|---:|---:|
+| 空场景 | 1.811 | 1.609 | 3.101 | 4.089 | 21.726 |
+| 1 个静态 | 1.718 | 1.611 | 2.392 | 2.880 | 25.262 |
+| 1 个动画 | 2.073 | 1.918 | 3.126 | 4.106 | 22.445 |
+| 16 个静态 | 3.258 | 3.040 | 4.975 | 6.256 | 13.046 |
+| 16 个动画 | 5.784 | 5.501 | 7.807 | 10.477 | 21.171 |
+| 测量开始时创建 16 个动画 | 6.213 | 5.789 | 8.362 | 12.227 | 273.700 |
+| 16 个静态重复 | 2.851 | 2.770 | 3.691 | 4.346 | 7.844 |
+| 空场景重复 | 1.645 | 1.242 | 2.425 | 4.671 | 1421.368 |
+
+创建 16 个动画实例的同步 create／emit 为 269.998 ms，与该用例 273.700 ms 最长帧对应；首个静态实例创建 187.634 ms，后续单实例 9.885 ms。它们包含序列化复制、模型准备、材质等整条创建链，不能全部算成网格解析。末尾空场景第 7624／9695 帧出现 1.421 秒尖峰，尚未确认原因，未删除该值；这表明并非所有长帧都由模型造成。静态重复基线下降也表明存在 JIT／缓存／环境漂移。
+
+### 已确认的代码热点
+
+1. **静态模型仍逐帧完整提交 CPU 几何。** PhotonModelOutput.bakeBatches → bakeModelGroup → PhotonModelGeometryUtil.write，对每个三角形写 4 个 QUADS 顶点，重复末角，并逐次做世界变换、法线与颜色计算。局部姿态缓存命中并不缓存最终提交几何。16 静态用例的渲染线程 JFR 执行样本中，write 的 inclusive 栈为 245／324（75.6%），重复用例 212／280（75.7%）；不是 GPU 时间占比。该夹具每帧 16×512×4=32768 次顶点写入。优先考虑保留透明排序和材质语义的静态／稳定拓扑复用，不能直接删除重复角或改变画质。
+2. **动画 CPU 蒙皮与对象化姿态是新增主热点。** 16 动画 MEASURE 中 sample 为 222／462（48.1%），write 为 101／462（21.9%）；二者存在不同调用层级，不能与其他 inclusive 数字直接求和。skinMatrices 每次采样按顶点创建 combined／values 两个 float[16]、Matrix4f 和映射项；positions、不可变 Vector3／Vertex、Group 又建立整份帧数据。采样时间变化使 Input 缓存失效，静态缓存并未消除动画的这些成本。
+3. **分配压力是真实存在，但不能把 JFR 首事件权重当精确单方法字节。** ThreadAllocationStatistics 首尾计数差显示：16 动画整份约 23 秒录制中渲染线程累计分配约 19.554 GiB，静态录制约 0.984 GiB；包含 setup／预热，非存活内存或泄漏。MEASURE 加权分配样本主要落在 skinMatrices、positions、sample／immutable。JFR 开始时首个分配事件可能携带跨录制间隔的权重，分析已按测量窗口过滤，未把 setup 中一次 JSON 构造的巨额首权重当作其真实分配。后续优化应复用预编译权重／索引及局部缓冲，仍需维持帧快照所有权。
+4. **同步创建／发射阻塞尚未解决。** 合成负载已有约 270 ms 可复现阻塞；真实激光 spark 栈还命中 PhotonChildSpawner.emitNow → PhotonSpawnInstance.start → FXRuntime.emit → PhotonNamedRuntime 构造 → PhotonModelOutput.prepare，以及 PhotonModelSourceUtil.load／PhotonModelAssetUtil.read 和 IFXObject.deepCopy 的 CODEC 往返。准备与不可变定义共享应先优化这条真实调用链，不能只减少普通 tick 的射线或参数 Map。
+
+JFR 执行样本以 ActiveRecording.recordingStart 加报告阶段耗时近似切出 MEASURE，边界存在毫秒级误差；样本数量有限，不把采样占比当作精确墙钟或 GPU 耗时。
+
+### 真实女皇激光与工具对照
+
+复用现有 QueenBeamPerformanceTrial，在独立快速测试世界、固定种子／相机、16 格目标距离运行两次 90 秒，每次按 4／31／58 秒发射真实技能。两轮均到 COMPLETE，环境全帧 flags=3（聚焦＋最大化），throttle_reason=NONE。原始资源由模组加载；验证截图可见女皇、法阵和激光，不等同于完整视觉验收。粒子随机种子未固定，不能宣称严格确定性 A/B。
+
+| 采集模式 | 帧间隔均值／P99／最长 | render CPU 均值／P99 | render GPU 均值／P99 |
+|---|---|---|---|
+| spark 开启 | 2.146／11.527／860.759 | 1.165／5.712 | 0.668／4.694 |
+| spark 关闭 | 2.235／11.587／855.774 | 1.203／5.560 | 0.660／4.332 |
+
+两轮都保留 GPU timestamp 帧采集，所以仅排查 spark 开关，未排除帧采集自身开销。GPU 有效样本 40297／38383，pending 跳过 1635／1878，错误 0；不能将跳过视为零耗时。GPU 范围仅 GameRenderer.render，不含 tick、extraction、present、swap 和 limiter，与 CPU 未校准，不相加。关闭 spark 后首次长帧仍约 856 ms，不能归咎于 spark 才出现；正常均值也没有支持稳定 GPU 算力饱和的证据，但个别 GPU 长帧仍存在。
+
+spark 使用 Windows 的 Java 采样引擎，为墙钟采样，含等待。渲染线程 90 秒中，PhotonWorldRenderState.drain inclusive 19.868 秒、模型 sample 2.456 秒、geometry.write 2.072 秒、IFXObject.deepCopy 2.180 秒、prepare 1.576 秒；这些嵌套数据不可相加。大量 glFenceSync 栈来自 Minecraft／GUI／雾／AnvilLib／Sodium 的 MappableRingBuffer.rotate 与 DynamicUniformStorage.endFrame，并非本项目 GPU timestamp 查询调用；不能把所有 OpenGL 栈都算作 Photon 模型。未命中 AnimatedGltfModelSource／VertexAnimation／DynamicMeshCache／modelMeshBuffer 的样本，不能声称这些原生路径已解决。
+
+code_animation_render_samples 为空，allocation_capture.enabled=false；本轮无法用这些字段确认旧姿态混合批评、逐帧时间单调性或分配专项完整性。三次技能阶段 marks 已记录，不替代动画骨骼逐帧验收。
+
+### 对旧批评的逐项核对
+
+本节只保存本轮证据判断；当前问题状态以 [唯一问题表](../issues.md) 为准。**没有证据支持 S01–S23 已全部解决。**
+
+| 项 | 本轮核对结论 |
+|---|---|
+| S01 | 未解决的源码条件仍在：当前 SceneView.simulateTo／runSimulationTicks 同步循环，项目 Mixin 仅观察；未测编辑器长拖动。 |
+| S02 | 同刻时间仍走 reset 分支，10000 tick 上限后仍 setTime(target)；源码风险保留，未做原生负例。 |
+| S03 | pendingSimulateTarget 仍是时间值；未执行跨工程／重置身份实验，不能关闭。 |
+| S04 | 未测参数／种子高频拖动，本轮运行播放不覆盖编辑器重放。 |
+| S05 | 未执行 MCP 连续 seek／取消场景，不能关闭。 |
+| S06 | 当前 TimelinePlayerMixin 仍调用 leafTracks 并建立流／列表；本轮未测多轨道规模收益。 |
+| S07 | 未完成控制轨道索引对照；真实播放存在不代表复杂度改善。 |
+| S08 | 未测大工程 MCP 状态序列化／哈希；正常 pong 不构成验收。 |
+| S09 | 未解决：真实激光命中 load／copy／emit／prepare，同步创建阻塞已测到。 |
+| S10 | 原批评指原生 GLTF；本轮命中自定义模型解析，原生 GLTF 未覆盖，不能混称修复。 |
+| S11 | VAT 烘焙／上传／多副本内存未覆盖，未关闭。 |
+| S12 | DynamicMeshCache 新几何包装及 TileParticleRenderer 按 mesh 身份重建条件仍在；真实样本未命中该链，不能称当前主瓶颈或已修复。 |
+| S13 | 自定义模型完整 CPU 几何提交已确认；原生 TileParticle CPU fallback 需独立实验。 |
+| S14 | 当前 sampler 仍重建法线与展开角数据；原生 GLTF 缺法线／切线用例未覆盖。 |
+| S15 | 自定义 Input／Frame 用不可变容器是局部保护；原生姿态数组／资源代次失效未验收。 |
+| S16 | 保存／导出客户端准备与取消未覆盖，不能关闭。 |
+| S17 | 安全扫描与重复解码未做本轮事务统计，不能关闭。 |
+| S18 | 未开细粒度 Trace 面板做身份／锁 A/B，不能关闭。 |
+| S19 | 未测隐藏／冻结大图表，不能关闭。 |
+| S20 | 两次采样均包含启动成本，但未做模式／线程首次分配专项；不能关闭。 |
+| S21 | 末尾空场景仍有未归因长帧；不能未经调用证据归因导出，也不能宣称停止路径已解决。 |
+| S22 | 当前 GPU 结果仍逐项构造 JsonObject；真实帧 GPU 采集有效，但详细查询工具分配未做 A/B。 |
+| S23 | 本轮自有 FX 均按场景清理、游戏正常退出；没有 GPU 创建／释放账本或重载循环，不能据此证明无泄漏。 |
+
+### 原始证据与收尾
+
+可视化备份根：C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c。
+
+- photon-bench-normal-baseline-20261024/client：权威 summary.json、JSONL、8 份 JFR、截图；上级 analysis.json 保存分析结果。
+- photon-bench-debug-baseline-20261023/client：含 Debug 的探索原始报告，不混入无 Debug 主表。
+- photon-real-laser-spark-20261024：真实激光帧 JSON、阶段 marks、验证截图及原始 .sparkprofile；photon-laser-analysis-20261024.json 保存解码后的渲染线程树统计。字段定义经 IDEA 读取本地 SparkSamplerProtos 核对。
+- photon-real-laser-plain-20261024：无 spark 的原始帧、阶段 marks 与验证截图；工作区原始文件仍在 run/client/performance/photon_plain_20261024_*。
+- 所有本轮临时断点均已移除，Debug 会话已结束；两个真实激光客户端均通过 MCP 正常保存退出世界并点击退出游戏，IDEA 日志均 BUILD SUCCESSFUL。最后客户端 PID 68400（2026-10-24 00:11:18 启动）已不再存在。临时桥接 PID 64004／67504／61560／67740 均正常退出 0；未关闭归属不明的既有 Java 进程。
+- 最终收尾新增 Provider 显式过滤守卫，避免普通 BenchMod 运行混入 Photon 用例；静态检查和再编译成功，未另重跑完整样本。该守卫不改变显式 Photon profile 的负载，但本节原始数据的代码状态早于该注册保护。
+- 未修改生产优化代码，没有“优化后提升百分比”。下一步应先按上述热点制定窄范围优化和同条件复测，不以降低动画帧率、LOD 或改变资源掩盖成本。
+
 ## 1. 证据等级、范围与优先级
 
 - C：通过 IDEA 读取到的源码条件路径/数据结构，可确认“满足条件时会执行什么”。

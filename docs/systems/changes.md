@@ -1,5 +1,22 @@
 # 系统修改记录
 
+## 2026-10-24：完成 Photon 性能基线、真实激光与旧批评核对
+
+- IDEA BenchMod Photon 无 Debug 运行及最终报告校验成功（3 分 39 秒），8 个 Photon 用例通过，清道夫按过滤器跳过；完整保存原始 JSONL、JFR、截图与权威报告。16 静态／动画均值 3.258／5.784 ms、P99 6.256／10.477 ms；首次创建 16 动画约 270 ms，空场景额外 1.421 秒异常未隐藏。
+- JFR 确认静态逐帧 CPU 几何写入与动画蒙皮／临时对象分配为主要模型热点。真实女皇激光 spark 开／关两轮均完成 90 秒、3 次施放与 GPU 帧采集，首次最长帧约 861／856 ms；实际调用栈还命中发射链解析／准备／CODEC 深拷贝。没有把 OpenGL 等待或未命中的 GLTF／VAT 路径当作已确认单一根因。
+- 性能审查页新增方法、结果、证据路径、23 项旧批评核对与限制；总览更新阶段进度，唯一问题表登记 CPU 几何、动画分配与未归因长帧。未实施生产渲染优化，未宣称旧批评全解决或提供优化后收益。
+- 收尾补充 Provider 场景过滤守卫，普通 BenchMod 不自动登记 Photon 负载；修改行经 IDEA 格式处理，最终三份代码／配置诊断 0 错误、2 项提示，5 份文档诊断 0 错误、18 项既有截图警告。守卫修改后 Photon Prepare 再编译成功（3 秒），未额外重跑全部游戏样本；上述性能数据来自守卫加入前、负载相同的显式 Photon profile。
+- 两轮真实客户端通过固定端口 19877 的标准 Minecraft MCP 正常保存退出世界并退出游戏，IDEA 日志均 BUILD SUCCESSFUL；Debug 会话结束、临时断点移除，临时桥接均退出 0，最后测试客户端 PID 68400 已退出。保留归属不明的其他 Java 进程，不按名称结束。
+- 证据备份位于既有可视化根的 photon-bench-normal-baseline-20261024、photon-bench-debug-baseline-20261023、photon-real-laser-spark-20261024、photon-real-laser-plain-20261024；未重跑 Data 或业务 JUnit。移除本轮已被 Gradle 导入入口替代的临时 .run XML，副本留在 photon-bench-before-20261023。
+
+## 2026-10-23：Photon 模型性能诊断准备与进度记录
+
+- 在本工作区新增 PhotonModelRenderScenario，注册空／单个／16 个、静态／动画、创建与重复基线场景；修正相机原点和截图恢复等待，复用生产模型输出与 PhotonGeoEffect。
+- 构建脚本新增可选 Photon profile 和专用 IDEA 准备／运行／Debug 入口；独立调试源集仅提供运行类路径，普通 bench 不附带 MCP。通过 IDEA 修改及格式处理，统一静态检查 0 错误，保留借用 Minecraft 资源提示与既有 Gradle 限定名提示。
+- 两次 Gradle 导入成功；Photon Prepare 首次编译成功（36 秒），补齐 options／资源后的准备任务成功（3 秒）。首次 Debug 确认 Sodium 但缺少 MCP，已停止 PID 64324，临时断点已移除；该轮不作为性能成绩，原 partial-report 与截图保存于备份根 photon-bench-debug-start-20261023。专用 Debug 正在核对，尚无有效性能结论。
+- 进度沿用 photon-workspace.md，问题仅集中在 docs/issues.md，实验结论沿用 photon-performance-audit.md，不新增平行进度文件；每阶段继续更新实际检查和边界。
+- 修改前构建配置与 bench 文件备份位于 C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-bench-before-20261023；保留既有配置和两份用户测试修改，不推送。
+
 ## 2026-10-23：迁入 Photon 正式运行与编辑资源
 
 - 通过 IDEA 文件移动接口将 run/client/ldlib2/assets/lobecorp 中 81 个缺失资源迁入 src/main/resources/assets/lobecorp，含特效运行定义、编辑工程、着色图和材质；37 个目标已存在且内容一致的资源复用，不覆盖。

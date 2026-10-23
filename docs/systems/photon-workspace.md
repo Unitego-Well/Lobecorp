@@ -2,6 +2,15 @@
 
 核对日期：2026-10-23。适用真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。本页基于当前工作文件、IDEA 文件读取及现有检查记录；已确认的网格／编辑器／光束续做源码与文档已纳入本地提交 330d297a，尚未推送。配置及两份资源验收测试的既有修改继续保留，提交不代表构建、游戏或完整能力验收通过。
 
+## 当前任务进度
+
+最近更新：2026-10-24 00:20（北京时间）。
+
+- 已完成：正式 Photon 资源迁入模组，118 项目标与原始 SHA256 一致，资源与文档提交为 1a5c2c3；81 项新增，37 项复用，原始字节备份见 [资源说明](resources-datagen.md#photon-内置资源)。
+- 已完成本轮采样：无 Debug 的 8 个 Photon 用例与最终报告校验通过；两轮真实激光各 90 秒／3 次施放，完成 spark 开关和 GPU 帧数据对照。16 静态／动画均值 3.258／5.784 ms、P99 6.256／10.477 ms；静态逐帧几何写入、动画 CPU 蒙皮／分配及同步创建已被调用栈与样本确认，完整证据见 [性能审查](photon-performance-audit.md)。
+- 收尾检查完成：Provider 增加显式 Photon 过滤守卫，普通基准不自动登记这些负载；再编译成功（3 秒），最终代码／配置 0 错误、2 项提示，5 份文档 0 错误、18 项既有截图警告。生产渲染代码未优化。下一步按已确认热点确定窄范围优化，再做同条件复测；当前问题与待确认项只在 [唯一问题表](../issues.md) 维护。
+- 实际检查与边界：IDEA 静态 0 错误、两项提示；Gradle 准备编译、无 Debug 最终报告校验、两轮真实客户端均正常结束。固定 19877 MCP 已取得 pong／connected=true；本轮临时断点移除、Debug 结束，所有临时游戏和桥接均关闭。原始报告分别备份于可视化根 photon-bench-normal-baseline-20261024、photon-bench-debug-baseline-20261023、photon-real-laser-spark-20261024、photon-real-laser-plain-20261024。未实施生产优化，没有优化后 A/B 收益；S01–S23 不宣称全部解决，动画逐帧字段为空和未归因长帧等边界见唯一问题表与性能审查。
+
 ## 职责与工具边界
 
 本工作区负责 Photon／特效；原始 dev 是共同地基，清道夫由 horde 工作区负责。共同实体、动画、网络、注册和资源文档继续保留引用，本轮没有验证或更新 horde 业务。旧 `C:/Users/wang_/.codex/worktrees/7903/Lobecorp` 仅为兼容 junction，当前工具显式传入真实根，不删除兼容入口或 Git worktree 保护锁。

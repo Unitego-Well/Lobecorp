@@ -4,20 +4,21 @@
 
 ## 本轮任务进度
 
-最近更新：2026-10-23（清除对象范围已确认；后续不主动询问，实施取舍记录于H21）。每个实质阶段完成、遇到阻塞或停止前更新本节；疑问与异议只维护在[唯一问题汇总](horde-issues.md)。
+最近更新：2026-10-24。全部剩余问题只维护在[唯一问题汇总](horde-issues.md)，已完成证据记入changes.md；按用户要求不再主动询问，取舍和人工边界记录后继续。
 
-- 已完成：核对既有批评记录、BenchMod操作说明与当前线路创建、事件推进源码；确认当前仍为闭环线路，且创建时要求地面采样就绪。此前独立光场缓存及文档收尾已提交，其余混合代码仍未提交，保留用户原有暂存状态。
-- 正在进行：整理本轮多段线路、GPU分割/避障、密度与随机运动、每tick检查与清除、模拟距离、未加载区域事件、调试框、配置翻译/分类、光影及本体发光需求；核对Sodium、BenchMod、Minecraft MCP和Debug运行前提。未开始本轮业务修改。
-- 下一步：清除对象范围已由用户选择A确认；战斗保护优先复用服务端既有规则，继续核对实现与采样方案，疑问采用合理替代并记入H21，不再主动询问，按已获授权使用Sodium+BenchMod及Minecraft MCP+Debug取得实际性能证据。
-- 实际检查：本阶段仅通过IDEA读取文档与源码、后台核对Git状态；本轮尚未执行新编译、测试、游戏、Debug或性能采样。前轮编译、15项回归和Data通过仅代表当时工作区，不能证明当前性能、光影或玩法验收通过。
-- 当前边界：项目要求的Minecraft专用Skill路径尚未定位，连接/游戏/Debug前需核对适用入口；业务歧义与待人工事项见H21。进度记录不代表这些需求已实现。
+- 已实现：开放多段平滑线路、默认纵横1.2格、随机加减速/横摆与GPU势流转向；每tick按玩家模拟距离发现Mob并保留profile生成资格；服务端仅清除战斗保护外的掉落物及清道夫尸体；未加载事件临时高度与延后采样；8/16/32六整数区域、原版Gizmo、统一客户端配置及翻译、真实和虚拟发光调整。
+- 已验证：IDEA编译、规则17项及区域3项回归、三轮Data和BenchMod Compile通过。普通和隔离客户端配置迁移/备份/旧值比对通过；远处未加载事件创建成功；一tick清除与战斗保护、保留普通牛已实际验证。上述证据不等同于完整联机验收。
+- Iris实机：定位36→56字节扩展布局错位，GPU补实体标识、中心UV和切线后，100及10000虚拟清道夫实际可见，夜间遮罩发光可见；100个截图约115FPS。10000个30秒采样442帧、帧间隔均值67.98ms/P95 85.74ms、GPU均值67.89ms，约14.71FPS，每帧GPU转接292192256字节，仍是严重性能瓶颈，未宣称解决。环境为RTX3060 Laptop、2560×1494、Iris1.11.4/ComplementaryReimagined_r5.9.3、Vsync开启/120上限、前台最大化且限帧原因NONE。
+- 实际复测：当前代码与1.2配置的BenchMod Client两轮de012627/8b660c93均退出0、两场景PASSED；64实体间隔均值4.84/4.31ms，10000实例2.41/2.30ms，GPU均值2.08/1.93ms。此前64实体明显回退未复现，未证明单一原因或实战FPS。独立BenchMod Server启动退出1，客户端第三方依赖缺类，未取得server数据。详见benchmod.md，剩余事项已统一按优先级整理。
+- 运行收尾：第三轮Debug游戏59584（启动20:05:52.191Z）正常退出，临时代理67916/启动器59228/桥接69192正常关闭，均已核对不存在；退出接管为false、诊断显示上限恢复-1，Iris设置仅恢复自有时间戳，options.txt哈希不变。临时测试事件保留在隔离世界中，其他用户世界未修改。
+- 备份与证据：C:/Users/wang_/AppData/Local/Temp/horde-rewrite-20261023-7e6b6a3d，含源文件、原配置、两轮完整基准、iris-layout56-10000.json及实际截图。源码混合既有WIP，提交隔离异议继续记录，不覆盖原有5项暂存。
 
 ## 当前能力与源码
 
 | 范围 | 当前职责 | 入口 |
 | --- | --- | --- |
 | 事件与真实参战 | 服务端推进事件、配额、出生和参战生命周期；虚拟单位不创建 Entity | [事件说明](horde-events.md)、[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java) |
-| 固定线路 | 平滑中心线、共用地面采样准备、粗高度脏更新、固定XZ包围组最近点查询；不重新寻路 | [HordeRoute](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRoute.java)、[HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java) |
+| 开放多段线路 | 平滑中心线、共用地面采样准备、粗高度脏更新、固定XZ包围组最近点查询；不重新寻路 | [HordeRoute](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRoute.java)、[HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java) |
 | 同步与客户端 | 完整线路就绪后显示；客户端 tick 检测目标区域，每帧提取绘制块 | [HordeSync](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java)、[HordeClient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java) |
 | 模型缓存 | 20 FPS 烘焙循环，每顶点每帧存位置与法线，共 6 个 float；按资源代际共享 | [HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java) |
 | GPU 与让行 | motion pass 求位置、让行与朝向，主体读取顶点帧；批次容量不等于总数量上限 | [渲染实现](horde-rendering-implementation.md)、[HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[motion shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_motion.fsh)、[顶点 shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh) |

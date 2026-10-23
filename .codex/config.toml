@@ -21,8 +21,8 @@ approval_mode = "approve"
 
 [mcp_servers.minecraft]
 command = "C:/Program Files/nodejs/node.exe"
-args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/lib/minecraft-mcp/bridge/dist/cli.js"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/lib/minecraft-mcp/bridge"
+args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon/lib/minecraft-mcp/bridge/dist/cli.js"]
+cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon/lib/minecraft-mcp/bridge"
 
 [mcp_servers.minecraft.env]
 MC_MCP_PORT = "19878"
@@ -32,5 +32,5 @@ approval_mode = "approve"
 
 [mcp_servers.lobecorp_normify]
 command = "C:/Program Files/nodejs/node.exe"
-args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js", "serve", "--workspace-root", "E:/xm/mc/mod/Unitego-Well/Lobecorp"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify"
+args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js", "serve", "--workspace-root", "E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon"]
+cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon"

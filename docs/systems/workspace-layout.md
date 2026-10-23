@@ -25,3 +25,13 @@
 
 本次未发布 GitHub、未自动汇合业务分支、未创建新聊天、未读取已归档聊天。现有聊天解除暂停后继续任务；正在运行或已注册的旧 MCP 连接不因 Git 更新自动完成运行验收，需要使用新桥接入口重新连接。
 
+
+## 2026-10-23 路径索引修正
+
+当前有效目录与分支：原始 dev 为本仓库根；photon 为 .workspace/lobecorp_photon / codex/photon；horde 为 .workspace/lobecorp_horde / codex/horde。项目 MCP 配置使用上述真实目录，Minecraft 端口保持 19878／19877／19876。历史记录、迁移备份及旧路径 junction 保留，不改写为新路径。
+
+Normify 的两个任务工作区原先指向各自不存在的 dist。现复用原始 tools/lobecorp-normify/dist/src/cli.js，分别传各自 --workspace-root，cwd 也为各自仓库根；源码读取和架构数据目录仍由该参数限定，未共享测试输出。运行说明中的目标根同步为各自工作区。
+
+通过 IDEA 局部修正项目配置、旧 D:／C: 工作区引用、Gradle 模块索引和 TypeScript 工具目录；旧 MCP 源码模块、源码构建任务和失效的迁移运行入口不再作为有效配置。未改业务源码、端口、存档和构建输出，未重启或运行游戏。仅进行静态路径存在性和配置语法检查，不代表已连接的 MCP 或 IDE 内存模型完成重载。
+
+修改前备份位于原始 Git common-dir/path-index-repair-20261023-0e1bb4ca。全局 Codex 的 perPath 打开偏好另有旧 90be 键，已备份、尚未修改；它不属于项目覆盖。新聊天的默认 cwd 属于应用会话元数据，当前创建接口不支持指定已有子工作区，因此仍须显式使用各自目标路径，不在线改写 Codex 内部数据库。

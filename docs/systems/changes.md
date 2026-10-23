@@ -1,11 +1,20 @@
 # 系统修改记录
 
+## 2026-10-23：Horde 文档合并与独立问题总表
+
+- 本工作独立维护 horde-index.md 总览及 horde-issues.md 唯一问题清单，共19项（P1四项、P2十四项、P3一项），包含代码缺陷、待验收与历史遗留；不在原始dev或其他工作区维护副本。已完成的旧图集修复和顶点帧接入从待办移除。
+- 保留玩法、API、渲染与基准独特契约，移除旧命令/默认值/LOD和重复过程说明；历史采样、修复结论、Git与备份入口合入benchmod.md。历史记录中的旧文档链接改指存续页，原文可从备份恢复。
+- 先修正所有入链，再通过IDEA删除重复历史索引、旧图集暂停、旧着色器复验、讨论整理和旧性能审计五页；遗留问题全部迁入本地问题总表，未声称通过文档整理修复代码。
+- 修改前89份Markdown、SHA256清单、暂存/未暂存差异已备份并核对：C:/Users/wang_/AppData/Local/Temp/horde-docs-consolidation-20261023-kwqkdh3p。原业务源码及暂存内容保留，提交禁用共享同步钩子；仅提交本次文档增量，不推送。
+- 实际检查为IDEA文档回读/诊断、本地链接与Git归属核对；仅刷新所涉文档VFS以核对路径，不做Gradle同步、编译、构建、Data、测试、游戏或进程启停。
+
+
 ## 2026-10-23：Horde 文档审计与分层导航
 
 - 仅在 `.workspace/lobecorp_horde` 的 `codex/horde` 整理文档：新增根 README、Horde 当前入口与历史索引；共同系统基线继续保留，不把 Photon 状态作为本工作区验收。
 - 经 IDEA 读取客户端区域检测、顶点帧缓存、区段光场、基准快照场景及相关说明，区分当前实现、既有未提交改动、历史采样与待验证项；修正当前导航旧路径语境、BenchMod 接入状态标题、失效 Skill 链接与审计文档行号定位。旧图片图集记录加历史提示，保留原始阶段信息。
 - 本轮检查为 IDEA 文档诊断、本地文档目标存在性、Git 增量与证据目录只读核对；未构建、Data、业务测试、同步或启动游戏。历史完整 build 的 test 失败不扩展修复。
-- 备份：系统临时目录 `lobecorp-horde-docs-20261023/before-worktree.patch`、`before-index.patch` 保存修改前 Git 差异。保留用户已有三份文档和业务改动，提交只包含本次文档增量；未推送。旧图集复验配置快照未找到，详见 horde-history.md。
+- 备份：系统临时目录 `lobecorp-horde-docs-20261023/before-worktree.patch`、`before-index.patch` 保存修改前 Git 差异。保留用户已有三份文档和业务改动，提交只包含本次文档增量；未推送。旧图集复验配置快照未找到，详见 horde-index.md。
 
 
 ## 2026-10-23：修正迁移后的有效路径索引
@@ -28,7 +37,7 @@
 - 修正烘焙动画的朝向和动画错误：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L109) 不再自写骨骼矩阵，改用 GeckoLib `BoneSnapshot`、`LcAnimationBoneAdapter`、`RenderUtil.prepMatrixForBone` 链和 `GeoCube.render` 生成每帧静态顶点位置/法线；父链、枢轴、基础旋转、缩放和法线由 GeckoLib 处理，并修正 `transformToBone` 额外枢轴平移导致的变换错误。`BoneSnapshot`、帧捕获器和 `PoseStack` 只创建一次并复用，每帧结果写入一次分配好的 `frameData` 后缓存在 `Model`。
 - GPU 端布局不变：仍由 [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按相位选帧并读取 6 个 float，循环切换。
 - IDEA 项目构建成功（约 5.8 秒）；`runData` 成功（BUILD SUCCESSFUL，约 30 秒，23 缓存输出，written=0，removed stale=0）。用户已实机确认烘焙朝向和动画正常；本轮未做自动截图、着色器单独编译或性能采样。
-- 同步更新[渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计第9节](horde-performance-audit-20261022.md#L191)。
+- 同步更新[渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计第9节](horde-issues.md)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 
 ## 2026-10-23：目标分割刷新加密与真实实体未生成排查
@@ -38,7 +47,7 @@
 - 另外改用其他实体仍不生成时，[HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L17-L38) 增加出生距离回退：前 4 次仍优先 16 格，之后依次退到 12/8/4 格，避免远处候选全部不安全/不可达时完全不生成。
 - 新增客户端调试渲染：`lobecorp-horde-visuals.toml` 的 `debugRanges` 打开后，青色线框绘制事件整条线路范围，黄色线框绘制本地玩家 `rangeBlocks` 精细范围；实现位于 [HordeRendering](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRendering.java#L21-L100) 和 [HordeClient.debugRanges](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L106-L121)。
 - IDEA 项目构建成功（约 18.1 秒）；`runData` 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=2，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
-- 同步更新[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计第10、11节](horde-performance-audit-20261022.md#L223)。
+- 同步更新[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计第10、11节](horde-issues.md)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 
 ## 2026-10-22：虚拟潮客户端目标区域检测、线路平滑与出生调整
@@ -47,21 +56,21 @@
 - [HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom 和按长度自适应采样（8—64），改善转弯平滑度；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定样本数；[HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地区域更新入口。
 - [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离优先 16 格（后续已增加 12/8/4 格失败回退），保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
 - IDEA 项目构建成功（约 6.7 秒）；`HordeRegionTest` 2/2、`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 35 秒，23 缓存输出，written=0，removed stale=0）。
-- 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-performance-audit-20261022.md#L223)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
+- 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-issues.md)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
 - 按用户选择 B，保留客户端宽目标筛选，不新增目标 UUID 同步；普通生物可能触发让行缺口，作为已知代价记录。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交。
 
 ## 2026-10-22：深夜清扫烘焙帧动画优化
 
-- 按[性能审计](horde-performance-audit-20261022.md)的 P1 第一项，把动画改为烘焙后的静态帧：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在资源准备阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据，每顶点每帧保存模型空间位置和法线 6 个 float；[horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按单位相位选择帧号并读取该帧位置/法线，循环切换，不再执行骨骼矩阵、父链遍历或四元数插值。
+- 按[性能审计](horde-issues.md)的 P1 第一项，把动画改为烘焙后的静态帧：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在资源准备阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据，每顶点每帧保存模型空间位置和法线 6 个 float；[horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按单位相位选择帧号并读取该帧位置/法线，循环切换，不再执行骨骼矩阵、父链遍历或四元数插值。
 - 顶点读取量从约 22×骨骼链深度次降为固定 6 次；帧切换无插值，每秒 20 帧下可能出现跳变，单位仍保留行列相位差。本次未修改骨骼 X 平移符号等已知问题。
 - IDEA 静态诊断 HordeMeshCache、HordeGpuRenderer 无错误；IDEA 项目构建成功（约 25.8 秒）；runData 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=0，removed stale=0）。
-- 同步更新[当前渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计](horde-performance-audit-20261022.md#L191)。未启动游戏、未编译运行时着色器、未做视觉或性能采样；不能声称帧率或视觉通过。
+- 同步更新[当前渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计](horde-issues.md)。未启动游戏、未编译运行时着色器、未做视觉或性能采样；不能声称帧率或视觉通过。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交，提交受阻场景已如实记录。
 
 ## 2026-10-22：深夜清扫性能与 CPU 侧审计
 
-- 新增[性能、CPU侧工作与冗余功能静态审计](horde-performance-audit-20261022.md)，按当前工作区只读核对服务端调度、网络同步、客户端提取/光场和 GPU 管线。
+- 新增[性能、CPU侧工作与冗余功能静态审计](horde-issues.md)，按当前工作区只读核对服务端调度、网络同步、客户端提取/光场和 GPU 管线。
 - 重点记录每顶点骨骼链、每帧批次与光场区段分配、全线路同步扫描、`covers()`/`assignment` 线性查找、每刻目标遍历与存档脏标记、motion pass 重复 `location()`，以及未使用字段/API、失效文档和可共享的每目标规则副本；文末附本次读码发现的非性能问题摘要和本次检查/文档落地记录。
 - 本轮只通过 IDEA 创建/更新 Markdown；未修改源码、资源和配置，未构建、Data、启动游戏或性能采样，未新增备份。文中的优先级均为静态判断，不代表实测结果。
 
@@ -82,7 +91,7 @@
 
 +## 2026-10-22：深夜清扫渲染讨论整理
 
-- 根据用户提供的聊天记录整理[渲染性能讨论](horde-rendering-discussion-20261022.md)，保留时间线、两份sparkc链接、参与者意见、动画数据贴图建议和待验证问题。
+- 根据用户提供的聊天记录整理[渲染性能讨论](benchmod.md#历史证据与归档)，保留时间线、两份sparkc链接、参与者意见、动画数据贴图建议和待验证问题。
 - 本轮只编写文档，IDEA检查无错误或警告；未修改渲染代码、未运行游戏或新增性能采样，未新增备份。
 
 ## 2026-10-22：Minecraft MCP 接入独立仓库固定版本
@@ -101,7 +110,7 @@
 
 - 先完成复验计划，再通过IDEA构建并运行Client LOD。普通Run夜间5000单位实测烘焙数0→4037，约117秒后仍为5000可见、4030烘焙；没有新增目标着色器错误或Minecraft崩溃报告。
 - 通过游戏内菜单正常保存全部维度并关闭客户端，运行输出BUILD SUCCESSFUL。未改业务代码或MCP，未执行Data。两次Debug异常中断另行记录，不宣称Debug稳定或60FPS通过。
-- 统计与烘焙配置值已恢复；IDEA工具留下CRLF→LF换行差异，已验证仅此差异并记录，未用脚本绕过。截图、配置备份与进程记录位于.backups/horde-retest-20261022；详见[复验记录](horde-shader-retest-20261022.md)。
+- 统计与烘焙配置值已恢复；IDEA工具留下CRLF→LF换行差异，已验证仅此差异并记录，未用脚本绕过。截图、配置备份与进程记录位于.backups/horde-retest-20261022；详见[复验记录](benchmod.md#历史证据与归档)。
 
 ## 2026-10-22：清道夫烘焙顶点程序名称冲突
 
@@ -113,7 +122,7 @@
 
 - 用户确认B方案：近处三维、远处顶/前/侧/后烘焙动画，保持5000数量，夜间测试后关闭游戏。
 - 新JFR确认候选计算、排序/哈希和临时对象分配是主要剩余瓶颈。已写入标量候选、复用槽位、共享可见性及动态图集草稿；尚未完成格式化、检查、编译、Data与修改后游戏测试，不声明已达到60FPS。
-- 用户随后要求“保存文档然后停止”。已保存[暂停与恢复记录](horde-impostor-progress.md)，源码保持当前未完成状态，未提交。本轮基线客户端及JFR记录已关闭，MCP临时连接用后已关闭。备份与采样位于.backups/horde-impostor-20261021。
+- 用户随后要求“保存文档然后停止”。已保存[暂停与恢复记录](benchmod.md#历史证据与归档)，源码保持当前未完成状态，未提交。本轮基线客户端及JFR记录已关闭，MCP临时连接用后已关闭。备份与采样位于.backups/horde-impostor-20261021。
 
 ## 2026-10-21：深夜清扫GPU实例化与遮挡
 

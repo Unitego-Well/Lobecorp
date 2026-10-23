@@ -1,6 +1,6 @@
 # BenchMod 基准工具链
 
-当前导航见 [Horde 入口](horde-index.md)，历史阶段见[证据索引](horde-history.md)。下文接入时的 detached／未运行说明仅描述当时状态；2026-10-23 工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`，后续运行证据单列。本轮只更新文档，未运行任何基准。
+当前导航见[Horde 总览](horde-index.md)，全部未解决问题只在[问题汇总](horde-issues.md)维护。工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`。本文保留基准操作说明与合并后的必要历史证据，不继续维护已结束的接入过程。
 
 同步日期：2026-10-22，horde-recovery恢复工作区；来源为原始dev提交278c418。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
 
@@ -32,16 +32,25 @@ Gradle／IDEA 入口：
 
 客户端保留上游严格环境门禁：失焦、最小化、暂停、界面打开、窗口变化等会使结果不可比，不以降低门禁制造成功。截图、JSONL、JFR必须登记在权威summary.json中；构建成功不代表真实游戏、图形或性能验收成功。
 
-## 接入时的历史状态（不覆盖后续运行证据）
+## 历史证据与归档
 
-通过IDEA局部接入BenchMod配置和两个普通清道夫场景，依赖导入成功，BenchMod Compile／Server／Client入口已生成。7个相关配置／Java文件IDEA错误检查为空；4个Java文件与来源仅有本地排版空白差异。原有MCP配置SHA256未变，build.gradle.kts中快照已有的资源输出排除规则保留；深夜清扫业务实现及重写计划不动，维持detached状态。不把原始dev检查结果视为本工作区验收。
+以下仅为既有记录摘要，本轮未重新运行。原始 dev 的构建、Data 与当前 horde 验收分开判断；完整阶段记录可从文档整理前备份及 Git 历史恢复。
 
-本次不编译、Data或启动真实基准游戏；场景只覆盖普通清道夫实体AI和本地渲染，不替代未来GPU浪潮的专用负载和性能验收。
+| 阶段 | 既有证据与条件 | 使用边界 |
+| --- | --- | --- |
+| 2026-10-21 旧 GPU/图片图集 | 旧2000/5000单位轮平均帧间隔20.50/22.45ms，854×480、VSync开启、夜间；图集复验曾确认5000逻辑单位持续运行约195秒并正常退出 | 旧表示已移除，不作为当前顶点帧、2560×1494或稳定60FPS验收 |
+| 2026-10-22 逐格高度、逐小段绘制 | 平均9.93ms、P95 13.41ms、P99 16.74ms；[Spark](https://spark.lucko.me/3N4nE67wyv) | 与后续批次/高度版本分别保留 |
+| 2026-10-22 逐格高度、16小段合批 | 平均8.57ms、P95 10.00ms、P99 10.97ms；[Spark](https://spark.lucko.me/W0HnlFero9) | 单轮，含Spark采样扰动 |
+| 2026-10-22 记录标为粗高度、16小段合批 | 平均10.02ms、P95 20.54ms、P99 21.46ms；[Spark](https://spark.lucko.me/HirLK4nU0D) | 当前夹具逐节点采高，生产粗采样对应关系按问题汇总H05复核 |
+| 2026-10-22 顶点帧与区域检测 | 既有IDEA编译、Data和规则/区域单测记录；用户确认烘焙朝向和动画正常 | 不能扩展为更多模型、当前完整玩法或独立性能验收 |
+| 2026-10-23 迁移与制品 | 迁移、端口、制品与构建边界见[工作区目录](workspace-layout.md)和[制品规范](minecraft-mcp-artifacts.md) | 配置正确不代表当前游戏已连接；完整build的test失败仍未解决 |
 
-## 原始dev历史检查
+三轮10000实例记录使用128格宽、2560×1494、VSync关闭、测量1200tick及Spark30秒，普通64实体对照620tick。实例指标全程10000是提交负载证据，不等于所有单位图像正确可见，也不覆盖真实参战和网络。粗高度标记轮P95变差，不能宣称它提高帧率或全程60FPS。
 
-已通过 IDEA 导入固定版本插件，POM可访问（HTTP 200）；修改行及新增Java格式处理完成。7个Java／Gradle／版本文件统一错误检查为空；6条借用世界的资源归属提示及1条既有Kotlin限定名提示保留，不关闭游戏拥有的世界。已通过 IDEA 的 BenchMod Compile 执行 compileJava、compileBenchJava、verifyProductionJarHasNoBenchContent，日志为 BUILD SUCCESSFUL（17秒）。原有 reserveBuildIdentity 不支持配置缓存序列化，缓存被丢弃但构建成功；没有扩大范围修复该既有问题。
+普通客户端历史观察包括石墙不透明遮挡、夜间萤石附近变亮、铁傀儡附近让行，以及无限配置提交28944/32848实例。逐格高度阶段的56→61→56与版本0→1→2只覆盖当时高度实现，不能替代后来粗采样验收。
 
-IDEA Data运行完成，日志为 BUILD SUCCESSFUL（25秒），23份生成资源、written=0／removed=0；运行前后23份生成文件SHA256均不变。Data进程已正常结束，未留下本任务Data实例。真实服务端／客户端基准尚未运行，没有生成本轮性能验收、截图视觉或FPS结论。
+原报告目录为 `build/modBench/raw-results/default/client`，版本对照与失败预检查归档为 `backups/horde-validation-20261022`；旧图集和遮挡源备份为 `backups/horde-gpu-before-20261022`。2026-10-23曾只读确认这三个目录存在，未重新验证报告内容。其他旧证据入口为 `.backups/horde-isolation-20261021`、`.backups/horde-impostor-20261021`、`.backups/horde-crash-20261022`；不自动恢复旧实现或配置。
 
-恢复基线保留在refs/backups/before-benchmod-sync-horde-recovery-20261022/{head,index}；原快照6328b11及其业务实现不改写，本次仅新增BenchMod配置、场景和文档。
+原始dev的BenchMod接入编译/生产包隔离和Data历史结果保留在[修改记录](changes.md)。恢复基线引用为 `refs/backups/before-benchmod-sync-horde-recovery-20261022/{head,index}`，旧快照为6328b11，BenchMod接入为1f30bde。已结束的安装步骤、PID和重复检查输出不再单独保留过程页；旧Debug异常、配置换行和缺失快照均转入[问题汇总](horde-issues.md)。
+
+本轮文档合并备份：`C:/Users/wang_/AppData/Local/Temp/horde-docs-consolidation-20261023-kwqkdh3p`，含全文、SHA256清单和修改前Git差异；这份备份不是当前运行结果。

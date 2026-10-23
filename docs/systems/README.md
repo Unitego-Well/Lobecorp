@@ -1,6 +1,6 @@
 # 系统文档索引
 
-本工作区负责 **Horde／清道夫**。先读 [Horde 当前入口](horde-index.md)与[历史证据索引](horde-history.md)，再按下表查询共同基线；其他系统状态不作为本工作区验收。根入口见 [README](../../README.md)。
+本工作区负责 **Horde／清道夫**。先读 [Horde 当前入口](horde-index.md)与[问题汇总](horde-issues.md)，再按下表查询共同基线；其他系统状态不作为本工作区验收。根入口见 [README](../../README.md)。
 
 整理日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
@@ -11,9 +11,8 @@
 | 注册与数据 | [注册、附件与数据契约](registration-data.md) |
 | 实体与 AI | [实体与 AI](entities-ai.md) |
 | 群体事件与清道夫浪潮 | [深夜清扫、固定间距、参战配额与配置](horde-events.md) |
-| 群体渲染讨论 | [2026-10-22聊天反馈、sparkc链接与待验证问题](horde-rendering-discussion-20261022.md) |
 | 群体事件渲染实现 | [固定线路、客户端目标区域检测、GPU让行、烘焙帧动画、区段光场](horde-rendering-implementation.md) |
-| 群体渲染性能审计 | [性能、CPU侧工作与冗余功能静态审计](horde-performance-audit-20261022.md) |
+| Horde 问题汇总 | [缺陷、性能候选、验收与历史遗留的唯一清单](horde-issues.md) |
 | 仇恨、群体与阵营 | [战斗关系](combat.md) |
 | 四色伤害与生物资源 | [四色伤害、固定防御、承伤系数与精神／灵魂值](four-color-damage.md) |
 | 临时抓取 | [实体抓取](entity-grab.md) |

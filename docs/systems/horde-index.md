@@ -15,15 +15,11 @@
 | 基准 | 普通清道夫 AI、本地实体渲染、10000 实例隔离 GPU 快照场景 | [BenchMod](benchmod.md)、[HordeRenderScenario](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java) |
 | 配置 | 服务端事件规则与客户端数量、范围独立；当前默认值以源码为准 | [HordeEventConfig](../../src/main/java/org/unitego/lobecorp/config/server/HordeEventConfig.java)、[HordeVisualConfig](../../src/main/java/org/unitego/lobecorp/config/client/HordeVisualConfig.java) |
 
-当前是单一三维表示与顶点帧动画；旧四视角图片图集、LOD 渐变和 CPU 主体射线方案见[历史索引](horde-history.md)，不作为当前能力。让行不是寻路或碰撞求解，粗高度不保证单格台阶、坑洞贴地，完整光影材质与阴影未获通用兼容结论。
+当前是单一三维表示与顶点帧动画。旧图片图集、LOD 渐变与主体射线方案的过程页已合并移除；长期契约见玩法和渲染说明，历史采样与证据归档统一见[BenchMod](benchmod.md)。
 
-## 待办与验证边界
+## 问题与验证入口
 
-- 性能审计的候选优化、全线路同步扫描、最近路段线性查询与每帧光场集合成本，按[审计](horde-performance-audit-20261022.md)逐项重新核对后再确定实施范围；审计优先级不是实测耗时。
-- 10000 实例历史采样是客户端快照负载，不覆盖真实参战、网络或多人；粗高度轮 P95 变差，不能宣称优化后稳定 60 FPS。
-- 完整光影包、透明排序、复杂重叠让行、更多模型和粗高度精度仍需专项验收。旧图集的 5000 单位运行不能替代当前版本检查。
-- 2026-10-23 迁移记录中的完整 build 在 test 阶段失败及配置缓存问题属于既有边界；本轮不修复业务或运行测试。
-- 本轮仅做文档与源码静态核对、IDEA 文档诊断及本地链接检查；不构建、Data、运行基准或启动游戏。
+本工作区的缺陷、性能候选、待验收项和历史遗留仅在[Horde 问题汇总](horde-issues.md)维护。本页不复制问题状态，也不使用原始 dev 或 Photon 的结果代表本工作验收。
 
 ## 恢复入口
 

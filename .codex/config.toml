@@ -21,8 +21,8 @@ approval_mode = "approve"
 
 [mcp_servers.minecraft]
 command = "C:/Program Files/nodejs/node.exe"
-args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp/dist/cli.js"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/modules/minecraft-mcp/packages/minecraft-mod-mcp"
+args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/lib/minecraft-mcp/bridge/dist/cli.js"]
+cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/lib/minecraft-mcp/bridge"
 
 [mcp_servers.minecraft.env]
 MC_MCP_PORT = "19878"

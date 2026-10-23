@@ -1,6 +1,6 @@
 # 女皇激光与瞬时星束的技能特效
 
-> 2026-10-23 最新 WIP：帧回调锚点、单份输出准备、参数暂存和阶段开始 tick／姿态混合已写入当前源码，见 [未完成记录](photon-mesh-beam-g1-20261023.md) 与 [QueenBeamEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java)。当前星束保持既有 0 tick 契约；首次开销、连续跟随和结束衔接尚无本轮游戏／视觉／P99 验收。下表四份可编辑工程目标在本工作区缺失，运行 ID 属历史调用说明，不能据此认定手写资产已存在。
+> 2026-10-23 最新 WIP：帧回调锚点、单份输出准备、参数暂存和阶段开始 tick／姿态混合已写入当前源码，见 [未完成记录](photon-workspace.md) 与 [QueenBeamEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java)。当前星束保持既有 0 tick 契约；首次开销、连续跟随和结束衔接尚无本轮游戏／视觉／P99 验收。下表四份可编辑工程目标在本工作区缺失，运行 ID 属历史调用说明，不能据此认定手写资产已存在。
 
 > 2026-10-21 独立工作区当前实现：已按最小依赖接回四个原有定义、阶段生命周期和原样服务端资源；星束仍为当前注册的0 tick，不采用下文历史2 tick。Photon消费端为已见蓄力的瞬时实例补一次输出，严格适配已实现的固定渲染/遮挡及粒子旋转缩放周期字段。真实调用、问题台账和复测边界见[集中验证](photon-static-fixes-20261021.md#最小依赖协调与新验证轮次)。原assets、伤害/时长、实体动画和模型LOD逻辑不修改。以下2026-10-19及之前内容均为历史，不能替代本轮验收。
 

@@ -5,6 +5,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ClipContext;
+import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.Lobecorp;
@@ -13,6 +16,7 @@ import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
@@ -105,6 +109,7 @@ public class QueenBeamEffects {
 		private final PhotonGeoEffect effect;
 		private final PhotonChildSpawner emitter;
 		private final boolean star;
+		private final UUID instanceId;
 		private final long revision;
 		private final Vector3f circleOffset;
 		private final Vector3f beamOffset;
@@ -116,9 +121,14 @@ public class QueenBeamEffects {
 		private Vec3 frozenEnd;
 		private boolean active;
 		private boolean witnessedCharge;
+		private boolean preparedOutput;
+		private PhotonNamedHandle inputHandle;
+		private float minimumLength;
+		private Map<String, List<Float>> beamInputs = Map.of();
 
 		private Beam(TheQueenOfHatred owner, LcAnimationSnapshot snapshot) {
 			this.owner = owner;
+			instanceId = snapshot.instanceId();
 			revision = snapshot.playbackRevision();
 			star = TheQueenOfHatredAnimationDefinitions.isStarBeam(snapshot.definitionId());
 			var id = LcAnimationDefinitions.resolve(snapshot.definitionId()).effectId();
@@ -144,7 +154,7 @@ public class QueenBeamEffects {
 				emitter.transform().rotation().transform(beamOffset);
 				beamOffset.add(emitter.transform().position()).sub(root);
 				beamScale = new Vector3f(emitter.transform().scale()).mul(anchor.transform().localScale());
-				if (beamScale.x == 0 || beamScale.z == 0) {
+				if (!beamScale.isFinite() || beamScale.x == 0 || beamScale.z == 0) {
 					throw new IllegalArgumentException("光束锚点缩放为零。");
 				}
 				for (var object : effect.runtime().objects.values()) {
@@ -166,6 +176,25 @@ public class QueenBeamEffects {
 				}
 				anchor();
 				effect.start();
+				var rootObject = (FXObject) effect.runtime().root;
+				var previousFrame = rootObject.getOnUpdateFrame();
+				rootObject.setOnUpdateFrame(partial -> {
+					try {
+						if (effect.isAlive()) {
+							anchor(partial);
+							if (active && phase != Phase.RECOVERY) {
+								inputs();
+							}
+						}
+					} catch (RuntimeException invalid) {
+						finish(instanceId);
+						RETIRED.put(instanceId, revision);
+						Lobecorp.LOGGER.warn("女皇特效帧更新失败 {}", instanceId, invalid);
+					}
+					if (previousFrame != null) {
+						previousFrame.accept(partial);
+					}
+				});
 				var charge = animations().play("charge_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.WINDUP_TICKS), true, Map.of());
 				if (parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE) != Phase.CHARGE.ordinal()) {
 					animations().seek(charge, charge.authoredDuration());
@@ -199,24 +228,50 @@ public class QueenBeamEffects {
 		}
 
 		private Vec3 sourceStart() {
-			return frozenStart != null ? frozenStart : star ? StarBeamSkill.origin(owner) : LaserSkill.origin(owner).add(owner.getLookAngle().scale(VISUAL_FORWARD));
+			return sourceStart(1);
+		}
+
+		private Vec3 sourceStart(float partial) {
+			if (frozenStart != null) {
+				return frozenStart;
+			}
+			var offset = StarBeamSkill.origin(owner).subtract(owner.getEyePosition())
+					.yRot(owner.yBodyRot * Mth.DEG_TO_RAD).xRot(-owner.getXRot() * Mth.DEG_TO_RAD)
+					.xRot(owner.getViewXRot(partial) * Mth.DEG_TO_RAD)
+					.yRot(-Mth.rotLerp(partial, owner.yBodyRotO, owner.yBodyRot) * Mth.DEG_TO_RAD);
+			var origin = owner.getEyePosition(partial).add(offset);
+			return star ? origin : origin.add(owner.getViewVector(partial).scale(VISUAL_FORWARD));
 		}
 
 		private Vec3 sourceEnd(Vec3 origin) {
 			if (frozenEnd != null) {
 				return frozenEnd;
 			}
-			var aim = origin.add(owner.getLookAngle());
-			var result = star ? StarBeamSkill.endpoint(owner, aim) : LaserSkill.endpoint(owner, aim);
-			return result.subtract(origin).dot(owner.getLookAngle()) > 0 ? result : origin;
+			return sourceEnd(origin, 1);
+		}
+
+		private Vec3 sourceEnd(Vec3 origin, float partial) {
+			if (frozenEnd != null) {
+				return frozenEnd;
+			}
+			var direction = owner.getViewVector(partial);
+			var staff = star ? origin : origin.subtract(direction.scale(VISUAL_FORWARD));
+			var target = staff.add(direction.scale(star ? StarBeamSkill.RANGE : LaserSkill.RANGE));
+			var result = phase == Phase.CHARGE ? target : owner.level().clip(new ClipContext(staff, target,
+					ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, owner)).getLocation();
+			return result.subtract(origin).dot(direction) > 0 ? result : origin;
 		}
 
 		private void anchor() {
-			var origin = sourceStart();
-			end = sourceEnd(origin);
+			anchor(1);
+		}
+
+		private void anchor(float partial) {
+			var origin = sourceStart(partial);
+			end = sourceEnd(origin, partial);
 			var direction = end.subtract(origin);
 			if (direction.lengthSqr() == 0) {
-				direction = owner.getLookAngle();
+				direction = owner.getViewVector(partial);
 			}
 			direction = direction.normalize();
 			var rotation = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), direction.toVector3f());
@@ -230,6 +285,9 @@ public class QueenBeamEffects {
 			var value = parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE);
 			var next = value == Phase.OUTPUT.ordinal() ? Phase.OUTPUT : value == Phase.RECOVERY.ordinal() ? Phase.RECOVERY : Phase.CHARGE;
 			witnessedCharge |= next == Phase.CHARGE;
+			if (next == Phase.CHARGE && !preparedOutput) {
+				preparedOutput = emitter.prepareNext();
+			}
 			// 瞬时技能同刻进入恢复；只为已见蓄力的实例保留一次发射呈现，不补播晚追踪的历史输出。
 			if (star && next == Phase.RECOVERY && !active && witnessedCharge) {
 				phase = Phase.OUTPUT;
@@ -248,9 +306,9 @@ public class QueenBeamEffects {
 						animations().play("laser_end", parameter(snapshot, TheQueenOfHatredBeamAnimation.RECOVERY_TICKS), true, Map.of());
 					}
 					animations().play("charge_end", parameter(snapshot, TheQueenOfHatredBeamAnimation.RECOVERY_TICKS), true, Map.of());
+					anchor();
 				}
 			}
-			anchor();
 			if (active && phase != Phase.RECOVERY) {
 				inputs();
 			}
@@ -277,17 +335,27 @@ public class QueenBeamEffects {
 			if (source == null) {
 				return;
 			}
-			var signature = source.definition().parameters().stream().filter(value -> value.name().equals("length")).findFirst()
-					.orElseThrow(() -> new IllegalArgumentException("光束长度参数缺失。"));
+			if (inputHandle != source) {
+				var signature = source.definition().parameters().stream().filter(value -> value.name().equals("length")).findFirst()
+						.orElseThrow(() -> new IllegalArgumentException("光束长度参数缺失。"));
+				inputHandle = source;
+				minimumLength = signature.minimum();
+			}
 			float distance = (float) end.distanceTo(start);
-			var values = Map.of("length", List.of(Math.max(signature.minimum(), distance / Math.abs(beamScale.z))),
-					"width", List.of((float) (star ? StarBeamSkill.WIDTH : LaserSkill.WIDTH) / Math.abs(beamScale.x)), "enabled", List.of(distance > 0 ? 1f : 0f));
-			animations().parameters(source, values);
+			float length = Math.max(minimumLength, distance / Math.abs(beamScale.z));
+			float width = (float) (star ? StarBeamSkill.WIDTH : LaserSkill.WIDTH) / Math.abs(beamScale.x);
+			float enabled = distance > 0 ? 1f : 0f;
+			if (beamInputs.isEmpty() || Float.compare(beamInputs.get("length").getFirst(), length) != 0
+					|| Float.compare(beamInputs.get("width").getFirst(), width) != 0
+					|| Float.compare(beamInputs.get("enabled").getFirst(), enabled) != 0) {
+				beamInputs = Map.of("length", List.of(length), "width", List.of(width), "enabled", List.of(enabled));
+			}
+			animations().stageParameters(source, beamInputs);
 			for (var id : emitter.instanceIds()) {
 				var child = emitter.animations(id);
 				var handle = child == null ? null : child.playback("laser_start");
 				if (handle != null) {
-					child.parameters(handle, values);
+                    child.stageParameters(handle, beamInputs);
 				}
 			}
 		}

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /// 客户端安装权威结果并进行视觉插值，不执行服务端行为或历史时间线回调。
 public class LcClientAnimations {
@@ -79,6 +80,15 @@ public class LcClientAnimations {
 		return FRAMES.values().stream().map(frame -> frame.current).filter(snapshot -> !snapshot.stopped()).toList();
 	}
 
+	public static @Nullable LcAnimationSnapshot snapshotForEntity(int entityId, Predicate<LcAnimationSnapshot> filter) {
+		for (var frame : FRAMES.values()) {
+			if (frame.current.ownerEntityId() == entityId && !frame.current.stopped() && filter.test(frame.current)) {
+				return frame.current;
+			}
+		}
+		return null;
+	}
+
 	/// 返回本次提取可冻结的玩家帧；权重已含策略与唯一淡入淡出，渲染器不得再次乘淡出。
 	public static List<PlayerFrame> playerFrames(int entityId, float partialTick) {
 		pruneExpired();
@@ -127,6 +137,12 @@ public class LcClientAnimations {
 
 	private static double renderServerTick(Frame frame, float partialTick) {
 		return frame.current.serverTick() + Math.max(0, gameTime() - frame.receivedTick + partialTick);
+    }
+
+    /// 使用既有收包时钟外推显示阶段，不依赖动作片段是否已到末帧。
+    public static double renderServerTick(UUID id, float partialTick) {
+        var frame = FRAMES.get(id);
+        return frame == null ? 0 : renderServerTick(frame, partialTick);
 	}
 
 	private static void pruneExpired() {

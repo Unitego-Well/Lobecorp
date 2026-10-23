@@ -26,6 +26,8 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 
 import javax.annotation.Nullable;
+
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -139,12 +141,20 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		return library;
 	}
 
+	public boolean matchesController() {
+		return !closed && library.source().equals(controller.definition());
+	}
+
 	public List<PhotonNamedHandle> playbacks() {
 		return playing.values().stream().map(entry -> entry.handle).toList();
 	}
 
 	public long revision() {
 		return revision;
+	}
+
+	public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+		return mixer.authoredPose(object, current);
 	}
 
 	public void pause(PhotonNamedHandle handle, boolean paused) {
@@ -189,6 +199,13 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		revision++;
 		refresh();
 	}
+
+    /// 在原生下一次模拟或帧采样中统一消费连续输入，不在每个字段更新时重跑整条时间线。
+    public void stageParameters(PhotonNamedHandle handle, Map<String, List<Float>> changes) {
+        current(handle);
+        handle.parameters(changes);
+        revision++;
+    }
 
 	public void duration(PhotonNamedHandle handle, double duration) {
 		current(handle);

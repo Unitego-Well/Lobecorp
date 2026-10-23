@@ -13,6 +13,7 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 public class TheQueenOfHatredBeamAnimation {
     public static final String PHASE = "v.beam_phase";
     public static final String PHASE_STARTED_AGE = "v.beam_phase_started_age";
+	public static final String PHASE_STARTED_TICK = "v.beam_phase_started_tick";
     public static final String WINDUP_TICKS = "v.beam_windup_ticks";
     public static final String ENTRY_TICKS = "v.beam_entry_ticks";
     public static final String RECOVERY_TICKS = "v.beam_recovery_ticks";
@@ -46,6 +47,7 @@ public class TheQueenOfHatredBeamAnimation {
         animation.setParameter(ENTRY_TICKS, entry);
         animation.setParameter(RECOVERY_TICKS, Math.max(0, runtime.skill().recoveryTicks()));
         animation.setParameter(PHASE_STARTED_AGE, queen.tickCount);
+        animation.setParameter(PHASE_STARTED_TICK, animation.level().getGameTime());
         animation.setParameter(PHASE, Phase.CHARGE.ordinal());
     }
 
@@ -63,6 +65,7 @@ public class TheQueenOfHatredBeamAnimation {
         if (animation != null && !animation.isStopped()) {
             var owner = animation.sourceEntity();
             animation.setParameter(PHASE_STARTED_AGE, owner == null ? 0 : owner.tickCount);
+            animation.setParameter(PHASE_STARTED_TICK, animation.level().getGameTime());
             animation.setParameter(PHASE, phase.ordinal());
         }
     }

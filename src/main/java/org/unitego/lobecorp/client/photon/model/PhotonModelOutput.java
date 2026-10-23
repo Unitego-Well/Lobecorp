@@ -397,7 +397,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				nonnegative(value("length", Float.class), definition().referenceLength()),
 				nonnegative(value("width", Float.class), definition().referenceWidth()), config.anchor,
 				Math.clamp(nonnegative(value("opacity", Float.class), 1), 0, 1), bindings.morphWeights(),
-				bindings.partOverrides(this, getT(partialTicks)));
+                bindings.partOverrides(this, getT(partialTicks)), bindings.boneOverrides(this, getT(partialTicks)));
 
 		if (!input.equals(sampledInput)) {
 			var computed = sampler.sample(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE));

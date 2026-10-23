@@ -133,6 +133,10 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 	public void start() {
 		var root = (FXObject) runtime.root;
+		transform(0);
+		runtime.emit(this);
+		started = true;
+		generation = root.getTickHost() == null ? 0 : root.getTickHost().generation();
 		var tick = root.getOnUpdateTick();
 		var frame = root.getOnUpdateFrame();
 		root.setOnUpdateTick(() -> {
@@ -156,17 +160,12 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 		});
 		root.setOnUpdateFrame(partial -> {
 			sync();
+			transform(owner.paused() ? 1 : partial);
 
 			if (frame != null) {
-				frame.accept(partial * runtime.getRate());
+                frame.accept(partial);
 			}
-
-			transform(owner.paused() ? 1 : partial);
 		});
-		transform(0);
-		runtime.emit(this);
-		started = true;
-		generation = root.getTickHost() == null ? 0 : root.getTickHost().generation();
 		runtime.objects.values().forEach(overrides::apply);
 
 		if (owner.config.inheritColor) {

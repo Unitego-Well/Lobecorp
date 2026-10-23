@@ -48,7 +48,7 @@
 - target=project_test 与 target=authoring 只接受各自 play／seek／stop 路径，不混用普通命名句柄；authoring play 还检查 expectedRevision 并指定 animationId。
 - 命名 seek 的能力说明为 `authored_cursor_without_particle_resimulation`，不能把它当作普通粒子从零重新模拟。运行控制不写制作定义或工程历史。
 - runtimeId 变化、工程关闭、控制器不匹配、句柄过期或 revision 冲突必须重新读状态；不能通过删掉身份检查重试覆盖。
-- 工程测试定义不进入发布 FX。编写态与预览态隔离属于最新 WIP，F11／F12 原生复现尚待验证，见 [未完成记录](photon-mesh-beam-g1-20261023.md)。
+- 工程测试定义不进入发布 FX。编写态与预览态隔离属于最新 WIP，F11／F12 原生复现尚待验证，见 [未完成记录](photon-workspace.md)。
 
 ## 模型状态去重与视角保持
 

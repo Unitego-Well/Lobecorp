@@ -1,6 +1,6 @@
 # 系统文档索引
 
-本工作区负责 **Photon／特效**，真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。先读 [当前能力与恢复入口](photon-workspace.md)、[文档审计与缺失资料](photon-document-audit-20261023.md) 和 [MCP API](photon-effect-mcp-api.md)，再按下表选择专题。其余系统作为共同基础保留，不表示在本工作区重新验收；旧资料缺失时只保留明确的历史路径。
+本工作区负责 **Photon／特效**，真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。先读 [当前能力与恢复入口](photon-workspace.md)、[Photon 唯一问题汇总](../issues.md) 和 [MCP API](photon-effect-mcp-api.md)，再按下表选择专题。其余系统作为共同基础保留，不表示在本工作区重新验收；旧资料缺失时只保留明确的历史路径。
 
 共同索引整理日期：2026-10-15；Photon 导航核对日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
@@ -22,7 +22,7 @@
 | 指挥家 | [指挥家](conductor.md) |
 | 客户端 UI | [客户端 UI](client-ui.md) |
 | 玩家 HUD、滤镜与护盾 | [ImaginaryCraft 迁移、配置及护盾重写](player-hud-shields.md) |
-| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md)、[高级网格、光束衔接与G1续做](photon-mesh-beam-g1-20261023.md) |
+| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md)、[高级网格、光束衔接与G1续做](photon-workspace.md) |
 | 粒子与渲染 | [粒子与渲染](particle-rendering.md) |
 | 光影兼容研究 | EXIT 适用性、当前版本与后续调用（历史路径 `shader-compatibility-exit.md`，本工作区不存在） |
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |

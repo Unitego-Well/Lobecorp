@@ -14,11 +14,13 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.TransformK
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.ValueKey;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector2;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Weight;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +36,10 @@ public class PhotonModelPoseSampler {
 	private final float maxForward;
 	private final boolean localControl;
 	private final float minimumDelta;
+	private final BoneRig skeleton;
+
+	private record BoneRig(Map<String, Integer> indices, int[] parents, int[] order, Matrix4f[] inverseBind) {
+	}
 
 	public record PartOverride(@Nullable Vector3 translation, @Nullable Rotation rotation, @Nullable Vector3 scale) {
 		public PartOverride {
@@ -48,7 +54,11 @@ public class PhotonModelPoseSampler {
 	/// 时间沿用文件tick单位；空片段为基础姿态。未覆盖的TRS分量继续使用该次片段采样值。
 	public record Input(float time, String clip, boolean loop, float length, float width,
 	                    Anchor anchor, float opacity, Map<String, Float> morphWeights,
-	                    Map<String, PartOverride> partOverrides) {
+	                    Map<String, PartOverride> partOverrides, Map<String, PartOverride> boneOverrides) {
+		public Input(float time, String clip, boolean loop, float length, float width,
+		             Anchor anchor, float opacity, Map<String, Float> morphWeights, Map<String, PartOverride> partOverrides) {
+			this(time, clip, loop, length, width, anchor, opacity, morphWeights, partOverrides, Map.of());
+		}
 		public Input(float time, String clip, boolean loop, float length, float width,
 		             Anchor anchor, float opacity, Map<String, Float> morphWeights) {
 			this(time, clip, loop, length, width, anchor, opacity, morphWeights, Map.of());
@@ -59,6 +69,7 @@ public class PhotonModelPoseSampler {
 			Objects.requireNonNull(anchor);
 			morphWeights = Map.copyOf(morphWeights);
 			partOverrides = Map.copyOf(partOverrides);
+			boneOverrides = Map.copyOf(boneOverrides);
 
 			if (!Float.isFinite(time) || !Float.isFinite(length) || length < 0
 					|| !Float.isFinite(width) || width < 0 || !Float.isFinite(opacity) || opacity < 0 || opacity > 1
@@ -92,9 +103,7 @@ public class PhotonModelPoseSampler {
 		this.prepared = prepared;
 		var definition = prepared.definition();
 
-		if (!definition.bones().isEmpty() || !definition.weights().isEmpty()) {
-			throw new IOException("当前CPU模型路径尚未支持骨骼；保留定义并阻止错误播放。");
-		}
+		skeleton = prepareBones(definition);
 
 		parents = new int[definition.parts().size()];
 		var partIds = new HashMap<String, Integer>();
@@ -152,6 +161,11 @@ public class PhotonModelPoseSampler {
 				throw new IllegalArgumentException("模型部件不存在：" + id);
 			}
 		}
+		for (var id : input.boneOverrides().keySet()) {
+			if (!skeleton.indices().containsKey(id)) {
+				throw new IllegalArgumentException("模型骨骼不存在：" + id);
+			}
+		}
 
 		long begin = measure ? System.nanoTime() : 0;
 		var clip = definition.clips().stream().filter(value -> value.id().equals(input.clip())).findFirst().orElse(null);
@@ -162,11 +176,12 @@ public class PhotonModelPoseSampler {
 
 		float time = clipTime(input, clip);
 		var matrices = partMatrices(definition, input.partOverrides(), clip, time);
+		var skin = skinMatrices(definition, input.boneOverrides(), clip, time);
 		var weights = morphWeights(definition, input, clip, time);
 		float opacity = input.opacity() * (clip == null ? 1 : sampleValue(clip.opacityKeys(), time, 1));
 		long curvesEnd = measure ? System.nanoTime() : 0;
 		var morphed = morph(definition, weights);
-		var positions = positions(definition, input, matrices, morphed);
+		var positions = positions(definition, input, matrices, morphed, skin);
 		long deformationEnd = measure ? System.nanoTime() : 0;
 		var groups = new ArrayList<Group>();
 		var min = new Vector3f(Float.POSITIVE_INFINITY);
@@ -197,9 +212,21 @@ public class PhotonModelPoseSampler {
 					var scale = dimensionScale(definition, part, input, morphed.get(corner.vertex()));
 
 					if (scale != null && scale.x != 0 && scale.y != 0 && scale.z != 0) {
-						authored.div(scale);
-						normalMatrix.transform(authored);
-						authored.mul(Math.signum(matrices[group.part()].determinant3x3()));
+						var deformation = skin.get(corner.vertex());
+						if (deformation == null) {
+							authored.div(scale);
+							normalMatrix.transform(authored);
+							authored.mul(Math.signum(matrices[group.part()].determinant3x3()));
+						} else {
+							var combined = new Matrix4f(matrices[group.part()]).mul(deformation).scale(scale);
+							var normalTransform = normalMatrix(combined);
+							if (normalTransform != null) {
+								normalTransform.transform(authored);
+								authored.mul(Math.signum(combined.determinant3x3()));
+							} else {
+								authored.zero();
+							}
+						}
 						if (authored.isFinite() && authored.lengthSquared() > 0) {
 							normal = normalized(authored);
 						}
@@ -289,7 +316,8 @@ public class PhotonModelPoseSampler {
 		return points.stream().map(PhotonModelPoseSampler::immutable).toList();
 	}
 
-	private List<Map<Integer, Vector3>> positions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, List<Vector3> source) {
+	private List<Map<Integer, Vector3>> positions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, List<Vector3> source,
+	                                              Map<Integer, Matrix4f> skin) {
 		var result = new ArrayList<Map<Integer, Vector3>>();
 
 		for (int index = 0; index < parents.length; index++) {
@@ -304,12 +332,100 @@ public class PhotonModelPoseSampler {
 			for (var corner : group.corners()) {
 				points.computeIfAbsent(corner.vertex(), vertex -> {
 					var position = dimensions(definition, part, input, source.get(vertex));
+					var deformation = skin.get(vertex);
+					if (deformation != null) {
+						deformation.transformPosition(position);
+					}
 					matrices[group.part()].transformPosition(position);
 					return immutable(position);
 				});
 			}
 		}
 
+		return result;
+	}
+
+	private static BoneRig prepareBones(PhotonModelDefinition definition) throws IOException {
+		int count = definition.bones().size();
+		var ids = new LinkedHashMap<String, Integer>();
+		for (int index = 0; index < count; index++) {
+			ids.put(definition.bones().get(index).id(), index);
+		}
+		int[] parents = new int[count];
+		var order = new ArrayList<Integer>();
+		var world = new Matrix4f[count];
+		for (int index = 0; index < count; index++) {
+			parents[index] = ids.getOrDefault(definition.bones().get(index).parentId(), -1);
+		}
+		while (order.size() < count) {
+			boolean progressed = false;
+			for (int index = 0; index < count; index++) {
+				checkCancelled();
+				if (world[index] != null || parents[index] >= 0 && world[parents[index]] == null) {
+					continue;
+				}
+				var local = matrix(definition.bones().get(index).bind());
+				world[index] = parents[index] < 0 ? local : new Matrix4f(world[parents[index]]).mul(local);
+				order.add(index);
+				progressed = true;
+			}
+			if (!progressed) {
+				throw new IOException("模型骨骼父链无法排序。");
+			}
+		}
+		var inverse = new Matrix4f[count];
+		for (int index = 0; index < count; index++) {
+			inverse[index] = new Matrix4f(world[index]).invert();
+			if (!inverse[index].isFinite()) {
+				throw new IOException("模型骨骼绑定矩阵不可逆：" + definition.bones().get(index).id());
+			}
+		}
+		return new BoneRig(Map.copyOf(ids), parents, order.stream().mapToInt(Integer::intValue).toArray(), inverse);
+	}
+
+	private Map<Integer, Matrix4f> skinMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides, @Nullable Clip clip, float time) {
+		if (definition.weights().isEmpty()) {
+			return Map.of();
+		}
+		var world = new Matrix4f[skeleton.parents().length];
+		var skin = new Matrix4f[world.length];
+		for (int index : skeleton.order()) {
+			checkCancelled();
+			var bone = definition.bones().get(index);
+			var sampled = sampleTransform(clip == null ? List.of() : clip.boneTracks().getOrDefault(bone.id(), List.of()), time, bone.bind());
+			var override = overrides.get(bone.id());
+			if (override != null) {
+				sampled = new Transform(override.translation() == null ? sampled.translation() : override.translation(),
+						override.rotation() == null ? sampled.rotation() : override.rotation(),
+						override.scale() == null ? sampled.scale() : override.scale());
+			}
+			var local = matrix(sampled);
+			int parent = skeleton.parents()[index];
+			world[index] = parent < 0 ? local : new Matrix4f(world[parent]).mul(local);
+			skin[index] = new Matrix4f(world[index]).mul(skeleton.inverseBind()[index]);
+		}
+		var result = new HashMap<Integer, Matrix4f>();
+		for (var entry : definition.weights().entrySet()) {
+			checkCancelled();
+			double total = entry.getValue().stream().mapToDouble(Weight::value).sum();
+			if (total <= 0) {
+				continue;
+			}
+			float[] combined = new float[16];
+			float[] values = new float[16];
+			for (var influence : entry.getValue()) {
+				skin[skeleton.indices().get(influence.boneId())].get(values);
+				float weight = (float) (influence.value() / total);
+				for (int component = 0; component < values.length; component++) {
+					combined[component] += values[component] * weight;
+				}
+			}
+			var matrix = new Matrix4f().set(combined);
+			if (!matrix.isFinite()) {
+				throw new IllegalArgumentException("模型蒙皮结果包含非有限数值。");
+			}
+			result.put(entry.getKey(), matrix);
+		}
 		return result;
 	}
 

@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
+
 /// 贡献先收集后按优先级/启动顺序统一应用；每个属性在一次提交中只有一个最终写入。
 public class PhotonNamedMixer {
 	public record Key(UUID target, String property) {
@@ -37,9 +39,9 @@ public class PhotonNamedMixer {
 	                List<Float> sourceValues, List<Float> scales, List<Float> offsets, int priority, long order) {
 		var key = new Key(target.id(), property.type().key());
 		var resolved = targets.computeIfAbsent(key, _ -> new PhotonPropertyTarget(target, property.type()));
-		var sampled = resolved.sample(property, authoredTime);
-		List<Float> values = binding.source() == ValueSource.CURVE ? sampled.values() : sourceValues;
-		PhotonValueContribution.Function function = binding.source() == ValueSource.CURVE ? sampled.function() : null;
+		var sampled = binding.source() == ValueSource.CURVE ? resolved.sample(property, authoredTime) : null;
+		List<Float> values = sampled == null ? sourceValues : sampled.values();
+		PhotonValueContribution.Function function = sampled == null ? null : sampled.function();
 
 		if (binding.source() == ValueSource.CURVE && property.type().angular()) {
 			values = floats(property.sample(authoredTime));
@@ -94,4 +96,12 @@ public class PhotonNamedMixer {
 		begin();
 		targets.clear();
 	}
+
+    public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+        var result = current;
+        for (var target : targets.values()) {
+            result = target.authoredPose(object, result);
+        }
+        return result;
+    }
 }

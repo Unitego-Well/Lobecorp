@@ -1,6 +1,5 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
-import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
@@ -21,6 +20,12 @@ import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import java.util.Set;
 
 import org.jetbrains.annotations.NotNull;
+import com.lowdragmc.photon.gui.editor.FXEditor;
+import com.lowdragmc.lowdraglib2.editor.ui.Editor;
+
+import java.lang.ref.WeakReference;
+
+import org.unitego.lobecorp.util.photon.editor.PhotonAuthoringSnapshotUtil;
 
 /// 当前FX协议仍由原生序列化；原树只承接已知模型的变化，不通过重建摘要覆盖文件。
 @Mixin(FXProject.class)
@@ -31,6 +36,20 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 	private CompoundTag lobecorp$rawData = new CompoundTag();
 	@Unique
 	private CompoundTag lobecorp$knownBefore = new CompoundTag();
+	@Unique
+	private WeakReference<FXEditor> lobecorp$editor = new WeakReference<>(null);
+
+	@Inject(method = "onLoad", at = @At("HEAD"))
+	private void lobecorp$bindAuthoring(Editor editor, CallbackInfo ci) {
+		lobecorp$editor = new WeakReference<>(editor instanceof FXEditor fxEditor ? fxEditor : null);
+	}
+
+	@Inject(method = "onClosed", at = @At("RETURN"))
+	private void lobecorp$releaseAuthoring(Editor editor, CallbackInfo ci) {
+		if (lobecorp$editor.get() == editor) {
+			lobecorp$editor.clear();
+		}
+	}
 
 	@Override
 	public CompoundTag lobecorp$rawContainer() {
@@ -73,7 +92,9 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 	@Unique
 	private CompoundTag lobecorp$currentData() {
 		var result = new CompoundTag();
-		result.put("fx", ((FXProject) (Object) this).getFx().serializeNBT(Platform.getFrozenRegistry()));
+        var editor = lobecorp$editor.get();
+		var runtime = editor != null && editor.getCurrentProject() == this ? editor.runtime : null;
+        result.put("fx", PhotonAuthoringSnapshotUtil.serialize(((FXProject) (Object) this).getFx(), runtime));
 		var preview = ((PhotonProjectPreviewAccess) this).lobecorp$projectPreview();
 		if (preview != null) {
 			result.put(PhotonProjectPreviewUtil.PROJECT_FIELD, preview);

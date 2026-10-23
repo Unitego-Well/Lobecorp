@@ -1,6 +1,6 @@
 # Photon／LDLib2 修复与兼容对照
 
-> 当前维护入口为 [Photon 工作区](photon-workspace.md)。本页逐条保留版本与修复历史；旧命名动画、混入和迁移工具路径已失效时只保留文字，不视为当前 API。新增恢复布局、网格和预览隔离的未完成项见 [最新 WIP](photon-mesh-beam-g1-20261023.md)。
+> 当前维护入口为 [Photon 工作区](photon-workspace.md)。本页逐条保留版本与修复历史；旧命名动画、混入和迁移工具路径已失效时只保留文字，不视为当前 API。新增恢复布局、网格和预览隔离的未完成项见 [最新 WIP](photon-workspace.md)。
 
 更新日期：2026-10-11。
 

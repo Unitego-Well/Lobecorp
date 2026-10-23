@@ -34,6 +34,12 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedGates;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 
 import javax.annotation.Nullable;
+import java.util.Map;
+import java.util.IdentityHashMap;
+
+import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
+import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 
 
 @Mixin(TimelinePlayer.class)
@@ -51,6 +57,28 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 	@Shadow
 	@Final
 	private Set<UUID> lastControlled;
+	@Unique
+	private final Map<FXObject, PhotonAuthoringPose[]> lobecorp$authoredPoses = new IdentityHashMap<>();
+
+	@Override
+	public PhotonAuthoringPose lobecorp$authoredPose(FXObject object, PhotonAuthoringPose current) {
+		var state = lobecorp$authoredPoses.get(object);
+		return recording || state == null ? current : current.authored(state[0], state[1]);
+	}
+
+	@WrapOperation(method = "applyAnimations", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimationTrack;sampleInto(Lcom/lowdragmc/photon/client/gameobject/FXObject;D)V"))
+	private void lobecorp$rememberAuthoredPose(AnimationTrack track, FXObject target, double time, Operation<Void> original) {
+		if (recording || !(target.getEffectExecutor() instanceof FXProjectEffectExecutor)) {
+			original.call(track, target, time);
+			return;
+		}
+		var current = PhotonAuthoringPose.capture(target);
+		var previous = lobecorp$authoredPoses.get(target);
+		var base = previous == null ? current : current.authored(previous[0], previous[1]);
+		original.call(track, target, time);
+		lobecorp$authoredPoses.put(target, new PhotonAuthoringPose[]{base, PhotonAuthoringPose.capture(target)});
+	}
 
 	@Override
 	public boolean lobecorp$recording() {
@@ -168,6 +196,10 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 
 	@Inject(method = "stop", at = @At("RETURN"))
 	private void lobecorp$clearModelPlayback(CallbackInfo ci) {
+        if (!recording) {
+            lobecorp$authoredPoses.forEach((object, state) -> PhotonAuthoringPose.capture(object).authored(state[0], state[1]).apply(object));
+        }
+        lobecorp$authoredPoses.clear();
 		lobecorp$clearActivation();
 		if (lobecorp$children != null) {
 			lobecorp$children.close();

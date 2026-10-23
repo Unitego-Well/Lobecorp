@@ -11,8 +11,10 @@ import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelJsonEditUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 
 import java.util.function.Consumer;
+import java.nio.charset.StandardCharsets;
 
 /// 编辑器只提交当前资产的原树副本，使用与 MCP 相同的身份、revision 和撤销事务。
 public class PhotonModelWorkspaceSession {
@@ -57,7 +59,8 @@ public class PhotonModelWorkspaceSession {
 		}
 		for (var token : pointer.substring(1).split("/")) {
 			var key = token.replace("~1", "/").replace("~0", "~");
-			current = current.isJsonArray() ? current.getAsJsonArray().get(Integer.parseInt(key)) : current.getAsJsonObject().get(key);
+            current = current == asset && key.equals("parts") ? PhotonModelWorkspaceEditUtil.parts(asset)
+                    : current.isJsonArray() ? current.getAsJsonArray().get(Integer.parseInt(key)) : current.getAsJsonObject().get(key);
 		}
 		return current;
 	}
@@ -120,6 +123,27 @@ public class PhotonModelWorkspaceSession {
 			var values = new JsonObject();
 			values.addProperty("clip", clip);
 			operation.add("values", values);
+			commit(operation);
+		});
+	}
+
+	public void changeAssetAndPlaybackAt(String expectedRevision, Consumer<JsonObject> change, String clip) {
+		attempt(() -> {
+			if (!revision.equals(expectedRevision)) {
+				throw new IllegalStateException("工程已改变，请重新开始编辑。");
+			}
+			var candidate = asset.deepCopy();
+			change.accept(candidate);
+			var document = project.document();
+			String text = candidate.toString();
+			document.put("asset", document.get("asset") instanceof StringTag ? StringTag.valueOf(text)
+					: new ByteArrayTag(text.getBytes(StandardCharsets.UTF_8)));
+			var playback = document.getCompoundOrEmpty("playback");
+			playback.putString("clip", clip);
+			document.put("playback", playback);
+			var operation = new JsonObject();
+			operation.addProperty("op", "set_project_data");
+			operation.addProperty("snbt", document.toString());
 			commit(operation);
 		});
 	}

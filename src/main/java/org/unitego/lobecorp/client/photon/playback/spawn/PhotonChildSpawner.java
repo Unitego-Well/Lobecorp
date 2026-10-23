@@ -17,6 +17,9 @@ import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
+import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.FXHelper;
 
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
@@ -44,6 +47,57 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	private int budget;
 	private long generated;
 	private @Nullable String failure;
+	private @Nullable PhotonSpawnTemplateUtil.Template prepared;
+	private @Nullable FX preparedDefinition;
+
+	/// 每个生成器只持有下一次独占实例；准备不发射粒子、音频或推进时间线。
+	public boolean prepareNext() {
+		if (prepared != null) {
+			return true;
+		}
+		if (config.source != PhotonSpawnConfig.Source.FX || config.fxLocation == null || stopped || removed) {
+			return false;
+		}
+		var definition = FXHelper.getFX(config.fxLocation);
+		if (definition == null) {
+			return false;
+		}
+		var candidate = PhotonSpawnTemplateUtil.create(this);
+		try {
+			((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
+			prepared = candidate;
+			preparedDefinition = definition;
+            return true;
+		} catch (RuntimeException invalid) {
+			candidate.runtime().destroy(true);
+			throw invalid;
+		}
+	}
+
+	private PhotonSpawnTemplateUtil.Template nextTemplate() {
+		var candidate = prepared;
+		prepared = null;
+		var definition = preparedDefinition;
+		preparedDefinition = null;
+		if (candidate != null) {
+			if (config.source == PhotonSpawnConfig.Source.FX && config.fxLocation != null
+					&& FXHelper.getFX(config.fxLocation) == definition && candidate.path().contains("fx:" + config.fxLocation)
+					&& candidate.path().size() == path.size() + 1 && candidate.path().containsAll(path)
+					&& path.size() < Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
+				return candidate;
+			}
+			candidate.runtime().destroy(true);
+		}
+		return PhotonSpawnTemplateUtil.create(this);
+	}
+
+	private void discardPrepared() {
+		if (prepared != null) {
+			prepared.runtime().destroy(true);
+			prepared = null;
+			preparedDefinition = null;
+		}
+	}
 
 	public PhotonChildSpawner() {
 		bind("enabled", () -> config.enabled);
@@ -189,10 +243,11 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				continue;
 			}
 
-			var template = PhotonSpawnTemplateUtil.create(this);
-			var instance = new PhotonSpawnInstance(this, template);
+			var template = nextTemplate();
+			PhotonSpawnInstance instance;
 
 			try {
+				instance = new PhotonSpawnInstance(this, template);
 				instance.start();
 			} catch (RuntimeException invalid) {
 				template.runtime().destroy(true);
@@ -242,7 +297,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	@Override
 	public void lobecorp$clearParticles() {
-		clearInstances();
+		clearPlayingInstances();
 	}
 
 	public boolean paused() {
@@ -255,6 +310,11 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	}
 
 	public void clearInstances() {
+		discardPrepared();
+		clearPlayingInstances();
+	}
+
+	private void clearPlayingInstances() {
 		instances.values().forEach(instance -> instance.stop(true));
 		instances.clear();
 	}
@@ -262,7 +322,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	@Override
 	public void reset() {
 		if (config.clearOnRestart && !preserveParticles) {
-			clearInstances();
+			clearPlayingInstances();
 		}
 
 		super.reset();
@@ -277,6 +337,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	@Override
 	public void remove(boolean force) {
+		discardPrepared();
 		super.remove(force);
 
 		if (force || config.endBehavior == PhotonSpawnConfig.EndBehavior.CLEAR) {

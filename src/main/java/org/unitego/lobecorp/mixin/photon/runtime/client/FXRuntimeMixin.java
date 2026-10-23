@@ -40,6 +40,8 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@Unique
 	private @Nullable PhotonNamedRuntime lobecorp$named;
+	@Unique
+	private boolean lobecorp$prepared;
 
 	@Override
 	public @Nullable PhotonNamedRuntime lobecorp$namedRuntime() {
@@ -48,6 +50,25 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("HEAD"))
 	private void lobecorp$prepareNamed(CallbackInfo ci) {
+		if (lobecorp$prepared) {
+			lobecorp$prepared = false;
+			if (lobecorp$named != null && lobecorp$named.matchesController()) {
+				return;
+			}
+		}
+		lobecorp$buildNamed();
+	}
+
+	@Override
+	public void lobecorp$prepareNamedRuntime() {
+		if (!lobecorp$prepared) {
+			lobecorp$buildNamed();
+			lobecorp$prepared = true;
+		}
+	}
+
+	@Unique
+	private void lobecorp$buildNamed() {
 		lobecorp$closeNamed();
 		var runtime = (FXRuntime) (Object) this;
 		var controllers = runtime.objects.values().stream().filter(PhotonNamedController.class::isInstance)
@@ -73,6 +94,7 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@Unique
 	private void lobecorp$closeNamed() {
+		lobecorp$prepared = false;
 		if (lobecorp$named != null) {
 			lobecorp$named.close();
 			lobecorp$named = null;

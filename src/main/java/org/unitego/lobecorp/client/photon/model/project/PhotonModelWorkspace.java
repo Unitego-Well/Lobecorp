@@ -30,6 +30,13 @@ import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.UUID;
 import java.util.Map;
+import java.util.Locale;
+
+import org.unitego.lobecorp.util.photon.model.editor.PhotonModelPrimitiveUtil;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
+import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
+import com.google.gson.JsonParser;
+import org.joml.Vector3f;
 
 /// 04a3bab 模型编辑器的左侧工作区与右侧检视沿用原生停靠树，数据仍由当前工程事务持有。
 public class PhotonModelWorkspace implements AutoCloseable {
@@ -48,13 +55,19 @@ public class PhotonModelWorkspace implements AutoCloseable {
 	private final UIElement materialList = new UIElement();
 	private final UIElement animationList = new UIElement();
 	private final PhotonModelWorkspaceUV uvCanvas;
+	private final PhotonModelWorkspaceMesh meshTools;
+	private final PhotonModelWorkspaceResources resourceTools;
 	private final PhotonModelWorkspaceTimeline timeline;
 	private final PhotonModelWorkspaceScene animationScene;
 	private ISubscription panels;
 	private boolean refreshPending;
 	private boolean inspectorInvalidated;
 	private boolean closed;
+	@SuppressWarnings("resource") // 工作区持有并在close中关闭网格工具，此处只刷新借用。
 	private final UIEventListener refreshListener = _ -> {
+		if (!closed) {
+			meshTools().refresh();
+		}
 		if (refreshPending && !closed) {
 			refreshPending = false;
 			refresh();
@@ -65,6 +78,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 	private String inspectorPath = "";
 	private String selectedPartId = "";
 	private final Set<Integer> selectedFaces = new LinkedHashSet<>();
+	private final Set<Dialog> dialogs = new LinkedHashSet<>();
 
 	public PhotonModelWorkspace(FXEditor editor, PhotonModelProject project) {
 		this.editor = editor;
@@ -77,7 +91,15 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			selectedFaces.addAll(faces);
 		});
 		timeline = new PhotonModelWorkspaceTimeline(editor, session, this::inspect);
-		animationScene = new PhotonModelWorkspaceScene(editor, () -> animationScene().showScene(true), () -> animationScene().showScene(false));
+		resourceTools = new PhotonModelWorkspaceResources(editor, session);
+		meshTools = new PhotonModelWorkspaceMesh(editor, project, session, () -> selectedPartId, this::selectMeshPart, selectedFaces);
+		animationScene = new PhotonModelWorkspaceScene(editor, () -> {
+			meshTools.enabled(false);
+			animationScene().showScene(true);
+		}, () -> {
+			animationScene().showScene(false);
+			meshTools.enabled(true);
+		});
 		animations.setId("model.animations");
 		animations.setIcon(new TextTexture("A"));
 		try {
@@ -175,6 +197,9 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			menu.branch(PhotonModelTextUtil.key("primitive"), branch -> {
 				branch.leaf(PhotonModelTextUtil.key("cube"), () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, true, target)));
 				branch.leaf(PhotonModelTextUtil.key("plane"), () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, false, target)));
+				for (var shape : PhotonModelPrimitiveUtil.Shape.values()) {
+					branch.leaf(PhotonModelTextUtil.key(shape.name().toLowerCase(Locale.ROOT)), () -> meshTools.primitive(shape));
+				}
 			});
 			if (part) {
 				menu.leaf("photon.lobecorp.editor.action.duplicate", () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.duplicatePart(asset, target)));
@@ -187,6 +212,10 @@ public class PhotonModelWorkspace implements AutoCloseable {
 					}
 				}));
 				menu.leaf("photon.lobecorp.animation.delete", () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target)));
+				menu.leaf(PhotonModelTextUtil.key("editor.delete_subtree"), () -> session.changeAt(revision,
+						asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target, true)));
+				menu.leaf(PhotonModelTextUtil.key("editor.delete_promote"), () -> session.changeAt(revision,
+						asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target, false)));
 			}
 			editor.openMenu(tree, event.x, event.y, menu);
 			event.stopPropagation();
@@ -202,6 +231,22 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		})));
 		actions.addChild(new Button().setText("photon.lobecorp.animation.delete").setOnClick(_ -> removeSelected()));
 		hierarchy.addChild(actions);
+		for (var kind : List.of("bones", "morphs")) {
+			hierarchy.addChild(new Button().setText(PhotonModelTextUtil.key(kind.equals("bones") ? "add_bone" : "add_morph")).setOnClick(_ ->
+					session.change(asset -> {
+						var entries = ensureArray(asset, kind);
+						var value = new JsonObject();
+						value.addProperty("id", nextId(entries, kind.equals("bones") ? "bone" : "shape"));
+						if (kind.equals("bones")) {
+							value.addProperty("parentId", "");
+							value.add("bind", JsonParser.parseString("{\"translation\":[0,0,0],\"rotation\":[0,0,0,1],\"scale\":[1,1,1]}"));
+						} else {
+							value.addProperty("weight", 0);
+							value.add("deltas", new JsonObject());
+						}
+						entries.add(value);
+					})));
+		}
 	}
 
 	private void install() {
@@ -252,6 +297,20 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		return animationScene;
 	}
 
+	private PhotonModelWorkspaceMesh meshTools() {
+		return meshTools;
+	}
+
+	private void selectMeshPart(String id) {
+		var parts = array(session.asset(), "parts");
+		for (int index = 0; index < parts.size(); index++) {
+			if (id.equals(PhotonModelWorkspaceEditUtil.partId(parts.get(index).getAsJsonObject()))) {
+				selectHierarchy("/parts/" + index);
+				return;
+			}
+		}
+	}
+
 	public void invalidate() {
 		refreshPending = true;
 		inspectorInvalidated |= !session.isCommitting();
@@ -270,18 +329,26 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			}
 		}
 		materialList.addChild(new Button().setText(PhotonModelTextUtil.key("resources.add_slot")).setOnClick(_ -> addMaterial()));
+		resourceTools.actions(materialList, "");
 		animationList.clearAllChildren();
 		var clips = array(session.asset(), "clips");
 		for (int index = 0; index < clips.size(); index++) {
 			int selected = index;
 			var id = clips.get(index).getAsJsonObject().get("id").getAsString();
-			animationList.addChild(new Button().setText(Component.literal(id)).setOnClick(_ -> {
+			var clipButton = new Button().setText(Component.literal(id)).setOnClick(_ -> {
 				session.playback(id);
 				inspect("/clips/" + selected);
 				timeline.selectClip(id);
 				animationScene.open();
 				show(timeline, null);
-			}));
+			});
+			clipButton.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+				if (event.button == 1) {
+					animationMenu(clipButton, id, event.x, event.y);
+					event.stopPropagation();
+				}
+			});
+			animationList.addChild(clipButton);
 		}
 		animationList.addChild(new Button().setText("photon.lobecorp.animation.new").setOnClick(_ -> session.change(asset -> {
 			var values = ensureArray(asset, "clips");
@@ -292,6 +359,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			values.add(clip);
 		})));
 		uvCanvas.refresh();
+		meshTools.refresh();
 		timeline.refresh();
 		if (!selectedPath.isEmpty()) {
 			var value = session.valueOr(selectedPath, JsonNull.INSTANCE);
@@ -320,15 +388,24 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			addGroup(root, "morphs");
 			tree.setRoot(root);
 		}
-		var selected = treeNodes.get(selectedPath);
-		if (selected == null && !selectedPartId.isEmpty()) {
+		boolean partSelection = selectedPath.startsWith("/parts/");
+		var selected = partSelection ? null : treeNodes.get(selectedPath);
+		if (partSelection && !selectedPartId.isEmpty()) {
 			for (int index = 0; index < parts.size(); index++) {
 				var part = parts.get(index).getAsJsonObject();
-				if (part.has("id") && selectedPartId.equals(part.get("id").getAsString())) {
-					selected = treeNodes.get("/parts/" + index);
+				if (selectedPartId.equals(PhotonModelWorkspaceEditUtil.partId(part))) {
+					selectedPath = "/parts/" + index;
+					selected = treeNodes.get(selectedPath);
 					break;
 				}
 			}
+		}
+		if (partSelection && selected == null) {
+			selectedPartId = "";
+			selectedPath = "";
+			inspectorPath = "";
+			inspectorShape = "";
+			properties.clearAllScrollViewChildren();
 		}
 		tree.setSelected(selected == null ? Set.of() : Set.of(selected), false);
 		if (selected != null) {
@@ -412,8 +489,20 @@ public class PhotonModelWorkspace implements AutoCloseable {
 				}));
 			}
 			PhotonModelWorkspaceFields.build(properties.viewContainer, session, path);
+			skeletalTools(path);
+			if (path.matches("/parts/[0-9]+")) {
+				properties.addScrollViewChild(meshTools.tools());
+			}
 			if (path.startsWith("/materials/")) {
 				String material = path.substring("/materials/".length()).replace("~1", "/").replace("~0", "~");
+				resourceTools.actions(properties.viewContainer, material);
+				String[] name = {material};
+				properties.addScrollViewChild(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> name[0],
+						value -> name[0] = value, material, false));
+				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.rename"))
+						.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.renameMaterial(asset, material, name[0]))));
+				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.delete_slot"))
+						.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.removeMaterial(asset, material))));
 				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.assign")).setOnClick(_ -> session.change(asset -> {
 					var faces = asset.getAsJsonArray("faces");
 					for (int index : Set.copyOf(selectedFaces)) {
@@ -423,6 +512,69 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			}
 		} catch (RuntimeException invalid) {
 			status.setText(Component.literal(invalid.getMessage() == null ? invalid.toString() : invalid.getMessage()));
+		}
+	}
+
+	private void skeletalTools(String path) {
+		if (path.matches("/(bones|morphs)/[0-9]+")) {
+			String kind = path.substring(1, path.indexOf('/', 1));
+			String id = session.value(path).getAsJsonObject().get("id").getAsString();
+			String[] name = {id};
+			properties.addScrollViewChild(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> name[0],
+					value -> name[0] = value, id, false));
+			properties.addScrollViewChild(new Button().setText("photon.lobecorp.animation.rename")
+					.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.renameNode(asset, kind, id, name[0]))));
+		}
+		if (path.matches("/bones/[0-9]+")) {
+			String id = session.value(path).getAsJsonObject().get("id").getAsString();
+			float[] weight = {1};
+			properties.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key("weight"), () -> weight[0],
+					value -> weight[0] = value.floatValue(), 1, false).setRange(0, 1));
+			properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("editor.assign_weight")).setOnClick(_ -> {
+				var vertices = meshTools.vertexSelection();
+				session.change(asset -> {
+					var weights = asset.has("weights") ? asset.getAsJsonObject("weights") : new JsonObject();
+					for (int vertex : vertices) {
+						var name = Integer.toString(vertex);
+						var entries = weights.has(name) ? weights.getAsJsonArray(name) : new JsonArray();
+						var current = entries.asList().stream().map(JsonElement::getAsJsonObject)
+								.filter(value -> id.equals(value.get("boneId").getAsString())).findFirst().orElse(null);
+						if (current == null) {
+							current = new JsonObject();
+							current.addProperty("boneId", id);
+							entries.add(current);
+						}
+						current.addProperty("value", weight[0]);
+						weights.add(name, entries);
+					}
+					asset.add("weights", weights);
+				});
+			}));
+		}
+		if (path.matches("/morphs/[0-9]+")) {
+			String id = session.value(path).getAsJsonObject().get("id").getAsString();
+			var delta = new Vector3f();
+			for (int axis = 0; axis < 3; axis++) {
+				int component = axis;
+				properties.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key("axis_" + "xyz".charAt(axis)), () -> delta.get(component),
+						value -> delta.setComponent(component, value.floatValue()), 0, false));
+			}
+			properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("edit_morph")).setOnClick(_ -> {
+				var vertices = meshTools.vertexSelection();
+				session.change(asset -> {
+					var morph = array(asset, "morphs").asList().stream().map(JsonElement::getAsJsonObject)
+							.filter(value -> id.equals(value.get("id").getAsString())).findFirst().orElseThrow();
+					var deltas = morph.has("deltas") ? morph.getAsJsonObject("deltas") : new JsonObject();
+					for (int vertex : vertices) {
+						var value = new JsonArray();
+						value.add(delta.x);
+						value.add(delta.y);
+						value.add(delta.z);
+						deltas.add(Integer.toString(vertex), value);
+					}
+					morph.add("deltas", deltas);
+				});
+			}));
 		}
 	}
 
@@ -436,7 +588,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			String id = part.has("id") ? part.get("id").getAsString() : PhotonModelDefinition.DEFAULT_PART;
 			session.change(asset -> PhotonModelWorkspaceEditUtil.removePart(asset, id));
 		} else {
-			session.change(asset -> array(asset, path[1]).remove(Integer.parseInt(path[2])));
+			session.change(asset -> PhotonModelWorkspaceEditUtil.removeNode(asset, path[1], Integer.parseInt(path[2])));
 		}
 	}
 
@@ -457,7 +609,62 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		});
 	}
 
+	private void animationMenu(UIElement anchor, String id, float x, float y) {
+		String expected = session.revision();
+		var menu = TreeBuilder.Menu.start();
+		menu.leaf(PhotonModelTextUtil.key("timeline.rename"), () -> {
+			String[] draft = {id};
+			var dialog = new Dialog().setTitle(PhotonModelTextUtil.key("timeline.rename"));
+			dialog.addContent(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> draft[0], value -> draft[0] = value, id, false));
+			dialog.addButton(new Button().setText("ldlib.gui.tips.confirm").setOnClick(_ -> {
+				String selected = project.model().config.clip.equals(id) ? draft[0] : project.model().config.clip;
+				session.changeAssetAndPlaybackAt(expected, asset -> {
+					if (!draft[0].matches("[a-z_]+") || array(asset, "clips").asList().stream().anyMatch(value ->
+							!id.equals(value.getAsJsonObject().get("id").getAsString()) && draft[0].equals(value.getAsJsonObject().get("id").getAsString()))) {
+						throw new IllegalArgumentException("动画名称无效或已存在。");
+					}
+					clip(asset, id).addProperty("id", draft[0]);
+				}, selected);
+				dialog.close();
+			}));
+			dialog.addButton(new Button().setText("ldlib.gui.tips.cancel").setOnClick(_ -> dialog.close()));
+			dialogs.add(dialog);
+			dialog.setOnClose(() -> dialogs.remove(dialog));
+			dialog.show(editor);
+		});
+		menu.leaf(PhotonModelTextUtil.key("duplicate"), () -> session.changeAt(expected, asset -> {
+			var values = array(asset, "clips");
+			var copied = clip(asset, id).deepCopy();
+			copied.addProperty("id", nextId(values, "animation"));
+			values.add(copied);
+		}));
+		menu.leaf(PhotonModelTextUtil.key("delete"), () -> session.changeAssetAndPlaybackAt(expected,
+				asset -> array(asset, "clips").asList().removeIf(value -> id.equals(value.getAsJsonObject().get("id").getAsString())),
+				project.model().config.clip.equals(id) ? "" : project.model().config.clip));
+		for (int direction : List.of(-1, 1)) {
+			menu.leaf(Component.translatable(PhotonModelTextUtil.key("timeline.reorder")).append(direction < 0 ? " ↑" : " ↓"), () -> session.changeAt(expected, asset -> {
+				var values = array(asset, "clips");
+				int index = values.asList().indexOf(clip(asset, id));
+				int next = index + direction;
+				if (next >= 0 && next < values.size()) {
+					var value = values.get(index);
+					values.set(index, values.get(next));
+					values.set(next, value);
+				}
+			}));
+		}
+		editor.openMenu(anchor, x, y, menu);
+	}
+
+	private static JsonObject clip(JsonObject asset, String id) {
+		return array(asset, "clips").asList().stream().map(JsonElement::getAsJsonObject)
+				.filter(value -> id.equals(value.get("id").getAsString())).findFirst().orElseThrow();
+	}
+
 	private static JsonArray array(JsonObject asset, String key) {
+		if (key.equals("parts")) {
+			return PhotonModelWorkspaceEditUtil.parts(asset);
+		}
 		return asset.has(key) ? asset.getAsJsonArray(key) : new JsonArray();
 	}
 
@@ -487,6 +694,13 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		closed = true;
 		editor.removeEventListener(UIEvents.TICK, refreshListener);
 		uvCanvas.cancel();
+		timeline.close();
+		for (var dialog : List.copyOf(dialogs)) {
+			dialog.close();
+		}
+		dialogs.clear();
+		meshTools.close();
+		resourceTools.close();
 		animationScene.close();
 		for (var view : List.of(timeline, animationScene)) {
 			editor.getViewFallbacks().remove(view);

@@ -13,11 +13,15 @@ import java.util.function.Supplier;
 import java.util.function.Consumer;
 
 import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 import com.google.gson.JsonPrimitive;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import net.minecraft.network.chat.Component;
@@ -25,12 +29,18 @@ import net.minecraft.network.chat.Component;
 /// 按当前模型结构显示原生属性控件；未知数据只展示，不隐式重写身份或结构。
 public class PhotonModelWorkspaceFields {
 	public static void build(UIElement parent, PhotonModelWorkspaceSession session, String path) {
-		var value = session.value(path);
+		build(parent, session, path, session.valueOr(path, JsonNull.INSTANCE));
+	}
+
+	private static void build(UIElement parent, PhotonModelWorkspaceSession session, String path, JsonElement fallback) {
+		var value = session.valueOr(path, fallback);
 		if (value == null || value.isJsonNull()) {
 			return;
 		}
 		if (value.isJsonObject()) {
-			for (var entry : value.getAsJsonObject().entrySet()) {
+			var fields = defaults(path);
+			value.getAsJsonObject().entrySet().forEach(entry -> fields.add(entry.getKey(), entry.getValue()));
+			for (var entry : fields.entrySet()) {
 				field(parent, session, path + "/" + encode(entry.getKey()), entry.getKey(), entry.getValue());
 			}
 		} else if (value.isJsonArray()) {
@@ -51,7 +61,7 @@ public class PhotonModelWorkspaceFields {
 		if (!value.isJsonPrimitive()) {
 			var group = new ConfiguratorGroup(name, false);
 			parent.addChild(group);
-			group.configuratorContainer(container -> build(container, session, path));
+			group.configuratorContainer(container -> build(container, session, path, value));
 			return;
 		}
 		var primitive = value.getAsJsonPrimitive();
@@ -59,13 +69,13 @@ public class PhotonModelWorkspaceFields {
 			parent.addChild(new TextElement().setText(Component.literal(name + ": " + primitive.getAsString())));
 		} else if (primitive.isBoolean()) {
 			parent.addChild(new BooleanConfigurator(name, () -> session.valueOr(path, primitive).getAsBoolean(),
-					next -> session.set(path, new JsonPrimitive(next)), primitive.getAsBoolean(), false));
+					next -> write(session, path, new JsonPrimitive(next)), primitive.getAsBoolean(), false));
 		} else if (primitive.isNumber()) {
 			parent.addChild(new NumberConfigurator(name, () -> session.valueOr(path, primitive).getAsDouble(),
-					next -> session.set(path, new JsonPrimitive(next)), primitive.getAsDouble(), false));
+					next -> write(session, path, new JsonPrimitive(next)), primitive.getAsDouble(), false));
 		} else {
 			parent.addChild(new StringConfigurator(name, () -> session.valueOr(path, primitive).getAsString(),
-					next -> session.set(path, new JsonPrimitive(next)), primitive.getAsString(), false));
+					next -> write(session, path, new JsonPrimitive(next)), primitive.getAsString(), false));
 		}
 	}
 
@@ -96,7 +106,7 @@ public class PhotonModelWorkspaceFields {
 				values.add(next.y);
 				values.add(next.z);
 			}
-			session.set(path, values);
+			write(session, path, values);
 		};
 		String label = PhotonModelTextUtil.key(name.equals("translation") ? "position" : name);
 		var row = new Configurator(label);
@@ -122,5 +132,43 @@ public class PhotonModelWorkspaceFields {
 
 	public static String encode(String value) {
 		return value.replace("~", "~0").replace("/", "~1");
+	}
+
+	private static JsonObject defaults(String path) {
+		String fields = path.matches("/parts/[0-9]+")
+				? "{\"parentId\":\"\",\"pivot\":[0,0,0],\"transform\":{},\"stretch\":{},\"anchor\":\"NONE\",\"opacity\":1,\"shading\":false,\"doubleSided\":true,\"insideOut\":false}"
+				: path.matches("/bones/[0-9]+") ? "{\"parentId\":\"\",\"bind\":{}}"
+				: path.matches("/morphs/[0-9]+") ? "{\"deltas\":{},\"weight\":0}"
+				: path.endsWith("/transform") || path.endsWith("/bind") ? "{\"translation\":[0,0,0],\"rotation\":[0,0,0,1],\"scale\":[1,1,1]}"
+				: path.matches("/parts/[0-9]+/stretch") ? "{\"enabled\":false,\"axis\":2,\"start\":0,\"end\":1}"
+				: path.matches("/materials/[^/]+") ? "{\"texture\":\"\",\"materialData\":\"\",\"tint\":\"NONE\",\"overlay\":false}" : "{}";
+		return JsonParser.parseString(fields).getAsJsonObject();
+	}
+
+	private static void write(PhotonModelWorkspaceSession session, String path, JsonElement value) {
+		if (!session.valueOr(path, JsonNull.INSTANCE).isJsonNull() && (!path.startsWith("/parts/") || session.asset().has("parts"))) {
+			session.set(path, value);
+			return;
+		}
+		session.change(asset -> {
+            if (path.startsWith("/parts/") && !asset.has("parts")) {
+                asset.add("parts", PhotonModelWorkspaceEditUtil.parts(asset));
+            }
+			JsonElement parent = asset;
+			var tokens = path.substring(1).split("/");
+			for (int index = 0; index < tokens.length - 1; index++) {
+				String key = tokens[index].replace("~1", "/").replace("~0", "~");
+				if (parent.isJsonArray()) {
+					parent = parent.getAsJsonArray().get(Integer.parseInt(key));
+				} else {
+					var object = parent.getAsJsonObject();
+					if (!object.has(key)) {
+						object.add(key, new JsonObject());
+					}
+					parent = object.get(key);
+				}
+			}
+			parent.getAsJsonObject().add(tokens[tokens.length - 1].replace("~1", "/").replace("~0", "~"), value.deepCopy());
+		});
 	}
 }

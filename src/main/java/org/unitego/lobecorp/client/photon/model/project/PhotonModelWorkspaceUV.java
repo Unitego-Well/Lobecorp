@@ -4,6 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.texture.GuiTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
@@ -97,6 +100,9 @@ public class PhotonModelWorkspaceUV extends UIElement {
 	private @Nullable String gestureRevision;
 	private boolean panning;
 	private boolean selectingBox;
+	private final Vector2f uvTranslation = new Vector2f();
+	private final Vector2f uvScale = new Vector2f(1);
+	private float uvRotation;
 
 	private record Corner(int face, int corner) {
 	}
@@ -146,7 +152,58 @@ public class PhotonModelWorkspaceUV extends UIElement {
 			}
 		});
 		addChild(canvas);
+		var tools = new ScrollerView();
+		tools.layout(layout -> layout.widthPercent(100).heightPercent(45).minHeight(0));
+		tools.scrollerStyle(style -> style.adaptiveHeight(false));
+		String[] labels = {"uv_translate_u", "uv_translate_v", "uv_scale_u", "uv_scale_v", "uv_rotation"};
+		for (int index = 0; index < labels.length; index++) {
+			int component = index;
+			tools.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key(labels[index]),
+					() -> component < 2 ? uvTranslation.get(component) : component < 4 ? uvScale.get(component - 2) : uvRotation,
+					value -> {
+						if (component < 2) {
+							uvTranslation.setComponent(component, value.floatValue());
+						} else if (component < 4) {
+							uvScale.setComponent(component - 2, value.floatValue());
+						} else {
+							uvRotation = value.floatValue();
+						}
+					}, index == 2 || index == 3 ? 1 : 0, false).setRange(-Float.MAX_VALUE, Float.MAX_VALUE));
+		}
+		tools.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("apply")).setOnClick(_ -> transformSelection()));
+		addChild(tools);
 		refresh();
+	}
+
+	private void transformSelection() {
+		refresh();
+		cancel();
+		var available = points();
+		var targets = new LinkedHashSet<>(selection);
+		if (targets.isEmpty()) {
+			return;
+		}
+		var center = new Vector2f();
+		targets.forEach(corner -> center.add(available.get(corner)));
+		center.div(targets.size());
+		float radians = (float) Math.toRadians(uvRotation);
+		float cosine = (float) Math.cos(radians);
+		float sine = (float) Math.sin(radians);
+		var changes = new LinkedHashMap<Corner, Vector2f>();
+		for (var corner : targets) {
+			var value = new Vector2f(available.get(corner)).sub(center).mul(uvScale);
+			var rotated = new Vector2f(value.x * cosine - value.y * sine, value.x * sine + value.y * cosine)
+					.add(center).add(uvTranslation.x / textureWidth, uvTranslation.y / textureHeight);
+			if (!Float.isFinite(rotated.x) || !Float.isFinite(rotated.y)) {
+				return;
+			}
+			changes.put(corner, rotated);
+		}
+		session.change(asset -> changes.forEach((corner, value) -> {
+			var pair = asset.getAsJsonArray("faces").get(corner.face()).getAsJsonObject().getAsJsonArray("uv").get(corner.corner()).getAsJsonArray();
+			pair.set(0, new JsonPrimitive(value.x));
+			pair.set(1, new JsonPrimitive(value.y));
+		}));
 	}
 
 	public void refresh() {

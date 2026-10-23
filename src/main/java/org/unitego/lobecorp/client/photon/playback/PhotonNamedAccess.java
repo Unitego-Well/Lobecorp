@@ -5,4 +5,6 @@ import javax.annotation.Nullable;
 public interface PhotonNamedAccess {
 	@Nullable
 	PhotonNamedRuntime lobecorp$namedRuntime();
+
+    void lobecorp$prepareNamedRuntime();
 }

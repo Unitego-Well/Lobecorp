@@ -127,6 +127,7 @@
 		"photon.render.client.NoisePreviewAccessor",
 		"photon.editor.client.FXHierarchyViewMixin",
 		"photon.editor.client.FXTimelineViewAccessor",
+		"photon.editor.client.WorldSceneRendererProjectionAccessor",
 		"photon.editor.client.ResourceProviderContainerMixin",
 		"photon.editor.client.AssetBrowserMixin",
 		"photon.editor.client.TrackRenameUIStateAccessor",

@@ -3,10 +3,13 @@ package org.unitego.lobecorp.client.photon.model.project;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.lowdragmc.lowdraglib2.gui.texture.GuiTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelperClient;
 import com.lowdragmc.photon.gui.editor.FXEditor;
@@ -15,14 +18,26 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.mixin.photon.editor.client.FXTimelineViewAccessor;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 
 import java.util.List;
 import java.util.function.Consumer;
+
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
+import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 
 /// 和备份一样直接复用原生时间轴外壳，行内容适配当前原树片段，保留关键帧的未知字段。
 public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 	private final PhotonModelWorkspaceSession session;
 	private final Consumer<String> inspect;
+	private final FXEditor owner;
 	private final UIElement headers;
 	private final UIElement lanes;
 	private String clipId = "";
@@ -30,9 +45,13 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 	private String dragRevision;
 	private String dragPath;
 	private float dragTime;
+	private String viewRevision = "";
+	private final List<Dialog> dialogs = new ArrayList<>();
+	private boolean closed;
 
 	public PhotonModelWorkspaceTimeline(FXEditor owner, PhotonModelWorkspaceSession session, Consumer<String> inspect) {
 		super(owner);
+		this.owner = owner;
 		this.session = session;
 		this.inspect = inspect;
 		setId("model.timeline");
@@ -46,6 +65,9 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 			removeEventListener(UIEvents.KEY_DOWN, listener);
 		}
 		addEventListener(UIEvents.KEY_DOWN, event -> {
+			if (closed || event.target instanceof TextField) {
+				return;
+			}
 			if (event.keyCode == GLFW.GLFW_KEY_ESCAPE) {
 				dragPath = null;
 			} else if (event.keyCode == GLFW.GLFW_KEY_DELETE && !selectedKey.isEmpty()) {
@@ -75,6 +97,11 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 	}
 
 	public void refresh() {
+		if (!viewRevision.equals(session.revision())) {
+			dragPath = null;
+			selectedKey = "";
+			viewRevision = session.revision();
+		}
 		headers.clearAllChildren();
 		lanes.clearAllChildren();
 		var path = clipPath();
@@ -94,6 +121,11 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 		}
 		headers.addChild(new Button().setText(PhotonModelTextUtil.key("part_key")).setOnClick(_ -> addPartTrack()));
 		lanes.addChild(new UIElement().layout(layout -> layout.height(ROW_HEIGHT)));
+		for (var kind : List.of("boneTracks", "morphTracks", "opacityKeys")) {
+			headers.addChild(new Button().setText(PhotonModelTextUtil.key(kind.equals("boneTracks") ? "bone_key"
+					: kind.equals("morphTracks") ? "morph_key" : "opacity")).setOnClick(_ -> chooseTrack(kind)));
+			lanes.addChild(new UIElement().layout(layout -> layout.height(ROW_HEIGHT)));
+		}
 	}
 
 	private void row(String label, String path) {
@@ -113,6 +145,15 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 			drawPlayhead(graphics, x, y, width, height, graphics.partialTick);
 		})));
 		lane.addEventListener(UIEvents.MOUSE_DOWN, event -> {
+			if (event.button == 1) {
+				String expected = session.revision();
+				float time = Math.max(0, (float) xToTick(event.x));
+				var menu = TreeBuilder.Menu.start();
+				menu.leaf(Component.translatable(PhotonModelTextUtil.key("editor.key_at"), time), () -> insertKey(path, time, expected));
+				owner.openMenu(lane, event.x, event.y, menu);
+				event.stopPropagation();
+				return;
+			}
 			if (event.button != 0) {
 				return;
 			}
@@ -125,26 +166,37 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 					dragRevision = session.revision();
 					dragPath = selectedKey;
 					dragTime = time;
-					lane.startDrag(null, null);
+					lane.startDrag(this, null);
 					event.stopPropagation();
 					break;
 				}
 			}
 		});
 		lane.addEventListener(UIEvents.DRAG_SOURCE_UPDATE, event -> {
-			if (dragPath != null) {
-				dragTime = Math.max(0, (float) xToTick(event.x));
+			if (dragPath != null && !closed) {
+				if (!session.revision().equals(dragRevision)) {
+					dragPath = null;
+					return;
+				}
+				float duration = session.valueOr(clipPath() + "/duration", new JsonPrimitive(PhotonModelDefinition.DEFAULT_CLIP_TICKS)).getAsFloat();
+				dragTime = Math.clamp((float) xToTick(event.x), 0, duration);
 			}
 		});
 		lane.addEventListener(UIEvents.DRAG_END, _ -> {
-			if (dragPath != null) {
+			if (dragPath != null && !closed) {
 				var target = dragPath;
+				float time = dragTime;
 				dragPath = null;
 				session.changeAt(dragRevision, asset -> {
 					var values = value(asset, path);
 					int index = Integer.parseInt(target.substring(target.lastIndexOf('/') + 1));
-					values.get(index).getAsJsonObject().addProperty("time", dragTime);
-					values.asList().sort(java.util.Comparator.comparingDouble(item -> item.getAsJsonObject().get("time").getAsDouble()));
+					for (int other = 0; other < values.size(); other++) {
+						if (other != index && Float.compare(values.get(other).getAsJsonObject().get("time").getAsFloat(), time) == 0) {
+							throw new IllegalArgumentException("该时间已有关键帧。");
+						}
+					}
+					values.get(index).getAsJsonObject().addProperty("time", time);
+					values.asList().sort(Comparator.comparingDouble(item -> item.getAsJsonObject().get("time").getAsDouble()));
 				});
 			}
 		});
@@ -155,35 +207,111 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 		var target = selectedKey;
 		var path = target.substring(0, target.lastIndexOf('/'));
 		int index = Integer.parseInt(target.substring(target.lastIndexOf('/') + 1));
-		session.change(asset -> value(asset, path).remove(index));
+		session.changeAt(viewRevision, asset -> value(asset, path).remove(index));
 		selectedKey = "";
 	}
 
 	private void addPartTrack() {
-		var path = clipPath();
+		chooseTrack("partTracks");
+	}
+
+	private void chooseTrack(String kind) {
+		String path = clipPath();
 		if (path.isEmpty()) {
 			return;
 		}
-		session.change(asset -> {
-			var clips = asset.getAsJsonArray("clips");
-			int index = Integer.parseInt(path.substring(path.lastIndexOf('/') + 1));
-			var clip = clips.get(index).getAsJsonObject();
-			var tracks = clip.has("partTracks") ? clip.getAsJsonObject("partTracks") : new JsonObject();
-			var parts = asset.getAsJsonArray("parts");
-			if (parts == null || parts.isEmpty()) {
-				return;
-			}
-			var part = parts.get(0).getAsJsonObject();
-			var id = part.get("id").getAsString();
-			var values = tracks.has(id) ? tracks.getAsJsonArray(id) : new JsonArray();
+		String expected = session.revision();
+		float time = Math.max(0, owner.sceneView.particleManager.getTime(0));
+		if (kind.equals("opacityKeys")) {
+			insertKey(path + "/opacityKeys", time, expected);
+			return;
+		}
+		String collection = kind.equals("partTracks") ? "parts" : kind.equals("boneTracks") ? "bones" : "morphs";
+		var candidates = session.valueOr("/" + collection, new JsonArray()).getAsJsonArray();
+		if (candidates == null || candidates.isEmpty()) {
+			return;
+		}
+		var ids = candidates.asList().stream().map(JsonElement::getAsJsonObject)
+				.map(value -> collection.equals("parts") ? PhotonModelWorkspaceEditUtil.partId(value) : value.get("id").getAsString()).toList();
+		String[] selected = {ids.getFirst()};
+		var selector = new Selector<String>().setCandidates(ids).setSelected(selected[0], false)
+				.setCandidateUIProvider(value -> new Label().setText(Component.literal(value)))
+				.setOnValueChanged(value -> selected[0] = value);
+		var dialog = new Dialog().setTitle(PhotonModelTextUtil.key("timeline.tracks"));
+		dialog.addContent(selector);
+		dialog.addButton(new Button().setText("ldlib.gui.tips.confirm").setOnClick(_ -> {
+			insertKey(path + "/" + kind + "/" + PhotonModelWorkspaceFields.encode(selected[0]), time, expected);
+			dialog.close();
+		}));
+		dialog.addButton(new Button().setText("ldlib.gui.tips.cancel").setOnClick(_ -> dialog.close()));
+		dialogs.add(dialog);
+		dialog.setOnClose(() -> dialogs.remove(dialog));
+		dialog.show(owner);
+	}
+
+	public void close() {
+		closed = true;
+		dragPath = null;
+		for (var dialog : List.copyOf(dialogs)) {
+			dialog.close();
+		}
+		dialogs.clear();
+	}
+
+	private void insertKey(String path, float time, String expected) {
+		if (closed) {
+			return;
+		}
+		var tokens = path.split("/");
+		session.changeAt(expected, asset -> {
+			var clip = asset.getAsJsonArray("clips").get(Integer.parseInt(tokens[2])).getAsJsonObject();
+			String kind = tokens[3];
+			float duration = clip.has("duration") ? clip.get("duration").getAsFloat() : PhotonModelDefinition.DEFAULT_CLIP_TICKS;
+			float at = Math.clamp(time, 0, duration);
+			boolean transformTrack = kind.equals("partTracks") || kind.equals("boneTracks");
 			var key = new JsonObject();
-			key.addProperty("time", 0);
-			key.add("transform", part.has("transform") ? part.get("transform").deepCopy() : new JsonObject());
-			if (values.isEmpty()) {
-				values.add(key);
+			key.addProperty("time", at);
+			JsonArray values;
+			if (kind.equals("opacityKeys")) {
+				values = clip.has(kind) ? clip.getAsJsonArray(kind) : new JsonArray();
+				key.addProperty("value", 1);
+				clip.add(kind, values);
+			} else {
+				String id = tokens[4].replace("~1", "/").replace("~0", "~");
+				var tracks = clip.has(kind) ? clip.getAsJsonObject(kind) : new JsonObject();
+				values = tracks.has(id) ? tracks.getAsJsonArray(id) : new JsonArray();
+				String collection = kind.equals("partTracks") ? "parts" : kind.equals("boneTracks") ? "bones" : "morphs";
+				var nodes = kind.equals("partTracks") ? PhotonModelWorkspaceEditUtil.parts(asset) : asset.getAsJsonArray(collection);
+				var source = nodes.asList().stream().map(JsonElement::getAsJsonObject)
+						.filter(value -> (collection.equals("parts") ? PhotonModelWorkspaceEditUtil.partId(value) : value.get("id").getAsString()).equals(id))
+						.findFirst().orElseThrow();
+				if (transformTrack) {
+					String field = kind.equals("boneTracks") ? "bind" : "transform";
+					key.add("transform", source.has(field) ? source.get(field).deepCopy() : new JsonObject());
+				} else {
+					key.addProperty("value", source.has("weight") ? source.get("weight").getAsFloat() : 0);
+				}
+				tracks.add(id, values);
+				clip.add(kind, tracks);
 			}
-			tracks.add(id, values);
-			clip.add("partTracks", tracks);
+			var existing = values.asList().stream().map(JsonElement::getAsJsonObject)
+					.filter(value -> Float.compare(value.get("time").getAsFloat(), at) == 0).findFirst().orElse(null);
+			if (existing == null) {
+				values.add(key);
+			} else {
+				if (transformTrack) {
+					var transform = existing.has("transform") ? existing.getAsJsonObject("transform") : new JsonObject();
+					var source = key.getAsJsonObject("transform");
+					var defaults = JsonParser.parseString("{\"translation\":[0,0,0],\"rotation\":[0,0,0,1],\"scale\":[1,1,1]}").getAsJsonObject();
+					for (var field : List.of("translation", "rotation", "scale")) {
+						transform.add(field, (source.has(field) ? source.get(field) : defaults.get(field)).deepCopy());
+					}
+					existing.add("transform", transform);
+				} else {
+					existing.add("value", key.get("value"));
+				}
+			}
+			values.asList().sort(Comparator.comparingDouble(value -> value.getAsJsonObject().get("time").getAsDouble()));
 		});
 	}
 

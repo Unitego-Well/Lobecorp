@@ -11,6 +11,9 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Rotation;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Transform;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Part;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Bone;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler.PartOverride;
 
 import javax.annotation.Nullable;
@@ -25,26 +28,19 @@ public class PhotonModelBindings {
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<String, RuntimeBinding> bindings = new LinkedHashMap<>();
 	private final List<AnimatedPropertyType> properties;
+	private final List<String> partIds;
+	private final List<String> boneIds;
 
 	public PhotonModelBindings(PhotonModelDefinition definition) {
 		this.definition = definition;
+		partIds = definition.parts().stream().map(Part::id).toList();
+		boneIds = definition.bones().stream().map(Bone::id).toList();
 
 		for (var part : definition.parts()) {
-			var transform = part.transform();
-			var rotation = transform.rotation();
-			var quaternion = new Quaternionf(rotation.x(), rotation.y(), rotation.z(), rotation.w());
-
-			if (quaternion.lengthSquared() == 0) {
-				quaternion.identity();
-			}
-
-			var angles = quaternion.normalize().getEulerAnglesXYZ(new Vector3f()).mul(DEGREES_PER_RADIAN);
-			add("parts." + part.id() + ".position", "position", ConfigValueType.NUMBER_FUNCTION3,
-					function(transform.translation()));
-			add("parts." + part.id() + ".rotation", "rotation", ConfigValueType.NUMBER_FUNCTION3,
-					new NumberFunction3(angles.x, angles.y, angles.z));
-			add("parts." + part.id() + ".scale", "scale", ConfigValueType.NUMBER_FUNCTION3,
-					function(transform.scale()));
+			transform("parts." + part.id(), part.transform());
+		}
+		for (var bone : definition.bones()) {
+			transform("bones." + bone.id(), bone.bind());
 		}
 
 		for (var morph : definition.morphs()) {
@@ -59,6 +55,18 @@ public class PhotonModelBindings {
 		slots.put(path, new RuntimeValue<>(() -> value));
 		bindings.put(path, new RuntimeBinding(path, "photon.lobecorp.model." + label, type,
 				object -> ((PhotonModelOutput) object).slot(path)));
+	}
+
+	private void transform(String prefix, Transform transform) {
+		var rotation = transform.rotation();
+		var quaternion = new Quaternionf(rotation.x(), rotation.y(), rotation.z(), rotation.w());
+		if (quaternion.lengthSquared() == 0) {
+			quaternion.identity();
+		}
+		var angles = quaternion.normalize().getEulerAnglesXYZ(new Vector3f()).mul(DEGREES_PER_RADIAN);
+		add(prefix + ".position", "position", ConfigValueType.NUMBER_FUNCTION3, function(transform.translation()));
+		add(prefix + ".rotation", "rotation", ConfigValueType.NUMBER_FUNCTION3, new NumberFunction3(angles.x, angles.y, angles.z));
+		add(prefix + ".scale", "scale", ConfigValueType.NUMBER_FUNCTION3, function(transform.scale()));
 	}
 
 	public @Nullable RuntimeValue<?> slot(String path) {
@@ -88,10 +96,18 @@ public class PhotonModelBindings {
 	}
 
 	public Map<String, PartOverride> partOverrides(PhotonModelOutput owner, float progress) {
+		return transformOverrides(owner, progress, "parts.", partIds);
+	}
+
+	public Map<String, PartOverride> boneOverrides(PhotonModelOutput owner, float progress) {
+		return transformOverrides(owner, progress, "bones.", boneIds);
+	}
+
+	private Map<String, PartOverride> transformOverrides(PhotonModelOutput owner, float progress, String kind, List<String> ids) {
 		var result = new LinkedHashMap<String, PartOverride>();
 
-		for (var part : definition.parts()) {
-			var prefix = "parts." + part.id() + ".";
+		for (var id : ids) {
+			var prefix = kind + id + ".";
 			var position = override(prefix + "position", owner, progress);
 			var rotation = override(prefix + "rotation", owner, progress);
 			var scale = override(prefix + "scale", owner, progress);
@@ -108,7 +124,7 @@ public class PhotonModelBindings {
 				quaternion = new Rotation(value.x, value.y, value.z, value.w);
 			}
 
-			result.put(part.id(), new PartOverride(position, quaternion, scale));
+			result.put(id, new PartOverride(position, quaternion, scale));
 		}
 
 		return Map.copyOf(result);

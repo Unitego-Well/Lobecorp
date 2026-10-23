@@ -20,7 +20,7 @@
 | 指挥家 | [指挥家](conductor.md) |
 | 客户端 UI | [客户端 UI](client-ui.md) |
 | 玩家 HUD、滤镜与护盾 | [ImaginaryCraft 迁移、配置及护盾重写](player-hud-shields.md) |
-| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md) |
+| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md)、[高级网格、光束衔接与G1续做](photon-mesh-beam-g1-20261023.md) |
 | 粒子与渲染 | [粒子与渲染](particle-rendering.md) |
 | 光影兼容研究 | [EXIT 适用性、当前版本与后续调用](shader-compatibility-exit.md) |
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |

@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-10-23：保存 Photon 网格、光束与 G1 未完成记录
+
+- 新增 photon-mesh-beam-g1-20261023.md，记录高级网格、编辑器、光束跟随／过渡及 G1 编写态隔离的业务 WIP、备份引用、已有检查和后续恢复顺序，并补充系统索引链接。
+- 明确保留资源 fixture 测试失败、CRLF 恢复受阻、原生 G1 与人工视觉／性能未验收边界；本次只保存额外文档，保留业务代码原有暂存和未暂存状态，不推送，不操控电脑，不新增构建、测试或 Data。
+
 ## 2026-10-23：清理闲置本地分支
 
 - 删除未被工作区占用的 codex/01a151d5e34b79839723df9ccbfc2df2、codex/entity-animation-lod、codex/minecraft-mcp-extraction-20261022、codex/minecraft-mcp-photon-20261022；删除前逐项保存到 refs/backups/branch-cleanup-20261023/ 下的原分支全名。两个 MCP 历史分支含独有提交，已完整保留在备份引用中，不作已合并结论。

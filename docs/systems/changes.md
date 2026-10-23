@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-23：修正迁移后的有效路径索引
+
+- 通过 IDEA 修正 horde MCP 中残留的旧 90be 根，保留 Minecraft 端口 19876；原始／photon 仍为 19878／19877。两个任务工作区使用原始已构建 Normify CLI，显式 workspace-root 和 cwd 指向各自目录，避免依赖不存在的本地 dist。
+- 更新 IDEA 工作区旧根、Gradle 模块及 TypeScript 目录，清除失效 MCP 源码模块／迁移运行入口，修正现有桥接与动画任务索引；保留全部业务改动、测试环境、原有暂存状态和历史备份。
+- 修改前备份在 .git/path-index-repair-20261023-0e1bb4ca。只做配置回读、解析和路径存在性核对；未构建、Data、启动游戏、重连 MCP 或改 Codex 内部数据库。全局 perPath 旧 90be 偏好已备份待确认；原有未跟踪隔离技能只局部修正示例路径，保留未跟踪状态。
+
+
 ## 2026-10-23：工作区迁移与 MC MCP 外部制品
 
 - 两个 Git 工作区迁移到 .workspace/lobecorp_photon、lobecorp_horde，旧路径为兼容 junction；完整备份、SHA256 清单、HEAD/index/status 记录保留。只结束经核对且获授权的占用工具与终端，未关闭聊天或 IDE 主程序；既有工具内存可能重置。

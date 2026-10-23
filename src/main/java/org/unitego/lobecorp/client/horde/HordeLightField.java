@@ -35,6 +35,9 @@ public class HordeLightField implements AutoCloseable {
 	private long frame;
 	private boolean mappingDirty = true;
 	private Set<Section> previous = Set.of();
+	private List<HordeClient.Block> cachedBlocks = List.of();
+	private List<Section> orderedSections = List.of();
+	private long preparedTick = Long.MIN_VALUE;
 
 	public void prepare(List<HordeClient.Batch> batches) {
 		var level = Minecraft.getInstance().level;
@@ -42,37 +45,33 @@ public class HordeLightField implements AutoCloseable {
 			return;
 		}
 		frame++;
-		var required = new HashSet<Section>();
-		for (var batch : batches) {
-			AABB bounds = batch.block().bounds();
-			int minY = Math.max((int) Math.floor(bounds.minY) >> 4, level.getLightEngine().getMinLightSection());
-			int maxY = Math.min((int) Math.floor(bounds.maxY) >> 4, level.getLightEngine().getMaxLightSection() - 1);
-			for (int x = (int) Math.floor(bounds.minX) >> 4; x <= (int) Math.floor(bounds.maxX) >> 4; x++) {
-				for (int z = (int) Math.floor(bounds.minZ) >> 4; z <= (int) Math.floor(bounds.maxZ) >> 4; z++) {
-					if (level.getChunkSource().getChunkNow(x, z) == null) {
-						continue;
-					}
-					for (int y = minY; y <= maxY; y++) {
-						required.add(new Section(x, y, z));
-					}
-				}
-			}
+		var blocks = batches.stream().map(HordeClient.Batch::block).distinct().toList();
+		boolean refresh = preparedTick != level.getGameTime() || !blocks.equals(cachedBlocks);
+		Set<Section> required = refresh ? requiredSections(blocks) : previous;
+		int maximumSlots = RenderSystem.getDevice().getMaxTextureSize() / TILE_HEIGHT * TILES_PER_ROW;
+		if (required.size() > maximumSlots) {
+			throw new IllegalArgumentException("群体单批光照区段超过设备纹理容量");
 		}
+		cachedBlocks = blocks;
+		preparedTick = level.getGameTime();
+		long additions = required.stream().filter(section -> !slots.containsKey(section)).count();
+		boolean needsSlots = slots.size() + additions > maximumSlots;
 		if (!required.equals(previous)) {
 			mappingDirty = true;
 			previous = Set.copyOf(required);
+			orderedSections = required.stream().sorted(Comparator.comparingInt(Section::x).thenComparingInt(Section::y)
+					.thenComparingInt(Section::z)).toList();
 		}
 		var iterator = slots.entrySet().iterator();
 		while (iterator.hasNext()) {
 			var entry = iterator.next();
-			if (!required.contains(entry.getKey()) && frame - entry.getValue().seen > 120) {
+			if (!required.contains(entry.getKey()) && (needsSlots || frame - entry.getValue().seen > 120)) {
 				free.add(entry.getValue().index);
 				iterator.remove();
 				mappingDirty = true;
 			}
 		}
-		var ordered = required.stream().sorted(Comparator.comparingInt(Section::x).thenComparingInt(Section::y)
-				.thenComparingInt(Section::z)).toList();
+		var ordered = orderedSections;
 		for (var section : ordered) {
 			var slot = slots.get(section);
 			if (slot == null) {
@@ -96,6 +95,30 @@ public class HordeLightField implements AutoCloseable {
 				slot.updated = level.getGameTime();
 			}
 		}
+	}
+
+	private Set<Section> requiredSections(List<HordeClient.Block> blocks) {
+		var level = Minecraft.getInstance().level;
+		var required = new HashSet<Section>();
+		if (level == null) {
+			return required;
+		}
+		for (var block : blocks) {
+			AABB bounds = block.bounds();
+			int minY = Math.max((int) Math.floor(bounds.minY) >> 4, level.getLightEngine().getMinLightSection());
+			int maxY = Math.min((int) Math.floor(bounds.maxY) >> 4, level.getLightEngine().getMaxLightSection() - 1);
+			for (int x = (int) Math.floor(bounds.minX) >> 4; x <= (int) Math.floor(bounds.maxX) >> 4; x++) {
+				for (int z = (int) Math.floor(bounds.minZ) >> 4; z <= (int) Math.floor(bounds.maxZ) >> 4; z++) {
+					if (level.getChunkSource().getChunkNow(x, z) == null) {
+						continue;
+					}
+					for (int y = minY; y <= maxY; y++) {
+						required.add(new Section(x, y, z));
+					}
+				}
+			}
+		}
+		return required;
 	}
 
 	private void updateSection(Section section, Slot slot, LayerLightEventListener block, LayerLightEventListener sky) {
@@ -149,7 +172,8 @@ public class HordeLightField implements AutoCloseable {
 		if (atlas != null && count <= capacity) {
 			return;
 		}
-		int size = Integer.highestOneBit(Math.max(1, count - 1)) << 1;
+		int maximumSlots = RenderSystem.getDevice().getMaxTextureSize() / TILE_HEIGHT * TILES_PER_ROW;
+		int size = Math.min(maximumSlots, Integer.highestOneBit(Math.max(1, count - 1)) << 1);
 		int height = Math.ceilDiv(size, TILES_PER_ROW) * TILE_HEIGHT;
 		if (height > RenderSystem.getDevice().getMaxTextureSize()) {
 			throw new IllegalArgumentException("群体光照区段超过设备纹理容量");
@@ -228,6 +252,9 @@ public class HordeLightField implements AutoCloseable {
 		slots.clear();
 		free.clear();
 		previous = Set.of();
+		cachedBlocks = List.of();
+		orderedSections = List.of();
+		preparedTick = Long.MIN_VALUE;
 		nextSlot = 0;
 		capacity = 0;
 		mappingDirty = true;

@@ -5,7 +5,7 @@
 - 两个 Git 工作区迁移到 .workspace/lobecorp_photon、lobecorp_horde，旧路径为兼容 junction；完整备份、SHA256 清单、HEAD/index/status 记录保留。只结束经核对且获授权的占用工具与终端，未关闭聊天或 IDE 主程序；既有工具内存可能重置。
 - 外部 Minecraft MCP 仓库 53084e2 经 IDEA 构建 JAR、Jar-in-Jar WebSocket 与无需 node_modules 的桥接制品，原始 lib 跟踪制品与源码提交/SHA256 清单。删除本地 modules 源码和 Gradle 子项目，普通 Client 通过独立运行类路径加载，发布、Data、Server 和 BenchMod 排除 MCP。
 - 调整 MCP 配置、桥接诊断任务、集成测试路径及现有 Client MCP Controls 的源码目录覆盖，保留各工作区端口、运行目录与业务 WIP。源码和缓存备份在 .git/mcp-externalization/20261023；规范见 minecraft-mcp-artifacts.md、workspace-layout.md。
-- 外部 IDEA 完整构建成功；原始 Gradle 导入、编译、客户端参数准备和真实 stdio 70 项工具元数据发现通过，Data 成功且 23 文件 written0/removed0。原始完整 build 在 Photon 测试寻找缺失 fxpacks 目录时失败，另有既有 reserveBuildIdentity 配置缓存问题，未扩大修改；两个任务工作区的完整构建按用户授权执行并单独记录。尚未启动游戏，不声称四类操控或鼠标运行验收完成。
+- 外部 IDEA 完整构建成功；原始 Gradle 导入、编译、客户端参数准备和真实 stdio 70 项工具元数据发现通过，Data 成功且 23 文件 written0/removed0。原始完整 build 在 Photon 测试寻找缺失 fxpacks 目录时失败，另有既有 reserveBuildIdentity 配置缓存问题，未扩大修改；两个任务工作区完整 build 均已执行并在 test 阶段失败，编译及 assemble 完成；其余业务问题按用户要求不继续处理，四个项目 Gradle 同步均成功。尚未启动游戏，不声称四类操控或鼠标运行验收完成。
 
 
 ## 2026-10-22：恢复原始 Photon 编辑器设计

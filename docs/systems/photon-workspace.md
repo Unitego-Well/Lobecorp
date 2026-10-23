@@ -1,6 +1,6 @@
 # Photon 当前能力与恢复入口
 
-核对日期：2026-10-23。适用真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。本页基于当前工作文件、IDEA 文件读取及现有检查记录；用户尚未提交的业务代码也在核对范围内，不代表提交树已具备全部能力。
+核对日期：2026-10-23。适用真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。本页基于当前工作文件、IDEA 文件读取及现有检查记录；已确认的网格／编辑器／光束续做源码与文档已纳入本地提交 330d297a，尚未推送。配置及两份资源验收测试的既有修改继续保留，提交不代表构建、游戏或完整能力验收通过。
 
 ## 职责与工具边界
 

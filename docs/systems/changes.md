@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-10-23：清理闲置本地分支
+
+- 删除未被工作区占用的 codex/01a151d5e34b79839723df9ccbfc2df2、codex/entity-animation-lod、codex/minecraft-mcp-extraction-20261022、codex/minecraft-mcp-photon-20261022；删除前逐项保存到 refs/backups/branch-cleanup-20261023/ 下的原分支全名。两个 MCP 历史分支含独有提交，已完整保留在备份引用中，不作已合并结论。
+- 保留 main、dev、codex/photon-performance，未改工作区、兼容链接、远程分支、业务文件或既有暂存。恢复方式：git branch <原分支名> refs/backups/branch-cleanup-20261023/<原分支名>。仅执行Git状态／祖先关系／工作区占用检查，未构建、测试或运行游戏。
+
 ## 2026-10-23：工作区迁移与 MC MCP 外部制品
 
 - 两个 Git 工作区迁移到 .workspace/lobecorp_photon、lobecorp_horde，旧路径为兼容 junction；完整备份、SHA256 清单、HEAD/index/status 记录保留。只结束经核对且获授权的占用工具与终端，未关闭聊天或 IDE 主程序；既有工具内存可能重置。

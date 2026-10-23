@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "repository": "E:/xm/mc/mod/Unitego-Well/minecraft-mcp",
-  "commit": "aa8289a485cfaf2b90eca073f2ce1eb719328b6c",
-  "sourceDirectory": "modules/minecraft-mcp",
-  "integration": "vendored-source",
-  "runtimeIsolation": "Each checkout owns its build, node_modules, dist, run and fixed MCP port.",
-  "updatePolicy": "Merge committed source changes through IDEA; preserve local changes and stop on conflicts. Never share runtime outputs."
-}

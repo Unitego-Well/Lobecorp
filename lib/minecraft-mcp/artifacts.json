@@ -1,0 +1,94 @@
+{
+  "repository": "E:/xm/mc/mod/Unitego-Well/minecraft-mcp",
+  "commit": "53084e20743d7dcdb158ee431286147070119f84",
+  "version": "0.3.0",
+  "minecraft": "26.1.2",
+  "neoforge": "26.1.2.100",
+  "java": 25,
+  "artifacts": [
+    {
+      "path": "lib/minecraft-mcp-0.3.0.jar",
+      "sha256": "98527e6833322a6d99d6e06593ac7b706d51ee0299b8b5d3da73860d9b9575f3"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/LICENSE-APACHE",
+      "sha256": "6d1d968fb225eca367cb7f0b8831ab012a35d92b547e945e17ef8e7b05c3e5cc"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/LICENSE-MIT",
+      "sha256": "ae15d5fe05adeabea2c91a3f5beb09015485c59168ea9bc58acf98dc8c0d7c0b"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/package.json",
+      "sha256": "91ac4a79f7b6ef0f1e380beb1fe319784811edd1c001da2bbade8c8f76e9fb09"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-2N3LQOVT.js",
+      "sha256": "9b1c6a9d683a513ca0d721cb530797fdc8a26808182f11b2980d97e2530c7e73"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-4DNIJZ7D.js",
+      "sha256": "ed33a3c3a7b88798bf2c388607a565bd92f641d07566b3eddb01ef5252ed0fce"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-GFHVXK2C.js",
+      "sha256": "2d727542a87aa7c5dbd91d9b6563cce5ab8f0e9c9ebebb71e7b004fee93bbd03"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-HRWYZQKF.js",
+      "sha256": "1b8982aa3608a01fde7588cc5808a3aa30d8ad56121f16504ecffa46aa4f09e8"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-TPCBWG4X.js",
+      "sha256": "f9714e65788905556bddd8865ed3e9c6028495b8ebe3467c3115d8a2f40d9f38"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/chunk-V6WRGNQD.js",
+      "sha256": "f430eabc2b8e1918e989d3a41b14596d60422a35a6e5ec2ef660a278ec5013fc"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/cli.js",
+      "sha256": "9cf8605361a6f4ccee1759f5b8d8ebd940c072d2522897bce29ca832ad8e54ac"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/consts-SUU5BEZB.js",
+      "sha256": "55fa19b0460e8198250e7d691f3dc8fa323d5447859b8e88f7f22c606fe9084f"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/index.js",
+      "sha256": "3978256a1d8461ece907f3e1be608bbdb3b13192ca7d84a4a677d39699344716"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/scanner-5QQNCZUK.js",
+      "sha256": "b6f204ba879db53762711bde00ea66e49539ca3298df830e7b0c5dd24033480c"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/server-A4GIZH75.js",
+      "sha256": "096208ef97d47e8b138d4ac7dd610b2441c6aacd5393bea95328a2fa7e1dd7ff"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/server-CT5BA47F.js",
+      "sha256": "f4b1f10e10da4a93d993ac18dd1b3bc2ef2a8227f36c5922c886a6ed86afefae"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/dist/settings-XMEUDZWR.js",
+      "sha256": "b1694ef06e075d0b13064e14c77686dd975c62b5a68f4ea504f4188710ad629f"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/scripts/check-effect-tools.mjs",
+      "sha256": "9d259f4bb5d78351aec0a66445f1d6c1a14a31c1abb75b62eb8dd3ace788f4e8"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/scripts/check-resource-round-trips.mjs",
+      "sha256": "5f16c050eaec7237284fde35df23b2ba094572c8a4ac02fac00b01da5ad9d468"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/scripts/create-reference-effects.mjs",
+      "sha256": "10c8b5a4ee344bec1ee10b0daae1b78f0f6c55ebdb2da9b02a240b4b2134e69b"
+    },
+    {
+      "path": "lib/minecraft-mcp/bridge/scripts/report-resource-acceptance.mjs",
+      "sha256": "9a468d83ba9407c5ab83afb166b2b5721c8321b6a5dcefda9917b0b67ac548a0"
+    }
+  ]
+}

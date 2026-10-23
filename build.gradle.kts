@@ -2,7 +2,6 @@
 
 import com.zhongbai233.bench.gradle.VerifyBenchReportTask
 import org.gradle.api.plugins.ExtensionAware
-import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.gradle.ext.Gradle
 import org.jetbrains.gradle.ext.IdeaExtPlugin
 import org.jetbrains.gradle.ext.ProjectSettings
@@ -24,9 +23,19 @@ tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-val minecraftMcpProject = project(":minecraft-mcp")
-evaluationDependsOn(minecraftMcpProject.path)
-val minecraftMcpSources = minecraftMcpProject.extensions.getByType<SourceSetContainer>().named("main").get()
+val minecraftMcpJar = files("lib/minecraft-mcp-0.3.0.jar")
+val minecraftMcpBridge = layout.projectDirectory.dir("lib/minecraft-mcp/bridge")
+val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT").orElse(
+    providers.fileContents(layout.projectDirectory.file(".codex/config.toml")).asText.map { config ->
+        Regex("""(?m)^MC_MCP_PORT\s*=\s*"(\d+)"""").find(config)?.groupValues?.get(1)
+            ?: error("Configure an explicit workspace MC_MCP_PORT")
+    }
+)
+
+val minecraftMcpClient = sourceSets.create("mcpClient") {
+    compileClasspath += sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().runtimeClasspath + minecraftMcpJar
+}
 
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
@@ -121,12 +130,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly(project(":minecraft-mcp"))
-    listOf("implementation", "runtimeOnly").forEach { configuration ->
-        minecraftMcpProject.configurations[configuration].allDependencies.forEach { dependency ->
-            runtimeOnly(dependency.copy())
-        }
-    }
+    compileOnly(minecraftMcpJar)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -150,7 +154,7 @@ dependencies {
     implementation(libs.particlestorm)
     // lib/ 下的本地 jar (Photon) 打包进模组并加入开发类路径
 //    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
-    implementation(fileTree("lib") { include("*.jar") })
+    implementation(fileTree("lib") { include("*.jar"); exclude("minecraft-mcp-*.jar") })
 
     internalTestMods(libs.anvilcraftlib)
     internalTestMods(libs.geckolib)
@@ -162,7 +166,7 @@ dependencies {
     internalTestMods(libs.kilagraph)
     internalTestMods(libs.photon)
     internalTestMods(libs.particlestorm)
-    internalTestMods(fileTree("lib") { include("*.jar") })
+    internalTestMods(fileTree("lib") { include("*.jar"); exclude("minecraft-mcp-*.jar") })
 }
 
 base {
@@ -229,15 +233,13 @@ neoForge {
         register(modId) {
             sourceSet(sourceSets.main.get())
         }
-        register("mcpmod") {
-            sourceSet(minecraftMcpSources)
-        }
     }
     runs.configureEach {
         loadedMods.set(listOf(mods[modId]))
     }
     runs.named("client") {
-        loadedMods.set(listOf(mods[modId], mods["mcpmod"]))
+        sourceSet.set(minecraftMcpClient)
+        systemProperty("mcp.port", minecraftMcpGamePort.get())
     }
 }
 
@@ -343,9 +345,41 @@ Install Minecraft $minecraftVersion with NeoForge $neoforgeVersion, then copy ev
     }
 }
 
+val minecraftMcpPort = minecraftMcpGamePort
+
+tasks.register<Exec>("checkMinecraftMcpBridge") {
+    group = "minecraft mcp"
+    workingDir(minecraftMcpBridge)
+    commandLine("node", "dist/cli.js", "--help")
+}
+listOf(
+    "probeBridge" to emptyList(),
+    "probeEffectRuntime" to listOf("--runtime"),
+    "probeEffectAuthoring" to listOf("--authoring"),
+    "probeEffectAnimation" to listOf("--animation"),
+    "inspectReferenceEffects" to listOf("inspect"),
+    "createReferenceEffects" to listOf("apply"),
+    "saveReferenceEffects" to listOf("save"),
+).forEach { (taskName, arguments) ->
+    tasks.register<Exec>(taskName) {
+        group = "minecraft mcp"
+        workingDir(minecraftMcpBridge)
+        val script =
+            if (taskName.endsWith("ReferenceEffects")) "create-reference-effects.mjs" else "check-effect-tools.mjs"
+        commandLine(listOf("node", "scripts/$script") + arguments)
+        environment("MC_MCP_PORT", minecraftMcpPort.get())
+    }
+}
+
 plugins.withType<IdeaExtPlugin> {
-    val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
+
+val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
     val runConfigurations = (projectSettings as ExtensionAware).extensions.getByType<RunConfigurationContainer>()
+    runConfigurations.create("Workspace Build", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf("build")
+    }
+
     listOf(
         "BenchMod Compile" to listOf("compileBenchJava", "verifyProductionJarHasNoBenchContent"),
         "BenchMod Server" to listOf("verifyBenchServer"),
@@ -358,29 +392,25 @@ plugins.withType<IdeaExtPlugin> {
     }
     runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
-        taskNames = listOf(":minecraft-mcp:checkBridge", ":minecraft-mcp:buildBridge", ":minecraft-mcp:probeBridge")
+        taskNames = listOf("checkMinecraftMcpBridge", "probeBridge")
     }
     runConfigurations.create("Minecraft MCP Effect Runtime", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
-        taskNames = listOf(":minecraft-mcp:probeEffectRuntime")
+        taskNames = listOf("probeEffectRuntime")
     }
     runConfigurations.create("Minecraft MCP Effect Authoring", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
-        taskNames = listOf(":minecraft-mcp:probeEffectAuthoring")
+        taskNames = listOf("probeEffectAuthoring")
     }
     listOf(
-        "Minecraft MCP Reference Inspect" to ":minecraft-mcp:inspectReferenceEffects",
-        "Minecraft MCP Reference Create" to ":minecraft-mcp:createReferenceEffects",
-        "Minecraft MCP Reference Save" to ":minecraft-mcp:saveReferenceEffects",
+        "Minecraft MCP Reference Inspect" to "inspectReferenceEffects",
+        "Minecraft MCP Reference Create" to "createReferenceEffects",
+        "Minecraft MCP Reference Save" to "saveReferenceEffects",
     ).forEach { (name, task) ->
         runConfigurations.create(name, Gradle::class.java).apply {
             projectPath = rootDir.absolutePath
             taskNames = listOf(task)
         }
-    }
-    runConfigurations.create("Minecraft MCP Import Assets", Gradle::class.java).apply {
-        projectPath = rootDir.absolutePath
-        taskNames = listOf(":minecraft-mcp:importIcons")
     }
 }
 

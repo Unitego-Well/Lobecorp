@@ -1,5 +1,7 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+> 当前维护入口为 [Photon 工作区](photon-workspace.md) 与 [版本目录](../../gradle/libs.versions.toml)。本页保留依赖升级时的调用核对，旧 Geo 桥接路径缺失不表示当前源码有同名类；后续运行仍须单独验收。
+
 核对日期：2026-10-10。本页记录 Minecraft 26.1.2／NeoForge
 分支的发布证据、更新范围、项目依赖声明与适配检查。功能职责见 [Photon 编辑器](photon-editor.md)、[模型特效](photon-model-effects.md)、[命名动画](photon-named-animations.md)
 和[修复对照](photon-ldlib2-fixes.md)。
@@ -115,7 +117,7 @@ API、Mixin 目标及行为。
 `CLIENT` 表示本项目在客户端要求该依赖；不等于该库本身只能安装客户端，也不覆盖该库自己的依赖声明。`BOTH`
 表示该声明在客户端和专用服务器都生效。本轮不顺便收窄既有 Curios／ParticleStorm 条目的发行侧。
 
-审计源码入口包括 [ClientRuntimeEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)、[ConductorHud](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorHud.java)、[PhotonGeoEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java)
+审计源码入口包括 [ClientRuntimeEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)、[ConductorHud](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorHud.java)、PhotonGeoEffects（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`，本工作区不存在）
 和 [Mixin 配置](../../src/main/resources/META-INF/lobecorp.mixins.json)。第三方 Mixin 位于 client 数组；没有
 IMixinConfigPlugin 或 ModList 条件门控，不能当作可选集成。
 

@@ -1,5 +1,7 @@
 # Photon 性能检测工具
 
+> 2026-10-23：当前保留通用检测入口与采集框架，后续模型／命名／子特效源码已重写接线；本页旧专用计数、缓存／池和旧回归成绩仍属历史，不能当作新实现性能证据。最新源码改动及尚无冷热／P99／视觉验收的边界见 [最新 WIP](photon-mesh-beam-g1-20261023.md)。本轮未执行采集。
+
 > 2026-10-19 当前状态：通用采集、CPU/GPU 面板、区间后台分析、命令/MCP 保留；自建模型/动画钩子和专用回归夹具随核心移除。旧模型统计、缓存和池接口不再代表当前能力。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
 2026-10-19 更新：现有实现已做本地 Git 备份，用户要求重新设计并重写且兼容当前文件。此页为旧实现与历史证据；后续交付按[重写需求与兼容契约](photon-rewrite-requirements.md)验收，重写尚未开始。
@@ -161,7 +163,7 @@ GPU 查询只读 available，不等待、不 glFinish、不结束其他组件的
 
 两份 Java 的局部编译成功。Context 错误诊断为空；Workspace 一次检查 timedOut=true/errors=[]，不计为整文件诊断通过。修改前 IDEA 文本快照在 `backups/photon-performance-tool-20261019/unchanged-seek`。
 
-多线程候选、快照/版本、有界队列、线程归属与异步验收已加入[计划第 18 节](photon-detailed-performance-plan.md#18-多线程优化专项用户补充)，尚未新增特效计算池或宣称多核收益。
+多线程候选、快照/版本、有界队列、线程归属与异步验收已加入计划第 18 节（历史路径 `photon-detailed-performance-plan.md#18-多线程优化专项用户补充`，本工作区不存在），尚未新增特效计算池或宣称多核收益。
 
 ## GPU 分段接入状态
 
@@ -189,7 +191,7 @@ gpu.jsonl 的额外记录带 record_type=sample/aggregate。aggregate 独立保�
 
 ## GUI 独立渲染候选
 
-按用户补充，已在[计划第 19 节](photon-detailed-performance-plan.md#19-gui-独立线程渲染专项用户补充)记录 GUI 数据准备并行、帧缓冲/离屏与真正独立 renderer 三层方案，以及输入、资源、上下文、最终呈现与等价性验收。当前 LDLib2 独立窗口仍在 RenderFrameEvent.Post 中由同一渲染线程顺序驱动、并借用游戏渲染 scratch；这不是已经存在的 GUI 独立渲染线程。现已增加上述冻结性能数据的后台区间分析；它没有迁移 GUI 的实际绘制，也不构成独立 renderer 收益证明。
+按用户补充，已在计划第 19 节（历史路径 `photon-detailed-performance-plan.md#19-gui-独立线程渲染专项用户补充`，本工作区不存在）记录 GUI 数据准备并行、帧缓冲/离屏与真正独立 renderer 三层方案，以及输入、资源、上下文、最终呈现与等价性验收。当前 LDLib2 独立窗口仍在 RenderFrameEvent.Post 中由同一渲染线程顺序驱动、并借用游戏渲染 scratch；这不是已经存在的 GUI 独立渲染线程。现已增加上述冻结性能数据的后台区间分析；它没有迁移 GUI 的实际绘制，也不构成独立 renderer 收益证明。
 
 ## 调试环境记录
 
@@ -206,4 +208,4 @@ GPU 分段与原生并行样本均已在 JVM 结束前完成导出。之后两�
 - 尚待：容量耗尽后的归属治理；连续物理时间轴拖动与实际编辑/录制链；帧图/区间在真实特效负载下的交互与开销、编辑器 Dialog 关闭生命周期；动画混合/所有权细分与汇总回归调用问题；GPU 页在实际复杂特效中的使用及共享贡献者展示；资源指纹、随机种子与工具开销；完全冷启动/间歇/重复对照；首项优化的交错重复、动态资格与服务端验收；激光和时间轴进一步关键优化及复测。
 - 修改前已有用户内容的 IDEA 文本快照见 `backups/photon-performance-tool-20261019`；不是字节级备份。没有手动暂存或提交。
 
-总实施要求见[逐对象检测与关键优化计划](photon-detailed-performance-plan.md)，历史基线见[性能记录](photon-performance.md)。
+总实施要求见逐对象检测与关键优化计划（历史路径 `photon-detailed-performance-plan.md`，本工作区不存在），历史基线见性能记录（历史路径 `photon-performance.md`，本工作区不存在）。

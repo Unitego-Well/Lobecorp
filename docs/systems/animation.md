@@ -114,7 +114,7 @@ GeckoLib 触发接口；运行回调会在服务端及同步客户端执行。�
 - [LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcDataTickets.java)提供渲染状态数据；模型读取对应
   ticket，而不是自行复制一套实体业务状态。
 - GeckoLib 动画切换与定位器 Mixin 对 Photon
-  效果及锚点有集成；关联入口为 [PhotonGeoEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java)
+  效果及锚点有集成；关联入口为 PhotonGeoEffects（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`，本工作区不存在）
   。切换、停止、取消和实体移除时必须核对效果是否清理，不假定动画结束一定清理所有独立粒子。
 
 持续事实优先使用既有同步状态；瞬时触发复用既有生命周期与事件入口。新增网络同步前先检查已有能力，避免同一表现被状态、实体事件与自定义载荷重复驱动。

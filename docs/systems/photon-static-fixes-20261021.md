@@ -1,5 +1,7 @@
 # Photon 静态审查修复与完整轨道接线
 
+> 2026-10-23 当前真实根为 E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon，分支为 codex/photon；以下 7903、codex/photon-performance、基线与运行 PID 均为历史身份。当前工具显式使用真实根，最新恢复入口见 [网格、光束与 G1](photon-mesh-beam-g1-20261023.md)，不沿用本页旧进程或旧产物执行新验收。
+
 日期：2026-10-21。独立工作区：`7903/Lobecorp`；分支：`codex/photon-performance`；基线：`2559a01`。
 
 ## 授权与备份

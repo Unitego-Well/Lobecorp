@@ -9,10 +9,12 @@ GUI、玩家、实体与方块的 direct / simulate 接口见[操控契约](mine
 
 ## 当前结构与入口
 
+Photon 工作区的当前根、端口 19877、lib 消费方式与会话边界见 [本工作区接入](minecraft-mcp-workspace.md)；其他工作区端口、旧工具数量、旧源码子项目、历史 D: 调试路径及全局路径迁移不作为本聊天操作目标。当前接口按 [Photon API](photon-effect-mcp-api.md) 与实际会话能力核对。
+
 2026-10-23 当前入口以[外部制品消费说明](minecraft-mcp-artifacts.md)为准；以下源码子项目路径与构建入口属于历史记录。消费者只从 lib 使用发布的 JAR 和桥接制品，不再保留 modules 源码。
 
 - 项目客户端使用 Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java `25`，通过 IDEA 的 `Debug` 配置启动。
-- Minecraft MCP 由独立仓库 `E:/xm/mc/mod/Unitego-Well/minecraft-mcp` 维护；本工作区的 [`modules/minecraft-mcp`](../../modules/minecraft-mcp/README.md) 为[锁定版本](../../modules/minecraft-mcp.lock.json)的本地源码快照，详见[工作区接入](minecraft-mcp-workspace.md)，Gradle 子项目为 `:minecraft-mcp`；仅 Client 加载其源码，Data／Server 不加载 MCP Mod。Lobecorp 对它使用 `compileOnly`，正式 Lobecorp JAR 不内嵌 MCP 模组。
+- Minecraft MCP 由独立仓库 `E:/xm/mc/mod/Unitego-Well/minecraft-mcp` 维护；本工作区的 `modules/minecraft-mcp`（历史路径 `../../modules/minecraft-mcp/README.md`，本工作区不存在） 为锁定版本（历史路径 `../../modules/minecraft-mcp.lock.json`，本工作区不存在）的本地源码快照，详见[工作区接入](minecraft-mcp-workspace.md)，Gradle 子项目为 `:minecraft-mcp`；仅 Client 加载其源码，Data／Server 不加载 MCP Mod。Lobecorp 对它使用 `compileOnly`，正式 Lobecorp JAR 不内嵌 MCP 模组。
 - 原 `run/client/.mcp-repair-build/` 保持原状，导入其 common、当前 NeoForge 模组、bridge 与四份本地源码修复。旧 JAR 已通过 IDEA 移至 `run/client/mcp-backups/2026-10-13-source-subproject/`，避免与源码重复加载；备份中的 JAR 元数据可读。
 - bridge 保留原有 46 项工具；原 8 项 `effect_*` 之外补入 7 项工程打开、资源与视角入口，当前共 61 项工具。本轮 IDEA 编译、Data 与 bridge 构建成功，真实 stdio 发现确认 61 项；新增能力尚未游戏验收，详见修改记录。原截图工具同时扩展原生 GPU 读回及工程区域裁剪。接口与限制见 [Photon 特效 MCP](photon-effect-mcp.md)。已连接的旧 bridge 需重新连接才加载新入口；工具存在不表示游戏场景均已验收。
 
@@ -62,7 +64,7 @@ PNG 像素、窗口尺寸和 GUI 缩放坐标是不同量。当前版本的定�
 
 ## 2026-10-15 命令执行适配
 
-已修复 [PlayerWorldHelper.sendCommand](../../modules/minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/PlayerWorldHelper.java) 在当前 26.1.2 客户端找不到命令方法的问题。原实现只尝试玩家的 `connection()` 方法、大小写不符的 `Connection` 字段及旧单机执行入口；当前玩家公开字段为 `connection`，Minecraft 已提供 `getConnection()`。
+已修复 PlayerWorldHelper.sendCommand（历史路径 `../../modules/minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/PlayerWorldHelper.java`，本工作区不存在） 在当前 26.1.2 客户端找不到命令方法的问题。原实现只尝试玩家的 `connection()` 方法、大小写不符的 `Connection` 字段及旧单机执行入口；当前玩家公开字段为 `connection`，Minecraft 已提供 `getConnection()`。
 
 当前路径优先从 Minecraft 取得连接并调用原生 `sendCommand`。NeoForge 在此先处理 `sparkc` 等客户端命令，未处理时再按玩家身份与当前签名协议提交服务端；原生调用已提交或抛错时不会继续重发。其他既有反射代码未清理，没有新增旧版本兼容格式或适配分支。
 

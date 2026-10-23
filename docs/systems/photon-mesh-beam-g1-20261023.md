@@ -12,9 +12,9 @@
 
 ## 工作区与备份
 
-当前真实路径：`E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`；兼容 junction：`C:/Users/wang_/.codex/worktrees/7903/Lobecorp`。IDEA 工具仍通过兼容路径路由，不得删除该链接或清理此工作区。
+当前真实路径：`E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`；兼容 junction：`C:/Users/wang_/.codex/worktrees/7903/Lobecorp`。本聊天的 IDEA／MCP／Git 工具显式使用上述真实根；兼容链接仅保留给旧入口，不得删除该链接或清理此工作区。
 
-分支：`codex/photon-performance`。记录时 HEAD：`ca4fd9203bfd18c491044f9abc369923f06fc960`。
+当前分支：`codex/photon`。本页初次记录时分支为 `codex/photon-performance`，HEAD 为 `ca4fd9203bfd18c491044f9abc369923f06fc960`；保留为历史备份身份，不作为当前分支定位。文档审计前 HEAD 为 `ef201e857ed7b9567f922c3fbf565ebcaccbf181`；当前导航与未验收边界见 [Photon 工作区](photon-workspace.md)。
 
 | 备份引用 | 对象 | 用途 |
 | --- | --- | --- |

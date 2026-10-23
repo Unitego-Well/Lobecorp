@@ -1,6 +1,8 @@
 # 系统文档索引
 
-整理日期：2026-10-15。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
+本工作区负责 **Photon／特效**，真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。先读 [当前能力与恢复入口](photon-workspace.md)、[文档审计与缺失资料](photon-document-audit-20261023.md) 和 [MCP API](photon-effect-mcp-api.md)，再按下表选择专题。其余系统作为共同基础保留，不表示在本工作区重新验收；旧资料缺失时只保留明确的历史路径。
+
+共同索引整理日期：2026-10-15；Photon 导航核对日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
 ## 功能与入口
 
@@ -22,7 +24,7 @@
 | 玩家 HUD、滤镜与护盾 | [ImaginaryCraft 迁移、配置及护盾重写](player-hud-shields.md) |
 | Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md)、[高级网格、光束衔接与G1续做](photon-mesh-beam-g1-20261023.md) |
 | 粒子与渲染 | [粒子与渲染](particle-rendering.md) |
-| 光影兼容研究 | [EXIT 适用性、当前版本与后续调用](shader-compatibility-exit.md) |
+| 光影兼容研究 | EXIT 适用性、当前版本与后续调用（历史路径 `shader-compatibility-exit.md`，本工作区不存在） |
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |
 | 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
@@ -30,7 +32,7 @@
 | 特效重设计实施 | [模型输出、命名制作事务、工程测试验收与G1未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
 | G1全量资源验收 | [501条来源、逐文件往返、独立包运行与问题台账](photon-resource-acceptance-20261021.md) |
 | G1代码阶段 | [全部代码优先的编写范围、API/MCP和未验证边界](photon-g1-code-stage-20261021.md) |
-| 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、[优化、基线与采样](photon-performance.md)、[世界前后稳定性对比](photon-world-performance-comparison.md)、[逐对象检测与关键优化计划](photon-detailed-performance-plan.md) |
+| 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、优化、基线与采样（历史路径 `photon-performance.md`，本工作区不存在）、世界前后稳定性对比（历史路径 `photon-world-performance-comparison.md`，本工作区不存在）、逐对象检测与关键优化计划（历史路径 `photon-detailed-performance-plan.md`，本工作区不存在） |
 | 世界文本粒子 | [文本粒子](text-particles.md) |
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |
 | Photon／LDLib2 修复 | [修复对照](photon-ldlib2-fixes.md) |
@@ -41,10 +43,10 @@
 | 事件 | [事件入口](events.md) |
 | 网络 | [网络协议](network.md) |
 | 资源与生成 | [资源与数据生成](resources-datagen.md) |
-| 激光模板资产 | [星束模板与资源](queen-star-beam.md) |
-| 光球 | [独立启动、结束与爆发](light-ball.md) |
-| 激光 | [工程、变量与资源](queen-arcana-beam.md) |
-| 激光法术 | [组合时序与对象索引](laser-spell.md) |
+| 激光模板资产 | 星束模板与资源（历史路径 `queen-star-beam.md`，本工作区不存在） |
+| 光球 | 独立启动、结束与爆发（历史路径 `light-ball.md`，本工作区不存在） |
+| 激光 | 工程、变量与资源（历史路径 `queen-arcana-beam.md`，本工作区不存在） |
+| 激光法术 | 组合时序与对象索引（历史路径 `laser-spell.md`，本工作区不存在） |
 | 女皇技能特效与瞬时星束 | [代码动画阶段、中心起点与精简星束](queen-beam-skill-effects.md) |
 | BenchMod 基准测试 | [工具链、清道夫 AI 与客户端渲染场景](benchmod.md) |
 | 工作区共同地基 | [dev 提交自动同步、保护与暂停恢复](workspace-sync.md) |
@@ -52,7 +54,7 @@
 | Minecraft MCP 外部制品 | [外部构建、lib、Git 分发与端口隔离](minecraft-mcp-artifacts.md) |
 | Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
-| 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |
+| 特效经验 | 制作经验与维护规范（历史路径 `effect-authoring-lessons.md`，本工作区不存在） |
 | AI 特效制作 | [制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |
 | 修改记录 | [修改记录](changes.md) |
 

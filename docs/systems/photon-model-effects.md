@@ -1,5 +1,7 @@
 # Photon 模型特效
 
+> 2026-10-23：当前模型由 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)、[PhotonModelProject](../../src/main/java/org/unitego/lobecorp/client/photon/model/project/PhotonModelProject.java) 与原生工作区接线，高级网格／材质／骨骼采样为未完整验收的 WIP，见 [当前能力](photon-workspace.md#当前能力与源码入口)。下文旧后端、测试路径、模型 LOD 与性能数字属于历史；不能据此调用已删除类。当前测试源码在 src/test/java 的 util/photon/model、util/photon/model/editor 和 client/photon/model，历史通过数不沿用。G1 未通过。
+
 > 2026-10-19 当前状态：本文描述的自建模型特效实现与专用界面已移除，模型资源文件保留；含缺失类型的工程暂时拒绝加载/覆盖。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
 ## 独立回归测试入口
@@ -10,7 +12,7 @@
 
 ## 运行缓存与采样开销（2026-10-15）
 
-2026-10-16 进一步复用运行绘制的 UV／索引／材质拓扑，姿态几何保持独占；按部件引用顶点采样并共享适用的法线矩阵。材质缓存命中不再构造比较列表。实现、语义回归和实际性能状态见[性能记录](photon-performance.md)，下面保留此前检查的时间与范围。
+2026-10-16 进一步复用运行绘制的 UV／索引／材质拓扑，姿态几何保持独占；按部件引用顶点采样并共享适用的法线矩阵。材质缓存命中不再构造比较列表。实现、语义回归和实际性能状态见性能记录（历史路径 `photon-performance.md`，本工作区不存在），下面保留此前检查的时间与范围。
 
 模型 JSON 仍经严格协议和资产校验，`PhotonModelIOUtil` 以完整来源文本为键缓存纯数据副本；读取与写入调用方的资产不会直接成为缓存对象。LRU 同时限制 32 个条目和 4 Mi 字符来源预算，超大单份资产不进入缓存，失败输入不缓存；内容改变自然使用新键。缓存不持有世界、GPU 管线或播放实例，不为兼容添加旧格式分支。
 
@@ -26,7 +28,7 @@
 
 同一严格 JSON 的准备拓扑、纹理列表与材质 NBT 归现有 32 条／4 Mi 字符 LRU 共同管理，不另建无限缓存。准备定义没有可变资产出口，编辑读取和材质依赖均返回副本。复制配置遇到完全相同的材质依赖时跳过资产重写；原生资源包改写依赖时必须继续应用，不能用缓存覆盖新路径。失败来源仍允许上一份有效模型参与采样。
 
-无内部几何动画的模型可以跨时间复用姿态，颜色、世界变换和片段透明度仍实时读取；有几何轨道或动态覆盖时继续求值。新增 [PhotonModelCullUtil](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelCullUtil.java) 只处理普通 TextureMaterial 的有效单面三角形，并计入世界变换的镜像符号。双面、线框、奇异矩阵、自定义材质及可能位移的着色器不进入 CPU 剔除；配对四边面也保留原生判断。
+无内部几何动画的模型可以跨时间复用姿态，颜色、世界变换和片段透明度仍实时读取；有几何轨道或动态覆盖时继续求值。新增 PhotonModelCullUtil（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelCullUtil.java`，本工作区不存在） 只处理普通 TextureMaterial 的有效单面三角形，并计入世界变换的镜像符号。双面、线框、奇异矩阵、自定义材质及可能位移的着色器不进入 CPU 剔除；配对四边面也保留原生判断。
 
 20 项模型回归和 IDEA 编译通过，Data 正常退出。对象池仅限不会逃逸的计算工作区，整套 FXRuntime、仍待引擎移除的粒子和外部播放句柄没有进入池。Spark 的 Windows Java 回退采样不提供 allocation profiler 或 GPU 利用率；实际分配与运行证据见 [本轮修改记录](changes.md#2026-10-15模型采样池绘制精简与发射复制开销)。
 
@@ -281,7 +283,7 @@ TRS 和父级，没有独立头尾或长度，根骨骼显示为点；重合父�
 
 同日按用户要求重新打开复核：上次 Client 正常退出后重新启动 IDEA Client Debug，通过新的原生 `FXEditor.fileMenu.openProject` 打开已保存的 `mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47.mfxproj`，自动创建 `PhotonModelProjectEditor`。新编辑器标题、工程路径与 `.mfxproj` 后缀正确，工程为非脏状态，完整资产 JSON 与磁盘一致。重启后的独立 `.mfx` 和模型包内 `probe_a` 均被 `FXHelper` 发现并加载，资产 JSON 与工程一致；Minecraft MCP 在 9876 重新 ping 连接成功，当前 Client 日志未见 ERROR／FATAL，仍有 Iris 更新网络 WARN。
 
-本轮 MCP 截图仅返回 854×480 局部；改用原生 `Screenshot.grab`，传入非空 `System.out::println` 回调后保存并实际查看 [2560×1494 完整帧截图](../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png)。画面确认整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。此项补充的是静态画面证据，物理双击间隔、快捷键实际按键、贴图依赖／GC、模组 JAR 内包、多人及其他未验收边界不变。
+本轮 MCP 截图仅返回 854×480 局部；改用原生 `Screenshot.grab`，传入非空 `System.out::println` 回调后保存并实际查看 2560×1494 完整帧截图（历史路径 `../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png`，本工作区不存在）。画面确认整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。此项补充的是静态画面证据，物理双击间隔、快捷键实际按键、贴图依赖／GC、模组 JAR 内包、多人及其他未验收边界不变。
 
 2026-10-11 模型层级的单击切 UV 源于选择回调直接调用 `showPickedUV`；现将选择与打开分离，使用原生 TreeList 双击回调，不自定义计时或改变展开逻辑。部件阴影、双面与负尺寸进入资产及深复制，检视和右键共用按目标 ID 修改的会话入口；不得再引入仅预览生效的通用开关。负尺寸在采样及 OBJ 输出时翻转绕序，不能通过负缩放实现，否则会改变位置或尺寸。用户重新测试确认翻面效果正常后，仅将检视 Toggle 和右键复选项改为一次执行的操作，保留已有采样、UV、几何和序列化实现；内部朝向记录用于保存结果与历史，不作为 UI 开关。
 
@@ -295,7 +297,7 @@ TRS 和父级，没有独立头尾或长度，根骨骼显示为点；重合父�
 
 保存重开后再次拖动轴心，原生 Screen 右键取消精确恢复保存 JSON，undoStack 数量不变，drag=false、liveBefore=null、cameraMoving=false；轴心编辑中切换 ROTATE 并执行 Preview.updateFrame 后退出轴心模式，Gizmo 目标恢复为 PhotonModelPartTransform，dirty=false。
 
-保存弹窗、重开与[最终截图](../../run/client/screenshots/pivot-acceptance-final-20261010.png)均已写盘并实际查看（1600×1000）；最终画面显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于新的轴心。收尾清理 40 个临时调试对象引用及两个代理断点，原两个禁用用户异常断点保留；Debug 已恢复 running，Minecraft MCP 连接、游戏进程及玩家只读查询正常，日志错误过滤再次为空。重开验收标签与唯一临时工程保留供回查。
+保存弹窗、重开与最终截图（历史路径 `../../run/client/screenshots/pivot-acceptance-final-20261010.png`，本工作区不存在）均已写盘并实际查看（1600×1000）；最终画面显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于新的轴心。收尾清理 40 个临时调试对象引用及两个代理断点，原两个禁用用户异常断点保留；Debug 已恢复 running，Minecraft MCP 连接、游戏进程及玩家只读查询正常，日志错误过滤再次为空。重开验收标签与唯一临时工程保留供回查。
 
 本轮使用调试求值、受控射线与原生 Screen 事件链，不是桌面控制或物理鼠标，不能据此声明全部真实输入已验收；参数输入字段只确认外观，未验收字段输入修改。此次只补两份文档，无生产代码修复、运行配置或 JDK 修改，未重新编译、运行 Data 或执行 JUnit；下方实现阶段的静态检查及当时未启动 Client 的记录保持历史含义。
 

@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-23：Photon 工作区文档审计与当前入口
+
+- 仅在 codex/photon 的真实工作区整理文档。新增根 README、photon-workspace.md、photon-effect-mcp-api.md 与 photon-document-audit-20261023.md；按当前源码列出编辑器、模型／网格、命名／子特效、女皇快照、MCP 和恢复入口。
+- 更新系统／专题导航、当前分支及 MCP lib 接入；保留共同基础和分阶段历史。失效特效源码／资源／专题链接改为带原路径的缺失说明，未从其他工作区复制文档或恢复资源；玩家动画等无关截图历史不改。
+- 明确 G1 未通过、F11／F12 未原生复测、5 项缺源、fixture 失败、源码 CRLF 受阻及视觉／性能待验收。旧检查成绩不写成本轮成功，也不将 horde 状态写成本工作区验收。
+- 实际核对：IDEA 项目打开与文件／源码读取、文档目标检查及编辑器诊断；未构建、Data、Gradle 同步、业务测试、MCP 游戏连接或视觉验收。33 份文档诊断均 analyzed、0 错误，保留 changes.md 既有 18 项共同基础截图警告；本地文件缺失链接由 205 处降为 30 处，剩余为共同基础截图历史。原有文件换行保持，四份新增文档为 CRLF；只提交本轮文档增量，不推送。
+- 修改前原始文档字节、Git 索引／暂存条目、业务 SHA256、状态及 HEAD 备份在 C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-docs-backup-20261023。保留 41 个原有业务／配置变更及其暂存归属，未改旧备份。
+
 ## 2026-10-23：修正迁移后的有效路径索引
 
 - 通过 IDEA 修正 horde MCP 中残留的旧 90be 根，保留 Minecraft 端口 19876；原始／photon 仍为 19878／19877。两个任务工作区使用原始已构建 Normify CLI，显式 workspace-root 和 cwd 指向各自目录，避免依赖不存在的本地 dist。
@@ -220,7 +228,7 @@
 
 - PhotonProjectPreviewPanel补新建测试草稿、制作属性、复制选中轨道和工程历史应用；完整原树比较防过期覆盖，保护检查和当前实例的轨道准备失败时不应用。PhotonProjectPreviewUtil保留原UUID、轨道、未知字段和未改名的存量名称。
 - IDEA编译成功，JUnit5项通过，8份现有测试定义原文件字节未变；Data BUILD SUCCESSFUL，23输出written=0/removed=0。未运行本轮客户端GUI、撤销重做或文件往返，原有运行时借用警告保留，不替代完整工作区或G1验收。
-- 备份refs/backups/before-photon-g1-workspace-20261020指向1c4cba9。按用户最新指令，重设计方案允许提前开展高级扩展，G1标准与文件保护不变；本轮尚无高级能力实现。完整命名工作区、旧循环/渲染字段及全量兼容仍待完成，具体边界见[进度](photon-redesign-progress.md#工程测试制作基础2026-10-20)。
+- 备份refs/backups/before-photon-g1-workspace-20261020指向1c4cba9。按用户最新指令，重设计方案允许提前开展高级扩展，G1标准与文件保护不变；本轮尚无高级能力实现。完整命名工作区、旧循环/渲染字段及全量兼容仍待完成，具体边界见[进度](photon-redesign-progress.md)。
 
 ## 2026-10-20：复核最终限制并恢复激活语义/制作入口
 
@@ -377,7 +385,7 @@
 
 ## 2026-10-19：GUI 独立线程渲染范围补充（方案，未实现）
 
-- 按用户补充新增[计划第 19 节](photon-detailed-performance-plan.md#19-gui-独立线程渲染专项用户补充)。IDEA 核对 ModularUIWidget、ModularUIWindow、OsWindowManager、RenderSystem 与指挥家头像；现有独立窗口仍在同一 RenderFrameEvent.Post 顺序绘制，并借用游戏渲染 scratch，不能据窗口分离宣称并行。
+- 按用户补充新增计划第 19 节（历史路径 `photon-detailed-performance-plan.md#19-gui-独立线程渲染专项用户补充`，本工作区不存在）。IDEA 核对 ModularUIWidget、ModularUIWindow、OsWindowManager、RenderSystem 与指挥家头像；现有独立窗口仍在同一 RenderFrameEvent.Post 顺序绘制，并借用游戏渲染 scratch，不能据窗口分离宣称并行。
 - 区分 GUI 准备并行、离屏/帧缓冲与真正独立 renderer；记录只读快照、显示布局命中、资源/上下文所有权、有界完成纹理交接、输入与最终 present、重载/关闭，以及性能/正确性对照。原型优先只读性能面板，不默认改变游戏内嵌入方式。
 - 本次补充仅文档与源码调查，尚未创建 GUI renderer 线程或改线程检查。GPU→非 GPU 状态重置及导出启动异常恢复的两份 Java 已局部编译成功；后续运行检查发现原 Debug 会话已不存在（两套调试接口 sessions=[]），状态重置复测未执行。随后经 IDEA 读取 run/client/hs_err_pid39136.log，确认 2026-10-19 13:31:04、启动后 1298 秒，C2 CompilerThread3 报 ciMethod.cpp:749 的 old method not detected/JVMTI 状态内部错误。日志指向编译器方法重定义状态，不作为 GUI/GPU 逻辑根因结论；后续避免活客户端热替换，汇总修改后完整重启验证，未改全局 JVM/IDE 配置。
 
@@ -412,7 +420,7 @@
 
 ## 2026-10-19：多线程优化范围补充（方案，未实现）
 
-- 按用户补充，将[多线程专项](photon-detailed-performance-plan.md#18-多线程优化专项用户补充)加入当前计划，明确模型 CPU 准备、独立姿态/网格批次的候选，世界/实体/UI/GL 的线程归属，历史重放 tick 的因果依赖。
+- 按用户补充，将多线程专项（历史路径 `photon-detailed-performance-plan.md#18-多线程优化专项用户补充`，本工作区不存在）加入当前计划，明确模型 CPU 准备、独立姿态/网格批次的候选，世界/实体/UI/GL 的线程归属，历史重放 tick 的因果依赖。
 - 方案要求不可变快照、请求/资源/实例版本校验、每视口有界最新队列、协作取消、所属线程提交和清理，新增排队/工作/回传/应用/可见延迟指标；比较原实现及一/两个工作线程，连同正确性与内存验收。
 - 本次补充仅修改计划与记录；尚未新增计算池、迁移特效计算或取得多核收益。此前后台导出不作为特效并行的实现证明。
 
@@ -442,7 +450,7 @@
 
 ## 2026-10-19：特效逐对象性能检测与关键优化计划（仅文档）
 
-- 新增[检测与优化计划](photon-detailed-performance-plan.md)，覆盖特效实例/对象、模型/部件/材质、动画/轨道、手动 CAST 因果链、时间轴定位/重放、CPU/GPU/分配、面板、导出、采样预算、复现矩阵与分阶段优化；所有新增能力及阈值均标为后续方案。
+- 新增检测与优化计划（历史路径 `photon-detailed-performance-plan.md`，本工作区不存在），覆盖特效实例/对象、模型/部件/材质、动画/轨道、手动 CAST 因果链、时间轴定位/重放、CPU/GPU/分配、面板、导出、采样预算、复现矩阵与分阶段优化；所有新增能力及阈值均标为后续方案。
 - 通过 IDEA 只读核对当前采样器、指挥手动入口、模型定位及锁定 Photon 依赖。普通时间轴已有同帧请求合并，原生模拟已有快速路径；模型定位直接 simulateTo；原激光流程通过技能接口施放，尚不能代替完整指挥家手动路径。它们是源码路径证据，不是本轮运行根因结论。
 - 仅通过 IDEA 修改 Markdown 与系统索引，保留既有工作区内容；没有修改代码、配置、工程/资源或生成输出。未编译、构建、Data、测试、同步、重载、运行游戏或采集新性能数据；未另建字节备份，未手动暂存、提交或推送。
 - IDEA 已回读计划与索引，新计划经 IDEA 排列表格后诊断无错误/警告，changes.md 诊断为空；README.md 保留修改前已有的一条表格格式弱警告，未扩大格式化。Git 状态新增一份未跟踪计划，既有暂存/未暂存计数保持，未以文档检查代替性能实测。
@@ -465,7 +473,7 @@
 
 ## 2026-10-18：EXIT 光影兼容静态评估
 
-- 新增 [EXIT 光影兼容评估](shader-compatibility-exit.md)，同步系统索引和粒子渲染入口；只写文档，没有修改 Java、Shader、资源、Gradle、依赖或运行配置。
+- 新增 EXIT 光影兼容评估（历史路径 `shader-compatibility-exit.md`，本工作区不存在），同步系统索引和粒子渲染入口；只写文档，没有修改 Java、Shader、资源、Gradle、依赖或运行配置。
 - IDEA 核对 Minecraft 26.1.2、NeoForge 26.1.2.100、Java 25、Photon 26.1.2.3、Iris 1.11.4 与 Sodium 0.9.2；浏览器确认 EXIT master 面向 26.3，全部公开分支仅 master 与 port/1.21.11，未查到对应 26.1.2 分支。
 - 核对 Photon HDR/透明层、IrisTargetResolver、AFTER_PACK、PhotonDeferredLayer，以及项目视深排序/Alpha 深度预写、指挥家线框、世界文字和原版星束粒子。结论为优先复用 Photon，独立辅助绘制及缩放探针可作为后续候选；没有宣称完成兼容或定位当前视觉故障。
 - 已通过 IDEA/MCP 读取依赖源码、类型、项目源码、配置与 Git 状态；修改前经 IDEA 集成终端只读对比三份既有文档的 Git 差异，保留既有修改。新增文档最终 IDEA 诊断无错误/警告，三份既有文档索引诊断均 analyzed、0 问题且未截断；README 的原生检查已有表格排版弱提示保留。早期部分大型文件诊断 timedOut=true、errors=[]，不计全量通过。
@@ -488,7 +496,7 @@
 - 连续调用发现 CONTINUE 不重置已完成 ONE_SHOT 的计数，导致蓄力结束后光球无法再次出生；改为 RESTART + 不清理现存子实例。实际嵌入场景验证蓄力五源各一份、释放光球与光束各一份、重复爆发保持一份、结束后归零、可再次启动，父子 problems=[]；length=6 的参数和结束继承已核对。另有原生根 tick 的独立阶段检查；隔离编辑器未推进时钟的早期结果不记为运行通过。
 - 原生结构校验、保存回读、正式 ID 加载和包内对象数量检查通过；三包分别 12/17/50 个文件，法术包 8 份定义。原生导出没有递归自定义 FX 发射器，已合并补全依赖；三包替换与资源重载完成。直接覆写遇到 Windows 映射文件占用时停止，核对未落盘状态后改原生临时编码并关闭挂载、原子替换、重载，最终 state=committed。
 - IDEA 编译成功 problems=[]；正常 Data 日志 BUILD SUCCESSFUL in 37s，19 文件写入 0/删除 0，生成目录 Git 差异为空。已查看最大化内嵌编辑器透视截图，未进行帧率或多人验收。修改前字节资产及实时法术工程保存在 backups/laser-light-ball-split-20261018，文档备份在其 docs/ 目录；未手动暂存、重置、提交或删除用户资源。
-- 入口与限制见[光球](light-ball.md)、[激光](queen-arcana-beam.md)、[激光法术](laser-spell.md)。用户随后要求将女皇激光技能改用法术、中心发射、复制精简瞬时星束并由技能控制阶段，尚未实施，不计入本轮完成范围。
+- 入口与限制见光球（历史路径 `light-ball.md`，本工作区不存在）、激光（历史路径 `queen-arcana-beam.md`，本工作区不存在）、激光法术（历史路径 `laser-spell.md`，本工作区不存在）。用户随后要求将女皇激光技能改用法术、中心发射、复制精简瞬时星束并由技能控制阶段，尚未实施，不计入本轮完成范围。
 
 ## 2026-10-18：统一修复渲染与可配置动态视觉精细度
 
@@ -506,7 +514,7 @@
 - 正常世界优先，保留粒子数量、模型、着色器与命名动画时序；模型运行复制用嵌套安全的线程作用域共享不可变 JSON 文本，正常保存／导出保留 UTF-8 字节 NBT 与派生依赖。精确控制器类型直接创建独立副本，保留名字、内部 ID 和局部变换；子类沿原深复制。
 - 第一版控制器误用 copyTransformFrom，真实连接源树父节点，导致花瓣漏显示；已改为仅复制局部变换和内部 ID，新运行树负责建立自己的关系。新增12项加载归属回归并接入动画检查入口；有回归的 world_v1_after_* 全部排除，不用于最终收益。
 - PhotonAnimationMixer 复用调用独占绑定／合成工作区，重入另借、finally清空、仅保留一个备用区；安装后的函数贡献仍独立快照，顺序与回调语义保留。顶点空闲池64项／8MiB→128项／16MiB，查找合适容量时保留小项，MeshData所有权、异常释放、帧末及重载／退出规则不变。
-- 固定独立相机、原世界与种子，单实例／四实例各120秒／3周期，前后有效稳态取55～74与95～114秒。完整[前后对比](photon-world-performance-comparison.md)记录低帧、最长帧、CPU／GPU、分配、缓存、GC、各阶段与周期、原始JSON／JFR和排除理由；离线脚本 tools/photon/analyze_world_performance.py 输出SHA256及GC重叠，不把重叠等同根因。
+- 固定独立相机、原世界与种子，单实例／四实例各120秒／3周期，前后有效稳态取55～74与95～114秒。完整前后对比（历史路径 `photon-world-performance-comparison.md`，本工作区不存在）记录低帧、最长帧、CPU／GPU、分配、缓存、GC、各阶段与周期、原始JSON／JFR和排除理由；离线脚本 tools/photon/analyze_world_performance.py 输出SHA256及GC重叠，不把重叠等同根因。
 - 单实例最低一秒86→108FPS、1% low39.43→52.32FPS，但最长帧42.47→51.08ms；四实例最低一秒31→54FPS、1% low16.31→27.77FPS、P99 56.950→32.824ms、每帧堆分配7.751→2.996MiB。四实例缓冲丢弃42624→0，空闲驻留6.6875→15.5MiB；GC总暂停未下降，仍未达到稳定100FPS。单实例前失焦／后前台但持续期均NONE／260，四实例双方前台；环境、JIT与每周期波动限制因果结论。
 - 实际检查：IDEA最终编译isSuccess=true、problems=[]；两组IDEA JUnit退出码0；加载后动画92条、树归属12条通过；激光12个模型普通／作用域复制正常序列化全相等。Data实际日志BUILD SUCCESSFUL in40s，19文件写入0／删除0；生成目录Git差异为空。最终相关Java与新报告无错误／警告；README既有表格对齐弱提示保留。
 - 游戏正常运行、主窗口实际最大化；原相机与AFK／pause=false已恢复，laser_spell.fxproj在嵌入扩展编辑器中重新打开、dirty=false、鼠标已释放。结束源实例与借出缓冲均归零；本轮断点全部移除，三处用户断点恢复原启停状态及owner=user。
@@ -540,19 +548,19 @@
 - 两个旧开关页面类删除前通过 IDEA 备份到 `backups/photon-editor-split-20261018/*.java.bak`，逐份文本与原始末尾换行严格相同。未删除或重写特效／模型／着色器文件，保留用户其他并行改动、已有断点及通知堆叠改动，未手动暂存、提交或重置。一次文档保存返回无法写入，核对后同一 IDEA 局部接口成功保存，没有外部强写；最初大范围开关清理未获审批且未写，改为保留业务条件的窄 owner 门禁后成功。
 - 本轮 IDEA 编译 isSuccess=true、problems=[]；GUI JUnit 17／17，exitCode=0；正常 Data exitCode=0、BUILD SUCCESSFUL in 19s，19 文件写入 0／删除 0，生成目录无 Git 差异。静态源码无错误，保留少量布尔命名、可空性、Local 命名与旧 GUI 提示；历史编译或其他并行任务结果不代替本轮证明。
 - 已启动本项目 Client Debug，真实主窗最大化 2560×1494，原世界内验证：原生 FXEditor 无工具／扩展设置／动画工作区且 MCP 不接管，普通工程可加载，激光工程被拦时 dirty=true 的旧项目保持；扩展命令打开 PhotonEffectEditor、工具／设置存在并嵌入游戏。MCP 最小化恢复保留原窗口／项目／脏状态；实际子发射器提交 native拒绝／new允许／clear允许；模型项目为嵌入式 PhotonModelProjectEditor 且属于扩展类型，临时测试模型未保存并已关闭。激光保存版本仍为 `9c0ea99ede2a7ecfc0a1af420a6854f8174fb2d39cc8c44586a523d81778346c`、dirty=false。
-- 首次资源 probe 误调了 SDK 空方法 onResultSelected，双 null 结果不作成功证据；随后改用真实 searchComponent.setValue(value,true) 同步提交，三项结果均确认。当前仍有 Confluence 的独立客户端进程，后续性能数据须注明背景条件，不能宣称严格单客户端 A/B 或稳定 100 FPS。接口与操作见[编辑器](photon-editor.md#入口与隔离)及[性能记录](photon-performance.md)。
+- 首次资源 probe 误调了 SDK 空方法 onResultSelected，双 null 结果不作成功证据；随后改用真实 searchComponent.setValue(value,true) 同步提交，三项结果均确认。当前仍有 Confluence 的独立客户端进程，后续性能数据须注明背景条件，不能宣称严格单客户端 A/B 或稳定 100 FPS。接口与操作见[编辑器](photon-editor.md#入口与隔离)及性能记录（历史路径 `photon-performance.md`，本工作区不存在）。
 - 后续新增扩展编辑器不透明全屏覆盖时的主世界绘制门禁，实际只包两个 shouldRenderLevel 的首 level 读取，不暂停或改变世界／预览时钟，GUI／PIP 与帧末清理保持。新三文件 IDEA 无错误／警告，再次编译 isSuccess=true、problems=[]，Data exitCode=0、BUILD SUCCESSFUL in 23s，19 输出写入 0／删除 0。客户端实际跳过计数增长，最终提取／绘制均 27792；非标准第三方取消 GUI 提取存在兼容限制，已记录维护文档，未冒充安全回退。
 - 首次门禁持续区间 94.51 FPS／P99 28.9707 ms，预热后 134.89 FPS／P99 19.6093 ms，空场预热 250.51 FPS／P99 6.4126 ms；场景区域、透视、Bloom 与资源内容保持，各持续样本均前台最大化／NONE／260、2560×1494。平均值已超过 100 FPS，持续长帧仍未达标；背景另有 Confluence，不能作严格因果 A/B。截图已查看、来源结束归零、运行 problems=[]；池 borrowed=0，FBO depth=0。AFK／pause=false 已还原、鼠标释放、三处用户断点保留且无本轮断点；未修改特效资产或停止另一游戏。
-- 本地 Spark 35 秒只保存文件、未上传；36 线程／13980 个渲染节点一致性检查通过。采样跨蓄力／输出／结束且只有两个粗桶，不把聚合比例当成持续 19 秒切片；剩余热点与采样边界见[性能记录](photon-performance.md)。旧 system_clipboard 开关文档已改为按编辑器类型固定提供。
+- 本地 Spark 35 秒只保存文件、未上传；36 线程／13980 个渲染节点一致性检查通过。采样跨蓄力／输出／结束且只有两个粗桶，不把聚合比例当成持续 19 秒切片；剩余热点与采样边界见性能记录（历史路径 `photon-performance.md`，本工作区不存在）。旧 system_clipboard 开关文档已改为按编辑器类型固定提供。
 
 ## 2026-10-18：Photon 性能优化续作与前台采样
 
 - 沿用迁移后的 E:/xm/mc/mod/Unitego-Well/Lobecorp 工程，继续模型规范 JSON 缓存与 Photon.drawRun 双目标 FBO 绑定折叠。公开写入、外部强制重载、模型副本、RenderPass 生命周期和现有原生缓存保持；本轮尚未改动着色器、模型几何、粒子数量或资源内容。独立只读审查未发现可确认功能问题。
 - 当前代码 IDEA 编译 isSuccess=true、problems=[]；模型 JUnit 24／24、GUI JUnit 7／7 通过。正常 Data 日志 BUILD SUCCESSFUL in 27s，19 文件写入 0／删除 0，生成目录 Git 差异为空。相关代码无错误，已有数组注解、可空性和 Mixin 参数名称提示保留；后续 GUI 补丁需重新检查。
 - 新客户端世界持续区间第 15～34 秒 2905 帧，平均 152.8 FPS、帧间隔 P50／P99 5.571／23.3833 ms；前台最大化、2560×1494、VSync 关闭、持续期 NONE／260。第 38 秒 FBO scopes=86492、foldedBinds=172984、depth=0，缓存与实际 GL read／write 均为 0／0；池结束借出归零。已查看原生世界截图，稳定 100 FPS 仍未达标。
-- 第一份编辑器采样及其空场失去前台焦点，不作对照。重新采集的前台 Spark 配套 15～34 秒 1302 帧约 68.51 FPS、P99 28.0625 ms，含采样开销；相机、Bloom 和嵌入区域与历史设置相同，工程 revision=9c0ea99ede2a7ecfc0a1af420a6854f8174fb2d39cc8c44586a523d81778346c、dirty=false。Spark 验证 35 线程／13975 节点，确认 GUI hasIntersection self 16.83% 与 AbstractList.Itr.next self 14.61% 为主要开销；继续局部优化固定边界列表的扫描，不改变层级与动态回退。原始文件与证据边界见[性能记录](photon-performance.md)。
+- 第一份编辑器采样及其空场失去前台焦点，不作对照。重新采集的前台 Spark 配套 15～34 秒 1302 帧约 68.51 FPS、P99 28.0625 ms，含采样开销；相机、Bloom 和嵌入区域与历史设置相同，工程 revision=9c0ea99ede2a7ecfc0a1af420a6854f8174fb2d39cc8c44586a523d81778346c、dirty=false。Spark 验证 35 线程／13975 节点，确认 GUI hasIntersection self 16.83% 与 AbstractList.Itr.next self 14.61% 为主要开销；继续局部优化固定边界列表的扫描，不改变层级与动态回退。原始文件与证据边界见性能记录（历史路径 `photon-performance.md`，本工作区不存在）。
 - 后续整表包围盒／直扫补丁 IDEA 编译、GUI JUnit 13／13、Data BUILD SUCCESSFUL in 24s；生成目录无差异。新客户端前台持续区间平均 39.89 FPS、P99 43.8573 ms，未达标。关闭 AFK 限帧后的后台 Spark 确认旧扫描仍为主热点；运行探针定位到固定文字／折线及零宽时间线图元使 16／26 节点回退。已补充固定类型和零尺寸缓存边界、新增测试，修复测试构造器参数错误；最新两文件仅完成 IDEA 诊断，无错误，尚未编译／测试／Data／运行，不能引用前次 13／13 作为新补丁结果。
-- 用户提出独立扩展编辑器命令、恢复原生命令界面及拦截扩展内容的新方案，已暂停继续实现并核对入口，尚未实施界面拆分。文件仍通过 IDEA 局部编辑；未另建字节备份、手动暂存、提交、重置或删除。测试临时 AFK 设置已恢复，鼠标已释放，本轮断点已移除，保留三处用户断点及其他已有改动。细节见[性能记录](photon-performance.md)。
+- 用户提出独立扩展编辑器命令、恢复原生命令界面及拦截扩展内容的新方案，已暂停继续实现并核对入口，尚未实施界面拆分。文件仍通过 IDEA 局部编辑；未另建字节备份、手动暂存、提交、重置或删除。测试临时 AFK 设置已恢复，鼠标已释放，本轮断点已移除，保留三处用户断点及其他已有改动。细节见性能记录（历史路径 `photon-performance.md`，本工作区不存在）。
 
 ## 2026-10-17：工作区目录迁移
 
@@ -564,7 +572,7 @@
 - 按已确认计划并行处理模型采样、CPU 顶点缓冲和命名动画调度。模型预建 UV／索引／材质拓扑、仅变换部件引用顶点、共享适用的法线矩阵；材质命中直接比较字段。缓冲池有界且只回收已释放结果的自有缓冲，异常清理不提前关闭其他 collector 的作业；资源重载和退出清空空闲池。动画所有权扫描复用当次排序并实时递归轨道树，不冻结 HOLD、参数或事件。
 - 已通过 IDEA 局部编辑／修改行格式化，当前相关诊断无新增错误；两条既有数组注解与八条 @Local 建议保留。模型回归新增 2 项并加强姿态／流隔离、UV、材质和法线断言；动画时间轴回归补 22 条断言。编译、Data、测试与优化后运行待统一检查；着色器和特效资产尚未修改。
 - 原版本前台 2560×1494、透视、Bloom 的 40 秒原始记录已保存，持续输出第 15～34 秒 751 帧的帧间隔 P50／P99 为 21.3205／47.4174 ms；结束零来源阶段为 13.7752／33.3128 ms。GPU 仅为 Pre→Post 范围，首爆短样本与首次加载尖峰不作为稳定分位。IDEA 后台负载未完全隔离，不能声称严格性能改善或达到 100 FPS。
-- Spark 本地样本确认 GUI 交叠扫描为实质热点，但含 82.638% 限帧等待，不换算活跃 CPU 或 GPU 耗时。Debug 长反射汇总超时后已移除本轮断点并恢复执行，改用 IDEA 终端只读 protobuf 解析；原版客户端随后停止，鼠标已释放、控制模式退出，三处用户断点保留。通用采样入口和保守 GUI 查询加速继续补充，详见[性能记录](photon-performance.md)。
+- Spark 本地样本确认 GUI 交叠扫描为实质热点，但含 82.638% 限帧等待，不换算活跃 CPU 或 GPU 耗时。Debug 长反射汇总超时后已移除本轮断点并恢复执行，改用 IDEA 终端只读 protobuf 解析；原版客户端随后停止，鼠标已释放、控制模式退出，三处用户断点保留。通用采样入口和保守 GUI 查询加速继续补充，详见性能记录（历史路径 `photon-performance.md`，本工作区不存在）。
 - 未另建字节备份、删除、重置、手动暂存或提交；IDEA 自动登记新增文件，保留工作区原有修改。原始采样及本地 sparkprofile 保留在 run/client 中。
 
 ## 2026-10-16：保存定时提示跨工程标签栏的层级修复
@@ -592,7 +600,7 @@
 ## 2026-10-16：激光法术接入、花瓣发射与运行定义
 
 - 按确认名称将 first-effect 改为 laser_spell、queen_arcana_beam 改为 laser，工程／定义／包采用英文名；激光内部对象、命名动画和参数名称使用小写字母与下划线，保留对象及参数 UUID。命名约定写入 AGENTS.md 与 resources-datagen.md；没有写入个人记忆，误写的本轮记忆备注已移除。
-- laser_spell 保留原八对象、十个辅助动画和测试轨道，新增单实例 laser 定义发射器；现为九对象、347 tick、十一条组合轨道。六个跨工程引用改为 lobecorp 命名空间的 .fx 定义；激光 CONTROLLED 子调用引用新名称对应的原动画 UUID，七个参数按 UUID 转发。更新[对象索引](laser-spell.md)，六个阶段结束行为使用 CLEAR。
+- laser_spell 保留原八对象、十个辅助动画和测试轨道，新增单实例 laser 定义发射器；现为九对象、347 tick、十一条组合轨道。六个跨工程引用改为 lobecorp 命名空间的 .fx 定义；激光 CONTROLLED 子调用引用新名称对应的原动画 UUID，七个参数按 UUID 转发。更新对象索引（历史路径 `laser-spell.md`，本工作区不存在），六个阶段结束行为使用 CLEAR。
 - laser 现为 35 对象、51／54 轨道、17 份专用图；沿 +Z 用 1 tick 推进至全长，11 图增加粉白占比和流速，模板 queen_star_beam 保留。反向开口改为六瓣曲面模板，145 顶点、252 三角面；每 1 tick 出生、每份持续 2 tick、上限 3，放大时轴向从 0 拉长至 muzzle_length，1.5 tick 达到目标、2 tick 淡出消失，muzzle_radius／muzzle_length 默认本地值 2.8／2.2。
 - 新增前冲 launch_spikes（首爆 28 颗、上限 32）、white_lines（每 tick 4 颗、上限 32、尺寸 0.02～0.033、拉伸 140）和末端 laser_tail（每 2 tick 一颗、寿命 6、1×4 帧）。原首爆散射改为每 tick 16 颗持续 2 tick、上限 48；粉黄蓝序列粒子沿束周围持续产生，每层 0.4／tick、上限 16，位置、尺寸或生成范围同步长度与宽度。laser_tail.material.nbt 与原 PNG 同目录，当前共 14 份纹理包装。
 - 源码的 11 个 FX 工程均已生成同目录 .fx，原生回读及完整 ID 加载的缺失列表为空；同时规范字符串及模型 JSON 字节数组中的便携图路径。laser／laser_spell 包分别 37／59 条目，warnings=[]，组合包有七份 FX 定义。counterattack.mfxproj 缺 renderer／playback，原生读取报 invalid_renderer；旁边 JSON 与工程模型不同，未替换、未修改原模型、未导出 MFX，导出配置待确认。
@@ -899,7 +907,7 @@
 
 ## 2026-10-13：Minecraft MCP 源码子项目与 Photon 特效专用接口
 
-- 按用户选择“专用 MCP 工具 + 源码复制”，将修复工程的 common、当前 NeoForge 26.1.2 模组、TypeScript bridge、共享 i18n 与原始图标纳入 `modules/minecraft-mcp`，保留基础提交 `50e059dccb09a9e23b91833ffdbf42efd97fa6e6`、四份本地源码修复和三份原许可证；原修复工作树、账户和个人配置不改动。根 settings/build 增加 `:minecraft-mcp`，共用 Java 25／NeoForge 26.1.2.100／ModDev，Client 加载源码，Data／Server 不加载 MCP 模组；Lobecorp compileOnly 引用，不内嵌 MCP JAR。具体来源与依赖见[子项目说明](../../modules/minecraft-mcp/README.md)。
+- 按用户选择“专用 MCP 工具 + 源码复制”，将修复工程的 common、当前 NeoForge 26.1.2 模组、TypeScript bridge、共享 i18n 与原始图标纳入 `modules/minecraft-mcp`，保留基础提交 `50e059dccb09a9e23b91833ffdbf42efd97fa6e6`、四份本地源码修复和三份原许可证；原修复工作树、账户和个人配置不改动。根 settings/build 增加 `:minecraft-mcp`，共用 Java 25／NeoForge 26.1.2.100／ModDev，Client 加载源码，Data／Server 不加载 MCP 模组；Lobecorp compileOnly 引用，不内嵌 MCP JAR。具体来源与依赖见子项目说明（历史路径 `../../modules/minecraft-mcp/README.md`，本工作区不存在）。
 - 新增通用 `McpExtensionRegistry` 与 HTTP JSON 扩展分派，不在 MCP common 引用 Photon；bridge 保留原 46 工具，新增 8 项 `effect_*`。Lobecorp 新增 `PhotonEffectAutomation`、异常码、5 个职责分离的 Util、注册入口与 Editor Accessor，既有接入只涉及 `LobecorpClientEvents` 和 Mixin 配置。复用原生工程、UUID、模型会话、时间轴、历史、保存与 FXPack 导出，支持参数／模型资产／播放／时间轴／原生 SNBT 批量编辑。
 - 版本由实际工程内容 SHA-256 决定；副本校验后一次提交，只有正式批次实际改变内容才新增一次历史，dryRun 不写入。已知范围、原生枚举和 NumberFunction 注册名从锁定 API／配置器提取，未知范围／单位明确 null。写操作保持原控制门禁，客户端队列可取消阶段与提交阶段隔离；文件仅允许原生资源根内，默认拒绝覆盖，先临时编码再发布。FX 主时间轴播放可能改变持久变换，固定使用 pause → state → edit_batch。协议、8 类操作及限制见[Photon 特效 MCP](photon-effect-mcp.md)。
 - 实际标题界面创建因原生场景缺失 dimension_type 注册表失败；已增加 WORLD_REQUIRED 前置检查，位于创建窗口／工程等副作用前。重新通过 IDEA 编译与 Data 后，在既有隔离世界 `新的世界 (5)` 运行真实 stdio → HTTP → 客户端检查：独立模型的编辑、dryRun、单次历史、版本冲突、undo／redo、四种预览、5.5 tick、保存后 clean、定义／包导出与覆盖／越界拒绝通过；补充 FX 中模型发射器 UUID、模型资产赋值、暂停保持、定位／停止、保存和定义导出，最终 29 项检查通过，模型 packWarnings=[]。输出目录及默认白模边界见接口文档，未以此宣称全部参数、着色器 GPU 外观、多人或性能验收。
@@ -1093,7 +1101,7 @@
 - 清理了四个临时编辑器的工程及 JVM 引用，临时断点全部移除，原有两个禁用异常断点保留；已退出 MCP 控制模式，Client Debug 保持运行。唯一测试前缀 `mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47` 的工程／OBJ／定义保留于 `run/client/ldlib2/assets`，模型包保留于 `run/client/photon/fxpacks`，未删除测试产物或既有备份。
 - 本轮使用默认白模，未验收自定义 PNG 依赖收集／GC、模组 JAR 内包、多人、快捷键实际按键与检视器全部控件。后期 MCP 截图为黑屏；原生事件链与运行数值不代表完整视觉效果或物理双击间隔已验收。一次标题界面创建编辑器的调试探测因缺少维度注册表失败，进入现有世界后上述路径完成；调试表达式的 API／编译错误不作为功能失败或成功证据。
 - 同日按用户要求重新打开：上次 Client 正常退出后，重新启动 Client Debug（会话 `f52aa94b-a640-4362-9786-b6bfabf92d5a`），从新原生 `FXEditor.fileMenu.openProject` 打开上述已存 `.mfxproj`，自动创建 `PhotonModelProjectEditor`。标题、工程文件路径及后缀正确，非脏状态且完整资产与磁盘一致；重启后的独立 `.mfx` 和包内 `probe_a` 被 `FXHelper` 发现并加载，资产 JSON 与工程相等。Minecraft MCP 在 9876 重新 ping 连接成功，当前日志无 ERROR／FATAL，保留 Iris 更新网络 WARN。
-- 重开时 MCP 截图只返回 854×480 局部；原生 `Screenshot.grab` 使用非空 `System.out::println` 回调生成 [2560×1494 完整帧截图](../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png)，已实际查看整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。仅补充静态画面证据，物理双击、实际快捷键、纹理依赖／GC、JAR 包及多人等未验收范围不变。
+- 重开时 MCP 截图只返回 854×480 局部；原生 `Screenshot.grab` 使用非空 `System.out::println` 回调生成 2560×1494 完整帧截图（历史路径 `../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png`，本工作区不存在），已实际查看整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。仅补充静态画面证据，物理双击、实际快捷键、纹理依赖／GC、JAR 包及多人等未验收范围不变。
 - 本轮仅通过 IDEA 补充本记录及 [模型特效维护记录](photon-model-effects.md#维护与实际检查)，未修改生产代码、运行配置或第三方工具，未单独执行编译、Data 或 JUnit。两份文档的 IDEA 诊断无新增问题，模型文档保留第 90 行既有表格格式弱警告；范围内 `git diff --check HEAD` 退出码 0，仅提示 LF／CRLF 策略。当前 Client 日志检索无 ERROR／FATAL，仍含启动环境 WARN。保留用户原有工作区，未手动暂存、提交、推送或创建额外备份。
 
 ## 2026-10-12：玩家第三人称 GeckoLib 姿态与原版来源混合
@@ -1221,7 +1229,7 @@
 - 原生 saveAsProject 弹窗通过 Screen 鼠标事件确认后，文件存在、currentProjectFile 正确、dirty=false；再由 PhotonModelProject.TYPE 读盘，完整 JSON 相等。调用 editor.exit(null) 后，工程清空、场景控制器清空及标签移除均为 true；从原标签的 fileMenu.openProject(file) 重开后，完整 JSON 相等、dirty=false、场景控制器存在、标题正确，旋转、缩放与轴心值均保留。
 - 保存重开后再次拖动轴心，通过原生 Screen 右键取消，完整 JSON 精确恢复保存快照，undoStack 数量不变，drag=false、liveBefore=null、cameraMoving=false。轴心编辑中切换 ROTATE 并执行 Preview.updateFrame 后，轴心模式退出，Gizmo 目标恢复为 PhotonModelPartTransform，dirty=false。
 - 临时工程保留在 `run/client/ldlib2/assets/pivot-acceptance-20261010-a064452e-580e-4f57-a5c4-c14969ed3055.lcmodelproj.json`；已查看的初始截图位于 Client 游戏目录的 `screenshots/pivot-acceptance-initial-20261010.png`。本轮 IDEA Client 启动日志全量检索 ERROR／FATAL／Unreported exception／EXCEPTION_ACCESS 结果为空。
-- 保存弹窗、重开与[最终截图](../../run/client/screenshots/pivot-acceptance-final-20261010.png)均已写盘并实际查看，尺寸均为 1600×1000；最终画面清晰显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于偏离模型中心的新轴心。
+- 保存弹窗、重开与最终截图（历史路径 `../../run/client/screenshots/pivot-acceptance-final-20261010.png`，本工作区不存在）均已写盘并实际查看，尺寸均为 1600×1000；最终画面清晰显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于偏离模型中心的新轴心。
 - 40 个临时调试对象引用已清理，只移除本轮两个代理断点，原两个禁用的用户异常断点保留。Debug 恢复 running，Minecraft MCP connected=true、port=9876、processAlive=true，玩家只读查询再次成功，日志全量错误过滤再次为空；重开验收标签与唯一临时工程保留供用户查看。
 - 上述输入通过调试求值、受控射线与原生 Screen 事件链执行，没有使用桌面控制或物理鼠标，不能视为全部真实输入验收；参数输入字段只确认了外观，未验收字段输入修改。此次只更新两份系统文档，无生产代码修复、运行配置或 JDK 修改，未重新编译、运行 Data 或执行 JUnit；上一条记录的静态检查与当时未运行 Client 的事实继续保留。
 
@@ -1639,7 +1647,7 @@
 - 配置升为 v6：Definition 持有独立 parameters／durationParameter，Parameter 使用 UUID；绑定新增 scaleParameter／offsetParameter。Rule 仅保留来源条件及 target／duration／inputs，旧库共享参数及 Action 运行层移除；公开形参操作指定播放句柄，停止／重启不误操作新的 owner。
 - 旧版严格迁移：单本实例 PLAY、固定输入与可归属共享参数自动转换；未知枚举／轨道类型、畸形轨道数据、动态共享来源、未归属参数、子作用域及多操作链报告受阻。保留 originalDefinition 副本及只读迁移报告，不写为新格式；Editor 保存／另存、FXData 持久化与 FX／FXPack 导出先检查完整数据再提交，避免部分迁移或保存成功提示失真。
 - 原生参数／触发／输入数组及选择保留，动画形参候选按所属签名定位；删除／改型不以同名误处理其他动画或子资源。场景基础 Timeline 没有命名形参来源，子片段只传固定值；不暴露无效速度控件。
-- 调整既有状态、运行、GUI 和共享时间轴回归以新契约执行，保留时钟、八类原生轨道、多态采样、合成及历史检查。旧 Action 仅作为迁移 NBT 输入夹具；新增 [迁移检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java)及[子片段检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java)，分别纳入 Timeline／Runtime 菜单目录。
+- 调整既有状态、运行、GUI 和共享时间轴回归以新契约执行，保留时钟、八类原生轨道、多态采样、合成及历史检查。旧 Action 仅作为迁移 NBT 输入夹具；新增 迁移检查（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java`，本工作区不存在）及子片段检查（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java`，本工作区不存在），分别纳入 Timeline／Runtime 菜单目录。
 - 新增 scanProjects(Path) 只读递归扫描真实 .fxproj／.fx：通过锁定版 IDEA 源核实工程为未压缩 NBT、导出 .fx 为 GZIP NBT；在 type=lobecorp_animation_controller 下读取 definition，逐文件报告控制器数、版本、原始规则／共享参数／形参数量、迁移后的规则／形参数量及受阻原因。扫描不创建项目或预览、不写资源、不 emit 粒子；注册表未完成时返回解析失败，不能报告迁移通过。
 - 修正边界并加入断言：零长度窗口进度定义为 1，不做 0/0；父停止／回退清理其已保持末帧的受控贡献，旧 token 无法停止被新 owner 接管的播放。实时跟随在来源结束后冻结最后值，COMPLETE 在 RELEASE 前冻结输入，不从已经移除的播放表反查形参。静默回放仍处理内部规则，原生信号的 executor 与全局监听两路外部回调分别静默；新增真实宿主信号回归。
 - 文档当前用法已改为 v6；历史版本的实际检查保留并明确标记。并行文件归属独立，项目文件均通过 IDEA 修改，保存完整文本基线；没有创建磁盘备份，未提交／推送或手写生成输出。IDEA 创建 8 个新文件时自动暂存，安全删除 4 个原暂存新增类时也自动移除其索引条目；首次仅撤回这 8 项自动暂存的操作被审批拒绝，未执行成功，未绕过审批。相对原索引 110 项，当时为 114 项；其他索引内容保持原件。

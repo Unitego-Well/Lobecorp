@@ -1,5 +1,7 @@
 # Photon／LDLib2 修复与兼容对照
 
+> 当前维护入口为 [Photon 工作区](photon-workspace.md)。本页逐条保留版本与修复历史；旧命名动画、混入和迁移工具路径已失效时只保留文字，不视为当前 API。新增恢复布局、网格和预览隔离的未完成项见 [最新 WIP](photon-mesh-beam-g1-20261023.md)。
+
 更新日期：2026-10-11。
 
 本文用于升级依赖前定位本项目补丁，区分上游实现的缺陷、依赖行为的兼容适配、性能优化和本项目扩展自身的问题。它不是全部功能清单，也不代替源码与游戏验收。系统入口见[索引](README.md)，功能说明见[Photon 编辑器](photon-editor.md)、[命名动画](photon-named-animations.md)、[发射器发射器](photon-emitter-spawner.md)和[粒子渲染](particle-rendering.md)；各轮实际操作见[修改记录](changes.md)。
@@ -93,37 +95,37 @@
 
 ### EX-01 动画状态翻译传入集合
 
-- **现象与证据：** 自有状态格式把问题 List 直接作为 Component.translatable 参数，历史客户端出现非法格式参数；[PhotonAnimationUiUtil.animationStatus](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationUiUtil.java)现传 `problems.toString()`，状态名称仍用原翻译 Component。
+- **现象与证据：** 自有状态格式把问题 List 直接作为 Component.translatable 参数，历史客户端出现非法格式参数；PhotonAnimationUiUtil.animationStatus（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationUiUtil.java`，本工作区不存在）现传 `problems.toString()`，状态名称仍用原翻译 Component。
 - **保留与复核：** 不把整条状态改成硬编码文本；新增格式参数须核对原 TranslatableContents 允许的类型，空／非空集合均检查。历史加载回归包含此项，本轮未重跑；实际状态栏与两种语言仍需客户端确认。
 
 ### EX-02 切换或修改后时间轴状态及内容提交
 
-- **现象与证据：** 早期第二时间轴视图、模型替换及刷新导致编辑状态丢失；后续空选测试 TL 离开时未先提交当前投影，可能再次载入旧内容。当前[PhotonAnimationTimelineContext](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineContext.java)的 prepareSwitch 结束录制与拖拽、提交当前 TL 并保存状态；[PhotonAnimationWorkspace](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationWorkspace.java)共用原 owner.timelineView。
+- **现象与证据：** 早期第二时间轴视图、模型替换及刷新导致编辑状态丢失；后续空选测试 TL 离开时未先提交当前投影，可能再次载入旧内容。当前PhotonAnimationTimelineContext（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineContext.java`，本工作区不存在）的 prepareSwitch 结束录制与拖拽、提交当前 TL 并保存状态；PhotonAnimationWorkspace（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationWorkspace.java`，本工作区不存在）共用原 owner.timelineView。
 - **保留与复核：** 原场景与各动画分别保存游标、范围、展开及选择；重复选择不重置。只在离开／切换边界回存，不能让普通载入或撤销恢复覆盖恢复结果。测试 TL／预览状态保存在工程预览数据，排除运行资源导出。
 - **实际边界：** 历史共享一致性回归与后续编译／Data 分别有记录，不互相替代；实际切换、排序、录制、撤销及窗口布局未游戏验收。
 
 ### EX-03 被动 UI 同步访问已结束的运行态
 
-- **现象与证据：** `syncPreviewDispatch → Preview.runtime` 在结束或重建过程中曾访问不存在的运行态。当前[PhotonAnimationPreview](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPreview.java)提供 runtimeOrNull，过滤不存在／关闭的实例；Workspace 的被动同步通过可空查询安全跳过，实际身份变化重新绑定。
+- **现象与证据：** `syncPreviewDispatch → Preview.runtime` 在结束或重建过程中曾访问不存在的运行态。当前PhotonAnimationPreview（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPreview.java`，本工作区不存在）提供 runtimeOrNull，过滤不存在／关闭的实例；Workspace 的被动同步通过可空查询安全跳过，实际身份变化重新绑定。
 - **保留与复核：** 结束特效后等待主动重启，不因 UI tick 自动 emit；不捕获任意异常掩盖问题。检查运行态销毁、工程重载、切换模式和首次重建的边界。
 - **实际边界：** 当前源码确认，历史编译／Data 与模型检查见命名动画页；真实结束后停留、重新播放及窗口关闭仍待游戏验收。
 
 ### EX-04 重复合成、停止恢复与录制基础快照
 
-- **现象与证据：** 自有混合器曾把上次合成值再次当基础值，ADD／MULTIPLY 逐帧漂移；旋转经 Euler／Quaternion 往返后，写前值不等于真实写后值，所有权判断和停止恢复可能失效。当前[PhotonAnimationMixer](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java)每次采集前释放自己仍持有的贡献，[PhotonAnimationProperty](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java)保存写后实际指纹、函数身份和原四元数。
-- **关联修复：** [PhotonAnimationRecordMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/animation/client/PhotonAnimationRecordMixin.java)与[PhotonAnimationHistoryUtil](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationHistoryUtil.java)包装原 SerializableRecordAction 序列化，捕获基础值而非正在合成的变换，避免撤销固化贡献。
+- **现象与证据：** 自有混合器曾把上次合成值再次当基础值，ADD／MULTIPLY 逐帧漂移；旋转经 Euler／Quaternion 往返后，写前值不等于真实写后值，所有权判断和停止恢复可能失效。当前PhotonAnimationMixer（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java`，本工作区不存在）每次采集前释放自己仍持有的贡献，PhotonAnimationProperty（历史路径 `../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java`，本工作区不存在）保存写后实际指纹、函数身份和原四元数。
+- **关联修复：** PhotonAnimationRecordMixin（历史路径 `../../src/main/java/org/unitego/lobecorp/mixin/photon/animation/client/PhotonAnimationRecordMixin.java`，本工作区不存在）与PhotonAnimationHistoryUtil（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationHistoryUtil.java`，本工作区不存在）包装原 SerializableRecordAction 序列化，捕获基础值而非正在合成的变换，避免撤销固化贡献。
 - **保留与复核：** 停止只撤回仍属自己的写入，保留其他动画及外部覆盖；保持真实四元数，不依赖重算 Euler 判断等价。直接值与外部恰好写入相同值仍无法仅凭数值区分所有权，不承诺检测所有同值写入。
 - **实际边界：** 历史完整加载回归确实覆盖重复 ADD、停止恢复、多轴旋转和原生历史；本轮未重跑。升级核对原属性多态、函数槽、四元数写入和记录构造／更新快照入口。
 
 ### EX-05 单边激活与停止生成状态被原区间重新打开
 
-- **现象与证据：** 新增“仅开始／仅结束”属于时间点命令；如果仍进入原区间 OR 或每次持续压制状态，点后的外部停止／恢复会被覆盖。[TimelinePlayerMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/TimelinePlayerMixin.java)通过[PhotonActivatorTimelineUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java)只让原双端区间进入原生区间链，新增单边点按经过边界执行；[PhotonTimelineTraversalUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonTimelineTraversalUtil.java)处理经过的边界。
+- **现象与证据：** 新增“仅开始／仅结束”属于时间点命令；如果仍进入原区间 OR 或每次持续压制状态，点后的外部停止／恢复会被覆盖。[TimelinePlayerMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/TimelinePlayerMixin.java)通过PhotonActivatorTimelineUtil（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java`，本工作区不存在）只让原双端区间进入原生区间链，新增单边点按经过边界执行；PhotonTimelineTraversalUtil（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonTimelineTraversalUtil.java`，本工作区不存在）处理经过的边界。
 - **保留与复核：** 原 Control／双端区间继续原逻辑；单边不是独立 singleFrame 字段的新副本。拖回、静音、零长度、大步长及同刻叶顺序需同时检查；每个播放器的精确时间与状态独立。
 - **实际边界：** 该轮最终 IDEA 诊断、编译／Data 有实际记录，新增加载断言尚未运行；时间点命中、组拖动、循环及命名并行仍待游戏验收。
 
 ### EX-06 第六版迁移失败残留局部形参
 
-- **现象与证据：** 转换旧规则时，若先添加形参再失败，可能留下无调用引用的参数或污染“已引用参数”集合。[PhotonAnimationMigrationUtil](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java)现按每条规则保存原参数数量，失败回退新增形参，仅成功后提交引用集合。
+- **现象与证据：** 转换旧规则时，若先添加形参再失败，可能留下无调用引用的参数或污染“已引用参数”集合。PhotonAnimationMigrationUtil（历史路径 `../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java`，本工作区不存在）现按每条规则保存原参数数量，失败回退新增形参，仅成功后提交引用集合。
 - **保留与复核：** 当前策略丢弃不支持的旧规则并报告非阻塞警告，保留支持动画、既有绑定和成功规则；未知版本／损坏轨道仍走迁移保护。加载审查不写回二进制原件，不能把被取代的旧“三个文件受阻”报告当成当前结果。
 - **实际边界：** 历史该轮迁移加载检查 378 项、完整检查 5611 项通过，并只读审查真实旧文件；本轮未重跑。升级或更改格式需检查失败回退、UUID、警告归属与保存／导出往返。
 

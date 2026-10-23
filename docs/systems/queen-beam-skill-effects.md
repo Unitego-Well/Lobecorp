@@ -1,5 +1,7 @@
 # 女皇激光与瞬时星束的技能特效
 
+> 2026-10-23 最新 WIP：帧回调锚点、单份输出准备、参数暂存和阶段开始 tick／姿态混合已写入当前源码，见 [未完成记录](photon-mesh-beam-g1-20261023.md) 与 [QueenBeamEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java)。当前星束保持既有 0 tick 契约；首次开销、连续跟随和结束衔接尚无本轮游戏／视觉／P99 验收。下表四份可编辑工程目标在本工作区缺失，运行 ID 属历史调用说明，不能据此认定手写资产已存在。
+
 > 2026-10-21 独立工作区当前实现：已按最小依赖接回四个原有定义、阶段生命周期和原样服务端资源；星束仍为当前注册的0 tick，不采用下文历史2 tick。Photon消费端为已见蓄力的瞬时实例补一次输出，严格适配已实现的固定渲染/遮挡及粒子旋转缩放周期字段。真实调用、问题台账和复测边界见[集中验证](photon-static-fixes-20261021.md#最小依赖协调与新验证轮次)。原assets、伤害/时长、实体动画和模型LOD逻辑不修改。以下2026-10-19及之前内容均为历史，不能替代本轮验收。
 
 > 2026-10-19 当前状态：女皇自建 Photon 技能表现与预热桥接已移除；服务端技能业务、实体动画及资源保留，本次没有添加视觉占位。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
@@ -10,10 +12,10 @@
 
 | 效果 | 运行 ID | 可编辑工程 | 对象数 |
 |---|---|---|---|
-| 激光法术 | lobecorp:the_queen_of_hatred/laser_spell | [laser_spell.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fxproj) | 9 |
-| 瞬时星束法术 | lobecorp:the_queen_of_hatred/star_beam_spell | [star_beam_spell.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fxproj) | 5 |
-| 星束光球 | lobecorp:the_queen_of_hatred/star_beam_spell_ball | [star_beam_spell_ball.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fxproj) | 7 |
-| 星束光束 | lobecorp:the_queen_of_hatred/star_beam_spell_beam | [star_beam_spell_beam.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fxproj) | 6 |
+| 激光法术 | lobecorp:the_queen_of_hatred/laser_spell | laser_spell.fxproj（历史路径 `../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fxproj`，本工作区不存在） | 9 |
+| 瞬时星束法术 | lobecorp:the_queen_of_hatred/star_beam_spell | star_beam_spell.fxproj（历史路径 `../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fxproj`，本工作区不存在） | 5 |
+| 星束光球 | lobecorp:the_queen_of_hatred/star_beam_spell_ball | star_beam_spell_ball.fxproj（历史路径 `../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fxproj`，本工作区不存在） | 7 |
+| 星束光束 | lobecorp:the_queen_of_hatred/star_beam_spell_beam | star_beam_spell_beam.fxproj（历史路径 `../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fxproj`，本工作区不存在） | 6 |
 
 三个新工程分别有同目录 .fx 与 src/main/resources/fxpacks 下的同名 .fxpack。组合包含 46 个文件、4 份定义；两个子包分别 7/9 个文件，均不包含 fxproj。原 laser_spell、laser、light_ball 的工程、定义和包逐份与本轮备份字节一致，没有修改原模型、ShaderGraph 或纹理。
 
@@ -61,7 +63,7 @@
 - FX 发射入口将已经校验的动画库交给运行态，避免每次发射解码两次。库归单一运行实例，编辑器可变库和正在播放的运行态不进入共享池。
 - 持续阶段的锚点与长度共用一次射线结果，减少重复方块截断查询。
 
-这些是源码确认的工作转移和重复计算消除，不是帧时间成绩。GPU 首次编译/上传、首爆与后期的成本仍须在游戏中采样，详见[性能说明](photon-performance.md#代码动画接入与释放前准备2026-10-18)。
+这些是源码确认的工作转移和重复计算消除，不是帧时间成绩。GPU 首次编译/上传、首爆与后期的成本仍须在游戏中采样，详见性能说明（历史路径 `photon-performance.md#代码动画接入与释放前准备2026-10-18`，本工作区不存在）。
 
 ## 逐帧显示、结束衔接与本地性能采样（2026-10-19）
 
@@ -69,7 +71,7 @@
 
 加载准备包括本地视觉曲线、模型 CPU 资产、图管线和纹理，以及限量未发射实例。实例只独占移交一次，已播放对象不回收；资源重载、退出和世界卸载清理。控制模式切换直接移交独占动画库，不再为此重新编码完整 NBT。世界当前尺寸的 Bloom 链保持到世界退出或配置/尺寸变化，避免原生 120 帧闲置驱逐导致重复分配。
 
-真实技能的 Debug/Spark、首次/预热最长帧、P99、最低一秒、逐帧样本及未解决问题见[释放瞬间实测](laser-release-profile.md)。项目原 FX、模型、纹理、ShaderGraph 未改动；不能用源码改动或平均帧率代替稳定验收。
+真实技能的 Debug/Spark、首次/预热最长帧、P99、最低一秒、逐帧样本及未解决问题见释放瞬间实测（历史路径 `laser-release-profile.md`，本工作区不存在）。项目原 FX、模型、纹理、ShaderGraph 未改动；不能用源码改动或平均帧率代替稳定验收。
 
 ## 代码检查（2026-10-18，历史）
 

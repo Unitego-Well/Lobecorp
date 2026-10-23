@@ -9,6 +9,8 @@ GUI、玩家、实体与方块的 direct / simulate 接口见[操控契约](mine
 
 ## 当前结构与入口
 
+2026-10-23 当前入口以[外部制品消费说明](minecraft-mcp-artifacts.md)为准；以下源码子项目路径与构建入口属于历史记录。消费者只从 lib 使用发布的 JAR 和桥接制品，不再保留 modules 源码。
+
 - 项目客户端使用 Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java `25`，通过 IDEA 的 `Debug` 配置启动。
 - Minecraft MCP 源码由独立仓库 `E:/xm/mc/mod/Unitego-Well/minecraft-mcp` 维护；本仓库的 [`modules/minecraft-mcp`](../../modules/minecraft-mcp/README.md) 是固定提交的本地源码快照，版本见 [`minecraft-mcp.lock.json`](../../modules/minecraft-mcp.lock.json)，[拆分记录](minecraft-mcp-standalone.md)说明更新边界，Gradle 子项目为 `:minecraft-mcp`；仅 Client 加载其源码，Data／Server 不加载 MCP Mod。Lobecorp 对它使用 `compileOnly`，正式 Lobecorp JAR 不内嵌 MCP 模组。
 - 原 `run/client/.mcp-repair-build/` 保持原状，导入其 common、当前 NeoForge 模组、bridge 与四份本地源码修复。旧 JAR 已通过 IDEA 移至 `run/client/mcp-backups/2026-10-13-source-subproject/`，避免与源码重复加载；备份中的 JAR 元数据可读。

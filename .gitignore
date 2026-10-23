@@ -1,3 +1,6 @@
+### Local worktrees ###
+/.workspace/
+
 ### Gradle ###
 .gradle
 build/

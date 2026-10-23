@@ -1,5 +1,7 @@
 # Minecraft MCP 独立仓库与鼠标修复
 
+> 当前消费方式已于 2026-10-23 改为[外部构建制品经 lib 和 Git 分发](minecraft-mcp-artifacts.md)。以下源码快照接入说明仅保留为历史记录，不再按其恢复 modules 或 Gradle 子项目。
+
 记录日期：2026-10-22。
 
 ## 源码与消费关系

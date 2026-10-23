@@ -229,7 +229,7 @@ function Normalize-Config
 {
     param([string]$Text)
     $text = $Text.Replace($CrLf, $Lf)
-    $roots = @([regex]::Matches($text, '"([^"]+)/modules/minecraft-mcp/packages/minecraft-mod-mcp') |
+    $roots = @([regex]::Matches($text, '"([^"]+)/(?:modules/minecraft-mcp/packages/minecraft-mod-mcp|lib/minecraft-mcp/bridge)') |
             ForEach-Object { $_.Groups[1].Value }) + @($SourceRoot.Replace('\', '/'))
     foreach ($root in $roots | Sort-Object -Unique)
     {

@@ -19,12 +19,12 @@ public class PhotonNamedMcpIntegrationTest {
 	public void exercisesTheRealStdioAnimationTools() throws Exception {
 		assumeTrue(Boolean.parseBoolean(System.getenv("LOBECORP_MCP_LIVE")), "仅显式启用时连接游戏。");
 		var root = Path.of("").toAbsolutePath();
-		while (root != null && !Files.isDirectory(root.resolve("modules/minecraft-mcp/packages/minecraft-mod-mcp"))) {
+		while (root != null && !Files.isDirectory(root.resolve("lib/minecraft-mcp/bridge"))) {
 			root = root.getParent();
 		}
 
 		assertNotNull(root);
-		var bridge = root.resolve("modules/minecraft-mcp/packages/minecraft-mod-mcp");
+		var bridge = root.resolve("lib/minecraft-mcp/bridge");
 		assertTrue(Files.isRegularFile(bridge.resolve("dist/cli.js")), "先通过IDEA运行Minecraft MCP Bridge。");
 		var evidence = root.resolve("backups/photon-api-mcp-20261020");
 		Files.createDirectories(evidence);

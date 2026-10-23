@@ -1,6 +1,8 @@
 # 系统文档索引
 
-整理日期：2026-10-22。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
+本工作区负责 **Horde／清道夫**。先读 [Horde 当前入口](horde-index.md)与[历史证据索引](horde-history.md)，再按下表查询共同基线；其他系统状态不作为本工作区验收。根入口见 [README](../../README.md)。
+
+整理日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
 ## 功能与入口
 
@@ -56,7 +58,7 @@
 | Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |
-| AI 特效制作 | [制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |
+| AI 特效制作 | [制作规范入口](../../AGENTS.md) |
 | 修改记录 | [修改记录](changes.md) |
 
 ## 修改与规则入口

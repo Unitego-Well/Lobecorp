@@ -1,5 +1,7 @@
 # BenchMod 基准工具链
 
+当前导航见 [Horde 入口](horde-index.md)，历史阶段见[证据索引](horde-history.md)。下文接入时的 detached／未运行说明仅描述当时状态；2026-10-23 工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`，后续运行证据单列。本轮只更新文档，未运行任何基准。
+
 同步日期：2026-10-22，horde-recovery恢复工作区；来源为原始dev提交278c418。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
 
 ## 隔离与入口
@@ -30,7 +32,7 @@ Gradle／IDEA 入口：
 
 客户端保留上游严格环境门禁：失焦、最小化、暂停、界面打开、窗口变化等会使结果不可比，不以降低门禁制造成功。截图、JSONL、JFR必须登记在权威summary.json中；构建成功不代表真实游戏、图形或性能验收成功。
 
-## 本工作区接入状态
+## 接入时的历史状态（不覆盖后续运行证据）
 
 通过IDEA局部接入BenchMod配置和两个普通清道夫场景，依赖导入成功，BenchMod Compile／Server／Client入口已生成。7个相关配置／Java文件IDEA错误检查为空；4个Java文件与来源仅有本地排版空白差异。原有MCP配置SHA256未变，build.gradle.kts中快照已有的资源输出排除规则保留；深夜清扫业务实现及重写计划不动，维持detached状态。不把原始dev检查结果视为本工作区验收。
 

@@ -1,5 +1,7 @@
 # 深夜清扫性能、CPU 侧与冗余工作审计
 
+2026-10-23 导航说明：本文保留初版审计与后续实施过程，当前工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`。从 [Horde 当前入口](horde-index.md)选择现行源码，历史阶段见[证据索引](horde-history.md)；初版方法名、行号和性能推测不直接视为当前结论。
+
 日期：2026-10-22。对象为当前 `horde-recovery` 工作区。记录开始时 HEAD 为 `fbfdcd0`；本文初版随文档提交 `6aabf40`，此后补充任务记录并实施首个烘焙帧动画优化。工作区中仍存在未提交的 motion 着色器、粗高度、BenchMod 等改动；本文按工作区当前文件读取。
 
 本文初版是只读静态审计，不是性能验收：当时没有构建、Data、启动游戏、JFR、Spark 或 GPU 计时。文中的“高/中/低”是静态优先级，不是实测耗时。正确性问题（例如清除后客户端可能收不到 remove、目标表只增不减、骨骼 X 平移符号）另见文末非性能问题摘要和任务记录。第 9、10 节记录随后的优化实施；实施有 IDEA 编译、Data 和单元测试检查，但没有游戏内着色器、视觉或性能验证。
@@ -61,7 +63,7 @@ motion pass 只把位置、让行、朝向和光照降到逐实例，骨骼动�
 
 - 每 tick 每玩家每事件 O(线路节点数) 的 revision 查询；
 - 长线路首次同步到 ready 的时间长；
-- 与 [horde-events.md](horde-events.md#L56) 的“仅订阅附近路段”不一致，而 [horde-rendering-implementation.md](horde-rendering-implementation.md#L11) 又要求客户端收齐全部节点。
+- 与 [horde-events.md](horde-events.md) 的“仅订阅附近路段”不一致，而 [horde-rendering-implementation.md](horde-rendering-implementation.md) 又要求客户端收齐全部节点。
 
 ### P1：`covers()` 和 `route.nearest()` 是未纳入预算的线性工作
 
@@ -133,7 +135,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 ### 文档存在、实现没有的行为
 
-- 虚拟单位的 `fadeTicks` 透明度渐变：文档 [horde-events.md](horde-events.md#L23) 有描述，着色器当前只按区间剔除，片元 alpha 固定为 1。
+- 虚拟单位的 `fadeTicks` 透明度渐变：文档 [horde-events.md](horde-events.md) 有描述，着色器当前只按区间剔除，片元 alpha 固定为 1。
 - “仅订阅附近路段”：文档与当前全线路同步不符。
 - 命令的 seed 参数：文档仍保留旧语法，当前命令没有 seed。
 - 客户端默认值 5000/12：文档仍写旧值，代码是 -1/-1。
@@ -184,7 +186,7 @@ motion pass 本来是为了避免逐顶点做这些工作，但逐 component 的
 
 - 2026-10-22：初版按当前工作区只读复查深夜清扫的服务端调度、网络同步、客户端提取/光场和 GPU 管线，形成本文；随后的首个优化实施见第 9 节。
 - 初版检查方式：读取 Java、GLSL、配置和系统文档；当时未构建、Data、启动游戏、JFR 或 Spark 采样；初版未修改源码、资源和配置。
-- 文档落地：通过 IDEA 创建/更新 Markdown，并同步[系统文档索引](README.md#L14)与[修改记录](changes.md#L3-L8)。
+- 文档落地：通过 IDEA 创建/更新 Markdown，并同步[系统文档索引](README.md)与[修改记录](changes.md)。
 - Git：初版文档和任务记录已单独提交；代码实施的提交状态见第 9 节。
 - 备份：本次未新增备份。
 

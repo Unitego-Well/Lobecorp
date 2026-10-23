@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-23：Horde 文档审计与分层导航
+
+- 仅在 `.workspace/lobecorp_horde` 的 `codex/horde` 整理文档：新增根 README、Horde 当前入口与历史索引；共同系统基线继续保留，不把 Photon 状态作为本工作区验收。
+- 经 IDEA 读取客户端区域检测、顶点帧缓存、区段光场、基准快照场景及相关说明，区分当前实现、既有未提交改动、历史采样与待验证项；修正当前导航旧路径语境、BenchMod 接入状态标题、失效 Skill 链接与审计文档行号定位。旧图片图集记录加历史提示，保留原始阶段信息。
+- 本轮检查为 IDEA 文档诊断、本地文档目标存在性、Git 增量与证据目录只读核对；未构建、Data、业务测试、同步或启动游戏。历史完整 build 的 test 失败不扩展修复。
+- 备份：系统临时目录 `lobecorp-horde-docs-20261023/before-worktree.patch`、`before-index.patch` 保存修改前 Git 差异。保留用户已有三份文档和业务改动，提交只包含本次文档增量；未推送。旧图集复验配置快照未找到，详见 horde-history.md。
+
+
 ## 2026-10-23：修正迁移后的有效路径索引
 
 - 通过 IDEA 修正 horde MCP 中残留的旧 90be 根，保留 Minecraft 端口 19876；原始／photon 仍为 19878／19877。两个任务工作区使用原始已构建 Normify CLI，显式 workspace-root 和 cwd 指向各自目录，避免依赖不存在的本地 dist。

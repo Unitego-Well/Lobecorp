@@ -1,17 +1,19 @@
 # Photon 当前能力与恢复入口
 
-核对日期：2026-10-23。适用真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。本页基于当前工作文件、IDEA 文件读取及现有检查记录；已确认的网格／编辑器／光束续做源码与文档已纳入本地提交 330d297a，尚未推送。配置及两份资源验收测试的既有修改继续保留，提交不代表构建、游戏或完整能力验收通过。
+核对日期：2026-10-24。适用真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。本页基于当前工作文件、IDEA 文件读取及现有检查记录；已确认的网格／编辑器／光束续做源码与文档已纳入本地提交 330d297a，尚未推送。配置及两份资源验收测试的既有修改继续保留，提交不代表构建、游戏或完整能力验收通过。
 
 ## 当前任务进度
 
-最近更新：2026-10-24 09:00（北京时间）。性能基准与证据提交为 9d83824，状态回写提交为 476cffe，未推送；本轮测试前／测试后优化文档与诊断另见 [测试后文档](photon-optimization-posttest-20261024.md)。
+2026-10-24 法线缓存任务：已完成 DS 报告修订、基线归档、实例缓存实现及前后采样记录。MCP／Debug 仅用于测量之外的实例和失效路径确认。报告修正、实例法线／行列式缓存及三项新增数值回归已完成；IDEA 三份代码 0 错误、9 项既有提示，测试 5／5 通过，Debug／MCP 核对实际命中与失效键后已正常退出。有效原实现基线和最终候选两轮均完整保存；复核出现统一约 6.15 ms 帧节奏，前后截图视角也存在差异，稳定性能收益和严格同视角视觉 A/B 尚未充分验收。下一步应先核对实际渲染相机和帧节奏，再受控配对；P11 不关闭，未改动画、LOD、材质、排序或资源内容，详情见 [测试后报告](photon-optimization-posttest-20261024.md)。备份根为既有可视化目录下 photon-normal-cache-20261024。
 
-- 已完成详细列表：[待优化详细列表](../issues.md#待优化详细列表)集中列出 P11／P12／P06 的确认热点、P13 的待归因异常和 S01–S23 后续处理；包含代码入口、执行顺序、实现约束与关闭条件。当前只整理文档，生产优化仍未实施；下一步从已确认热点确定实施范围，再按同内容进行复测。本次未新增主动验证。
-- 已完成本轮诊断：BenchMod Photon 两次运行（一次窗口失焦 INVALID、一次 PASSED），JFR 归因、Debug 三处调用路径核对与 Minecraft MCP ping／截图；根因与修正建议见 [测试前文档](photon-optimization-pretest-20261024.md)、[测试后文档](photon-optimization-posttest-20261024.md)。未修改业务代码，无优化后 A/B。
+最近更新：2026-10-24 11:11（北京时间）。法线缓存、报告修订、数值／路径检查及全部前后数据已归档；稳定收益需待可比性问题解决后再验收。
+
+- 此前详细列表阶段：[待优化详细列表](../issues.md#待优化详细列表)集中列出 P11／P12／P06 的确认热点、P13 的待归因异常和 S01–S23 后续处理；包含代码入口、执行顺序、实现约束与关闭条件。该阶段仅整理文档；后续获授权的法线缓存实现与采样已记录于上方，其他优化建议仍未实施。
+- 此前 DS 诊断：BenchMod Photon 两次运行（一次窗口失焦 INVALID、一次 PASSED），JFR 归因、Debug 三处调用路径核对与 Minecraft MCP ping／截图；根因与修正建议见 [测试前文档](photon-optimization-pretest-20261024.md)、[测试后文档](photon-optimization-posttest-20261024.md)。未修改业务代码，无优化后 A/B。
 - 已完成：正式 Photon 资源迁入模组，118 项目标与原始 SHA256 一致，资源与文档提交为 1a5c2c3；81 项新增，37 项复用，原始字节备份见 [资源说明](resources-datagen.md#photon-内置资源)。
-- 已完成本轮采样：无 Debug 的 8 个 Photon 用例与最终报告校验通过；两轮真实激光各 90 秒／3 次施放，完成 spark 开关和 GPU 帧数据对照。16 静态／动画均值 3.258／5.784 ms、P99 6.256／10.477 ms；静态逐帧几何写入、动画 CPU 蒙皮／分配及同步创建已被调用栈与样本确认，完整证据见 [性能审查](photon-performance-audit.md)。
-- 收尾检查完成：Provider 增加显式 Photon 过滤守卫，普通基准不自动登记这些负载；再编译成功（3 秒），最终代码／配置 0 错误、2 项提示，5 份文档 0 错误、18 项既有截图警告。生产渲染代码未优化。下一步按已确认热点确定窄范围优化，再做同条件复测；当前问题与待确认项只在 [唯一问题表](../issues.md) 维护。
-- 实际检查与边界：IDEA 静态 0 错误、两项提示；Gradle 准备编译、无 Debug 最终报告校验、两轮真实客户端均正常结束。固定 19877 MCP 已取得 pong／connected=true；本轮临时断点移除、Debug 结束，所有临时游戏和桥接均关闭。原始报告分别备份于可视化根 photon-bench-normal-baseline-20261024、photon-bench-debug-baseline-20261023、photon-real-laser-spark-20261024、photon-real-laser-plain-20261024。未实施生产优化，没有优化后 A/B 收益；S01–S23 不宣称全部解决，动画逐帧字段为空和未归因长帧等边界见唯一问题表与性能审查。
+- 此前性能采样：无 Debug 的 8 个 Photon 用例与最终报告校验通过；两轮真实激光各 90 秒／3 次施放，完成 spark 开关和 GPU 帧数据对照。16 静态／动画均值 3.258／5.784 ms、P99 6.256／10.477 ms；静态逐帧几何写入、动画 CPU 蒙皮／分配及同步创建已被调用栈与样本确认，完整证据见 [性能审查](photon-performance-audit.md)。
+- 此前基准接入收尾：Provider 增加显式 Photon 过滤守卫，普通基准不自动登记这些负载；再编译成功（3 秒），最终代码／配置 0 错误、2 项提示，5 份文档 0 错误、18 项既有截图警告。该阶段未优化生产渲染代码；本轮仅法线缓存已实现，完整几何提交与动画采样优化仍未实施，后续需先补可比性再复测；当前问题与待确认项只在 [唯一问题表](../issues.md) 维护。
+- 此前采样检查与边界：IDEA 静态 0 错误、两项提示；Gradle 准备编译、无 Debug 最终报告校验、两轮真实客户端均正常结束。固定 19877 MCP 已取得 pong／connected=true；本轮临时断点移除、Debug 结束，所有临时游戏和桥接均关闭。原始报告分别备份于可视化根 photon-bench-normal-baseline-20261024、photon-bench-debug-baseline-20261023、photon-real-laser-spark-20261024、photon-real-laser-plain-20261024。未实施生产优化，没有优化后 A/B 收益；S01–S23 不宣称全部解决，动画逐帧字段为空和未归因长帧等边界见唯一问题表与性能审查。
 
 ## 职责与工具边界
 
@@ -20,7 +22,7 @@
 - 规则：[项目规范](../../AGENTS.md)、[工作流程](../standards/workflow.md)、[系统索引](README.md)。
 - Minecraft MCP：[外部制品](minecraft-mcp-artifacts.md)、[本工作区接入](minecraft-mcp-workspace.md)。只消费本地 `lib/minecraft-mcp-0.3.0.jar` 与 `lib/minecraft-mcp/bridge`，端口 `19877`。不恢复 `modules/minecraft-mcp`，不在消费者安装 npm 或重建桥接。
 - Normify：[工具说明](../../tools/lobecorp-normify/README.md)。本工作区配置复用原始仓库 `tools/lobecorp-normify/dist/src/cli.js`，`--workspace-root` 和 cwd 均为本工作区；CLI 共享不表示数据输出可跨工作区。
-- 当前 MCP 工具可见、IDEA 可读与游戏连接是独立状态；本轮未连接或运行游戏。
+- MCP 工具可见、IDEA 可读与游戏连接是独立状态；本轮法线缓存 Debug／MCP 结果及清理见当前进度与测试后报告，不沿用历史连接状态。
 - 锁定依赖：[版本目录](../../gradle/libs.versions.toml)，Minecraft 26.1.2、NeoForge 26.1.2.100、Photon 26.1.2.3、LDLib2 26.1.2.42、KilaGraph 26.1.0.15；MCP 制品清单标记 Java 25。
 
 ## 当前能力与源码入口

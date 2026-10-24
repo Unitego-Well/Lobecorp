@@ -4,6 +4,8 @@
 
 本文是“实施前”文档：只回答成本由什么造成、可以怎么改、改完怎么验收。当前问题状态、编号和关闭条件仍以 [唯一问题表](../issues.md) 为准；本文不另建状态账本，也不把建议写成已实现。测试后的实际证据与修正见 [测试后优化建议与问题原因](photon-optimization-posttest-20261024.md)。
 
+修订说明（2026-10-24）：已更正相机变化、复制共享范围及未复现异常的处理边界。以下调用行号和成本机制描述的是优化前版本，不自动代表后续缓存实现；法线缓存的实际实施与对照结果在测试后报告单独记录。
+
 ## 一、范围与证据等级
 
 - 已测到成本的模型热点：P11 静态几何逐帧提交、P12 动画蒙皮与整帧对象化、P06 首次同步创建／发射。
@@ -17,7 +19,7 @@
 |---|---|---|---|---|
 | P11 | 姿态缓存只到局部帧，最终提交几何仍每帧按三角形×4 角全量重算并写入 | 16 静态均值 3.258 ms、P99 6.256 ms；`geometry.write` inclusive 245／324 个执行样本（75.6%），重复 212／280（75.7%） | 稳定拓扑／局部几何复用；先核对原生批次能力，再决定缓存层级 | 中：透明排序、材质组顺序、双面／深度／混合／光照语义 |
 | P12 | 每帧重做蒙皮矩阵、权重归一化、整帧 `Vertex`／`Group` 重建与多份临时容器 | 16 动画均值 5.784 ms、P99 10.477 ms；`sample` 222／462 个执行样本；约 23 秒录制渲染线程分配约 19.554 GiB | 预编译权重／索引＋实例局部缓冲复用；输入键轻量化 | 中高：帧快照所有权、多视图消费、morph／骨骼／部件覆盖语义 |
-| P06 | 首发当帧同步完成资源读取、解析、拓扑、骨骼、命名库、深拷贝与材质准备，且实例间零共享 | 合成创建 269.998 ms／最长帧 273.700 ms；真实激光首发 860.759／855.774 ms；spark 关闭后仍在 | 内容级共享不可变定义／拓扑；准备分段与有界预取 | 高：生命周期、首次未就绪、时序／伤害、进世界卡顿转移 |
+| P06 | 首发当帧同步完成资源读取、解析、拓扑、骨骼、命名库、深拷贝与材质准备，且深拷贝／浅拷贝路径的共享范围需分别核对 | 合成创建 269.998 ms／最长帧 273.700 ms；真实激光首发 860.759／855.774 ms；spark 关闭后仍在 | 内容级共享不可变定义／拓扑；准备分段与有界预取 | 高：生命周期、首次未就绪、时序／伤害、进世界卡顿转移 |
 | P13 | 根因未确认，不能归给模型；需时间对齐的证据 | 空场景重复用例第 7624／9695 帧 1.421 s；同轮大量 `glFenceSync` 来自 Sodium／GUI／雾 | 先做空基线复现与事件对齐，再决定是否改 | 低（只测不改），但容易误归因 |
 
 ## 三、P11：静态模型逐帧 CPU 几何提交
@@ -33,7 +35,7 @@
 ### 3.3 成本机制
 
 1. **每帧无条件重建全部提交几何。** [sampleLocalFrame 第 402 行](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java#L402-L420) 的 `input.equals(sampledInput)` 命中后只是跳过 `sample()`；`bakeBatches` 仍对每个 group 调 `write`，逐三角形、逐角写顶点。
-2. **世界坐标每帧必然变化。** 第 444 行 `world = translation(-cameraOrigin) × localToWorld`，相机原点每帧变，所以即使模型静止，写入的世界坐标也不同，上一帧结果无法直接复用。
+2. **提交坐标依赖相机与模型变换。** 第 444 行 `world = translation(-cameraOrigin) × localToWorld`；相机或模型变换变化时，提交位置可能不同，不能无条件复用上一帧最终位置。相机静止时原点不必变化；平移不改变法线所需的线性部分。
 3. **顶点数 ×4/3。** `write` 每个三角形写 4 个角，[第 27–30 行](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java#L27-L30) 用 `offset = Math.min(corner, 2)` 重复末角，只为保留原生 QUADS 透明排序路径。16 模型 ×512 三角形 ×4 = **32768 次 `addVertex`／帧**。
 4. **每角固定变换与光照。** 位置经 4×4 变换（第 33 行）、法线经 3×3 变换（第 34 行）、`signum(determinant)` 乘符号、长度判断与归一化（第 37–38 行）、`shade()` 6 次乘加与分支（第 56 行）、`setColor`／`setLight`／`setNormal`（第 58–62 行）；法线退化时还会分配临时 `Vector3f`（第 41–44 行）。
 5. **数据结构间接访问。** 每个角都要 `group.vertices().get(indices.get(...))` 解包 `Vertex` record，再取三个 `Vector3` 分量；没有预展开的紧凑顶点数组，也没有把 4 个角共享的法线矩阵变换结果合并。
@@ -78,7 +80,7 @@
 5. **positions 走装箱 Map + 每顶点临时对象。** 第 319–346 行：每部件一个 `HashMap<Integer, Vector3>`，每角 `computeIfAbsent`（int 装箱 + lambda 捕获），`dimensions()` 每顶点新建 `Vector3f`，蒙皮／部件矩阵两次变换后再 `immutable()`。
 6. **整帧 Vertex／Group 重建。** 第 186–246 行：每角 `new Vector3(faceNormal)` + `new Vertex(...)`；每面重算 `faceNormal`（3–4 个 `Vector3f`）；`min/max` 每角 `vector(position)` 又建 `Vector3f`。
 7. **输入与绑定每帧重建。** `Input` 构造内 3 次 `Map.copyOf`（第 67–79 行）；[PhotonModelBindings](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelBindings.java#L84-L131) 的 `morphWeights`／`partOverrides`／`boneOverrides` 每帧各建 `LinkedHashMap` + `Map.copyOf`，overrides 还要遍历全部 part／bone × 3 个槽。
-8. **实例间零共享。** 同一资源的每个实例各自持有 sampler、拓扑和预编译结构，16 个动画实例重复这些内存与局部性成本。
+8. **共享范围依复制路径而异。** PhotonModelOutput.shallowCopy() 已共享 sampler 与 groupOrder；深拷贝创建与命名运行态准备不能据此视为同样共享。需要按真实创建路径统计定义、拓扑和 sampler 的准备次数，不使用“零共享”的概括。
 
 ### 4.4 为什么现有缓存不足以关闭 P12
 
@@ -115,8 +117,8 @@
 2. **每实例重新准备。** 命名运行态构造里 `PhotonNamedCodecUtil.read(controller.definition())` 重新解析命名库；随后对每个 `PhotonModelOutput` 调 `prepare()`。
 3. **prepare 重新读取与重建。** `PhotonModelSourceUtil.load` 重新取资源／解析内嵌 JSON/NBT；`PhotonModelTopologyUtil.prepare` 对全模型逐面三角化；`new PhotonModelPoseSampler` 逐骨骼求逆；随后重建材质。
 4. **实例来源本身深拷贝。** [PhotonSpawnTemplateUtil.create](../../src/main/java/org/unitego/lobecorp/util/photon/playback/PhotonSpawnTemplateUtil.java#L35-L96) 走 `fx.createRuntime(true)`（原生 `FXData.copy` → 每个对象 `IFXObject.deepCopy` 的 CODEC 往返），或 `object.copy(true)` 后逐对象复制并改写动画轨道。
-5. **零跨实例共享。** 同一资源没有“定义／拓扑／预编译权重”的内容级缓存，每个实例都重做一遍。
-6. **预取只覆盖一次。** `prepareNext` 只准备“下一份子实例”且仅在 CHARGE 相位调用一次（[QueenBeamEffects 第 288–290 行](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java#L288-L290)）；`emitNow` 消费后不会自动补下一份。
+5. **深拷贝链的共享不足需按路径量测。** 当前 shallowCopy 已共享 sampler／groupOrder；本轮命中的深拷贝及 prepare 链仍有同步准备成本。是否每实例重复、重复哪些阶段，必须按调用路径和内容代次统计，不能概称所有实例零共享。
+6. **技能句柄的预备范围有限。** QueenBeamEffects 在 CHARGE 且 preparedOutput=false 时调用 prepareNext；失败时后续更新仍可重试，不能说只调用一次。成功后该句柄置 preparedOutput=true，未主动为后续消费补下一份；通用发射器的预备和补充范围仍需按实际路径核对。
 
 ### 5.4 优化建议
 
@@ -143,7 +145,7 @@
 
 1. 重复空基线，采集 GC 日志、JFR（gc／thread park／monitor／io／socket／driver）、帧起止时间、JFR 启停与落盘时间点、截图／导出时间点、窗口焦点与节流标志。
 2. 把异常帧与上述事件做时间对齐；优先排除 JFR 自身 flush、GC 停顿、线程停泊、文件导出、驱动等待、Sodium／AnvilLib 上传。
-3. 能稳定复现并定位到具体等待后再改代码；不能复现则按环境干扰结案并保留原始样本。
+3. 能稳定复现并定位到具体等待后再改代码；不能复现则保留未归因状态及原始样本；没有时间对齐证据，不能直接按环境干扰结案。
 
 ### 6.3 关闭条件
 

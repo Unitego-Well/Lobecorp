@@ -34,6 +34,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
@@ -63,6 +64,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private final RendererSetting.Runtime overrideRenderer = new RendererSetting.Runtime(config.renderer) {
 	};
 	private final PhotonModelClock clock = new PhotonModelClock();
+	private final NormalCache normalCache = new NormalCache();
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<Object, PhotonModelClip.Sample> playback = new LinkedHashMap<>();
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
@@ -477,7 +479,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		try {
 			bakeGroup(settings, out, camera, partialTicks, Objects.requireNonNull(materials).group(group), geometryMode(),
 					(output, _, _) -> {
-						int triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light);
+						int triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light, normalCache);
 
 						if (owner != 0) {
 							PhotonPerformanceTraceUtil.counter(owner, Metric.VERTICES, triangles * 4L);

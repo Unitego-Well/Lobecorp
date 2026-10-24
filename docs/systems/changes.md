@@ -1,5 +1,19 @@
 # 系统修改记录
 
+## 2026-10-24：分阶段统计、光照缓存、GPU持续分割与Iris合批
+
+- 范围仅lobecorp_horde/codex/horde，通过IDEA修改13份源码/着色器/回归文件，同步总览、唯一问题清单、渲染与BenchMod说明。原始DS两份报告未修改；问题仍只在horde-issues.md维护，未把建议或推测当作实测结论。
+- 新增HordeRenderMetrics：显式捕获extract及prepare/light/regions/motion/expand/copy/base/glow的CPU时间、调用数和工作量，最多65536绘制周期；GPU每周期只轮换一个阶段的一次调用，原版TimerQuery忙时跳过，不嵌套、不等待；缺测null、调用序号/工作量与跳过/取消/错误分别记录。BenchMod setup开启、teardown先落JSONL再恢复，未进入MEASURE的失败也走保存钩子；CPU落盘回归通过，不等于真实超时收尾已验收。
+- 光照新增HordeLightCoverage：原版SectionPos候选跨帧复用、100tick不用回收，同刻XZ列加载状态共享且逐tick重查；复用输入容器及天空光回退暂存，最多8份必要集合/槽位代际GPU索引缓存。保留5tick亮度比较、原版缺省天空光和未加载区段排除；必要集合与槽位全量遍历仍是后续优化项，不宣称已实现32/16/8 GPU索引。
+- 新增HordeRegionState及horde_region_update.fsh，共享horde_data.glsl原始位解码。CPU只上传六整数目标与稳定身份/索引，GPU双缓冲保存中心/半尺寸及速度，临界阻尼omega=10/s；扩容在GPU复制旧状态，退场40tick绕原中心收缩，重入保留身份，复用槽位提升代次。使用空闲槽栈，避免首次批量区域创建反复线性找空位。地形先位移，再叠加区域同侧连续上包络，避免旧平均稀释与反向抵消；高度隔离和64格范围保留。地形仍为粗高度场绕行，尚未统一为持久区域目标；薄墙/多层/巨型障碍与真实平滑观感仍待实机。
+- Iris新增HordeVertexLayout批次元数据打包，取消256实例小批上界，沿用纹理＋VBO最多约32MiB工作集；每工作集一次展开pass与一次驱动复制，连续同材质基础/发光draw合并。静态UV额外缓存中心UV，避免片元重复读取四角。没有减少总实例、LOD、发光、20FPS动画采样或更改模型贴图；没有CPU逐单位顶点变换。复制物理驻留/同步行为仍未知，总复制量未保证下降，H24继续待实测。
+- 模型解析失败仍按事件停止显示；瞬时GPU资源/布局错误转入原有共享资源退避重试，避免永久标记所有事件失败。GPU查询/渲染pass用finally收尾；状态纹理、索引缓存、参数缓冲由各自拥有者关闭，不关闭借用的事件/世界对象。对缓存借用路径精确标明resource检查例外，不掩盖真实生命周期问题。
+- 按本轮差异行格式化，新增文件按项目格式处理；关闭导入优化和成员重排。9份Java与4份GLSL错误诊断全部analyzed且0错误；新增类与测试无警告，渲染器最终单文件全诊断0问题。HordeClient已有2项空值提示、BenchMod已有5项借用资源提示保留记录；它们不属于本轮改动，不关闭用户Minecraft/ClientLevel。
+- BenchMod Compile两次日志BUILD SUCCESSFUL（首轮14秒，缓存键修正后26秒）；IDEA JUnit新增HordeOptimizationTest首轮8通过/1注册表初始化错误，改用SectionPos XZ键后9/9通过，runId=0a26b5f2-60b9-40e3-b259-fb42b869bce7，exitCode=0；HordeRegionTest4/4，runId=caf53f42-9463-4c77-8331-fd8b569cdfd9，exitCode=0。Data为headless运行，exitCode=0，实际23份资源written=0；29份含缓存SHA256全部不变。没有启动游戏客户端、MC MCP、Debug、BenchMod Client/Server，没有本轮GPU硬件编译、画面、Iris性能或联机结果。
+- 备份：C:/Users/wang_/AppData/Local/Temp/horde-staged-optimization-20261024-9e6feda1，保留修改前源码/着色器/文档与生成前29份哈希。原5项暂存raw对象逐项核对未变；18份本轮文件的清单/哈希及相对开始快照的this-task.patch已导出到备份，原有文件换行种类均保持。源码与既有WIP混合，H20归属边界保留，不擅自打包用户改动或推送；仅可独立提交本轮进度文档，源码未提交不能报告为已提交。
+- 临时运行均由IDEA发起，两个最终JUnit有退出0结果，Data正常退出，编译日志完成；工具未返回这些运行的PID，不补造。首次受限CIM核对拒绝访问，提升后的只读核对成功，本工作区JUnitStarter/Data参数/compileBenchJava匹配无存活进程；未停止用户应用、IDE或共享Gradle后端。后台Git调用记录具体PID/启动时间并均返回完成、无待清理对象。
+
+
 ## 2026-10-24：DS诊断与测试报告复核
 
 - 读取horde-pretest-optimization.md及horde-posttest-optimization.md，保留原报告不改写；对照当前源码、26.1.2本地GL后端、Minecraft帧率限制源码与当前summary/日志，未把报告内建议当作新增代码授权。

@@ -4,6 +4,8 @@
 
 ## 法线缓存后的真实激光复测（2026-10-24 11:21）
 
+后续 Sodium＋BenchMod＋Minecraft MCP＋Debug 的激光复测与优化方案见 [真实女皇激光测试与优化方案](photon-laser-optimization-20261024.md)。本段保留 11:21 那一轮“无 Debug、无 spark”的记录，两轮口径不同，不合并数字。
+
 用户后续要求“测试激光”，本轮只运行既有 QueenBeamPerformanceTrial 并更新记录，生产代码基于 bd29ff6；没有修改动画、LOD、资源、技能时序或伤害。IDEA Client 启动，Sodium 0.9.2 日志确认；本轮使用真实技能夹具与 PhotonFrameCapture，未重跑 BenchMod 合成用例，未启用客户端 spark 或 Debug，不能补作新的方法栈归因。
 
 - 11:19:24 开始采集，90.0008 秒、52033 帧，状态 DURATION；三次服务端施放均 STARTED，每次都有客户端 0→1→2 和移除记录。首轮阶段 0→1 约 1.576 秒，后两轮约 0.951 秒；这是客户端观测时刻，首发阻塞会延迟记录，不能据此推断服务器技能时长改变。

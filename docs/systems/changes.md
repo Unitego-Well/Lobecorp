@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-24：真实女皇激光测试与优化方案
+
+- 使用 IDEA `Client`＋Sodium 0.9.2 运行既有 QueenBeamPerformanceTrial（`LOBECORP_LASER_PROFILE=laser_mcp_20261024_1132`、单次采集），经固定 19877 MCP 取得 pong、玩家位置（-7 58 -8，朝向 -25／8）与 2560×1494 截图，随后正常保存退出世界并退出游戏。采集 90.0004 秒／51432 帧，状态 DURATION；三次施放 STARTED，客户端 0→1→2 与移除齐全；验证截图可见女皇、法阵、粉色光束和目标。
+- 帧间隔均值／P95／P99／最长 1.750／3.863／8.125／599.019 ms；4～7 秒长帧合计约 2.118 秒，第二次／第三次施放最长 80.465／67.757 ms；GPU 完成 48409、pending 跳过 3023、错误 0。Debug 在 Render thread 确认 CHARGE 阶段 `prepareNext → PhotonNamedRuntime → PhotonModelOutput.prepare`（模型 laser_body、clip=beam）以及 NormalCache 首次 miss 后 `valid=true` 命中（行列式 1.7280004）；Debug 轮暂停不计性能，核对后停止会话。
+- 同条件 BenchMod Photon 基线 PASSED（`environment.valid=true`，8 场景通过）：16 静态 3.378／5.661、16 动画 5.874／10.071、创建时 16 动画 5.663／10.173 ms；与既有最终候选同量级，未证明法线缓存稳定收益，P11／P14 不关闭。
+- 新增 [真实女皇激光测试与优化方案](photon-laser-optimization-20261024.md)，同步唯一问题表 P06 证据、总览和测试后报告入口。本轮没有修改业务代码、资源或构建配置；未启用 shaderpack，未做 JFR／spark 方法级归因，未实施优化方案。修改前四份文档字节备份位于 C:/Users/wang_/AppData/Local/Temp/dsh-uQhxMZ/lobecorp-laser-doc-backup-20261024；未提交用户既有配置与两份测试修改，不推送。
+
 ## 2026-10-24：复测法线缓存后的真实女皇激光
 
 - IDEA Client 运行既有 QueenBeamPerformanceTrial，Sodium 0.9.2，90 秒／52033 帧；三次施放 STARTED，客户端阶段完整，第四次输出截图可见女皇、法阵、光束及目标。未挂 Debug、未启用客户端 spark，未重跑 BenchMod 合成用例或 Data。

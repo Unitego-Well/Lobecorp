@@ -1,5 +1,181 @@
 # 当前性能静态审查与优化计划
 
+## 2026-10-25：Sodium 诊断、瓶颈推断与优化建议
+
+本节汇总 2026-10-24～25 的最新诊断。用户要求定位瓶颈并将方法、推断、建议、参考文献和对应代码写成文档；本轮**没有实施新的性能修复**，没有修改动画、LOD、资源或技能行为。当前问题状态仍只在 [唯一问题清单](../issues.md) 维护。生产代码含 9a863816，采样时 HEAD 为文档提交 3e0c6576；同代码不等于主机条件完全相同。
+
+### 1. 方法、原件与证据等级
+
+这里的 Sodium 指已加载的 Sodium 0.9.2 渲染环境，不是把 Sodium 当作通用 JVM profiler。客户端仍含 Iris、Photon、GeckoLib、spark 等既有 Mod，不能称“纯 Sodium”。Sodium 的公开定位见 [官方仓库](https://github.com/CaffeineMC/sodium)；本项目的具体结论以下述本地录制与锁定版本源码为准。
+
+- IDEA Client 运行既有 QueenBeamPerformanceTrial，普通与 ComplementaryReimagined r5.9.3 各采集 90 秒，按 4／31／58 秒发射真实技能；固定 MCP 19877，只对本工作区操作。
+- 通过本次启动的 JAVA_TOOL_OPTIONS 临时启用完整 JFR profile：StartFlightRecording 的 settings=profile、dumponexit=true、maxsize=128m，FlightRecorderOptions 的 stackdepth=128。没有把这些参数写成全局设置。原有 QueenBeamAllocationCapture 只启用分配／GC／编译事件，不将其误称 CPU 执行采样。
+- 读取 jdk.ExecutionSample、NativeMethodSample、ObjectAllocationSample、GCPhasePause、SafepointBegin、ExecuteVMOperation 及线程分配计数；按 frame.started_at、started_ns 和阶段 marks 对齐，另对齐最长帧的前一 HEAD→当前 HEAD 区间。秒级阶段边界及墙钟换算存在小误差，不用它证明服务端技能时长变化。
+- 渲染线程按捕获区间中含 Minecraft.run 的调用栈识别 Java thread id，两轮均为 3。启动期 JFR 中名字仍可显示 main；只按字符串“Render thread”过滤会漏掉本轮样本。
+- 首发窗口 cold=4～16 秒；warm1／warm2 为 31～43／58～70 秒。sustain1 从第二次实际客户端 OUTPUT 后 2 秒起，到 RECOVERY 为止，普通约 33.991～42.158 秒、光影约 33.984～41.985 秒；不是全程均值。
+- 启动期完整录制也包含资源加载、类转换和关闭，但主表只过滤实际 90 秒窗口。profile 会产生工具开销；CPU 样本、native 样本、GPU 查询和帧间隔不是同一指标，不相加、不按样本比例直接承诺帧率收益。[JFR 性能诊断指南](https://docs.oracle.com/en/java/javase/25/troubleshoot/troubleshoot-performance-issues-using-jfr.html)
+
+证据等级：**实测**为当前原始帧／JFR／日志；**源码确认**为 IDEA 当前项目或锁定依赖读取；**推断**为两者共同支持但未经独立干预验证；**建议**为尚未实施、仍须受控验收的方案。没有采到不等于没有执行。
+
+### 2. 运行账本与基本结果
+
+| 运行 | 原始记录 | 实际结果 |
+|---|---|---|
+| 普通完整诊断 | sodium_diag_normal_20261024；10-24 19:04:14（北京时间）开始 | 53229 帧，90 秒，三次 STARTED、0→1→2→移除齐全 |
+| 中断光影 | sodium_diag_shader_20261024 | 只到 SETTLE，随后退出；没有有效帧报告，单独隔离，不作光影测量 |
+| 光影续跑 | sodium_diag_shader_20261025；10-25 00:54:12 开始 | 11101 帧，90 秒，三次 STARTED、0→1→2→移除齐全；日志确认实际包名 |
+| 分析器 | JDK 25 RecordingFile 流式 API | 分别读取 240520／217112 个事件；原始 JFR 不改写，分窗与脚本可复查 |
+
+两份有效录制跨时段，不能当严格确定性 A/B。全帧 flags=3、throttle=NONE、2560×1494；粒子随机 seed、实际渲染相机／投影、外部负载和 GPU 时钟未完全控制。code_animation_render_samples 仍为空。本轮不把阶段齐全当作连续动画或全部视觉通过。
+
+| 指标，单位 ms | 普通 profile | 光影 profile |
+|---|---|---|
+| 帧间隔均值／P99／最长 | 1.691／7.247／602.670 | 8.108／18.612／1579.635 |
+| 空基线均值 | 1.282 | 7.533 |
+| 首发附近均值／P99／最长 | 4.745／14.271／602.670 | 16.456／39.005／1435.656 |
+| 第二次附近均值／P99／最长 | 3.609／11.301／191.050 | 9.821／20.640／1579.635 |
+| 第三次附近均值／P99／最长 | 3.386／10.145／62.514 | 7.721／14.906／67.982 |
+| GameRenderer CPU 均值／P99／最长 | 0.927／3.268／387.706 | 3.889／11.135／1421.241 |
+| GPU 有效查询均值／P99／最长 | 0.656／3.628／391.381 | 7.745／16.361／1248.802 |
+| GPU 完成／pending 跳过／错误 | 45226／8003／0 | 3876／7224／0 |
+| 渲染线程分配均值 B／帧 | 249139 | 823631 |
+
+GPU 范围只覆盖 GameRenderer.render，光影缺测多，不能将有效样本均值推广为所有帧或把 pending 当耗时。分配是相邻 HEAD 的渲染线程计数差，含工具开销，不是存活内存／泄漏。ThreadAllocationStatistics 两轮在测量窗口各只有约 0.14 秒覆盖的两个计数点，**不能把其差值当 90 秒总分配**。分配样本权重也可能跨阶段，主要用来指路，不能精确分摊一次调用字节。
+
+### 3. 优先纠正测量干扰：客户端 spark 关闭不等于后台采样关闭
+
+**实测／源码确认：**两轮各有 9000 次 ThreadDump VM 操作，caller 均为 spark-java-sampler 的六个线程；日志确认集成服务器启动 background profiler，并在 Windows 采用 Java 引擎。spark 1.10.172 的 JavaSampler:27 创建六线程池，:60 按间隔调度，:89 调用 threadDumper.dumpThreads(threadBean)。这不是只看 Mod 名称的猜测。
+
+- 普通：ThreadDump 操作体累计约 291.631 ms、单次体内最长 3.579 ms；光影为 330.256／9.698 ms。**这些值不包含全部到达安全点等待、后台 CPU 与分配成本，不能当作 profiler 的总开销。**
+- 普通安全点 id=6801，19:04:56.655042 开始、duration=168.208 ms；同 id 的 ThreadDump caller 为 spark-java-sampler-4-thread-3，操作体仅 0.032 ms。该安全点与普通 41.822～42.013 秒的 191.050 ms 长间隔重叠。
+- 光影安全点 id=5705，00:54:42.862278 开始、duration=103.256 ms；同 id 对应同名 spark 线程的 ThreadDump，操作体约 0.034 ms。
+- SafepointBegin 的持续时间与 VM 操作体是不同阶段；不能相加为精确全局暂停，不能承诺停止 spark 就节省全部 168／103 ms。到达安全点的延迟还可能受应用执行状态或调度影响。
+- 邻近还有 JFR Periodic Tasks 发起的 ClassLoaderStatsOperation，但它们 id 不同；本轮没有把“时间接近”误写成同一操作。完整 JSON 展开曾超过分析工具容量，后改流式读取，原始录制没有删除或截样。
+
+**推断：**现有测量中存在不可忽略的工具／安全点混杂，先隔离它，比凭单轮平均值决定 GPU 重写更有依据。**建议：**用当前版本支持的入口单独停止服务器后台采样，再按“帧采集自身／JFR profile／后台 spark”分别做开关对照；记录工具线程、ThreadDump、safepointId 与负载。尚未实施此对照，不自动改其他工作区或全局配置。spark 官方说明 Java 引擎存在 safepoint sampling bias，且 async-profiler 的支持平台不包含本次 Windows 环境，不能假设已有 Linux 原生采样器可直接使用。[官方说明](https://spark.lucko.me/docs/misc/Using-async-profiler)
+
+### 4. 计算热点：持续输出仍在复制子树和命名控制器
+
+下表为调用栈主题的 **inclusive 命中数**，主题会嵌套，不求和。普通全窗口 Java 样本 1666、native 562；光影为 1877、555。持续输出第二次的 Java 样本分别为 269／189。
+
+| 主题 | 普通全窗口 | 光影全窗口 | 普通／光影 sustain1 |
+|---|---:|---:|---|
+| Photon drain | 511 | 310 | 103／45 |
+| 模型 sample | 175 | 87 | 35／11 |
+| geometry.write | 156 | 95 | 29／18 |
+| IFXObject.deepCopy | 137 | 137 | 33／23 |
+| NamedRuntime | 220 | 170 | 45／36 |
+| NamedMixer | 122 | 73 | 28／15 |
+| Iris 全类栈 | 1 | 755 | 未采到／42 |
+| Iris ShadowRenderer | 未采到 | 657 | 未采到／39 |
+| Sodium 栈 | 36 | 440 | 4／26 |
+
+**已确认的新细化：**持续输出的 deepCopy 调用者落在 PROJECT 子树分支，不只是首次 FX 资源加载：
+
+```text
+PhotonChildSpawner.update
+ → PhotonSpawnSchedule.advance/window → emitConfigured → emitNow → nextTemplate
+ → PhotonSpawnTemplateUtil.create
+    → object.copy(true)                         [子树节点]
+    → includeController → source.shallowCopy()  [控制器]
+ → PhotonNamedController.shallowCopy → IFXObject.deepCopy → CODEC / PersistedParser / NBT
+```
+
+对应代码：
+- [PhotonSpawnTemplateUtil.create／includeController](../../src/main/java/org/unitego/lobecorp/util/photon/playback/PhotonSpawnTemplateUtil.java)：35～95 行选择 FX／PROJECT，75 行复制节点，110～154 行按目标集合过滤命名定义并复制控制器。
+- [PhotonNamedController](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedController.java)：23～36 行防御性复制，54～55 行 shallowCopy 实际调用 deepCopy。
+- [PhotonChildSpawner](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java)：77～91 行预备实例取用，220～260 行按预算发射；单槽预备不会覆盖所有持续生成的子树。
+- 依赖 Photon 26.1.2.3 的 IFXObject.deepCopy／FXObject.copy、LDLib2 PersistedParser；不是只改模型准备缓存就能消除的路径。
+
+**建议 O1，优先级高：**将不随实例变化的模板描述、目标过滤和命名库解析，与可写运行态分离。候选缓存键必须包括工程／内容代次、子树身份、includeChildren、完整目标集合与定义指纹；过滤必须保留轨道顺序和未知字段。先复用只读定义／未绑定执行描述，再为每个实例解析 UUID、目标对象和 slot。不得直接把 deepCopy 换成共享可写 shallowCopy，不得共享 FXRuntime、随机数、时钟、句柄或含 FXObject 引用的 PhotonNamedPlan。
+
+验收：分别量测 PROJECT／FX 的节点复制、控制器复制、定义过滤、CODEC 解码次数与 CPU／分配；保留多实例不同相位、取消、退出世界、内容编辑／重载、未知字段与原树不变回归。首次和热生成都要测；不能仅把准备移到进世界后称总成本消失。此建议属于 P06 的细化，本轮未实施。
+
+### 5. 首发不只涉及 Photon 模型：本地动画 JSON 首次解析也被命中
+
+普通最大 602.670 ms 区间为约 4.085～4.687 秒，采到的路径包括 LcClientAnimations.visualPose → LcClientAnimationResources.visualClip → LcAnimationClip.parse → Gson，以及 FX 复制、模型准备与类转换。该区间只记录到约 5.361 ms GCPhasePause，不能把整段算成 GC，也没有证据把整段算成某一次解析。
+
+- [LcClientAnimationResources.visualClip](../../src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimationResources.java)：57～64 行已按动画 ID／名称缓存，不是每帧重新解析；104～123 行管理资源代次与清理。
+- [LcAnimationClip.parse](../../src/main/java/org/unitego/lobecorp/animation/pose/LcAnimationClip.java)：41～65 行每个未缓存片段从完整 JSON 解析 ActorAnimations，再烘焙所选名称及表达式。
+- [PhotonNamedRuntime 构造与 matchesController](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java)：105～129 行读取命名库、准备模型、绑定实例计划；144～145 行比较来源定义。
+
+**建议 O2，中高优先级：**调查同一资源文件中不同片段首次选择是否重复解析同一完整 JSON；若成立，按资源代次复用只读解析树，片段及 Molang 求值上下文继续独立。优先核对 GeckoLib 已有解析能力是否语义一致，不直接替换自定义 easing／坐标／时间处理。缓存要有预算、失败重试和重载失效。验证逐时刻姿态／表达式与原输入一致，同时列出资源加载和首次施放的总成本；不减动画更新率、不改原资源。
+
+### 6. 模型与命名求值：保留成本问题，但不要默认先上 GPU 蒙皮
+
+[PhotonModelPoseSampler](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelPoseSampler.java) 的 positions:319～345 每次建立部件 Map 并按角点查找，sample／faceNormal／immutable 仍在当前调用栈中；[PhotonModelGeometryUtil.write](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java) 继续逐角变换和 QUADS 提交；[PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的 sampleLocalFrame／bakeBatches 仍按当前输入求值。法线缓存和内嵌准备复用没有缓存最终连续姿态或最终几何。
+
+但本次 skinMatrices 主题在光影全窗口仅采到 1 次，普通未采到；不能把过去“16 个单骨骼合成模型”的蒙皮占比套到这条真实激光。也不能据未采到断言所有资源无蒙皮成本。
+
+**建议 O3，中优先级：**预编译稳定角点／顶点索引与部件执行顺序，减少 positions 的整数 Map 与装箱；只对确实稳定的局部数据复用。动态姿态仍在实例局部缓冲中计算，发布前形成能安全供多视图消费的不可变快照；不能让下一帧覆盖仍被延迟批次持有的数据。保持每三角形四角 QUADS、UV、透明度、镜像／非均匀／奇异法线和透明排序。先用逐顶点属性对照及 1／16 实例验证，再讨论受限的 GPU 路径；原生实例化的法线与排序障碍见架构复核报告。
+
+**建议 O4，中优先级：**对 [PhotonNamedRuntime](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java)、[PhotonNamedMixer](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedMixer.java) 与 [PhotonModelClipUtil](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelClipUtil.java) 复用按内容版本编译的轨道／目标执行计划。后者 apply:14～40 每次 clear 并 leafTracks(false)，可量测真实展开次数后决定是否准备计划。只缓存计划，不按“输入对象未换”缓存时间函数结果；mixer.begin 的 release 与 install、mute、优先级、循环、外部基础值及随机源必须保持。已完成的绑定槽预解析只是局部，不当作完整 O4。
+
+### 7. 光影热尖峰：native 帧缓冲／Bloom 与 fence 需要分层定位
+
+光影最大 1579.635 ms 是第二次施放附近约 37.557～39.136 秒，**不是首发**。该窗口 Java 样本 4、native 14；native 中 10 个落在 glBindFramebuffer、3 个在 glFenceSync。代表调用链：
+
+```text
+PhotonWorldRenderState.drain → PhotonBloom.run → fullscreenPass
+ → PhotonFullscreenPass.draw → RenderPass.close
+ → Iris finishFramebuffer → glBindFramebuffer
+
+GameRenderer.render → FogRenderer.endFrame → MappableRingBuffer.rotate
+ → GlFence / createFence → glFenceSync
+```
+
+窗口内未记录 GCPhasePause。它支持“帧缓冲切换／驱动或队列同步是调查方向”的推断，不证明 glBindFramebuffer 独占整段时间，也不证明都是 Photon、Sodium 或 GPU 算力不足；少量 native 样本不能按采样周期乘成精确耗时。第二条链来自原版雾／ring 生命周期，不是 Photon GPU 查询。glFenceSync 的规范行为是插入 fence，不能仅凭名字就等同于一次客户端阻塞等待；也不应删除 fence 或强行阻塞 GPU 来“优化”。[Khronos 原始参考](https://github.com/KhronosGroup/OpenGL-Refpages/blob/main/gl4/glFenceSync.xml)
+
+**建议 O5，调查优先级高、改动须谨慎：**
+- 先复用 [PhotonBloomMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/performance/client/PhotonBloomMixin.java) 中已有 BLOOM／DRAW 分段入口，统计各 pass、RenderPass.close、目标切换、有效 GPU query 与等待；单独量测诊断开关开销，不新增另一套并行 profiler。
+- 查明同一帧的目标绑定／pass 切换及数据依赖，再考虑在合法边界复用状态／缓冲，保持 Iris 状态恢复、HDR、深度遮挡与混合顺序；不关闭 Bloom、不合并任意材质、不降低分辨率或阴影质量。
+- [PhotonOcclusionDrawUtil](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonOcclusionDrawUtil.java) 的 prepare:110～160／draw:178～207 是本项目入口；借用的原生缓冲不得提前关闭。需先证明自己增加的 pass／UBO／同步成本，而不是把全部 fog 或 Sodium 的 fence 都归到这里。
+- 反证：原版 DynamicUniformStorage.writeUniform:58～60 已复用相邻相等 uniform；不能宣称每次 writeTransform 都上传新 UBO。DynamicUniforms.writeTransform:37～40 仍会创建矩阵／向量副本，但它是否值得单独缓存要先计数，不以重复实现原生缓存作为主优化。
+
+### 8. P16 的机制已确认，但视觉正确性和性能影响仍待验收
+
+锁定 Iris 1.11.4 的反编译类 net.irisshaders.iris.mixin.MixinShaderManager_Overrides：
+- redirectIrisProgram:27 在 GlDevice.getOrCompilePipeline 的 HEAD 注入。
+- :35～49 中 override 返回程序才 setReturnValue；缺项时按 RenderPipeline 对象进入 missingShaders 集合，并记录携带 Throwable 的消息。
+- :56～58 经 IrisPipelines.getPipeline／shaderMap 取 override；缺项分支没有取消原方法，原有 getOrCompilePipeline 继续。
+
+因此 Missing program 不等于该管线完全没绘制；也不证明 fallback 在所有光影／遮挡情况下正确。它与 KilaGraph 的 ENTITY 格式门槛是不同检查，不能混写成同一个根因。光影本轮仍记录这类诊断，原始日志保留。
+
+**建议 O6，兼容性优先：**按管线 ID／对象身份／资源代次记录期望路由、override 命中与 fallback；先验证 Photon graph、Bloom、合成和 Lobecorp occlusion 各自应走的程序。若本应保留自定义程序，再核对当前版本支持的最小互操作方式及状态恢复。不要全局强制 ENTITY、跳过阴影或只压低日志级别；关闭条件包括深度遮挡、透明交叠、取消／卸载／重载和多光影包的独立验收。本轮未修改路由。
+
+### 9. 优先顺序、未实施边界与参考文献
+
+| 顺序 | 当前有依据的工作 | 对应现有问题 | 判定依据 |
+|---|---|---|---|
+| 先隔离测量 | 服务端后台 spark／JFR／帧采集开关对照 | P14／P17 | 9000 次 ThreadDump、已匹配长安全点 |
+| 第一批实现候选 | O1 子树／控制器定义复制与 O2 同文件片段解析复用 | P06 | 持续和首发均有实际调用链 |
+| 第一批调查 | O5 分解热尖峰、O6 明确 override／fallback | P15／P16 | native 栈、源代码与真实 ERROR 日志 |
+| 后续局部优化 | O3 稳定索引／姿态发布，O4 内容版本执行计划 | P11／P12 | 当前真实模型与命名求值样本 |
+| 不默认采用 | 全面 GPU 蒙皮／VAT、资产替换、阴影／Bloom 关闭 | P11／P15 | 未满足等价性或独立收益证据 |
+
+本轮只诊断和写文档，不将这些建议视为已经实施或自动授权的全部改动。当前数据不支持“改一个法线矩阵就解决”“GPU 化必然数量级提升”“没有启用客户端 spark 就没有采样干扰”等结论。测量隔离和具体复制链比泛泛扩大缓存或降低视觉负载更值得优先验证。
+
+参考文献与本地版本依据：
+1. [Sodium 官方仓库与定位](https://github.com/CaffeineMC/sodium)：只用于说明工具职责；本次二进制为 sodium-neoforge-0.9.2+mc26.1.2.jar，不以仓库当前分支替代锁定版本行为。
+2. [Oracle JDK 25：JFR 性能问题诊断](https://docs.oracle.com/en/java/javase/25/troubleshoot/troubleshoot-performance-issues-using-jfr.html)：区分 CPU、等待、GC 与测量开销，事件阈值会影响可见性。
+3. [Oracle JDK 25：jfr 命令](https://docs.oracle.com/en/java/javase/25/docs/specs/man/jfr.html) 与 [RecordingFile API](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.jfr/jdk/jfr/consumer/RecordingFile.html)：离线事件读取和流式分析方法。
+4. [spark 官方 Java／async-profiler 引擎说明](https://spark.lucko.me/docs/misc/Using-async-profiler)：采样偏差与平台条件；实际源码核对 spark-1.10.172 的 JavaSampler:27／60／89，不将其他版本命令猜成当前可用 API。
+5. [Khronos glFenceSync 原始规范页源码](https://github.com/KhronosGroup/OpenGL-Refpages/blob/main/gl4/glFenceSync.xml)：fence 的协议含义，不是本项目性能收益承诺。
+6. 本地 IDEA 源码：Photon 26.1.2.3／LDLib2 26.1.2.42、Iris 1.11.4、Minecraft 26.1.2／NeoForge 26.1.2.100。依赖类通过 IDEA／MixinMCP 读取；本节项目代码链接与方法名为当前真实入口，升级后需重新核对。
+
+### 10. 备份、复现与清理
+
+完整证据根为 C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-sodium-diagnosis-20261024。normal／shader 分开保存帧、marks、截图、完整 JFR、windows.tsv、jfr-summary.tsv、jfr-stacks.tsv、jfr-examples.tsv、jfr-long-events.tsv、jfr-event-counts.tsv；shader-interrupted 不混入有效轮。JfrWindowAnalysis.java 为备份目录中的离线分析源文件，不是模组生产代码；frame-summary.json 保存全部帧统计。
+
+复现步骤：用 IDEA Client 及唯一 label 开启本节记录的 JFR 参数；结束后使用同一 JDK 25 运行分析源文件，依次传入 JFR 路径、帧报告 started_at、包含 windows.tsv 的输出目录。分析按实际栈识别渲染线程 ID，按时间筛选而不是把 startup 全部算进技能。原始录制及最差长帧不删，普通／光影跨时段不作稳定收益 A/B。
+
+普通游戏 PID 59968（10-24 19:03:24.914 启动），光影续跑 PID 17540（10-25 00:53:17.473 启动），JFR 均有 Shutdown requested from Java；续跑游戏还保存了正常保存退出、Stopping! 与 IDEA BUILD SUCCESSFUL 日志。普通轮 IDEA 临时日志在重启后不可用，未用当前 latest.log 冒充；保留其原始 JFR、帧、阶段及原操作回执。分析辅助进程已自行结束，桥接调用结束即关闭；未按名称结束 IDE、未知 Java 或其他任务。
+
+中断遗留 Iris 已先恢复并核对原字节，再显式启用本地光影包重跑；最终再次恢复原始字节。没有修改全局 JAVA_TOOL_OPTIONS、其他工作区、动画、LOD、原始资源或生产代码，没有推送。问题状态与后续验收仍统一在唯一清单。
+
+## 历史审查与既有实验背景
+
+
 > 阶段说明：本页是 2026-10-19 静态候选与实验方案；后续局部实现见 [最新 WIP](photon-workspace.md)。尚无当前版本完整冷热、P99 与视觉验收，不将候选当作确认根因或收益。
 
 日期：2026-10-19。状态： **只读源码审查与优化提案，未实施、未运行采样**

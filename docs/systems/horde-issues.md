@@ -29,6 +29,23 @@
 | P3 | H17、H20 历史证据及提交归属 | 缺失旧快照不伪造恢复；混合源码不能连带提交用户改动 |
 | 人工边界 | H21 需求取舍 | 保留原有资源准备、出生预算及旧事件快照；不主动提问 |
 
+## DS报告复核（2026-10-24，只读核对，不重跑）
+
+原报告保留为[测试前诊断](horde-pretest-optimization.md)、[测试后报告](horde-posttest-optimization.md)，它们是特定代码快照的证据，不作为另一份长期问题清单，也不把报告内实施建议视为用户新增授权。
+
+- 已核对现存原始summary：client-1792810299088，光影轮整体FAILED；64真实实体PASSED，均值11.052ms；10000实例夹具TIMED_OUT，failure为Phase STABILIZE exceeded 2400 ticks，workloadCorrect=false，未进入MEASURE。2065个STABILIZE帧均值57.897ms、P95 93.565ms，不能当作正式测量或可见性通过。客户端日志确认实际加载ComplementaryReimagined_r5.9.3。
+- DS最初无光影轮与追加光影轮不是同一次运行；当前raw-results已对应光影轮，不能把现存文件再次当成无光影原始产物。报告记录并发编辑与负载变化，因此跨轮差值不是单变量因果证据，不能直接宣称代码回退2.7倍。
+- H24机制校正：本地GlCommandEncoder确实绑定GL_PIXEL_PACK_BUFFER并调用glReadPixels，随后将同一个缓冲作为顶点输入；当前创建usage没有CPU映射位，BufferStorage不会为它建立持久CPU映射。由此只能确认驱动管理的像素到缓冲路径及资源依赖，不能证明必经主机内存、再次上传或发生固定次数的CPU同步。
+- [Khronos ARB_pixel_buffer_object规范](https://raw.githubusercontent.com/KhronosGroup/OpenGL-Registry/main/extensions/ARB/ARB_pixel_buffer_object.txt)明确给出渲染结果经glReadPixels写入缓冲后直接作为顶点源的用途，实际驻留位置由实现决定。DS“584MB PCIe往返＋93次固定延迟解释全部耗时”是未证实模型；此前将物理传输保证为纯GPU复制也过于绝对，准确边界是“应用未CPU映射/取数，驱动驻留及同步成本需测”。逐批复用同一附件/缓冲仍有依赖与性能风险，H24.1分阶段计量仍优先。
+- H15部分条目过时或读法有误：当前已是体型3倍宽深，非0.5格余量；updateGaps明确含!previousRegions.equals(regions)分支，不能说没有旧端点收敛触发；当前种子回绕为1024行，不是512行。整表两端点、一tick过渡、零尺寸端点位置及反向流场抵消仍是合理的待优化/待验收项，不因这些校正关闭H15。
+- H15建议不能直接照搬：CPU预混合区域违背既定GPU处理约束；只把过渡时长拉长、只去偏置、只求和后饱和，均不能单独证明持续运动、稳定分流和不穿透。须同时设计GPU历史/区域身份、连续约束与验收曲线；不擅自降低LOD、数量、发光或改规则择主。
+- H07新增优先候选：源码确认HordeLightField.prepare每次构造distinct块列表，并在逻辑刻或块集合变化时重建requiredSections；后者逐区段创建Section，槽位/排序/更新仍有全量遍历。DS的JFR热点与此路径吻合，支持优先测量缓存/分配；具体百分比和“翻倍完全由它造成”未在本轮重新计算，不能作为已闭合因果。
+- 已核对Minecraft源码：只有framerateLimit<260才执行帧率限制，本版260表示不限帧。DS对此校正成立；旧“上限260”表述不能解释历史高于260的计数。CPU提交、GPU执行和帧间隔有重叠及不同窗口，不能简单相加或相减来分摊成本。
+- DS本轮未成功启动的规则测试不覆盖或推翻此前已记录的其他测试运行；源码中HordeParticipant与HordeRules的已有直接测试也使“全部零JUnit”表述过宽。HordeRuntime/存档/同步完整集成覆盖仍不足，继续保留H14。
+- 本轮未改代码、未启动游戏、未构建或重跑测试。两份报告及当前仍存在的光影raw-results、专服bundle已归档至C:/Users/wang_/AppData/Local/Temp/horde-ds-review-20261024-d2f64f03；覆盖前共20文件约26.3MB。该归档不代表恢复了已被后续运行覆盖的无光影原始产物。
+
+建议执行次序：先将batches/draws/gpuCopy/区域数与各阶段计时落盘，再在固定快照下处理光照集合缓存、GPU连续分割和Iris批次依赖；H23退出与H25类路径单独修复和验收。所有未完成项仍按原问题编号维护。
+
 ## H24 [P1／部分修复] Iris可见性已恢复，大负载性能仍不合格
 
 根因一：自定义horde_gpu管线没有Iris覆盖，日志明确Missing program。根因二：Iris在世界渲染期间将ENTITY从36字节扩展为56字节，旧转接按36字节写入，造成后续顶点属性错位。
@@ -101,7 +118,7 @@ HordeGpuRenderer.prepare/geometry同步调用HordeMeshCache.prepare，首次解�
 
 当前两轮Sodium无光影夹具均PASSED：64实体间隔均值4.84/4.31ms，10000虚拟实例2.41/2.30ms，后者GameRenderer GPU均值2.08/1.93ms。此前H22的12.04ms真实实体回退未复现，已从活动缺陷中移除；单轮扰动原因未获因果证明。
 
-剩余：夹具截图大量天空，提交10000不等于全数可见。BenchMod帧间隔与20/30秒GameRenderer CPU/GPU捕获的窗口和事件口径不同；配置上限260与采样帧数也不构成稳定FPS承诺。64实体渲染线程分配均值约1.70/1.83MB每帧，尚无本轮之前的同口径分配基线，不归因Horde。
+剩余：夹具截图大量天空，提交10000不等于全数可见。BenchMod帧间隔与20/30秒GameRenderer CPU/GPU捕获的窗口和事件口径不同；本版本配置值260表示不限帧；采样帧数仍不构成稳定FPS承诺。64实体渲染线程分配均值约1.70/1.83MB每帧，尚无本轮之前的同口径分配基线，不归因Horde。
 
 需分别覆盖真实事件、长线路、多目标/玩家、多事件、显式上限与无限配置，拆出extract/prepare/motion/draw/复制/显存和server tick；H24是已实测失败项，独立服务端当前受H25阻断。不得以减少实体、关闭发光或放宽环境门禁制造通过。
 

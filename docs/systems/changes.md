@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-24：DS诊断与测试报告复核
+
+- 读取horde-pretest-optimization.md及horde-posttest-optimization.md，保留原报告不改写；对照当前源码、26.1.2本地GL后端、Minecraft帧率限制源码与当前summary/日志，未把报告内建议当作新增代码授权。
+- 核实当前光影client-1792810299088整体FAILED，64实体PASSED，10k夹具在STABILIZE超时、workloadCorrect=false，未进入MEASURE；57.897ms不是正式测量或可见性验收。当前raw-results为该光影轮，不能再引用为此前无光影原始数据。
+- 校正PBO归因：glReadPixels到绑定缓冲及随后顶点输入不证明CPU主机往返；应用不执行CPU映射，实际驻留/传输与同步占比需测。引用Khronos原始PBO规范，撤回“必然PCIe往返”和“物理传输保证纯GPU”两个过度结论。源码确认260表示不限帧，光照集合重建路径吻合DS热点，但未重新分析JFR百分比或确认完整因果。
+- 核对当前体型3倍、1024行种子回绕、previousRegions收敛分支与已有测试；保留一tick/整表过渡、势场抵消、资源和集成覆盖问题。CPU区域预混合、静默LOD/减量等建议不直接采用。复核摘要仅落唯一问题页与总览，不新增平行待办。
+- 归档两份原报告、现存光影原始产物和专服bundle共20文件约26.3MB，并另存整合前三份文档：C:/Users/wang_/AppData/Local/Temp/horde-ds-review-20261024-d2f64f03。没有宣称恢复已覆盖的无光影原始产物。
+- 本轮没有源码、配置、资源或DS原报告修改，没有启动游戏、Debug、MC MCP、构建、Data或测试；实际执行为只读核对、外部证据备份及三份文档同步。未把旧测试结论扩展为本轮验证。
+
+
 ## 2026-10-24：体型三倍分割、事件尸体期限与可见清扫粒子
 
 - 本轮通过IDEA修改HordeClient.RegionBox.forEntity：水平宽深按实际体型3倍扩张后按1格取整，Y仍采用真实高度；保留既有GPU连续过渡和高处隔离，不扩大服务端战斗区域。

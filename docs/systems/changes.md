@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-10-24：Photon 渲染架构与 Mixin 方案报告
+
+- 基于 Photon 26.1.2.3 的 jar 字节码与 `assets/photon/shaders` 核对，以及既有光影／无光影激光数据，新增 [Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)：指出原生实例化 `MODEL/MODEL_VAT` 与 `BeamEmitter` GPU 光束路径未被使用，给出模型实例化、原生光束、阴影／Iris 路由、首帧预热四类方案，以及 M1–M7 的 Mixin 目标、风险与验收门槛。
+- 本轮只写报告，没有修改代码、资源、构建配置或游戏设置，也没有新增采集；相关入口同步到架构报告与总览。未提交用户既有配置与测试改动，不推送。
+
 ## 2026-10-24：真实激光光影测试与架构级诊断
 
 - 基线 `6ae3093c`（法线缓存＋内嵌模型准备复用已在位）。光影包从 `lobecorp_horde` 工作区复制 `ComplementaryReimagined_r5.9.3.zip` 到本工作区 `run/client/shaderpacks`（原为空），临时启用 Iris；测试后把 `run/client/config/iris.properties` 恢复为测试前内容，包文件保留。使用 IDEA `Client`＋Sodium＋QueenBeamPerformanceTrial 跑真实激光：无光影 51432 帧（11:32）、光影 7672 帧（12:34）、光影＋JFR 8439 帧（12:38），均 DURATION、三次施放完整；MCP 经 19877 取得 pong 与 2560×1494 截图，随后正常保存退出并退出游戏。

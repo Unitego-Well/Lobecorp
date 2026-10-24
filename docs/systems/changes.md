@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-24：复核渲染架构方案并预解析模型绑定槽
+
+- 反复核对 DS 两份架构报告与 Photon 26.1.2.3 接口／shader、RuntimeValue 和 mixer 生命周期，修正 inclusive 百分比叠加、光束阴影归因、单 draw／收益预测、法线／排序／VAT 等价性及 M2／M5 目标签名。GPU、VAT、阴影、ENTITY 路由和资产合并均未实施；当前缺口只维护于唯一问题清单。
+- PhotonModelBindings 构造期预解析 part／bone／Morph 的实例槽，延迟创建空结果 Map；逐帧求值、随机 supplier、不可变发布和原渲染后端不变。新增显式开发用 PhotonModelBindingsValidation，由 QueenBeamPerformanceTrial 在测量结束后按环境变量调用，不提前预热；未改动画、LOD、资源或技能时序。
+- 普通 JUnit 三项因 FML ModList 未初始化而未进入断言，失败 XML 与临时测试源码已备份，未把失败描述为通过；随后候选与重复轮真实客户端均记录三项回归通过。最终三份 Java IDEA 0 错误、夹具 2 项既有提示；仅修改行经 IDEA 格式处理，原 LF／CRLF 保留。编译与 Data 成功，最终 Data 35 秒、23 项 written0／removed0。
+- Sodium＋MCP 前后均值 3.458→3.327 ms，但 P99／最大值未改善；同候选复核均值 15.597 ms、空基线 14.011 ms，后续同候选又变快，稳定收益未验收。误标 reference 实为候选，单独归档；原实现回切核对原始字节后启动，但用户随后取消后续游戏测试，只做正常关闭，自动夹具已生成的输出不纳入新验收。最终源码已恢复 M7 候选，叫停后未再安排验证运行。
+- 所有自有客户端与桥接正常关闭，无本轮 Debug 断点；原文／源码、完整帧／阶段、日志、比较 JSON、失败回归证据与 bridge ledger 位于既有可视化根 photon-render-review-20261024。保持原有配置、两份测试和轮转日志；仅提交本次代码及同步文档，不推送。
+
 ## 2026-10-24：Photon 渲染架构与 Mixin 方案报告
 
 - 基于 Photon 26.1.2.3 的 jar 字节码与 `assets/photon/shaders` 核对，以及既有光影／无光影激光数据，新增 [Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)：指出原生实例化 `MODEL/MODEL_VAT` 与 `BeamEmitter` GPU 光束路径未被使用，给出模型实例化、原生光束、阴影／Iris 路由、首帧预热四类方案，以及 M1–M10 的 Mixin 目标、风险与验收门槛。

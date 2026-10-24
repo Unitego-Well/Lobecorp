@@ -4,7 +4,7 @@
 
 相关文档：[激光测试与优化方案](photon-laser-optimization-20261024.md)（无光影轮）、[测试后优化建议与问题原因](photon-optimization-posttest-20261024.md)、[Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)、[性能审查](photon-performance-audit.md)、[唯一问题表](../issues.md)。
 
-## 一、结论：为什么“GPT 优化”几乎无效
+## 一、原始诊断与后续审查边界
 
 法线缓存属于微优化：它只去掉每个 group 每帧一次 `Matrix4f.normal()`。本轮证据表明，真实激光的主要成本不在这一层：
 
@@ -21,11 +21,11 @@
 
 光影下渲染线程 JFR（施放窗口 1044 个样本）显示：Iris 相关栈 **36.8%**，其中 Iris 阴影 **31.5%**；Photon `write` 只有 **3.0%**，`PhotonModelOutput` 15.1%，`PhotonWorldRenderState` drain 13.5%，`PhotonModelPoseSampler.sample` 8.8%。也就是说：
 
-- 光束每帧仍由 CPU 展开成 QUADS 顶点，再进入 Iris 顶点管线；光影下还要再走一次阴影渲染与逐顶点切线计算。
-- 法线缓存、数学微调既不影响 Iris 顶点管线，也不影响阴影 pass、绘制调用数和填充率，因此收益“微乎其微”是结构决定的，不是实现细节问题。
-- 首次施放 600～717 ms 主要是同步准备＋管线／着色器首次编译＋纹理与首次使用，同样不在法线计算。
+- 光束当前由 CPU 展开成 QUADS；Iris 栈命中不能证明这些光束本身额外执行了阴影提交，须对齐实际对象／pass／任务计数。
+- 法线缓存未改变几何数量和材质；其真实收益仍受可比性约束，不能用该组样本直接给出收益上限。
+- 首次长帧窗口与同步准备及首次使用重叠；编译／纹理／GC／JIT／驱动等待未分离，不能把全部时间确诊给管线编译。
 
-**要获得数量级改善，必须改变光束的渲染架构，而不是继续打磨 CPU 逐顶点循环。**
+**现有数据尚不能证明架构替换必有数量级收益，或局部优化必定无效。** 后续 [Mixin 方案复核](photon-render-architecture-mixin-20261024.md) 纠正了法线／透明排序不等价、protected API 可直接调用、inclusive 比例不可相加等前提；不跳过阴影、不改资产或动画后端。当前问题只在唯一清单维护。
 
 ## 二、工具链与运行账本
 
@@ -88,7 +88,7 @@
 1. **光束走的是“粒子模型即时提交”路径。** [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java#L431-L452) 每帧在 `bakeBatches` 里调用 [PhotonModelGeometryUtil.write](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java#L21-L86)，把三角形展开成 4 角 QUADS 写进原生 `VertexConsumer`；原生在 `PhotonWorldRenderState.drain` 时消费并上传。没有持久网格、没有实例化、没有 GPU 侧形变。
 2. **原生其实已有持久／实例化模型路径。** Photon 26.1.2.3 的 `TileParticleRenderer` 提供 `modelVertexBuffer`／`modelIndexBuffer`、`usesVertexAnimation`、`fillInstancesModel`、`AdditionalGPUDataSetting` 等入口（jar 内已确认）。同一引擎里存在“上传一次网格、按实例填参数”的能力，但自定义模型输出没有使用。
 3. **本仓库已有成功参考。** `lobecorp_horde` 的 `HordeGpuRenderer` 是“常驻模型＋GPU 运动纹理＋实例化批次＋Iris 兼容管线”的实现，注释明确“每批只上传时间与编号区间，不上传逐单位变换”，并以 65536 实例／draw 分批。这正是激光光束需要迁移的形态。
-4. **光影下光束没有走高效路径。** KilaGraph 对部分 graph 记录 `vertex format [position, color, uv0, uv2, normal]` 不满足 Iris ENTITY 格式，故这些 graph 不经 shaderpack，保持自带 shader；同时光束仍参与阴影 pass（Iris 阴影相关栈 31.5%）。结果是：主 pass、阴影 pass、逐顶点切线／法线计算各付一次，且绕开了 shaderpack 的优化路径。
+4. **光影下光束没有走高效路径。** KilaGraph 对部分 graph 记录 `vertex format [position, color, uv0, uv2, normal]` 不满足 Iris ENTITY 格式，故这些 graph 不经 shaderpack，保持自带 shader；该警告并未证明光束参与 shadow pass，也不证明 shaderpack 路由更快；31.5% 是整类 Iris 阴影栈，不能当作光束独占成本。
 5. **绘制粒度偏细。** 模型按 material group 拆分绘制，多个 FX 对象（蓄力、光束、粒子等）各自成批；没有按“同一材质一个 draw”或实例化合批。填充率（2560×1494、半透明叠加）在光影下进一步放大 GPU 成本。
 
 ## 五、架构级方案
@@ -122,7 +122,7 @@
 - 统一材质与 graph，减少 pipeline 切换与状态变更；
 - 用 Iris 的 shadow distance／culling 对照，量化阴影 pass 的 CPU／GPU 占比。
 
-本轮证据：Iris 阴影相关占施放窗口渲染样本 31.5%，且逐顶点切线计算出现在热点中；这两项是光影场景最直接的可回收成本。
+本轮证据：Iris 阴影相关占施放窗口渲染样本 31.5%，且逐顶点切线计算出现在热点中；这两项是候选调查方向，未证明可无损回收。
 
 ### 方案 D：资产与绘制结构
 
@@ -145,7 +145,7 @@
 ## 六、建议顺序
 
 1. **P0 工具与基线**：把 draw call、shadow pass、pipeline 编译计时接入试验；本轮的 JFR＋帧／GPU 数据作为基线。
-2. **P1 方案 C 的阴影与 Iris 路由**：先去掉光束的阴影重复渲染并补齐顶点格式（改动相对局部，收益明确），做光影对照。
+2. **P1 方案 C 的阴影与 Iris 路由**：先调查光束实际是否重复提交阴影及格式语义；当前不去掉阴影、不补写 ENTITY 路由，收益与等价性均未证明。
 3. **P2 方案 B 原型**：用原生实例化／持久网格只处理光束模型，验证视觉与排序。
 4. **P3 方案 A**：若 B 仍不满足，迁移到专用 GPU 光束渲染器（参考 `HordeGpuRenderer`）。
 5. **P4 方案 D/E**：绘制合并、overdraw、首帧预热。

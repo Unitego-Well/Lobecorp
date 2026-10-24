@@ -236,6 +236,9 @@ public class QueenBeamPerformanceTrial {
 				}
 				if (elapsed() >= 5) {
 					cleanup();
+                    if (Boolean.parseBoolean(System.getenv(PhotonModelBindingsValidation.REQUEST_ENV))) {
+                        report(PhotonModelBindingsValidation.verify());
+                    }
 					restoreOptions();
 					move(State.COMPLETE);
 				}

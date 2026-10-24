@@ -24,18 +24,21 @@ import java.util.Map;
 /// 模型部件/Morph通过原生属性槽驱动；未覆盖分量不截断片段本身的TRS动画。
 public class PhotonModelBindings {
 	private static final float DEGREES_PER_RADIAN = 180f / (float) Math.PI;
-	private final PhotonModelDefinition definition;
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<String, RuntimeBinding> bindings = new LinkedHashMap<>();
 	private final List<AnimatedPropertyType> properties;
-	private final List<String> partIds;
-	private final List<String> boneIds;
+	private final List<TransformSlots> partSlots;
+	private final List<TransformSlots> boneSlots;
+	private final List<MorphSlot> morphSlots;
+
+	private record TransformSlots(String id, RuntimeValue<?> position, RuntimeValue<?> rotation,
+	                              RuntimeValue<?> scale) {
+	}
+
+	private record MorphSlot(String id, RuntimeValue<?> value) {
+	}
 
 	public PhotonModelBindings(PhotonModelDefinition definition) {
-		this.definition = definition;
-		partIds = definition.parts().stream().map(Part::id).toList();
-		boneIds = definition.bones().stream().map(Bone::id).toList();
-
 		for (var part : definition.parts()) {
 			transform("parts." + part.id(), part.transform());
 		}
@@ -47,8 +50,21 @@ public class PhotonModelBindings {
 			add("morphs." + morph.id() + ".weight", "morph_weight", ConfigValueType.FLOAT, morph.weight());
 		}
 
+		partSlots = transformSlots("parts.", definition.parts().stream().map(Part::id).toList());
+		boneSlots = transformSlots("bones.", definition.bones().stream().map(Bone::id).toList());
+		morphSlots = definition.morphs().stream()
+				.map(morph -> new MorphSlot(morph.id(), slots.get("morphs." + morph.id() + ".weight"))).toList();
+
 		properties = bindings.values().stream().map(ConfigPropertyType::fromBinding)
 				.map(AnimatedPropertyType.class::cast).toList();
+	}
+
+	/// 槽在构造时创建且 clear 只清值；预解析引用不会绕过后续覆盖或基础值读取。
+	private List<TransformSlots> transformSlots(String kind, List<String> ids) {
+		return ids.stream().map(id -> {
+			var prefix = kind + id + ".";
+			return new TransformSlots(id, slots.get(prefix + "position"), slots.get(prefix + "rotation"), slots.get(prefix + "scale"));
+		}).toList();
 	}
 
 	private void add(String path, String label, ConfigValueType type, Object value) {
@@ -82,35 +98,38 @@ public class PhotonModelBindings {
 	}
 
 	public Map<String, Float> morphWeights() {
-		var result = new LinkedHashMap<String, Float>();
+		Map<String, Float> result = null;
 
-		for (var morph : definition.morphs()) {
-			var slot = slots.get("morphs." + morph.id() + ".weight");
+		for (var morph : morphSlots) {
+			var slot = morph.value();
 
 			if (slot.isOverridden()) {
+				if (result == null) {
+					result = new LinkedHashMap<>();
+				}
+
 				result.put(morph.id(), ((Number) slot.get()).floatValue());
 			}
 		}
 
-		return Map.copyOf(result);
+		return result == null ? Map.of() : Map.copyOf(result);
 	}
 
 	public Map<String, PartOverride> partOverrides(PhotonModelOutput owner, float progress) {
-		return transformOverrides(owner, progress, "parts.", partIds);
+		return transformOverrides(owner, progress, partSlots);
 	}
 
 	public Map<String, PartOverride> boneOverrides(PhotonModelOutput owner, float progress) {
-		return transformOverrides(owner, progress, "bones.", boneIds);
+		return transformOverrides(owner, progress, boneSlots);
 	}
 
-	private Map<String, PartOverride> transformOverrides(PhotonModelOutput owner, float progress, String kind, List<String> ids) {
-		var result = new LinkedHashMap<String, PartOverride>();
+	private Map<String, PartOverride> transformOverrides(PhotonModelOutput owner, float progress, List<TransformSlots> plan) {
+		Map<String, PartOverride> result = null;
 
-		for (var id : ids) {
-			var prefix = kind + id + ".";
-			var position = override(prefix + "position", owner, progress);
-			var rotation = override(prefix + "rotation", owner, progress);
-			var scale = override(prefix + "scale", owner, progress);
+		for (var target : plan) {
+			var position = override(target.position(), owner, progress);
+			var rotation = override(target.rotation(), owner, progress);
+			var scale = override(target.scale(), owner, progress);
 
 			if (position == null && rotation == null && scale == null) {
 				continue;
@@ -124,14 +143,17 @@ public class PhotonModelBindings {
 				quaternion = new Rotation(value.x, value.y, value.z, value.w);
 			}
 
-			result.put(id, new PartOverride(position, quaternion, scale));
+			if (result == null) {
+				result = new LinkedHashMap<>();
+			}
+
+			result.put(target.id(), new PartOverride(position, quaternion, scale));
 		}
 
-		return Map.copyOf(result);
+		return result == null ? Map.of() : Map.copyOf(result);
 	}
 
-	private @Nullable Vector3 override(String path, PhotonModelOutput owner, float progress) {
-		var slot = slots.get(path);
+	private @Nullable Vector3 override(RuntimeValue<?> slot, PhotonModelOutput owner, float progress) {
 
 		if (!slot.isOverridden()) {
 			return null;

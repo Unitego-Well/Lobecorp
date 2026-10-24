@@ -15,7 +15,38 @@
 - 首发窗口 cold=4～16 秒；warm1／warm2 为 31～43／58～70 秒。sustain1 从第二次实际客户端 OUTPUT 后 2 秒起，到 RECOVERY 为止，普通约 33.991～42.158 秒、光影约 33.984～41.985 秒；不是全程均值。
 - 启动期完整录制也包含资源加载、类转换和关闭，但主表只过滤实际 90 秒窗口。profile 会产生工具开销；CPU 样本、native 样本、GPU 查询和帧间隔不是同一指标，不相加、不按样本比例直接承诺帧率收益。[JFR 性能诊断指南](https://docs.oracle.com/en/java/javase/25/troubleshoot/troubleshoot-performance-issues-using-jfr.html)
 
-证据等级：**实测**为当前原始帧／JFR／日志；**源码确认**为 IDEA 当前项目或锁定依赖读取；**推断**为两者共同支持但未经独立干预验证；**建议**为尚未实施、仍须受控验收的方案。没有采到不等于没有执行。
+证据等级：**确认事实**只包含原始帧／JFR／日志直接记录及当前源码可见的控制流；**证据支持的推断**为事实共同支持但未经干预验证的解释；**待验证假设**指现有数据不能确认的因果、主次或收益判断。**优化建议**是未来方案，不属于已实施修改。没有采到不等于没有执行。本次补充只复核已保存证据，没有新增游戏采样，没有修改代码或分析器。
+
+#### 确认事实
+
+| 编号 | 可直接确认的内容 | 证据位置／对应代码 | 不应外推的内容 |
+|---|---|---|---|
+| F1 | 两轮各 9000 次 ThreadDump；168.208／103.256 ms 安全点分别与 spark 请求具有相同 safepointId | jfr-stacks.tsv、jfr-long-events.tsv；spark JavaSampler.run／dumpThreads | 不是停止 spark 后必能节省的毫秒数 |
+| F2 | 持续输出已采到 PROJECT 子树节点及控制器的复制链；全部来源 deepCopy 主题在 sustain1 命中 33／269、23／189 个 Java 样本 | jfr-examples.tsv；PhotonSpawnTemplateUtil.create／includeController、PhotonNamedController.shallowCopy | 未将全部 deepCopy 样本逐一按来源分摊，不能把主题总数全算给 PROJECT |
+| F3 | 普通 602.670 ms 首发区间采到本地动画片段 JSON 解析、复制和类转换；该区间 GC 暂停约 5.361 ms | spike0；LcClientAnimationResources.visualClip、LcAnimationClip.parse | 不能据一次栈命中断言单个解析方法耗时 602 ms |
+| F4 | 光影 1579.635 ms 热长帧窗口中记录 4 个 Java／14 个 native 样本；native 有 10 个 glBindFramebuffer、3 个 glFenceSync，窗口未记录 GCPhasePause | shader spike0；PhotonBloom／PhotonFullscreenPass、Iris finishFramebuffer、原版 FogRenderer／MappableRingBuffer | 未直接测量各 native 调用的起止时长，未排除调度或驱动因素 |
+| F5 | GPU 查询范围、有效数和缺测数已保存；Iris 缺项分支没有取消原编译方法 | 原始帧 JSON；PhotonFrameCapture、Iris MixinShaderManager_Overrides | 缺测不是零耗时；fallback 继续执行不等于视觉兼容完全正确 |
+
+#### 证据支持的推断
+
+- **I1：测量需要先隔离后台采样。** F1 证明后台取栈活动及长安全点关联真实存在；它支持把工具开销纳入排查，不支持把所有卡顿归给 spark。对应 P14／P17。
+- **I2：持续创建／复制是值得优先验证的优化入口。** F2 与源码中的 CODEC、定义过滤和防御性复制相符；减少重复纯定义处理可能降低 CPU／分配，但可消除比例未知。对应建议 O1／P06。
+- **I3：首次资源准备和持续渲染应分开处理。** F3 与 F4 的阶段和栈不同，单一法线缓存、单一 GC 调整或统一“首次 shader 编译”解释不足。对应 O2／O5。
+- **I4：当前不能直接决定全面 GPU 化。** 本轮模型求值、复制、命名、Iris／Sodium 和 native 路径均有证据，且 GPU 缺测与跨时段条件存在；尚无等价性和受控收益对照。对应 O3／O4 及原架构门槛。
+
+#### 待验证假设与所需证据
+
+| 假设 | 当前为何不能确认 | 后续验证方案（本次未执行） |
+|---|---|---|
+| H1：关闭后台 spark 会显著降低 P99／全部长帧 | 请求关联不等于净可消除成本；到达安全点等待也受应用和调度影响 | 同代码／同场景／同工具条件下单独切换后台采样，比较 ThreadDump、安全点、CPU 和各轮分位数 |
+| H2：模板／命名定义复用能消除主要创建成本 | 还含实例独占状态、UUID 重绑定、未知字段、动态子树与资源版本处理 | 分别量测节点复制、控制器复制、定义过滤／解析；做所有权与往返一致性对照，见 O1 |
+| H3：光影热尖峰主要是 GPU 队列／帧缓冲切换阻塞 | native 采样不是每次 API 耗时，GPU 查询未覆盖全部帧；缺驱动／调度遥测 | 使用现有 Bloom／DRAW 入口分段，关联有效 GPU 时间、RenderPass.close、fence 来源和主机状态，见 O5 |
+| H4：首发主要耗在 shader 编译或纹理上传 | 当前只看到首次使用附近的混合栈，没有独立的编译／上传时间分摊 | 在现有工具能力内分离查找、编译、上传与复制；无法独立测量时继续保留假设，不擅自加代码 |
+| H5：高分配意味着内存泄漏 | 分配不是存活量；线程累计计数只覆盖短区间，未建立持有与释放账本 | 独立记录存活对象、owner／代次与关闭后回落；本次未执行 heap dump 或生命周期改造 |
+| H6：实例化／VAT／GPU 蒙皮或阴影门控必有数量级收益且外观不变 | 缺法线、排序、动态覆盖和动画等价性；没有目标方案的真实对照 | 先满足现有架构报告的数值／排序／生命周期门槛，再谈收益；不默认降低动画、LOD、阴影或资源质量 |
+| H7：P16 完全无害或必然造成漏绘 | 缺项后的原方法继续只是控制流事实；遮挡、混合和多光影包未全验收 | 按管线 ID 核对期望程序、override／fallback 与可见结果，见 O6 |
+
+以上矩阵仅说明证据归属，不另建问题状态副本；当前问题和关闭条件仍以唯一清单为准。后文 O1～O6 已列出对应源码、语义约束与验收方法，参考文献列在第 9 节。
 
 ### 2. 运行账本与基本结果
 
@@ -70,7 +101,7 @@ GPU 范围只覆盖 GameRenderer.render，光影缺测多，不能将有效样�
 | Iris ShadowRenderer | 未采到 | 657 | 未采到／39 |
 | Sodium 栈 | 36 | 440 | 4／26 |
 
-**已确认的新细化：**持续输出的 deepCopy 调用者落在 PROJECT 子树分支，不只是首次 FX 资源加载：
+**已确认的新细化：**持续输出中存在 PROJECT 子树分支的 deepCopy 调用，不只是首次 FX 资源加载；下列代表栈不能替代全部 deepCopy 样本的来源分摊：
 
 ```text
 PhotonChildSpawner.update

@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-25 证据分层复核：按用户“不修改代码”的范围，只读核对既有 Sodium JFR／帧／GPU／日志，未启动游戏或新增采样，未改代码及分析器。主诊断页新增 F1～F5 确认事实、I1～I4 证据支持推断、H1～H7 待验证假设及各自所需证据；明确 deepCopy 代表栈并非全部来源分摊、后台采样请求关联并非净收益、native 样本并非 API 精确耗时。O1～O6 建议、参考和对应源码继续保留，问题状态不变；文档原件备份于既有诊断证据目录的 evidence-tier-review-20261025。
+
 2026-10-25 Sodium 诊断与文档已完成：已完成普通完整 profile JFR 与续跑光影 profile JFR 的流式、分阶段及最长帧分析；中断前光影只到 SETTLE，单独隔离，不冒充有效轮。确认持续子树发射经 includeController／shallowCopy 仍触发深拷贝；两轮另各有后台 spark 发起的约 9000 次 ThreadDump，并以 safepointId 将 168／103 ms 安全点关联到取栈请求，测量隔离需优先处理。普通 602.670 ms 首发、光影 1579.635 ms 热尖峰均保留；后者 native 样本以 Bloom 帧缓冲切换和 fence 为主，未记录该窗口 GC 暂停，不能全部归因模型或 GC。本轮没有修改生产代码／动画／LOD／资源，客户端均已退出、Iris 原始字节恢复。方法、证据等级、建议、对应代码及参考文献已汇入 [最新性能诊断](photon-performance-audit.md)，问题清单新增 P17 并补充 P06／P12／P16；实际静态检查与备份见 changes.md；完整证据沿用 photon-sodium-diagnosis-20261024。
 
 2026-10-24 Sodium 深入诊断进行中：用户授权进一步定位瓶颈并整理证据、推断、建议、参考与代码对应。本轮不实施性能修复；将以同代码 Sodium 普通／光影的 profile JFR、帧／GPU 与日志对齐，区分空基线、首发、热施放和等待，另核对 P16 的 Iris fallback 源码。现有 QueenBeamAllocationCapture 仅启用分配／GC／编译事件，不把它当 CPU 执行采样；采用本次启动参数临时开启完整 JFR profile。进展沿用本页，分析汇入 photon-performance-audit.md，问题仅在 docs/issues.md；原件备份于 photon-sodium-diagnosis-20261024。

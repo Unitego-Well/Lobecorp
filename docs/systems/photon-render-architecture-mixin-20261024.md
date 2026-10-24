@@ -11,7 +11,7 @@
 3. **Photon 本身已经有两套更合适的原生路径，只是没有用上：**
    - **实例化模型**：`InstancedVariant.MODEL / MODEL_TANGENT / MODEL_VAT*`，基网格只上传一次，每实例只传 `iPos / iScale / iRot / iColor / iLight`，顶点着色器计算 `world = R · (aPos · iScale) + iPos`；`MODEL_VAT` 用一张按顶点×帧烘焙的纹理把动画也放到 GPU（`VertexAnimationBake`）。
    - **实例化光束**：`BeamEmitter` 在 `renderer.isUseGPUInstance()` 为真时直接走 `bakeInstancedGroup(..., InstancedVariant.BEAM, PhotonWorldRenderState.beamQuad(), ...)`；每实例只传 `iStart(含半宽) / iEnd / iColor / iUV / iLight`，一个 draw 绘制全部光束实例。
-4. **Mixin 应该用在“把我们的模型接入原生实例化路径”和“光影边界”上，而不是继续改顶点循环。** 具体目标见第五节；其中相当一部分可直接用 Photon 的公开 API 完成，Mixin 只补齐私有编排与光影路由。
+4. **Mixin 应该用在“把我们的模型接入原生实例化路径”和“光影边界”上，而不是继续改顶点循环。** 具体目标见第六节；其中相当一部分可直接用 Photon 的公开 API 完成，Mixin 只补齐私有编排与光影路由。
 
 ## 二、当前成本结构（实测回顾）
 
@@ -65,7 +65,45 @@
 
 把基网格上传、VAT 上传、材质/管线编译、纹理上传移到 SETTLE 之前（或首次进入事件前）。预热成本单独报告；不能把成本静默转移到进世界或技能前摇。
 
-## 五、Mixin 补丁设计（只给目标与注入点，不含实现）
+## 五、参数传输、命名动画与骨骼 GPU 化
+
+### 5.1 参数通道实测
+
+光影施放窗口 1044 个渲染样本中：`PhotonNamedRuntime` 8.4%、`PhotonNamedMixer` 2.9%、`RuntimeValue/RuntimeBinding` 2.0%、`PhotonMaterialUniforms` 0.4%；`AdditionalGPUDataSetting`／`PhotonGpuChannels`／`PhotonInstanceRing` 在当前模型路径为 0%。命名动画与参数求值合计约 **13%**，是第二梯队成本，明显小于 Iris 36.8%，但已经超过 Photon `write` 的 3.0%。
+
+参数路径分三类：
+
+1. **CPU 求值**：`PhotonNamedRuntime.tick/frame` 每帧回调、`PhotonNamedMixer.begin/add/commit`、`RuntimeValue.get`、`RuntimeBinding`、`NumberFunction`。当前 mixer 每帧构造 `List<Float>`、`ArrayList`、`List.copyOf`，按 target/property 分组后全量 `install`，输入未变化也重算。
+2. **我们自己的模型绑定**：`PhotonModelBindings.morphWeights/partOverrides/boneOverrides` 每帧建 3 个 Map＋`Map.copyOf`，并遍历全部 part/bone×3 槽；前轮分配归因中的 `HashMap/Integer/Map` 正对应这里。
+3. **GPU 传输**：材质 uniform（`PhotonMaterialUniforms` 按 RenderType 缓存，但值变化时会重新 upload）、实例缓冲（`iPos/iScale/iRot/iColor/iLight`）、`PhotonData`／custom data 通道。当前模型路径没有用实例/通道，参数主要经 uniform 与 CPU 顶点；迁移到实例化后，应尽量把每帧变化的参数放进实例属性（`iColor/iUV` 等），避免新增 custom data 通道。
+
+### 5.2 参数与命名动画的优化方向
+
+- **预编译参数计划**：把字符串路径/slot 查找、`NumberFunction` 类型分派、绑定列表在内容版本变化时编译成索引与指令数组，每帧只按计划求值。
+- **只重算变化目标**：mixer 以“目标＋属性＋内容版本”为键，输入未变时复用上次结果；避免每帧 `List<Float>`、`ArrayList`、`copyOf` 与全量 `install`。
+- **绑定 Map 去物化**：用平铺数组＋版本号代替每帧 `Map.copyOf`，只在 override 真正变化时重建。
+- **uniform/实例合并**：同一材质每帧最多一次 uniform 更新；能用实例属性表达的参数不要再单独走 uniform；避免为未使用的通道保留 `PhotonData` 记录。
+- **同步边界**：本轮是单机夹具；若多人环境会同步运行时参数，需要单独测序列化与包量，不能把单机结论外推。
+
+### 5.3 动画与骨骼的 GPU 化（由易到难）
+
+1. **纯 TRS 动画**：用原生 `MODEL` 实例化的 `iPos/iScale/iRot` 表达部件变换，不做 GPU 蒙皮；以部件缩放/旋转为主的光束最合适。
+2. **VAT**：把骨骼／morph 后的顶点位置与法线按“顶点×帧”烘焙进纹理，用 `MODEL_VAT`；原生 `VertexAnimationBake` 面向 GLTF，自定义模型需按同一 texel 布局自行烘焙。内存约“顶点数×帧数×3～4 float”，要设内容预算、更新率与精度验收。
+3. **GPU 蒙皮**：上传骨骼矩阵纹理与每顶点骨索引/权重，在顶点着色器做线性混合蒙皮。Photon 原生实例化格式没有骨索引/权重属性，需要扩展 `PhotonPipelines` 格式与自定义 shader，或走自定义渲染器；优点是内存小、支持混合与动态骨骼，代价是 shader 复杂度与兼容性。
+4. **形变/布料/顶点动画**：优先烘焙（VAT）或 compute 预计算；Photon 自带 `catmull_rom.comp` 但不提供通用 compute 粒子通道，compute 方案需要自定义管线。
+5. **LOD/更新率**：只能作为辅助，不能默认降画质；动画更新率、骨骼数、morph 数要有内容预算。
+
+### 5.4 外部参考：引擎、游戏与 Mod 的成熟做法
+
+- Unreal Niagara 用 GPU 实例计数与 indirect draw，把实例生成/剔除放到 GPU，CPU 只提交批次：[Niagara AddDrawIndirect](https://dev.epicgames.com/documentation/en-us/unreal-engine/API/Plugins/Niagara/FNiagaraGPUInstanceCountManager/AddDrawIndirect?application_version=5.1)。
+- Unity 的 GPU Skinning：骨骼矩阵驻留 GPU、顶点着色器蒙皮：[GPU Skinning 手册](https://docs.unity.cn/cn/tuanjiemanual/Manual/GpuSkinning.html#1)。
+- VAT/VAB 烘焙工具链：骨骼/形变预烘成纹理，运行时零 CPU 蒙皮：[Vertex Animation Toolkit](https://extensions.blender.org/add-ons/vat/)。
+- GeckoLib 的 Bone Snapshots：Minecraft 生态里骨骼动画仍以 CPU 逐帧快照为主，说明女王本体这类 GeckoLib 模型不能直接套 Photon 的 VAT，需要单独评估：[Bone Snapshots](https://wiki.geckolib.com/docs/geckolib5/updating/important/bone-snapshots/)。
+- 本仓库 horde 的 `HordeGpuRenderer`：常驻网格＋实例批次＋GPU 运动纹理＋Iris 兼容，是 Photon 之外的现成参考实现。
+
+共同模式：**CPU 只提交实例参数与批次，几何/动画/剔除尽量常驻 GPU；避免每帧重建对象与逐顶点 CPU 展开。**
+
+## 六、Mixin 补丁设计（只给目标与注入点，不含实现）
 
 > 标注“已验证”的类/方法是本轮从 jar 或源码核对过的；“待 spike”表示需要最小原型确认签名与行为。
 
@@ -110,29 +148,52 @@
 - 目标：`BeamConfig`/`BeamEmitter`。
 - 目的：若要把现有模型外观映射到 quad 光束，需要宽度曲线、分段、纹理滚动、端点形状等参数；先确认现有字段能否满足，不足再 Mixin 扩展。
 
-### M7 不建议的 Mixin
+### M7 参数与命名动画（本仓库类，不需要 Mixin）
+
+- 目标：`PhotonNamedRuntime#tick/frame`、`PhotonNamedMixer#begin/add/commit`、`PhotonModelBindings`。
+- 做法：预编译参数/绑定计划；按“目标＋属性＋内容版本”缓存求值；用平铺数组/版本号替代每帧 Map；只对变化的目标 `install`。
+- 若将来要改 Photon 原生 `RuntimeValue/RuntimeBinding` 的每帧解析，再考虑用 Mixin 缓存 slot 索引；当前样本 2.0%，优先级低于命名动画。
+
+### M8 GPU 蒙皮扩展（高风险，仅在 VAT 不足时）
+
+- 目标：`PhotonPipelines#instancedFormat`／`instancedHdrParticle` 追加骨索引/权重属性；`PhotonRenderTypes#createGraphShader` 或自定义 shader 采样骨骼矩阵纹理；`Emitter.bakeInstancedGroup` 增加骨骼纹理绑定。
+- 必须先证明“TRS 实例＋VAT”无法满足需求（需要动态骨骼混合、布料或大量 morph）；否则优先 VAT。
+
+### M9 参数传输原生侧（低优先）
+
+- 目标：`PhotonMaterialUniforms#sliceFor/upload`、`AdditionalGPUDataSetting#planAttribs/uploadChannel`。
+- 只在参数密集型特效上 A/B：确认每帧 uniform／通道上传是瓶颈后再做；当前激光样本中 `PhotonMaterialUniforms` 仅 0.4%，不应先动。
+
+### M10 不建议的 Mixin
 
 - 全局缓存所有 DrawJob、按内容哈希跨实例共享 GPU 缓冲、强制关闭阴影/降 LOD/降分辨率：会破坏排序、所有权或画质语义，不能用“性能”名义做默认行为。
 - 直接改写 `PhotonBufferCache` 做“相同字节不重传”：相机每帧变化时字节不同，命中率低，收益有限。
 
-## 六、实施顺序与验收门槛
+## 七、实施顺序与验收门槛
 
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | P0 | 补 draw call、shadow pass、pipeline 编译计时；固定相机/seed；保留本报告的光影/无光影配对基线 | 能解释每次施放窗口的 CPU/GPU/draw/shadow 构成 |
 | P1 | 方案 1 最小 spike：单部件、单组、`MODEL` 实例化，不做 VAT | 视觉逐像素/截图对照通过；CPU 每帧顶点展开消失；GPU 不退化 |
 | P2 | 若 P1 通过：多组材质、多部件实例、`MODEL_TANGENT`；必要时再做 VAT | 施放窗口 CPU 增量 ≤1 ms；P99 不退化 |
+| P2b | 参数与命名动画：预编译计划、去 Map、只重算变化 | 参数密集 vs 静态 A/B；每帧求值次数、分配、上传字节 |
+| P2c | 动画 GPU 化：TRS → VAT →（必要时）GPU 蒙皮 | 逐顶点/截图对照；VAT 内存与更新率预算 |
 | P3 | M1 阴影门控（先 A/B 估算光束阴影占比） | 光影下 CPU/GPU 有可测下降且视觉一致 |
+| P3b | M8/M9 参数与蒙皮扩展（仅证实瓶颈后） | A/B 证明收益且不退化才保留 |
 | P4 | M4 Iris 路由 A/B | 只有对照证明不退化才保留 |
 | P5 | M5 预热 | 首发长帧下降且没有转移为进世界卡顿 |
 | P6 | 方案 2 评估（若允许资产调整） | 视觉与成本同时达标才替换 |
 
-目标值（建议作为门槛，不是承诺）：光影施放窗口均值从 20～25 ms 降到 ≤12 ms（空场景 9.3 ms 的合理增量）；无光影施放窗口从约 6.3 ms 降到 ≤3 ms；首发从 717／981 ms 降到 ≤250 ms；不降低画质、不关闭阴影作为默认优化。
+目标值（建议作为门槛，不是承诺）：光影施放窗口均值从 20～25 ms 降到 ≤12 ms（空场景 9.3 ms 的合理增量）；无光影施放窗口从约 6.3 ms 降到 ≤3 ms；首发从 717／981 ms 降到 ≤250 ms；参数与命名动画的同场景 CPU 占比从约 13% 降到 5% 以下；不降低画质、不关闭阴影作为默认优化。
 
-## 七、未决问题
+## 八、未决问题
 
 - 激光模型动画是否包含顶点级形变（决定是否必须 VAT），需要读取/采样该 clip 的顶点位移范围；本报告未完成该项。
 - 实例化模型路径对半透明排序、材质组、部件覆盖的兼容性需要 P1 spike 验证。
 - 光影 31.5% 阴影样本中有多少来自光束本身，需要 M1 A/B 或 shadow pass 单独计时才能定量。
 - KilaGraph ENTITY 路由补齐后，shaderpack 是否真的更快未知，必须 A/B。
+- 参数/命名动画的 13% 中有多少是每个施放实例重复的命名库解析/混合，需要参数密集特效 A/B 与逐帧计数；多人同步参数的成本未测。
+- VAT 的内存上限、动画精度与更新率，以及 GPU 蒙皮在 Iris/shaderpack 下的兼容性，都需要单独验证。
+- 女王本体是 GeckoLib 模型，CPU 逐帧骨骼快照；它与 Photon 光束在光影 pass 中共同贡献成本，是否需要独立的 GPU 骨骼方案尚未评估。
+- 26.1.2 图形 API 已有 `catmull_rom.comp` 等 compute 使用，但通用 compute 粒子/骨骼通道需要自建；是否值得为新管线放弃 Photon 现成材质与编辑器能力，需要在 P1/P2 后再决定。
 - 本报告没有实现任何补丁；Mixin 目标以 Photon 26.1.2.3 为准，升级 Photon 后需重新核对。

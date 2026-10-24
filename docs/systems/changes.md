@@ -2,8 +2,9 @@
 
 ## 2026-10-24：Photon 渲染架构与 Mixin 方案报告
 
-- 基于 Photon 26.1.2.3 的 jar 字节码与 `assets/photon/shaders` 核对，以及既有光影／无光影激光数据，新增 [Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)：指出原生实例化 `MODEL/MODEL_VAT` 与 `BeamEmitter` GPU 光束路径未被使用，给出模型实例化、原生光束、阴影／Iris 路由、首帧预热四类方案，以及 M1–M7 的 Mixin 目标、风险与验收门槛。
+- 基于 Photon 26.1.2.3 的 jar 字节码与 `assets/photon/shaders` 核对，以及既有光影／无光影激光数据，新增 [Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)：指出原生实例化 `MODEL/MODEL_VAT` 与 `BeamEmitter` GPU 光束路径未被使用，给出模型实例化、原生光束、阴影／Iris 路由、首帧预热四类方案，以及 M1–M10 的 Mixin 目标、风险与验收门槛。
 - 本轮只写报告，没有修改代码、资源、构建配置或游戏设置，也没有新增采集；相关入口同步到架构报告与总览。未提交用户既有配置与测试改动，不推送。
+- 补充参数传输、命名动画与骨骼 GPU 化分析：光影施放窗口 JFR 中 `PhotonNamedRuntime` 8.4%、`PhotonNamedMixer` 2.9%、`RuntimeValue/RuntimeBinding` 2.0%、`PhotonMaterialUniforms` 0.4%；给出预编译参数计划、去 Map、TRS→VAT→GPU 蒙皮路径，以及 Unreal Niagara／Unity GPU Skinning／VAT 工具链／GeckoLib 的外部参考。Mixin 目标扩展到 M7–M10。
 
 ## 2026-10-24：真实激光光影测试与架构级诊断
 

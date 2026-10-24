@@ -208,4 +208,3 @@ JFR 记录到优化前 40 个 GCPhasePause（最长 44.204 ms）、优化后 55 
 备份根为 C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-laser-content-cache-20261024。before／after／after-plain 保存原始帧、marks、JFR／分配摘要（启用轮）、截图和日志；comparison.json 保存完整统计，源码及文档原件、测试 XML、IDEA 结束日志单独留存。旧诊断默认目录仍可能覆盖，后续以各轮留存副本区分证据，不冒充历史日志。
 
 三轮均 COMPLETE 后恢复临时 Options，经 MCP 正常保存退出世界并退出程序，IDEA 日志分别 BUILD SUCCESSFUL in 3m 28s／3m 19s／3m 14s。六个临时桥接 PID 66632／48284／65876／69600／50664／70152 均退出 0，具体启动时间见归档 ledger。系统进程明细查询被拒绝访问，未取得游戏 PID／启动时间；退出证据为正常界面链、Stopping! 和 IDEA 运行完成，不伪造进程身份、不按名称结束未知进程。未新建 Debug 会话或断点，未推送。
-

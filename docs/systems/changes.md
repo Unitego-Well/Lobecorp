@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-24：补充 Photon 测试前／测试后优化文档与诊断
+
+- 新增 [测试前优化建议与问题原因](photon-optimization-pretest-20261024.md) 与 [测试后优化建议与问题原因](photon-optimization-posttest-20261024.md)，并在 [唯一问题表](../issues.md)、[总览](photon-workspace.md) 和本记录登记入口。测试前文档整理 P11／P12／P06 的根因、代码入口、方案与关闭条件；测试后文档记录本轮实际运行、JFR 归因、Debug 路径和 Minecraft MCP 证据。
+- 实际执行：BenchMod Photon 两次。第一次因 client.window.focus_lost 被判 INVALID，数据不用于对比；第二次 PASSED（environment.valid=true，8 个 Photon 场景通过，sweeper-render 按过滤器 SKIPPED）。JFR 归因：16 静态 write inclusive 71.0%，其中 Matrix4f.normal 19.9%；16 动画 sample 61.7%、skinMatrices 22.9%、positions 13.2%。Debug 三处断点确认 write／sample／prepare 均在渲染线程的 bakeBatches／emit 路径内；Minecraft MCP 经 19877 桥接取得 pong 与 2560×1494 截图。
+- 本轮只做只读与诊断，没有修改业务代码、资源或构建配置，没有优化后收益；未测真实激光、Iris／光影与冷进程创建。修改前三份文档字节备份位于 C:/Users/wang_/AppData/Local/Temp/dsh-uQhxMZ/lobecorp-doc-backup-20261024；新增两份文档无需备份。未提交用户既有 .codex/config.toml 与两份测试修改。
+
 ## 2026-10-24：整理 Photon 待优化详细列表
 
 - 按用户要求扩充唯一问题清单 docs/issues.md，不新建重复待办文档；区分 3 个确认热点、1 个待归因异常与 S01–S23 历史候选，列明优先顺序、证据、代码入口、优化方向、实现限制及关闭条件。已有性能报告保留当轮证据，不将建议写成已实现。

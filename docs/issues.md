@@ -25,7 +25,7 @@
 | P03 | 基线中 5 条历史来源不可用 | 501 条来源中 496 条曾完成结构／字节往返，另 5 条来源缺失；基线为 [photon-resource-baseline-20261019.json](systems/photon-resource-baseline-20261019.json) | 保留 sourceUnavailable 状态；需要用户提供明确来源，或确认这些条目的处理方式；不能假造通过 |
 | P04 | 原始资源 fixture 测试保留失败，整体构建也有既有失败边界 | PhotonModelPoseSamplerTest 的 samplesExistingModelOccurrencesWithoutChangingOriginals 依赖本工作区不存在的 src/main/resources/fxpacks；历史回读为 9 通过／1 失败。迁移期整体 build 还记录资源基线和 reserveBuildIdentity 配置缓存问题。见 [工作区历史](systems/workspace-layout.md) | 本轮不改断言／复制资源／修构建配置；以后授权范围明确后核对真实 fixture 与配置缓存，需测试／构建授权 |
 | P05 | 编辑器与旧备份完整功能／视觉对照未验收 | 本轮补齐默认部件、骨骼／morph 重命名、部件动画复制、选择／gizmo／关键帧和材质事务；IDEA 静态无错误不能证明完整交互与旧设计一致。设计来源为 04a3bab，见 [设计恢复](systems/photon-editor-design-restore-20261022.md) | 人工按选择、变换、环切、拓扑、UV、材质、骨骼／morph、动画、保存重开与取消清理逐项验收；需游戏授权和人工视觉判断 |
-| P06 | 首次施放阻塞已复现；跟随、过渡和完整技能边界仍未验收 | 此前两轮首发最长帧约 861／856 ms；法线缓存后的 11:19 真实激光复测仍有首发 608 ms、热施放 81／89 ms 长帧。三次施放均 STARTED，阶段 0→1→2→移除齐全，输出截图可见；code_animation_render_samples 仍为空，不能证明逐帧混合已解决。11:32 本轮 Sodium＋BenchMod＋MCP＋Debug 复测 51432 帧、均值 1.750／P99 8.125／最长 599.019 ms，4～7 秒长帧合计约 2.118 秒，后续施放最长 80／68 ms；Debug 确认 CHARGE 阶段同步准备 laser_body（clip=beam）。见 [性能审查](systems/photon-performance-audit.md) 与 [激光报告](systems/photon-laser-optimization-20261024.md) | 优先拆分并优化同步创建／准备链；墙体、瞬时星束、取消、晚追踪、卸载和人工观感仍需专门场景 |
+| P06 | 首次施放阻塞已复现；跟随、过渡和完整技能边界仍未验收 | 此前首发最长约 861／856 ms，11:19 复测约 608 ms。后续已加入完整快照＋材质依赖键的弱值准备缓存；成对 JFR 首发 1157→821 ms，空基线也变快，不证明稳定收益；优化后无 JFR 仍有 677 ms 首发与 65／52 ms 热尖峰，见激光优化报告第十一节。三次施放均 STARTED，阶段 0→1→2→移除齐全，输出截图可见；code_animation_render_samples 仍为空，不能证明逐帧混合已解决。11:32 本轮 Sodium＋BenchMod＋MCP＋Debug 复测 51432 帧、均值 1.750／P99 8.125／最长 599.019 ms，4～7 秒长帧合计约 2.118 秒，后续施放最长 80／68 ms；Debug 确认 CHARGE 阶段同步准备 laser_body（clip=beam）。见 [性能审查](systems/photon-performance-audit.md) 与 [激光报告](systems/photon-laser-optimization-20261024.md) | 优先拆分并优化同步创建／准备链；墙体、瞬时星束、取消、晚追踪、卸载和人工观感仍需专门场景 |
 | P07 | 部分源码的历史 LF／CRLF 问题尚未统一 | 本轮 LcClientAnimations.java、QueenBeamEffects.java 的换行回归已按用户 A 授权恢复为原 CRLF，规范化代码 SHA256 相同；其他已有 LF 保留原样 | 如需统一历史 LF，另行确认具体范围；不扩大本次仅两文件的兜底授权 |
 | P08 | 本轮修改代码保留 8 项既有 IDE 提示，扩查相关 WIP 后合计 12 项 | LcAnimationBoneAdapter 返回值未使用 1 项、LcClientAnimations.entityPose 未使用 1 项；PhotonChildSpawner 重写形参空值注解 5 项、emitNow 返回值未使用 1 项。扩查另有 PhotonModelOutput 布尔调用提示、PhotonNamedMixer 冗余转换、PhotonNamedRuntime.listener 未使用与 TimelinePlayerMixin 借用运行态资源提示各 1 项。本轮新增的冗余条件提示已修正；没有为清零提示扩展无关清理 | 继续保留，不作为已确认运行错误；若用户要维护这些 API／注解，再单独确定范围 |
 | P09 | 历史专题、手写工程和截图证据在本工作区缺失 | 缺失资料清单见下节。先前文档审计将本地缺失文件链接从 205 处降为 30 处；剩余为 changes.md 与 player-animation.md 的共同基础历史截图。没有恢复任何资产或归档聊天 | 需要明确资料／资产来源；本轮仅登记、解除失效跳转并保留历史路径，不推断这些资料已经可用 |
@@ -38,7 +38,7 @@
 | P11 | 法线／行列式已缓存，完整 CPU 几何写入仍在；稳定收益未验收 | 16 静态模型 JFR 中 write inclusive 栈约占渲染执行样本 75.6%，重复用例 75.7%；姿态缓存未缓存最终几何。详见性能审查 | 保留材质、透明排序、变换语义的稳定拓扑／几何复用；不降低 LOD 或画质 |
 | P12 | 动画 CPU 蒙皮及帧对象分配过重，尚未优化 | 16 动画 sample 为 222／462 执行样本，约 23 秒录制的渲染线程分配计数增加 19.554 GiB；包含预热，不是泄漏或存活量 | 预编译权重／索引、复用局部求值缓冲，保持不可变发布与所有权，做同内容 A/B |
 | P13 | 空场景存在未归因 1.421 秒长帧 | 无 Debug 末尾空用例第 7624／9695 帧出现；未过滤、未归因模型或导出，不能用其最大值证明模型缺陷 | 独立异常帧／系统等待采样，保留当前原始证据 |
-| P14 | 基准跨轮可比性不足，法线缓存稳定收益待验收 | 最终候选复核空尾中位 6.149 ms，5～7 ms 占 2279／2437 帧；原实现仅 8／8794。门禁仍为 valid=true；前后网格截图投影位置／地平线不同，未保存实际相机／投影状态。原因未确认 | 先记录并校验实际渲染相机与帧节奏、固定世界动态条件，再做配对；不自动改用户 Options、驱动或其他工作区，不把单轮观测降幅当稳定收益 |
+| P14 | 基准跨轮可比性不足，法线缓存稳定收益待验收 | 最终候选复核空尾中位 6.149 ms，5～7 ms 占 2279／2437 帧；原实现仅 8／8794。门禁仍为 valid=true；前后网格截图投影位置／地平线不同，未保存实际相机／投影状态。原因未确认；真实激光优化后无 JFR 复核空场景均值 6.153 ms、全程中位 6.172 ms，flags=3／NONE，现象再次出现，仍未归因 | 先记录并校验实际渲染相机与帧节奏、固定世界动态条件，再做配对；不自动改用户 Options、驱动或其他工作区，不把单轮观测降幅当稳定收益 |
 
 ## 待优化详细列表
 
@@ -78,6 +78,8 @@
 - **关闭条件：**同内容 CPU 与渲染线程分配明显下降，GC／最长帧不恶化；计数器与姿态精度对照均通过。JFR 首次分配样本可能携带跨录制权重，不能将其全部归因一次调用，也不能以堆占用回落代替分配速率改善。
 
 ### P06／S09：首次创建、深拷贝和同步发射
+
+2026-10-24 后续已实施内嵌内容的不可变准备复用（完整 NBT 与材质依赖相等、弱值／预算约束）；不保证无活实例时跨 GC 命中。三项回归通过，Sodium＋MCP 前后真实技能阶段完整，首次和热施放长帧仍在，未达到关闭条件；完整数据和报告结论修正见 [激光优化报告](systems/photon-laser-optimization-20261024.md)。其余下述方向继续作为未实施建议，不另建问题副本。
 
 - **现象与证据：**测量开始时创建 16 动画模型耗时 269.998 ms，对应最长帧 273.700 ms。真实激光两轮首次最长帧约 860.759／855.774 ms，关闭 spark 后仍存在；真实首发帧含多种成本，尚不能把全部时间归给一个方法。
 - **代码入口：**[PhotonChildSpawner](../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java).emitNow → [PhotonSpawnInstance](../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonSpawnInstance.java).start → FXRuntime.emit → [PhotonNamedRuntime](../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java) 构造 → PhotonModelOutput.prepare；还命中 PhotonModelSourceUtil.load／PhotonModelAssetUtil.read、FXHelper.loadFX 和 IFXObject.deepCopy 的 CODEC 往返。

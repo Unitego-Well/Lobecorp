@@ -36,7 +36,6 @@ import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
@@ -178,9 +177,9 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 	public void prepare() throws IOException {
 		if (sampler == null) {
-			var definition = loadDefinition();
-			var topology = PhotonModelTopologyUtil.prepare(definition);
-			sampler = new PhotonModelPoseSampler(topology);
+			sampler = PhotonModelSourceUtil.prepare(config);
+			var topology = sampler.prepared();
+			var definition = topology.definition();
 			var order = new ArrayList<Integer>();
 
 			for (int index = 0; index < topology.groups().size(); index++) {
@@ -205,10 +204,6 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		failure = null;
-	}
-
-	private PhotonModelDefinition loadDefinition() throws IOException {
-		return PhotonModelSourceUtil.load(config).definition();
 	}
 
 	private PhotonModelDefinition definition() {

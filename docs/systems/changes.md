@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-24：真实激光光影测试与架构级诊断
+
+- 基线 `6ae3093c`（法线缓存＋内嵌模型准备复用已在位）。光影包从 `lobecorp_horde` 工作区复制 `ComplementaryReimagined_r5.9.3.zip` 到本工作区 `run/client/shaderpacks`（原为空），临时启用 Iris；测试后把 `run/client/config/iris.properties` 恢复为测试前内容，包文件保留。使用 IDEA `Client`＋Sodium＋QueenBeamPerformanceTrial 跑真实激光：无光影 51432 帧（11:32）、光影 7672 帧（12:34）、光影＋JFR 8439 帧（12:38），均 DURATION、三次施放完整；MCP 经 19877 取得 pong 与 2560×1494 截图，随后正常保存退出并退出游戏。
+- 光影下空场景 9.320 ms、施放窗口 25.548／19.693／20.491 ms、首发最长 717.173 ms，GPU 均值 11.581 ms；无光影同位置为 1.248／5.051／3.710／3.442 ms。JFR 施放窗口 1044 个渲染样本中 Iris 36.8%（阴影 31.5%）、Photon `write` 3.0%、`sample` 8.8%、WorldRenderState drain 13.5%。结论：包括已实施的两项 CPU 微优化在内，都无法覆盖光影与提交架构成本。
+- 新增 [真实激光架构级诊断与优化方案](photon-laser-architecture-20261024.md)，并补充到激光报告、唯一问题表 P15 与总览。方案包括：光影阴影／Iris 路由、原生实例化模型路径、光束专用 GPU 渲染器（参考 horde `HordeGpuRenderer`）、资产合并与首帧预热；均未实现。
+- 未修改业务代码、资源或构建配置，未改动画、LOD、材质或技能时序。修改前四份文档字节备份位于 C:/Users/wang_/AppData/Local/Temp/dsh-uQhxMZ/lobecorp-arch-doc-backup-20261024；新增报告无需备份。未提交用户既有配置、两份测试修改及并发轮次产生的未跟踪日志，不推送。
+
 ## 2026-10-24：审查激光报告并复用内嵌模型准备
 
 - 修正 photon-laser-optimization-20261024.md 中全程均值当稳态、重复长帧排除 GC、输出持续时间、预备只尝试一次／输出必重建命名运行态，以及把合成热点套用真实激光等结论。审查、已实施与待验证方案分开，P06／P14 状态只更新到唯一问题清单。

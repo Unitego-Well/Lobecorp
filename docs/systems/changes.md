@@ -1,5 +1,21 @@
 # 系统修改记录
 
+## 2026-10-24：GPU三级索引、同源地形平滑、三格净空与潮内粒子
+
+- 通过IDEA完成本工作区22份Java/GLSL/回归文件的本轮改动，同步总览、唯一问题汇总、渲染契约和BenchMod说明。用户先要求光影开/关实测，随后明确取消游戏测试；本轮未启动、重启、接管或停止游戏，未运行MC MCP、Debug或真实Client/Server基准，没有新增FPS/GPU执行时间/画面证据。
+- HordeSpatialIndex及horde_spatial_index.fsh在GPU生成32格粗候选位图，密度超过8时细分16/8；不量化实际缺口。每级最多16MiB，按全部活跃区域分配位图字，细档不足退回粗档、域外/粗档不足完整查询，不截断候选、不减数量。CPU只在区域版本或活跃数量变化时准备整数域与容量；候选构建、密度判断和查询均在GPU。
+- HordeTerrainState及horde_terrain_update.fsh保存高度/高度速度/绕行位移/位移速度，与区域状态共享horde_flow.glsl的解析临界阻尼和连续排斥；不新增CPU逐单位插值。HordeParameters由176扩为224字节，增加三级索引整数元数据/模型半径位模式；CPU/GPU字段顺序同步。粗高度仍不表示精确薄墙/屋檐/多层碰撞，64格横移与旧事件采样范围保留。
+- RegionBox.forEntity将水平外扩改为至少3格，较大体型保留原三倍余量，Y不扩；GPU叠加完整动画模型半径并用原始区域安全遮罩限制过渡期穿入。局部隐藏优先保证净空，尚不宣称没有闪动。事件成员不独立开缺口，仅把同层、非退场、靠近原目标的成员并入该事件已有战斗包围，距离种子固定防链式膨胀；服务端清理/保护、生成及每目标10上限未改。
+- HordeRenderClock修正header公共时钟接续，校正速率不超过0.25tick/tick、保留40tick外推上界；GPU异常不再clear全部缓存或数秒停画，保留有效资源/历史、下一帧重试，仅限流日志。模型解析失败仍按对应事件处理。GeckoLib源码确认getter返回稳定缓存引用，未错误删除正常资源换代清理；本轮没有实机确证用户抖动的唯一根因。
+- HordeIrisAnimation与horde_iris_frames.fsh在GPU按资源代际一次准备10字/顶点/帧的位置、法线、切线/手性；逐实例阶段只采样与旋转，不新增CPU切线或顶点处理。保留既有约32MiB展开工作集、材质合批、完整模型、贴图、发光、LOD规则与20FPS动画采样。共享复制依赖和总字节仍可能是瓶颈，实际性能未测，H24不关闭。
+- HordeAmbient改为从实际提交潮内行列随机取点，默认每tick尝试近3/中2/远1个不同区域，选区格8/16/32，距离0～8/8～16/16～32并受默认24格范围限制；每区烟雾/碎屑/刀光为2/4/2、1/2/1、1/1/1，清扫提示最多补一处；每粒按最终出生坐标再次核对范围/视锥/准确射线，避免高度偏移后越界。均在客户端、已加载/视锥/遮挡筛选后生成，避开目标与模型半径；不再只用块中心。原版粒子生命周期与用户粒子设置保留，这是H21/H26已记录的原版粒子CPU边界，不伪称全GPU粒子模拟。
+- 补不随帧/捕获重置的累计失败序号，BenchMod稳定/预热/测量/验证阶段逐次检查，修复保留实例数后可能漏判瞬时错误的风险；CPU序号回归已通过，实际基准未运行。阶段统计补terrain/spatial/iris_prepare及对应工作量，记录最近tick粒子选区/提交量；字段口径写入BenchMod，缺测仍null，不能累计重复tick值或将旋转单次GPU样本当整帧阶段总和。本轮没有启动捕获真实GPU数据的基准。
+- 新文件与本轮差异行已通过IDEA格式处理，关闭导入优化和成员重排；13份Java、9份GLSL错误诊断均analyzed且0错误。资源缓存拥有者提示按精确归属处理；最终渲染器/环境粒子/新类无相关诊断，HordeClient既有2项空值提示保留。IDEA引用核对updateGaps仅1处、includeCombat共4处、HordeIrisAnimation共7处，未遗留旧签名。
+- BenchMod Compile三次exitCode=0（28秒、42秒、严格失败校验补充后16秒）；最终空间域CPU复用改动再经IDE诊断与Data/测试构建覆盖。HordeSpatialFieldTest9/9，runId=4578ce7b-d5e5-4454-af96-7483b1c6461d；HordeRegionTest4/4，runId=e7db5920-467f-4a08-b188-ebb250127531；HordeOptimizationTest补失败序号回归后10/10，最终runId=d10899b9-f4ef-4736-bb87-27812ceebc6c；三者exitCode均0，共23/23。最终粒子出生坐标修正再次经IDE诊断及Data编译覆盖，Data各轮headless运行exitCode=0，23份实际资源written=0，29份含缓存文件SHA256全部不变；静态检查、CPU回归和Data不等于GPU驱动编译或视觉/性能验收。
+- 备份：C:/Users/wang_/AppData/Local/Temp/horde-spatial-smooth-20261024-124157-e4bdef48，含开始源码/着色器/文档、旧基准归档、生成前哈希、compile.log/compile-final.log/compile-strict.log/data.log/data-final.log/checks.json。仅在该临时备份导出本轮清单/哈希与相对开始快照补丁，后者不是可直接套到HEAD的独立提交。原5项暂存raw对象逐项不变；源码仍混合既有WIP，按H20保留不整份提交，仅独立进度文档可提交，不推送。
+- 本轮运行由IDEA发起并取得退出结果，工具未提供PID不补造；提升后的只读CIM核对本工作区JUnitStarter/Data参数/compileBenchJava无匹配存活进程。没有关闭用户应用、IDE或共享Gradle后端，没有启动临时MC桥接服务。旧Minecraft技能路径缺失已核对；在后续游戏测试取消前未启动游戏，未把缺失技能或静态工具发现当成运行验收。
+
+
 ## 2026-10-24：分阶段统计、光照缓存、GPU持续分割与Iris合批
 
 - 范围仅lobecorp_horde/codex/horde，通过IDEA修改13份源码/着色器/回归文件，同步总览、唯一问题清单、渲染与BenchMod说明。原始DS两份报告未修改；问题仍只在horde-issues.md维护，未把建议或推测当作实测结论。

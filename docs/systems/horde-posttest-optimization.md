@@ -186,3 +186,70 @@
 2. 本文引用的行号在该批文件被改动后可能偏移；
 3. 若要以本文数据做"改前/改后"对照，必须在同一静止工作区重跑；当前工作区仍在变动，不满足单变量条件。
 
+---
+
+## 8. 光影（Iris 1.11.4 + ComplementaryReimagined r5.9.3）追加实测
+
+用户追加要求"再来一套光影的"。本轮在不复制任何文件、不改任何代码的前提下启用光影包，并在同一 BenchMod 客户端复测。
+
+### 8.1 启用方式（可复用，无需文件拷贝）
+
+BenchMod 客户端的游戏目录是 `build/modBench/runs/default/client`，其 `shaderpacks/` 为空。Iris 的 `Iris.loadExternalShaderpack` 使用 `getShaderpacksDirectory().resolve(name)`（`Iris.java:227-241`），因此只需把该目录 `config/iris.properties` 的 `shaderPack` 写成相对路径即可加载 `run/client` 下已有的包：
+
+```
+enableShaders=true
+shaderPack=../../../../../../run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip
+```
+
+实测日志确认生效：`[10:51:25] [Render thread/INFO] [Iris/]: Using shaderpack: ../../../../../../run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip`。该改动只落在 `build/`（未跟踪、未提交），不改变测量条件以外的任何东西。
+
+运行：BenchMod Client `client-1792810299088`，2026-10-24 10:51:39–10:54:18，其余环境同上（2560×1494、最大化聚焦、VSync 关、`clientFpsLimit=260` 即不限帧、视距/模拟 12）。
+
+### 8.2 结果
+
+| 场景 | 状态 | 帧间隔均值 | P50 | P95 | P99 | 最大 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `sweeper-render`（64 真实实体） | **PASSED** | **11.052 ms**（90.7 FPS） | 11.04 | 12.37 | 13.53 | 31.10 |
+| `horde-render`（10000 虚拟实例） | **TIMED_OUT**（`Phase STABILIZE exceeded 2400 ticks`） | 57.90 ms（17.3 FPS） | 53.68 | 93.57 | 96.25 | 268.44 |
+
+`sweeper-render` 独立 GPU 捕获：`render_gpu` 均值 **10.673 ms**（P95 11.05）、`render_cpu` 6.952 ms、渲染线程分配 2.24 MB/帧、GPU 查询 613/1815 完成（`skipped_pending=1202`，GPU 已饱和）。
+
+horde 的 `STABILIZE` 样本（n=2065，fixture 已在运行、10000 实例在场景中）呈现**准周期尖峰**：
+
+- 一阶自相关 −0.359（快慢帧交替），**五阶自相关 +0.350**（主导周期约 5 帧）；
+- 29.4% 的帧 >75 ms；直方图在 30–60 ms 与 80–100 ms 两簇；
+- 任意 20 帧窗口的 `max/min` 中位数 **2.94**、最小 **2.67**。
+
+这直接解释了超时：BenchMod 的稳定门禁要求相邻帧比值 ≤ **2.0** 连续若干帧，而实测窗口比值下界就有 2.67，**门禁在数学上不可能通过**。这是测试夹具与光影负载不兼容，不是运行异常（日志中无异常终止，场景被引擎主动判超时并写了 thread-dump 与失败截图）。
+
+### 8.3 光影路径确实执行了（不是"包加载但没画"）
+
+- `[10:52:18] [Render thread/ERROR] [Iris/]: Missing program lobecorp:pipeline/horde_iris_vertices in override list`（以及 `horde_motion`），栈顶为 `HordeGpuRenderer$IrisVertices.draw(HordeGpuRenderer.java:537) ← drawGroup:196 ← drawPrepared:139`。
+- 这说明：① 光影包已接管渲染（Iris 在做 program redirect）；② Horde 走的是 `IrisVertices` 展开 + 原版 `ENTITY_CUTOUT/EYES` 路径；③ 测试前文档记录的"自定义管线没有 Iris 覆盖"仍然成立，但**只对 motion/bake 两条自制管线**，主体/发光已由原版管线接管——与文档的修复方向一致；该日志只有 2 条（每管线一次），不是每帧刷屏，不构成额外开销。
+- 未取得视觉证据：失败截图里相机视野内没有群体（HUD 与教程提示仍在），因此**本轮不声称"光影下可见/外观正确"**。
+
+### 8.4 CPU/分配画像（光影下）
+
+horde 场景 JFR（65 s）前 25 热点中与 Horde 相关的只有：
+
+- `HordeLightField.requiredSections` **4.22%**（无光影轮为 3.23%）、`HordeLightField.updateSection` 0.96%；
+- 其余被服务端/世界 tick 占据（`isRandomlyTickingFluids` 4.41%、`BiomeManager.getBiome` 4.03%、`NaturalSpawner.*` 4.4%）；
+- **没有任何 Horde 渲染方法进入前 25**。
+
+结论：光影下 10k 实例的瓶颈在 GPU/主机往返，不在 Java 侧；`HordeLightField` 仍是唯一稳定出现在热点的 Horde CPU 项，与 §1.5 的结论一致，优先级维持 P1。
+
+### 8.5 判读与与历史数据的关系
+
+1. `57.90 ms / 17.3 FPS` 与历史记录 `67.98 ms / 14.71 FPS` 同量级但**不可直接相减**：历史数据来自 `MEASURE` 阶段 + 独立 Photon 捕获 + 不同相机/窗口；本轮是 `STABILIZE` 阶段、未进入 MEASURE、无 GPU 捕获。只能说"10000 + 光影仍然是十几 FPS 量级"，**H24 结论不变：仍不合格**。
+2. 光影**基线**成本可以从本轮量出：64 实体场景 GPU 10.673 ms，而 H24 的 10000 实例帧 57.90 ms ⇒ Horde 在光影下额外占用约 **47 ms/帧**，与"292 MB/帧主机回读 + 93 次串行"的量级相符（但本轮没有分阶段计时，不能把它写成已证实）。
+3. 新增症状：**五帧周期的 80–100 ms 尖峰**。无光影轮 10000 实例的 P95 仅 7.6 ms、无此周期，说明该尖峰只出现在光影路径。候选原因（均未证实）：93 次回读与驱动/帧提交的节拍共振、Iris 阴影贴图更新、或 GPU 队列在回读处周期性排空。这进一步说明 H24.1 的"分阶段计时 + `copyTextureToBuffer` 次数"必须优先做。
+
+### 8.6 光影模式的可执行建议
+
+1. **不要为了过门禁去放松 `stableFrameRatio`**。正确做法是把"光影 10k"固定为**失败复现场景**（记录分布与尖峰），而把可验收的性能回归放在能过门禁的档位（如 100/1000 实例或 64 真实实体）。
+2. 若要拿到光影下的 `MEASURE` 与 GPU 捕获，需要下面任一前提（均需授权且不属于"降低门禁"）：
+   - 给 BenchMod 场景增加"光影模式"的显式阶段（例如允许 STABILIZE 以分布判稳而非比值），并同步在文档中标注为独立口径；
+   - 或沿用历史做法，在普通客户端用 Photon 捕获 + 手动 fixture 测量，不走 BenchMod 门禁。
+3. 本轮把 `HordeLightField` 的优先级维持 P1：它在两轮（无光影/光影）都是唯一稳定进入 CPU 热点的 Horde 项，且随绘制块数量线性增长。
+4. 复测建议顺序：先加 H24.1 分阶段计时与 `batches/draws/gpuCopy` 落盘 → 再用 1000 实例光影档做通过性对照 → 最后回到 10000 实例记录失败分布，形成"档位—帧间隔—尖峰"曲线。
+

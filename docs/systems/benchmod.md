@@ -64,6 +64,7 @@
 - 观察：debug overlay 全程 `events=1`；submitted 与 GPU instances 相等并随波次变化（3180→4558→7538→9364/9359/9484），batches 56→154，lightSections 153→476，gpuCopy=0、失败未见。
 - Debug 求值：`HordeVisualConfig` 动画帧/LOD/ENABLED=`4/true/true`；`HordeGpuRenderer.statistics()` 为 `modelBuilds=3, irisMiWords=16, irisSlots=2, lightSections=374`；`HordeClient.batches()` 合计 9434，说明三档模型与双缓冲工作集在真实事件路径建立。
 - 画面：夜间单位红色发光可见；近/中/远三档取景均可见单位；同机位 650ms 两帧位姿变化而计数稳定；镜头 x=110→60 移动后单位持续可见。未做量化区域净空、E4 换包/重载与真实事件 256 尸体。
+- 回归单测：IDEA JUnit 配置 `HordeRegionTest`（含 `bodyGapKeepsThreeBlockClearanceWithoutExpandingHeight`、`interruptedEntryAndExitRemainContinuous`、`integerRegionCoversNegativeCoordinatesAtEverySubmissionTier`）、`HordeSpatialFieldTest`、`HordeRulesTest`、`HordeCleanupTest`（200tick 尸体规则）、`HordeOptimizationTest` 均退出 0，未出现失败；它们是契约级证据，不替代游戏内区域定量观察。
 - 限制与清理：期间一个用户临时断点（ClientRuntimeEvents:95）多次暂停线程导致截图超时，采用会话级断点静音后恢复 false，未删除用户断点；事件用 `/lobecorp horde clear` 清除、平台方块回填空气、测试牛清理、保存退出到标题，Debug 会话停止，游戏进程退出。截图与说明：`build/agent-backups/20261026-runtime-event/`。
 
 ## 2026-10-25极端优化实机测试与历史对照

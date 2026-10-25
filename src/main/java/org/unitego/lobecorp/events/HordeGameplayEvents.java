@@ -13,13 +13,15 @@ import org.unitego.lobecorp.world.horde.HordeEvents;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
+import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class HordeGameplayEvents {
 	@SubscribeEvent(priority = EventPriority.LOWEST)
 	public static void onDeath(LivingDeathEvent event) {
 		if (!event.isCanceled() && event.getEntity().level() instanceof ServerLevel level) {
-			HordeRuntime.get(level.getServer()).death(event.getEntity());
+            HordeCleanupUtil.markDeath(event.getEntity(), event.getSource().getEntity());
+            HordeRuntime.get(level.getServer()).death(event.getEntity());
 		}
 	}
 

@@ -252,6 +252,8 @@ modBench {
     serverLevelType = "minecraft:flat"
     clientWorldPreset = "flat"
     clientWorldId = "lobecorp-bench"
+    clientWindowWidth = providers.gradleProperty("benchWindowWidth").map(String::toInt).getOrElse(2560)
+    clientWindowHeight = providers.gradleProperty("benchWindowHeight").map(String::toInt).getOrElse(1494)
 }
 
 tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {

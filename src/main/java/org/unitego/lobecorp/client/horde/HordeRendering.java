@@ -5,10 +5,11 @@ import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.entity.corpse.CorpseBatchRenderer;
 
 import java.util.List;
 
-/// 提取固定空间块的编号区间；在世界颜色完成后批量绘制，不提交虚拟阴影。
+/// 提取固定空间块的编号区间；在不透明世界阶段批量绘制，不提交虚拟阴影。
 public class HordeRendering {
 	private static final ContextKey<List<HordeClient.Batch>> FRAMES = new ContextKey<>(Lobecorp.id("horde_frames"));
 	private static List<HordeClient.Batch> pending = List.of();
@@ -23,13 +24,14 @@ public class HordeRendering {
 		pending = draws == null ? List.of() : draws;
 	}
 
-	public static void render(RenderLevelStageEvent.AfterLevel event) {
+	public static void render(RenderLevelStageEvent.AfterOpaqueFeatures event) {
 		if (HordeIrisShadows.shadowPass()) {
 			return;
 		}
 		var draws = pending;
 		pending = List.of();
 		HordeGpuRenderer.draw(draws, event.getModelViewMatrix(), HordeIrisShadows.reverseDepth());
+		CorpseBatchRenderer.draw(event.getModelViewMatrix(), HordeIrisShadows.reverseDepth());
 	}
 
 	public static String statistics() {
@@ -39,5 +41,6 @@ public class HordeRendering {
 	public static void clear() {
 		pending = List.of();
 		HordeGpuRenderer.clear();
+		CorpseBatchRenderer.clear();
 	}
 }

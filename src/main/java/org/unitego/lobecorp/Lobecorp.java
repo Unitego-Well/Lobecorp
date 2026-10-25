@@ -11,11 +11,8 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
-import org.unitego.lobecorp.config.client.DamageParticleConfig;
-import org.unitego.lobecorp.config.client.PlayerHudConfig;
+import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.server.ShieldConfig;
-import org.unitego.lobecorp.config.client.VisualQualityConfig;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.config.server.HordeEventConfig;
 import org.unitego.lobecorp.generator.lang.HordeLang;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
@@ -43,11 +40,8 @@ public class Lobecorp {
 	public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
 		LOGGER.info("Unitego.");
 
-		modContainer.registerConfig(ModConfig.Type.CLIENT, DamageParticleConfig.SPEC);
-		modContainer.registerConfig(ModConfig.Type.CLIENT, PlayerHudConfig.SPEC, PlayerHudConfig.FILE_NAME);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.specification(), ClientConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, ShieldConfig.SPEC, ShieldConfig.FILE_NAME);
-		modContainer.registerConfig(ModConfig.Type.CLIENT, VisualQualityConfig.SPEC, VisualQualityConfig.FILE_NAME);
-		modContainer.registerConfig(ModConfig.Type.CLIENT, HordeVisualConfig.SPEC, HordeVisualConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, HordeEventConfig.SPEC, HordeEventConfig.FILE_NAME);
 		HordeLang.init();
 

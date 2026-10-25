@@ -5,6 +5,12 @@ import org.unitego.lobecorp.Lobecorp;
 /// 配置标题和命令消息只在数据生成阶段写入语言集。
 public class HordeLang {
 	public static void init() {
+        add("debug.entry.lobecorp.horde_ranges", "Horde ranges", "清道夫浪潮区域");
+        add("lobecorp.configuration.display", "Display", "显示");
+        add("lobecorp.configuration.ambient", "Ambient effects", "环境效果");
+        add("lobecorp.configuration.animations", "Animations", "动画");
+        add("lobecorp.configuration.models", "Models", "模型");
+        add("lobecorp.configuration.lobecorp-client.toml", "Client", "客户端");
 		add("horde.lobecorp.invalid_waypoints", "Waypoints must be x,y,z;x,y,z", "途经点格式为 x,y,z;x,y,z");
 		add("horde.lobecorp.invalid_profile", "Invalid event profile", "事件定义无效");
 		add("horde.lobecorp.invalid_event", "Invalid event UUID", "事件 UUID 无效");

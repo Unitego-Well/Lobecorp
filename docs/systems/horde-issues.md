@@ -4,6 +4,19 @@
 
 前轮已执行IDEA编译、20项Horde回归、三轮Data、基准制品编译、Minecraft MCP+Debug及两轮当时代码的Sodium客户端复测。测试通过不代表全部问题解决。用户要求不再主动询问：以下未定事项记录并沿用保守替代，只有用户要求时再提问，不将等待确认伪装成已解决。
 
+## 2026-10-25 极端优化执行边界与异议
+
+- 已确认决定：代码按依赖继续、不等待实机门禁（A）；突发包围优先平滑≤0.75格/tick、多tick退出且不隐藏（B）；尸体保留5区块基础跟踪（B）；不新增尸体重组动画或同步（A）；独立Horde draw elapsed和15%覆盖审计（A）；既有Horde WIP及原5项暂存纳入本次提交、其他系统排除（A）。上述决定均已落实到本批代码，无待答选项阻止当前实施。
+- EX-01…17代码已写入，逐项实现/文件/回滚见执行文档第9节；37份Java/GLSL错误诊断全部analyzed，修复两处错误后0错误。23份Java警告审阅69项；主要为借用世界/跨帧资源缓存拥有者提示、GeckoLib Internal、既有空值/注解及未使用项，不能把这些提示都当泄漏或声称零警告。另补查8份原有接入文件0错误。IDEA BenchMod Compile退出0，Data退出0，两份语言新增9组键并更新对应两份缓存，无生成资源删除；JUnit未运行。备份与检查清单：build/agent-backups/20261025-extreme-confirmed/。
+- **P1／未验收**：全部实机、GPU硬件编译、E1/E4、光影/无光影A/B、三轮一致性、截图/哈希/首帧及60FPS门禁保持NOT_RUN。游戏、BenchMod Client/Server和Debug仍禁止；本次A不构成测试授权。原始诊断是修改前证据，不能证明新代码性能。
+- **P1／EX-13待验证**：稳定编号页、GPU历史/限速/方向阻尼及穿透/拒绝归约已接入，regionClear不再作为隐藏条件。初次出现无历史时使用解析位置；突发包围可多tick退出，不能宣称当tick穿透归零。密集/重叠区域、出口不可达、多楼层/粗地形遗漏及快速移动边界还缺实机证据。每事件GPU历史双纹理预算32MiB；当前可见编号页超过预算会显式报错，未实现无限单位的有界历史分页回退，不能宣称该极端情况仍完整绘制。区域重叠推远超过光照粗覆盖时也可能受既有光照有效性剔除，需要专项检查，不能将删除区域隐藏等同于所有停显问题关闭。
+- **P1／EX-04/06/07待验证及实现取舍**：16MiWords双套纹理+VBO约256MiB是自有分配量，非驱动显存峰值；真正异步重叠、copy<3%、passes下降均未测。尝试全帧持有每个展开VBO会随总实例增长并突破预算，因此采用双槽窗口合并base/glow；超过两工作集会分窗口，不描述成全帧只有两个材质pass。工作集缩档/原生回退/5秒恢复不减少配置数量，但GPU故障当帧仍可能不完整，未作硬件保证。
+- **P1／Iris兼容未关闭**：锁定1.11.4的9/14字布局、实体ID和管线versionCounter已核对；不支持布局改为原生实例化回退。同active换包代际检测已接入，实际重载/故障恢复待验。此前六条Missing program日志不能由源码断言消失；当前IrisApi没有RAW/none程序入口，不把数据pass硬映射成ENTITIES以消日志，未升级依赖。其他包和全部光影阶段仍待兼容验收。
+- **P2／EX-02/08/14待验证**：隐藏面采用不透明闭合证明，透明/刀面保留；中远档闭合代理和默认4帧均有显式配置。减面15～35%、无洞/切档质量、完整三档内存下降70%尚无证据；14→4帧仅同网格全精度缓存理论减少71.4%，不能用它证明三档合计。减少失败回退到原网格会保留数量及外观，但可能达不到性能门禁。
+- **P2／EX-15/16待验证**：尸体默认静态、180/32接口、owner状态/revision/资源代际缓存及重复初始化修正已写入；明确支持的普通清道夫尸体使用冻结网格批绘。未知/反向/轮廓/阴影回退仍有原GeckoLib骨骼提交，不能宣称所有类型都无CPU骨骼。80格基础跟踪保留，180仅已收到尸体的客户端上限；不新增尸体重组动画，保留CLEAR1/2/3及服务端进度/复活。64/256夹具已注册但未运行，CPU/分配量收益与网络同步回归未验证。
+- **P2／EX-01/11统计与首帧边界**：WORLD/STAGE_SUM/HORDE_DRAW_TOTAL三组不同帧，按共同帧标识检查漏绘/重复，跨组只比较同负载统计；15%用于调查未覆盖命令、阶段间等待或分组失配，不伪补OTHER。draw不含extract预热，3ms是步骤协作预算，解析/驱动编译/上传不可抢占。GPU单位统计只异步回读8字节标量，尾部未完成、关闭/失败仍为null；穿透计数单位microblocks（除1e6为格），拒绝数为次数。新增UNITS/UNIT_STATS及历史复制须一起计成本，不只报motion下降。CPU/tick最新draw与GPU完整row采样粒度不同。
+- **提交范围**：已授权Horde源码/基准/配置合并/文档可以一并提交；build.gradle.kts的通用构建号闭包修改、logs、build备份、运行产物及其他系统内容排除。原5项暂存补丁已保存，按用户A允许随Horde提交消耗；不推送。
+
 ## 2026-10-25 Sodium联合诊断：事实、推断、假设与优化建议
 
 本节为当前工作区的只读诊断，不是代码修复。测试代码为HEAD 4a1b511b加既有WIP；864份Java/GLSL/着色器源码指纹前后不变。三次运行均由现有IDEA BenchMod Client完成，权威summary两场景均PASSED、workloadCorrect=true；这只说明既有门禁通过，不代表无兼容日志、无收尾异常或性能达标。Sodium是当轮已加载的渲染引擎；JFR来自JDK，帧时间/GPU查询来自既有BenchMod、PhotonFrameCapture与HordeRenderMetrics，不冒称“Sodium内部GPU计时”。
@@ -117,8 +130,11 @@ H7：实际无限上限、多事件/密集目标/低位粒子和服务器负载�
 
 | 优先级/已有问题 | 建议与证据 | 对应代码 | 后续验收条件/风险 |
 | --- | --- | --- | --- |
+| **P0 H24** | **2026-10-25 决策：极端目标改为 60 FPS**。按[极端情况优化方案](horde-extreme-optimization-plan.md)与[GPT 执行文档](horde-extreme-execution-plan.md)实施 W1 去串行、W2 expand 预计算、W3/W4 重叠与合并、W0 静态减面、W9 距离质量档 | [HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[展开 shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh)、[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java) | E1：10,000 实例 + Iris 60 FPS（帧均 ≤16.7 ms、P99 ≤20 ms、GPU ≤15 ms），可见数量仍 10,000；允许 128–256 MiB 工作集；允许自动降级并记录；60 FPS 不可达时停止上报 |
+| **P1 H24** | 先固定测量：整帧阶段求和 + GPU 时钟/功率/温度 + HEAD/dirty 写入 artifact（F3/F4） | [HordeRenderMetrics](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRenderMetrics.java)、[HordeRenderScenario](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java) | 同轮三次帧间隔 ±5%；整帧求和与世界 GPU 差 ≤15% |
+| **P2 H07/H11** | 执行文档 EX-10/EX-11：光照区段打包与首帧预编译/分阶段烘焙 | [HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java) | light CPU P95 ≤0.5 ms；首可见帧 ≤100 ms |
 | P0 H16 | 先固定世界/目标、功耗频率及外部GPU负载，按冷/热、控制/浪潮分别复测；保留全部波动结果（F2/H1） | [HordeRenderScenario](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java)、[Bench配置](../../build.gradle.kts) | 不改门禁制造通过；报告场景差异、时段和样本口径，不只选最快结果 |
-| P1 H24 | 降低Iris每帧全量数据展开；研究GPU可见性筛选/压实、模板属性复用或受支持的实例化接口（F3/F4/I2） | [IrisVertices.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L608–704；[展开shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) | 只剔除确定无贡献单位，不减少可见数量、LOD、精度、动画或发光；需证明API/兼容性后实施 |
+| P1 H24 | 降低Iris每帧全量数据展开；研究GPU可见性筛选/压实、模板属性复用或受支持的实例化接口（F3/F4/I2） | [IrisVertices.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L608–704；[展开shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) | 只剔除确定无贡献单位，不减少可见数量（历史约束；2026-10-25 决策允许 W0/W9，见上） |
 | P2 H24 | 测试有界双缓冲/批次依赖，区分执行、复制、材质与呈现，不先承诺带宽收益（H2/H3） | 同一draw L646复制、L700材质绘制 | 内存预算显式记录；同工作量GPU/CPU与时间线下降，不能把逻辑字节当PCIe数据 |
 | P2 H07 | packed SectionPos primitive集合去重，缓存必要集合/排序/槽位不变部分，避免每tick重复Section包装（F8/I3） | [HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java) L68–137、L161–165 | 保留逐tick加载失效、5tick光照和天空光回退；比较每秒分配/时间，不能只比较不同FPS的每帧均值 |
 | P2 H07/H10 | 相同Geometry的纹理/VBO绑定去重、复用稳定buffer slice/描述数据（F8/I6） | [drawGroup](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L240–252、[drawMotion](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L432–455 | 跨材质、资源代际和缓冲扩容正确；JFR TextureViewAndSampler/GpuBufferSlice及CPU阶段有可重复下降 |
@@ -128,7 +144,21 @@ H7：实际无限上限、多事件/密集目标/低位粒子和服务器负载�
 | P2 H24.4/H23 | 核对数据管线映射和退出时GUI/执行器时序（F12/H5） | [GPU管线定义](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[ConductorControls](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorControls.java) | 把兼容日志与退出缺陷单列；不靠吞异常或忽略保存失败通过 |
 | P3 H10 | 运动5个字导致location约6次求值，研究受支持共享求值方案（源码事实） | [motion fsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_motion.fsh) L19–27、[location](../../src/main/resources/assets/lobecorp/shaders/include/horde_motion.glsl) | 本地TextureFormat没有浮点颜色附件，RenderPass只有现有draw/drawMultipleIndexed等入口；不可直接假定RGBA32F/MRT/间接绘制可用，不能转CPU逐单位变换 |
 
-所有建议均需后续明确授权实施。保留现有光照、发光、20FPS动画、数量和玩法；本轮不修改代码、不安装或升级Profiler/Sodium/Iris，不将上述假设写成已确认根因。
+所有建议均需后续明确授权实施。2026-10-25 用户已确认：极端目标 **60 FPS**；允许 Iris 工作集 **128–256 MiB**；允许极端情况自动缩小工作集/回退实例化并记录；H15 **维持 3 格净空**；据此允许 W0 静态减面与 W9 距离质量档（必须显式配置、可见数量不变、A/B 与夜间发光通过）。其余光照、发光、20 FPS 动画、数量与玩法保留；本轮不修改代码、不安装或升级 Profiler/Sodium/Iris，不将假设写成已确认根因。
+
+### 2026-10-25 追加需求（分割/4 帧/尸体/512 宽夹具）
+
+用户在 DSH 问答中新增并确认以下需求；实现任务见[GPT 执行文档](horde-extreme-execution-plan.md) EX-13…EX-17，方案见[极端情况优化方案](horde-extreme-optimization-plan.md) §10。
+
+| # | 需求 | 验收/约束 | 任务 |
+| --- | --- | --- | --- |
+| 1 | **分割区域不可进入**：虚拟单位左右移动（随机横摆/漂移）不得进入分割区域，更不能“进入后消失” | 逐帧断言无单位进入原始区域（含 radius）；alpha 恒 1.0，禁止用隐藏/软淡出规避；单 tick 位移 ≤0.75 格；正常让行/平滑/高度隔离回归 | EX-13 |
+| 2 | **动画改为 4 帧**：在原始动画中等距平均取 4 帧 | 默认 4 帧、配置可回退（4–20）；动画纹理与 Iris 帧缓存内存 −70% 以上；循环无闪烁/T-pose；文档“20 FPS 采样”改为“4 帧烘焙” | EX-14 |
+| 3 | **尸体渲染**：实体死亡归实体自身逻辑；生成的尸体默认静态、无动画 | 在 `EntityCorpse` 提供可覆写方法 `renderDistance()`（默认 180，复杂/动画 32）、`hasCorpseAnimation()`（默认 false）、`isComplexModel()`（默认 false）；注册/覆写可启用尸体专用动画；重组时临时动画；冻结姿态、去每帧分配与实体副作用、批渲染、同步事件驱动；64 尸体 CPU −40%、分配 −50% | EX-16 → EX-15 |
+| 4 | **后续性能夹具**：宽度 512、直线、x≈+160 到 x≈−160 | 绘制数量跟随配置（默认 10,000），不得写死/截断/静默减少；作为 E1 唯一验收夹具；同轮 3 次帧间隔 ±5% | EX-17 |
+| 5 | **60 FPS 取舍**：允许降低精度/顶点（LOD） | 但**绘制数量必须等于配置值**；近景全精度；不得关闭发光/降低动画帧数 | EX-08 |
+
+> 这些需求覆盖此前的相反表述：H21 的“20 FPS 动画采样未改”、以及 E1 的“可见 10,000 固定”；以本节为准。
 
 ### 参考文献与解释边界
 
@@ -372,15 +402,11 @@ GPU边界：主浪潮分割、位移和动画仍在GPU；本轮指定的原版�
 
 只追溯能定位到原始日志/快照的旧故障；无法找到的历史文件维持“证据缺失”，不逆推配置、不重新制造同名备份。新运行每轮保存时间、代码、进程归属与原配置哈希，分别证明新行为；这不能消除旧证据缺口。
 
-## H20 [P3／提交归属受阻] 混合源码不能连带提交
+## H20 [P3／归属已确认、正在整理提交] 混合源码的提交范围
 
-三方临时索引拆分已失败，本轮Java/着色器/基准修改依赖原有未提交实现；horde_motion.fsh、horde_motion.glsl和HordeRenderScenario.java等在HEAD中不存在但属于用户原有新增暂存。直接整份提交会连带原有内容或改变原暂存归属。
+用户2026-10-25选择A：本工作区既有Horde相关实现纳入本次任务，原5项暂存（HordeRenderScenario.java、LevelMixin.java、horde_motion.fsh/vsh、horde_motion.glsl）允许在最终Horde提交中消耗。修改前原字节、SHA256和完整暂存补丁保存于build/agent-backups/20261025-extreme-confirmed/；不覆盖、重置或删除已有实现。
 
-按项目“仅提交本次授权内容，保留用户其他修改及暂存状态”执行；保留原5项暂存，不覆盖、不重置、不自动推送。独立总览/问题汇总/修改记录可单独提交，其余源码等待明确归属；按用户要求不再重复询问。修复补丁和拆分证据保存在horde-fixes-20261023-lhyy6_x_/this-task.patch及split-check.txt，不能把历史补丁当作当前未提交全量清单。
-
-### H20 交付整理任务
-
-在不动原5项暂存的前提下，为本轮与前轮混合改动导出可审阅差异和源文件清单；没有归属依据不整份提交。独立问题汇总、总览、修改记录可以单独提交，源码未提交就如实说明，不自动推送。
+交付正在按路径与共享文件差异审阅。客户端配置统一属于此前用户明确需求；其他系统内容、build.gradle.kts通用构建号闭包差异、日志、备份和运行产物不纳入。提交后记录实际哈希和剩余差异，不自动推送；提交受阻则如实保留未提交状态。历史拆分失败证据仅作历史，不再作为已确认Horde内容的提交阻塞。
 
 ## H21 [人工边界／已采用替代] GPU范围、预算及旧数据
 
@@ -392,7 +418,8 @@ CPU提交动态六整数目标与稳定身份，GPU保留平滑状态，不在CP
 
 - 视觉范围按最新指令改为体型3倍宽深、真实Y和1格整数包围；8/16/32大轮廓已取消，后续若研究GPU索引必须继续保持小缺口与连续过渡。
 - 单目标10指有效真实参战成员加预约，旧超额通过既有退场释放名额；不把“所有Mob同时立即删除”或“全局只有10只”作为替代需求。
-- 默认间距1.8与增援至10只作用于新规则；既有活动事件快照不强改，需要重建后观察新参数。基础速度未降低；20FPS动画采样、LOD及自动减量规则未改。
+- 默认间距1.8与增援至10只作用于新规则；既有活动事件快照不强改，需要重建后观察新参数。基础速度未降低；LOD及自动减量规则默认关闭。
+- **2026-10-25 覆盖**：动画采样由“20 FPS”改为“原始动画等距 4 帧”（默认 4、配置可回退，见追加需求与 EX-14）；尸体默认静态模型、32/180 格距离；分割区域不可进入（EX-13）。
 - 静态模型/线路/高度与光照CPU准备仍在；粗高度不能完成真实多层路径求解。未验证项继续保留，只有用户要求时再询问。
 
 本轮尸体与粒子备份：C:/Users/wang_/AppData/Local/Temp/horde-cleanup-particles-20261024-5761ddab。普通无来源尸体扩清理被自动审批拒绝的操作未执行；来源和GPU粒子边界见H26。

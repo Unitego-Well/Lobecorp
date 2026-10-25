@@ -1,7 +1,6 @@
 package org.unitego.lobecorp.world.horde.network;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -12,12 +11,13 @@ import org.unitego.lobecorp.world.horde.HordeEvent;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.WeakHashMap;
-import java.util.ArrayList;
 import java.util.Comparator;
 
 /// 订阅独立排序；未订阅路段的修订不被误判成网络缺包。
@@ -55,6 +55,11 @@ public class HordeSync {
 			}
 			var events = data.events().values().stream().filter(event -> interested(player, event, subscriptions.containsKey(event.id())))
 					.sorted(Comparator.comparingDouble(event -> distance(player, event))).toList();
+			if (!events.isEmpty()) {
+				var ordered = new ArrayList<>(events);
+				Collections.rotate(ordered, -(int) (data.clock() % ordered.size()));
+				events = ordered;
+			}
 			for (var event : events) {
 				if (remaining <= 0) {
 					break;
@@ -73,8 +78,7 @@ public class HordeSync {
 					subscription.requestSeen = requested.get(event.id());
 					subscription.reset = true;
 					subscription.sent.clear();
-					subscription.regionPages.clear();
-					subscription.regionPage = 0;
+					subscription.scanRevision = Long.MIN_VALUE;
 				}
 				if (subscription.reset || data.clock() - subscription.lastHeader >= 20 || subscription.wasRunning != event.running()) {
 					var header = event.header();
@@ -87,7 +91,8 @@ public class HordeSync {
 						header.putString("animation", profile.visuals().animation().toString());
 						header.putString("run", profile.visuals().runAnimation());
 						header.putString("texture", profile.visuals().texture().toString());
-						header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
+                        header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
+                        header.putDouble("entity_height", profile.dimensions().height());
 					}
 					if (header.sizeInBytes() + ENVELOPE_BUDGET > remaining) {
 						continue;
@@ -97,17 +102,23 @@ public class HordeSync {
 					subscription.lastHeader = data.clock();
 					subscription.reset = false;
 					subscription.wasRunning = event.running();
-					if (subscription.regionPages.isEmpty()) {
-						prepareRegions(subscription, runtime.regions(event), player, data.clock());
-					}
 				}
-				for (int offset = 0; offset <= 2 * Math.max(center - first, last - center) && remaining > 0; offset++) {
-					int index = center + (offset % 2 == 0 ? offset / 2 : -(offset + 1) / 2);
+				if (subscription.scanRevision != event.revision()) {
+					subscription.scanRevision = event.revision();
+					subscription.scanOffset = 0;
+					subscription.center = center;
+				}
+				int maximumOffset = 2 * Math.max(subscription.center - first, last - subscription.center);
+				while (subscription.scanOffset <= maximumOffset && remaining > 0) {
+					int offset = subscription.scanOffset;
+					int index = subscription.center + (offset % 2 == 0 ? offset / 2 : -(offset + 1) / 2);
 					if (index < first || index > last) {
+						subscription.scanOffset++;
 						continue;
 					}
-					long nodeRevision = 0;
+					long nodeRevision = event.route().node(index).revision();
 					if (subscription.sent.getOrDefault(index, Long.MIN_VALUE) == nodeRevision) {
+						subscription.scanOffset++;
 						continue;
 					}
 					int count = Math.min(HordeEventConfig.MAX_SEGMENTS_PER_PACKET.get(), last - index + 1);
@@ -121,23 +132,9 @@ public class HordeSync {
 					send(player, event.id(), subscription, "route", slice, data.clock());
 					remaining -= slice.sizeInBytes() + ENVELOPE_BUDGET;
 					for (int i = index; i < index + count; i++) {
-						subscription.sent.put(i, nodeRevision);
+						subscription.sent.put(i, event.route().node(i).revision());
 					}
-				}
-				subscription.sent.keySet().removeIf(index -> index < first || index > last);
-				while (subscription.regionPage < subscription.regionPages.size()) {
-					var page = subscription.regionPages.get(subscription.regionPage);
-					int cost = page.sizeInBytes() + ENVELOPE_BUDGET;
-					if (cost > remaining) {
-						break;
-					}
-					send(player, event.id(), subscription, "regions", page, data.clock());
-					remaining -= cost;
-					subscription.regionPage++;
-				}
-				if (subscription.regionPage == subscription.regionPages.size()) {
-					subscription.regionPages.clear();
-					subscription.regionPage = 0;
+					subscription.scanOffset++;
 				}
 			}
 		}
@@ -147,38 +144,6 @@ public class HordeSync {
 		double station = event.station(player.position());
 		return event.route().point(station, 0)
 				.distanceTo(player.position());
-	}
-
-	private static void prepareRegions(Subscription subscription, ListTag source, ServerPlayer player, long clock) {
-		int limit = HordeEventConfig.SEND_BYTES.get() / 2;
-		var regions = new ListTag();
-		for (var element : source) {
-			if (!(element instanceof CompoundTag region)) {
-				continue;
-			}
-			double x = region.getDoubleOr("x", 0) - player.getX();
-			double z = region.getDoubleOr("z", 0) - player.getZ();
-			double distance = subscriptionDistance(player)
-					+ Math.max(region.getDoubleOr("rx", 0), region.getDoubleOr("rz", 0));
-			if (x * x + z * z > distance * distance) {
-				continue;
-			}
-			if (!regions.isEmpty() && regions.sizeInBytes() + region.sizeInBytes() > limit) {
-				subscription.regionPages.add(regionPage(regions, clock));
-				regions = new ListTag();
-			}
-			regions.add(region.copy());
-		}
-		subscription.regionPages.add(regionPage(regions, clock));
-		subscription.regionPages.getFirst().putBoolean("first", true);
-		subscription.regionPages.getLast().putBoolean("last", true);
-	}
-
-	private static CompoundTag regionPage(ListTag regions, long clock) {
-		var tag = new CompoundTag();
-		tag.putLong("batch", clock);
-		tag.put("regions", regions);
-		return tag;
 	}
 
 	private static double subscriptionDistance(ServerPlayer player) {
@@ -203,13 +168,14 @@ public class HordeSync {
 
 	private static class Subscription {
 		private long sequence;
+		private long scanRevision = Long.MIN_VALUE;
+		private int scanOffset;
+		private int center;
 		private long requestSeen = Long.MIN_VALUE;
 		private boolean wasRunning;
 		private long lastHeader;
 		private boolean reset = true;
 		private final Map<Integer, Long> sent = new HashMap<>();
-		private final List<CompoundTag> regionPages = new ArrayList<>();
-		private int regionPage;
 		private int first;
 		private int last;
 	}

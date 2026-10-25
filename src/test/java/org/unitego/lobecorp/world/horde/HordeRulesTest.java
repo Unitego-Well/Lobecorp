@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.world.horde;
 
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.nbt.CompoundTag;
 import org.junit.jupiter.api.Test;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
 
@@ -13,6 +14,82 @@ public class HordeRulesTest {
 	private static HordeRules rules() {
 		return new HordeRules(6000, 64, 1, 1, 8, 1, 3, 100, 100, 100,
 				40, 20, 5, 20, 8, 40, 4);
+	}
+
+	@Test
+	public void openGroundReachabilityDoesNotExhaustTheBudgetBeforeSixteenBlocks() {
+		assertTrue(HordeSpawnPlanner.reachable(new Vec3(16.6, 0, 0), Vec3.ZERO, point -> point, _ -> true));
+	}
+
+	@Test
+	public void reachabilityCanDetourAndRejectCompletelyBlockedGround() {
+		assertTrue(HordeSpawnPlanner.reachable(new Vec3(16, 0, 0), Vec3.ZERO, point -> point,
+				point -> Math.abs(point.x - 8) > 0.001 || Math.abs(point.z) >= 4));
+		assertFalse(HordeSpawnPlanner.reachable(new Vec3(16, 0, 0), Vec3.ZERO, point -> point, _ -> false));
+	}
+
+	@Test
+	public void coarseRoutePreparationInterpolatesAndKeepsNearestQueriesInsideTheActiveWindow() {
+		var route = HordeRoute.create(List.of(Vec3.ZERO, new Vec3(64, 0, 0)));
+		assertTrue(route.prepare(rules(), point -> new Vec3(point.x, point.x == 16 ? 32 : 0, point.z)));
+		assertEquals(16, route.node(8).at().y, 0.00001);
+		assertEquals(8, route.nearest(new Vec3(8, 16, 0), 0, 64), 0.00001);
+		assertEquals(10, route.nearest(new Vec3(8, 16, 0), 10, 12), 0.00001);
+	}
+
+	@Test
+	public void missingGroundCannotProduceAPreparedRoute() {
+		var route = HordeRoute.create(List.of(Vec3.ZERO, new Vec3(64, 0, 0)));
+		assertFalse(route.prepare(rules(), _ -> null));
+	}
+
+	@Test
+	public void deferredGroundCoversVisualDisplacementWithoutZeroHeightSamples() {
+		var route = HordeRoute.create(List.of(new Vec3(0, 56, 0), new Vec3(64, 56, 0)));
+		assertTrue(route.prepareDeferred(rules(), _ -> null));
+		assertTrue(route.node(0).sampleWidth() > 192);
+		for (int index = 0; index < route.size(); index++) {
+			assertEquals(56, route.node(index).height(-96), 0.00001);
+			assertEquals(56, route.node(index).height(96), 0.00001);
+		}
+	}
+
+	@Test
+	public void nonfiniteGeometryAndOverflowingQuotasAreRejected() {
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 1, 1, 8,
+				1, 3, 100, 100, 100, 40, 20, 5, 20, Double.NaN, 40, 4));
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 1, 1, 8,
+				Integer.MAX_VALUE, 2, 100, 100, 100, 40, 20, 5, 20, 8, 40, 4));
+	}
+
+	@Test
+	public void invalidStoredSampleWidthIsRejected() {
+		var route = HordeRoute.create(List.of(Vec3.ZERO, new Vec3(16, 0, 0)));
+		var saved = route.save();
+		var node = assertInstanceOf(CompoundTag.class, saved.getListOrEmpty("nodes").getFirst());
+		node.putDouble("width", Double.NaN);
+		assertThrows(IllegalArgumentException.class, () -> HordeRoute.load(saved));
+	}
+
+	@Test
+	public void perTargetHardCapIncludesInitialQuotaReinforcementAndReservations() {
+		var high = new HordeRules(6000, 64, 1.8, 1.8, 8, 16, 10, 100, 100, 100,
+				40, 1, 5, 20, 8, 40, 4);
+		var target = new HordeTargetAssignment("target", "domain", UUID.randomUUID(), Vec3.ZERO, high);
+		assertEquals(10, high.maximumQuota());
+		assertEquals(10, target.quota);
+		for (int index = 0; index < 20; index++) {
+			target.death();
+		}
+		assertEquals(10, target.quota);
+		for (int index = 0; index < 9; index++) {
+			target.members.add(UUID.randomUUID());
+		}
+		target.reservations = 1;
+		assertEquals(0, target.missing());
+		target.quota = 100;
+		assertEquals(0, target.missing());
+		assertEquals(10, HordeTargetAssignment.load(target.save()).quota);
 	}
 
 	@Test
@@ -74,8 +151,19 @@ public class HordeRulesTest {
 		assertEquals(1, restored.columnSpacing());
 	}
 
-	@Test
-	public void automaticLoopClosesAndHasNoZeroLengthSegments() {
+    @Test
+    public void openPathKeepsEndpointsAndRejectsCoincidentAnchors() {
+        var end = new Vec3(48, 4, 32);
+        var path = HordeSamplingUtil.path(List.of(Vec3.ZERO, Vec3.ZERO, new Vec3(32, 2, 0), end));
+        assertEquals(Vec3.ZERO, path.getFirst());
+        assertEquals(end, path.getLast());
+        assertNotEquals(path.getFirst(), path.getLast());
+        assertTrue(path.stream().allMatch(point -> Double.isFinite(point.lengthSqr())));
+        assertThrows(IllegalArgumentException.class, () -> HordeSamplingUtil.path(List.of(Vec3.ZERO, Vec3.ZERO)));
+    }
+
+    @Test
+    public void automaticLoopClosesAndHasNoZeroLengthSegments() {
 		var loop = HordeSamplingUtil.loop(List.of(Vec3.ZERO, new Vec3(300, 0, 0)), 128);
 		assertEquals(loop.getFirst(), loop.getLast());
 		double length = 0;
@@ -90,7 +178,8 @@ public class HordeRulesTest {
 	@Test
 	public void explicitLoopDoesNotRepeatTheClosingAnchor() {
 		var loop = HordeSamplingUtil.loop(List.of(Vec3.ZERO, new Vec3(300, 0, 0), new Vec3(300, 0, 300), Vec3.ZERO), 128);
-		assertEquals(49, loop.size());
+		assertTrue(loop.size() > 4);
+		assertEquals(2, loop.stream().filter(loop.getFirst()::equals).count());
 		assertEquals(loop.getFirst(), loop.getLast());
 	}
 

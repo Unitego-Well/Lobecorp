@@ -5,10 +5,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
@@ -23,24 +27,39 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
-/// 接收事件快照并按空间块提交编号区间；CPU 不计算逐单位位置。
+/// 接收事件快照；每tick提交玩家模拟距离内的整数区域，GPU负责分割运动。
 public class HordeClient {
 	private static final Map<UUID, ClientEvent> EVENTS = new TreeMap<>();
+	private static final Map<UUID, Long> SNAPSHOT_REQUESTS = new TreeMap<>();
 	private static final double BLOCK_WIDTH = 16;
+	private static final int BLOCK_SEGMENTS = 16;
 	private static final double MODEL_PADDING = 6;
+	// 水平分割宽深按实际体型三倍，Y仍采用真实高度，避免高处误分割。
+	private static final double VISUAL_GAP_SCALE = 3;
+	// 从目标包围盒向外至少三格；GPU另加清道夫模型半径。
+	private static final double MIN_VISUAL_CLEARANCE = 3;
 	private static List<Batch> lastBatches = List.of();
 	private static Object generation;
+	private static int meshSettings = Integer.MIN_VALUE;
+	private static Frustum ambientFrustum;
 
 	public static void apply(CompoundTag packet) {
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null) {
 			return;
 		}
+		UUID id;
 		try {
-			UUID id = UUID.fromString(packet.getStringOr("id", ""));
+			id = UUID.fromString(packet.getStringOr("id", ""));
+		} catch (IllegalArgumentException exception) {
+			Lobecorp.LOGGER.warn("忽略无效群体事件标识", exception);
+			return;
+		}
+		try {
 			String kind = packet.getStringOr("kind", "");
 			if (kind.equals("remove")) {
 				EVENTS.remove(id);
+				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);
 				return;
 			}
@@ -49,42 +68,114 @@ public class HordeClient {
 			ClientEvent event = EVENTS.get(id);
 			boolean reset = kind.equals("header") && body.getBooleanOr("reset", false);
 			if (reset) {
-				event = new ClientEvent(id);
-				EVENTS.put(id, event);
+				var replacement = new ClientEvent(id);
+				replacement.header(body);
+				replacement.sequence = sequence;
+				EVENTS.put(id, replacement);
+				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);
-			} else if (event == null || sequence != event.sequence + 1) {
-				if (event == null || minecraft.level.getGameTime() - event.lastRequest >= 40) {
-					if (event != null) {
-						event.lastRequest = minecraft.level.getGameTime();
-					}
-					ClientPacketDistributor.sendToServer(new HordeSnapshotRequestPayload(id));
-				}
 				return;
 			}
-			event.sequence = sequence;
+			if (event == null || sequence != event.sequence + 1) {
+				requestSnapshot(id);
+				return;
+			}
 			switch (kind) {
 				case "header" -> event.header(body);
 				case "route" -> event.route(body);
-				case "regions" -> event.regions(body);
-				default -> {
-				}
+				default -> throw new IllegalArgumentException("未知群体事件同步页面");
 			}
+			event.sequence = sequence;
 		} catch (IllegalArgumentException exception) {
-			Lobecorp.LOGGER.warn("忽略无效群体事件快照", exception);
+			requestSnapshot(id);
+			Lobecorp.LOGGER.warn("忽略无效群体事件快照 {}", id, exception);
 		}
 	}
 
+	private static void requestSnapshot(UUID id) {
+		var minecraft = Minecraft.getInstance();
+		if (minecraft.level == null) {
+			return;
+		}
+		long now = minecraft.level.getGameTime();
+		if (now - SNAPSHOT_REQUESTS.getOrDefault(id, Long.MIN_VALUE / 2) >= 40) {
+			SNAPSHOT_REQUESTS.put(id, now);
+			ClientPacketDistributor.sendToServer(new HordeSnapshotRequestPayload(id));
+		}
+	}
+
+	public static void tick() {
+		var minecraft = Minecraft.getInstance();
+		if (minecraft.level == null || minecraft.player == null || EVENTS.isEmpty() || !HordeVisualConfig.ENABLED.get()) {
+			return;
+		}
+		var player = minecraft.player;
+		var area = simulationBounds();
+		var nearby = minecraft.level.getEntitiesOfClass(Mob.class, area, entity -> entity.isAlive() && !entity.isSpectator());
+		var targets = nearby.stream().filter(ClientEvent::isGapTarget).toList();
+		var members = nearby.stream().filter(HordeParticipant::isEvent).toList();
+		for (var event : EVENTS.values()) {
+			if (event.ready && !event.failed) {
+				event.updateGaps(targets, members, player);
+			}
+		}
+	}
+
+
+	private static AABB simulationBounds() {
+		var minecraft = Minecraft.getInstance();
+		int chunks = minecraft.level.getServerSimulationDistance();
+		var chunk = minecraft.player.chunkPosition();
+		return new AABB((chunk.x() - chunks) * 16d, minecraft.level.getMinY(), (chunk.z() - chunks) * 16d,
+				(chunk.x() + chunks + 1) * 16d, minecraft.level.getMaxY(), (chunk.z() + chunks + 1) * 16d);
+	}
+
+	public static List<DebugRange> debugRanges() {
+		var minecraft = Minecraft.getInstance();
+		var result = new ArrayList<DebugRange>();
+		if (minecraft.level == null || minecraft.player == null) {
+			return result;
+		}
+		double range = HordeVisualConfig.rangeBlocks();
+		var player = minecraft.player.position();
+		result.add(new DebugRange(simulationBounds(), 0xFF00FF00));
+		result.add(new DebugRange(new AABB(player.x - range, player.y - 8, player.z - range,
+				player.x + range, player.y + 8, player.z + range), 0xFFFFFF00));
+		for (var event : EVENTS.values()) {
+			if (event.ready && !event.failed && event.routeBounds != null) {
+				result.add(new DebugRange(event.routeBounds, 0xFF00FFFF));
+				for (var box : event.regions.values()) {
+					result.add(new DebugRange(new AABB(box.x(), box.y(), box.z(),
+							box.x() + box.sizeX(), box.y() + box.sizeY(), box.z() + box.sizeZ()), 0xFFFF8000));
+				}
+			}
+		}
+		return result;
+	}
+
 	public static List<Batch> extract(float partialTick, Frustum frustum) {
+		ambientFrustum = frustum;
+		long extractionStarted = HordeRenderMetrics.extractStarted();
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || !HordeVisualConfig.ENABLED.get()) {
 			lastBatches = List.of();
 			return lastBatches;
 		}
-		if (generation != GeckoLibResources.getBakedModels()) {
+		if (generation != GeckoLibResources.getBakedModels() || meshSettings != HordeMeshCache.settingsKey()) {
 			generation = GeckoLibResources.getBakedModels();
-			HordeRendering.clear();
+			meshSettings = HordeMeshCache.settingsKey();
+			HordeGpuRenderer.clearModels();
 			HordeMeshCache.clear();
 			EVENTS.values().forEach(event -> event.failed = false);
+		}
+
+		for (var event : EVENTS.values()) {
+			if (!event.failed && event.visual != null) {
+				HordeGpuRenderer.requestResources(event.visual);
+			}
+		}
+		if (!EVENTS.isEmpty()) {
+			HordeGpuRenderer.prepareResources();
 		}
 
 		var camera = minecraft.gameRenderer.getMainCamera().position();
@@ -96,8 +187,7 @@ public class HordeClient {
 			}
 			double now = event.time(partialTick);
 			for (var block : event.blocks) {
-				if (block.bounds().distanceToSqr(camera) > range * range || !frustum.isVisible(block.bounds())
-						|| !loaded(block.bounds())) {
+				if (block.bounds().distanceToSqr(camera) > range * range || !frustum.isVisible(block.bounds())) {
 					continue;
 				}
 				long first = Math.max(0, (long) Math.floor((now * event.speed - block.last()) / event.rules.rowSpacing()) + 1);
@@ -132,22 +222,14 @@ public class HordeClient {
 			batches = limited;
 		}
 		lastBatches = List.copyOf(batches);
+		HordeRenderMetrics.extracted(extractionStarted, lastBatches.size());
 		return lastBatches;
 	}
 
-	private static boolean loaded(AABB bounds) {
-		var level = Minecraft.getInstance().level;
-		if (level == null) {
-			return false;
-		}
-		for (int x = (int) Math.floor(bounds.minX) >> 4; x <= (int) Math.floor(bounds.maxX) >> 4; x++) {
-			for (int z = (int) Math.floor(bounds.minZ) >> 4; z <= (int) Math.floor(bounds.maxZ) >> 4; z++) {
-				if (level.getChunkSource().getChunkNow(x, z) != null) {
-					return true;
-				}
-			}
-		}
-		return false;
+
+	public static boolean ambientVisible(Vec3 point) {
+		return ambientFrustum != null && HordeVisualConfig.ENABLED.get()
+				&& ambientFrustum.isVisible(new AABB(point, point).inflate(0.5));
 	}
 
 	public static List<Batch> batches() {
@@ -161,14 +243,20 @@ public class HordeClient {
 
 	public static void clear() {
 		EVENTS.clear();
+		SNAPSHOT_REQUESTS.clear();
 		lastBatches = List.of();
 		generation = null;
+		meshSettings = Integer.MIN_VALUE;
+		ambientFrustum = null;
 		HordeRendering.clear();
 		HordeMeshCache.clear();
 		HordeAmbient.clear();
 	}
 
 	public record Block(int index, double first, double last, int firstColumn, int columns, AABB bounds, Vec3 center) {
+	}
+
+	public record DebugRange(AABB bounds, int color) {
 	}
 
 	public record Batch(ClientEvent event, Block block, long firstRow, long offset, int count, double time) {
@@ -181,8 +269,15 @@ public class HordeClient {
 		public HordeRoute.Node[] nodes;
 		public Vec3 origin;
 		public float[] routeData;
+		public float[] heightData;
+		public int heightColumns;
+		public double groundWidth;
+		public final java.util.BitSet changedHeights = new java.util.BitSet();
 		public List<Block> blocks = List.of();
-		public final Map<String, Region> regions = new TreeMap<>();
+		public final Map<String, RegionBox> regions = new TreeMap<>();
+		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
+		public double regionsChanged;
+		public float entityHeight;
 		public double length;
 		public double speed;
 		public float lightProbeHeight;
@@ -191,13 +286,10 @@ public class HordeClient {
 		public boolean ready;
 		public boolean failed;
 		public long regionVersion;
+		private AABB routeBounds;
 		private final Map<Integer, HordeRoute.Node> received = new TreeMap<>();
-		private final Map<String, CompoundTag> pendingRegions = new TreeMap<>();
-		private long regionBatch = -1;
 		private long sequence;
-		private long lastRequest = Long.MIN_VALUE / 2;
-		private long targetTick;
-		private long receivedAt;
+		private final HordeRenderClock clock = new HordeRenderClock();
 		private int nodeCount;
 
 		private ClientEvent(UUID id) {
@@ -207,7 +299,7 @@ public class HordeClient {
 		public double time(float partial) {
 			var minecraft = Minecraft.getInstance();
 			var level = minecraft.level;
-			return level == null ? targetTick : targetTick + Math.clamp(level.getGameTime() - receivedAt + partial, 0, 40);
+			return clock.time(level == null ? 0 : level.getGameTime() + partial);
 		}
 
 		private void header(CompoundTag tag) {
@@ -218,34 +310,60 @@ public class HordeClient {
 			if (!tag.getStringOr("dimension", "").equals(level.dimension().identifier().toString())) {
 				throw new IllegalArgumentException("群体事件维度不匹配");
 			}
-			rules = HordeRules.load(tag.getCompoundOrEmpty("rules"));
-			targetTick = tag.getLongOr("tick", 0);
-			receivedAt = level.getGameTime();
-			stop = tag.getLongOr("stop", rules.duration());
-			length = tag.getDoubleOr("length", 0);
-			speed = tag.getDoubleOr("speed", 0);
-			lightProbeHeight = (float) tag.getDoubleOr("light_probe_height", 1);
-			nodeCount = tag.getIntOr("node_count", 0);
-			if (!Double.isFinite(length) || length <= 0 || !Double.isFinite(speed) || speed <= 0 || nodeCount < 2 || nodeCount > 8192) {
+			var nextRules = HordeRules.load(tag.getCompoundOrEmpty("rules"));
+			double nextLength = tag.getDoubleOr("length", 0);
+			double nextSpeed = tag.getDoubleOr("speed", 0);
+			int nextNodeCount = tag.getIntOr("node_count", 0);
+			if (!Double.isFinite(nextLength) || nextLength <= 0 || !Double.isFinite(nextSpeed)
+					|| nextSpeed <= 0 || nextNodeCount < 2 || nextNodeCount > 8192) {
 				throw new IllegalArgumentException("群体事件线路或速度无效");
 			}
-			visual = new HordeVisualDefinition(Identifier.parse(tag.getStringOr("model", "")),
+			var nextVisual = new HordeVisualDefinition(Identifier.parse(tag.getStringOr("model", "")),
 					Identifier.parse(tag.getStringOr("animation", "")), tag.getStringOr("run", "run"),
 					Identifier.parse(tag.getStringOr("texture", "")));
+			if (ready && (nextNodeCount != nodeCount || nextLength != length || !nextRules.equals(rules)
+					|| !nextVisual.equals(visual))) {
+				throw new IllegalArgumentException("固定线路或资源变更必须提供完整快照");
+			}
+			rules = nextRules;
+			clock.synchronize(tag.getLongOr("tick", 0), level.getGameTime());
+			stop = tag.getLongOr("stop", nextRules.duration());
+			length = nextLength;
+			speed = nextSpeed;
+			lightProbeHeight = (float) tag.getDoubleOr("light_probe_height", 1);
+			entityHeight = (float) tag.getDoubleOr("entity_height", lightProbeHeight);
+			if (!Float.isFinite(entityHeight) || entityHeight <= 0) {
+				throw new IllegalArgumentException("群体实体高度无效");
+			}
+			nodeCount = nextNodeCount;
+			visual = nextVisual;
+			HordeGpuRenderer.requestResources(nextVisual);
 			columns = Math.max(1, (int) Math.floor(rules.width() / rules.columnSpacing()));
 		}
 
 		private void route(CompoundTag page) {
-			if (ready) {
-				return;
-			}
 			int index = page.getIntOr("first", 0);
 			for (var element : page.getListOrEmpty("nodes")) {
 				if (element instanceof CompoundTag node && index >= 0 && index < nodeCount) {
-					received.put(index++, HordeRoute.Node.load(node));
+					var replacement = HordeRoute.Node.load(node);
+					if (ready) {
+						if (replacement.revision() > nodes[index].revision()) {
+							var previous = nodes[index];
+							if (replacement.heightCount() != heightColumns || replacement.sampleWidth() != groundWidth
+									|| replacement.distance() != previous.distance()
+									|| replacement.at().x != previous.at().x || replacement.at().z != previous.at().z) {
+								throw new IllegalArgumentException("线路结构变化需要完整快照");
+							}
+							nodes[index] = replacement;
+							updateHeights(index);
+						}
+					} else {
+						received.put(index, replacement);
+					}
+					index++;
 				}
 			}
-			if (received.size() == nodeCount) {
+			if (!ready && received.size() == nodeCount) {
 				prepareRoute();
 				received.clear();
 				ready = true;
@@ -255,6 +373,9 @@ public class HordeClient {
 		private void prepareRoute() {
 			nodes = received.values().toArray(HordeRoute.Node[]::new);
 			origin = nodes[0].at();
+			heightColumns = nodes[0].heightCount();
+			groundWidth = nodes[0].sampleWidth();
+			heightData = new float[nodes.length * heightColumns];
 			int lookupCount = (int) Math.ceil(length) + 1;
 			routeData = new float[Math.addExact(Math.multiplyExact(nodes.length, 16), lookupCount)];
 			var prepared = new ArrayList<Block>();
@@ -270,11 +391,11 @@ public class HordeClient {
 				routeData[at + 3] = (float) nodes[i].distance();
 				routeData[at + 4] = (float) direction.x;
 				routeData[at + 5] = (float) direction.z;
-				double width = rules.width() + rules.regionMargin() * 2;
-				for (int h = 0; h < 5; h++) {
-					routeData[at + 8 + h] = (float) (nodes[i].height((h / 4d - 0.5) * width) - origin.y);
+				double width = groundWidth;
+				for (int h = 0; h < heightColumns; h++) {
+					heightData[i * heightColumns + h] = (float) (nodes[i].height((h / (double) (heightColumns - 1) - 0.5) * width) - origin.y);
 				}
-				if (i + 1 < nodes.length) {
+				if (i + 1 < nodes.length && i % BLOCK_SEGMENTS == 0) {
 					prepareBlocks(i, prepared);
 				}
 			}
@@ -286,23 +407,59 @@ public class HordeClient {
 				routeData[nodes.length * 16 + i] = segment;
 			}
 			blocks = List.copyOf(prepared);
+			double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
+			double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+			double minZ = Double.POSITIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+			for (var node : nodes) {
+				var at = node.at();
+				minX = Math.min(minX, at.x);
+				maxX = Math.max(maxX, at.x);
+				minY = Math.min(minY, at.y);
+				maxY = Math.max(maxY, at.y);
+				minZ = Math.min(minZ, at.z);
+				maxZ = Math.max(maxZ, at.z);
+			}
+			double padding = rules.width() / 2 + rules.regionMargin() + HordeSamplingUtil.MAX_VISUAL_OFFSET + MODEL_PADDING;
+			routeBounds = new AABB(minX - padding, minY - 24, minZ - padding,
+					maxX + padding, maxY + 24, maxZ + padding);
+		}
+
+		private void updateHeights(int index) {
+			double width = groundWidth;
+			for (int h = 0; h < heightColumns; h++) {
+				heightData[index * heightColumns + h] = (float) (nodes[index].height((h / (double) (heightColumns - 1) - 0.5) * width) - origin.y);
+			}
+			changedHeights.set(index);
+			var updated = new ArrayList<>(blocks);
+			for (int group = Math.max(0, index - 1) / BLOCK_SEGMENTS; group <= Math.min(nodes.length - 2, index) / BLOCK_SEGMENTS; group++) {
+				var replacements = new ArrayList<Block>();
+				prepareBlocks(group * BLOCK_SEGMENTS, replacements);
+				for (var block : replacements) {
+					updated.set(block.index(), block);
+				}
+			}
+			blocks = List.copyOf(updated);
 		}
 
 		private void prepareBlocks(int segment, List<Block> prepared) {
+			int end = Math.min(nodes.length - 1, segment + BLOCK_SEGMENTS);
 			var a = nodes[segment].at();
-			var b = nodes[segment + 1].at();
-			double padding = rules.regionMargin() + MODEL_PADDING;
+			var b = nodes[end].at();
+			double padding = rules.regionMargin() + HordeSamplingUtil.MAX_VISUAL_OFFSET + MODEL_PADDING;
 			int blockColumns = Math.max(1, (int) Math.floor(BLOCK_WIDTH / rules.columnSpacing()));
 			for (int first = 0; first < columns; first += blockColumns) {
 				int count = Math.min(blockColumns, columns - first);
 				double low = (first - (columns - 1) / 2d) * rules.columnSpacing() - padding;
 				double high = (first + count - 1 - (columns - 1) / 2d) * rules.columnSpacing() + padding;
 				AABB bounds = blockBounds(segment, low, high);
+				for (int i = segment + 1; i < end; i++) {
+					bounds = bounds.minmax(blockBounds(i, low, high));
+				}
 				double lateral = (first + (count - 1) / 2d - (columns - 1) / 2d) * rules.columnSpacing();
 				var forward = b.subtract(a).multiply(1, 0, 1).normalize();
-				double height = (nodes[segment].height(lateral) + nodes[segment + 1].height(lateral)) / 2;
+				double height = (nodes[segment].height(lateral) + nodes[end].height(lateral)) / 2;
 				var center = new Vec3((a.x + b.x) / 2 - forward.z * lateral, height, (a.z + b.z) / 2 + forward.x * lateral);
-				prepared.add(new Block(prepared.size(), nodes[segment].distance(), nodes[segment + 1].distance(), first, count, bounds, center));
+				prepared.add(new Block(segment / BLOCK_SEGMENTS * Math.ceilDiv(columns, blockColumns) + first / blockColumns, nodes[segment].distance(), nodes[end].distance(), first, count, bounds, center));
 			}
 		}
 
@@ -330,10 +487,10 @@ public class HordeClient {
 				}
 			}
 			double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
-			double width = rules.width() + rules.regionMargin() * 2;
+			double width = groundWidth;
 			for (int i = segment; i <= segment + 1; i++) {
-				for (int h = 0; h < 5; h++) {
-					double y = nodes[i].height((h / 4d - 0.5) * width);
+				for (int h = 0; h < heightColumns; h++) {
+					double y = nodes[i].height((h / (double) (heightColumns - 1) - 0.5) * width);
 					minY = Math.min(minY, y);
 					maxY = Math.max(maxY, y);
 				}
@@ -343,40 +500,70 @@ public class HordeClient {
 					maxY + MODEL_PADDING, Math.max(a.z, b.z) + maxZ + MODEL_PADDING);
 		}
 
-		private void regions(CompoundTag page) {
-			long batch = page.getLongOr("batch", -1);
-			if (page.getBooleanOr("first", false)) {
-				pendingRegions.clear();
-				regionBatch = batch;
+		private void updateGaps(List<Mob> targets, List<Mob> members, Player player) {
+			var updated = new TreeMap<String, RegionBox>();
+			updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
+			for (var entity : targets) {
+				updated.put("target:" + entity.getUUID(),
+						RegionBox.forEntity(entity.getBoundingBox()));
 			}
-			if (batch != regionBatch) {
-				return;
-			}
-			for (var element : page.getListOrEmpty("regions")) {
-				if (element instanceof CompoundTag zone) {
-					pendingRegions.put(zone.getStringOr("id", ""), zone.copy());
+
+			// 成员不单独创建缺口，只扩展同层、正在参战目标的已有战斗包围。
+			var seeds = members.isEmpty() ? Map.<String, RegionBox>of() : Map.copyOf(updated);
+			for (var member : members) {
+				var source = HordeParticipant.get(member);
+				var key = "target:" + source.targetId();
+				var target = seeds.get(key);
+				if (target == null || source.fading() || !source.eventId().equals(id.toString())) {
+					continue;
 				}
+				updated.put(key, RegionBox.includeCombat(target, updated.get(key), member.getBoundingBox(), rules.regionMargin()));
 			}
-			if (!page.getBooleanOr("last", false)) {
-				return;
-			}
-			double now = time(0);
-			boolean changed = false;
-			for (var entry : pendingRegions.entrySet()) {
-				changed |= regions.computeIfAbsent(entry.getKey(), _ -> new Region())
-						.update(entry.getValue(), now, rules.transitionTicks());
-			}
-			for (var entry : regions.entrySet()) {
-				if (!pendingRegions.containsKey(entry.getKey())) {
-					changed |= entry.getValue().remove(now, rules.transitionTicks());
-				}
-			}
-			changed |= regions.entrySet().removeIf(entry -> entry.getValue().expired(now, rules.transitionTicks()));
-			if (changed) {
+
+			if (!regions.equals(updated) || !previousRegions.equals(regions)) {
+				previousRegions.clear();
+				previousRegions.putAll(regions);
+				regions.clear();
+				regions.putAll(updated);
+				regionsChanged = time(0);
 				regionVersion++;
 			}
-			pendingRegions.clear();
-			regionBatch = -1;
+		}
+
+
+		private static boolean isGapTarget(LivingEntity entity) {
+            return entity.isAlive() && !entity.isSpectator() && !HordeParticipant.isEvent(entity);
+        }
+    }
+
+    /// 向GPU提交的整数世界坐标和尺寸，向外取整，避免截断负坐标及实体边界。
+    public record RegionBox(int x, int y, int z, int sizeX, int sizeY, int sizeZ) {
+	    public static RegionBox forEntity(AABB bounds) {
+		    double extra = (VISUAL_GAP_SCALE - 1) * 0.5;
+		    return of(bounds.inflate(Math.max(MIN_VISUAL_CLEARANCE, bounds.getXsize() * extra), 0,
+				    Math.max(MIN_VISUAL_CLEARANCE, bounds.getZsize() * extra)), 1);
+	    }
+
+
+	    public static RegionBox includeCombat(RegionBox target, RegionBox current, AABB member, double margin) {
+		    var original = new AABB(target.x(), target.y(), target.z(), target.x() + target.sizeX(),
+				    target.y() + target.sizeY(), target.z() + target.sizeZ());
+		    if (member.minY >= original.maxY + 0.5 || member.maxY <= original.minY - 0.5
+				    || original.distanceToSqr(member.getCenter()) > margin * margin) {
+			    return current;
+		    }
+		    var combined = new AABB(current.x(), current.y(), current.z(), current.x() + current.sizeX(),
+				    current.y() + current.sizeY(), current.z() + current.sizeZ());
+		    return of(combined.minmax(member.inflate(MIN_VISUAL_CLEARANCE, 0, MIN_VISUAL_CLEARANCE)), 1);
+	    }
+
+	    public static RegionBox of(AABB bounds, int grid) {
+            int x = Math.floorDiv((int) Math.floor(bounds.minX), grid) * grid;
+            int y = Math.floorDiv((int) Math.floor(bounds.minY), grid) * grid;
+            int z = Math.floorDiv((int) Math.floor(bounds.minZ), grid) * grid;
+            return new RegionBox(x, y, z, Math.ceilDiv((int) Math.ceil(bounds.maxX) - x, grid) * grid,
+                    Math.ceilDiv((int) Math.ceil(bounds.maxY) - y, grid) * grid,
+                    Math.ceilDiv((int) Math.ceil(bounds.maxZ) - z, grid) * grid);
 		}
 	}
 
@@ -386,12 +573,8 @@ public class HordeClient {
 		public double fromX, fromZ, toX, toZ, changed;
 		private boolean initialized;
 
-		public boolean update(CompoundTag tag, double now, int transition) {
-			var center = new Vec3(tag.getDoubleOr("x", 0), tag.getDoubleOr("y", 0), tag.getDoubleOr("z", 0));
-			boolean active = tag.getBooleanOr("active", true);
-			double rx = active ? Math.max(0, tag.getDoubleOr("rx", 0)) : 0;
-			double rz = active ? Math.max(0, tag.getDoubleOr("rz", 0)) : 0;
-			return set(center, rx, rz, now, transition);
+		public boolean update(Vec3 center, double rx, double rz, double now, int transition) {
+			return set(center, Math.max(0, rx), Math.max(0, rz), now, transition);
 		}
 
 		private boolean set(Vec3 center, double rx, double rz, double now, int transition) {

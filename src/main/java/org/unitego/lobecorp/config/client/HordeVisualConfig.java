@@ -6,25 +6,37 @@ import org.unitego.lobecorp.generator.lang.HordeLang;
 
 /// 主体数量只由显式上限决定，不进行自动降级。
 public class HordeVisualConfig {
-	public static final String FILE_NAME = "lobecorp-horde-visuals.toml";
-	public static final ModConfigSpec SPEC;
-	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, DUST_PER_TICK;
+	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE;
 	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
+	public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES, LOD_ENABLED, CORPSE_BATCH;
+	public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, LOD_NEAR, LOD_FAR;
 
 	static {
-		var b = new ModConfigSpec.Builder();
-		ENABLED = b.translation(HordeLang.config("visual.enabled", "Enabled", "启用虚拟浪潮")).define("enabled", true);
-		b.push("display");
-		MAX_VISIBLE = b.translation(HordeLang.config("visual.max_visible", "Maximum visible (-1: unlimited)", "同时显示上限（-1：无限）")).defineInRange("maximumVisible", -1, -1, Integer.MAX_VALUE);
-		DISTANCE = b.translation(HordeLang.config("visual.distance", "Display range in chunks (-1: view distance)", "显示范围（区块，-1：视野距离）")).defineInRange("rangeChunks", -1, -1, 1024);
-		b.pop().push("ambient");
-		SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate footsteps", "聚合脚步声")).define("sound", true);
-		SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);
-		DUST = b.translation(HordeLang.config("visual.dust", "Running dust", "近处奔跑扬尘")).define("dust", true);
-		DUST_PER_TICK = b.translation(HordeLang.config("visual.dust_per_tick", "Dust per tick", "每刻扬尘预算")).defineInRange("dustPerTick", 2, 0, 64);
-		b.pop();
-		STATISTICS = b.translation(HordeLang.config("visual.statistics", "Debug overlay", "性能调试叠层")).define("statistics", false);
-		SPEC = b.build();
+		synchronized (ClientConfig.class) {
+			var b = ClientConfig.section("horde", "Horde", "清道夫浪潮");
+			ENABLED = b.translation(HordeLang.config("visual.enabled", "Enabled", "启用虚拟浪潮")).define("enabled", true);
+			b.translation(ClientConfig.translation("horde.display", "Display", "显示")).push("display");
+			MAX_VISIBLE = b.translation(HordeLang.config("visual.max_visible", "Maximum visible (-1: unlimited)", "同时显示上限（-1：无限）")).defineInRange("maximumVisible", -1, -1, Integer.MAX_VALUE);
+			DISTANCE = b.translation(HordeLang.config("visual.distance", "Display range in chunks (-1: view distance)", "显示范围（区块，-1：视野距离）")).defineInRange("rangeChunks", -1, -1, 1024);
+			IRIS_WORKSET_WORDS = b.translation(HordeLang.config("visual.iris_workset_words", "Iris workset (MiWords)", "Iris工作集（MiWords）")).comment("使用4、8或16百万字；中间值向下取档。显存不足时自动缩小工作集，不减少实例。").defineInRange("irisWorksetMiWords", 16, 4, 16);
+			IRIS_DOUBLE_BUFFER = b.translation(HordeLang.config("visual.iris_double_buffer", "Iris double buffering", "Iris双缓冲")).define("irisDoubleBuffer", true);
+			IRIS_MERGE_MATERIALS = b.translation(HordeLang.config("visual.iris_merge_materials", "Merge Iris material passes", "合并Iris材质通道")).define("irisMergeMaterials", true);
+			CORPSE_BATCH = b.translation(HordeLang.config("visual.corpse_batch", "Batch frozen corpse models", "批量绘制冻结尸体")).define("corpseBatch", true);
+			REDUCE_HIDDEN_FACES = b.translation(HordeLang.config("visual.reduce_hidden_faces", "Remove covered model faces", "剔除模型隐藏面")).define("reduceHiddenFaces", true);
+			ANIMATION_FRAMES = b.translation(HordeLang.config("visual.animation_frames", "Uniform animation samples", "动画等距采样帧数")).defineInRange("animationFrames", 4, 4, 20);
+			LOD_ENABLED = b.translation(HordeLang.config("visual.lod_enabled", "Distance model quality", "按距离调整模型精度")).define("lodEnabled", true);
+			LOD_NEAR = b.translation(HordeLang.config("visual.lod_near", "Full quality distance (blocks)", "全精度距离（格）")).defineInRange("lodNear", 48, 1, 4096);
+			LOD_FAR = b.translation(HordeLang.config("visual.lod_far", "Medium quality distance (blocks)", "中精度距离（格）")).defineInRange("lodFar", 96, 2, 8192);
+			b.pop().translation(ClientConfig.translation("horde.ambient", "Ambient effects", "环境效果")).push("ambient");
+			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate footsteps", "聚合脚步声")).define("sound", true);
+			SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);
+			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
+			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Particle interval (ticks)", "粒子生成间隔（刻）")).comment("默认每刻在潮内选择近3、中2、远1个可见区域，分级发射多粒烟雾、方块碎屑和刀光；仅客户端近处生成。").defineInRange("particleIntervalTicks", 1, 1, 1200);
+			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", 24, 1, 32);
+			b.pop();
+			STATISTICS = b.translation(HordeLang.config("visual.statistics", "Debug overlay", "性能调试叠层")).define("statistics", false);
+			b.pop();
+		}
 	}
 
 	public static double rangeBlocks() {
@@ -32,4 +44,7 @@ public class HordeVisualConfig {
 		int chunks = DISTANCE.get();
 		return Math.max(0, chunks == -1 ? view : Math.min(chunks, view)) * 16d;
 	}
+
+    public static void init() {
+    }
 }

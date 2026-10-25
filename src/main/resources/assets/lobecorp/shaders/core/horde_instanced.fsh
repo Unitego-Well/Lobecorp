@@ -19,7 +19,7 @@ void main() {
         discard;
     }
     vec4 glow = texture(Glowmask, texCoord);
-    vec3 color = max(albedo.rgb * lighting.rgb, glow.rgb * glow.a * glowing * 0.5);
+    vec3 color = mix(albedo.rgb * lighting.rgb, glow.rgb, clamp(glow.a * glowing, 0.0, 1.0));
     fragColor = apply_fog(vec4(color, 1.0), sphericalDistance, cylindricalDistance,
         FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
 }

@@ -24,6 +24,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.world.horde.HordeRuntime;
+import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -68,6 +70,9 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	/// 由同步数据重建的原实体缓存。
 	@Nullable
 	private T ownerEntity;
+	/// 事件相关尸体的绝对世界期限，-1表示沿用普通腐烂规则。
+	private long eventCleanupAt = -1;
+	private long visualRevision;
 	@Nullable
 	private EntityDimensions cachedDimensions;
 
@@ -81,11 +86,35 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		if (HordeParticipant.isEvent(entity)) {
 			HordeParticipant.set(entityCorpse, HordeParticipant.get(entity));
 		}
+		if (HordeCleanupUtil.hasTimedCorpse(entity)) {
+			entityCorpse.eventCleanupAt = entity.level().getGameTime() + HordeCleanupUtil.CORPSE_RETENTION_TICKS;
+		}
 		clearTemporaryState(entity);
 		entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
-		entityCorpse.updateOwnerEntity(entityCorpse.createOwnerEntity(entityCorpse.getOwnerEntityTag()));
 		entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
 		return entityCorpse;
+	}
+
+	public double renderDistance() {
+		return isComplexModel() || hasCorpseAnimation() ? 32 : 180;
+	}
+
+	public boolean hasCorpseAnimation() {
+		return false;
+	}
+
+	public boolean isComplexModel() {
+		return false;
+	}
+
+	public long visualRevision() {
+		return visualRevision;
+	}
+
+	@Override
+	public boolean shouldRenderAtSqrDistance(double distance) {
+		double range = renderDistance();
+		return range > 0 && distance < range * range;
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
@@ -145,15 +174,16 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
 		super.readAdditionalSaveData(input);
+		eventCleanupAt = input.getLongOr("HordeCleanupAt", -1);
 		CompoundTag compoundTag = input.read("OwnerEntity", CompoundTag.CODEC).orElseGet(CompoundTag::new);
 		setOwnerEntityTag(compoundTag);
-		updateOwnerEntity(createOwnerEntity(compoundTag));
 	}
 
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
 		output.store("OwnerEntity", CompoundTag.CODEC, getOwnerEntityTag());
+		output.putLong("HordeCleanupAt", eventCleanupAt);
 	}
 
 	@Override
@@ -162,9 +192,25 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		entityData.define(DATA_OWNER_ENTITY_TAG, new CompoundTag());
 	}
 
+	public long eventCleanupAt() {
+		return eventCleanupAt;
+	}
+
 	@Override
 	public void tick() {
 		super.tick();
+
+		if (eventCleanupAt < 0 && !level().isClientSide() && HordeParticipant.isEvent(this)) {
+			eventCleanupAt = level().getGameTime() + HordeCleanupUtil.CORPSE_RETENTION_TICKS;
+		}
+
+		if (eventCleanupAt >= 0 && level() instanceof ServerLevel level
+				&& level.getGameTime() >= eventCleanupAt
+				&& HordeCleanupUtil.mayClearCorpse(level.getGameTime(), eventCleanupAt,
+				HordeRuntime.protectedFromCleanup(level, getBoundingBox()))) {
+			HordeCleanupUtil.discard(this);
+			return;
+		}
 
 		if (!level().isClientSide() && tickCount >= MAX_ROT_REMOVED_TICK) {
 			remove(RemovalReason.DISCARDED);
@@ -279,6 +325,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	}
 
 	protected void updateOwnerEntity(@Nullable T newOwnerEntity) {
+		visualRevision++;
 		if (newOwnerEntity == null) {
 			reset();
 			return;
@@ -357,6 +404,12 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	}
 
 	protected void setOwnerEntityTag(CompoundTag tag) {
+		if (getOwnerEntityTag().equals(tag)) {
+			if (!tag.isEmpty()) {
+				updateOwnerEntity(createOwnerEntity(tag));
+			}
+			return;
+		}
 		entityData.set(DATA_OWNER_ENTITY_TAG, tag);
 	}
 

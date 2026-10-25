@@ -30,7 +30,12 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 	public SweeperRenderer(EntityRendererProvider.Context context) {
 		super(context, new SweeperModel());
 		AutoGlowingRenderLayer<Sweeper, Void, LivingEntityRenderState> glowingLayer =
-				new AutoGlowingRenderLayer<>(this, LcDataTickets.SWEEPER_GLOW_STRENGTH);
+				new AutoGlowingRenderLayer<>(this, LcDataTickets.SWEEPER_GLOW_STRENGTH) {
+					@Override
+					protected @Nullable RenderType getRenderType(@NonNull LivingEntityRenderState state) {
+						return super.getRenderType(state) == null ? null : RenderTypes.eyes(getTextureResource(state));
+					}
+				};
 		withRenderLayer(new DynamicCubeGeoLayer<>(this, "biomass", Map.of(
 				Direction.UP, LcDataTickets.SWEEPER_BIOMASS_RATIO), List.of(glowingLayer)));
 		withRenderLayer(glowingLayer);
@@ -70,7 +75,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_VARIANT, animatable.getVariant());
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_BIOMASS_RATIO,
 				animatable.getBiomass() / animatable.getBiomassCapacity());
-		renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 0.5f);
+        renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 1f);
 	}
 
 	@Override

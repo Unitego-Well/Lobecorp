@@ -1,5 +1,17 @@
 # 系统修改记录
 
+## 2026-10-25：极端优化代码、无游戏检查与提交归属落地
+
+- 用户选择A，将本工作区已有Horde WIP与原5项暂存纳入本次任务；其他系统、通用构建号闭包差异、日志、备份和运行产物不纳入提交，不推送。
+- EX-01…17代码已接入：共同帧标识三组非嵌套GPU计时与独立draw总量；long光照缓存；增量模型/管线预热；安全隐藏面和显式闭合三档网格；默认4帧等距动画；Iris 4/8/16MiWords工作集、双缓冲、窗口材质合批、缩档/原生回退及换包代际；每实例8字辅助缓存；稳定编号GPU位置/方向历史、限速和平滑退出及异步标量归约；默认静态尸体状态/初始化优化和清道夫冻结网格批绘；64/256尸体与512宽直线隔离夹具。
+- 保留已确认行为：3格净空、突发包围多tick平滑退出而不按区域隐藏、5区块尸体基础网络跟踪、180/32客户端上限、不新增尸体重组动画/同步；原施术动画/服务端复活与200tick来源尸体规则保留。未知尸体/轮廓/阴影仍走原管线。CPU不新增逐虚拟单位运动；GPU统计只异步回读8字节。
+- IDEA完成新增文件及本次修改行格式处理，关闭额外导入优化和成员重排。回读发现并修正GLSL格式器给moj_import标识加空格；修正保留字sample、NativeImage私有像素接口及嵌套类型可空注解位置。37份Java/GLSL错误诊断全部analyzed，修正后0错误；另补查8份既有接入文件0错误。Java警告审阅69项，保留借用/持久资源拥有者提示、内部API、既有空值/注解与未使用项，不宣称零警告或全部泄漏已排除。
+- 经IDEA运行BenchMod Compile，退出0、BUILD SUCCESSFUL in 47s，compileJava/compileBenchJava与verifyProductionJarHasNoBenchContent通过；Data退出0、BUILD SUCCESSFUL in 21s，确认headless无游戏窗口。29份生成文件只有两份语言和两份缓存SHA256变化，23份实际资源无删除，新增9组中英文配置键；过时独立客户端SPEC/FILE_NAME调用搜索无结果。生成输出未手工编辑。
+- 本轮未执行JUnit、游戏、BenchMod Client/Server、Minecraft MCP或Debug；没有GPU硬件编译、画面、光影、首帧、显存峰值或新A/B数据。全部运行门禁NOT_RUN，不标DONE，不以旧数据宣称60FPS、减面比例或三档缓存节省达标。
+- 实现与回滚逐项见horde-extreme-execution-plan.md第9节；进度见horde-index.md；剩余异议集中到horde-issues.md：双槽窗口与全帧合批区别、32MiB编号历史容量边界、未知尸体兜底、三档总内存及Iris数据pass兼容。没有升级Iris或静默减少配置实例。
+- 备份与实际检查清单：build/agent-backups/20261025-extreme-confirmed/（原字节Base64/SHA256、原暂存补丁、文档修改前快照和verification.json）；首批20261025-extreme-code/备份保留。Data日志：C:/Users/wang_/AppData/Local/JetBrains/IntelliJIdea2026.2/tmp/ij_run__Data_16117074889087978056.log。IDE运行API返回Data退出0但未提供PID，不补造；未创建游戏/探针/浏览器/桥接，未关闭用户IDE或共享Gradle后端。Git临时进程归属/收尾由git_background核对。
+
+
 ## 2026-10-25：确认独立浪潮整体计时与覆盖审计
 
 - 用户选择A：新增独立Horde draw整体GPU计时，与阶段求和按同负载分组对照；15%作为需调查的覆盖审计阈值，超出不直接判统计错误，不伪补数据，世界GPU及原性能目标保持。

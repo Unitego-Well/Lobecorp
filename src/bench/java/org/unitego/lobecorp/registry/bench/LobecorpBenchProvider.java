@@ -9,6 +9,8 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerProvider;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
+import org.unitego.lobecorp.client.bench.HordeRenderScenario;
+import org.unitego.lobecorp.client.bench.CorpseRenderScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
 
@@ -39,5 +41,9 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
                         LobecorpBenchConfig.CLIENT_SCENARIO, "Sweeper renderer workload",
                         Set.of("client", "sweeper", "render"), LobecorpBenchConfig.PHASE_TIMEOUT),
                 _ -> new SweeperRenderScenario());
+	    registrar.register(new ScenarioDescriptor("lobecorp.horde-render", "GPU horde workload",
+			    Set.of("client", "horde", "gpu"), LobecorpBenchConfig.PHASE_TIMEOUT), _ -> new HordeRenderScenario());
+	    registrar.register(new ScenarioDescriptor("lobecorp.corpse-render", "Static corpse renderer workload",
+			    Set.of("client", "corpse", "render"), LobecorpBenchConfig.PHASE_TIMEOUT), _ -> new CorpseRenderScenario());
     }
 }

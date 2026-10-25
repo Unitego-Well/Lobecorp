@@ -8,6 +8,7 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
 import net.minecraft.core.BlockPos;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
@@ -16,6 +17,9 @@ import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperVariant;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
+import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -38,9 +42,12 @@ public class SweeperRenderScenario implements BenchClientScenario {
     private int measureTicks;
     private long firstFrameCount;
     private long measuredFrames;
+    private boolean gpuCaptureStarted;
 
     @Override
     public void setup(BenchClientContext context) {
+        GLFW.glfwMaximizeWindow(context.minecraft().getWindow().handle());
+        GLFW.glfwFocusWindow(context.minecraft().getWindow().handle());
         originalPose = context.automation().pose();
         int halfGrid = LobecorpBenchConfig.GRID_WIDTH * LobecorpBenchConfig.GRID_SPACING / 2;
         origin = context.player().blockPosition().offset(-halfGrid, 0, -halfGrid);
@@ -128,6 +135,8 @@ public class SweeperRenderScenario implements BenchClientScenario {
         requireOwnedEntities(context);
         if (measureTicks == 0) {
             firstFrameCount = context.frames().sampleCount();
+            PhotonFrameCapture.start("sweeper_bench_gpu", 20);
+            gpuCaptureStarted = true;
         }
 
         context.metrics().record(LOADED_ENTITIES, entities.size());
@@ -150,6 +159,14 @@ public class SweeperRenderScenario implements BenchClientScenario {
         if (screenshotPath == null || !Files.isRegularFile(screenshotPath) || Files.size(screenshotPath) == 0) {
             throw new AssertionError("The sweeper render screenshot is missing");
         }
+        var capture = PhotonFrameCapture.snapshot();
+        if (!capture.get("state").getAsString().equals("DURATION") || capture.get("saved_path").isJsonNull()) {
+            throw new AssertionError("Sweeper GPU timing capture did not finish");
+        }
+        var gpu = context.resultDirectory().resolve("artifacts/gpu/sweeper-gpu.json");
+        Files.createDirectories(gpu.getParent());
+        Files.copy(Path.of(capture.get("saved_path").getAsString()), gpu, StandardCopyOption.REPLACE_EXISTING);
+        context.artifacts().register(gpu, "application/json");
     }
 
     private void requireOwnedEntities(BenchClientContext context) {
@@ -167,6 +184,9 @@ public class SweeperRenderScenario implements BenchClientScenario {
             }
         } finally {
             entities.clear();
+            if (gpuCaptureStarted) {
+                PhotonFrameCapture.cancel();
+            }
             if (poseHold != null) {
                 poseHold.close();
             }

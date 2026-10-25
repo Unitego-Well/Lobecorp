@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.nio.charset.StandardCharsets;
 
-/// 实际人数可以高于配额；只有新增请求受配额约束。
+/// 转派可高于当前增援配额，但有效成员与预约合计不超过单目标硬上限。
 public class HordeTargetAssignment {
 	public final String key;
 	public final String domain;
@@ -35,7 +35,7 @@ public class HordeTargetAssignment {
 		this.position = position;
 		this.rules = rules;
 		this.region = regionId(domain, target);
-		this.quota = rules.initialQuota();
+        this.quota = Math.min(rules.initialQuota(), rules.maximumQuota());
 	}
 
 	public int occupied() {
@@ -47,7 +47,7 @@ public class HordeTargetAssignment {
 	}
 
 	public int missing() {
-		return Math.max(0, quota - occupied());
+		return Math.max(0, Math.min(quota, HordeRules.MAXIMUM_TARGET_QUOTA) - occupied());
 	}
 
 	public void death() {

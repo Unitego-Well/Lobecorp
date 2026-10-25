@@ -34,7 +34,7 @@ public class ClientRenderingEvents {
 	}
 
 	@SubscribeEvent
-	public static void onHordeWorld(RenderLevelStageEvent.AfterLevel event) {
+	public static void onHordeWorld(RenderLevelStageEvent.AfterOpaqueFeatures event) {
 		HordeRendering.render(event);
 	}
 

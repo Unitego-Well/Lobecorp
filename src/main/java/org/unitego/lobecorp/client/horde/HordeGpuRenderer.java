@@ -52,8 +52,8 @@ import java.util.UUID;
 
 /// 常驻模型、线路和骨骼动画；每批只上传时间与编号区间，不上传逐单位变换。
 public class HordeGpuRenderer {
-	// std140共16个vec4，与horde_motion.glsl的HordeParameters一致。
-	private static final int PARAMETER_BYTES = 256;
+	// std140共17个vec4，与horde_motion.glsl的HordeParameters一致。
+	private static final int PARAMETER_BYTES = 272;
     private static final int VERTEX_BYTES = 28;
     private static final int INSTANCES_PER_DRAW = 65536;
 	// 位置、朝向角、光照、sin/cos和帧顶点基址，与GLSL布局一致。
@@ -639,6 +639,7 @@ public class HordeGpuRenderer {
 				.putInt(Float.floatToRawIntBits(visualRadius(event.visual)));
 		upload.putInt(item.event().units.mask()).putInt((int) row).putInt((int) (row >>> 32)).putInt((int) drawSerial);
 		put(0.75f, 8, 0.05f, HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get() ? 1 : 0);
+		upload.putInt(item.event().units.ringMask()).putInt(item.event().units.columnTiles()).putInt(1).putInt(0);
 	}
 
 	private static void put(float a, float b, float c, float d) {

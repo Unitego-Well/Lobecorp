@@ -1,49 +1,38 @@
 package org.unitego.lobecorp.client.bench;
 
 import com.google.gson.Gson;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.zhongbai233.bench.api.BenchMetricDescriptor;
 import com.zhongbai233.bench.api.MetricDirection;
-import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
-import com.zhongbai233.bench.api.neoforge.client.BenchClientPose;
-import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
-import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
-import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
-import net.minecraft.core.BlockPos;
+import com.zhongbai233.bench.api.neoforge.client.*;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
-
-import java.util.regex.Pattern;
-
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
-import org.jspecify.annotations.Nullable;
 import net.neoforged.neoforge.client.ClientCommandHandler;
+import org.jspecify.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeGpuRenderer;
 import org.unitego.lobecorp.client.horde.HordeRenderMetrics;
-
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
+import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Locale;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 
 /// 在隔离客户端构造仅用于显示的事件快照；不代表真实参战或网络性能。
 public class HordeRenderScenario implements BenchClientScenario {
@@ -83,6 +72,18 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private UUID gpuCaptureToken;
 	private HordeBenchmarkEnvironment environment;
 	private long renderFailureBaseline;
+	private static final BenchMetricDescriptor VISIBLE_PIXELS = new BenchMetricDescriptor(
+			"lobecorp.horde_render.visible_pixels", "count", MetricDirection.NEUTRAL);
+	// 与原夹具一致的侧上方视角；锚点必须是实际地面，不能沿用可能悬空的玩家Y。
+	private static final int CAMERA_HEIGHT = 64;
+	private static final int CAMERA_DISTANCE = 100;
+	private double groundY;
+	private CompletableFuture<Path> baselineScreenshot;
+	private Path baselineScreenshotPath;
+	private boolean baselineCaptured;
+	private boolean hordeResumed;
+	private int visiblePixels = -1;
+	private int[] visibleBounds = new int[0];
 	private static final BenchMetricDescriptor[] STAGE_CPU = Arrays.stream(HordeRenderMetrics.Stage.values())
 			.map(stage -> new BenchMetricDescriptor("lobecorp.horde.stage." + stage.name().toLowerCase(Locale.ROOT) + ".cpu", "ns", MetricDirection.NEUTRAL))
 			.toArray(BenchMetricDescriptor[]::new);
@@ -132,56 +133,65 @@ public class HordeRenderScenario implements BenchClientScenario {
                 ? completePhase() : BenchClientStepResult.CONTINUE;
     }
 
-    private boolean initialize(BenchClientContext context) {
-	    var anchors = List.of(origin.add(160, 0, 0), origin.add(-160, 0, 0));
-        var route = HordeRoute.create(HordeSamplingUtil.path(anchors));
-        var rules = HordeRules.configured().withOverrides(6000, WIDTH);
-	    if (!route.prepareDeferred(rules, point -> {
-		    var block = BlockPos.containing(point);
-		    if (!context.level().getChunkSource().hasChunk(block.getX() >> 4, block.getZ() >> 4)) {
-			    temporaryHeightSamples++;
-			    return new Vec3(point.x, origin.y, point.z);
-		    }
-		    return new Vec3(point.x, context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
-				    block.getX(), block.getZ()), point.z);
-	    })) {
-		    return false;
-	    }
-        var nodes = new ListTag();
-        for (int index = 0; index < route.size(); index++) {
-            nodes.add(route.node(index).save());
-        }
-        header = new CompoundTag();
-        header.putInt("format", 1);
-        header.putString("dimension", context.level().dimension().identifier().toString());
-        header.put("rules", rules.save());
-        header.putLong("stop", 6000);
-        header.putDouble("length", route.length());
-        header.putDouble("speed", SPEED);
-        header.putInt("node_count", route.size());
-        var visual = new MidnightCleanup().visuals();
-        header.putString("model", visual.model().toString());
-        header.putString("animation", visual.animation().toString());
-        header.putString("run", visual.runAnimation());
-        header.putString("texture", visual.texture().toString());
-        header.putDouble("light_probe_height", new MidnightCleanup().dimensions().eyeHeight());
-	    header.putDouble("entity_height", new MidnightCleanup().dimensions().height());
-        baseTick = (long) Math.ceil(route.length() / SPEED) + 40;
-        header.putLong("tick", baseTick);
-        header.putBoolean("reset", true);
-	    ownsEvent = true;
-        send("header", header);
-        header.putBoolean("reset", false);
-        var page = new CompoundTag();
-        page.putInt("first", 0);
-        page.put("nodes", nodes);
-        send("route", page);
-	    var view = BenchClientPose.lookingAt(origin.x, origin.y + 64, origin.z - 100,
-			    origin.x, origin.y + 1, origin.z);
-        pose = context.automation().holdPose(view);
-        initialized = true;
-        return true;
-    }
+	private boolean initialize(BenchClientContext context) {
+		// 事件和相机必须以实际地面为锚点：玩家位置可能悬空，旧的 origin.y+64 会把相机抬到地面之上约192格，全部进入雾外。
+		int baseX = (int) Math.floor(origin.x);
+		int baseZ = (int) Math.floor(origin.z);
+		if (!context.level().getChunkSource().hasChunk(baseX >> 4, baseZ >> 4)) {
+			return false;
+		}
+		groundY = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, baseX, baseZ);
+		var center = new Vec3(origin.x, groundY, origin.z);
+		var anchors = List.of(center.add(160, 0, 0), center.add(-160, 0, 0));
+		var route = HordeRoute.create(HordeSamplingUtil.path(anchors));
+		var rules = HordeRules.configured().withOverrides(6000, WIDTH);
+		if (!route.prepareDeferred(rules, point -> {
+			var block = BlockPos.containing(point);
+			if (!context.level().getChunkSource().hasChunk(block.getX() >> 4, block.getZ() >> 4)) {
+				temporaryHeightSamples++;
+				// 未加载列回退到已确认的中心地面，不能回退到悬空的玩家Y。
+				return new Vec3(point.x, groundY, point.z);
+			}
+			return new Vec3(point.x, context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+					block.getX(), block.getZ()), point.z);
+		})) {
+			return false;
+		}
+		var nodes = new ListTag();
+		for (int index = 0; index < route.size(); index++) {
+			nodes.add(route.node(index).save());
+		}
+		header = new CompoundTag();
+		header.putInt("format", 1);
+		header.putString("dimension", context.level().dimension().identifier().toString());
+		header.put("rules", rules.save());
+		header.putLong("stop", 6000);
+		header.putDouble("length", route.length());
+		header.putDouble("speed", SPEED);
+		header.putInt("node_count", route.size());
+		var visual = new MidnightCleanup().visuals();
+		header.putString("model", visual.model().toString());
+		header.putString("animation", visual.animation().toString());
+		header.putString("run", visual.runAnimation());
+		header.putString("texture", visual.texture().toString());
+		header.putDouble("light_probe_height", new MidnightCleanup().dimensions().eyeHeight());
+		header.putDouble("entity_height", new MidnightCleanup().dimensions().height());
+		baseTick = (long) Math.ceil(route.length() / SPEED) + 40;
+		header.putLong("tick", baseTick);
+		header.putBoolean("reset", true);
+		ownsEvent = true;
+		send("header", header);
+		header.putBoolean("reset", false);
+		var page = new CompoundTag();
+		page.putInt("first", 0);
+		page.put("nodes", nodes);
+		send("route", page);
+		var view = BenchClientPose.lookingAt(center.x, center.y + CAMERA_HEIGHT, center.z - CAMERA_DISTANCE,
+				center.x, center.y + 1, center.z);
+		pose = context.automation().holdPose(view);
+		initialized = true;
+		return true;
+	}
 
     private void send(String kind, CompoundTag body) {
         var packet = new CompoundTag();
@@ -205,24 +215,40 @@ public class HordeRenderScenario implements BenchClientScenario {
         return BenchClientStepResult.COMPLETE;
     }
 
-    @Override
-    public BenchClientStepResult warmup(BenchClientContext context) {
-	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.WARMUP);
-	    requireGpuProgress();
-        advance();
-        if (++phaseTicks < LobecorpBenchConfig.WARMUP_TICKS) {
-            return BenchClientStepResult.CONTINUE;
-        }
-        if (screenshot == null) {
-            screenshot = context.automation().captureScreenshot("horde-render");
-            return BenchClientStepResult.CONTINUE;
-        }
-        if (!screenshot.isDone() || !context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)) {
-            return BenchClientStepResult.CONTINUE;
-        }
-        screenshotPath = screenshot.join();
-        return completePhase();
-    }
+	@Override
+	public BenchClientStepResult warmup(BenchClientContext context) {
+		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.WARMUP);
+		requireGpuProgress();
+		advance();
+		if (++phaseTicks < LobecorpBenchConfig.WARMUP_TICKS) {
+			return BenchClientStepResult.CONTINUE;
+		}
+		// 同机位先关闭浪潮拍对照图；只有差异像素证明浪潮真正进入画面，纯天空截图不能通过。
+		if (!baselineCaptured) {
+			HordeVisualConfig.ENABLED.set(false);
+			baselineScreenshot = context.automation().captureScreenshot("horde-render-off");
+			baselineCaptured = true;
+			return BenchClientStepResult.CONTINUE;
+		}
+		if (!baselineScreenshot.isDone() || !context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)) {
+			return BenchClientStepResult.CONTINUE;
+		}
+		baselineScreenshotPath = baselineScreenshot.join();
+		if (!hordeResumed) {
+			HordeVisualConfig.ENABLED.set(true);
+			hordeResumed = true;
+			return BenchClientStepResult.CONTINUE;
+		}
+		if (screenshot == null) {
+			screenshot = context.automation().captureScreenshot("horde-render");
+			return BenchClientStepResult.CONTINUE;
+		}
+		if (!screenshot.isDone() || !context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)) {
+			return BenchClientStepResult.CONTINUE;
+		}
+		screenshotPath = screenshot.join();
+		return completePhase();
+	}
 
     @Override
     public BenchClientStepResult measure(BenchClientContext context) {
@@ -262,31 +288,86 @@ public class HordeRenderScenario implements BenchClientScenario {
         return ++phaseTicks >= MEASURE_TICKS ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
     }
 
-    @Override
-    public void verify(BenchClientContext context) throws Exception {
-	    drainGpu(context);
-	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.VERIFY);
-	    requireGpuProgress();
-        if (context.frames().sampleCount() <= firstFrame || screenshotPath == null || !Files.isRegularFile(screenshotPath)
-		        || !HordeGpuRenderer.statistics().contains("instances=" + count)) {
-            throw new AssertionError("GPU horde did not produce the expected drawing and screenshot");
-        }
-        saveSpark(context);
-        var capture = PhotonFrameCapture.snapshot();
-	    if (gpuCaptureToken == null || !capture.has("capture_id") || capture.get("capture_id").isJsonNull()
-			    || !gpuCaptureToken.toString().equals(capture.get("capture_id").getAsString())) {
-		    throw new AssertionError("GPU捕获不属于当前基准，不能登记其他捕获的制品");
-	    }
-        if (!capture.get("state").getAsString().equals("DURATION") || capture.get("saved_path").isJsonNull()) {
-            throw new AssertionError("GPU timing capture did not finish and save");
-        }
-        Path gpu = context.resultDirectory().resolve("artifacts/gpu/horde-gpu.json");
-        Files.createDirectories(gpu.getParent());
-        Files.copy(Path.of(capture.get("saved_path").getAsString()), gpu, StandardCopyOption.REPLACE_EXISTING);
-        context.artifacts().register(gpu, "application/json");
-    }
+	@Override
+	public void verify(BenchClientContext context) throws Exception {
+		drainGpu(context);
+		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.VERIFY);
+		requireGpuProgress();
+		if (context.frames().sampleCount() <= firstFrame || screenshotPath == null || baselineScreenshotPath == null
+				|| !Files.isRegularFile(screenshotPath) || !Files.isRegularFile(baselineScreenshotPath)
+				|| !HordeGpuRenderer.statistics().contains("instances=" + count)) {
+			throw new AssertionError("GPU horde did not produce the expected drawing and contrast screenshots");
+		}
+		verifyVisible(context);
+		saveSpark(context);
+		var capture = PhotonFrameCapture.snapshot();
+		if (gpuCaptureToken == null || !capture.has("capture_id") || capture.get("capture_id").isJsonNull()
+				|| !gpuCaptureToken.toString().equals(capture.get("capture_id").getAsString())) {
+			throw new AssertionError("GPU捕获不属于当前基准，不能登记其他捕获的制品");
+		}
+		if (!capture.get("state").getAsString().equals("DURATION") || capture.get("saved_path").isJsonNull()) {
+			throw new AssertionError("GPU timing capture did not finish and save");
+		}
+		Path gpu = context.resultDirectory().resolve("artifacts/gpu/horde-gpu.json");
+		Files.createDirectories(gpu.getParent());
+		Files.copy(Path.of(capture.get("saved_path").getAsString()), gpu, StandardCopyOption.REPLACE_EXISTING);
+		context.artifacts().register(gpu, "application/json");
+	}
 
-    private void saveSpark(BenchClientContext context) throws Exception {
+	/// 同机位A/B证明浪潮像素真的进入画面；相机悬空、雾外、全黑或光照剔除都会在这里失败。
+	private void verifyVisible(BenchClientContext context) throws IOException {
+		var pose = context.automation().pose();
+		int baseX = (int) Math.floor(origin.x);
+		int baseZ = (int) Math.floor(origin.z);
+		int currentGround = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, baseX, baseZ);
+		double eyeHeight = pose.y() - currentGround;
+		if (Math.abs(eyeHeight - CAMERA_HEIGHT) > 8.0 || pose.pitch() < 20.0F || pose.pitch() > 45.0F
+				|| Math.abs(pose.z() - (origin.z - CAMERA_DISTANCE)) > 8.0) {
+			throw new AssertionError("浪潮基准相机未按地面锚定，不能判定负载可见：" + pose
+					+ ", groundY=" + currentGround + ", expectedEyeHeight=" + CAMERA_HEIGHT);
+		}
+		try (var on = NativeImage.read(Files.newInputStream(screenshotPath));
+		     var off = NativeImage.read(Files.newInputStream(baselineScreenshotPath))) {
+			int width = on.getWidth();
+			int height = on.getHeight();
+			if (off.getWidth() != width || off.getHeight() != height) {
+				throw new AssertionError("浪潮对照截图尺寸不一致");
+			}
+			int[] a = on.getPixels();
+			int[] b = off.getPixels();
+			int minX = width, minY = height, maxX = -1, maxY = -1;
+			long diff = 0;
+			// 只看地平线以下的3/4，排除云层移动；浪潮必须在这片区域产生成片差异像素。
+			for (int y = height / 4; y < height; y++) {
+				int row = y * width;
+				for (int x = 0; x < width; x++) {
+					int p = a[row + x];
+					int q = b[row + x];
+					int delta = Math.max(Math.abs((p >> 16 & 255) - (q >> 16 & 255)),
+							Math.max(Math.abs((p >> 8 & 255) - (q >> 8 & 255)), Math.abs((p & 255) - (q & 255))));
+					if (delta <= 16) {
+						continue;
+					}
+					diff++;
+					minX = Math.min(minX, x);
+					maxX = Math.max(maxX, x);
+					minY = Math.min(minY, y);
+					maxY = Math.max(maxY, y);
+				}
+			}
+			visiblePixels = (int) diff;
+			visibleBounds = maxX < 0 ? new int[0] : new int[]{minX, minY, maxX, maxY};
+			long area = (long) width * height * 3 / 4;
+			if (diff < Math.max(5000L, area / 200L) || maxX - minX < width / 5 || maxY - minY < height / 20) {
+				throw new AssertionError("浪潮未在画面产生足够像素：diff=" + diff + ", bounds=" + Arrays.toString(visibleBounds)
+						+ ", pose=" + pose + ", groundY=" + currentGround);
+			}
+		}
+		context.metrics().record(VISIBLE_PIXELS, visiblePixels);
+	}
+
+
+	private void saveSpark(BenchClientContext context) throws Exception {
 	    for (String link : sparkLinks(context)) {
 		    if (sparkLinksBefore.contains(link)) {
 			    continue;
@@ -401,6 +482,12 @@ public class HordeRenderScenario implements BenchClientScenario {
 		var value = environment.snapshot();
 		value.add("render_resources", HordeGpuRenderer.resourceStatistics());
 		value.addProperty("camera_pose", context.automation().pose().toString());
+		value.addProperty("camera_ground_y", groundY);
+		value.addProperty("camera_eye_height_above_ground", context.automation().pose().y() - groundY);
+		value.addProperty("event_anchor", origin.toString());
+		value.addProperty("visible_pixels", visiblePixels);
+		value.addProperty("visible_pixel_bounds", Arrays.toString(visibleBounds));
+		value.addProperty("contrast_pair", "horde-render.png - horde-render-off.png (lower 3/4, channel delta > 16)");
 		value.addProperty("fixture_width", WIDTH);
 		value.addProperty("temporary_unloaded_height_samples", temporaryHeightSamples);
 		value.addProperty("fixture_instances", count);

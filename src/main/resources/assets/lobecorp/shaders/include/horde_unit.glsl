@@ -7,7 +7,9 @@ uvec2 unitRow(uint delta) {
 }
 
 ivec2 unitAddress(uvec2 row, uint column, sampler2D history) {
-    uvec3 tile = uvec3((row.x >> 4u) | (row.y << 28u), row.y >> 4u, column >> 4u);
+    // 行环页：可见行跨度不超过环页容量，所以同一时刻不会有两个可见行共用槽位。
+    uint rowTile = (row.x >> 4u) & uint(UnitPage.x);
+    uvec3 tile = uvec3(rowTile, 0u, column >> 4u);
     uint mask = uint(UnitIdentity.x);
     uint at = (tile.x * 73856093u ^ tile.y * 19349663u ^ tile.z * 83492791u) & mask;
     for (uint probe = 0u; probe <= mask; probe++) {

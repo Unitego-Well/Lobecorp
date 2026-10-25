@@ -18,6 +18,7 @@ layout(std140) uniform HordeParameters {
     ivec4 SpatialTextures;
     ivec4 UnitIdentity;
     vec4 UnitLimits;
+    ivec4 UnitPage;
 };
 
 uniform sampler2D Sampler2;

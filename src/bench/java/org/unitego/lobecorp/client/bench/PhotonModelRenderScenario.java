@@ -14,6 +14,9 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
 import net.minecraft.nbt.StringTag;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import org.unitego.lobecorp.client.photon.model.IPhotonPackedVertexSink;
+import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import com.lowdragmc.photon.client.compat.iris.IrisCompat;
@@ -47,6 +50,8 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings("resource") // Minecraft 与玩家均由基准上下文借用，场景不关闭游戏宿主。
 public class PhotonModelRenderScenario implements BenchClientScenario {
 	private static final int GRID = 16;
+	/// 每个进程独立选择预期光影状态，旧入口缺省仍要求开启。
+	private static final String SHADER_PROPERTY = "lobecorp.photon.bench.shader";
 	private static final int WARMUP = 100;
 	private static final int MEASURE = 300;
 	private final PhotonBenchWorkloadUtil.Layout workload;
@@ -128,8 +133,14 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		poseHold = context.automation().holdPose(BenchClientPose.lookingAt(
 				player.getX(), player.getY() + (count > 16 ? 12 : 7), player.getZ() - (count > 16 ? 24 : 10),
 				player.getX(), player.getY() + 2, player.getZ() + 5));
-		if (beamCount > 0 && !IrisCompat.isUsingShaderPack()) {
-			throw new IllegalStateException("E2/E3 要求实际启用光影包。");
+		boolean expectedShader = Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true"));
+		if (IrisCompat.isUsingShaderPack() != expectedShader) {
+			throw new IllegalStateException("实际光影状态与本轮预期不符：" + expectedShader);
+		}
+
+		if (Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY)
+				!= IPhotonPackedVertexSink.class.isAssignableFrom(BufferBuilder.class)) {
+			throw new IllegalStateException("整块提交开关与实际 Mixin 加载状态不符。");
 		}
 
 		var server = context.minecraft().getSingleplayerServer();
@@ -295,6 +306,9 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 		var report = new JsonObject();
 		report.addProperty("label", label);
+		report.addProperty("expected_shaderpack_enabled", Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true")));
+		report.addProperty("packed_snapshot_requested", Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY));
+		report.addProperty("packed_snapshot_mixin_applied", IPhotonPackedVertexSink.class.isAssignableFrom(BufferBuilder.class));
 		report.addProperty("synthetic", true);
 		report.addProperty("models", count);
 		report.addProperty("animated", animated);

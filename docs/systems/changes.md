@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-25：确认分割平滑优先方案
+
+- 用户对EX-13选择B：每tick位移≤0.75格；瞬移、区域新增或扩张导致包围时允许多tick退出，期间不隐藏，正常横摆仍避免进入，退出后保持原3格净空目标。
+- 仅通过IDEA局部同步horde-issues.md、horde-index.md及horde-extreme-execution-plan.md，取消原1tick纠正归零条款；源码未改，未将决定写成实现完成。
+- 本轮仅回读文档，没有编译、Data、测试、游戏、BenchMod或Debug。修改前片段备份：build/agent-backups/20261025-ex13-choice-b/before.json；原有WIP与5项暂存保留。
+
 ## 2026-10-25：极端优化首批代码与禁止游戏测试边界
 
 - 执行 horde-extreme-execution-plan.md 的无依赖 EX-01、EX-10、EX-11；用户本轮明确禁止游戏测试，因此未启动游戏、BenchMod Client/Server、Debug 或 Minecraft MCP，所有运行、GPU、截图及 A/B 门禁保持未执行，不标 DONE。

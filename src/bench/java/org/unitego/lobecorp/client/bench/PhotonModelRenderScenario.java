@@ -1,17 +1,34 @@
 package org.unitego.lobecorp.client.bench;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import org.unitego.lobecorp.util.photon.performance.PhotonBenchWorkloadUtil;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.lowdragmc.photon.client.fx.FX;
 import com.zhongbai233.bench.api.BenchMetricDescriptor;
 import com.zhongbai233.bench.api.MetricDirection;
+import com.zhongbai233.bench.api.neoforge.client.BenchCaptureOptions;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientPose;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.phys.Vec3;
+import com.lowdragmc.photon.client.compat.iris.IrisCompat;
+import org.unitego.lobecorp.client.animation.LcClientAnimations;
+import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceFixture;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Objects;
+
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import net.neoforged.fml.ModList;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -21,17 +38,18 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /// 固定几何和相机的诊断负载，静止与动画只切换同一资产的片段；不替代真实光束验收。
+@SuppressWarnings("resource") // Minecraft 与玩家均由基准上下文借用，场景不关闭游戏宿主。
 public class PhotonModelRenderScenario implements BenchClientScenario {
 	private static final int GRID = 16;
 	private static final int WARMUP = 100;
 	private static final int MEASURE = 300;
-	private static final int MODEL_GRID = 4;
-	private static final float SPACING = 2.5f;
+	private final PhotonBenchWorkloadUtil.Layout workload;
 	private static final BenchMetricDescriptor MODELS = new BenchMetricDescriptor(
 			"lobecorp.photon.loaded_models", "count", MetricDirection.NEUTRAL);
 	private static final BenchMetricDescriptor STARTUP = new BenchMetricDescriptor(
@@ -40,6 +58,24 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private final int count;
 	private final boolean animated;
 	private final boolean cold;
+	private final int staticCount;
+	private final int animatedCount;
+	private final int meshGrid;
+	private final int beamCount;
+	private final JsonArray beamMarks = new JsonArray();
+	private final Map<UUID, Double> beamPhases = new HashMap<>();
+	private final Map<UUID, Integer> beamOwners = new HashMap<>();
+	private CompletableFuture<QueenBeamPerformanceFixture> beamFixture;
+	private MinecraftServer fixtureServer;
+	private CompletableFuture<Void> worldReady;
+	private CompletableFuture<List<QueenBeamPerformanceFixture.CastResult>> pendingCast;
+	private PhotonBenchCapture capture;
+	private CompletableFuture<Path> beamScreenshot;
+	private long verificationStarted;
+	private long verificationOutputFrame = -1;
+	private boolean verificationCast;
+	private boolean originalFlying;
+	private int measuredCasts;
 	private final List<PhotonGeoEffect> effects = new ArrayList<>();
 	private final List<PhotonModelOutput> models = new ArrayList<>();
 	private BenchPoseHold poseHold;
@@ -54,9 +90,19 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private boolean created;
 
 	public PhotonModelRenderScenario(String label, int count, boolean animated, boolean cold) {
+		this(label, animated ? 0 : count, animated ? count : 0, GRID, 0, cold);
+	}
+
+	public PhotonModelRenderScenario(String label, int staticCount, int animatedCount, int meshGrid, int beamCount, boolean cold) {
+		workload = new PhotonBenchWorkloadUtil.Layout(staticCount, animatedCount, meshGrid, beamCount);
+
 		this.label = label;
-		this.count = count;
-		this.animated = animated;
+		this.staticCount = staticCount;
+		this.animatedCount = animatedCount;
+		this.count = staticCount + animatedCount;
+		this.animated = animatedCount == count && count > 0;
+		this.meshGrid = meshGrid;
+		this.beamCount = beamCount;
 		this.cold = cold;
 	}
 
@@ -71,15 +117,58 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		GLFW.glfwFocusWindow(window.handle());
 		originalPose = context.automation().pose();
 		var player = context.player();
+		originalFlying = player.getAbilities().flying;
+		player.getAbilities().flying = true;
+		player.setDeltaMovement(Vec3.ZERO);
+		player.onUpdateAbilities();
+		context.automation().stopMovement();
+		capture = new PhotonBenchCapture(label, context.seed());
 		origin = new Vector3f((float) player.getX(), (float) player.getY(), (float) player.getZ());
-		assetJson = asset().toString();
+		assetJson = count == 0 ? "" : asset().toString();
 		poseHold = context.automation().holdPose(BenchClientPose.lookingAt(
-				player.getX(), player.getY() + 7, player.getZ() - 10,
+				player.getX(), player.getY() + (count > 16 ? 12 : 7), player.getZ() - (count > 16 ? 24 : 10),
 				player.getX(), player.getY() + 2, player.getZ() + 5));
+		if (beamCount > 0 && !IrisCompat.isUsingShaderPack()) {
+			throw new IllegalStateException("E2/E3 要求实际启用光影包。");
+		}
+
+		var server = context.minecraft().getSingleplayerServer();
+		if (server == null) {
+			throw new IllegalStateException("Photon 隔离基准需要当前集成服务器。");
+		}
+
+		fixtureServer = server;
+		worldReady = new CompletableFuture<>();
+		if (beamCount > 0) {
+			beamFixture = new CompletableFuture<>();
+		}
+		var playerId = player.getUUID();
+		server.execute(() -> {
+			try {
+				QueenBeamPerformanceFixture.prepareBenchWorld(server);
+				if (beamFixture != null) {
+					var beamOrigin = new Vec3(origin.x, origin.y, origin.z);
+					beamFixture.complete(beamCount == 4
+							? QueenBeamPerformanceFixture.createConverging(server, playerId, beamOrigin, beamCount)
+							: QueenBeamPerformanceFixture.create(server, playerId, beamOrigin, beamCount));
+				}
+				worldReady.complete(null);
+			} catch (RuntimeException failure) {
+				worldReady.completeExceptionally(failure);
+				if (beamFixture != null) {
+					beamFixture.completeExceptionally(failure);
+				}
+			}
+		});
 	}
 
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
+		if (!worldReady.isDone()) {
+			return BenchClientStepResult.CONTINUE;
+		}
+		worldReady.join();
+
 		if (++ticks < LobecorpBenchConfig.STABILIZE_TICKS
 				|| !context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)) {
 			return BenchClientStepResult.CONTINUE;
@@ -120,16 +209,16 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			var fx = new FX();
 			var model = new PhotonModelOutput();
 			model.config.setAssetSnapshot(StringTag.valueOf(assetJson));
-			model.config.clip = animated ? "turn" : "";
+			model.config.clip = index >= staticCount ? "turn" : "";
 			model.config.useReferenceDimensions = false;
 			fx.getFxData().objects().add(model);
 			var effect = new PhotonGeoEffect(fx, context.level());
 			effects.add(effect);
 			var runtimeModel = (PhotonModelOutput) effect.runtime().objects.get(model.id());
 			models.add(runtimeModel);
-			float x = count == 1 ? 0 : (index % MODEL_GRID - (MODEL_GRID - 1) / 2f) * SPACING;
-			int row = index / MODEL_GRID;
-			float z = count == 1 ? 0 : (row - (MODEL_GRID - 1) / 2f) * SPACING;
+			var offset = workload.offset(index);
+			float x = offset.x();
+			float z = offset.z();
 			effect.anchor(new Vector3f(origin.x + x, origin.y + 2, origin.z + 5 + z), new Quaternionf(), new Vector3f(2));
 			effect.start();
 		}
@@ -145,6 +234,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				create(context);
 			}
 			context.metrics().record(STARTUP, createNanos);
+			capture.start(beamCount > 0 ? 90 : 120, beamCount > 0 ? () -> cast(context, true) : null);
 		}
 		for (var model : models) {
 			if (model.failure() != null || model.getParticleAmount() == 0) {
@@ -152,7 +242,43 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			}
 		}
 		context.metrics().record(MODELS, models.size());
-		return ++ticks >= MEASURE ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+		++ticks;
+		if (beamCount == 0) {
+			return ticks >= MEASURE ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+		}
+
+		readCast();
+		recordPhases();
+		if (!verificationCast) {
+			if (!capture.complete()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+
+			verificationCast = true;
+			verificationStarted = System.nanoTime();
+			cast(context, false);
+		}
+		if ((System.nanoTime() - verificationStarted) / 1_000_000_000.0 > 15) {
+			throw new IllegalStateException("测量外验证未在预算内观察到完整输出和截图。");
+		}
+		if (pendingCast == null && allBeamsOutput() && verificationOutputFrame < 0) {
+			verificationOutputFrame = context.frames().sampleCount();
+		}
+		if (beamScreenshot == null && verificationOutputFrame >= 0
+				&& context.frames().sampleCount() >= verificationOutputFrame + 2) {
+			if (!allBeamsOutput()) {
+				throw new IllegalStateException("截图请求前真实光束已离开输出阶段。");
+			}
+			beamScreenshot = context.automation().captureScreenshot(label + "-beam", BenchCaptureOptions.immediate());
+		}
+		if (beamScreenshot != null && beamScreenshot.isDone()) {
+			beamScreenshot.join();
+			if (!allBeamsOutput()) {
+				throw new IllegalStateException("截图完成时真实光束已离开输出阶段。");
+			}
+			return BenchClientStepResult.COMPLETE;
+		}
+		return BenchClientStepResult.CONTINUE;
 	}
 
 	@Override
@@ -173,9 +299,45 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("models", count);
 		report.addProperty("animated", animated);
 		report.addProperty("cold_first_emit", cold);
-		report.addProperty("vertices_per_model", (GRID + 1) * (GRID + 1));
-		report.addProperty("faces_per_model", GRID * GRID);
+		report.addProperty("static_models", staticCount);
+		report.addProperty("animated_models", animatedCount);
+		report.addProperty("mesh_grid", meshGrid);
+		report.addProperty("beam_count", beamCount);
+		report.addProperty("beam_layout", beamCount == 4 ? "configured_converging_region" : "parallel_lanes");
+		report.addProperty("overdraw_verified", false);
+		report.addProperty("targets_reset_before_cast", beamCount == 4);
+		report.addProperty("target_drift_during_cast_verified", false);
+		if (beamCount > 0) {
+			var targets = new JsonArray();
+			for (var member : beamFixture.join().members()) {
+				var target = new JsonObject();
+				target.addProperty("target_uuid", member.targetUuid().toString());
+				target.addProperty("max_health", member.targetHealth());
+				target.addProperty("spawn_x", member.targetSpawn().x);
+				target.addProperty("spawn_y", member.targetSpawn().y);
+				target.addProperty("spawn_z", member.targetSpawn().z);
+				targets.add(target);
+			}
+			report.add("beam_targets", targets);
+		}
+		report.addProperty("vertices_per_model", (meshGrid + 1) * (meshGrid + 1));
+		report.addProperty("faces_per_model", meshGrid * meshGrid);
+		report.addProperty("shaderpack", IrisCompat.packName());
+		report.addProperty("shaderpack_enabled", IrisCompat.isUsingShaderPack());
+		report.addProperty("bench_measure_includes_visual_validation", beamCount > 0);
+		report.addProperty("primary_capture_seconds", beamCount > 0 ? 90 : 0);
+		report.addProperty("measured_casts", measuredCasts);
+		report.add("beam_marks", beamMarks);
+		if (beamCount > 0 && measuredCasts != beamCount * 3) {
+			throw new AssertionError("真实光束施放数量不完整。");
+		}
+		verifyBeamPhases();
+		if (beamScreenshot != null) {
+			context.artifacts().write(label + "-beam.png", "image/png", Files.readAllBytes(beamScreenshot.join()));
+		}
+		capture.write(context, report);
 		report.addProperty("create_emit_ns", createNanos);
+		report.addProperty("create_emit_in_frame_capture", false);
 		report.addProperty("measured_frames", context.frames().sampleCount() - firstFrame);
 		report.addProperty("sodium", ModList.get().getModContainerById("sodium").orElseThrow()
 				.getModInfo().getVersion().toString());
@@ -185,60 +347,209 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	@Override
 	public void teardown(BenchClientContext context) {
 		try {
-			effects.forEach(PhotonGeoEffect::close);
+			try {
+				if (capture != null) {
+					capture.close();
+				}
+			} finally {
+				try {
+					clearBeams();
+				} finally {
+					effects.forEach(PhotonGeoEffect::close);
+				}
+			}
 		} finally {
 			effects.clear();
 			models.clear();
-			if (poseHold != null) {
-				poseHold.close();
-			}
-			if (originalPose != null) {
-				context.automation().setPose(originalPose);
-			}
-			if (screenshot != null && !screenshot.isDone()) {
-				screenshot.cancel(false);
+			try {
+				if (poseHold != null) {
+					poseHold.close();
+				}
+			} finally {
+				try {
+					if (originalPose != null) {
+						context.player().getAbilities().flying = originalFlying;
+						context.player().setDeltaMovement(Vec3.ZERO);
+						context.player().onUpdateAbilities();
+						context.automation().setPose(originalPose);
+					}
+				} finally {
+					if (screenshot != null && !screenshot.isDone()) {
+						screenshot.cancel(false);
+					}
+					if (beamScreenshot != null && !beamScreenshot.isDone()) {
+						beamScreenshot.cancel(false);
+					}
+				}
 			}
 		}
 	}
 
-	private static JsonObject asset() {
-		var asset = new JsonObject();
-		asset.addProperty("version", 1);
-		var vertices = new JsonArray();
-		var faces = new JsonArray();
-		var weights = new JsonObject();
-		for (int y = 0; y <= GRID; y++) {
-			for (int x = 0; x <= GRID; x++) {
-				var vertex = new JsonArray();
-				vertex.add((float) x / GRID - 0.5f);
-				vertex.add((float) y / GRID - 0.5f);
-				vertex.add(0);
-				weights.add(Integer.toString(vertices.size()), JsonParser.parseString("[{\"boneId\":\"root\",\"value\":1}]"));
-				vertices.add(vertex);
+	private void cast(BenchClientContext context, boolean measured) {
+		if (pendingCast != null) {
+			throw new IllegalStateException("前次真实施放尚未完成。");
+		}
+
+		var server = context.minecraft().getSingleplayerServer();
+		if (server == null || beamFixture == null) {
+			throw new IllegalStateException("真实施放失去当前夹具。");
+		}
+
+		pendingCast = new CompletableFuture<>();
+		var request = pendingCast;
+		var fixture = beamFixture.join();
+		server.execute(() -> {
+			try {
+				request.complete(fixture.cast(server));
+			} catch (RuntimeException failure) {
+				request.completeExceptionally(failure);
+			}
+		});
+		if (measured) {
+			measuredCasts += beamCount;
+		}
+	}
+
+	private void readCast() {
+		if (pendingCast == null || !pendingCast.isDone()) {
+			return;
+		}
+
+		for (var result : pendingCast.join()) {
+			if (!result.started()) {
+				throw new IllegalStateException("真实激光未开始：" + result.status());
+			}
+
+			var mark = new JsonObject();
+			mark.addProperty("event", "server_cast_completed");
+			mark.addProperty("queen", result.queenId());
+			mark.addProperty("status", result.status());
+			mark.addProperty("observed_ns", System.nanoTime());
+			mark.addProperty("verification", verificationCast);
+			beamMarks.add(mark);
+		}
+		pendingCast = null;
+	}
+
+	private void recordPhases() {
+		var ids = beamFixture.join().members().stream().map(QueenBeamPerformanceFixture.Member::queenId).toList();
+		var present = new HashSet<UUID>();
+		for (var animation : LcClientAnimations.snapshots()) {
+			if (!ids.contains(animation.ownerEntityId()) || !TheQueenOfHatredAnimationDefinitions.isBeam(animation.definitionId())) {
+				continue;
+			}
+
+			present.add(animation.instanceId());
+			beamOwners.put(animation.instanceId(), animation.ownerEntityId());
+			double phase = animation.parameters().getOrDefault(TheQueenOfHatredBeamAnimation.PHASE, -1.0);
+			var previous = beamPhases.put(animation.instanceId(), phase);
+			if (previous == null || Double.compare(previous, phase) != 0) {
+				var mark = new JsonObject();
+				mark.addProperty("event", "client_phase");
+				mark.addProperty("queen", animation.ownerEntityId());
+				mark.addProperty("animation", animation.instanceId().toString());
+				mark.addProperty("phase", phase);
+				mark.addProperty("observed_ns", System.nanoTime());
+				mark.addProperty("verification", verificationCast);
+				beamMarks.add(mark);
 			}
 		}
-		for (int y = 0; y < GRID; y++) {
-			for (int x = 0; x < GRID; x++) {
-				int first = y * (GRID + 1) + x;
-				var face = new JsonObject();
-				var indices = new JsonArray();
-				for (int index : new int[]{first, first + 1, first + GRID + 2, first + GRID + 1}) {
-					indices.add(index);
+		recordRemoved(present);
+	}
+
+	private boolean allBeamsOutput() {
+		return beamFixture.join().members().stream().allMatch(member -> beamPhases.entrySet().stream()
+				.anyMatch(entry -> Objects.equals(beamOwners.get(entry.getKey()), member.queenId())
+						&& entry.getValue() == TheQueenOfHatredBeamAnimation.Phase.OUTPUT.ordinal()));
+	}
+
+	private void recordRemoved(Set<UUID> present) {
+		for (var id : List.copyOf(beamPhases.keySet())) {
+			if (present.contains(id)) {
+				continue;
+			}
+
+			var mark = new JsonObject();
+			mark.addProperty("event", "client_removed");
+			mark.addProperty("queen", beamOwners.remove(id));
+			mark.addProperty("animation", id.toString());
+			mark.addProperty("observed_ns", System.nanoTime());
+			mark.addProperty("verification", verificationCast);
+			beamMarks.add(mark);
+			beamPhases.remove(id);
+		}
+	}
+
+	private void verifyBeamPhases() {
+		if (beamCount == 0) {
+			return;
+		}
+
+		for (var member : beamFixture.join().members()) {
+			long removed = beamMarks.asList().stream().map(JsonElement::getAsJsonObject)
+					.filter(mark -> mark.get("event").getAsString().equals("client_removed")
+							&& !mark.get("verification").getAsBoolean()
+							&& mark.get("queen").getAsInt() == member.queenId()).count();
+			if (removed != 3) {
+				throw new AssertionError("真实激光未完成三次移除：" + member.queenId() + "=" + removed);
+			}
+			for (int phase = 0; phase < 3; phase++) {
+				int expectedPhase = phase;
+				long count = beamMarks.asList().stream().map(JsonElement::getAsJsonObject)
+						.filter(mark -> mark.get("event").getAsString().equals("client_phase")
+								&& !mark.get("verification").getAsBoolean()
+								&& mark.get("queen").getAsInt() == member.queenId()
+								&& mark.get("phase").getAsDouble() == expectedPhase).count();
+				if (count != 3) {
+					throw new AssertionError("真实激光客户端阶段不完整：" + member.queenId() + "/" + phase + "=" + count);
 				}
-				face.add("vertices", indices);
-				face.add("uv", JsonParser.parseString("[[0,0],[1,0],[1,1],[0,1]]"));
-				faces.add(face);
 			}
 		}
-		asset.add("vertices", vertices);
-		asset.add("faces", faces);
-		asset.add("weights", weights);
-		asset.add("bones", JsonParser.parseString("[{\"id\":\"root\"}]"));
-		asset.add("clips", JsonParser.parseString("""
-				[{"id":"turn","duration":40,"loop":true,"boneTracks":{"root":[
-				{"time":0,"transform":{}},{"time":20,"transform":{"rotation":[0,0.38268343,0,0.9238795]}},
-				{"time":40,"transform":{}}]}}]
-				"""));
-		return asset;
+	}
+
+	private void clearBeams() {
+		if (beamFixture == null || beamFixture.isCompletedExceptionally()) {
+			return;
+		}
+
+		var server = fixtureServer;
+		if (server == null) {
+			throw new IllegalStateException("夹具所属服务器缺失，清理未确认。");
+		}
+		var cleared = new CompletableFuture<Void>();
+		// 先登记迟到创建的清理；等待超时也不会撤销这项所有者责任。
+		beamFixture.whenComplete((fixture, creationFailure) -> {
+			if (creationFailure != null) {
+				cleared.complete(null);
+				return;
+			}
+			try {
+				if (server.isStopped()) {
+					throw new IllegalStateException("夹具所属服务器已停止，清理未确认。");
+				}
+				server.execute(() -> {
+					try {
+						fixture.clear(server);
+						cleared.complete(null);
+					} catch (RuntimeException failure) {
+						cleared.completeExceptionally(failure);
+					}
+				});
+			} catch (RuntimeException failure) {
+				cleared.completeExceptionally(failure);
+			}
+		});
+		try {
+			cleared.get(5, TimeUnit.SECONDS);
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("夹具清理被中断；迟到创建清理仍已登记。", interrupted);
+		} catch (Exception failure) {
+			throw new IllegalStateException("夹具清理未确认；迟到创建清理仍已登记。", failure);
+		}
+	}
+
+	private JsonObject asset() {
+		return PhotonBenchWorkloadUtil.asset(meshGrid);
 	}
 }

@@ -1,6 +1,6 @@
 # BenchMod 基准工具链
 
-同步日期：2026-10-22，7903特效工作区；来源为原始dev提交278c418。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
+初次同步：2026-10-22，原 7903 特效工作区；来源为原始 dev 提交 278c418。WP0 文档更新：2026-10-25，当前真实工作区为 `.workspace/lobecorp_photon`。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
 
 ## 隔离与入口
 
@@ -22,11 +22,27 @@ Gradle／IDEA 入口：
 
 ## Photon 模型诊断入口
 
-Provider 仅在 `modBench.scenarios` 显式包含 `lobecorp.photon-` 前缀时登记 Photon 诊断场景，普通基准保留清道夫默认集合。本工作区通过 `-PphotonBench=true` 启用 `lobecorp.photon-*` 场景过滤、仅该 profile 的 MCP 运行依赖和端口 19877；普通服务端／客户端基准保持原入口。IDEA 的 `BenchMod Photon Prepare` 编译 bench、生成客户端参数并准备隔离 options，`BenchMod Photon` 运行并校验报告。`Photon Bench Debug` 使用独立 `photonBenchClient` 类路径包含 bench 与 MCP，不依赖普通 Gradle 导入时未启用的 profile 依赖。
+Provider 仅在 `modBench.scenarios` 显式包含 `lobecorp.photon-` 前缀时登记 Photon 诊断场景，普通基准保留清道夫默认集合。本工作区通过 `-PphotonBench=true` 启用 `lobecorp.photon-*` 场景过滤、仅该 profile 的 MCP 运行依赖和端口 19877；普通服务端／客户端基准保持原入口。`PhotonBenchMixinPlugin` 也只在该显式过滤存在时注入四个新探针：`FXObjectMixin`、`EmitterMixin`、`ByteBufferBuilderMixin`、`GlCommandEncoderMixin`；普通游戏不包装这些高频入口，不宣称诊断零开销。IDEA 的 `BenchMod Photon Prepare` 配置为编译 bench、生成客户端参数并准备隔离 options，`BenchMod Photon` 配置为运行并校验报告。`Photon Bench Debug` 使用独立 `photonBenchClient` 类路径包含 bench 与 MCP，不依赖普通 Gradle 导入时未启用的 profile 依赖。**用户当前禁止所有游戏测试，本轮未执行上述 Photon Prepare、Debug 或真实基准入口；只执行 BenchMod Compile、纯 JUnit 和无窗口 Data。**
 
-夹具 `PhotonModelRenderScenario` 固定 17×17 顶点网格、256 个四边面和单骨骼；静态与动画使用同一资产，区别仅是是否选择 `turn` 片段。包含空场景、1／16 模型、静态／动画、测量开始时创建 16 模型及末尾静态／空场景重复；预热 100 tick，测量 300 tick，截图完成后等待稳定窗口。首次创建场景是当前 JVM 中该用例的创建成本，不能当作进程冷启动；模型负载不能替代真实激光。生命周期只清理各场景创建的 FX 与相机句柄。
+夹具 `PhotonModelRenderScenario` 保留原 `GRID=16` 资产：17×17 顶点、256 个四边面、`root` 单骨骼权重与 `boneTracks`；静态与动画使用同一资产，区别仅是是否选择 `turn` 片段。它不是无权重的部件 TRS 资格夹具，WP2 不可直接拿这套资产宣称 TRS 实例化等价。当前 Provider 与报告校验表均登记 **13 个 Photon 场景**：原 8 个（00／10／20／30／40／50／60／70）加 80 静态 32、90 动画 32、91 E2、92 E3、99 极端后空基线；清道夫场景仍保留，由过滤器选择。
 
-原始帧 JSONL、JFR、自定义负载 JSON 和截图应以当次权威报告为准。Debug 路径核对在测量之外完成，断点暂停、失焦或窗口变化导致的样本不得用于对比。实际进度见 [Photon 总览](photon-workspace.md#当前任务进度)，实验判读见 [性能审查](photon-performance-audit.md)。
+E2 为 16 静态＋16 动画＋1 束真实女皇激光；E3 为 32 静态＋32 动画＋4 束真实激光及技能自带粒子。四位女皇沿 X 相距 6 格，各自 Husk 靶位于共同 X 的前方 14／15／16／17 格，属于 `configured_converging_region`，不保证实际像素重叠或固定靶。非光束模型场景预热 100 tick、测量 300 tick；首次创建场景只描述当前 JVM 中该用例的创建成本，不能当作进程冷启动。生命周期只清理各场景拥有的 FX、真实技能实体和相机句柄。
+
+原始帧 JSONL、JFR、自定义负载 JSON 和截图应以当次权威报告为准。Debug 路径核对在测量之外完成，断点暂停、失焦或窗口变化导致的样本不得用于对比。实际进度见 [Photon 总览](photon-workspace.md#当前任务进度)，实验判读见 [性能审查](photon-performance-audit.md)，问题只维护在 [唯一问题清单](../issues.md)。
+
+### WP0 隔离条件与采集契约（代码已写，运行未验收）
+
+仅显式 Photon profile 的 `prepareBenchClientOptions` 配置会向 `build/modBench/runs/default/client` 复制原 `ComplementaryReimagined_r5.9.3.zip` 字节、启用其中 Iris 光影并关闭该目录的 spark 后台 profiler；不写用户 `run/client` 配置。**本轮未执行准备任务，未修改实际世界或用户 Options。**
+
+真实技能夹具在任何世界修改前检查启动 worldId／preset／场景过滤和实际世界名称，并要求客户端目录的词法与真实路径都匹配 `build/modBench/runs/default/client` 尾路径；实际存档 realpath 必须是其真实 `saves` 根内的指定直接子目录，拒绝整个 saves 或单存档链接到外部。此 guard 证明校验时的路径归属，不覆盖外部进程随后替换链接。通过后才固定正午、晴天、关闭时间／天气推进及自然刷怪，并设 NORMAL 防止和平难度移除 Husk；这些规则属于该隔离服务器共享规则，不是单一维度私有规则，旧 `QueenBeamPerformanceTrial` 不调用此准备方法。
+
+所有靶沿用实际 `MAX_HEALTH=1024`；4096 设想因当前属性上限已取消，不改全局属性、伤害、动画、LOD 或资源。只有 E3 交汇夹具在每次施放前恢复自有靶的 `targetSpawn` 并清零速度，随后仍由真实技能处理伤害与物理；施放期间的击退、靶漂移、交叉伤害下存活及像素过绘均未验收。报告保存实际血量与创建位置，并明确 `overdraw_verified=false`、`target_drift_during_cast_verified=false`。
+
+E2／E3 的帧与 GPU 主采集为自然完成的 90 秒，在主采集起点后 4／31／58 秒调度三次真实施放，要求完成全部阶段和三次有效施放；提前 STOPPED／CAPACITY／ERROR 不当作完整主采集。主采集结束后再做第 4 次验证施放，观察全部光束 OUTPUT 后等待帧样本，再调用 `BenchCaptureOptions.immediate()` 截图，并在请求与完成时复核仍处于 OUTPUT。第 4 次与截图不属于 90 秒主采集，但仍可能计入 Bench 的 MEASURE 生命周期尾段；报告的 `bench_measure_includes_visual_validation` 标记这一边界，不能混作纯主窗口指标。
+
+提交诊断显式绑定帧采集：在自然截止当帧的 HEAD 停止，避免等到下一次客户端 tick 才结束所造成的额外尾窗；实际帧数对齐仍未运行验收。提交诊断区分逐顶点 reserve 和真实 resize 次数／字节、CPU／实例作业、成功下发的 GL draw，以及实际相机／投影／窗口／刷新率；GL dispatch 不等于 GPU 执行完成，也不自动证明模型独占归因。当前 16 网格双面提交 2048×32＝65536 字节，等于原生 64 KiB staging 初始容量，原生 GPU 环已复用，不能从历史 reserve self 112/362＝30.94% 推定扩容根因。原始 PhotonFrameCapture JSON 从本基准目录复制登记到自定义 artifacts；GPU 全缺测的验收漏洞已在代码中修正：`gpu_available=false` 或 `gpu_completed=0` 会失败，但此门禁尚未运行验收。
+
+固定条件与跨轮复现仍未通过：相机／窗口变化计数和刷新率是观测记录，`fixed_camera_observed`／`fixed_window_observed` 不替代跨轮门禁；`wp0_cross_run_gate_verified=false`、`particle_seed_determinism_verified=false` 明示未验收。当前仅完成 WP0 代码编写，**静态与非游戏检查已完成，G0 未通过，WP1 及后续阶段未实施**；主代码／基准编译与生产包隔离通过，新增 3 项 JUnit 通过，无窗口 Data 25 秒成功且 written=0／removed=0。没有性能、视觉或运行门槛通过结论。
 
 ## 首批场景
 
@@ -38,9 +54,11 @@ Provider 仅在 `modBench.scenarios` 显式包含 `lobecorp.photon-` 前缀时�
 
 客户端保留上游严格环境门禁：失焦、最小化、暂停、界面打开、窗口变化等会使结果不可比，不以降低门禁制造成功。截图、JSONL、JFR必须登记在权威summary.json中；构建成功不代表真实游戏、图形或性能验收成功。
 
-## 本工作区接入状态
+## 2026-10-22 本工作区接入记录（历史）
 
-已通过IDEA局部合入构建配置、Provider和两个场景，按本地排版处理新增Java及修改行。Gradle依赖导入成功，BenchMod Compile／Server／Client及底层bench运行入口已生成；7个相关配置／Java文件IDEA错误检查为空。三个构建配置和ServiceLoader与源提交相同，4个Java文件仅存在本地IDE排版空白差异。
+以下为最初接入记录，不替代本轮 WP0 的 IDE 检查或运行验收。
+
+当时已通过IDEA局部合入构建配置、Provider和两个场景，按本地排版处理新增Java及修改行。Gradle依赖导入成功，BenchMod Compile／Server／Client及底层bench运行入口已生成；7个相关配置／Java文件IDEA错误检查为空。三个构建配置和ServiceLoader与源提交相同，4个Java文件仅存在本地IDE排版空白差异。
 
 保留现有6份运行／MCP配置、端口19877、业务代码及暂存内容，测试运行目录仍归属本工作区build/modBench。Photon UI Java处于另一聊天收尾阶段，按其协调请求暂缓本工作区Compile和Data，未运行真实基准游戏；下方原始dev的编译与Data结果只作为历史来源证据。
 

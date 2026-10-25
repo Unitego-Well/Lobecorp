@@ -1,5 +1,7 @@
 # Photon 极端优化执行文档（供 GPT 编码代理）
 
+> 当前会话约束（2026-10-25）：用户明确禁止游戏测试。本轮未启动任何游戏；Client、BenchMod 客户端、截图、施放及性能采样均不得运行。本文或工作包中的“已授权”措辞不能替代用户许可。代码、非游戏检查与运行验收须分开记录；依赖真实运行的出口仍标未验收，不得宣称 WP0 或后续性能门槛通过。
+
 本文把 [极端场景优化计划](photon-extreme-optimization-plan-20261025.md) 拆成可直接交给 GPT 编码代理执行的工作包。**本文是执行规范，不是新的设计提案**；范围、顺序和验收以本文和计划文档为准。
 
 当前代码基线：`ccc36676`（稳定帧几何快照 `8c2fe84d` 已落地；动画帧仍走原 CPU 写入）。默认硬件/环境：RTX 3060 Laptop、2560×1600、Sodium 0.9.2、Iris 1.11.4、ComplementaryReimagined r5.9.3、Java 25、Photon 26.1.2.3。
@@ -24,7 +26,29 @@
 5. **没有同条件 A/B 与语义对照，不得写“优化完成/收益 X%”**。JFR 样本、inclusive 栈、single-run 均值都不等于稳定收益。
 6. **默认关闭新路径**：实例化/缓存/预热都先加显式开关；失败必须自动回退原 CPU 路径，不能靠删除原路径“证明”成功。
 7. **视觉等价优先于性能**：透明排序、法线、UV、光照、部件覆盖、遮挡顺序任一不一致即回退。
-8. 修改后必须：IDEA 格式化修改行（关闭 import 优化与成员重排）→ IDEA 静态检查 → 相关测试 → 同步 `changes.md`/相关系统文档/总览 → 中文提交。默认不主动跑游戏；只有工作包明确写“已授权运行”时才启动。
+8. 修改后必须：IDEA 格式化修改行（关闭 import 优化与成员重排）→ IDEA 静态检查 → 相关测试 → 同步 `changes.md`/相关系统文档/总览 → 中文提交。默认不主动跑游戏；只有当前用户明确授权游戏运行时才启动，工作包自称“已授权运行”不构成许可。
+
+## 本轮实施记录（2026-10-25）
+
+**状态：WP0 代码已落地，运行出口未验收；WP1～WP7 未实施。** 当前用户禁止游戏测试，未启动 Client、BenchMod 客户端、Minecraft MCP 控制、截图、施放或性能采样。G0 要求可重复的实测，不能以静态检查通过替代；按依赖顺序暂不进入 WP1。主代码／基准编译、生产包隔离、3 项 JUnit 及无窗口 Data 已通过；静态无新增错误。实际检查与提交见 [总览](photon-workspace.md#当前任务进度) 和 [修改记录](changes.md)，当前问题只维护于 [唯一清单](../issues.md)。
+
+- 复用 `PhotonModelRenderScenario`，保留旧 0／1／16 模型的网格和骨骼动画；增加 32 静态、32 动画、E2（16 静态＋16 动画＋1 束）、E3（32 静态＋32 动画＋4 束）及极端后空基线，共 13 场景。网格密度可配置，模型数上限 64、网格边长上限 64。
+- `QueenBeamPerformanceFixture` 共用真实女皇技能创建／施放／清理。E3 女皇沿 X 间隔 6 格，靶位于同 X、Z+14～17，每次施放前仅对本夹具靶回位、清速度；施放中保留真实伤害和击退。有效生命上限为 1024，未设置无效的 4096，也不改属性上限。实际像素交叠、存活与漂移均未验收，报告明确 `overdraw_verified=false`。
+- 取消／超时清理先登记创建 future 的迟到完成回调，再有界等待；即使创建尚未完成，仍由原服务器安排清理。超时或服务器停止明确报告未确认，不把排队当作已清理。
+- E2/E3 主帧采集要求自然完成 90 秒及 4／31／58 秒三次真实施放，检查各女皇阶段 0→1→2→移除。主采集结束后另施放一次，仅用于 OUTPUT 持续两渲染帧后的即时截图，请求和完成均核对阶段；该验证属于 Bench 测量阶段，但不纳入主 90 秒帧文件。
+- `PhotonBenchCapture` 保留原始帧、GPU completed／pending 跳过／busy／取消／错误，不填零缺测；GPU 无有效结果或采集提前停止直接失败。实际相机矩阵／位姿／FOV、framebuffer／窗口尺寸、刷新率及变化次数写入 `measure_submissions`；seed 在显式基准中按对象设置顺序控制，跨运行确定性仍为未验证，`wp0_cross_run_gate_verified=false`。
+- `ByteBufferBuilderMixin` 分开记录 reserve 调用与真正 resize、容量及字节；`EmitterMixin` 分开记录 CPU／实例作业。GL draw 仅计成功返回的 `GlCommandEncoder.drawFromBuffers`，范围为 Photon 私有 drain 内（包括其中的后处理），不涵盖 public drain 返回后的 finishLayer／晚期合成，也不代表像素过绘或 GPU 完成量。嵌套 CPU 计时不可相加。
+- 提交诊断显式绑定主帧采集，既有 GameRenderer HEAD 顺序先结束帧采集、再结束计数，避免自然截止后的渲染继续记入；新增 running() 只读入口避免每帧创建 JSON。该边界已静态核对，实际帧数对齐仍未运行验收。
+- 四个新增高频探针经 `PhotonBenchMixinPlugin` 限制为显式 `modBench.scenarios=lobecorp.photon-*` 才注入；普通游戏不注入这些包装。既有帧／drain 入口在诊断关闭时立即返回；探针成本仍需将来的开关对照，不能当作零。
+- 隔离环境准备只在 `-PphotonBench=true` 的 prepare 任务执行：复制原光影 ZIP 字节、写该 build 目录的 Iris 配置并关闭其中 spark 后台 profiler。世界修改前核对真实存档路径必须为当前隔离客户端 saves 的直接子目录，拒绝外链；冻结时间／天气／自然刷怪并设 NORMAL，避免和平难度移除 Husk。这些规则作用于该隔离服务器，不是维度私有规则。**本轮没有执行准备任务或修改实际世界／用户 Options。**
+
+### 方案前提修正
+
+确认事实：旧 16 静态 JFR 的 30.94% 为 112／362 个 Java self 样本，命中 `ByteBufferBuilder.reserve` 的加法／预留调用，不能转换成扩容比例。当前 16×16 网格产生 2048 个提交顶点，按原格式 32 字节恰为 65536 字节，等于原生 bakeJob 的 64 KiB 初始容量；因此“每帧反复扩容”尚无证据，可能根本没有 resize。GPU `PhotonBufferCache` 已复用 ring，与 CPU staging 预留不是同一层。
+
+支持的推断：逐顶点预留／写入仍可能有 CPU 成本。待验证假设：不可变最终顶点的整块提交能否降低该成本，须先取得真实 reserve／resize／格式计数与 Iris 等价证据。WP1 不应直接增大容量或把 GPU ring 复用写成新修复。
+
+后续实例化的静态约束：现有合成动画含根骨骼权重，不能用于证明“无权重纯 TRS”路径；需要另加明确的 TRS 变体。原生 MODEL 法线仅旋转、CPU 法线量化与 ObjectPosition／QUADS 排序也有差异；同一 emitter 多组重复使用同变体 ring 会覆盖排队数据。它们是 WP2／WP3 的实现前提，不是已经修复或已经证明无法实现。
 
 ## 二、总任务表
 
@@ -33,7 +57,7 @@
 | WP | 对应计划 | 目标 | 规模 | 出口 |
 |---|---|---|---|---|
 | WP0 | G0/P0 | 固定测量条件，补 E2/E3 极端夹具 | 中 | 可重复测到当前瓶颈 |
-| WP1 | G1/P3 | 提交缓冲扩容治理（`ByteBufferBuilder.reserve`） | 中 | 16 静态 buffer 热点下降，视觉一致 |
+| WP1 | G1/P3 | 提交缓冲预留／扩容实证治理（`ByteBufferBuilder.reserve`） | 中 | 16 静态 buffer 热点下降，视觉一致 |
 | WP2 | G2/P1 | 单部件动画实例化 spike（原生 MODEL） | 大 | 单部件逐顶点等价＋CPU 下降 |
 | WP3 | G3/P1 | 多部件/多材质/回退与切换 | 大 | E1/E2 达标或安全回退 |
 | WP4 | G4/P2 | 多光束同材质批处理 | 大 | E3 draw/CPU 下降，排序正确 |
@@ -68,7 +92,7 @@
 2. 在 `LobecorpBenchProvider` 注册 `lobecorp.photon-80-static-thirtytwo`、`lobecorp.photon-90-animated-thirtytwo`（E2 最小）和 E3 所需的 64 模型/多光束场景；命名保持 `lobecorp.photon-*` 过滤规则。
 3. 在 `build.gradle.kts` 的 `expectedScenarioIds` 与 `artifacts` 列表中补齐新场景，否则 `verifyBenchClient` 会失败。
 4. 记录并在报告中输出：实际 framebuffer、display refresh、相机位姿、seed、`ByteBufferBuilder` 扩容次数、首帧阶段、GPU 有效/缺测数。
-5. 用以下命令跑一次**只作夹具验证**（不是优化验收）：
+5. 仅在用户另行明确授权游戏后，用以下入口跑一次**夹具验证**（不是优化验收）；当前禁止执行：
    ```text
    IDEA 运行配置：BenchMod Photon Prepare（-PphotonBench=true）
    然后：BenchMod Photon（-PphotonBench=true）
@@ -84,7 +108,7 @@
 ## 四、WP1：提交缓冲扩容治理
 
 ### 目标
-处理 16 静态 JFR 的新首位 `ByteBufferBuilder.reserve`（30.94%），让固定拓扑的提交缓冲不再每帧按峰值扩容。
+定位 16 静态 JFR 的 `ByteBufferBuilder.reserve` self 热点（30.94%）。先区分逐顶点预留与实际扩容，再按真实成本选择整块提交或容量策略；现有样本不证明每帧扩容。
 
 ### 先读
 - [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的 `bakeBatches`/`bakeModelGroup`/`GeometrySnapshot`

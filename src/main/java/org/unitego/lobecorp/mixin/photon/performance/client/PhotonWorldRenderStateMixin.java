@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceGpu;
+import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 
@@ -44,15 +45,28 @@ public class PhotonWorldRenderStateMixin {
 	@WrapMethod(method = "drain(Ljava/util/List;ZLcom/lowdragmc/photon/client/postfx/runtime/PostEffectStack;ZZZ)V")
 	private static void lobecorp$captureBatchOwners(List<DrawJob> jobs, boolean bloom, PostEffectStack stack,
 	                                                boolean last, boolean layer, boolean opaque, Operation<Void> original) {
-		if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
-			original.call(jobs, bloom, stack, last, layer, opaque);
-			return;
-		}
-		PhotonPerformanceOwnerUtil.beginDraws(jobs);
+		var diagnostic = PhotonSubmissionDiagnostics.beginDrain();
+		boolean completed = false;
+
 		try {
-			original.call(jobs, bloom, stack, last, layer, opaque);
+			if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
+				original.call(jobs, bloom, stack, last, layer, opaque);
+				completed = true;
+				return;
+			}
+
+			PhotonPerformanceOwnerUtil.beginDraws(jobs);
+
+			try {
+				original.call(jobs, bloom, stack, last, layer, opaque);
+				completed = true;
+			} finally {
+				PhotonPerformanceOwnerUtil.endDraws();
+			}
 		} finally {
-			PhotonPerformanceOwnerUtil.endDraws();
+			if (diagnostic != null) {
+				PhotonSubmissionDiagnostics.endDrain(diagnostic, completed);
+			}
 		}
 	}
 

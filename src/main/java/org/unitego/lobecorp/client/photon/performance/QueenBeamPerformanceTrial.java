@@ -15,19 +15,12 @@ import net.minecraft.client.gui.screens.worldselection.CreateWorldScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import net.neoforged.neoforge.client.ClientCommandHandler;
 
 import java.nio.file.Files;
@@ -54,8 +47,8 @@ public class QueenBeamPerformanceTrial {
 	private static final double LOAD_TIMEOUT_SECONDS = 120;
 	private static final double[] CAST_SECONDS = {4, 31, 58};
 	private static final int FRAME_LIMIT = 260;
-	private static final double TARGET_DISTANCE = 16;
-	private static final double TARGET_HEALTH = 1024;
+	private static final double TARGET_DISTANCE = QueenBeamPerformanceFixture.TARGET_DISTANCE;
+	private static final double TARGET_HEALTH = QueenBeamPerformanceFixture.TARGET_HEALTH;
 	private static final double CAMERA_X = -7;
 	private static final double CAMERA_Z = -8;
 	private static final double CAMERA_HEIGHT = 2;
@@ -63,7 +56,6 @@ public class QueenBeamPerformanceTrial {
 	private static final float CAMERA_PITCH = 8;
 	private static final String WORLD_PREFIX = "laser_profile_";
 	private static final String WORLD_SEED = "20261018";
-	private static final String FIXTURE_TAG = "laser_profile_fixture";
 	private static final String PHASE_PARAMETER = "v.beam_phase";
 	private static final String SPARK_START = "sparkc profiler start --timeout 90 --save-to-file --thread * --not-combined";
 	private static final String SPARK_STOP = "sparkc profiler stop --save-to-file";
@@ -83,8 +75,7 @@ public class QueenBeamPerformanceTrial {
 	private static long captureQueuedNs;
 	private static @Nullable UUID lastAnimation;
 	private static double lastPhase = Double.NaN;
-	private static volatile @Nullable UUID queenUuid;
-	private static volatile @Nullable UUID targetUuid;
+	private static volatile @Nullable QueenBeamPerformanceFixture fixture;
 	private static volatile int queenId = -1;
 	private static volatile boolean fixtureReady;
 	private static volatile @Nullable String failure;
@@ -326,37 +317,9 @@ public class QueenBeamPerformanceTrial {
 			}
 			var level = player.level();
 			int height = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0);
-			var queen = new TheQueenOfHatred(level);
-			queen.setPos(0, height, 0);
-			queen.setYRot(0);
-			queen.setYHeadRot(0);
-			queen.yBodyRot = 0;
-			queen.setNoAi(true);
-			queen.setPersistenceRequired();
-			queen.addTag(FIXTURE_TAG);
-			var target = EntityType.HUSK.create(level, EntitySpawnReason.COMMAND);
-			if (target == null) {
-				throw new IllegalStateException("profile_target_missing");
-			}
-			target.setPos(0, height, TARGET_DISTANCE);
-			target.setNoAi(true);
-			target.setPersistenceRequired();
-			target.addTag(FIXTURE_TAG);
-			var health = target.getAttribute(Attributes.MAX_HEALTH);
-			if (health == null) {
-				throw new IllegalStateException("profile_target_health_missing");
-			}
-			health.setBaseValue(TARGET_HEALTH);
-			target.setHealth((float) TARGET_HEALTH);
-			queenUuid = queen.getUUID();
-			targetUuid = target.getUUID();
-			queenId = queen.getId();
-			level.addFreshEntity(target);
-			level.addFreshEntity(queen);
-			CombatUtil.recordAttack(queen, target);
-			if (!queen.isHatedTarget(target)) {
-				throw new IllegalStateException("profile_target_not_hostile");
-			}
+			var candidate = QueenBeamPerformanceFixture.create(server, playerId, new Vec3(0, height, 0), 1);
+			fixture = candidate;
+			queenId = candidate.members().getFirst().queenId();
 			player.getAbilities().flying = true;
 			player.onUpdateAbilities();
 			player.teleportTo(level, CAMERA_X * cameraScale, height + CAMERA_HEIGHT, CAMERA_Z * cameraScale,
@@ -401,27 +364,24 @@ public class QueenBeamPerformanceTrial {
 	}
 
 	private static void cast(MinecraftServer server) {
-		var level = server.overworld();
-		var ownerId = queenUuid;
-		var dummyId = targetUuid;
-		if (ownerId == null || dummyId == null
-				|| !(level.getEntity(ownerId) instanceof TheQueenOfHatred queen)
-				|| !(level.getEntity(dummyId) instanceof LivingEntity target)) {
+		var current = fixture;
+
+		if (current == null) {
 			failure = "profile_fixture_removed";
 			return;
 		}
-		var access = IEntitySkillAccess.get(queen);
-		if (access == null) {
-			failure = "profile_skill_capability_missing";
-			return;
-		}
-		target.setHealth(target.getMaxHealth());
-		CombatUtil.recordAttack(queen, target);
-		var result = access.cast(TheQueenOfHatredSkills.LASER.get(), target, target.position());
-		MARKS.add(new Mark("server_cast", System.nanoTime(), result.status().name()));
-		report(result.status());
-		if (!result.started()) {
-			failure = "profile_cast_" + result.status();
+
+		try {
+			for (var result : current.cast(server)) {
+				MARKS.add(new Mark("server_cast", System.nanoTime(), result.status()));
+				report(result.status());
+
+				if (!result.started()) {
+					failure = "profile_cast_" + result.status();
+				}
+			}
+		} catch (RuntimeException invalid) {
+			failure = invalid.getMessage() == null ? invalid.toString() : invalid.getMessage();
 		}
 	}
 
@@ -533,24 +493,11 @@ public class QueenBeamPerformanceTrial {
 
 	private static void cleanup() {
 		var server = Minecraft.getInstance().getSingleplayerServer();
-		if (server != null) {
-			server.execute(() -> {
-				var level = server.overworld();
-				var ownerId = queenUuid;
-				var dummyId = targetUuid;
-				var queen = ownerId == null ? null : level.getEntity(ownerId);
-				if (queen instanceof TheQueenOfHatred owner && owner.entityTags().contains(FIXTURE_TAG)) {
-					var access = IEntitySkillAccess.get(owner);
-					if (access != null) {
-						access.cancelAll(true);
-					}
-					owner.discard();
-				}
-				var target = dummyId == null ? null : level.getEntity(dummyId);
-				if (target != null && target.entityTags().contains(FIXTURE_TAG)) {
-					target.discard();
-				}
-			});
+		var current = fixture;
+		fixture = null;
+
+		if (server != null && current != null) {
+			server.execute(() -> current.clear(server));
 		}
 	}
 

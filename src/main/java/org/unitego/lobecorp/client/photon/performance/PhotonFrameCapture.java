@@ -76,6 +76,11 @@ public class PhotonFrameCapture {
 		return MAX_SECONDS;
 	}
 
+	/// 供同线程采集适配器对齐结束边界，不创建状态快照。
+	public static boolean running() {
+		return active != null;
+	}
+
 	public static void start(String label, double seconds) {
 		RenderSystem.assertOnRenderThread();
 

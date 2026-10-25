@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-25 极端优化 WP0：32／64 混合模型、1／4 条真实技能光束、极端后空基线、实际相机／刷新率／draw／reserve 与 resize 分离计数代码已落地，主采集和验证截图分窗。用户明确禁止游戏测试，本轮未启动 Client、BenchMod 客户端、Minecraft MCP 控制或采样；G0 运行出口未验收，按依赖顺序尚未实施 WP1～WP7，不宣称性能收益。IDEA 格式与静态检查无新增错误；主代码／基准编译及生产包隔离检查成功（61 秒，保留既有 reserveBuildIdentity 配置缓存警告）；新增 3 项 JUnit 通过（XML 为 tests=3、failures=0、errors=0）；无窗口 Data 退出码 0（25 秒，23 项 written=0／removed=0，含缓存的 29 个生成目录文件前后 SHA256 不变）。这些是非游戏检查，未运行 Client／BenchMod 场景、截图或采样；G0 运行验收仍缺失。执行细节见 [执行文档本轮记录](photon-extreme-execution-gpt-20261025.md#本轮实施记录2026-10-25)，待验收项只在 [唯一清单](../issues.md) 维护。已有用户配置、两份测试及 logs 保留；修改前原件与用户 WIP 备份于 photon-extreme-wp0-20261025。
+
 2026-10-25 极端场景优化计划：新增 [最坏情况优化计划](photon-extreme-optimization-plan-20261025.md) 与 [GPT 执行文档](photon-extreme-execution-gpt-20261025.md)，定义 E0～E4 场景、CPU/GPU/P99/首帧/内存目标、P0～P6 路线、WP0～WP7 执行包、M1～M9 Mixin 目标与 G0～G7 门槛；明确先做提交缓冲和实例化，不用全局阴影跳过或默认降画质。本文只写计划，未改代码或新增采样。
 
 2026-10-25 稳定帧几何快照（第一阶段）：按用户授权修改 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)，对姿态输入未变化的稳定帧记录并回放最终顶点，动画帧保持原路径；新增逐顶点快照一致性测试。BenchMod 8 场景 PASSED，16 静态 JFR 中 `write` 不再居首、`ByteBufferBuilder.reserve` 30.94%；光影激光动画路径 9879 帧、9.110／26.597／835.600 ms，未证明收益。Iris 配置已恢复，未改动画／LOD／资源／技能；后续仍需原生实例化覆盖动画帧。详见 [changes](changes.md) 与 [性能审查复测节](photon-performance-audit.md)。

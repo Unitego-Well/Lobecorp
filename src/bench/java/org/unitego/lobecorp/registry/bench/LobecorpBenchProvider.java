@@ -14,6 +14,7 @@ import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
 
 import java.util.Set;
+import java.time.Duration;
 
 public class LobecorpBenchProvider implements BenchServerProvider, BenchClientProvider {
     @Override
@@ -61,9 +62,24 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 		    registrar.register(new ScenarioDescriptor("lobecorp.photon-70-empty-repeat", "模型诊断：70-empty-repeat",
 						    Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
 				    _ -> new PhotonModelRenderScenario("photon-70-empty-repeat", 0, false, false));
+		    registrar.register(new ScenarioDescriptor("lobecorp.photon-80-static-thirtytwo", "模型诊断：32静态",
+						    Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
+				    _ -> new PhotonModelRenderScenario("photon-80-static-thirtytwo", 32, 0, 16, 0, false));
+		    registrar.register(new ScenarioDescriptor("lobecorp.photon-90-animated-thirtytwo", "模型诊断：32动画",
+						    Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
+				    _ -> new PhotonModelRenderScenario("photon-90-animated-thirtytwo", 0, 32, 16, 0, false));
+		    registrar.register(new ScenarioDescriptor("lobecorp.photon-91-mixed-thirtytwo-laser", "极端诊断：E2",
+						    Set.of("client", "photon", "extreme"), Duration.ofSeconds(180)),
+				    _ -> new PhotonModelRenderScenario("photon-91-mixed-thirtytwo-laser", 16, 16, 16, 1, false));
+		    registrar.register(new ScenarioDescriptor("lobecorp.photon-92-mixed-sixtyfour-four-lasers", "极端诊断：E3",
+						    Set.of("client", "photon", "extreme"), Duration.ofSeconds(180)),
+				    _ -> new PhotonModelRenderScenario("photon-92-mixed-sixtyfour-four-lasers", 32, 32, 16, 4, false));
+		    registrar.register(new ScenarioDescriptor("lobecorp.photon-99-empty-extreme-repeat", "模型诊断：极端后空基线",
+						    Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
+				    _ -> new PhotonModelRenderScenario("photon-99-empty-extreme-repeat", 0, false, false));
 	    }
 
-        registrar.register(new ScenarioDescriptor(
+	    registrar.register(new ScenarioDescriptor(
                         LobecorpBenchConfig.CLIENT_SCENARIO, "Sweeper renderer workload",
                         Set.of("client", "sweeper", "render"), LobecorpBenchConfig.PHASE_TIMEOUT),
                 _ -> new SweeperRenderScenario());

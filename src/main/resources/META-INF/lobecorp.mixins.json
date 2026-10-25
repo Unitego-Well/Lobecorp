@@ -1,6 +1,7 @@
 {
 	"required": true,
 	"package": "org.unitego.lobecorp.mixin",
+	"plugin": "org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"conductor.ChunkMapConductorMixin",
@@ -112,6 +113,10 @@
 		"photon.runtime.client.PhotonEmissionLifetimeMixin",
 		"photon.runtime.client.PhotonActivationHierarchyMixin",
 		"photon.performance.client.FXMixin",
+		"photon.performance.client.FXObjectMixin",
+		"photon.performance.client.EmitterMixin",
+		"photon.performance.client.ByteBufferBuilderMixin",
+		"photon.performance.client.GlCommandEncoderMixin",
 		"photon.performance.client.AnimationTrackMixin",
 		"photon.performance.client.PhotonWorldRenderStateMixin",
 		"photon.performance.client.PhotonDrawRunAccessor",

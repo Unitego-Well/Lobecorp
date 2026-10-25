@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-25：WP0 极端夹具与提交诊断代码
+
+- 复用 `PhotonModelRenderScenario`，增加 32 静态／32 动画、E2（16 静态＋16 动画＋1 束）、E3（32 静态＋32 动画＋4 束）及极端后空场景；Provider 与 Gradle 权威报告校验同步为 13 场景。保留旧网格／骨骼片段；新增纯负载预算、布局和拓扑的 3 项 JUnit 源码。
+- 抽取 `QueenBeamPerformanceFixture` 共用真实技能创建／施放／清理，旧 Trial 的单束位置、血量与时间不变。新 E3 使用射程内交汇靶区，每次施放前只复位其自有靶；仍保留技能伤害／击退，实际过绘与存活未验收。取消／超时先登记迟到创建的所有者清理，再有界等待，不把清理排队当作完成；隔离世界准备核对真实存档路径与外链，避免误改用户世界；时间／天气／刷怪规则与 NORMAL 难度仅用于该隔离服务器。
+- 新增 `PhotonBenchCapture`、`PhotonBenchConditions`、`PhotonSubmissionDiagnostics`：复用现有帧／GPU 查询，区分预留和真正扩容、CPU 与实例作业、成功 GL dispatch；输出实际相机／投影／窗口／刷新率。新增四个高频探针仅显式 Photon Bench 注入，普通游戏不包装它们；不改缓冲容量或渲染算法。GPU 全缺测、时长提前结束与技能阶段不全均拒绝通过。
+- E2/E3 设计为自然完成 90 秒三次施放后另做验证施放与即时 OUTPUT 截图；主帧文件不包含验证截图。prepare 任务只编写 build 隔离目录的光影／spark 配置，原 ZIP 按字节复制；本轮未执行准备任务或实际世界设置。
+- 修正 reserve self 30.94% 不等于扩容、原生 MODEL 等价性与每变体 ring 生命周期前提；执行文档、极端计划、Bench 工具页、总览与唯一清单同步当前边界。**用户禁止游戏测试；本轮未启动游戏、截图、施放或性能采样，G0 未验收，WP1～WP7 未实施，无优化收益结论。**
+- 实际检查：IDEA 格式与静态检查无新增错误；主代码／基准编译及生产包隔离检查成功（61 秒，保留既有 reserveBuildIdentity 配置缓存警告）；新增 3 项 JUnit 通过（XML 为 tests=3、failures=0、errors=0）；无窗口 Data 退出码 0（25 秒，23 项 written=0／removed=0，含缓存的 29 个生成目录文件前后 SHA256 不变）。这些是非游戏检查，未运行 Client／BenchMod 场景、截图或采样；G0 运行验收仍缺失。代码保留 4 项既有普通提示（Trial 2、FrameCapture 1、Gradle 1），changes.md 保留 18 项既有历史截图链接提示，未扩大修复。原件与用户 WIP 字节备份位于 `C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-extreme-wp0-20261025`；保留原有配置、两份测试与日志，不推送。
+
+
 ## 2026-10-25：新增极端优化 GPT 执行文档
 
 - 新增 [Photon 极端优化执行文档（供 GPT 编码代理）](photon-extreme-execution-gpt-20261025.md)：把极端计划拆成 WP0～WP7，给出每个工作包的先读文件、执行步骤、文件/API 入口、验收与回退；明确“项目文件只能 IDEA 编辑、失败自动回退、同条件 A/B 才可报告收益”，并加入强制授权声明与强硬提示词模板，禁止只给方案、缩小范围或要求二次确认。

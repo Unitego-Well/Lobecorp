@@ -291,7 +291,12 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
                 "lobecorp.photon-40-animated-sixteen",
                 "lobecorp.photon-50-cold-sixteen",
                 "lobecorp.photon-60-static-repeat",
-                "lobecorp.photon-70-empty-repeat"
+                "lobecorp.photon-70-empty-repeat",
+                "lobecorp.photon-80-static-thirtytwo",
+                "lobecorp.photon-90-animated-thirtytwo",
+                "lobecorp.photon-91-mixed-thirtytwo-laser",
+                "lobecorp.photon-92-mixed-sixtyfour-four-lasers",
+                "lobecorp.photon-99-empty-extreme-repeat"
             )
         )
         expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.photon.loaded_models"))
@@ -321,7 +326,29 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
                 "artifacts/custom/photon-60-static-repeat-workload.json",
                 "artifacts/samples/lobecorp.photon-70-empty-repeat.jsonl",
                 "artifacts/jfr/lobecorp.photon-70-empty-repeat.jfr",
-                "artifacts/custom/photon-70-empty-repeat-workload.json"
+                "artifacts/custom/photon-70-empty-repeat-workload.json",
+                "artifacts/samples/lobecorp.photon-80-static-thirtytwo.jsonl",
+                "artifacts/jfr/lobecorp.photon-80-static-thirtytwo.jfr",
+                "artifacts/custom/photon-80-static-thirtytwo-workload.json",
+                "artifacts/custom/photon-80-static-thirtytwo-frames.json",
+                "artifacts/samples/lobecorp.photon-90-animated-thirtytwo.jsonl",
+                "artifacts/jfr/lobecorp.photon-90-animated-thirtytwo.jfr",
+                "artifacts/custom/photon-90-animated-thirtytwo-workload.json",
+                "artifacts/custom/photon-90-animated-thirtytwo-frames.json",
+                "artifacts/samples/lobecorp.photon-91-mixed-thirtytwo-laser.jsonl",
+                "artifacts/jfr/lobecorp.photon-91-mixed-thirtytwo-laser.jfr",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-workload.json",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-frames.json",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-beam.png",
+                "artifacts/samples/lobecorp.photon-92-mixed-sixtyfour-four-lasers.jsonl",
+                "artifacts/jfr/lobecorp.photon-92-mixed-sixtyfour-four-lasers.jfr",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-workload.json",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-frames.json",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-beam.png",
+                "artifacts/samples/lobecorp.photon-99-empty-extreme-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-99-empty-extreme-repeat.jfr",
+                "artifacts/custom/photon-99-empty-extreme-repeat-workload.json",
+                "artifacts/custom/photon-99-empty-extreme-repeat-frames.json"
             )
         )
     } else {
@@ -335,6 +362,32 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
                 "artifacts/screenshots/sweeper-render.png"
             )
         )
+    }
+}
+
+if (photonBenchEnabled.get()) {
+    val photonShader = layout.projectDirectory.file("run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip")
+    val photonBenchDirectory = layout.buildDirectory.dir("modBench/runs/default/client")
+    tasks.named("prepareBenchClientOptions") {
+        inputs.file(photonShader)
+        doLast {
+            val directory = photonBenchDirectory.get().asFile
+            val shaderDirectory = directory.resolve("shaderpacks")
+            shaderDirectory.mkdirs()
+            photonShader.asFile.copyTo(shaderDirectory.resolve(photonShader.asFile.name), overwrite = true)
+            directory.resolve("config").mkdirs()
+            directory.resolve("config/iris.properties").writeText(
+                "enableShaders=true\nshaderPack=ComplementaryReimagined_r5.9.3.zip\n"
+            )
+            val sparkDirectory = directory.resolve("config/spark")
+            sparkDirectory.mkdirs()
+            val configuration = sparkDirectory.resolve("config.json")
+            val text = if (configuration.exists()) configuration.readText() else "{}"
+            val values = groovy.json.JsonSlurper().parseText(text) as Map<*, *>
+            val updated = values.entries.associate { it.key.toString() to it.value }.toMutableMap()
+            updated["backgroundProfiler"] = false
+            configuration.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(updated)))
+        }
     }
 }
 

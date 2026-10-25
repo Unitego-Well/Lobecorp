@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-25：WP1 默认关闭的快照整块提交实验
+
+- 用户选择 A，允许在 G0 尚未运行验收时先实现 WP1 代码并做非游戏检查；禁止游戏测试的指令继续有效。该选择不表示 G0／G1 通过，未进入 WP2～WP7。
+- 修改 `PhotonModelOutput`：仅已有稳定快照命中时可尝试 GC 字节数组整块回放；新编码按原属性布局与量化，单组 1 MiB／输出候选总量 4 MiB 限制，重置／强制移除／清粒子与失效释放引用；原采样、cache miss、动画、资源、LOD 和技能不变。
+- 新增 `PhotonPackedVertexUtil`、`IPhotonPackedVertexSink` 与 `BufferBuilderMixin`；Plugin／Mixin 清单接入启动前默认 false 的 `lobecorp.photon.packedSnapshot` 开关。只有严格格式与空 QUADS builder 可以在一次 reserve 后复制；拒绝发生在预留前，写入开始后异常不在同一缓冲回退。保留原生 Job 构建、排序和关闭。
+- 新增字节编码与快照集成对照测试，覆盖逐顶点光照、截断、负零、上限、非有限值、布局、关闭／拒绝回退、异常不混写、总预算及清理。IDEA 静态无新增错误；主代码／基准编译和生产包隔离通过（23 秒，保留既有 reserveBuildIdentity 配置缓存警告）；新增 5 项编码／7 项回放测试及原快照 1 项共 13 项通过，失败／错误均为 0。无窗口 Data 退出码 0（21 秒，23 项 written=0／removed=0，含缓存的 29 文件指纹不变）。这些不覆盖真实 Mixin 应用、Sodium／Iris 组合、GPU、视觉或性能收益，未运行游戏。源码保留原 PhotonModelOutput 的 11 项既有提示；未清理未修改的接口／空值注解。
+- 额外发现的旧稳定录制分支缺输出，证据只归唯一清单 P11，本轮未未经确认修正；不把漏画当性能改善。Sodium 嵌套实现与实际组合、光影视觉、GPU 和收益未验收。
+- 原件及用户已有修改字节备份于 `C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-extreme-wp1-20261025`。测试 XML、编译／Data 日志、静态诊断及指纹已归档；保留原有配置、两份测试与日志，不推送。
+
+
 ## 2026-10-25：WP0 极端夹具与提交诊断代码
 
 - 复用 `PhotonModelRenderScenario`，增加 32 静态／32 动画、E2（16 静态＋16 动画＋1 束）、E3（32 静态＋32 动画＋4 束）及极端后空场景；Provider 与 Gradle 权威报告校验同步为 13 场景。保留旧网格／骨骼片段；新增纯负载预算、布局和拓扑的 3 项 JUnit 源码。

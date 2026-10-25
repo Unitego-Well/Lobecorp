@@ -39,6 +39,7 @@
 		"photon.editor.client.PhotonFXDataGuardMixin",
 		"photon.editor.client.PhotonObjectDataGuardMixin",
 		"minecraft.client.GameRendererMixin",
+		"minecraft.client.BufferBuilderMixin",
     "photon.client.PhotonBloomAccessor",
 		"minecraft.client.ItemInHandRendererMixin",
 		"minecraft.client.ItemInHandRendererAccessor",

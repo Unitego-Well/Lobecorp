@@ -4,6 +4,24 @@
 
 > 2026-10-19 当前状态：本文描述的自建模型特效实现与专用界面已移除，模型资源文件保留；含缺失类型的工程暂时拒绝加载/覆盖。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
+## 稳定帧整块提交实验（WP1，2026-10-25）
+
+用户选择 A：允许在禁止游戏测试期间编写默认关闭的 WP1 实验路径，G0／G1 运行验收继续挂起。本节记录实现边界；当前问题与关闭条件统一见 [唯一问题清单 P11](../issues.md#本轮确认的性能问题)，不在本页另建待办。
+
+启动前显式添加 VM 参数 `-Dlobecorp.photon.packedSnapshot=true`，才由 [PhotonBenchMixinPlugin](../../src/main/java/org/unitego/lobecorp/mixin/PhotonBenchMixinPlugin.java) 加载 [BufferBuilderMixin](../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/BufferBuilderMixin.java)，并启用 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的实验回放。缺省为 false，不写入模型、特效资源或持久配置；开关属于启动时选择，不支持运行中热切换。
+
+实验只在 `stableFrame` 且已有 `GeometrySnapshot` 缓存命中的回放处尝试。动画求值、逐帧写入和 cache miss 原链不动，仍使用原有帧、世界矩阵、颜色与光照匹配条件。[IPhotonPackedVertexSink](../../src/main/java/org/unitego/lobecorp/client/photon/model/IPhotonPackedVertexSink.java) 借读已打包数组，不保存它；入口在任何 reserve 之前拒绝以下不支持情况：
+
+- 实际对象不是精确的原生 `BufferBuilder` 类，或 builder 已结束／已有顶点／仍有未完成属性，未满足 fresh 状态。
+- 实际模式不是 QUADS，格式不是 `PhotonPipelines.PARTICLE_FORMAT` 同一对象，或 mask、32 字节 stride、初始属性 mask 与所有元素偏移不完全匹配。
+- 源顶点含非有限浮点数，顶点数不是正的四倍数、超过 32 Ki 顶点，或 payload 长度与顶点数不符。
+
+[PhotonPackedVertexUtil](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonPackedVertexUtil.java) 按原写入链的 byte 量化编码颜色与法线，按低 short／高 short 和 native endian 编码光照；保留位置、UV、顶点顺序及原三角形的重复末角。通过守卫后一次 reserve 加整块复制，再更新 builder 元数据；原 `Emitter.bakeJob`、build、sortQuads、Job 与 mesh／buffer 生命周期保持。返回 false 仅发生在 reserve 前，可继续旧逐顶点回放；reserve 开始后的异常直接传播，不能在已写入或偏移已改变的 builder 上回退。
+
+packed 快照为 GC 管理的 byte[]，每组最多 1 MiB，单个输出全部候选合计最多 4 MiB。reset、强制 remove、clearParticles、invalidate 与新 Frame 会解除相应 packed 引用；不长期持有原生 buffer，也不以盲目增加 staging 初始容量替代减少逐顶点 reserve。
+
+源码核对确认当前 Iris 的已知格式扩展分支未命中 Photon 自定义格式，但这只说明已读到的分支；Sodium 内嵌源码尚未展开。实际 Sodium／Iris 组合兼容性、普通／光影观感、透明排序、性能收益和 G0／G1 均未运行验证，不能据此宣布等价或提速。IDE 静态未发现新增错误；编译及生产包隔离通过，新增 12 项与原快照 1 项共 13 项非游戏测试通过，无窗口 Data 成功且未写入或移除资源。原生字节对照只验证编码，fake sink 只验证回放契约，均不代表真实 Mixin 已应用；完整结果见 [执行记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)。本阶段未启动游戏。
+
 ## 独立回归测试入口
 
 2026-10-10 起，独立模型、网格和拓扑回归位于 `src/test/java/org/unitego/lobecorp/client/photon/model/validation`，分别为 `PhotonModelRegressionTest`、`PhotonModelMeshRegressionTest`、`PhotonModelTopologyRegressionTest`，共 24 个 JUnit Jupiter 测试方法。原三个 main 入口已移除，通过 IDEA 测试入口或 Gradle `test` 执行，不再随正式模组打包独立算法检查。

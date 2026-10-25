@@ -42,7 +42,11 @@ E2／E3 的帧与 GPU 主采集为自然完成的 90 秒，在主采集起点后
 
 提交诊断显式绑定帧采集：在自然截止当帧的 HEAD 停止，避免等到下一次客户端 tick 才结束所造成的额外尾窗；实际帧数对齐仍未运行验收。提交诊断区分逐顶点 reserve 和真实 resize 次数／字节、CPU／实例作业、成功下发的 GL draw，以及实际相机／投影／窗口／刷新率；GL dispatch 不等于 GPU 执行完成，也不自动证明模型独占归因。当前 16 网格双面提交 2048×32＝65536 字节，等于原生 64 KiB staging 初始容量，原生 GPU 环已复用，不能从历史 reserve self 112/362＝30.94% 推定扩容根因。原始 PhotonFrameCapture JSON 从本基准目录复制登记到自定义 artifacts；GPU 全缺测的验收漏洞已在代码中修正：`gpu_available=false` 或 `gpu_completed=0` 会失败，但此门禁尚未运行验收。
 
-固定条件与跨轮复现仍未通过：相机／窗口变化计数和刷新率是观测记录，`fixed_camera_observed`／`fixed_window_observed` 不替代跨轮门禁；`wp0_cross_run_gate_verified=false`、`particle_seed_determinism_verified=false` 明示未验收。当前仅完成 WP0 代码编写，**静态与非游戏检查已完成，G0 未通过，WP1 及后续阶段未实施**；主代码／基准编译与生产包隔离通过，新增 3 项 JUnit 通过，无窗口 Data 25 秒成功且 written=0／removed=0。没有性能、视觉或运行门槛通过结论。
+固定条件与跨轮复现仍未通过：相机／窗口变化计数和刷新率是观测记录，`fixed_camera_observed`／`fixed_window_observed` 不替代跨轮门禁；`wp0_cross_run_gate_verified=false`、`particle_seed_determinism_verified=false` 明示未验收。当前仅完成 WP0 代码编写，**WP0 静态与非游戏检查已完成，G0 未通过；用户随后允许提前编码默认关闭的 WP1，代码与非游戏检查已完成，WP2～WP7 未实施**；主代码／基准编译与生产包隔离通过，新增 3 项 JUnit 通过，无窗口 Data 25 秒成功且 written=0／removed=0。没有性能、视觉或运行门槛通过结论。
+
+### WP1 实验开关与比较边界
+
+用户选择 A 允许先编码；仅在另行获准运行时才可给 JVM 设置 `-Dlobecorp.photon.packedSnapshot=true`。缺省不加载新增 BufferBuilderMixin，不更改真实运行配置；它与 WP0 探针过滤是两个独立条件，不能把开启实验误当作游戏授权。实验仅优化已有稳定快照命中的提交，拒绝或关闭时保留旧回放，实际排序与 Mixin 组合仍未验收。每组上限 32768 顶点／1 MiB，输出候选总量 4 MiB；不增加原生 64 KiB 初始容量。13 项非游戏测试、主代码／基准编译、生产包隔离和无窗口 Data 已通过；这不代表真实 Mixin 或渲染已验收。详细非游戏对照与执行状态见 [WP1 记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)。
 
 ## 首批场景
 

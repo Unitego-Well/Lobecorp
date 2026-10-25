@@ -34,6 +34,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
@@ -65,7 +66,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	};
 	private final PhotonModelClock clock = new PhotonModelClock();
 	private final NormalCache normalCache = new NormalCache();
-	private static final int MAX_SNAPSHOT_VERTICES = 32768;
+	private static final int MAX_SNAPSHOT_VERTICES = PhotonPackedVertexUtil.MAX_VERTICES;
+	private static final boolean PACKED_SNAPSHOT_SUBMISSION = Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY);
 	private final Map<Integer, GeometrySnapshot> geometrySnapshots = new HashMap<>();
 	private @Nullable PhotonModelPoseSampler.Frame snapshotFrame;
 	private boolean frameReused;
@@ -233,6 +235,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			dynamic.clear();
 		}
 
+		discardPackedSnapshots();
 		modelRenderer.clear();
 		overrideRenderer.clear();
 		playback.clear();
@@ -276,6 +279,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		clock.stop(settings(), force);
 
 		if (force) {
+			discardPackedSnapshots();
 			frame = null;
 			sampledInput = null;
 			playback.clear();
@@ -304,6 +308,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 	@Override
 	public void lobecorp$clearParticles() {
+		discardPackedSnapshots();
 		clock.clear();
 		frame = null;
 		sampledInput = null;
@@ -502,7 +507,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 						int triangles;
 
 						if (cached != null) {
-							cached.replay(output);
+							cached.replay(output, allowPackedSnapshot(cached));
 							triangles = cached.triangles();
 						} else {
 							SnapshotRecorder recorder = stableFrame ? new SnapshotRecorder() : null;
@@ -533,6 +538,22 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 			PhotonPerformanceTraceUtil.end(scope, completed);
 		}
+	}
+
+	private boolean allowPackedSnapshot(GeometrySnapshot cached) {
+		if (!PACKED_SNAPSHOT_SUBMISSION) {
+			return false;
+		}
+
+		if (cached.packedBytes() != 0) {
+			return true;
+		}
+
+		return GeometrySnapshot.withinPackedBudget(geometrySnapshots.values());
+	}
+
+	private void discardPackedSnapshots() {
+		geometrySnapshots.values().forEach(GeometrySnapshot::discardPacked);
 	}
 
 	@Override
@@ -590,7 +611,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	/// 稳定帧的最终顶点快照；只在姿态输入未变化时复用，避免每帧重复计算世界变换、法线与颜色。
-	static final class GeometrySnapshot {
+	public static final class GeometrySnapshot {
 		private static final int STRIDE = 12;
 		private final float[] matrix = new float[16];
 		private final int color;
@@ -599,8 +620,10 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		private final int[] lights;
 		private final int count;
 		private final int triangles;
+		private @Nullable byte[] packed;
+		private boolean packedAttempted;
 
-		GeometrySnapshot(Matrix4f world, int color, int light, float[] vertices, int[] lights, int count, int triangles) {
+		public GeometrySnapshot(Matrix4f world, int color, int light, float[] vertices, int[] lights, int count, int triangles) {
 			matrix[0] = world.m00();
 			matrix[1] = world.m01();
 			matrix[2] = world.m02();
@@ -637,7 +660,22 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 					&& same(world.m32(), matrix[14]) && same(world.m33(), matrix[15]);
 		}
 
-		void replay(VertexConsumer output) {
+		public void replay(VertexConsumer output) {
+			replay(output, false);
+		}
+
+		public void replay(VertexConsumer output, boolean allowPacked) {
+			if (allowPacked && output instanceof IPhotonPackedVertexSink sink) {
+				if (!packedAttempted) {
+					packed = PhotonPackedVertexUtil.pack(vertices, lights, count);
+					packedAttempted = true;
+				}
+
+				if (packed != null && sink.lobecorp$tryAppendPhotonSnapshot(packed, count)) {
+					return;
+				}
+			}
+
 			for (int index = 0, offset = 0; index < count; index++, offset += STRIDE) {
 				output.addVertex(vertices[offset], vertices[offset + 1], vertices[offset + 2])
 						.setUv(vertices[offset + 6], vertices[offset + 7])
@@ -645,6 +683,29 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 						.setLight(lights[index])
 						.setNormal(vertices[offset + 3], vertices[offset + 4], vertices[offset + 5]);
 			}
+		}
+
+		public static boolean withinPackedBudget(Iterable<GeometrySnapshot> snapshots) {
+			long bytes = 0;
+			for (var snapshot : snapshots) {
+				if (snapshot.count < 0) {
+					return false;
+				}
+				bytes += (long) snapshot.count * PhotonPackedVertexUtil.VERTEX_STRIDE;
+				if (bytes > PhotonPackedVertexUtil.MAX_CACHED_BYTES) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public int packedBytes() {
+			return packed == null ? 0 : packed.length;
+		}
+
+		public void discardPacked() {
+			packed = null;
+			packedAttempted = false;
 		}
 
 		int triangles() {

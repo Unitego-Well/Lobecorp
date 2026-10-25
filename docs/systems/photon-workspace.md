@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-25 WP1 默认关闭实验：用户选择 A，允许 G0 未验收期间先编码并做非游戏检查；游戏禁令保持。已写稳定快照命中时的整块顶点提交、严格格式／初始状态预检、原生排序保留、每组 1 MiB／输出候选 4 MiB 预算与引用清理。开关缺省关闭，未修改任何实际运行配置。IDEA 静态无新增错误；主代码／基准编译和生产包隔离通过（23 秒，保留既有 reserveBuildIdentity 配置缓存警告）；新增 5 项编码／7 项回放测试及原快照 1 项共 13 项通过，失败／错误均为 0。无窗口 Data 退出码 0（21 秒，23 项 written=0／removed=0，含缓存的 29 文件指纹不变）。这些不覆盖真实 Mixin 应用、Sodium／Iris 组合、GPU、视觉或性能收益，未运行游戏。G0／G1 性能与视觉出口仍未验收，WP2～WP7 未做。既有稳定录制缺口仅登记 P11，未扩大修复。原件、用户 WIP 与后续证据保存于 photon-extreme-wp1-20261025。详见 [WP1 编码记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)，问题只维护于 [唯一清单](../issues.md)。
+
 2026-10-25 极端优化 WP0：32／64 混合模型、1／4 条真实技能光束、极端后空基线、实际相机／刷新率／draw／reserve 与 resize 分离计数代码已落地，主采集和验证截图分窗。用户明确禁止游戏测试，本轮未启动 Client、BenchMod 客户端、Minecraft MCP 控制或采样；G0 运行出口未验收，按依赖顺序尚未实施 WP1～WP7，不宣称性能收益。IDEA 格式与静态检查无新增错误；主代码／基准编译及生产包隔离检查成功（61 秒，保留既有 reserveBuildIdentity 配置缓存警告）；新增 3 项 JUnit 通过（XML 为 tests=3、failures=0、errors=0）；无窗口 Data 退出码 0（25 秒，23 项 written=0／removed=0，含缓存的 29 个生成目录文件前后 SHA256 不变）。这些是非游戏检查，未运行 Client／BenchMod 场景、截图或采样；G0 运行验收仍缺失。执行细节见 [执行文档本轮记录](photon-extreme-execution-gpt-20261025.md#本轮实施记录2026-10-25)，待验收项只在 [唯一清单](../issues.md) 维护。已有用户配置、两份测试及 logs 保留；修改前原件与用户 WIP 备份于 photon-extreme-wp0-20261025。
 
 2026-10-25 极端场景优化计划：新增 [最坏情况优化计划](photon-extreme-optimization-plan-20261025.md) 与 [GPT 执行文档](photon-extreme-execution-gpt-20261025.md)，定义 E0～E4 场景、CPU/GPU/P99/首帧/内存目标、P0～P6 路线、WP0～WP7 执行包、M1～M9 Mixin 目标与 G0～G7 门槛；明确先做提交缓冲和实例化，不用全局阴影跳过或默认降画质。本文只写计划，未改代码或新增采样。

@@ -4,7 +4,7 @@
 
 测试时间：2026-10-24（北京时间）。范围：真实技能夹具（女皇激光／星束）的帧时间、GPU 时间、阶段 marks、首次施放阻塞与 Debug 路径。生产代码基线为 `1fb3aba4`（含法线缓存 `bd29ff62`）；本轮没有修改业务代码、资源、动画、LOD、技能时序或伤害。
 
-相关文档：[测试前优化建议与问题原因](photon-optimization-pretest-20261024.md)、[测试后优化建议与问题原因](photon-optimization-posttest-20261024.md)、[性能审查](photon-performance-audit.md)、[唯一问题表](../issues.md)。
+相关文档：[测试前优化建议与问题原因](photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照)、[测试后优化建议与问题原因](photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照)、[性能审查](photon-performance-audit.md)、[唯一问题表](../issues.md)。
 
 ## 一、结论摘要
 

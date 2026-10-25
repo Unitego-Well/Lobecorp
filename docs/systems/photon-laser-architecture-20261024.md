@@ -2,7 +2,7 @@
 
 测试时间：2026-10-24（北京时间）。生产代码基线 `6ae3093c`（含法线缓存 `bd29ff62` 与内嵌模型准备复用 `fba6713a`）。本轮没有修改业务代码、动画、LOD、资源或技能时序；只做真实激光、光影对照、JFR 归因和架构评估。
 
-相关文档：[激光测试与优化方案](photon-laser-optimization-20261024.md)（无光影轮）、[测试后优化建议与问题原因](photon-optimization-posttest-20261024.md)、[Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)、[性能审查](photon-performance-audit.md)、[唯一问题表](../issues.md)。
+相关文档：[激光测试与优化方案](photon-laser-optimization-20261024.md)（无光影轮）、[测试后优化建议与问题原因](photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照)、[Photon 渲染架构优化报告（含 Mixin 方案）](photon-render-architecture-mixin-20261024.md)、[性能审查](photon-performance-audit.md)、[唯一问题表](../issues.md)。
 
 ## 一、原始诊断与后续审查边界
 

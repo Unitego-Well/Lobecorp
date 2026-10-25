@@ -691,3 +691,336 @@ S18–S23：稳定身份、短锁冻结、冻结面板缓存、模式化内存�
 
 本轮文档备份与提交范围见[重设计方案第23节](photon-model-redesign.md#23-本轮交付备份与未完成事项)
 。后续代码实施、运行实验及是否调整Photon依赖仍需按用户授权范围推进。
+
+
+## 2026-10-24 历史模型诊断与法线缓存对照
+
+2026-10-26 文档整理将原测试前／后两页的成本分析、实施约束、逐轮账本、JFR／Debug／MCP、数值及修订边界合并至此。以下分别对应当时版本，源码旧行号只作历史定位；建议不表示已实施，当前状态只在 [唯一清单](../issues.md) 维护。原件及 SHA256 保存在 photon-docs-organize-20261026，未重新运行或改写当时结果。
+
+### 前测：三、P11：静态模型逐帧 CPU 几何提交
+
+#### 前测：3.1 现象
+
+16 静态模型 MEASURE 均值 3.258 ms、P99 6.256 ms；重复用例均值 2.851 ms。渲染线程 JFR 中 `geometry.write` inclusive 为 245／324 个执行样本，重复用例 212／280（约 75.6%／75.7%）。这是执行样本比例，不是 GPU 占比或精确墙钟占比。
+
+#### 前测：3.2 调用链
+
+[PhotonModelOutput.bakeBatches](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java#L431-L452) → `bakeModelGroup`（第 454 行）→ `bakeGroup` 回调里的 [PhotonModelGeometryUtil.write](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java#L13-L67)。
+
+#### 前测：3.3 成本机制
+
+1. **每帧无条件重建全部提交几何。** [sampleLocalFrame 第 402 行](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java#L402-L420) 的 `input.equals(sampledInput)` 命中后只是跳过 `sample()`；`bakeBatches` 仍对每个 group 调 `write`，逐三角形、逐角写顶点。
+2. **提交坐标依赖相机与模型变换。** 第 444 行 `world = translation(-cameraOrigin) × localToWorld`；相机或模型变换变化时，提交位置可能不同，不能无条件复用上一帧最终位置。相机静止时原点不必变化；平移不改变法线所需的线性部分。
+3. **顶点数 ×4/3。** `write` 每个三角形写 4 个角，[第 27–30 行](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java#L27-L30) 用 `offset = Math.min(corner, 2)` 重复末角，只为保留原生 QUADS 透明排序路径。16 模型 ×512 三角形 ×4 = **32768 次 `addVertex`／帧**。
+4. **每角固定变换与光照。** 位置经 4×4 变换（第 33 行）、法线经 3×3 变换（第 34 行）、`signum(determinant)` 乘符号、长度判断与归一化（第 37–38 行）、`shade()` 6 次乘加与分支（第 56 行）、`setColor`／`setLight`／`setNormal`（第 58–62 行）；法线退化时还会分配临时 `Vector3f`（第 41–44 行）。
+5. **数据结构间接访问。** 每个角都要 `group.vertices().get(indices.get(...))` 解包 `Vertex` record，再取三个 `Vector3` 分量；没有预展开的紧凑顶点数组，也没有把 4 个角共享的法线矩阵变换结果合并。
+
+#### 前测：3.4 为什么现有缓存不足以关闭 P11
+
+`sampleLocalFrame` 解决的是“同一输入不重复求值”，省掉的是姿态计算；P11 的成本在“求值之后、提交之前”的世界变换、法线、颜色与顶点写入，与输入是否变化无关。因此静态模型的缓存命中率再高，只要仍在 `bakeBatches` 里逐角重写，成本就不会消失。
+
+#### 前测：3.5 优化建议
+
+- **前置能力核对（必须先做）。** Photon 26.1.2.3 已提供 `Emitter.bakeGroup`／`bakeInstancedGroup`、`BaseMesh`、`AdditionalGPUDataSetting` 等入口（jar 内已确认存在，语义尚未验证）。先确认原生批次是否支持“静态局部网格 + 每帧仅变换”的提交方式，再决定复用层级，避免新增平行渲染体系。
+- **方案 A（低风险，常数项）。** 预展开角点表（每 group 一个 `int[]` 角序列，替代 `List.get` + record 解包）；把 `world` 提取为 `float[16]` 手动乘；法线矩阵展开为 9 次乘加；`shade` 预查表；消除法线兜底分支的临时对象。保持 4 角重复、材质组顺序、insideOut、双面、深度、混合、光照语义不变。预期只削常数，不解决量级。
+- **方案 B（中风险，帧缓冲复用）。** 按 `frame` 身份缓存“已展开的局部顶点缓冲”（位置、法线、UV、颜色），每帧只做世界／法线变换后写 consumer。相机原点每帧变，仍逐顶点变换，但省掉解包、重复角取数和法线兜底。
+- **方案 C（高风险，收益最大）。** 走原生持久网格／缓冲（参考原生 `TileParticleRenderer.modelMeshBuffer` 的持久 VBO 思路），局部几何只上传一次，变换交给提交矩阵。必须先证明透明排序、材质批次和资源重载语义可保持，否则不采用。
+
+#### 前测：3.6 实现约束
+
+- 不能为了减少顶点直接删角；当前 4 角重复是 QUADS 透明排序路径的一部分。
+- 材质组顺序、insideOut、双面、深度、混合、光照和资源重载语义须保持。
+- 缓存键必须覆盖拓扑、局部姿态、动态材质与必要版本，不能只看模型路径。
+
+#### 前测：3.7 验证与关闭条件
+
+同一资产 1／16 静态模型、动画切换、仅世界 TRS 变化、相机变化、透明交叠、多材质、镜像／非均匀缩放及重载；记录每帧顶点写入量、缓冲创建／上传字节、CPU 样本与 GPU 时间。关闭条件：稳定静态输入不再无条件重做全部局部几何，重复新进程对照显示成本下降且 P95／P99 无退化，截图／排序与资源释放对照通过；仅平均 FPS 上升不能关闭。
+
+### 前测：四、P12：动画蒙皮、查表与整帧对象分配
+
+#### 前测：4.1 现象
+
+16 动画模型均值 5.784 ms、P99 10.477 ms；`sample` 占 222／462 个渲染执行样本。约 23 秒整份录制中渲染线程分配计数增加 19.554 GiB（静态约 0.984 GiB），包含 setup／预热，不是存活内存或泄漏量。
+
+#### 前测：4.2 调用链
+
+[PhotonModelPoseSampler.sample](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelPoseSampler.java#L149-L255)，以及 `partMatrices`、`skinMatrices`、`morphWeights`、`morph`、`positions`、`faceNormal`、`immutable`；上层是 `PhotonModelOutput.sampleLocalFrame`。
+
+#### 前测：4.3 成本机制
+
+1. **每帧先做全量校验。** morph／part 用 `stream().noneMatch` 逐个比对（第 153–168 行），clip 用 `stream().filter` 查找（第 171 行）；这些只随内容变化的检查每帧重复。
+2. **partMatrices 每部件多份临时矩阵。** 第 261–286 行：每部件 `new Matrix4f().translation(pivot).mul(matrix).translate(...)`，有父级时再 `new Matrix4f(parent).mul(...)`。
+3. **skinMatrices 每权重顶点固定 3 个对象。** 第 386–430 行：每骨骼 `new Matrix4f` 连乘；每个带权重点执行 `stream().mapToDouble().sum()` 归一化（第 410 行）、两份 `float[16]`（第 414–415 行）、`new Matrix4f().set`（第 423 行）并放入 `HashMap<Integer, Matrix4f>`（第 427 行）。
+4. **morph 整份复制顶点。** 第 300–317 行先把所有顶点复制成新 `Vector3`，再逐顶点 `immutable()`；权重全为 0 时也复制。
+5. **positions 走装箱 Map + 每顶点临时对象。** 第 319–346 行：每部件一个 `HashMap<Integer, Vector3>`，每角 `computeIfAbsent`（int 装箱 + lambda 捕获），`dimensions()` 每顶点新建 `Vector3f`，蒙皮／部件矩阵两次变换后再 `immutable()`。
+6. **整帧 Vertex／Group 重建。** 第 186–246 行：每角 `new Vector3(faceNormal)` + `new Vertex(...)`；每面重算 `faceNormal`（3–4 个 `Vector3f`）；`min/max` 每角 `vector(position)` 又建 `Vector3f`。
+7. **输入与绑定每帧重建。** `Input` 构造内 3 次 `Map.copyOf`（第 67–79 行）；[PhotonModelBindings](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelBindings.java#L84-L131) 的 `morphWeights`／`partOverrides`／`boneOverrides` 每帧各建 `LinkedHashMap` + `Map.copyOf`，overrides 还要遍历全部 part／bone × 3 个槽。
+8. **共享范围依复制路径而异。** PhotonModelOutput.shallowCopy() 已共享 sampler 与 groupOrder；深拷贝创建与命名运行态准备不能据此视为同样共享。需要按真实创建路径统计定义、拓扑和 sampler 的准备次数，不使用“零共享”的概括。
+
+#### 前测：4.4 为什么现有缓存不足以关闭 P12
+
+动画时间每帧变化，`Input.equals` 必然不等，`sample()` 每帧全跑；`sampleLocalFrame` 的缓存只对静态模型有效，对连续动画不能命中，也不应该靠冻结动画制造命中。
+
+#### 前测：4.5 优化建议
+
+- **预编译（内容级、可跨实例共享）。** 顶点→权重索引与预归一化权重、顶点→UV、面法线索引、角点展开表、clip 轨道二分索引、part 维度参数；把每帧重复的 id 校验改成随内容 revision 失效。
+- **每帧缓冲复用（实例级、渲染线程独占）。** 用平铺 `float[]` 替代 `HashMap<Integer, Vector3>`、两份 `float[16]` 和 `Matrix4f` 临时对象；位置、法线、UV 直接写入复用数组；`Frame` 改为引用这些数组的只读视图。注意帧快照可能被多视图／延迟批次消费，不能提前覆写，需双缓冲或不可变发布。
+- **消除每帧 Map。** `Input` 与 bindings 的三个 Map 只在 overrides 真正变化时重建，用内容 revision 做键。
+- **减少中间对象。** `Vertex`／`Group` record 改为平铺数组或复用容器；`min/max` 用 float 比较，不再逐角创建 `Vector3f`。
+
+#### 前测：4.6 实现约束
+
+不能跨实例共享可写采样时间、权重或输出数组；渲染帧快照仍可能被多个视图／延迟批次消费，缓冲不能提前复用。保留多权重、骨骼层级、部件覆盖、morph、长度／宽度拉伸、透明度和取消检查。
+
+#### 前测：4.7 验证与关闭条件
+
+静态／单骨骼／多骨骼多权重、morph 与骨骼组合、父子层级、外部轨道覆盖、循环边界、反向／零速／暂停及多实例不同相位；对比逐顶点位置、法线、UV、包围盒和输出图像。关闭条件：同内容 CPU 与渲染线程分配明显下降，GC／最长帧不恶化，计数器与姿态精度对照均通过。JFR 首次分配样本可能携带跨录制权重，不能将其全部归因一次调用，也不能以堆占用回落代替分配速率改善。
+
+### 前测：五、P06／S09：首次创建、深拷贝和同步发射
+
+#### 前测：5.1 现象
+
+测量开始时创建 16 动画模型耗时 269.998 ms，对应最长帧 273.700 ms；首个静态实例创建 187.634 ms，后续单实例 9.885 ms。真实激光两轮首次最长帧约 860.759／855.774 ms，关闭 spark 后仍存在；真实首发帧含多种成本，尚不能把全部时间归给一个方法。
+
+#### 前测：5.2 调用链
+
+[PhotonChildSpawner.emitNow](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java#L220-L263) → `new PhotonSpawnInstance` + [`start`](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonSpawnInstance.java#L134-L180)（第 137 行 `runtime.emit`）→ 原生 `FXRuntime.emit` 的注入点 [FXRuntimeMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/FXRuntimeMixin.java#L51-L88) → [PhotonNamedRuntime 构造](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java#L105-L130) → `PhotonModelOutput.prepare`；此外还命中 `PhotonModelSourceUtil.load`／`PhotonModelAssetUtil.read`、`FXHelper.loadFX` 和 `IFXObject.deepCopy` 的 CODEC 往返。
+
+#### 前测：5.3 成本机制
+
+1. **同步循环。** `emitNow` 在当帧按次数循环 `new PhotonSpawnInstance` + `start()`（第 235–260 行），没有分帧、预算或后台任务。
+2. **每实例重新准备。** 命名运行态构造里 `PhotonNamedCodecUtil.read(controller.definition())` 重新解析命名库；随后对每个 `PhotonModelOutput` 调 `prepare()`。
+3. **prepare 重新读取与重建。** `PhotonModelSourceUtil.load` 重新取资源／解析内嵌 JSON/NBT；`PhotonModelTopologyUtil.prepare` 对全模型逐面三角化；`new PhotonModelPoseSampler` 逐骨骼求逆；随后重建材质。
+4. **实例来源本身深拷贝。** [PhotonSpawnTemplateUtil.create](../../src/main/java/org/unitego/lobecorp/util/photon/playback/PhotonSpawnTemplateUtil.java#L35-L96) 走 `fx.createRuntime(true)`（原生 `FXData.copy` → 每个对象 `IFXObject.deepCopy` 的 CODEC 往返），或 `object.copy(true)` 后逐对象复制并改写动画轨道。
+5. **深拷贝链的共享不足需按路径量测。** 当前 shallowCopy 已共享 sampler／groupOrder；本轮命中的深拷贝及 prepare 链仍有同步准备成本。是否每实例重复、重复哪些阶段，必须按调用路径和内容代次统计，不能概称所有实例零共享。
+6. **技能句柄的预备范围有限。** QueenBeamEffects 在 CHARGE 且 preparedOutput=false 时调用 prepareNext；失败时后续更新仍可重试，不能说只调用一次。成功后该句柄置 preparedOutput=true，未主动为后续消费补下一份；通用发射器的预备和补充范围仍需按实际路径核对。
+
+#### 前测：5.4 优化建议
+
+1. **先补细分（不改行为）。** 在 `emitNow → createRuntime → buildNamed → codec read → load → topology → sampler → materials → emit → 首次几何／GPU` 每段用现有 `PhotonPerformanceTraceUtil` 打点，分清新进程冷、同进程热、资源重载后首次和间隔施放。
+2. **内容级共享（核心）。** 以资源 id + 内容哈希／代次缓存不可变定义、Prepared 拓扑、骨骼逆矩阵和预编译权重；`PhotonModelSourceUtil.load` 与 `PhotonNamedCodecUtil.read` 增加缓存；`prepare()` 仅在内容代次变化时重建。多实例只保留各自可写时钟、槽和材质。
+3. **深拷贝去重。** 评估 `FXData.copy`／`IFXObject.deepCopy` 中哪些字段必须每实例复制、哪些可共享只读定义；必须先核对原生 API 允许的共享边界。
+4. **准备调度。** 把“下一份”扩展为有界预备缓冲池或分帧任务；但不能把成本静默转移到进世界，首次未就绪、失败重试、取消、退出世界都要有明确生命周期。
+
+#### 前测：5.5 实现约束
+
+不共享活 `FXRuntime`、可写轨道或实例随机状态；不把静默预热移到进世界时后宣称总成本消失；技能时序／伤害不能因准备策略改变。
+
+#### 前测：5.6 验证与关闭条件
+
+同资源 1／多实例、连续与间隔发射、缺失／损坏资源、加载失败后修复、重载、准备中取消及退出世界；分列触发至可见延迟、最长帧、P99、准备次数、分配峰值和就绪状态。关闭条件：首发阻塞实测下降且没有转移为同等级进世界卡顿、准备队列堆积或首次漏播；按真实技能截图／阶段 marks 验证，不能只用合成网格成绩。
+
+### 前测：六、P13：空场景异常与 OpenGL 等待的独立归因
+
+#### 前测：6.1 现象与边界
+
+无 Debug 的末尾空场景第 7624／9695 帧为 1.421 秒；不能把这个值算成模型成本。真实采样中 `glFenceSync` 栈还来自 Minecraft／GUI／雾／AnvilLib／Sodium 的 `MappableRingBuffer.rotate`／`DynamicUniformStorage.endFrame`，不能全部记在 Photon 名下。
+
+#### 前测：6.2 归因方法
+
+1. 重复空基线，采集 GC 日志、JFR（gc／thread park／monitor／io／socket／driver）、帧起止时间、JFR 启停与落盘时间点、截图／导出时间点、窗口焦点与节流标志。
+2. 把异常帧与上述事件做时间对齐；优先排除 JFR 自身 flush、GC 停顿、线程停泊、文件导出、驱动等待、Sodium／AnvilLib 上传。
+3. 能稳定复现并定位到具体等待后再改代码；不能复现则保留未归因状态及原始样本；没有时间对齐证据，不能直接按环境干扰结案。
+
+#### 前测：6.3 关闭条件
+
+复现时能给出时间对齐的原因，或重复试验明确界定为当前模型外的干扰；“后续没有再看到”不等同于已修复。报告保留异常、失焦、容量丢样和失败原因，不能只删长帧或只报中位数。
+
+### 后测：法线缓存后的真实激光复测（2026-10-24 11:21）
+
+后续 Sodium＋BenchMod＋Minecraft MCP＋Debug 的激光复测与优化方案见 [真实女皇激光测试与优化方案](photon-laser-optimization-20261024.md)。本段保留 11:21 那一轮“无 Debug、无 spark”的记录，两轮口径不同，不合并数字。
+
+用户后续要求“测试激光”，本轮只运行既有 QueenBeamPerformanceTrial 并更新记录，生产代码基于 bd29ff6；没有修改动画、LOD、资源、技能时序或伤害。IDEA Client 启动，Sodium 0.9.2 日志确认；本轮使用真实技能夹具与 PhotonFrameCapture，未重跑 BenchMod 合成用例，未启用客户端 spark 或 Debug，不能补作新的方法栈归因。
+
+- 11:19:24 开始采集，90.0008 秒、52033 帧，状态 DURATION；三次服务端施放均 STARTED，每次都有客户端 0→1→2 和移除记录。首轮阶段 0→1 约 1.576 秒，后两轮约 0.951 秒；这是客户端观测时刻，首发阻塞会延迟记录，不能据此推断服务器技能时长改变。
+- 全部帧 flags=3（focused／maximized），节流全部 NONE，帧缓冲全部 2560×1494，Vsync 关闭。GPU 完成 44310，pending 跳过 7723，错误 0；缺测未填零。
+- 第四次施放仅供采集结束后的截图验证，未计入性能数据。真实截图可见女皇、法阵、粉色光束和目标；未发现该静态输出帧中整体缺失或明显破面。单张截图不能证明连续法线、动画过渡、跟随、墙体截断及全部材质表现均通过。
+- code_animation_render_samples 仍为空，allocation_capture.enabled=false；没有新增逐帧动画混合或分配调用栈证据。
+
+| 指标 | 本轮均值／P99／最大值 ms | 既有无客户端 spark 基线均值／P99／最大值 ms |
+|---|---|---|
+| 相邻渲染 HEAD 帧间隔 | 1.730／8.529／608.366 | 2.235／11.587／855.774 |
+| GameRenderer.render CPU | 0.938／3.460／441.588 | 1.203／5.560／543.929 |
+| GameRenderer.render GPU（有效样本） | 0.657／3.717／441.202 | 0.660／4.332／546.163 |
+
+渲染线程分配均值 274799 B／帧，最大 219394536 B（约 209.2 MiB），包含采集开销，不是存活内存。CPU／GPU 区间范围不同，不相加，也不将 GPU 等待直接归因某一个 Photon 方法。帧间隔属于前一个 HEAD，表中同数组索引的 CPU／GPU 属于当前渲染体，不能当作长间隔的精确同步栈。
+
+| 观测窗口（相对采集秒） | 均值 ms | P99 ms | 最大 ms | 大于 50 ms 帧数 |
+|---|---:|---:|---:|---:|
+| 0～4 空基线 | 1.321 | 2.764 | 19.066 | 0 |
+| 4～16 首次施放附近 | 5.319 | 16.292 | 608.366 | 5 |
+| 31～43 第二次施放附近 | 3.768 | 13.286 | 81.208 | 1 |
+| 58～70 第三次施放附近 | 3.652 | 12.600 | 89.218 | 1 |
+
+窗口按当前 HEAD 时间选取，边界附近的前一间隔可能跨界；这些窗口包含技能外时段，不是纯光束输出成本。首发 608／519／561／413 ms 长间隔集中于约 4.70～6.19 秒，另有 82 ms；后两轮首次阶段附近仍有 81／89 ms。**P06 首发阻塞未解决，热施放也仍有明显尖峰。** 本轮数字较旧轮降低，但粒子随机种子未固定、实际渲染相机／投影未额外采集、主机帧节奏仍缺受控配对；不能把差值全部归因法线缓存，P11／P14 不关闭。
+
+原始 JSON、阶段 marks、verification.png、latest.log 与 analysis.json 归档于 C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-normal-cache-laser-20261024。源报告文件名含 frames-20261024-032054-413-68018122667100 与 frames_marks_68019164953400。文档修改前字节也保留在同目录。
+
+11:21 夹具 COMPLETE 并恢复临时 Options，随后经固定 19877 MCP 正常保存退出世界、退出游戏；IDEA Client 日志 BUILD SUCCESSFUL in 3m 8s。桥接 PID 47908（03:19:14.370Z）和 14132（03:21:16.550Z）均退出 0。游戏 PID／启动时刻本轮未单独取得，不伪造进程账本；退出证据为正常界面链、Stopping! 与运行结束日志。本轮未建立 Debug 会话或断点，未推送。
+
+### 后测：法线矩阵缓存实施与前后对照（2026-10-24）
+
+此段记录用户后续授权的实现与对照，与下方 DS 只读诊断轮分开；当前问题仍统一维护在 [唯一问题清单](../issues.md)。
+
+#### 后测：修订与实际改动
+
+- 修正“相机原点每帧必变”“实例零共享”“采样比例可直接换算收益”和分配口径表述；同时澄清 prepareNext 失败可在蓄力阶段重试，不能说只调用一次。P13 未复现不能直接按环境干扰结案。
+- PhotonModelOutput 为每个输出独占持有 NormalCache；键为世界矩阵 3×3 线性部分的逐位值与 JOML PROPERTY_ORTHONORMAL，缓存逆转置矩阵和行列式。平移不入键，旋转／缩放／镜像／奇异变化须失效，属性变化也须保持 JOML 分支语义。
+- 最终版本将缓存结果复制到调用局部 Matrix3f，保留原顶点循环主体，避免循环消费共享可变矩阵的别名。该选择旨在减少方法拆分／逃逸对 JIT 的潜在干扰，没有证据断言它就是首版波动的根因。
+- 没有改变每三角形 4 角的 QUADS 提交、排序、颜色、光照、shader、材质、动画、LOD 或资源内容；没有加入全局缓存、后台任务或持久 GPU 资源。
+
+#### 后测：正确性与路径检查
+
+- 三份 Java 文件 IDEA 0 错误，9 项既有提示（输出类 1 项、测试 Collector 空值注解 8 项）。新增警告已修正，没有借机清理存量提示。
+- PhotonModelGeometryTest 5／5 通过，最终格式收尾后再次运行的 XML 时间 2026-10-24T03:08:09.890Z，failures=0／errors=0。新增 3 个用例覆盖平移、旋转、非均匀／负／零缩放、正交属性变化、实例隔离，以及 shading／insideOut／透明度组合下的位置、法线、颜色、UV 和光照完全对照。56 组新旧绘制输入对照通过；这不代替全部真实材质的视觉验收。
+- 调试时 Render thread 在 NormalCache.update:96 命中 valid=true，原生结果相等、平移键不变、旋转／镜像／零缩放键改变；单步直接到 return normal:107，确认跳过重算分支。Sodium=true、MCP=true、GLFW_MAXIMIZED=1。
+- MCP 固定 19877 得到 pong／connected=true，保存 2560×1494 调试截图。临时断点显式移除，随后正常保存退出世界并退出游戏；PID 54368（2026-10-24T02:30:01.285Z 启动）已退出，桥接 PID 54708 退出 0，Debug 会话为空。暂停轮仅作路径证据，不计性能。
+
+#### 后测：本轮运行账本
+
+| 运行 | 报告／归档 | 实际结果与边界 |
+|---|---|---|
+| 原实现首次基线 | client-1792807664435／before-invalid-focus | 因 focus_lost 为 INCONCLUSIVE，不参与收益比较 |
+| 原实现重跑 | client-1792808072981／before-valid | PASSED、environment.valid=true；运行前两份生产源码 SHA256 与原始备份一致 |
+| 缓存首版 | client-1792808615293／after-first | PASSED；静态改善但动画变慢、空基线波动，未采用该版作为最终实现 |
+| 最终候选第一轮 | client-1792809307255／after-valid | PASSED、environment.valid=true，8 个 Photon 用例通过 |
+| 最终候选复核轮 | client-1792809690358／after-repeat | PASSED、environment.valid=true，但空场景和轻负载出现约 6.15 ms 节奏，不能直接用于收益归因 |
+
+上述无 Debug 运行均走 BenchMod Photon，包含最终报告校验；优化前重跑、最终第一轮与复核轮的构建耗时分别为 3 分 50 秒／3 分 45 秒／3 分 42 秒。报告参数及加载 Mod 清单相同，git 均记录 c168b04a＋dirty；具体代码差别另以原始文件／编译类及源文件指纹保留，不以 dirty 标志隐藏版本差别。
+
+#### 后测：帧时间实测
+
+每格为均值／P99／最长帧，单位 ms。保留全部结果，不跨会话平均 P99；复核轮的统一节奏也没有被剔除为“通过的优化”。
+
+| 负载 | 原实现有效轮 | 最终候选第一轮 | 最终候选复核轮 |
+|---|---|---|---|
+| 空场景 | 2.253／4.999／29.104 | 2.204／5.210／23.651 | 6.165／8.081／19.549 |
+| 1 静态 | 3.189／7.206／10.245 | 2.271／4.810／25.971 | 6.152／7.762／14.336 |
+| 1 动画 | 3.296／6.694／16.705 | 2.198／4.793／17.949 | 6.192／8.372／18.426 |
+| 16 静态 | 4.455／9.421／19.593 | 3.322／5.785／22.253 | 6.913／12.681／20.379 |
+| 16 动画 | 6.552／12.633／29.411 | 5.827／11.480／17.514 | 6.611／12.374／36.560 |
+| 测量开始时创建 16 动画 | 6.819／13.877／102.356 | 6.281／14.377／281.435 | 6.463／12.014／69.394 |
+| 16 静态重复 | 3.498／6.103／13.924 | 3.256／5.685／13.788 | 6.179／7.614／34.422 |
+| 空场景重复 | 1.706／3.490／7.274 | 1.477／2.920／7.588 | 6.154／7.341／9.278 |
+
+原实现与最终第一轮中，16 静态均值观测下降约 25.4%、静态重复约 6.9%、动画约 11.1%，但不是已证明的稳定收益。首次创建用例 create_emit 为 98.278／275.995／61.419 ms，本轮没有修复 P06，也不能删除 281.435 ms 的反向长帧。
+
+#### 后测：JFR 归因与可比性限制
+
+以 ActiveRecording.recordingStart 加报告阶段耗时近似切出 MEASURE，保留毫秒级窗口误差。原始分析见 normal-cache-analysis.json。
+
+| 负载 | 原实现渲染样本：write／normal | 最终第一轮：write／cache.update |
+|---|---|---|
+| 16 静态 | 202／286，normal=59／286 | 205／283，update=68／283 |
+| 16 动画 | 89／431，normal=27／431 | 89／417，update=18／417 |
+| 静态重复 | 200／304，normal=58／304 | 232／322，update=65／322 |
+
+- normal 标签未再出现，但相近比例转到 cache.update，完整 write inclusive 比例没有整体消失；JIT／内联后的符号归因不能直接转为可消除的墙钟成本。Debug 可以证明命中时未重算，不能证明整体消除了原“20%～25%”成本。
+- 同口径 ThreadAllocationStatistics 首尾计数差（整份录制，含 setup／预热）中，16 静态为 1.084→1.197 GiB、动画为 16.951→19.854 GiB。两轮帧数不同；这些是累计分配而非存活量，本轮也没有证明总分配下降。P12 继续开放。
+- 复核空尾场景的 2437 帧中有 2279 帧处于 5～7 ms；原实现为 8／8794，最终第一轮为 17／10157。窗口门禁通过不代表帧节奏与主机条件相同。
+- 只读核对了项目后台控制规则及 MCP 0.3.0 的 FramerateLimitTrackerMixin：该 Mixin 在开发接管时仅令 throttle reason 为 NONE；没有找到能解释该约 6.15 ms 节奏的原版 AFK 分支。本轮没有证明节奏由 MCP、Sodium、驱动、操作系统或其他负载中的哪一项造成；没有手工改用户 Options、驱动或其他工作区；隔离测试目录的 options 由已有 BenchMod Prepare 按既有配置生成。
+- 实际查看前后静态网格截图，网格形状与数量可见，但地平线／模型投影位置不同；夹具没有保存实际渲染相机／投影状态，也没有锁定全部世界动态内容。相同配置参数不足以证明严格同视角 A/B，不能把第一轮降幅全部归因法线缓存，也不能据截图宣布全部视觉表现已验收。
+- 本轮没有重新进行真实激光、多材质／光影的完整视觉验收；未改资源与动画内容，当前同输入顶点属性一致性由上述数值测试支持。
+
+**结论：缓存逻辑已实现且正确生效，稳定性能收益尚未得到充分验收。** 保留 P11 的整体几何提交问题及新增可比性问题，不能按“法线缓存已做”关闭全部 P11／P12／P06。后续应先记录并核对实际相机和帧节奏，再做受控配对，不用继续叠加无关优化掩盖不确定性。
+
+#### 后测：证据与清理
+
+备份根：C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-normal-cache-20261024。
+
+- ds-effective-run、before-invalid-focus、before-valid、after-first、after-valid、after-repeat 保存各轮完整原始结果；首版源码／编译类另留 candidate-first-geometry，优化前编译类亦保留。
+- debug-evidence.json、after-debug-frame.png、geometry-test.xml、geometry-test-final.xml、frame-comparison.json、normal-cache-analysis.json 保存路径、数值与分析证据；原始基线和最终版源文件指纹见 source-fingerprints.json；自有游戏 PID／JVM 启动时间见 process-ledger.json。
+- 自有基准游戏由工具链正常结束；Debug 游戏通过 MCP 正常保存退出并退出程序。已按 PID 与启动时间核对本轮原始实例结束（66264／48536／56192／54368／70392／57196），桥接 55012／54708 退出 0。本轮原 PID 56192 的实例启动于 10:22:49；11:02 再读该 PID 已被 10:58:11 启动的新进程复用，该新进程不属于本轮，未关闭或操作。本轮临时断点已移除，不按 PID 数字或名称批量关闭进程。
+- 未推送；没有新增翻译键或 Data 输出，没有修改 Gradle、动画、LOD 或资源文件。
+
+### 后测：一、本轮实际执行
+
+| 项 | 实际执行 | 结果 |
+|---|---|---|
+| BenchMod Photon（08:43，无 Debug） | `BenchMod Photon Prepare` + `BenchMod Photon` | 场景全部 PASSED，但 `client.environment.invalidation=client.window.focus_lost`，整体 INVALID；数字只留作对照，不用于结论 |
+| BenchMod Photon（08:52，无 Debug） | 同一入口重跑，运行期间不切换窗口、不输入 | **PASSED**，`environment.valid=true`，8 个 Photon 场景通过，`sweeper-render` 按过滤器 SKIPPED |
+| JFR 归因 | 每个场景独立 JFR（约 23 秒）；`jfr view hot-methods`／`thread-allocation`／`allocation-by-site`／`allocation-by-class`；`jfr print` 导出执行样本后统计 inclusive 栈 | 见第三节 |
+| IDEA Debug | `Photon Bench Debug`，三处断点核对调用路径；该轮计时不作对比 | 见第四节 |
+| Minecraft MCP | 通过本工作区桥接（`MC_MCP_PORT=19877`）调用 `ping`、`get_minecraft_status`、`debug_fields`、`screenshot_to_file` | `pong`；截图 2560×1494、1.7 MB；见第五节 |
+| Sodium | 客户端日志确认 `lib/sodium-neoforge-0.9.2+mc26.1.2.jar`，`Running graphics bootstrap plugin sodium`，RTX 3060 Laptop（驱动 32.0.16.1664） | 见第六节 |
+
+DS 运行时证据生成于 `build/modBench/raw-results/default/client/`（summary、report、JSONL、JFR、截图）；该默认目录会被后续运行覆盖。DS 有效轮现已固定备份至既有可视化根 `photon-normal-cache-20261024/ds-effective-run`，不得把后续默认目录内容冒充该轮数据。本轮第一次 INVALID 运行证据另存于 `%TEMP%/dsh-uQhxMZ/lobecorp-invalid-run-20261024`（临时目录，不随仓库保存）；上一轮有效基线另存于 `%TEMP%/dsh-uQhxMZ/lobecorp-bench-backup-20261024`。
+
+### 后测：二、实测数据
+
+条件：种子 7，2560×1494，窗口化，FPS 上限 260，Vsync 关，渲染距离 12，Java 25.0.2（JetBrains），Sodium 0.9.2，测量 300 tick。表中为 MEASURE 的 `client.frame.interval`。
+
+| 场景 | 均值 ms | P95 ms | P99 ms | 最长 ms | 上轮有效基线均值／P99 |
+|---|---:|---:|---:|---:|---|
+| 空场景 | 1.964 | 3.161 | 3.967 | 13.219 | 1.811／4.089 |
+| 1 静态 | 2.027 | 3.037 | 3.707 | 9.890 | 1.718／2.880 |
+| 1 动画 | 2.430 | 3.777 | 4.843 | 13.154 | 2.073／4.106 |
+| 16 静态 | 3.259 | 4.586 | 5.931 | 11.851 | 3.258／6.256 |
+| 16 动画 | 6.454 | 9.443 | 12.129 | 17.591 | 5.784／10.477 |
+| 创建时 16 动画 | 6.323 | 9.993 | 12.117 | 81.570 | 6.213／12.227 |
+| 16 静态重复 | 3.358 | 5.039 | 6.230 | 14.586 | 2.851／4.346 |
+| 空场景重复 | 1.672 | 2.698 | 3.570 | 16.340 | 1.645／4.671 |
+
+创建／发射（`lobecorp.photon.create_emit`，每场景 1 个样本）：1 静态 188.9 ms（上轮 187.6）、1 动画 11.6 ms（9.9）、16 静态 118.4 ms（102.4）、16 动画 68.2 ms（73.4）、**创建时 16 动画 79.2 ms（上轮 270.0）**、16 静态重复 82.2 ms（75.8）。
+
+结论：本轮与上轮同代码、同夹具，16 静态几乎完全一致（3.259 vs 3.258）；其余场景均值相差 5%～18%，属于运行间波动。**首次创建成本不是稳定常数**：50-cold-sixteen 的 79.2 ms 与上轮 270.0 ms 相差 3.4 倍，不能用单次 269.998 ms 当作固定基线，P06 必须单独做冷进程与真实激光测量。
+
+### 后测：三、JFR 归因
+
+#### 后测：3.1 渲染线程执行样本（inclusive）
+
+| 场景 | 渲染线程样本 | `write` | `bakeBatches` | `sample` | `skinMatrices` | `positions` | `faceNormal` | `Matrix4f.normal` |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 16 静态 | 448 | 71.0% | 75.9% | 0.4% | 0.2% | 0.2% | — | **19.9%** |
+| 16 静态重复 | 422 | 70.1% | 78.0% | — | — | — | — | **24.6%** |
+| 16 动画 | 669 | 22.0% | 87.3% | **61.7%** | 22.9% | 13.2% | 10.3% | 6.0% |
+| 1 动画 | 195 | 10.8% | 51.3% | 36.9% | 12.8% | 8.2% | 3.1% | 4.1% |
+
+自耗样本（`hot-methods`）：16 静态 `write` 229／529 = 43.3%，`Matrix4f.normal` 89 = 16.8%，`PhotonBufferCache.write` 3.2%；16 动画 `write` 14.2%，`HashMap.getNode` 13.1%，`skinMatrices` 8.5%，`ArrayList.add` 3.9%，`ImmutableCollections$List12.get` 3.1%，`HashMap.computeIfAbsent` 2.9%，stream 相关多项合计约 8%。
+
+与测试前判断一致：静态模型的姿态缓存有效（`sample` 仅 0.4%，`sampleLocalFrame` 2%），但提交几何仍每帧全量重写（`write` 71%）；动画则相反，`sample` 占 61.7%，`write` 降到 22%。
+
+#### 后测：3.2 新增的精确子热点：`world.normal()`
+
+`write` 第 19 行每个 group、每帧调用一次 `world.normal(new Matrix3f())`（一般路径求逆转置，正交属性路径直接取 3×3）并新建 `Matrix3f`。在 16 静态场景它单独占 **19.9%** 渲染样本，重复场景 **24.6%**，这些比例的分母和 inclusive／self 口径不同，不能直接相除为“write 自身的三成”。**相机平移不改变法线**；相机原点也不必每帧变化，但当前 write 每组调用仍重算法线矩阵。它是可独立验证的窄范围优化候选；采样归因和调用次数需结合 JIT／内联与同条件 A/B 判断，尚不能承诺收益。
+
+#### 后测：3.3 分配
+
+`jfr view thread-allocation`（整段约 23 秒录制，含 setup／预热）：
+
+| 场景 | 渲染线程分配 | 占全进程 |
+|---|---:|---:|
+| 16 静态 | 9.8 GB | 68.1% |
+| 16 动画 | 27.7 GB | 85.1% |
+
+`allocation-by-site` 的动画侧（剔除 JFR 首个分配事件的跨录制伪权重：`JsonReader.<init>` 占 33.49%，与上轮审查记录的现象相同）：`skinMatrices` 13.78%、`DirectMethodHandle.allocateInstance` 10.04%、`immutable` 5.77%、`HashMap.newNode` 4.66%、`Integer.valueOf` 3.49%、`Arrays.copyOf` 3.25%、stream 相关约 6%、`sample` 2.67%、`faceNormal` 1.39%。`allocation-by-class`：`float[]` 10.0%、lambda 类 9.51%、`PhotonModelDefinition$Vector3` 5.77%、`Object[]` 4.77%、`HashMap$Node` 4.66%、`Matrix4f` 3.90%、`Integer` 3.49%、`Vertex` 2.67%。
+
+静态侧剔除同一伪权重后没有模型相关分配热点，说明静态问题是 CPU 计算与顶点写入，不是分配。绝对 GiB 与上轮口径不同（上轮 0.984／19.554 GiB），本次只作同轮内相对比较，不与上轮直接相减。
+
+### 后测：四、Debug 路径核对
+
+Debug 运行仅核对路径，期间暂停过，计时不进入上表。
+
+1. **静态提交路径**：断点 `PhotonModelGeometryUtil.write:24`（Render thread）命中；栈为 `write:24 ← PhotonModelOutput:480 ← bakeGroup:478 ← bakeModelGroup:450 ← PhotonWorldRenderStateMixin:29 ← GameRendererMixin:22`。变量 `indices.size()=1536`（512 三角形），`part.shading()=false`、`doubleSided()=true`、`insideOut()=false`，`world` 行列式 8.0（uniform scale 2）。确认每帧按 512×4 角写入，且夹具未开启 shading，**实际 shade() 成本未被夹具覆盖**。
+2. **动画采样路径**：断点 `PhotonModelPoseSampler.sample:150`（Render thread）命中；栈为 `sample:150 ← PhotonModelOutput.sampleLocalFrame:403 ← sampleLocal:361 ← bakeBatches:437`。`Input[time=0.039960623, clip=turn, loop=true, anchor=START]`，时间每帧变化，确认动画每帧 cache miss 并整帧求值。
+3. **首次准备路径**：断点 `PhotonModelOutput.prepare:179`（Render thread）命中；栈为 `prepare:179 ← reset:241 ← FXRuntimeMixin:111(emit) ← PhotonGeoEffect:44 ← PhotonModelRenderScenario:134`，`sampler=null` 进入 `loadDefinition()`。确认准备（读取、解析、拓扑、骨骼、材质）发生在 emit 当帧的渲染线程上。
+
+### 后测：五、Minecraft MCP 证据
+
+同一调试会话内通过标准 MCP 协议（桥接 `dist/cli.js mcp --no-discover`，`MC_MCP_PORT=19877`）调用：`ping` → `pong`；`screenshot_to_file` 输出 `build/modBench/debug-mcp-screenshot.png`（2560×1494，1,735,580 字节），画面可见测试世界、模型网格与玩家；`debug_fields` 返回 `net.minecraft.client.Minecraft` 的字段概览（不是 F3 文本，工具语义与名称有偏差，已按实际记录）；`get_minecraft_status` 返回 `connected=false / port=null / processAlive=false`，与 `pong` 成功并存——该次状态回读与命令响应不一致，不能仅据此断言是启动器视角或游戏已断开；需结合端口、同次会话与实例归属判断，不能忽略状态矛盾。
+
+### 后测：六、环境与边界
+
+- 日志确认 Sodium 加载、Ivy/Iris 版本段存在；本轮基准使用 Sodium 无光影客户端，不代表 Iris 大负载或光影场景。
+- 第一次运行被判定 INVALID 的字段是 `client.environment.invalidation=client.window.focus_lost`、`verdict=invalidated`；该轮数据（空场景 3.769 ms 等）只作“失焦时不可比”的示例，不进入对比。
+- 夹具固定 17×17 顶点、256 个四边面、单骨骼、part.shading=false、doubleSided=true；不能代表真实特效的多材质、shading、骨骼层级与透明交叠。
+- P13 的空场景 1.421 秒长帧本轮**未复现**：有效运行 `70-empty-repeat` 最长 16.340 ms，无效运行 6.77 ms。因此不能宣布已修复，仍按“未归因异常”保留。
+
+### 后测：七、对测试前建议的修正
+
+1. **P11 优先级调整**：先处理 `world.normal()`／法线矩阵的每帧重算。做法：把 `world` 拆成“相机平移”和“模型旋转／缩放”两部分；法线矩阵只由后者决定，可在模型朝向／缩放不变时跨帧复用，相机移动时只更新顶点位置。20%～25% 是当轮采样归因，不是可直接消除的墙钟比例或预期帧率收益。仅缓存法线矩阵及其行列式，按线性部分和 JOML 正交属性失效；保持 QUADS 四角、材质与排序语义，并以数值对照及实测决定收益。之后再做法线／shade 预缓存、角点预展开与矩阵手写乘。
+2. **P11 的 shade 覆盖缺口**：夹具 `shading=false`，真实资源若启用 `shading`，`shade()` 每角 6 次乘加的成本会额外出现；下一轮夹具应增加 shading=true 变体，否则不能用当前 71% 直接推断真实资产。
+3. **P12 维持原方向但顺序更明确**：`sample` 61.7%、`skinMatrices` 22.9%、`positions` 13.2%、`faceNormal` 10.3%。优先预编译权重／索引与轨道检索，再替换 `HashMap<Integer, Vector3>`、两份 `float[16]`、`Matrix4f` 与 stream 归一化；`morph` 整份复制（4.0%）也要覆盖“权重全 0 仍复制”的路径。
+4. **P06 不能沿用 270 ms 基线**：同夹具两次有效运行分别为 270.0 ms 与 79.2 ms；Debug 已确认 prepare 在 emit 的渲染线程栈内。下一步必须先做冷进程、同进程热、真实激光三类分开测量，再决定内容级共享与分帧准备的范围。
+5. **P13**：两次运行均未复现，维持未归因；下一轮用 GC／线程／IO 时间对齐而不是继续加模型样本。
+6. **分配口径**：JFR 首个分配事件可能带跨录制权重（`JsonReader` 33%～77%），不能当作真实分配；本节尚未统一 thread-allocation 视图估计与 ThreadAllocationStatistics 首尾计数差的算法；GB／GiB、录制阶段、首事件权重和分母均须标明。同轮数字也只能在同口径、同窗口、同线程时比较；跨轮绝对量不能直接相减或用于推算收益。

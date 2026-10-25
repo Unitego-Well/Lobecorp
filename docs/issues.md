@@ -14,7 +14,7 @@
 - 当前阶段：法线矩阵缓存已实现并完成数值／路径核对；前后采样已执行，但跨轮帧节奏与实际相机可比性不足，稳定收益尚未充分验收。无 Debug 的 8 个 Photon 用例及最终报告校验通过；两轮真实激光各完成 90 秒／3 次施放，包含 spark 开关与 GPU 帧采集。已确认 CPU 几何提交、动画分配和同步发射阻塞；并非 S01–S23 全部解决。完整数字、原始证据和未覆盖项见性能审查页。
 - 已完成前置：118 项正式资源已在模组内，81 项新增迁移提交为 1a5c2c3，原字节备份与哈希核对见 [资源说明](systems/resources-datagen.md#photon-内置资源)。本轮基准代码与证据文档已纳入本地提交 9d83824，未推送，用户原有改动保持。
 - 原始证据与结论已写入 [性能审查页](systems/photon-performance-audit.md)；本页新增 [待优化详细列表](#待优化详细列表)，覆盖当前确认热点、S01–S23 的后续处理和关闭条件。
-- 2026-10-24 补充：[测试前优化建议与问题原因](systems/photon-optimization-pretest-20261024.md) 与 [测试后优化建议与问题原因](systems/photon-optimization-posttest-20261024.md) 记录实施前根因与方案，以及本轮 BenchMod 两次运行、JFR 归因、Debug 路径核对和 Minecraft MCP 证据。本轮未改业务代码，没有优化后对照；P11／P12／P06／P13 的关闭条件不变。
+- 2026-10-24 补充：[测试前优化建议与问题原因](systems/photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照) 与 [测试后优化建议与问题原因](systems/photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照) 记录实施前根因与方案，以及本轮 BenchMod 两次运行、JFR 归因、Debug 路径核对和 Minecraft MCP 证据。本轮未改业务代码，没有优化后对照；P11／P12／P06／P13 的关闭条件不变。
 
 ## 当前推进边界
 
@@ -34,7 +34,7 @@
 | P06 | 首次施放阻塞已复现；跟随、过渡和完整技能边界仍未验收 | 此前首发最长约 861／856 ms，11:19 复测约 608 ms。后续已加入完整快照＋材质依赖键的弱值准备缓存；成对 JFR 首发 1157→821 ms，空基线也变快，不证明稳定收益；优化后无 JFR 仍有 677 ms 首发与 65／52 ms 热尖峰，见激光优化报告第十一节。三次施放均 STARTED，阶段 0→1→2→移除齐全，输出截图可见；code_animation_render_samples 仍为空，不能证明逐帧混合已解决。11:32 本轮 Sodium＋BenchMod＋MCP＋Debug 复测 51432 帧、均值 1.750／P99 8.125／最长 599.019 ms，4～7 秒长帧合计约 2.118 秒，后续施放最长 80／68 ms；Debug 确认 CHARGE 阶段同步准备 laser_body（clip=beam）。见 [性能审查](systems/photon-performance-audit.md) 与 [激光报告](systems/photon-laser-optimization-20261024.md) | 优先拆分并优化同步创建／准备链；墙体、瞬时星束、取消、晚追踪、卸载和人工观感仍需专门场景 |
 | P07 | 部分源码的历史 LF／CRLF 问题尚未统一 | 本轮 LcClientAnimations.java、QueenBeamEffects.java 的换行回归已按用户 A 授权恢复为原 CRLF，规范化代码 SHA256 相同；其他已有 LF 保留原样 | 如需统一历史 LF，另行确认具体范围；不扩大本次仅两文件的兜底授权 |
 | P08 | 本轮修改代码保留 8 项既有 IDE 提示，扩查相关 WIP 后合计 12 项 | LcAnimationBoneAdapter 返回值未使用 1 项、LcClientAnimations.entityPose 未使用 1 项；PhotonChildSpawner 重写形参空值注解 5 项、emitNow 返回值未使用 1 项。扩查另有 PhotonModelOutput 布尔调用提示、PhotonNamedMixer 冗余转换、PhotonNamedRuntime.listener 未使用与 TimelinePlayerMixin 借用运行态资源提示各 1 项。本轮新增的冗余条件提示已修正；没有为清零提示扩展无关清理 | 继续保留，不作为已确认运行错误；若用户要维护这些 API／注解，再单独确定范围 |
-| P09 | 历史专题、手写工程和截图证据在本工作区缺失 | 缺失资料清单见下节。先前文档审计将本地缺失文件链接从 205 处降为 30 处；剩余为 changes.md 与 player-animation.md 的共同基础历史截图。没有恢复任何资产或归档聊天 | 需要明确资料／资产来源；本轮仅登记、解除失效跳转并保留历史路径，不推断这些资料已经可用 |
+| P09 | 历史资料缺失；原字节保留的专项 Skill 仍有 5 处缺文件引用及 1 处旧 API 锚点 | 2026-10-26 磁盘盘点原有 35 处缺文件引用，30 处历史截图已改为明确历史路径说明；资源命名与动画示例两处导航已修复。余下 Skill 的 queen-star-beam、effect-authoring-lessons、photon-effect-authoring-history 及雾／体积 API 旧锚点没有可信原文，不以当前新页冒充；详见下方缺失资料 | 需要明确来源；保留 Skill、规则、记忆原字节与本地状态，未恢复资产、源码或归档聊天。缺失引用仍开放，不因索引覆盖完整而关闭 |
 | P10 | 本轮 4 个新增回归用例及代码没有执行验证 | PhotonModelMeshEditingTest 新增默认部件写回、过期环切扩展、骨骼／morph 重命名引用、复制部件轨道的用例；只有静态诊断，无测试结果 | 获明确授权后再运行；当前不得合并进历史通过数 |
 
 ## 本轮确认的性能问题
@@ -69,7 +69,7 @@
 
 架构复核确认：原生 MODEL shader 忽略缩放对法线的逆转置，ObjectPosition 语义与当前 CPU 输出不同；实例排序不等价于逐 QUADS 排序，父子变换可能含剪切，VAT 离散／法线量化不保证连续动态覆盖等价。Emitter.bakeInstancedGroup 已为 protected final，无需为既有参数复制私有编排；drain 本就合并相邻兼容 Job。不能按“public API 存在”直接切换后端、跳过阴影或宣布单 draw／数量级收益。此迁移缺口与当前几何提交问题统一保留在本项，未实施架构替换。
 
-2026-10-24 本轮授权：先修正 DS 报告中的坐标变化、零共享、采样收益与分配口径表述，再只实施法线矩阵缓存。已批准相同负载的 Sodium＋BenchMod 前后采样、Minecraft MCP 与 Debug 核对；不改变动画、LOD、资源表现。20%～25% 是历史采样归因，不是承诺收益；P11 其他几何写入成本及 P12／P06 继续保留。当前阶段：报告修正、缓存实现、5／5 数值测试与实际 Debug／MCP 路径核对完成。最终候选两轮均为 PASSED／environment.valid=true，但复核出现统一约 6.15 ms 节奏，前后截图的视角也不一致；不能宣布稳定提速或完整视觉验收。第一轮观测降幅仅留作结果，不作为承诺收益。完整账本见 [测试后报告](systems/photon-optimization-posttest-20261024.md)；P11 全量几何提交及 S01–S23 未整体关闭。
+2026-10-24 本轮授权：先修正 DS 报告中的坐标变化、零共享、采样收益与分配口径表述，再只实施法线矩阵缓存。已批准相同负载的 Sodium＋BenchMod 前后采样、Minecraft MCP 与 Debug 核对；不改变动画、LOD、资源表现。20%～25% 是历史采样归因，不是承诺收益；P11 其他几何写入成本及 P12／P06 继续保留。当前阶段：报告修正、缓存实现、5／5 数值测试与实际 Debug／MCP 路径核对完成。最终候选两轮均为 PASSED／environment.valid=true，但复核出现统一约 6.15 ms 节奏，前后截图的视角也不一致；不能宣布稳定提速或完整视觉验收。第一轮观测降幅仅留作结果，不作为承诺收益。完整账本见 [测试后报告](systems/photon-performance-audit.md#2026-10-24-历史模型诊断与法线缓存对照)；P11 全量几何提交及 S01–S23 未整体关闭。
 
 - **现象与证据：**16 静态模型 MEASURE 均值 3.258 ms、P99 6.256 ms；重复用例均值 2.851 ms。渲染线程 JFR 中 geometry.write inclusive 为 245／324 个执行样本，重复用例 212／280，约 75.6%／75.7%。这是执行样本比例，不是 GPU 占比或精确墙钟占比。
 - **代码入口：**[PhotonModelOutput](../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的 bakeBatches／bakeModelGroup、[PhotonModelGeometryUtil](../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelGeometryUtil.java) 的 write。局部姿态缓存命中后仍逐帧转换并提交最终顶点。
@@ -177,6 +177,7 @@ S09 已并入 P06，不另建同一问题副本。下表的原生 GLTF／VAT 路
 | shader-compatibility-exit.md | [粒子与渲染](systems/particle-rendering.md)；没有新增 EXIT 兼容结论 |
 | queen-star-beam.md、queen-arcana-beam.md、light-ball.md、laser-spell.md | [女皇技能表现](systems/queen-beam-skill-effects.md)、[资源规范](systems/resources-datagen.md)；旧工程结构与对象索引未找回 |
 | effect-authoring-lessons.md、photon-effect-authoring-history.md | [制作 Skill](../.codex/skills/lobecorp-effect-authoring/SKILL.md) 与 [修改记录](systems/changes.md) 只作现存规则／历史入口，不替代缺失案例 |
+| 专项 Skill 中的雾／体积 API 旧锚点 | photon-effect-mcp-api.md 当前没有“雾与体积效果入口2026-10-14”章节；Skill 原字节保留，未创建无证据的同名内容 |
 | 共同基础的玩家／附着历史截图 | 保留现有历史条目和缺失说明，不将 horde 或其他工作区的验收写入本页 |
 
 ## 证据与恢复边界

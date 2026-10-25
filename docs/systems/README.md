@@ -1,5 +1,7 @@
 # 系统文档索引
 
+全部自有 Markdown、规则、Skill、记忆、工具参考及只读边界见 [文档总索引](../README.md)；本页仅按系统职责提供专题入口。
+
 本工作区负责 **Photon／特效**，真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。先读 [当前能力与恢复入口](photon-workspace.md)、[Photon 唯一问题汇总](../issues.md) 和 [MCP API](photon-effect-mcp-api.md)，再按下表选择专题。其余系统作为共同基础保留，不表示在本工作区重新验收；旧资料缺失时只保留明确的历史路径。
 
 共同索引整理日期：2026-10-15；Photon 导航核对日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
@@ -26,7 +28,7 @@
 | 粒子与渲染 | [粒子与渲染](particle-rendering.md) |
 | 光影兼容研究 | EXIT 适用性、当前版本与后续调用（历史路径 `shader-compatibility-exit.md`，本工作区不存在） |
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |
-| 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
+| 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-result.md#历史移除方案与保留边界) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
 | 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[Sodium 诊断、瓶颈推断、建议与历史审查](photon-performance-audit.md)、[极端场景优化计划](photon-extreme-optimization-plan-20261025.md)、[GPT 执行文档](photon-extreme-execution-gpt-20261025.md) |
 | 特效重设计实施 | [模型输出、命名制作事务、工程测试验收与G1未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |

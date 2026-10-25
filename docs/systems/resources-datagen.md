@@ -18,6 +18,10 @@
 TranslationKeys.init 在生成入口初始化集中翻译定义；LangHandler.creates 在数据生成环境登记名称，Supplier 保留注册对象延迟访问。粒子生成源覆盖
 Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，不假定均由该 Provider 生成。
 
+## 文件命名与运行定义
+
+文件命名、英文形态确认及特效内部名称规则按 [项目规则](../../AGENTS.md#开始任务前) 执行。本节只补齐该规则的导航入口，不重命名现有文件。运行定义是否生效须核对实际构建资源目录、注册／读取入口与资源 ID，不能只凭参考文件存在判断；生成输出保持只读。
+
 ## 服务端模型与动画内容
 
 新的服务端动画内容仓库读取 `data/<namespace>/animation/models/<path>.geo.json` 与 `data/<namespace>/animation/animations/<path>.animation.json`，对应 ID 为 `<namespace>:<path>`。模组内置默认内容位于相同 data 路径，外部数据包按标准优先级覆盖；完整 GeoJSON 与动画 JSON 按内容版本同步，运行中实例保留开始时的版本，只有显式 `editContent` 修改本实例。
@@ -30,7 +34,7 @@ Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，
 - [服务端动画](../../src/main/resources/data/lobecorp/animation/animations/example/attachment_draw.animation.json)：`data/lobecorp/animation/animations/example/attachment_draw.animation.json`。
 - [客户端动画覆盖](../../src/main/resources/assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json)：`assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json`。
 
-示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；命令、代码包装、刀的客户端物品显示与清理见[独立拔刀接入示例](animation-runtime.md#独立拔刀接入示例)。
+示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；命令、代码包装、刀的客户端物品显示与清理见[显式登记独立模型与物品显示](animation-runtime.md#显式登记独立模型与物品显示)。
 
 ## Photon 内置资源
 

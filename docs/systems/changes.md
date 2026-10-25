@@ -1,5 +1,16 @@
 # 系统修改记录
 
+## 2026-10-25：极端优化首批代码与禁止游戏测试边界
+
+- 执行 horde-extreme-execution-plan.md 的无依赖 EX-01、EX-10、EX-11；用户本轮明确禁止游戏测试，因此未启动游戏、BenchMod Client/Server、Debug 或 Minecraft MCP，所有运行、GPU、截图及 A/B 门禁保持未执行，不标 DONE。
+- EX-01：HordeRenderMetrics 保留轮转单次样本，新增显式 FULL_STAGE_SUM，raw GpuQuery 异步逐调用求和，零值有效、缺失/忙/预算/取消保留 null 和覆盖原因；有限查询及报告队列，finish 关闭自有查询。PhotonFrameCapture 新增默认兼容的帧筛选回调，世界/阶段使用独立采样帧；HordeRenderScenario 接入阶段累计 Bench 指标和独立环境制品。HordeBenchmarkEnvironment 的异步只读探针仅在未来显式基准中启动，记录 HEAD/dirty、5 秒 GPU MHz/W/温度/显存及具体进程归属，缺失不伪补。
+- EX-10：HordeLightField 区段、槽位与集合改为原生 long；输入不变跳过去重，区段集合不变跳过常规槽位扫描，保留每 tick 装载判断、5 tick 光照更新和 120 绘制周期闲置回收；GPU 光照格式与原版天空光回退保持。
+- EX-11：HordeMeshCache 增加 request/advance/ready，资源、解析、骨骼、静态 cube、动画帧/cube 分步准备，跨步不残留共享骨骼状态；HordeClient 在 header 到达时排队、提取时推进；HordeGpuRenderer 依协作预算预编译七种管线和反向深度变体，再分步上传完整模型/Iris 帧，未就绪不绘制半成品，重载清理代际。Region/Terrain/Spatial/IrisAnimation 暴露本类预编译入口。
+- 3ms 仅为步骤间协作预算，JSON 解析、驱动编译和单次上传不能抢占；首可见帧≤100ms、光照 P95≤0.5ms、三轮±5%以及60FPS均未验证。EX-13 瞬移深度/位移上限冲突、EX-15/16 尸体事实纠正、世界与阶段计时口径集中记录到唯一问题清单；不擅自改变3格净空、数量、动画或LOD。
+- 编辑和新增备份仅经 IDEA，保留本轮外排版及已有 WIP；原字节 Base64 与 SHA256 清单位于 build/agent-backups/20261025-extreme-code/，修改记录原前缀另存，原完整内容在 HEAD 66e843e30ebdd41d34599e690d24f46308546d5e 可恢复。本轮未创建游戏或探针进程，Git 后台命令由工具管理并正常结束。
+- 统一 IDEA 静态检查完成：12 份 Java 全部 analyzed、0 错误；修正3项本轮提示后两文件复查0警告，剩余11项为GeckoLib内部API、既有可空引用/注解、借用世界资源提示及冗余抑制，未扩大清理。未执行编译、Data、单元测试、游戏、BenchMod 或 Debug，所有运行门禁未执行。 可独立提交范围仅含本轮新建 HordeBenchmarkEnvironment、开始时干净的 PhotonFrameCapture 和 changes.md；其余 Horde 源码/总览/问题页与既有 WIP 或未跟踪文件重叠，不能整份夹带提交，按 H20 保留工作区差异及原5项暂存。源码混合既有 WIP 的提交边界仍按 H20 处理，不覆盖原5项暂存。
+
+
 ## 2026-10-25：Sodium、JFR、帧时间与GPU联合只读诊断
 
 - 用户重新授权普通/光影诊断，并明确本轮不修改代码。先读规范与现有入口，核对隔离Bench配置、无已有本工作区客户端，备份旧原始报告、Iris/Sodium/options、四份文档和864份源码/着色器哈希；没有更改模组代码、Gradle、注册或shader。

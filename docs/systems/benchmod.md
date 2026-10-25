@@ -1,5 +1,97 @@
 # BenchMod 基准工具链
 
+## 2026-10-25极端优化实机测试与历史对照
+
+**结论：本轮整体验收不通过。** 普通与光影两轮BenchMod最终summary均为三个场景PASSED、workloadCorrect=true；这证明已有流程/计数断言通过，不证明预期负载进入画面。两轮horde-render截图均近乎天空，不能把下面较低耗时认定为有效优化收益；光影P99和GPU均值也未达到60FPS合同。没有修改生产代码来“修好”本轮数据，没有把旧数据或Debug暂停后的FPS混入基准。
+
+### 执行与证据
+
+- 代码：HEAD 11f7721971eb0c02c5ff39ed631e3ef6bdf26dde，包含c21899d优化；保留原通用构建号闭包WIP。两轮都经IDEA现有BenchMod Client启动，正常完成，Gradle日志分别BUILD SUCCESSFUL in 3m8s、3m；API启动返回未给最终退出码，不补写exitCode=0。
+- 普通：client-1792939439969，2026-10-25 14:43:59.969～14:46:23.971 UTC；光影：client-1792939667496，14:47:47.496～14:50:10.654 UTC。北京时间分别22:43～22:46、22:47～22:50。每轮含64真实清道夫、10000虚拟浪潮、64本地尸体。
+- 环境：MC26.1.2、NeoForge26.1.2.100、Sodium0.9.2、Iris1.11.4、BenchMod0.1.5-beta、JBR25.0.2、RTX3060 Laptop/OpenGL3.3/NVIDIA616.64。光影为现有ComplementaryReimagined_r5.9.3；只切隔离Bench的enableShaders，不改Shader ZIP、Sodium选项或全局配置。
+- 2560×1494，视距/模拟距离12，VSync关、260（本版不限帧）；各GPU捕获首尾均focused/maximized=true、iconified=false、throttle=NONE。独立捕获分别20/30/28秒，完整MEASURE约31/60/30秒；窗口不同，不能相加/相减推CPU或GPU占比。
+- 夹具：当前宽512、直线相对x+160→-160，读取配置-1在夹具回退10000，4帧、显式三档均启用。实际相机记录为x=-11、y=132.645、z=-424、yaw0/pitch32.211；实际画面异常的根因尚未确认。不能把“配置相机字符串”当实际屏幕负载正确的证明。
+- 归档根为build/agent-backups/20261025-runtime-compare/：ordinary-1/summary.json与gpu/保存首轮最终报告和三个独立GPU捕获；iris-1/report/保存光影summary、GPU、3份JFR、samples、screenshots、stages及Spark链接，17份bundle非日志制品及从raw补齐的尸体环境制品均由IDEA逐文件归档；iris-horde-jfr-analysis.json为离线解析；runtime-results.json和archive-hashes.txt保存检查摘要及哈希。前后配置逻辑文本、文档原文和Debug截图同目录。光影summary中10份带注册SHA的制品均已核对匹配；早期逐文件归档跨collector窗口误入普通目录的光影尸体环境副本已隔离到collector-overlap，不当作普通证据。
+- **取证缺口**：首轮归档未在下一次collect覆盖前完成，普通轮JFR、完整阶段JSONL及独立截图文件未保全；首轮截图已实际查看且哈希在summary中，但不能提供现存文件链接。保留普通summary和原始GPU逐帧数据，不伪称完整原始归档。IDEA对忽略目录返回过时summary后，已以磁盘最终运行ID/时间为准，旧TIMED_OUT报告不属于本轮。
+- 首轮启动API未提供可验证的游戏PID；第二轮游戏PID50224及启动22:47:12.596已通过命令行/父进程核对。Debug实例PID28480、启动22:53:29.338、端口19876，见后文。不得把共享Gradle守护进程34944当游戏关闭。
+
+### 当前数值（ms，完整MEASURE）
+
+| 场景 | 普通帧数 | 普通均值 / P95 / P99 | 光影帧数 | 光影均值 / P95 / P99 | 独立GameRenderer GPU均值，普通 / 光影 |
+| --- | --- | --- | --- | --- | --- |
+| 64真实清道夫 | 6610 | 4.689 / 6.364 / 8.901 | 2466 | 12.572 / 19.401 / 23.002 | 1.333 / 10.268 |
+| 10000虚拟浪潮 | 16876 | 3.555 / 4.805 / 9.960 | 3762 | 15.945 / 17.719 / 31.673 | 2.110 / 15.578 |
+| 64静态尸体 | 13855 | 2.165 / 3.420 / 4.268 | 3963 | 7.572 / 8.586 / 9.151 | 0.603 / 7.184 |
+
+浪潮MEASURE计数全程10000、累计绘制失败0；尸体全程64、static_drawn64、fallback0，普通draw1、光影draw2。尸体光影截图中可见8×8布局，证明本夹具的64静态尸体路径实际工作；不能外推所有尸体类型、256场景或180格服务器跟踪。普通世界GPU样本2750、光影625；光影尾部取消1个查询，不当作零。实际模型/字节与统计结果另见下文。
+
+### 与之前三轮对照
+
+| 版本/条件 | 浪潮帧均 / P95 / P99 ms | 独立世界GPU均值 ms | 可比性 |
+| --- | --- | --- | --- |
+| 修改前普通 client-1792899914313 | 3.290 / 4.215 / 4.866 | 2.875 | 旧路线、全精度14帧 |
+| 本轮普通 | 3.555 / 4.805 / 9.960 | 2.110 | 新512直线/4帧/远档，截图异常 |
+| 修改前光影 client-1792900642330 | 34.967 / 36.100 / 36.939 | 34.438 | 旧路线，活动区域7、光区段714 |
+| 修改前干净光影 client-1792902465754 | 56.359 / 74.134 / 75.769 | 47.593 | 同旧路线但波动，区域11、区段624 |
+| 本轮光影 | 15.945 / 17.719 / 31.673 | 15.578 | 区域13、区段2740，全远档且画面异常 |
+
+本轮光影帧均数值较旧光影两轮低约54.4%/71.7%，普通帧均数值高约8.1%；这些仅为跨版本数值对照，**不能作为因果收益或“优化提升百分比”**。路线、动画采样、LOD、区域、光照覆盖和实际屏幕内容同时变化；旧世界/阶段窗口还不同。旧GPU阶段仅轮转单次工作集，新阶段为完整draw内求和，禁止用1.049ms旧expand与6.513ms新expand直接判回退。旧场景64真实清道夫普通9.054ms、光影10.570/14.571ms也有波动，没有严格A/B，不归因本次尸体/浪潮优化。
+
+### 阶段、负载与合同检查
+
+| 浪潮GPU阶段，整draw内累计均值 ms | 普通 | 光影 |
+| --- | --- | --- |
+| regions | 0.011 | 0.017 |
+| terrain | 0.013 | 0.025 |
+| spatial | 0.095 | 0.206 |
+| units | 0.831 | 1.181 |
+| motion | 0.128 | 0.146 |
+| expand | 不适用 | 6.513 |
+| copy | 不适用 | 0.762 |
+| base | 0.344（含发光） | 0.735 |
+| glow | 已含base | 0.331 |
+| unit_stats | 0.081 | 0.084 |
+| 独立Horde draw elapsed | 1.504 | 9.995 |
+
+光影JSONL的3759个MEASURE周期中，完整阶段和有效1253个、均值10.0003ms；独立draw有效1252个、均值9.9952ms，跨组统计差约0.051%，低于15%覆盖审计阈值。它们是不同帧组，不能逐帧精确守恒。无重复/漏绘帧、GPU查询errors0；世界捕获仍与阶段/MEASURE时窗不同，不能将15.578-9.995直接当“其他系统成本”。
+
+- 光影passes15、Iris copies2，工作集16MiWords、双缓冲、无缩档；自有工作集268435456字节。每帧另有1次786432字节单位历史复制，不能在总传输分析时省略。
+- 每帧展开176万顶点、Iris逻辑复制约98.570MB；旧为520万顶点/约291.34MB。当前10000实例全远档（155～157个块，近/中档计数0），减少工作量主要包含模型档位变化，不是消除全部复制，更不是PCIe带宽实测。
+- 全精度520→520（隐藏面0%）；中档304、远档176，默认4帧、原周期0.6667秒。三档CPU动画数组49920+29184+16896=96000字节。以历史同模型单全精度14帧174720字节计算，约少45.1%；不能用单档14→4的71.4%声称完整三档或全系统内存下降70%。
+- 光照CPU按tick取最近draw：普通均值0.128/P95 0.178ms，光影0.277/P95 0.959ms。光影light P95≤0.5ms门禁未过，且覆盖2740区段，不能与历史714区段作严格单变量比较。
+- GPU约束归约3756/3759周期完整、errors0；完整样本最大穿透0microblocks、单周期拒绝最多850次，尾部3周期未知。它只证明本次GPU状态查询，不能替代高速移动/多层/瞬移/画面的完整分割验收；Bench tick指标未导出对应数值不代表GPU JSONL没有数据。
+- E1均值≤16.7ms通过该数值条件，但P99=31.673>20、世界GPU均值15.578>15，整体未过；copy/draw约7.6%也未达到<3%。copies≤5及passes≤20有本轮数值，其他A/B降幅、首帧≤100ms、256尸体/多事件/重载/三轮±5%等没有完成。本轮普通STABILIZE最大帧1.320秒，不能宣称冷启动卡顿解决。
+
+### JFR、日志与判断层级
+
+**事实**：只离线解析已保全的本轮光影浪潮JFR；以GPU开始UTC为近似MEASURE首帧、窗口60秒，边界可有约一帧偏差并可能混入少量首尾工作。ExecutionSample/NativeMethodSample均20ms，Render thread分别453/530样本，采样类别独立，不相加当CPU占比。原生叶热点353条匿名MethodHandle实际栈为glfwSwapBuffers→GlDevice.presentFrame→RenderSystem.flipFrame；另有glBindFramebuffer53、glFenceSync25、删纹理25、nglReadPixels4条。它们不证明PCIe回读或单一驱动根因。
+
+**事实**：最靠近叶子的Horde Java栈含updateSection47、extract30、prepare22、requiredSections19、loaded19。分配采样估计权重约3.58GB/窗口，其中HordeLightField lambda约1.167GB、HashMap.Node约338MB、TextureViewAndSampler约183MB、Long约151MB、GpuBufferSlice约89MB、UnitState.Tile约42MB；这是估计分配而非存活/泄漏。updateSection仍有无DataLayer天空光256列回退查询，requiredSections仍在候选循环创建捕获level的谓词。
+
+**证据支持推断**：本负载的GPU阶段主压力在expand，单位历史也有显著成本；copy约0.76ms不是唯一瓶颈。光照区段/加载集合及回退查询仍值得优化，新增编号页/批对象/描述对象分配不能忽略。GPU探针记录1875～1920MHz、122.67～130.68W、75～82℃、利用率97～100%、显存使用3404～3546MiB（设备总量），支持GPU忙碌判断，不能证明热降频或本模组独占显存。
+
+**待验证假设**：基准空画面涉及相机/投影/viewport/深度状态、单位位置或光照剔除中的哪一环；拒绝步进较多是否造成停滞；LOD代理在移动镜头中的可接受性与跳变；光影换包/故障回退效果。没有通过改相机、关LOD/发光或减少数量来让本轮通过。
+
+**日志事实**：光影本轮出现7条Missing program：region_update、terrain_update、spatial_index、unit_update、motion、iris_vertices、unit_stats；旧6条名单不同，不写成“已清除”。另有HordeHeights未使用sampler提示、既有光影变量/块映射警告。普通有Spark CancellationException，Windows实际built-in Java；两轮run_complete后仍见指挥家GUI恢复异常，执行器拒绝/保存错误与测量分开。错误计数0不等于无兼容或退出异常。
+
+### IDEA Debug与Minecraft MCP功能取证
+
+正常Client配置启动Debug会话705ecc9a-2cb0-4dfa-943f-2d45870b6a74，PID28480，真实gameDirectory为本工作区run/client，MCP端口19876。聊天内通用Minecraft工具ping未连接本端口；经读取固定桥接实现，使用同一MCP Mod的官方/api/status、/api/cmd接口限定19876检查，返回type=minecraft-mod、pid28480和pong，未改全局MCP配置，未连接19877/19878。
+
+- 按项目规则先在Render thread调用GLFW最大化，随后Debug读回GLFW_MAXIMIZED=1；MCP控制true。GUI按当前screenId/widgetId经Create Test World创建Horde runtime compare 20261025，没有进入用户原有世界。
+- 实际命令创建48宽事件00f6d9eb-02c7-43d1-9025-bcb438f9d149并从服务端日志核对，MCP/Debug确认事件及2886提交实例；普通无光影路径gpuCopy0。地面视角和80格旁观视角截图均看到浪潮，缓存4帧和520/304/176顶点三档与基准一致。截图中中远档出现明显块状/四面体代理，不能把它写成视觉质量已通过；没有完成连续录像、3格净空/地形/粒子/尸体10秒清理的专项验收。
+- event clear后保存退回标题屏；退出控制读回false，再在本人临时断点调用Minecraft.stop并继续执行，正常关闭。四个新建106行断点均按ID删除；原有105行和异常断点保留。IDEA会话列表为空、进程只读核对无Horde游戏候选；共享Gradle/IDE/其他任务程序未结束。
+- Debug截图与暂停后的FPS只作功能取证，不放入性能表。自动探针输出均cleanup_complete、closed/worker_terminated为true；离线JFR工具已退出，没有留下游戏、桥接或探针服务。
+
+### 后续处理顺序与维护
+
+具体问题只在[horde-issues.md](horde-issues.md)维护。处理顺序：先修基准可见性门禁并核对空画面根因，再验证LOD画面；随后对同夹具做光照分配/天空光回退、expand及单位历史的单变量A/B。对应入口为HordeRenderScenario.verify（约270行）、HordeGpuRenderer.drawUnitHistories/IrisVertices、HordeMeshReduction、HordeLightField.requiredSections/updateSection、HordeLightCoverage.loaded、HordeUnitState.prepare。当前报告不授权额外改代码，也不把当前profile直接变成生产修复。
+
+源码定位：[基准断言](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java)、[GPU历史/展开/复制](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[隐藏面与闭合代理](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshReduction.java)、[光照候选及天空光回退](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、[单位编号页](../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitState.java)、[约束标量归约](../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitStats.java)。
+
+测试结束恢复隔离Iris原true标志及原注释时间戳；Bench options归一化换行后的完整文本与开始一致，未声称字节哈希完全相同。NeoForge自动补入9项新配置，原文本备份保留，不删除引擎合法新增项。Shader ZIP/Sodium未手工修改，但本轮未记录它们开始哈希，不补造前后哈希证明。
+
+
 ## 2026-10-25极端优化夹具与计时更新（未运行）
 
 - lobecorp.horde-render复用既有入口：直线x+160→-160、宽512；读取maximumVisible，-1仅在夹具回退10000，正值原样，非法非正值失败。环境制品记录端点/相机/资源各档顶点与字节/缺失高度样本，不移动相机凑门禁。

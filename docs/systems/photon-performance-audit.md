@@ -1,5 +1,118 @@
 # 当前性能静态审查与优化计划
 
+## 2026-10-26：无光影／光影四组运行对照与结论修订
+
+本节为当前测试结论，旧节均为当时历史，不能将旧节的“未运行”当作当前状态。用户已重新授权游戏测试；完成 Sodium＋BenchMod＋Minecraft MCP＋IDEA MCP＋独立 Debug。四组各 13 个 Photon 场景全部 PASSED，共 52 项；Sweeper 为 SKIPPED，不计通过数。实验缺省仍关闭，动画、LOD、原资源与生产渲染源码没有因本轮测试改变。**确认静态快照整块提交减少 reserve 调用；尚不能确认正式环境的稳定帧时收益，G0／G1 未通过。** 当前待办只在 [唯一清单](../issues.md) 维护。
+
+### 运行、原件与统计口径
+
+原件根：`C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-runtime-comparison-20261025`。各运行子目录保留 report、JFR、帧／GPU／workload、截图与控制台；comparison-data.json 保存汇总，jfr-audit.jsonl 保存流式分析，debug 保存独立路径核对。所有运行正常结束，控制台 BUILD SUCCESSFUL；这与退出 GUI 异常并存，不能写成无异常退出。
+
+| 分组 | 报告运行编号 | 北京时间 | packed 请求／实际 Mixin | Photon 结果 |
+|---|---|---|---|---|
+| plain-baseline | client-1792942126414 | 2026-10-25 23:28:46～23:36:29 | false／false | 13 PASSED |
+| plain-candidate | client-1792947609751 | 2026-10-26 01:00:09～01:07:55 | true／true | 13 PASSED |
+| shader-baseline | client-1792940658550 | 2026-10-25 23:04:18～23:12:09 | false／false | 13 PASSED |
+| shader-candidate | client-1792941303454 | 2026-10-25 23:15:03～23:22:52 | true／true | 13 PASSED |
+
+- 环境：Minecraft 26.1.2／NeoForge 26.1.2.100、Java 25、Sodium 0.9.2、Iris 1.11.4、ComplementaryReimagined r5.9.3、RTX 3060 Laptop；无光影仍加载 Iris，不能称纯 Sodium。seed=7、flat 世界、视距／模拟距 12、关闭垂直同步、报告限制值 260；实际窗口和 framebuffer 为 **2560×1494、165 Hz**，不是计划中的 2560×1600，也不是配置声明的 1280×720。
+- 每场景检查实际光影状态以及 packed 请求与实际 Mixin 一致；普通模型 warmup 100 ticks、MEASURE 300 ticks。E2 为 16 静态＋16 动画＋1 束，E3 为 32＋32＋4 束；主采集 90 秒、4／31／58 秒三次施放。第四次验证截图在主采集之外，但仍可能落在 Bench MEASURE 中，故主表统一使用 PhotonFrameCapture。
+- 52 项全部采集 flags=3（聚焦＋最大化），诊断帧数与捕获帧数一致，GPU query errors=0；异步 busy／pending 仍按原件保留，缺测不是零。CPU 为捕获的 render scope，GPU 为整个 GameRenderer scope，含世界／实体／后处理；二者与帧间隔不能相加。draw 只覆盖私有 Photon drain 内的原生提交，可能包含嵌套 Bloom，不含返回后的所有合成，不能当模型独占 draw 或像素过绘。
+- 前三轮 metadata HEAD=3a89929b、最后一轮 HEAD=3b7d41c0，均 dirty=true；期间提交 ced6dc9 的基准门禁改动以及 3b7d41c 的文档整理，未再改生产渲染。不是四轮干净同提交。用户原有配置和两份测试 WIP 保留，不能把 dirty 当作已知性能原因。
+- 最后一轮第一次误用了生成的默认 Sweeper profile，只有 Sweeper，没有 Photon；已归档 plain-candidate-wrong-profile 并排除。重做准备、确认 modBench.scenarios=lobecorp.photon-* 和 MCP 19877 后完成表内有效运行。Debug 样本也排除。
+
+### 全部场景的主采集帧时间
+
+单位 ms，单元格依次为均值／P99／最长；每组只有一次有效运行，不能以单次百分比宣布稳定收益。
+
+| Photon 场景 | 无光影基线 | 无光影候选 | 光影基线 | 光影候选 |
+|---|---|---|---|---|
+| 00-empty | 2.373／4.166／21.672 | 3.211／6.755／30.023 | 7.279／10.663／19.934 | 6.704／8.376／11.380 |
+| 10-static-one | 2.408／4.029／15.444 | 4.446／7.500／79.473 | 7.846／9.653／22.676 | 7.361／8.723／12.321 |
+| 20-animated-one | 2.622／4.407／24.653 | 2.708／5.407／21.820 | 8.155／12.013／22.662 | 7.380／8.808／15.089 |
+| 30-static-sixteen | 3.862／7.087／12.036 | 3.232／6.352／15.028 | 8.086／9.742／16.813 | 7.626／8.809／11.109 |
+| 40-animated-sixteen | 5.973／10.318／15.416 | 6.286／13.156／42.333 | 9.297／17.708／59.049 | 7.910／13.124／27.870 |
+| 50-cold-sixteen | 6.067／10.536／14.986 | 6.041／11.694／31.973 | 8.623／14.671／20.838 | 8.099／13.356／19.953 |
+| 60-static-repeat | 3.431／6.103／10.861 | 2.592／4.895／10.738 | 8.153／10.542／25.015 | 7.747／10.815／13.585 |
+| 70-empty-repeat | 1.925／3.243／7.973 | 1.861／3.555／7.837 | 7.274／8.625／10.354 | 7.304／9.093／11.705 |
+| 80-static-thirtytwo | 4.205／6.129／12.295 | 2.616／4.718／13.355 | 8.309／9.911／20.131 | 8.315／9.718／11.512 |
+| 90-animated-thirtytwo | 11.114／20.851／28.875 | 9.408／16.406／22.480 | 12.104／20.341／33.017 | 12.158／21.539／25.072 |
+| 91-mixed-thirtytwo-laser | 9.305／19.083／648.135 | 8.161／19.864／717.979 | 11.064／24.782／804.829 | 10.136／22.861／757.503 |
+| 92-mixed-sixtyfour-four-lasers | 14.560／39.036／232.884 | 13.617／43.489／232.200 | 18.034／52.076／301.549 | 16.050／44.443／219.921 |
+| 99-empty-extreme-repeat | 1.858／3.124／8.288 | 2.024／3.622／9.224 | 7.204／8.591／19.253 | 7.273／8.413／11.061 |
+
+### 提交、分配与 GPU 的实际结果
+
+16 静态：两组均为每 Job 2048 顶点；基线每 Job reserve=2048，候选=1，调用数减少 **99.951%**，各轮真实 resize=0。这是减少逐顶点预留调用，不是减少 99.951% 内存、扩容或帧时间；原生 Job 缓冲仍创建，不是持久缓冲复用。光影基线 reserve 总数 60,555,264。动画 16 模型两组仍为 reserve/Job=2048，未被整块稳定快照覆盖。
+
+| 分组／负载 | CPU 均值 ms | GPU 有效均值 ms | 渲染线程分配 MiB/帧 | reserve/Job | resize/采集帧 |
+|---|---|---|---|---|---|
+| plain-baseline／30-static-sixteen | 2.741 | 1.673 | 0.282 | 2048.000 | 0/3871 |
+| plain-baseline／40-animated-sixteen | 4.939 | 2.644 | 5.608 | 2048.000 | 0/2503 |
+| plain-baseline／91-mixed-thirtytwo-laser | 7.585 | 4.392 | 8.254 | 1958.654 | 2869/9673 |
+| plain-baseline／92-mixed-sixtyfour-four-lasers | 11.877 | 7.170 | 18.112 | 1908.643 | 6116/6182 |
+| plain-candidate／30-static-sixteen | 2.233 | 1.588 | 0.308 | 1.000 | 0/4625 |
+| plain-candidate／40-animated-sixteen | 5.243 | 2.736 | 5.631 | 2048.000 | 0/2378 |
+| plain-candidate／91-mixed-thirtytwo-laser | 6.563 | 3.860 | 7.244 | 971.462 | 3129/11028 |
+| plain-candidate／92-mixed-sixtyfour-four-lasers | 10.909 | 6.812 | 15.866 | 943.035 | 6172/6610 |
+| shader-baseline／30-static-sixteen | 3.764 | 7.699 | 0.259 | 2048.000 | 0/1848 |
+| shader-baseline／40-animated-sixteen | 7.682 | 8.002 | 6.338 | 2048.000 | 0/1608 |
+| shader-baseline／91-mixed-thirtytwo-laser | 8.957 | 9.427 | 7.455 | 1960.864 | 2330/8135 |
+| shader-baseline／92-mixed-sixtyfour-four-lasers | 14.406 | 13.722 | 16.794 | 1912.470 | 4740/4991 |
+| shader-candidate／30-static-sixteen | 3.315 | 7.244 | 0.384 | 1.000 | 0/1960 |
+| shader-candidate／40-animated-sixteen | 6.759 | 7.368 | 6.589 | 2048.000 | 0/1890 |
+| shader-candidate／91-mixed-thirtytwo-laser | 8.226 | 9.262 | 7.614 | 970.372 | 2572/8880 |
+| shader-candidate／92-mixed-sixtyfour-four-lasers | 12.995 | 12.562 | 16.875 | 939.870 | 5444/5608 |
+
+混合激光确有真实 resize，不能将纯静态的零扩容推广至全部 Photon。应比较 resize/帧或 Job，而非直接拿不同帧数的总计数论增减。动画渲染线程分配仍约 5.6～6.6 MiB/帧；此数包含相应渲染线程全部活动，不是模型独占、存活量或内存泄漏证据。E2/E3 仍出现数百毫秒最长帧，未完成逐长帧因果定位。
+
+### JFR、Debug 与 Minecraft MCP
+
+JFR 使用 Java 25 RecordingFile 流式两遍读取；以包含 Minecraft.run 的栈识别渲染线程 ID，再分别统计 ExecutionSample／NativeMethodSample。分析器处理 61 个录制，当前权威 Photon 52 个、历史 Photon 8 个；额外旧 Sweeper 文件不进入对照。场景 JFR 包含预热／收尾，不冒充精确主采集窗口；self 与 inclusive 不混用、inclusive 主题不相加。
+
+- 静态16：无光影基线 replay self=108/401 Java 样本，候选 memcpy self=18/242；光影基线 replay=49/229，候选 memcpy=12/188。支持执行路径从逐顶点回放转到整块复制，不直接代表所列墙钟占比。
+- 动画16 PoseSampler inclusive：无光影基线271/636、候选275/629；光影223/581、236/581。仍可见求值／蒙皮链。Iris wrapper 在无光影栈也大量存在，不能据 inclusive 计数宣称全部为光影 GPU 成本。
+- **探针成本不可忽略**：无光影静态基线 observeReserve self=33/401；动画基线 observeReserve=204/636；候选动画 observeBuffer=138/629。相同探针配置不等于相同执行次数，候选减少 reserve 的同时也减少诊断调用。尚无 probe-off A/B，不能外推生产净收益。
+- 历史静态 reserve self=112；旧报告 112/362=30.94% 保留旧分母，本次严格渲染线程 Java 过滤为112/271=41.33%。不同过滤不能拼接为性能趋势；reserve 本身不等于 realloc。
+- 独立 Debug（PID41252）确认录制当次 output.vertices 0→2048、缓存2048顶点／65536字节并命中真实成功返回；原生临时缓冲探针 accepted=true、4顶点／128字节。临时探针资源已关闭。一个行号690非可执行断点与一次 run-to 等待超时保留在证据，随后实际命中688；不隐藏诊断失败。
+- 原生 Minecraft MCP 工具未连接成功；按项目技能使用已发布桥和标准 SDK 1.32.1，固定19877，取得 pong、connected=true、世界／玩家／实体及截图。未修改全局端口，未重建桥。每次 Client／Stdio transport 均 finally close，桥进程已退出。原生连接失败原因未确认。
+
+### 确认事实、证据支持推断与待验证假设
+
+**确认事实：** 无光影两轮所有13场景相机指纹一致，场内 camera_changes=0；光影基线对候选绝对相机 Y＋7／Z－10，投影／朝向一致并不能抵消该位移。普通位置分别是 (-6.5,-36.776718807064796,-44.5)，极端场景为 (-6.5,-31.776718807064796,-58.5)；光影基线对应低7、高Z10。wp0_cross_run_gate_verified 与 particle_seed_determinism_verified 未证实。无光影空场景均值 2.373→3.211 ms，16动画 P99 10.318→13.156 ms，存在阴性控制波动。
+
+**确认事实：** MCP 在无光影候选读到3只存活女皇，截图也可见背景动物。女皇 UUID：b3df0c8f-aa69-44b4-9ae8-fa7716ed15ef、fbfb0a9a-9f61-4d66-b5cd-27a1ab8e6d5a、b5dcddd9-0b7b-4063-b9d3-9d59c7fa5d2b；来源／归属／是否跨轮残留未核实。empty 表示无当前模型负载，不是干净空世界。未删除这些对象。四组控制台均包含 Trying to return to in-game GUI during disconnection，场景 PASSED 不覆盖退出生命周期正确性。
+
+**证据支持的推断：** 整块提交确实消除了稳定快照的大部分 reserve 调用；当前动画／动态部分仍有 CPU 提交、蒙皮／分配及混合负载扩容压力，值得分别验证。光影 GPU 有效均值较高，但相机、背景与工具开销限制其因果分摊。无光影静态帧时间虽下降，也不足以消除阴性控制和探针偏差。
+
+**待验证假设：** 相机位移是否由夹具位置恢复／服务器保存时序导致；3只女皇是否来自夹具生命周期；首发长帧中资源准备、驱动等待和管线各占多少；关闭探针后候选是否仍获益；混合 resize 能否用容量策略安全减少。现有数据均不能确认这些根因，不在本次报告任务中擅自修复。
+
+### 与此前报告的同口径描述性对照
+
+旧 client-1792904292331 仅8场景，早于录制漏提交修复且没有本轮探针、相机字段；不作为正确完整负载的性能基线。以下全部使用 Bench MEASURE 帧间隔（不是上方 PhotonFrameCapture），单位 ms，均值／P99，保留数字供追踪，不计算优化收益。
+
+| 公共场景 | 历史样本 | 本轮无光影基线 | 本轮无光影候选 |
+|---|---|---|---|
+| 00-empty | 2.274／5.120 | 2.376／4.147 | 3.214／6.754 |
+| 10-static-one | 2.059／3.934 | 2.409／4.066 | 4.446／7.471 |
+| 20-animated-one | 2.530／5.740 | 2.621／4.420 | 2.708／5.407 |
+| 30-static-sixteen | 2.485／4.553 | 3.860／7.067 | 3.234／6.332 |
+| 40-animated-sixteen | 5.571／10.588 | 5.975／10.340 | 6.286／13.126 |
+| 50-cold-sixteen | 5.730／10.749 | 6.028／10.520 | 6.072／11.886 |
+| 60-static-repeat | 2.455／3.950 | 3.434／6.116 | 2.590／4.887 |
+| 70-empty-repeat | 1.552／2.937 | 1.927／3.251 | 1.861／3.552 |
+
+### 后续建议、对应代码与收尾
+
+1. 先复核隔离世界与相机恢复门禁：PhotonModelRenderScenario、QueenBeamPerformanceFixture、PhotonFrameCapture；只清理可证明自有对象，不直接删除背景实体。下一次正式验证应有重复配对与 probe-off 控制，当前不继续启动游戏。
+2. WP1 保持默认关闭：PhotonModelOutput、PhotonPackedVertexUtil、BufferBuilderMixin、PhotonBufferCache；后续验证透明排序、动态覆盖与容量策略，不能将 reserve 计数当扩容。
+3. 动画独立定位：PhotonModelPoseSampler、PhotonModelGeometryUtil、PhotonSubmissionDiagnostics；先拆求值、蒙皮、提交与诊断开销，保持动画、LOD、资源表现等价。WP2～WP7 尚未实施，GPU 化不因本次采样自动获准。
+4. 参考继续使用本页既有 JFR 官方指南与 Sodium／Iris 锁定版本源码；[JFR RecordingFile API](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.jfr/jdk/jfr/consumer/RecordingFile.html) 用于离线读取，[Sodium 官方源码](https://github.com/CaffeineMC/sodium) 用于渲染边界参考。参考资料不代替本地调用证据。
+
+正式采样已经结束。四个游戏进程（67216／72044／39744／14452）和独立诊断进程41252均已结束，临时桥／离线分析进程均完成；无 Debug 会话，临时断点移除、用户原3个断点保留。隔离 iris.properties、spark/config.json、options.txt 已逐字节恢复原件（config-restored.json 三项 true）；未动用户原有配置和测试修改，未推送。本轮无新增生产优化或资产修改。进度与当前问题同步总览／唯一清单，后续聊天轮换交协调安排。
+
+
+
 ## 2026-10-25：BenchMod 与光影激光复测（阴性结果，候选已回退）
 
 本节只记录本轮新增复测与结论；没有保留任何优化代码，生产源码已恢复到 HEAD。测试使用 Sodium 0.9.2、BenchMod 8 个 Photon 场景（PASSED）、ComplementaryReimagined r5.9.3 光影与 90 秒真实激光三连施放。

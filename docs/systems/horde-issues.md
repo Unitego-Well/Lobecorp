@@ -12,16 +12,23 @@
 - 普通同夹具 client-1792951390739：帧均 3.365 ms/P99 6.777 ms、世界 GPU 1.663 ms、draw 1.094 ms，相对修改前 3.706/7.940/1.850/1.861 均有下降。
 - 64/256 尸体、10000 数量、Sodium+Iris 路径、BenchMod Compile 退出 0 与 summary PASSED 只证明对应流程/计数；不等于完整画面与功能验收。
 
+### 真实事件取证（Debug + Minecraft MCP）
+- 在有命令的隔离世界用 Debug 客户端加 MCP 端口 19876 启动 `/lobecorp horde start lobecorp:midnight_cleanup 161.5 56 3.5 -158.5 56 3.5 20000 96`；事件 id cad5c81e-4f36-4724-a96f-c848a9c4fedd 实际启动并在画面可见。
+- 客户端 debug overlay：events=1；submitted 与 GPU instances 相等并随波次变化（3180→9484、7538、9364/9359 等），batches 56→154，lightSections 153→476，gpuCopy=0。
+- Debug 求值：`HordeVisualConfig` 动画帧/ LOD / ENABLED = 4/true/true；`HordeGpuRenderer.statistics()` modelBuilds=3、irisMiWords=16、slots=2、lightSections=374；`HordeClient.batches()` 合计 9434。
+- 夜间时间 13000 下单位出现红色发光；近/中/远三档取景与 650ms 间隔两帧可见位姿变化；x=110→60 镜头移动后单位持续可见，未观察到停显或数量归零。
+- 未完成：区域 3 格净空/平滑退出的定量读数、E4、真实事件 256 尸体；截图与哈希见 `build/agent-backups/20261026-runtime-event/`。
+
 ### 新增/剩余问题
 - **I29 [P1／待验收] 中远 LOD 外观与切换**：中景改为 4 个包围盒 112 顶点、远景 1 个整体包围盒 24 顶点；高位俯视压力视角下明显块状，真实事件地面视角与美术接受未完成，近中景切换虽有迟滞但未录像验证无跳变。近景仍 520 全精度、动画仍按配置 4 帧。不得以“性能达标”代替外观验收。
-- **I30 [P1／未完成] 游戏内功能矩阵**：本轮新建测试世界未开启命令；既有带命令世界经 MCP GUI 加载失败。真实事件下的发光、4 帧动画、分割平滑退出/区域不进入、镜头移动与近中远景未取得本轮证据；不得用 BenchMod A/B 截图代替。已确认没有伪造这些结果。
+- **I30 [P1／部分完成] 游戏内功能矩阵**：2026-10-26 已用 Debug 客户端 + Minecraft MCP 完成真实事件部分取证：`/lobecorp horde start` 启动事件并在画面可见；客户端 overlay 显示 events=1、submitted=GPU instances 随波次 3180→9484、batches 56→154、lightSections 153→476、gpuCopy=0；Debug 求值确认 animationFrames=4、LOD/ENABLED=true、modelBuilds=3、irisMiWords=16/slots=2；夜间截图可见单位发光，近/中/远三档与两次 650ms 间隔的位姿变化、x=110→60 镜头移动下单位持续可见。**未完成**：区域 3 格净空与平滑退出的定量证据（未取到 penetration/rejected 回读；召唤 3 头牛后仅取得目标附近截图，不足以证明不进入区域）、E4 换包/重载/窗口变化、真实事件下的 256 尸体。证据 `build/agent-backups/20261026-runtime-event/`（截图、runtime-event.json、sha256）。
 - **I31 [P2] 首帧与稳定尖峰**：修改后 STABILIZE 216–341 ms、WARMUP 最大 29–98 ms、MEASURE 单帧最大 45–69 ms；H11 首帧≤100 ms 未过，模型烘焙/管线预热的尖峰仍在。
 - **I32 [P2] 单位历史页预算边界**：行环页按可见行跨度与 32 MiB 预算缩 ring；超宽/超长路线可能降低方向平滑（`unitMatches` 回退解析位置，不截断、不隐藏单位）。本轮已修复“列片数按单块 9 列计算导致多数列历史查找失败”的缺陷，全列覆盖仅在 bench 验证。
 - **I33 [P2] 余量与未覆盖矩阵**：世界 GPU 余量约 0.35–0.91 ms；E4 换包/关光影/重载/改窗口、普通组 256 尸体、GPU 频率/功耗同步采样与本轮 JFR 未完成，环境波动或后台负载可能吃掉余量。
 - **I34 [P3] 全精度隐藏面**：520→520（0%），W0 的 15–35% 减面门禁仍未达到；本轮未改全精度几何。
 - **I35 [P3] Iris missing program**：region_update、terrain_update、spatial_index、unit_update、motion、iris_vertices、unit_stats 等告警仍存在，未关闭，也未证明无渲染影响。
 - **I36 [P2／取证流程] 并行运行干扰**：00:59–01:08 另一 Photon 工作区在同一 GPU/窗口跑基准，期间一轮样本终止丢弃。后续每轮启动前必须确认没有其他 Minecraft 进程/窗口，并在结束时归档上一轮制品与运行 ID。
-- **清理边界**：隔离 Iris 配置已按备份恢复；run/client 下本轮创建的“新的世界 (3)”为临时测试世界，保留未删除用户其他世界；游戏进程与 Debug 会话已停止。真实功能矩阵若要补做，须重新授权并在有命令的隔离世界进行。
+- **清理边界**：隔离 Iris 配置已按备份恢复；run/client 下本轮创建的“新的世界 (3)/(4)”为临时测试世界，保留未删除用户其他世界；Debug 会话与游戏进程已停止；会话级断点静音已恢复 false，未删除/改动用户既有断点。真实功能矩阵剩余项（区域定量、E4、256 尸体）若要补做，须重新授权并在有命令的隔离世界进行。
 
 ## 2026-10-25 实机复测后的当前优先项
 

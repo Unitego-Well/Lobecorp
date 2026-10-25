@@ -58,6 +58,14 @@
 - 本轮未完成：真实事件 Debug/MCP 功能矩阵（新建世界命令被禁用，MCP GUI 加载既有命令世界失败，未取得事件内发光/动画/分割/镜头移动证据）；E4 换包/重载；普通组 256 尸体；首帧≤100 ms（STABILIZE 仍 216–341 ms）；LOD 外观美术接受。不能以本轮 PASSED 或数值代替这些门禁。
 - 世界 GPU 为 GameRenderer 30 s 独立捕获均值，帧间隔为完整 MEASURE；两组窗口不同，不能相减或相加做成本分摊。`expand/copy` 为整 draw 内阶段和，跨版本单次轮换样本不可直接比较。
 
+### 2026-10-26 游戏内真实事件功能取证（Debug + Minecraft MCP，补充而非替代 A/B）
+
+- 环境：Debug 启动的 Client、MCP 端口 19876、隔离世界（创造模式、命令可用）；用 `/lobecorp horde start lobecorp:midnight_cleanup 161.5 56 3.5 -158.5 56 3.5 20000 96` 启动真实服务端事件，id `cad5c81e-4f36-4724-a96f-c848a9c4fedd`，`/time set night` 置于夜间。
+- 观察：debug overlay 全程 `events=1`；submitted 与 GPU instances 相等并随波次变化（3180→4558→7538→9364/9359/9484），batches 56→154，lightSections 153→476，gpuCopy=0、失败未见。
+- Debug 求值：`HordeVisualConfig` 动画帧/LOD/ENABLED=`4/true/true`；`HordeGpuRenderer.statistics()` 为 `modelBuilds=3, irisMiWords=16, irisSlots=2, lightSections=374`；`HordeClient.batches()` 合计 9434，说明三档模型与双缓冲工作集在真实事件路径建立。
+- 画面：夜间单位红色发光可见；近/中/远三档取景均可见单位；同机位 650ms 两帧位姿变化而计数稳定；镜头 x=110→60 移动后单位持续可见。未做量化区域净空、E4 换包/重载与真实事件 256 尸体。
+- 限制与清理：期间一个用户临时断点（ClientRuntimeEvents:95）多次暂停线程导致截图超时，采用会话级断点静音后恢复 false，未删除用户断点；事件用 `/lobecorp horde clear` 清除、平台方块回填空气、测试牛清理、保存退出到标题，Debug 会话停止，游戏进程退出。截图与说明：`build/agent-backups/20261026-runtime-event/`。
+
 ## 2026-10-25极端优化实机测试与历史对照
 
 **结论：本轮整体验收不通过。** 普通与光影两轮BenchMod最终summary均为三个场景PASSED、workloadCorrect=true；这证明已有流程/计数断言通过，不证明预期负载进入画面。两轮horde-render截图均近乎天空，不能把下面较低耗时认定为有效优化收益；光影P99和GPU均值也未达到60FPS合同。没有修改生产代码来“修好”本轮数据，没有把旧数据或Debug暂停后的FPS混入基准。

@@ -10,7 +10,7 @@
 
 启动前显式添加 VM 参数 `-Dlobecorp.photon.packedSnapshot=true`，才由 [PhotonBenchMixinPlugin](../../src/main/java/org/unitego/lobecorp/mixin/PhotonBenchMixinPlugin.java) 加载 [BufferBuilderMixin](../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/BufferBuilderMixin.java)，并启用 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的实验回放。缺省为 false，不写入模型、特效资源或持久配置；开关属于启动时选择，不支持运行中热切换。
 
-实验只在 `stableFrame` 且已有 `GeometrySnapshot` 缓存命中的回放处尝试。动画求值、逐帧写入和 cache miss 原链不动，仍使用原有帧、世界矩阵、颜色与光照匹配条件。[IPhotonPackedVertexSink](../../src/main/java/org/unitego/lobecorp/client/photon/model/IPhotonPackedVertexSink.java) 借读已打包数组，不保存它；入口在任何 reserve 之前拒绝以下不支持情况：
+实验只在 `stableFrame` 且已有 `GeometrySnapshot` 缓存命中的回放处尝试。动画求值和动态帧原写入不变，仍使用原有帧、世界矩阵、颜色与光照匹配条件。随后获用户 A 授权的稳定 cache miss 修复独立于本实验：录制当次正常提交，超限不创建记录器而直接输出、不缓存，现有缓存命中的开关保持默认关闭。[IPhotonPackedVertexSink](../../src/main/java/org/unitego/lobecorp/client/photon/model/IPhotonPackedVertexSink.java) 借读已打包数组，不保存它；入口在任何 reserve 之前拒绝以下不支持情况：
 
 - 实际对象不是精确的原生 `BufferBuilder` 类，或 builder 已结束／已有顶点／仍有未完成属性，未满足 fresh 状态。
 - 实际模式不是 QUADS，格式不是 `PhotonPipelines.PARTICLE_FORMAT` 同一对象，或 mask、32 字节 stride、初始属性 mask 与所有元素偏移不完全匹配。
@@ -20,7 +20,7 @@
 
 packed 快照为 GC 管理的 byte[]，每组最多 1 MiB，单个输出全部候选合计最多 4 MiB。reset、强制 remove、clearParticles、invalidate 与新 Frame 会解除相应 packed 引用；不长期持有原生 buffer，也不以盲目增加 staging 初始容量替代减少逐顶点 reserve。
 
-源码核对确认当前 Iris 的已知格式扩展分支未命中 Photon 自定义格式，但这只说明已读到的分支；Sodium 内嵌源码尚未展开。实际 Sodium／Iris 组合兼容性、普通／光影观感、透明排序、性能收益和 G0／G1 均未运行验证，不能据此宣布等价或提速。IDE 静态未发现新增错误；编译及生产包隔离通过，新增 12 项与原快照 1 项共 13 项非游戏测试通过，无窗口 Data 成功且未写入或移除资源。原生字节对照只验证编码，fake sink 只验证回放契约，均不代表真实 Mixin 已应用；完整结果见 [执行记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)。本阶段未启动游戏。
+源码核对确认当前 Iris 的已知格式扩展分支未命中 Photon 自定义格式，但这只说明已读到的分支；Sodium 内嵌源码尚未展开。实际 Sodium／Iris 组合兼容性、普通／光影观感、透明排序、性能收益和 G0／G1 均未运行验证，不能据此宣布等价或提速。IDE 静态未发现新增错误；编译及生产包隔离通过，后续漏提交修复新增 3 项边界回归后，相关 16 项非游戏测试通过，无窗口 Data 成功且未写入或移除资源。原生字节对照只验证编码，fake sink 只验证回放契约，均不代表真实 Mixin 已应用；完整结果见 [执行记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)。本阶段未启动游戏。
 
 ## 独立回归测试入口
 

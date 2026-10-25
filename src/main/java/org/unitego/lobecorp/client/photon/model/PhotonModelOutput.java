@@ -509,19 +509,15 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 						if (cached != null) {
 							cached.replay(output, allowPackedSnapshot(cached));
 							triangles = cached.triangles();
-						} else {
-							SnapshotRecorder recorder = stableFrame ? new SnapshotRecorder() : null;
-							triangles = PhotonModelGeometryUtil.write(recorder != null ? recorder : output,
-									sampled, group, world, groupColor, light, normalCache);
+						} else if (stableFrame) {
+							var snapshot = GeometrySnapshot.captureAndSubmit(output, sampled, group, world, groupColor, light, normalCache);
+							triangles = topology.indices().size() / 3;
 
-							if (recorder != null) {
-								recorder.finish();
-
-								if (recorder.count() <= MAX_SNAPSHOT_VERTICES) {
-									geometrySnapshots.put(group, new GeometrySnapshot(world, groupColor, light,
-											recorder.vertices(), recorder.lights(), recorder.count(), triangles));
-								}
+							if (snapshot != null) {
+								geometrySnapshots.put(group, snapshot);
 							}
+						} else {
+							triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light, normalCache);
 						}
 
 						if (owner != 0) {
@@ -646,6 +642,23 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			this.lights = lights;
 			this.count = count;
 			this.triangles = triangles;
+		}
+
+		/// 当次始终通过原逐顶点链提交；超出顶点预算时直接写入且不保留快照。
+		public static @Nullable GeometrySnapshot captureAndSubmit(VertexConsumer output, PhotonModelPoseSampler.Frame frame,
+		                                                          int group, Matrix4f world, int color, int light, NormalCache cache) {
+			long vertexCount = (long) (frame.prepared().groups().get(group).indices().size() / 3) * 4;
+			if (vertexCount > MAX_SNAPSHOT_VERTICES) {
+				PhotonModelGeometryUtil.write(output, frame, group, world, color, light, cache);
+				return null;
+			}
+
+			var recorder = new SnapshotRecorder();
+			int triangles = PhotonModelGeometryUtil.write(recorder, frame, group, world, color, light, cache);
+			recorder.finish();
+			var snapshot = new GeometrySnapshot(world, color, light, recorder.vertices(), recorder.lights(), recorder.count(), triangles);
+			snapshot.replay(output);
+			return snapshot;
 		}
 
 		boolean matches(Matrix4f world, int color, int light) {

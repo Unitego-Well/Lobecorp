@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-25：确认继续代码实施与测试授权分离
+
+- 用户选择执行顺序A：已确认代码按实现依赖继续，不等待前置实机门禁；运行门禁保留未执行，验收目标不降低。尚未确认的关键取舍继续逐项询问。
+- 游戏、BenchMod Client/Server和Debug仍禁止，必须另行明确授权；本次A回复不构成测试许可。
+- 仅经IDEA同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读；未改源码，未编译、Data或测试。修改前片段备份：build/agent-backups/20261025-execution-choice-a/before.json；不夹带其他WIP与暂存内容。
+
 ## 2026-10-25：确认分割平滑优先方案
 
 - 用户对EX-13选择B：每tick位移≤0.75格；瞬移、区域新增或扩张导致包围时允许多tick退出，期间不隐藏，正常横摆仍避免进入，退出后保持原3格净空目标。

@@ -28,7 +28,7 @@
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |
 | 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
-| 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[Sodium 诊断、瓶颈推断、建议与历史审查](photon-performance-audit.md) |
+| 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[Sodium 诊断、瓶颈推断、建议与历史审查](photon-performance-audit.md)、[极端场景优化计划](photon-extreme-optimization-plan-20261025.md) |
 | 特效重设计实施 | [模型输出、命名制作事务、工程测试验收与G1未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
 | G1全量资源验收 | [501条来源、逐文件往返、独立包运行与问题台账](photon-resource-acceptance-20261021.md) |
 | G1代码阶段 | [全部代码优先的编写范围、API/MCP和未验证边界](photon-g1-code-stage-20261021.md) |

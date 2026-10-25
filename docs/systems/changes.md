@@ -1,5 +1,20 @@
 # 系统修改记录
 
+## 2026-10-25：Sodium、JFR、帧时间与GPU联合只读诊断
+
+- 用户重新授权普通/光影诊断，并明确本轮不修改代码。先读规范与现有入口，核对隔离Bench配置、无已有本工作区客户端，备份旧原始报告、Iris/Sodium/options、四份文档和864份源码/着色器哈希；没有更改模组代码、Gradle、注册或shader。
+- 经IDEA现有BenchMod Client运行普通client-1792899914313、光影client-1792900642330、干净复测client-1792902465754。三者权威summary均两个场景PASSED、workloadCorrect=true，Gradle日志BUILD SUCCESSFUL；异步启动API未提供最终进程退出码，不补写为exitCode=0。
+- 三轮10000虚拟实例完整60秒帧间隔均值/P95/P99为3.290/4.215/4.866、34.967/36.100/36.939、56.359/74.134/75.769ms；独立30秒GameRenderer GPU均值2.875/34.438/47.593ms。64真实实体完整31秒均值9.054/10.570/14.571ms。均Sodium0.9.2、Iris1.11.4、JBR25.0.2、RTX3060 Laptop/NVIDIA616.64、2560×1494、VSync关闭、260不限帧，GPU捕获全部聚焦/最大化/限帧NONE。
+- 原始帧样本、GPU及阶段JSONL、6份JFR、截图和日志全部归档。JFR按近似MEASURE窗口流式读取，Java/原生20ms样本分别计数，分配权重标估计，初始化/测量/收尾分开；不把inclusive比例当独占CPU成本，不把CPU/GPU不同窗口相加或相减。
+- 已确认光影每帧520万展开顶点、约291MB逻辑复制；单次工作集GPU展开/复制与Swap调用链支持GPU执行/呈现压力判断，但不证明全部耗时来自复制，更不证明主机/PCIe往返。确认光照几何缓存有效，Section/HashMap/绑定描述对象仍有分配热点；64实体另有GeckoLib/Iris顶点写入CPU路径，不与虚拟帧缓存混算。全部事实、证据支持推断、待验证假设、代码位置、建议优先级及验收条件集中写入horde-issues.md，BenchMod页仅保留结果入口。
+- 两次光影差异显著，活动区域11/7/11、索引档3/1/3、区段714/714/624不完全一致，GPU功耗/频率/外部竞争未同步采集；保留全部数据，不只选最快轮。为排除首轮JFR大文本导出收尾竞争另做干净复测，测量期间不做本地解析或IDE索引，较慢结果同样公开。自然区域具体身份未逐个追踪，参数NBT未逐轮保存，不把对照包装成严格因果实验。
+- 两次光影均有6个自定义数据pass的Missing program日志，MEASURE绘制失败计数/查询错误为0不等于无兼容错误；三轮退出仍见指挥家GUI恢复异常，光影另有执行器/区块保存错误，均与测量分开记录。只看两组静态截图确认浪潮可见，不宣称全部一万可见、轨迹平滑、三格净空或粒子验收；粒子计数均0。
+- 文献读取并引用Sodium官方仓库、Oracle JFR性能指南/RecordingFile API/jfr手册、Khronos timer_query/PBO规范；本地IDE核对GpuDevice.precompilePipeline、RenderPass.drawMultipleIndexed、TextureFormat及GlCommandEncoder PBO路径，不套用其他版本或声称未暴露API已可用。没有实施任何优化建议，没有新增代码测试、Data或服务端测量。
+- 仅临时经IDEA切换隔离iris.properties的enableShaders，结束恢复原标志与原注释时间戳；Iris、Sodium选项、options.txt哈希与开始一致，现有Shader ZIP哈希不变。NeoForge启动时自动纠正隔离lobecorp-client.toml，保留引擎.bak，不声称该未单独备份的文件恢复原哈希；未进入/操作run/client用户世界。
+- 客户端PID44596/61880/58676启动时间分别11:44:32.700/11:56:43.450/12:27:06.552（北京时间），均为本次隔离benchClient。运行自动结束并核对不存在，没有杀用户程序、IDE或共享Gradle后端。临时JFR文本导出session45345已中止、确认结束并删除无效大输出；改用任务临时目录的JDK25.0.1公开消费API工具，读取JBR25.0.2记录，解析进程均退出；工具未返回辅助进程PID不补造。原始JFR不改，无临时MC桥接服务。
+- 备份与可复核产物：C:/Users/wang_/AppData/Local/Temp/horde-sodium-diagnosis-20261025-6d507349。仅通过IDEA编辑既有总览、唯一问题页、BenchMod说明和本记录；源码指纹864份不变、原5项暂存保留。独立进度文档可提交；BenchMod页含旧未提交说明，不整份连带提交，不推送。
+
+
 ## 2026-10-24：GPU三级索引、同源地形平滑、三格净空与潮内粒子
 
 - 通过IDEA完成本工作区22份Java/GLSL/回归文件的本轮改动，同步总览、唯一问题汇总、渲染契约和BenchMod说明。用户先要求光影开/关实测，随后明确取消游戏测试；本轮未启动、重启、接管或停止游戏，未运行MC MCP、Debug或真实Client/Server基准，没有新增FPS/GPU执行时间/画面证据。

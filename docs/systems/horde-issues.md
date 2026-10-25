@@ -1,8 +1,143 @@
 # Horde 问题汇总
 
-更新日期：2026-10-24。范围仅为 `.workspace/lobecorp_horde`、`codex/horde` 当前完整工作区，包含原有暂存和未暂存实现。本页是唯一的问题清单；已完成且已验证的事项移至[修改记录](changes.md)，进度见[总览](horde-index.md)，原始基准见[BenchMod](benchmod.md)。
+更新日期：2026-10-25。范围仅为 `.workspace/lobecorp_horde`、`codex/horde` 当前完整工作区，包含原有暂存和未暂存实现。本页是唯一的问题清单；已完成且已验证的事项移至[修改记录](changes.md)，进度见[总览](horde-index.md)，原始基准见[BenchMod](benchmod.md)。
 
 前轮已执行IDEA编译、20项Horde回归、三轮Data、基准制品编译、Minecraft MCP+Debug及两轮当时代码的Sodium客户端复测。测试通过不代表全部问题解决。用户要求不再主动询问：以下未定事项记录并沿用保守替代，只有用户要求时再提问，不将等待确认伪装成已解决。
+
+## 2026-10-25 Sodium联合诊断：事实、推断、假设与优化建议
+
+本节为当前工作区的只读诊断，不是代码修复。测试代码为HEAD 4a1b511b加既有WIP；864份Java/GLSL/着色器源码指纹前后不变。三次运行均由现有IDEA BenchMod Client完成，权威summary两场景均PASSED、workloadCorrect=true；这只说明既有门禁通过，不代表无兼容日志、无收尾异常或性能达标。Sodium是当轮已加载的渲染引擎；JFR来自JDK，帧时间/GPU查询来自既有BenchMod、PhotonFrameCapture与HordeRenderMetrics，不冒称“Sodium内部GPU计时”。
+
+### 证据目录与口径
+
+归档根：C:/Users/wang_/AppData/Local/Temp/horde-sodium-diagnosis-20261025-6d507349。E1为各组summary.json；E2为artifacts/gpu下的horde-gpu.json、sweeper-gpu.json；E3为artifacts/stages/horde-stages.jsonl；E4为artifacts/jfr原始记录及根目录的对应jfr-analysis.json；E5为*-client.log、*-launch.log；E6为artifacts/screenshots；E7为source-before.xml及配置/Shader ZIP哈希核对。组目录ordinary、iris、iris-clean分别对应普通、首次光影和干净光影复测。
+
+- 普通：client-1792899914313，客户端PID44596，启动2026-10-25 11:44:32.700（北京时间）；Gradle日志BUILD SUCCESSFUL in 2m51s。
+- 首次光影：client-1792900642330，PID61880，启动11:56:43.450；BUILD SUCCESSFUL in 2m33s。
+- 干净光影复测：client-1792902465754，PID58676，启动12:27:06.552；BUILD SUCCESSFUL in 2m28s。采样期间不执行离线JFR解析或IDE索引。
+- 三组均为Minecraft26.1.2/NeoForge26.1.2.100、Sodium0.9.2、Iris1.11.4、JBR25.0.2、RTX3060 Laptop/OpenGL3.3/NVIDIA616.64；2560×1494，seed7平坦隔离世界，视距/模拟距离12，VSync关闭、配置260。本版260表示不限帧；E2全部捕获样本flags=3（聚焦、最大化、非最小化）、限帧原因为NONE。
+- 光影日志确认ComplementaryReimagined_r5.9.3，HIGH（用户改动选项0）。结束后核对隔离事件配置纵横间距1.8、regionMargin8；未逐轮保存NBT规则快照，不将当前值作为全部历史参数的完整证明。普通/光影复用隔离场景，不进入run/client用户存档。
+- E1帧间隔为完整MEASURE：64实体约31秒、浪潮约60秒。E2的GameRenderer GPU/CPU仅覆盖20/30秒，不含tick、提取、呈现和限帧；不能与60秒均值直接相减，也不能把CPU和GPU相加。[R3]
+- E3 CPU为每绘制周期阶段调用之和，prepare包含regions/terrain/spatial等子阶段，禁止再相加。GPU为轮换的一次调用：普通base包含整pass，光影expand/copy/base/glow只采首个工作集，不是整帧阶段总量。
+- E4执行/原生采样周期均20ms；按E2首帧UTC和E1 MEASURE时长筛选，边界可能相差一帧。Java与原生样本分别计数；inclusive栈可重叠，不相加当CPU占比。ObjectAllocationSample权重是估计分配量，不是精确对象数、存活量或泄漏量。[R1][R2]
+
+### 已确认事实 F
+
+| 组/场景 | MEASURE帧数 | 间隔均值/P95/P99 ms | 间隔最大 ms | GameRenderer GPU均值 ms（有效样本） | Render CPU均值 ms |
+| --- | --- | --- | --- | --- | --- |
+| 普通/64真实实体 | 3424 | 9.054 / 14.216 / 29.149 | 256.924 | 3.326（1631） | 8.155 |
+| 普通/10000虚拟实例 | 18238 | 3.290 / 4.215 / 4.866 | 40.179 | 2.875（3275） | 1.996 |
+| 首次光影/64真实实体 | 2933 | 10.570 / 13.456 / 17.763 | 33.039 | 8.787（917） | 9.093 |
+| 首次光影/10000虚拟实例 | 1716 | 34.967 / 36.100 / 36.939 | 81.702 | 34.438（431） | 7.110 |
+| 干净光影/64真实实体 | 2128 | 14.571 / 21.722 / 27.044 | 59.589 | 9.897（716） | 11.651 |
+| 干净光影/10000虚拟实例 | 1064 | 56.359 / 74.134 / 75.769 | 415.267 | 47.593（209） | 14.954 |
+
+F1：三轮一万实例计数恒定10000，MEASURE记录的Java绘制失败为0，GPU查询errors=0；干净光影阶段查询有1个未完成结果在结束时取消，不当成0耗时。两次光影不能只选34.967ms较好的一次。干净光影的E2前30秒间隔均值48.985ms，而E1全60秒为56.359ms，运行自身也非完全平稳。
+
+F2：E3普通/首次光影/干净光影分别有18221/1714/1063条MEASURE绘制周期，数量与E1不相同属于不同采样入口，不能一一混算。普通/首次光影/干净光影的活动区域数为11/7/11、索引级别3/1/3、光照区段714/714/624；测试并非严格单变量。自然Mob、缓存、窗口跨度及未记录的GPU频率/功耗/其他负载都需要作为限制保留。
+
+| E3一万实例工作量 | 普通 | 首次光影 | 干净光影 |
+| --- | --- | --- | --- |
+| 逻辑批次均值 | 188.46 | 188.46 | 188.60 |
+| pass / draw均值 | 7 / 381.92 | 60.34 / 417.47 | 61.92 / 419.48 |
+| 顶点展开数/帧 | 0 | 5200000 | 5200000 |
+| 复制次数/帧 | 0 | 18.78 | 18.64 |
+| 复制字节/帧均值 | 0 | 291347113 | 291342985 |
+| 索引有效字数 | 296088 | 3120 | 284700 |
+| 粒子选区/提交数 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+F3：520顶点/模型×10000实例×14字/顶点×4字节=291200000字节，实际复制略高来自行/工作集填充；这是逻辑传输工作量，不是实测PCIe带宽或主机往返。draw计数包含motion、展开和材质等，不能与旧报告“186次主体/发光draw”直接比较。两次光影实际主体+发光约为2×工作集数，约37～38次。
+
+| E3 CPU阶段均值 ms（整周期累计，prepare含子项） | 普通 | 首次光影 | 干净光影 |
+| --- | --- | --- | --- |
+| extract（最近一次） | 0.085 | 0.097 | 0.132 |
+| prepare | 0.146 | 0.138 | 0.285 |
+| light | 0.212 | 0.609 | 1.029 |
+| motion | 0.446 | 0.472 | 0.881 |
+| expand / copy | 不适用 | 0.662 / 0.978 | 1.157 / 1.598 |
+| base / glow | 0.319 / 合并在base | 0.977 / 0.587 | 1.636 / 1.077 |
+
+F4：GPU单次阶段样本如下，不能逐项相加、乘工作集数后当作已测的整帧分摊。
+
+| E3 GPU阶段一次调用均值 ms（有效样本） | 普通 | 首次光影 | 干净光影 |
+| --- | --- | --- | --- |
+| spatial（本轮各自所有提交级别） | 0.146（1691） | 0.064（142） | 0.194（81） |
+| motion（一个group） | 0.768（1735） | 0.841（143） | 0.922（115） |
+| expand（光影首工作集） | 不适用 | 1.049（142） | 1.725（81） |
+| copy（光影首工作集） | 不适用 | 0.146（143） | 0.370（88） |
+| base | 1.447（1731，整pass） | 0.227（143，首工作集） | 0.210（117，首工作集） |
+| glow | 合并在base | 0.066（143） | 0.072（79） |
+
+干净光影的首工作集约29.15万展开顶点、复制约16.37MB，不代表每个工作集等量。Light CPU并非光影专属分支：低FPS时更多绘制帧跨逻辑tick，loaded列查询均值普通24.78/首次光影268.00/复测308.62每帧，不能将每帧light升高直接解释为Iris使同一代码慢了五倍。
+
+F5：E4 Render thread MEASURE样本：普通浪潮Java614/原生409，首次光影176/631，干净光影197/580。普通Java样本中365条包含Horde、22条包含Sodium；后两组包含Horde的Java样本为71/89、Sodium为12/16。它们是inclusive计数而非独占CPU时间，不能据此称“Sodium占比很低所以可以移除”。
+
+F6：原生热栈解开匿名MethodHandle后为glfwSwapBuffers → GlDevice.presentFrame → RenderSystem.flipFrame → Minecraft.renderFrame。普通157/409、首次光影533/631、干净光影492/580条同类原生样本落在该链。首次光影nglReadPixels仅11条、干净光影10条；并非原生样本的大多数。
+
+F7：确有HordeGpuRenderer.IrisVertices.draw:L646 → CommandEncoder.copyTextureToBuffer → GlCommandEncoder.copyTextureToBuffer:L269 → glReadPixels调用。当前26.1.2后端先绑定GL_PIXEL_PACK_BUFFER，随后缓冲作为顶点输入；本路径没有应用CPU map。仅凭glReadPixels不能证明PCIe往返、主机内存驻留或固定同步次数，驱动驻留和等待需要专门GPU时间线证据。[R4]
+
+F8：光照几何缓存MEASURE期light_coverage_builds均0，说明候选几何复用生效；但requiredSections:L137仍创建Section并插入HashSet。JFR该最靠近叶子的Horde分配栈估计权重：普通995MB、首次光影705MB、复测469MB（十进制MB）；这是各自窗口分配估计，不是精确泄漏。普通Section类估计948MB，GlRenderPass.TextureViewAndSampler约1033MB，GpuBufferSlice约277MB。
+
+F9：64真实实体控制场景与虚拟浪潮不同。Java执行样本包含GeckoLib的数量普通448/691、首次光影671/894、复测618/881；普通叶热点有Vector3f.mul/矩阵旋转，光影叶热点有BufferBuilder.beginElement、VertexConsumer.addVertex、NormalHelper.computeFaceNormalManual/computeTangent。首次光影Vector4f分配估计权重6.93GB；这不属于虚拟GPU帧缓存的切线计算，不能混为同一瓶颈。
+
+F10：普通浪潮稳定阶段最大帧1.140s，首周期prepare CPU312ms（包含regions79.6、terrain24.4、spatial137.2）、motion716ms；稳定前原生样本出现nglGetProgramiv。光影iris_prepare全程只调用1次、准备72800字，MEASURE期该阶段调用/字数均0。缓存确实一次准备，但首次CPU停顿不能全部归因模型烘焙，GPU硬件编译/创建也需拆分。
+
+F11：GC暂停在浪潮MEASURE窗口分别为21次/146.46ms（最大28.43ms）、7次/66.88ms（最大34.40ms）、10次/74.52ms（最大20.59ms）。有暂停事实，但未逐帧对齐全部峰值，不将415ms最大帧直接归因GC，也不以GC总时长解释持续35～56ms。
+
+F12：两次光影均在MEASURE前记录6个Missing program：horde_iris_frames、horde_region_update、horde_terrain_update、horde_spatial_index、horde_motion、horde_iris_vertices。Iris说明不是critical，但可能有渲染异常；截图浪潮可见和failures=0不能关闭兼容问题。三轮收尾仍有ConductorControls返回GUI异常，光影另有ConsecutiveExecutor/保存区块失败，发生于run_complete后，与测量和退出生命周期分开。Spark在Windows降级为built-in Java，不把它当async-profiler原生事件。[R5]
+
+F13：已看两组截图，浪潮可见，但画面大量天空、只部分单位在可见区域；提交10000不等于可见10000。粒子计数均0，当前高处相机与24格粒子范围没有覆盖真实粒子负载；未做移动生物轨迹、三格净空、楼层、粒子或多玩家动态验收。
+
+### 证据支持的推断 I（不是已确认唯一根因）
+
+- I1／较强：光影慢帧主要处在GPU执行/呈现链，而不是纯Java算力或一个CPU light循环。依据E2 GPU时间显著上升、E4 Swap链密集、E3全量展开工作量；仍不能将Swap所有等待都等同某个shader，CPU/GPU不同窗口不相加。[R3]
+- I2／较强：Iris全量展开路径是优先优化对象。每帧520万顶点、约7280万数据字输出与约291MB复制，加上首工作集GPU展开1.05～1.73ms，比只看CPU copy约1～1.6ms更有解释力；但没有全工作集统一GPU分摊，不能宣布“复制占全部耗时”。
+- I3／较强：光照候选包装、集合与重复绑定仍有CPU/分配优化空间。源码路径、JFR权重及light/提交阶段CPU共同支持；几何缓存已生效但没有消除Section/HashMap对象。
+- I4／较强：64真实实体的GeckoLib/Iris顶点写入是另一条CPU压力路径，不能用一万虚拟实例成绩替代真实参战实体性能。
+- I5／中等：首轮prepare/motion大停顿含GPU程序/资源准备的可能性较高；JFR初始化栈、GetProgramiv和一次缓存指标支持，但缺独立冷启动重复，不分摊为确定百分比。
+- I6／中等：普通约188个逻辑批次产生约382个总draw，CPU提交与描述对象重复工作可能值得批处理；本轮未实现或测量收益，drawMultipleIndexed的存在不保证少发GL调用。
+
+### 待验证假设 H
+
+H1：GPU频率、功耗、温度或外部竞争导致两轮光影明显差异。本轮没有同步记录这些量，不能把干净复测较慢归因某一项；自然区域11/7/11、区段714/714/624、缓存与世界状态也不完全一致。
+
+H2：驱动/DWM呈现节奏或资源读写依赖增加Swap等待。VSync关闭/限帧NONE不能独自排除驱动或系统呈现控制；需要GPU时间线，不能凭CPU样本断言。
+
+H3：单纹理/单VBO工作集复用导致GPU序列化，双缓冲可能有益。copy一次调用GPU计时并不等于传输本体带宽；尚无受控缓冲策略对比。[R4]
+
+H4：三级索引存在大量空细档/Y空层成本。CPU全局count>8即允许细档，而GPU逐单元再判密度；DOMAIN_PADDING=128同时用于XYZ，实际命中/非空单元未记录。spatial_words不是命中数，不能从11区域3级就宣布细分收益或浪费比例。
+
+H5：六个Iris覆盖警告可能只是数据pass未映射，也可能影响状态恢复；日志不证明它们导致35/56ms，更不能仅因截图可见就忽略。
+
+H6：GC/JIT/分配、Spark agent或其他后台活动解释个别峰值。本轮只确认事件存在，缺完整逐帧因果链。
+
+H7：实际无限上限、多事件/密集目标/低位粒子和服务器负载可能比本夹具更重。默认无限路径不执行MAX_VISIBLE排序，而Bench强制10000并触发排序；不能把extract排序热点泛化为默认生产路径。
+
+### 优化建议与对应代码（本轮全部未实施）
+
+| 优先级/已有问题 | 建议与证据 | 对应代码 | 后续验收条件/风险 |
+| --- | --- | --- | --- |
+| P0 H16 | 先固定世界/目标、功耗频率及外部GPU负载，按冷/热、控制/浪潮分别复测；保留全部波动结果（F2/H1） | [HordeRenderScenario](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java)、[Bench配置](../../build.gradle.kts) | 不改门禁制造通过；报告场景差异、时段和样本口径，不只选最快结果 |
+| P1 H24 | 降低Iris每帧全量数据展开；研究GPU可见性筛选/压实、模板属性复用或受支持的实例化接口（F3/F4/I2） | [IrisVertices.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L608–704；[展开shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) | 只剔除确定无贡献单位，不减少可见数量、LOD、精度、动画或发光；需证明API/兼容性后实施 |
+| P2 H24 | 测试有界双缓冲/批次依赖，区分执行、复制、材质与呈现，不先承诺带宽收益（H2/H3） | 同一draw L646复制、L700材质绘制 | 内存预算显式记录；同工作量GPU/CPU与时间线下降，不能把逻辑字节当PCIe数据 |
+| P2 H07 | packed SectionPos primitive集合去重，缓存必要集合/排序/槽位不变部分，避免每tick重复Section包装（F8/I3） | [HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java) L68–137、L161–165 | 保留逐tick加载失效、5tick光照和天空光回退；比较每秒分配/时间，不能只比较不同FPS的每帧均值 |
+| P2 H07/H10 | 相同Geometry的纹理/VBO绑定去重、复用稳定buffer slice/描述数据（F8/I6） | [drawGroup](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L240–252、[drawMotion](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L432–455 | 跨材质、资源代际和缓冲扩容正确；JFR TextureViewAndSampler/GpuBufferSlice及CPU阶段有可重复下降 |
+| P2 H15 | 补GPU非空细档/查询命中/完整回退指标，再研究稀疏索引或更紧Y域（H4） | [HordeSpatialIndex](../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java) L29–30、L173–192；[索引shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_spatial_index.fsh) | 不能盲缩128或截断候选；保留平滑旧状态、瞬移、负坐标和域外完整回退 |
+| P2 H11 | 在正确GPU上下文预热已知管线/资源，分开记录模型烘焙与程序创建（F10/I5） | [prepare](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L263–298；本地GpuDevice.precompilePipeline | 当前API确有precompilePipeline；不能把GPU调用丢到任意CPU线程，也不能只将首帧停顿移成加载期卡顿不记录 |
+| P2 H14/H24 | 真实实体路径优先减少重复变换/临时向量和Iris顶点写入工作（F9/I4） | [SweeperRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/ordeal/indigo/renderer/SweeperRenderer.java)、GeckoLib/NormalHelper当前版本代码 | 属跨框架路径，先划职责；不共享可变骨骼状态、不通过降动画率/数量掩盖 |
+| P2 H24.4/H23 | 核对数据管线映射和退出时GUI/执行器时序（F12/H5） | [GPU管线定义](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[ConductorControls](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorControls.java) | 把兼容日志与退出缺陷单列；不靠吞异常或忽略保存失败通过 |
+| P3 H10 | 运动5个字导致location约6次求值，研究受支持共享求值方案（源码事实） | [motion fsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_motion.fsh) L19–27、[location](../../src/main/resources/assets/lobecorp/shaders/include/horde_motion.glsl) | 本地TextureFormat没有浮点颜色附件，RenderPass只有现有draw/drawMultipleIndexed等入口；不可直接假定RGBA32F/MRT/间接绘制可用，不能转CPU逐单位变换 |
+
+所有建议均需后续明确授权实施。保留现有光照、发光、20FPS动画、数量和玩法；本轮不修改代码、不安装或升级Profiler/Sodium/Iris，不将上述假设写成已确认根因。
+
+### 参考文献与解释边界
+
+- R1：[Oracle JDK25 JFR性能排查](https://docs.oracle.com/en/java/javase/25/troubleshoot/troubleshoot-performance-issues-using-jfr.html)：采样、分配和GC分析应结合观测窗口；样本不是精确独占CPU时间。
+- R2：[RecordingFile消费API](https://docs.oracle.com/en/java/javase/25/docs/api/jdk.jfr/jdk/jfr/consumer/RecordingFile.html)、[jfr工具手册](https://docs.oracle.com/en/java/javase/25/docs/specs/man/jfr.html)：本轮使用公开消费API流式读取，不依赖巨大JSON展开。解析工具位于任务临时目录，运行JDK25.0.1；游戏记录来自JBR25.0.2。
+- R3：[Khronos ARB_timer_query](https://registry.khronos.org/OpenGL/extensions/ARB/ARB_timer_query.txt)：GPU异步时间查询与CPU计时语义不同，不能混加；一次区间样本不自动代表全帧。
+- R4：[Khronos ARB_pixel_buffer_object](https://registry.khronos.org/OpenGL/extensions/ARB/ARB_pixel_buffer_object.txt)：缓冲可以用于像素与顶点数据，规范提供render-to-vertex-array用途；不能据API名字断言物理驻留和主机往返。
+- R5：[Sodium官方仓库](https://github.com/CaffeineMC/sodium)：说明其渲染引擎定位；本轮版本以E1/E5实际加载0.9.2为准，不用上游当前分支代替本地二进制。
+- R6：IDEA解析的本地Minecraft26.1.2.100 GpuDevice/RenderPass/TextureFormat及GlCommandEncoder:L258–278，Iris1.11.4本地JAR；本地后端确认PBO绑定/readPixels与fence路径，不能用别版API举例当成已支持。
 
 ## 本次追加需求与证据级别
 
@@ -16,7 +151,7 @@
 
 | 优先级 | 问题 | 当前证据与影响 |
 | --- | --- | --- |
-| P1 | H24 Iris大负载GPU转接过慢 | 历史10000实例约14.71FPS；合批/GPU帧缓存已写入，本轮无性能数据 |
+| P1 | H24 Iris大负载GPU转接过慢 | 2026-10-25光影帧间隔35.0/56.4ms、GPU34.4/47.6ms；运行通过但波动与瓶颈仍在 |
 | P1 | H15 连续分割、小范围与高度隔离 | 三级索引、同源地形平滑及3格净空已写入；连续性与高度隔离待实机 |
 | P2 | H11 首次模型准备卡顿 | 同步烘焙仍在首次绘制准备路径，历史稳定阶段最大555ms |
 | P2 | H07、H16 每tick扫描及完整性能证据 | 客户端固定场景已重复采样，真实多事件/多玩家服务器压力未覆盖 |
@@ -67,15 +202,15 @@
 
 剩余严重问题：RTX3060 Laptop、2560×1494、Iris1.11.4/ComplementaryReimagined_r5.9.3、前台最大化、Vsync开启/上限120、限帧原因NONE；10000实例30秒442帧，间隔均值67.98ms/P95 85.74ms，GPU均值67.89ms，约14.71FPS；每帧GPU复制292192256字节、186次主体/发光绘制。不能以100个负载约115FPS或数量计数证明大负载合格。单工作集约32MiB只限制工作集，不自动减量。
 
-下一步须减少顶点展开/复制与重复管线工作，并独立测量展开、复制和材质绘制；当前26.1.2图形API无浮点颜色附件，不能未经设计改用CPU逐单位变换、低精度位置、LOD或关闭发光掩盖问题。原始数据与截图在本轮备份iris-layout56-10000.json及iris-layout56-*.png。任意光影包、阴影和透明排序仍未验收。
+2026-10-25已取得三轮联合诊断，完整事实/推断/假设见本页顶部；光影仍每帧约520万展开顶点和291MB复制，不能用旧14.71FPS替代当前数字。下一步按证据评估展开/复制及重复管线工作；当前26.1.2图形API无浮点颜色附件，不能未经设计改用CPU逐单位变换、低精度位置、LOD或关闭发光掩盖问题。原始数据与截图在本轮备份iris-layout56-10000.json及iris-layout56-*.png。任意光影包、阴影和透明排序仍未验收。
 
 ### H24 详细优化任务
 
 | 编号 | 代码位置／证据 | 需要优化或补证 | 完成条件 |
 | --- | --- | --- | --- |
-| H24.1 | [IrisVertices.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)；前轮292192256字节/帧 | 阶段统计已接入，用户取消实机后尚未采样；需确认展开/复制/主体/发光占比，不能把旧67.89ms全部归因复制 | 原始分阶段GPU计时、总帧时间及环境能互相核对；无计时查询错误 |
+| H24.1 | [IrisVertices.draw](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)；前轮292192256字节/帧 | 2026-10-25已有轮换GPU单次样本及整帧捕获；仍缺全工作集统一分摊，需确认展开/复制/主体/发光占比，不能把旧67.89ms全部归因复制 | 原始分阶段GPU计时、总帧时间及环境能互相核对；无计时查询错误 |
 | H24.2 | 同上；186次主体/发光绘制 | 工作集合批与连续材质合并已写入，256小批限制已取消；仍需实测展开、复制与提交成本 | 同实例数/模型/贴图/发光下，展开量、复制字节或提交成本有可重复下降，未漏画或减量 |
-| H24.3 | [horde_iris_vertices.fsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) | 中心UV缓存、GPU一次位置/法线/切线帧缓存已写入；正确性及实际取样成本下降仍需光影验收 | 同一动画帧、法线、UV和发光外观保持一致；资源重载后正确；三轮性能记录可比较 |
+| H24.3 | [horde_iris_vertices.fsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) | 中心UV缓存、GPU一次位置/法线/切线帧缓存已写入；2026-10-25确认单次帧缓存准备和稳态零调用；实际收益仍缺同条件前后对照 | 同一动画帧、法线、UV和发光外观保持一致；资源重载后正确；三轮性能记录可比较 |
 | H24.4 | [HordeIrisShadows](../../src/main/java/org/unitego/lobecorp/client/horde/HordeIrisShadows.java) | 复核光影开关/重载时36与56字节布局切换、输出目标及深度方向 | 无错位、透明幽灵、残留顶点或资源泄漏；Iris关闭也保持正确 |
 | H24.5 | 前轮仅一个光影包可见性证据 | 补不同视角、夜间、遮挡、更多包及版本的兼容矩阵；阴影仍未实现，不包装为已支持 | 支持范围有截图与版本记录，未支持范围明确；GPU预算另行记录，14.71FPS不能只因可见而关闭问题 |
 

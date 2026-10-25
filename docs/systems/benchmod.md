@@ -46,7 +46,7 @@
 
 ### 尸体场景
 - 64 尸体：普通 1.568 ms（draw1/fallback0，修改前 1.615）；光影 8.013–8.113 ms（draw2/fallback0，修改前 8.078–8.191）。
-- 256 尸体（-D 文件开关 `lobecorp-bench.properties: corpseRenderCount=256`）：光影 client-1792949419160，帧均 8.428 ms/P99 10.590 ms，static_drawn 256、fallback 0、draws 2；普通组 256 未跑。
+- 256 尸体（-D 文件开关 `lobecorp-bench.properties: corpseRenderCount=256`）：光影 client-1792949419160，帧均 8.428 ms/P99 10.590 ms，static_drawn 256、fallback 0、draws 2；普通 client-1792953137469，帧均 1.986 ms/P99 4.382 ms，static_drawn 256、fallback 0、draws 1。
 - 256 尸体轮 Horde 段与 64 轮同源但单位页仍是修复前版本；尸体指标独立，不受影响。
 
 ### 中间试验（不作为验收）
@@ -55,7 +55,7 @@
 
 ### 证据与限制
 - 原始 summary、GPU 捕获、JFR、阶段 JSONL、截图及 SHA256：`build/agent-backups/20261026-runs/`（iris-1/2/3、iris-A4…A9、ordinary-1/B2、iris-A6-256 尸体）；修改前源码/着色器备份：`build/agent-backups/20261026-horde-opt/`。
-- 本轮未完成：真实事件 Debug/MCP 功能矩阵（新建世界命令被禁用，MCP GUI 加载既有命令世界失败，未取得事件内发光/动画/分割/镜头移动证据）；E4 换包/重载；普通组 256 尸体；首帧≤100 ms（STABILIZE 仍 216–341 ms）；LOD 外观美术接受。不能以本轮 PASSED 或数值代替这些门禁。
+- 本轮未完成：E4 换包/重载/窗口变化；区域 3 格净空与平滑退出的游戏内定量（俯视截图未形成可测净空，仅契约单测通过）；首帧≤100 ms（STABILIZE 仍 216–341 ms）；LOD 外观美术接受。真实事件已取得发光/近中远/动画/镜头移动部分证据。不能以本轮 PASSED 或数值代替这些门禁。
 - 世界 GPU 为 GameRenderer 30 s 独立捕获均值，帧间隔为完整 MEASURE；两组窗口不同，不能相减或相加做成本分摊。`expand/copy` 为整 draw 内阶段和，跨版本单次轮换样本不可直接比较。
 
 ### 2026-10-26 游戏内真实事件功能取证（Debug + Minecraft MCP，补充而非替代 A/B）

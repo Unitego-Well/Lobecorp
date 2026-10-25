@@ -24,7 +24,7 @@
 - **I30 [P1／部分完成] 游戏内功能矩阵**：2026-10-26 已用 Debug 客户端 + Minecraft MCP 完成真实事件部分取证：`/lobecorp horde start` 启动事件并在画面可见；客户端 overlay 显示 events=1、submitted=GPU instances 随波次 3180→9484、batches 56→154、lightSections 153→476、gpuCopy=0；Debug 求值确认 animationFrames=4、LOD/ENABLED=true、modelBuilds=3、irisMiWords=16/slots=2；夜间截图可见单位发光，近/中/远三档与两次 650ms 间隔的位姿变化、x=110→60 镜头移动下单位持续可见。**未完成**：区域 3 格净空与平滑退出的定量证据（未取到 penetration/rejected 回读；召唤 3 头牛后仅取得目标附近截图，不足以证明不进入区域）、E4 换包/重载/窗口变化、真实事件下的 256 尸体。契约级补充：`HordeRegionTest`（3 格净空/中断进出连续）、`HordeSpatialFieldTest`、`HordeRulesTest`、`HordeCleanupTest`（200tick 尸体）、`HordeOptimizationTest` 本轮 IDEA 运行均退出 0，不替代游戏内定量。证据 `build/agent-backups/20261026-runtime-event/`（截图、runtime-event.json、sha256）。
 - **I31 [P2] 首帧与稳定尖峰**：修改后 STABILIZE 216–341 ms、WARMUP 最大 29–98 ms、MEASURE 单帧最大 45–69 ms；H11 首帧≤100 ms 未过，模型烘焙/管线预热的尖峰仍在。
 - **I32 [P2] 单位历史页预算边界**：行环页按可见行跨度与 32 MiB 预算缩 ring；超宽/超长路线可能降低方向平滑（`unitMatches` 回退解析位置，不截断、不隐藏单位）。本轮已修复“列片数按单块 9 列计算导致多数列历史查找失败”的缺陷，全列覆盖仅在 bench 验证。
-- **I33 [P2] 余量与未覆盖矩阵**：世界 GPU 余量约 0.35–0.91 ms；E4 换包/关光影/重载/改窗口、普通组 256 尸体、GPU 频率/功耗同步采样与本轮 JFR 未完成，环境波动或后台负载可能吃掉余量。
+- **I33 [P2] 余量与未覆盖矩阵**：世界 GPU 余量约 0.35–0.91 ms；E4 换包/关光影/重载/改窗口、GPU 频率/功耗同步采样与本轮 JFR 未完成，环境波动或后台负载可能吃掉余量。普通组 256 尸体已补测（帧均 1.986 ms/P99 4.382 ms，static_drawn 256、fallback 0、draws 1）。
 - **I34 [P3] 全精度隐藏面**：520→520（0%），W0 的 15–35% 减面门禁仍未达到；本轮未改全精度几何。
 - **I35 [P3] Iris missing program**：region_update、terrain_update、spatial_index、unit_update、motion、iris_vertices、unit_stats 等告警仍存在，未关闭，也未证明无渲染影响。
 - **I36 [P2／取证流程] 并行运行干扰**：00:59–01:08 另一 Photon 工作区在同一 GPU/窗口跑基准，期间一轮样本终止丢弃。后续每轮启动前必须确认没有其他 Minecraft 进程/窗口，并在结束时归档上一轮制品与运行 ID。

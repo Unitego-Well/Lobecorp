@@ -47,6 +47,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,10 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	};
 	private final PhotonModelClock clock = new PhotonModelClock();
 	private final NormalCache normalCache = new NormalCache();
+	private static final int MAX_SNAPSHOT_VERTICES = 32768;
+	private final Map<Integer, GeometrySnapshot> geometrySnapshots = new HashMap<>();
+	private @Nullable PhotonModelPoseSampler.Frame snapshotFrame;
+	private boolean frameReused;
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<Object, PhotonModelClip.Sample> playback = new LinkedHashMap<>();
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
@@ -394,12 +399,13 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				nonnegative(value("length", Float.class), definition().referenceLength()),
 				nonnegative(value("width", Float.class), definition().referenceWidth()), config.anchor,
 				Math.clamp(nonnegative(value("opacity", Float.class), 1), 0, 1), bindings.morphWeights(),
-                bindings.partOverrides(this, getT(partialTicks)), bindings.boneOverrides(this, getT(partialTicks)));
+				bindings.partOverrides(this, getT(partialTicks)), bindings.boneOverrides(this, getT(partialTicks)));
 
 		if (!input.equals(sampledInput)) {
 			var computed = sampler.sample(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE));
 			frame = computed;
 			sampledInput = input;
+			frameReused = false;
 
 			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
 				PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_MISS, 1);
@@ -412,8 +418,12 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				phase(node, "deformation", timings.deformationNanos());
 				phase(node, "normals_frame", timings.normalsNanos());
 			}
-		} else if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
-			PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_HIT, 1);
+		} else {
+			frameReused = true;
+
+			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
+				PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_HIT, 1);
+			}
 		}
 
 		return frame;
@@ -444,13 +454,13 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		int light = getLightColor(BlockPos.containing(transform().position().x, transform().position().y, transform().position().z));
 
 		for (int group : groupOrder) {
-			bakeModelGroup(settings, out, camera, partialTicks, sampled, group, world, color, light);
+			bakeModelGroup(settings, out, camera, partialTicks, sampled, group, world, color, light, frameReused);
 		}
 	}
 
 	private void bakeModelGroup(PhotonViewSettings settings, List<PhotonWorldRenderState.DrawJob> out, Camera camera,
 	                            float partialTicks, PhotonModelPoseSampler.Frame sampled, int group,
-	                            Matrix4f world, int color, int light) {
+	                            Matrix4f world, int color, int light, boolean stableFrame) {
 		var topology = sampled.prepared().groups().get(group);
 		var definition = sampled.prepared().definition();
 		var part = definition.parts().get(topology.part());
@@ -474,7 +484,40 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		try {
 			bakeGroup(settings, out, camera, partialTicks, Objects.requireNonNull(materials).group(group), geometryMode(),
 					(output, _, _) -> {
-						int triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light, normalCache);
+						GeometrySnapshot cached = null;
+
+						if (stableFrame) {
+							if (snapshotFrame != sampled) {
+								geometrySnapshots.clear();
+								snapshotFrame = sampled;
+							}
+
+							cached = geometrySnapshots.get(group);
+
+							if (cached != null && !cached.matches(world, groupColor, light)) {
+								cached = null;
+							}
+						}
+
+						int triangles;
+
+						if (cached != null) {
+							cached.replay(output);
+							triangles = cached.triangles();
+						} else {
+							SnapshotRecorder recorder = stableFrame ? new SnapshotRecorder() : null;
+							triangles = PhotonModelGeometryUtil.write(recorder != null ? recorder : output,
+									sampled, group, world, groupColor, light, normalCache);
+
+							if (recorder != null) {
+								recorder.finish();
+
+								if (recorder.count() <= MAX_SNAPSHOT_VERTICES) {
+									geometrySnapshots.put(group, new GeometrySnapshot(world, groupColor, light,
+											recorder.vertices(), recorder.lights(), recorder.count(), triangles));
+								}
+							}
+						}
 
 						if (owner != 0) {
 							PhotonPerformanceTraceUtil.counter(owner, Metric.VERTICES, triangles * 4L);
@@ -527,6 +570,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		playback.clear();
 		sampledInput = null;
 		frame = null;
+		snapshotFrame = null;
+		geometrySnapshots.clear();
 
 		try {
 			prepare();
@@ -542,5 +587,198 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		copied.sampler = sampler;
 		copied.groupOrder = groupOrder;
 		return copied;
+	}
+
+	/// 稳定帧的最终顶点快照；只在姿态输入未变化时复用，避免每帧重复计算世界变换、法线与颜色。
+	static final class GeometrySnapshot {
+		private static final int STRIDE = 12;
+		private final float[] matrix = new float[16];
+		private final int color;
+		private final int light;
+		private final float[] vertices;
+		private final int[] lights;
+		private final int count;
+		private final int triangles;
+
+		GeometrySnapshot(Matrix4f world, int color, int light, float[] vertices, int[] lights, int count, int triangles) {
+			matrix[0] = world.m00();
+			matrix[1] = world.m01();
+			matrix[2] = world.m02();
+			matrix[3] = world.m03();
+			matrix[4] = world.m10();
+			matrix[5] = world.m11();
+			matrix[6] = world.m12();
+			matrix[7] = world.m13();
+			matrix[8] = world.m20();
+			matrix[9] = world.m21();
+			matrix[10] = world.m22();
+			matrix[11] = world.m23();
+			matrix[12] = world.m30();
+			matrix[13] = world.m31();
+			matrix[14] = world.m32();
+			matrix[15] = world.m33();
+			this.color = color;
+			this.light = light;
+			this.vertices = vertices;
+			this.lights = lights;
+			this.count = count;
+			this.triangles = triangles;
+		}
+
+		boolean matches(Matrix4f world, int color, int light) {
+			return this.color == color && this.light == light
+					&& same(world.m00(), matrix[0]) && same(world.m01(), matrix[1])
+					&& same(world.m02(), matrix[2]) && same(world.m03(), matrix[3])
+					&& same(world.m10(), matrix[4]) && same(world.m11(), matrix[5])
+					&& same(world.m12(), matrix[6]) && same(world.m13(), matrix[7])
+					&& same(world.m20(), matrix[8]) && same(world.m21(), matrix[9])
+					&& same(world.m22(), matrix[10]) && same(world.m23(), matrix[11])
+					&& same(world.m30(), matrix[12]) && same(world.m31(), matrix[13])
+					&& same(world.m32(), matrix[14]) && same(world.m33(), matrix[15]);
+		}
+
+		void replay(VertexConsumer output) {
+			for (int index = 0, offset = 0; index < count; index++, offset += STRIDE) {
+				output.addVertex(vertices[offset], vertices[offset + 1], vertices[offset + 2])
+						.setUv(vertices[offset + 6], vertices[offset + 7])
+						.setColor(vertices[offset + 8], vertices[offset + 9], vertices[offset + 10], vertices[offset + 11])
+						.setLight(lights[index])
+						.setNormal(vertices[offset + 3], vertices[offset + 4], vertices[offset + 5]);
+			}
+		}
+
+		int triangles() {
+			return triangles;
+		}
+
+		private static boolean same(float first, float second) {
+			return Float.floatToRawIntBits(first) == Float.floatToRawIntBits(second);
+		}
+	}
+
+	/// 记录一次稳定帧写入的最终顶点属性；数组在输出内复用，不改变 Photon 的提交顺序。
+	static final class SnapshotRecorder implements VertexConsumer {
+		private static final int STRIDE = 12;
+		private float[] vertices = new float[256 * STRIDE];
+		private int[] lights = new int[256];
+		private int count;
+		private int current = -1;
+		private float x, y, z, nx, ny, nz, u, v, r, g, b, a;
+		private int light;
+
+		@Override
+		public VertexConsumer addVertex(float x, float y, float z) {
+			flush();
+
+			if (count == lights.length) {
+				int size = Math.max(1, count * 2);
+				var grownVertices = new float[size * STRIDE];
+				System.arraycopy(vertices, 0, grownVertices, 0, count * STRIDE);
+				vertices = grownVertices;
+				var grownLights = new int[size];
+				System.arraycopy(lights, 0, grownLights, 0, count);
+				lights = grownLights;
+			}
+
+			current = count++;
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setColor(int red, int green, int blue, int alpha) {
+			return setColor(red / 255f, green / 255f, blue / 255f, alpha / 255f);
+		}
+
+		@Override
+		public VertexConsumer setColor(int color) {
+			return setColor(color >>> 16 & 255, color >>> 8 & 255, color & 255, color >>> 24);
+		}
+
+		@Override
+		public VertexConsumer setUv(float u, float v) {
+			this.u = u;
+			this.v = v;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setUv1(int u, int v) {
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setUv2(int u, int v) {
+			light = u | v << 16;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setNormal(float x, float y, float z) {
+			nx = x;
+			ny = y;
+			nz = z;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setColor(float red, float green, float blue, float alpha) {
+			r = red;
+			g = green;
+			b = blue;
+			a = alpha;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setLight(int light) {
+			this.light = light;
+			return this;
+		}
+
+		@Override
+		public VertexConsumer setLineWidth(float width) {
+			return this;
+		}
+
+		void finish() {
+			flush();
+		}
+
+		float[] vertices() {
+			return vertices;
+		}
+
+		int[] lights() {
+			return lights;
+		}
+
+		int count() {
+			return count;
+		}
+
+		private void flush() {
+			if (current < 0) {
+				return;
+			}
+
+			int offset = current * STRIDE;
+			vertices[offset] = x;
+			vertices[offset + 1] = y;
+			vertices[offset + 2] = z;
+			vertices[offset + 3] = nx;
+			vertices[offset + 4] = ny;
+			vertices[offset + 5] = nz;
+			vertices[offset + 6] = u;
+			vertices[offset + 7] = v;
+			vertices[offset + 8] = r;
+			vertices[offset + 9] = g;
+			vertices[offset + 10] = b;
+			vertices[offset + 11] = a;
+			lights[current] = light;
+			current = -1;
+		}
 	}
 }

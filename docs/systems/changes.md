@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-25：稳定帧几何快照复用（第一阶段）
+
+- 修改 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)：当 `sampleLocalFrame` 命中同一帧（姿态输入未变化）时，记录首次 CPU 写入后的最终顶点属性（位置／法线／UV／颜色／光照），后续帧直接回放，避免重复世界变换、法线归一化和颜色计算；以世界矩阵、颜色、光照为键，最大 32768 顶点，内容失效时清空。动画帧保持原逐帧写入路径，不伪造等价。
+- 新增 [PhotonModelOutputSnapshotTest](../../src/test/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutputSnapshotTest.java) 逐顶点对照原始写入与快照回放；几何、准备、拓扑三个相关测试中拓扑用例因 Gradle 工作目录找不到 `src/main/resources/fxpacks` 失败（IDE 下设计，既有环境问题），快照与几何测试通过；IDEA 静态仅既有 `@NullMarked` 提示，无错误；修改行已按 IDEA 格式处理。
+- BenchMod 8 场景 PASSED；16 静态 JFR 中 `write` 不再位于榜首，`ByteBufferBuilder.reserve` 30.94%、`PhotonBufferCache.write` 6.35%；但显示帧地板在轮次间变化，不把 wall 均值当稳定收益。光影激光 `laser_shader_snapshot_20261025` 9879 帧、9.110／26.597／835.600 ms，动画光束仍走原路径，未证明收益；不宣称激光优化。
+- Iris 配置已恢复原始值；未改动画、LOD、资源、技能或全局配置；保留用户原有配置、测试与日志改动，不推送。
+
 ## 2026-10-25：BenchMod 与光影激光复测（候选回退）
 
 - 使用 Gradle BenchMod Photon（8 场景 PASSED）与真实激光＋ComplementaryReimagined 光影各做基线、候选测试；没有保留任何优化源码，工作树已恢复到 HEAD。

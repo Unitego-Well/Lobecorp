@@ -14,7 +14,9 @@
 2. **仅模型输出跳过光影阴影 pass**：光影激光 10554 帧，均值 8.528 ms，窗口 9.411／8.275／8.159 ms；相对基线 8.841／8.017／7.846 无收益，**回退**。
 3. **整个 Photon drain 跳过阴影 pass**：10152 帧，均值 8.866 ms，窗口 9.712／8.600／8.559 ms；更差，**回退**。
 
-结论：当前实现上，继续微调 `write` 的算术或直接跳过阴影都不能证明收益。光影成本主要在 Iris／提交／管线结构；下一步应做原生实例化或按 pass／对象拆分测量，而不是用“跳过阴影”换数字或继续局部微优化。证据保留在 `run/client/performance/laser_shader_base_20261025_*`、`laser_shader_guard_20261025_*`、`laser_shader_drain_20261025_*`、`build/modBench/raw-results/default/client` 与 `build/modBench/baseline-20261025`；Iris 配置已恢复，源码无差异。
+结论：当前实现上，继续微调 `write` 的算术或直接跳过阴影都不能证明收益。光影成本主要在 Iris／提交／管线结构；下一步应做原生实例化或按 pass／对象拆分测量，而不是用“跳过阴影”换数字或继续局部微优化。证据保留在 `run/client/performance/laser_shader_base_20261025_*`、`laser_shader_guard_20261025_*`、`laser_shader_drain_20261025_*`；Iris 配置已恢复，源码无差异。
+
+**随后实现的第一阶段**：`PhotonModelOutput` 对稳定帧（同一姿态输入、世界矩阵／颜色／光照未变）记录最终顶点属性并回放，避免重复 CPU 变换；动画帧仍走原写入路径。BenchMod 16 静态 JFR 中 `write` 不再位于榜首，`ByteBufferBuilder.reserve` 成为首位（30.94%），说明提交缓冲成为新观察点；光影激光 `laser_shader_snapshot_20261025` 9879 帧、9.110／26.597／835.600 ms，动画光束未受益，不宣称优化。详见 changes.md。
 
 ## 2026-10-25：Sodium 诊断、瓶颈推断与优化建议
 

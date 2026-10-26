@@ -108,11 +108,50 @@ vec3 location(float station, float lateral, float time, float preferredSide) {
     float displacement = terrainFlow + preferredSide * combined;
     float adjusted = lateral + clamp(displacement, -ProbeInfo.w, ProbeInfo.w);
     point = center.xz + side * adjusted;
+
+    // 重写的GPU侧向避让：只改变横向偏移，前进档位保持不变，单位不会停在原地。
+    // 1) 玩家/障碍：按单位相对侧向选一个稳定的绕行方向，平滑推到半径外。
+    vec2 player = -OriginTime.xz;
+    vec2 toUnit = point - player;
+    float distance = length(toUnit);
+    float avoidRadius = 3.0;
+    if (distance < avoidRadius) {
+        float sideSign = dot(toUnit, side) >= 0.0 ? 1.0 : -1.0;
+        if (abs(dot(toUnit, side)) < 0.001) {
+            sideSign = preferredSide;
+        }
+        float pressure = (avoidRadius - distance) / avoidRadius;
+        adjusted += sideSign * pressure * (avoidRadius - distance);
+    }
+
+    // 2) 被挤进实体区域：沿区域中心向外推出，直到离开边界。
+    for (int pass = 0; pass < 2; pass++) {
+        vec3 probe = vec3(center.x + side.x * adjusted, heightAt(node, adjusted), center.z + side.y * adjusted);
+        ivec2 cell = spatialCell(probe);
+        float outward = 0.0;
+        for (int word = 0; word < words; word++) {
+            uint possible = spatialWord(cell, word + 1);
+            if (possible == 0u) continue;
+            for (int bit = 0; bit < 32 && word * 32 + bit < regions; bit++) {
+                if ((possible & (1u << uint(bit))) == 0u) continue;
+                vec3 minimum;
+                vec3 maximum;
+                if (!regionBounds(regionSlot(word * 32 + bit), minimum, maximum)
+                        || !regionContains(probe, minimum, maximum)) continue;
+                vec2 fromCenter = probe.xz - (minimum.xz + maximum.xz) * 0.5;
+                outward += dot(fromCenter, side) >= 0.0 ? 1.0 : -1.0;
+            }
+        }
+        if (outward == 0.0) break;
+        adjusted += sign(outward) * 0.75;
+    }
+
+    // 3) 保持在浪潮横向范围内；越界时向内侧收，但不反向。
+    adjusted = clamp(adjusted, -ProbeInfo.w, ProbeInfo.w);
+
+    point = center.xz + side * adjusted;
     float y = mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
-    vec3 constrained = regionClamp(vec3(point.x, y, point.y), side * preferredSide);
-    float constrainedLateral = dot(constrained.xz - center.xz, side);
-    constrained.y = mix(heightAt(node, constrainedLateral), heightAt(node + 1, constrainedLateral), weight);
-    return constrained;
+    return vec3(point.x, y, point.y);
 }
 
 

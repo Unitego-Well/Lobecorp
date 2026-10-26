@@ -47,6 +47,7 @@ public class HordeRenderScenario implements BenchClientScenario {
             "lobecorp.horde_render.instances", "count", MetricDirection.NEUTRAL);
     private BenchClientPose originalPose;
     private BenchPoseHold pose;
+    private BenchClientPose naturalPose;
     private CompletableFuture<Path> screenshot;
     private Path screenshotPath;
     private Vec3 origin;
@@ -118,6 +119,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 		BenchWindow.reset();
 		BenchWindow.ensure(window);
 		BenchSpark.start(context);
+		setNight(context);
 	    HordeRenderMetrics.start(context.resultDirectory().resolve("artifacts/stages/horde-stages.jsonl"),
 			    true, HordeRenderMetrics.GpuMode.FULL_STAGE_SUM);
 	    ownsStageCapture = true;
@@ -127,6 +129,7 @@ public class HordeRenderScenario implements BenchClientScenario {
     public BenchClientStepResult stabilize(BenchClientContext context) {
 	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.STABILIZE);
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		keepPose(context);
 	    requireGpuProgress();
         if (!initialized && !initialize(context)) {
             return BenchClientStepResult.CONTINUE;
@@ -146,9 +149,10 @@ public class HordeRenderScenario implements BenchClientScenario {
 		}
 		groundY = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, baseX, baseZ);
 		var center = new Vec3(origin.x, groundY, origin.z);
-		var anchors = List.of(center.add(160, 0, 0), center.add(-160, 0, 0));
+		int length = LobecorpBenchConfig.hordeLength();
+		var anchors = List.of(center.add(length / 2.0, 0, 0), center.add(-length / 2.0, 0, 0));
 		var route = HordeRoute.create(HordeSamplingUtil.path(anchors));
-		var rules = HordeRules.configured().withOverrides(6000, WIDTH);
+		var rules = HordeRules.configured().withOverrides(6000, LobecorpBenchConfig.hordeWidth());
 		if (!route.prepareDeferred(rules, point -> {
 			var block = BlockPos.containing(point);
 			if (!context.level().getChunkSource().hasChunk(block.getX() >> 4, block.getZ() >> 4)) {
@@ -190,15 +194,53 @@ public class HordeRenderScenario implements BenchClientScenario {
 		page.putInt("first", 0);
 		page.put("nodes", nodes);
 		send("route", page);
-		var view = BenchClientPose.lookingAt(center.x, center.y + CAMERA_HEIGHT, center.z - CAMERA_DISTANCE,
-				center.x, center.y + 1, center.z);
+		int station = LobecorpBenchConfig.hordePlayerStation();
+		BenchClientPose view;
+		if (station >= 0) {
+			// 玩家站在路线指定位置的地面上，视角保持人眼高度，不飞到高空。
+			// 玩家站在路线中心附近，浪潮从两侧绕过去；地面按中心列采样，避免边缘未加载区块把高度取到minY。
+			var centerPoint = route.point(Math.min(station, route.length()), 0);
+			var point = route.point(Math.min(station, route.length()), 2.0);
+			double ground = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+					(int) Math.floor(centerPoint.x), (int) Math.floor(centerPoint.z));
+			double eye = ground + 1.62;
+			var direction = route.direction(Math.min(station, route.length()));
+			// 玩家面向事件的反方向，浪潮从背后推进。
+			view = BenchClientPose.lookingAt(point.x, eye, point.z,
+					point.x - direction.x * 20, eye, point.z - direction.z * 20);
+		} else {
+			view = BenchClientPose.lookingAt(center.x, center.y + CAMERA_HEIGHT, center.z - CAMERA_DISTANCE,
+					center.x, center.y + 1, center.z);
+		}
 		pose = context.automation().holdPose(view);
+		if (station >= 0) {
+			naturalPose = view;
+			context.minecraft().player.setNoGravity(true);
+		}
 		initialized = true;
 		return true;
 	}
 
-    private void send(String kind, CompoundTag body) {
-        var packet = new CompoundTag();
+    /// 服务端执行命令固定时间：客户端时间由服务端同步，避免直接改 Level 时间不同步。
+    private void setNight(BenchClientContext context) {
+        var server = context.minecraft().getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> {
+                var source = server.createCommandSourceStack();
+                server.getCommands().performPrefixedCommand(source, "gamerule doDaylightCycle false");
+                server.getCommands().performPrefixedCommand(source, "time set midnight");
+            });
+        }
+    }
+
+    /// 每tick重新压住玩家位置/视角，防止重力或碰撞让高度在-60/-62之间抖动。
+    private void keepPose(BenchClientContext context) {
+        if (naturalPose != null) {
+            context.automation().holdPose(naturalPose);
+        }
+    }
+
+    private void send(String kind, CompoundTag body) {        var packet = new CompoundTag();
         packet.putString("id", EVENT_ID.toString());
         packet.putString("kind", kind);
         packet.putLong("sequence", ++sequence);
@@ -223,6 +265,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 	public BenchClientStepResult warmup(BenchClientContext context) {
 		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.WARMUP);
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		keepPose(context);
 		requireGpuProgress();
 		advance();
 		if (++phaseTicks < LobecorpBenchConfig.WARMUP_TICKS) {
@@ -259,6 +302,7 @@ public class HordeRenderScenario implements BenchClientScenario {
     public BenchClientStepResult measure(BenchClientContext context) {
 	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.MEASURE);
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		keepPose(context);
 	    requireGpuProgress();
 	    drainGpu(context);
 	    if (phaseTicks > 0 && context.frames().sampleCount() > firstFrame) {
@@ -275,6 +319,7 @@ public class HordeRenderScenario implements BenchClientScenario {
         advance();
         if (phaseTicks == 0) {
             firstFrame = context.frames().sampleCount();
+            setNight(context);
 			// 只统计MEASURE阶段的失焦/恢复，预热阶段的偶发切换不计入验收窗口。
 			BenchWindow.reset();
 	        if (PhotonFrameCapture.active()) {
@@ -294,7 +339,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 	    if (HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
             throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
         }
-        boolean done = ++phaseTicks >= MEASURE_TICKS;
+        boolean done = ++phaseTicks >= LobecorpBenchConfig.hordeMeasureTicks();
         if (done) {
             // 整个浪潮场景结束后才关闭 Spark，让采样覆盖完整测量而不是只采样 30 秒。
             BenchSpark.stop();
@@ -336,14 +381,18 @@ public class HordeRenderScenario implements BenchClientScenario {
 	/// 同机位A/B证明浪潮像素真的进入画面；相机悬空、雾外、全黑或光照剔除都会在这里失败。
 	private void verifyVisible(BenchClientContext context) throws IOException {
 		var pose = context.automation().pose();
-		int baseX = (int) Math.floor(origin.x);
-		int baseZ = (int) Math.floor(origin.z);
-		int currentGround = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, baseX, baseZ);
+		int poseX = (int) Math.floor(pose.x());
+		int poseZ = (int) Math.floor(pose.z());
+		int currentGround = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, poseX, poseZ);
 		double eyeHeight = pose.y() - currentGround;
-		if (Math.abs(eyeHeight - CAMERA_HEIGHT) > 8.0 || pose.pitch() < 20.0F || pose.pitch() > 45.0F
-				|| Math.abs(pose.z() - (origin.z - CAMERA_DISTANCE)) > 8.0) {
+		boolean natural = LobecorpBenchConfig.hordePlayerStation() >= 0;
+		double expectedEye = natural ? 1.62 : CAMERA_HEIGHT;
+		double tolerance = natural ? 0.9 : 8.0;
+		boolean pitchValid = natural ? Math.abs(pose.pitch()) <= 12.0F : pose.pitch() >= 20.0F && pose.pitch() <= 45.0F;
+		if (Math.abs(eyeHeight - expectedEye) > tolerance || !pitchValid
+				|| !natural && Math.abs(pose.z() - (origin.z - CAMERA_DISTANCE)) > 8.0) {
 			throw new AssertionError("浪潮基准相机未按地面锚定，不能判定负载可见：" + pose
-					+ ", groundY=" + currentGround + ", expectedEyeHeight=" + CAMERA_HEIGHT);
+					+ ", groundY=" + currentGround + ", expectedEyeHeight=" + expectedEye);
 		}
 		try (var on = NativeImage.read(Files.newInputStream(screenshotPath));
 		     var off = NativeImage.read(Files.newInputStream(baselineScreenshotPath))) {
@@ -417,6 +466,12 @@ public class HordeRenderScenario implements BenchClientScenario {
 		}
 		if (poseSaved) {
 			failure = cleanup(failure, () -> context.automation().setPose(originalPose));
+		}
+		if (naturalPose != null) {
+			failure = cleanup(failure, () -> {
+				context.minecraft().player.setNoGravity(false);
+				naturalPose = null;
+			});
 		}
 		if (configurationSaved) {
 			failure = cleanup(failure, () -> HordeVisualConfig.MAX_VISIBLE.set(previousMaximum));

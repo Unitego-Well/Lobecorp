@@ -15,6 +15,23 @@ public class LobecorpBenchConfig {
     public static final int STABLE_FRAMES = 20;
 	public static final int CORPSE_MEASURE_TICKS = 600;
 
+	public static int hordeWidth() {
+		return fileInt("hordeWidth", 512);
+	}
+
+	public static int hordeLength() {
+		return fileInt("hordeLength", 320);
+	}
+
+	public static int hordeMeasureTicks() {
+		return fileInt("hordeMeasureTicks", MEASURE_TICKS);
+	}
+
+	/// -1 使用基准高空相机；>=0 把玩家放到路线该位置的原地面上，且不飞行。
+	public static int hordePlayerStation() {
+		return fileInt("hordePlayerStation", -1);
+	}
+
 	public static int corpseRenderCount() {
 		int count = Integer.getInteger("lobecorp.bench.corpseRenderCount", 0);
 		if (count == 0) {
@@ -27,8 +44,7 @@ public class LobecorpBenchConfig {
 	}
 
 	/// 运行目录下的 lobecorp-bench.properties 可切换64/256尸体，不写死默认值。
-	private static int fileInt(String key, int fallback) {
-		var file = java.nio.file.Path.of("lobecorp-bench.properties");
+	private static int fileInt(String key, int fallback) {		var file = java.nio.file.Path.of("lobecorp-bench.properties");
 		if (!java.nio.file.Files.isRegularFile(file)) {
 			return fallback;
 		}

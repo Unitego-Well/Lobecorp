@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.performance;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -302,6 +304,66 @@ public class QueenBeamPerformanceFixture {
 		if (problem != null) {
 			throw problem;
 		}
+	}
+
+	/// 只清理带夹具 tag 的遗留对象；调用前世界路径已由 prepareBenchWorld 校验，归属不明实体不删除。
+	public static int discardOrphanedFixtures(ServerLevel level) {
+		int removed = 0;
+
+		for (var entity : level.getAllEntities()) {
+			if (entity.entityTags().contains(FIXTURE_TAG)) {
+				entity.discard();
+				removed++;
+			}
+		}
+
+		return removed;
+	}
+
+	/// 统计夹具原点附近实体；带 tag 的计数与归属不明样本分开，供报告核对背景实体来源。
+	public static JsonObject census(ServerLevel level, Vec3 center, double radius) {
+		var result = new JsonObject();
+		var counts = new JsonObject();
+		var foreign = new JsonArray();
+		double limit = radius * radius;
+		int total = 0;
+		int tagged = 0;
+		int foreignCount = 0;
+
+		for (var entity : level.getAllEntities()) {
+			if (entity.position().distanceToSqr(center) > limit) {
+				continue;
+			}
+
+			total++;
+			String type = EntityType.getKey(entity.getType()).toString();
+			counts.addProperty(type, counts.has(type) ? counts.get(type).getAsInt() + 1 : 1);
+
+			if (entity.entityTags().contains(FIXTURE_TAG)) {
+				tagged++;
+				continue;
+			}
+
+			foreignCount++;
+
+			if (foreign.size() < 50) {
+				var item = new JsonObject();
+				item.addProperty("type", type);
+				item.addProperty("uuid", entity.getUUID().toString());
+				item.addProperty("x", entity.getX());
+				item.addProperty("y", entity.getY());
+				item.addProperty("z", entity.getZ());
+				foreign.add(item);
+			}
+		}
+
+		result.addProperty("radius", radius);
+		result.addProperty("total_near_origin", total);
+		result.add("counts", counts);
+		result.addProperty("fixture_tagged", tagged);
+		result.addProperty("foreign", foreignCount);
+		result.add("foreign_sample", foreign);
+		return result;
 	}
 
 	private void requireOwner(MinecraftServer server) {

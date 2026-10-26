@@ -263,6 +263,7 @@ modBench {
     serverLevelType = "minecraft:flat"
     clientWorldPreset = "flat"
     clientWorldId = "lobecorp-bench"
+    clientRequireWindowFocus = providers.gradleProperty("photonRequireFocus").map(String::toBoolean).orElse(true).get()
     if (photonBenchEnabled.get()) {
         scenarioFilter = "lobecorp.photon-*"
     }
@@ -367,17 +368,23 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
 
 if (photonBenchEnabled.get()) {
     val photonShader = layout.projectDirectory.file("run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip")
+    val photonShaderEnabled = providers.gradleProperty("photonShader").map(String::toBoolean).orElse(true)
+    val photonSparkBackground = providers.gradleProperty("photonSpark").map(String::toBoolean).orElse(true)
     val photonBenchDirectory = layout.buildDirectory.dir("modBench/runs/default/client")
     tasks.named("prepareBenchClientOptions") {
         inputs.file(photonShader)
+        inputs.property("photonShaderEnabled", photonShaderEnabled)
+        inputs.property("photonSparkBackground", photonSparkBackground)
         doLast {
             val directory = photonBenchDirectory.get().asFile
             val shaderDirectory = directory.resolve("shaderpacks")
             shaderDirectory.mkdirs()
             photonShader.asFile.copyTo(shaderDirectory.resolve(photonShader.asFile.name), overwrite = true)
             directory.resolve("config").mkdirs()
+            val shaderEnabled = photonShaderEnabled.get()
             directory.resolve("config/iris.properties").writeText(
-                "enableShaders=true\nshaderPack=ComplementaryReimagined_r5.9.3.zip\n"
+                "enableShaders=" + shaderEnabled + "\nshaderPack=" +
+                        (if (shaderEnabled) photonShader.asFile.name else "") + "\n"
             )
             val sparkDirectory = directory.resolve("config/spark")
             sparkDirectory.mkdirs()
@@ -385,7 +392,7 @@ if (photonBenchEnabled.get()) {
             val text = if (configuration.exists()) configuration.readText() else "{}"
             val values = groovy.json.JsonSlurper().parseText(text) as Map<*, *>
             val updated = values.entries.associate { it.key.toString() to it.value }.toMutableMap()
-            updated["backgroundProfiler"] = false
+            updated["backgroundProfiler"] = photonSparkBackground.get()
             configuration.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(updated)))
         }
     }

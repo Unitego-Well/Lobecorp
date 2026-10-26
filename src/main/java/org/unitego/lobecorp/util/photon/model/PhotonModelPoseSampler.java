@@ -14,11 +14,11 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.TransformK
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.ValueKey;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector2;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
-import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Weight;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +37,27 @@ public class PhotonModelPoseSampler {
 	private final boolean localControl;
 	private final float minimumDelta;
 	private final BoneRig skeleton;
+	private final Map<String, Clip> clipIndex;
+	private final ThreadLocal<SamplingScratch> scratch = ThreadLocal.withInitial(SamplingScratch::new);
+
+	/// 采样期临时对象按线程隔离：同一准备结果可被多个线程并发求值，不能共享可写缓冲。
+	private static final class SamplingScratch {
+		private final Vector3f faceNormal = new Vector3f();
+		private final Vector3f faceEdgeA = new Vector3f();
+		private final Vector3f faceEdgeB = new Vector3f();
+		private final Vector3f cornerNormal = new Vector3f();
+		private final Map<Integer, Matrix4f> skin = new HashMap<>();
+		private final List<Matrix4f> skinPool = new ArrayList<>();
+		private final float[] skinCombined = new float[16];
+		private final float[] skinValues = new float[16];
+		private final Vector3f authored = new Vector3f();
+		private final Matrix4f combined = new Matrix4f();
+		private final Matrix3f normalTransform = new Matrix3f();
+		private Vector3[] positionValues = new Vector3[0];
+		private int[] positionEpochs = new int[0];
+		private int positionStride;
+		private int positionEpoch;
+	}
 
 	private record BoneRig(Map<String, Integer> indices, int[] parents, int[] order, Matrix4f[] inverseBind) {
 	}
@@ -59,6 +80,7 @@ public class PhotonModelPoseSampler {
 		             Anchor anchor, float opacity, Map<String, Float> morphWeights, Map<String, PartOverride> partOverrides) {
 			this(time, clip, loop, length, width, anchor, opacity, morphWeights, partOverrides, Map.of());
 		}
+
 		public Input(float time, String clip, boolean loop, float length, float width,
 		             Anchor anchor, float opacity, Map<String, Float> morphWeights) {
 			this(time, clip, loop, length, width, anchor, opacity, morphWeights, Map.of());
@@ -104,6 +126,13 @@ public class PhotonModelPoseSampler {
 		var definition = prepared.definition();
 
 		skeleton = prepareBones(definition);
+		var clips = new HashMap<String, Clip>();
+
+		for (var clip : definition.clips()) {
+			clips.putIfAbsent(clip.id(), clip);
+		}
+
+		clipIndex = Map.copyOf(clips);
 
 		parents = new int[definition.parts().size()];
 		var partIds = new HashMap<String, Integer>();
@@ -149,6 +178,11 @@ public class PhotonModelPoseSampler {
 	public Frame sample(Input input, boolean measure) {
 		checkCancelled();
 		var definition = prepared.definition();
+		var scratch = this.scratch.get();
+		var faceNormalScratch = scratch.faceNormal;
+		var cornerNormalScratch = scratch.cornerNormal;
+		var authoredScratch = scratch.authored;
+		var combinedScratch = scratch.combined;
 
 		for (var id : input.morphWeights().keySet()) {
 			if (definition.morphs().stream().noneMatch(morph -> morph.id().equals(id))) {
@@ -168,7 +202,7 @@ public class PhotonModelPoseSampler {
 		}
 
 		long begin = measure ? System.nanoTime() : 0;
-		var clip = definition.clips().stream().filter(value -> value.id().equals(input.clip())).findFirst().orElse(null);
+		var clip = input.clip().isEmpty() ? null : clipIndex.get(input.clip());
 
 		if (!input.clip().isEmpty() && clip == null) {
 			throw new IllegalArgumentException("模型片段不存在：" + input.clip());
@@ -181,7 +215,7 @@ public class PhotonModelPoseSampler {
 		float opacity = input.opacity() * (clip == null ? 1 : sampleValue(clip.opacityKeys(), time, 1));
 		long curvesEnd = measure ? System.nanoTime() : 0;
 		var morphed = morph(definition, weights);
-		var positions = positions(definition, input, matrices, morphed, skin);
+		computePositions(definition, input, matrices, morphed, skin);
 		long deformationEnd = measure ? System.nanoTime() : 0;
 		var groups = new ArrayList<Group>();
 		var min = new Vector3f(Float.POSITIVE_INFINITY);
@@ -189,26 +223,27 @@ public class PhotonModelPoseSampler {
 
 		for (var group : prepared.groups()) {
 			checkCancelled();
-			var part = definition.parts().get(group.part());
-			var points = positions.get(group.part());
+			int partIndex = group.part();
+			var part = definition.parts().get(partIndex);
 			var vertices = new ArrayList<Vertex>();
-			var normalMatrix = normalMatrix(matrices[group.part()]);
+			var normalMatrix = normalMatrix(matrices[partIndex]);
 			boolean morphedGeometry = !definition.morphs().isEmpty();
 			int lastFace = -1;
-			var faceNormal = new Vector3f();
 
 			for (var corner : group.corners()) {
 				var face = definition.faces().get(corner.face());
-				var position = points.get(corner.vertex());
+				var position = positionValue(partIndex, corner.vertex());
+
 				if (lastFace != corner.face()) {
-					faceNormal = faceNormal(points, face.vertices());
+					faceNormal(partIndex, face.vertices());
 					lastFace = corner.face();
 				}
 
-				var normal = new Vector3f(faceNormal);
+				var normal = cornerNormalScratch.set(faceNormalScratch);
 
 				if (!morphedGeometry && !face.normals().isEmpty() && normalMatrix != null) {
-					var authored = vector(face.normals().get(corner.corner()));
+					var authoredValue = face.normals().get(corner.corner());
+					var authored = authoredScratch.set(authoredValue.x(), authoredValue.y(), authoredValue.z());
 					var scale = dimensionScale(definition, part, input, morphed.get(corner.vertex()));
 
 					if (scale != null && scale.x != 0 && scale.y != 0 && scale.z != 0) {
@@ -216,10 +251,10 @@ public class PhotonModelPoseSampler {
 						if (deformation == null) {
 							authored.div(scale);
 							normalMatrix.transform(authored);
-							authored.mul(Math.signum(matrices[group.part()].determinant3x3()));
+							authored.mul(Math.signum(matrices[partIndex].determinant3x3()));
 						} else {
-							var combined = new Matrix4f(matrices[group.part()]).mul(deformation).scale(scale);
-							var normalTransform = normalMatrix(combined);
+							var combined = combinedScratch.set(matrices[partIndex]).mul(deformation).scale(scale);
+							var normalTransform = normalMatrixInto(combined);
 							if (normalTransform != null) {
 								normalTransform.transform(authored);
 								authored.mul(Math.signum(combined.determinant3x3()));
@@ -228,7 +263,7 @@ public class PhotonModelPoseSampler {
 							}
 						}
 						if (authored.isFinite() && authored.lengthSquared() > 0) {
-							normal = normalized(authored);
+							normal.set(normalized(authored));
 						}
 					}
 				}
@@ -238,8 +273,27 @@ public class PhotonModelPoseSampler {
 				}
 
 				vertices.add(new Vertex(position, immutable(normal), face.uv().get(corner.corner())));
-				min.min(vector(position));
-				max.max(vector(position));
+				float px = position.x();
+				float py = position.y();
+				float pz = position.z();
+				if (px < min.x) {
+					min.x = px;
+				}
+				if (py < min.y) {
+					min.y = py;
+				}
+				if (pz < min.z) {
+					min.z = pz;
+				}
+				if (px > max.x) {
+					max.x = px;
+				}
+				if (py > max.y) {
+					max.y = py;
+				}
+				if (pz > max.z) {
+					max.z = pz;
+				}
 			}
 
 			groups.add(new Group(vertices, part.opacity()));
@@ -298,6 +352,20 @@ public class PhotonModelPoseSampler {
 	}
 
 	private static List<Vector3> morph(PhotonModelDefinition definition, float[] weights) {
+		boolean changed = false;
+
+		for (float weight : weights) {
+			if (weight != 0) {
+				changed = true;
+				break;
+			}
+		}
+
+		// 无形状键或权重全为 0 时结果与源顶点逐值相同，跳过两次整表复制。
+		if (!changed) {
+			return definition.vertices();
+		}
+
 		var points = definition.vertices().stream().map(PhotonModelPoseSampler::vector).toList();
 
 		for (int index = 0; index < weights.length; index++) {
@@ -316,33 +384,58 @@ public class PhotonModelPoseSampler {
 		return points.stream().map(PhotonModelPoseSampler::immutable).toList();
 	}
 
-	private List<Map<Integer, Vector3>> positions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, List<Vector3> source,
-	                                              Map<Integer, Matrix4f> skin) {
-		var result = new ArrayList<Map<Integer, Vector3>>();
+	/// 结果写入线程私有槽位；代数与逐帧新建 Map 的旧实现相同，lambda 与装箱不再产生。
+	private void computePositions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, List<Vector3> source,
+	                              Map<Integer, Matrix4f> skin) {
+		var scratch = this.scratch.get();
+		int vertexCount = definition.vertices().size();
+		int required = definition.parts().size() * vertexCount;
 
-		for (int index = 0; index < parents.length; index++) {
-			result.add(new HashMap<>());
+		if (scratch.positionValues.length != required) {
+			scratch.positionValues = new Vector3[required];
+			scratch.positionEpochs = new int[required];
+			scratch.positionEpoch = 0;
+		}
+
+		scratch.positionStride = vertexCount;
+		int epoch = ++scratch.positionEpoch;
+
+		if (epoch == 0) {
+			Arrays.fill(scratch.positionEpochs, 0);
+			epoch = ++scratch.positionEpoch;
 		}
 
 		for (var group : prepared.groups()) {
 			checkCancelled();
-			var part = definition.parts().get(group.part());
-			var points = result.get(group.part());
+			int partIndex = group.part();
+			var part = definition.parts().get(partIndex);
+			int base = partIndex * vertexCount;
 
 			for (var corner : group.corners()) {
-				points.computeIfAbsent(corner.vertex(), vertex -> {
-					var position = dimensions(definition, part, input, source.get(vertex));
-					var deformation = skin.get(vertex);
-					if (deformation != null) {
-						deformation.transformPosition(position);
-					}
-					matrices[group.part()].transformPosition(position);
-					return immutable(position);
-				});
+				int vertex = corner.vertex();
+				int cell = base + vertex;
+
+				if (scratch.positionEpochs[cell] == epoch) {
+					continue;
+				}
+
+				var position = dimensions(definition, part, input, source.get(vertex));
+				var deformation = skin.get(vertex);
+
+				if (deformation != null) {
+					deformation.transformPosition(position);
+				}
+
+				matrices[partIndex].transformPosition(position);
+				scratch.positionValues[cell] = immutable(position);
+				scratch.positionEpochs[cell] = epoch;
 			}
 		}
+	}
 
-		return result;
+	private Vector3 positionValue(int partIndex, int vertex) {
+		var scratch = this.scratch.get();
+		return scratch.positionValues[partIndex * scratch.positionStride + vertex];
 	}
 
 	private static BoneRig prepareBones(PhotonModelDefinition definition) throws IOException {
@@ -404,29 +497,54 @@ public class PhotonModelPoseSampler {
 			world[index] = parent < 0 ? local : new Matrix4f(world[parent]).mul(local);
 			skin[index] = new Matrix4f(world[index]).mul(skeleton.inverseBind()[index]);
 		}
-		var result = new HashMap<Integer, Matrix4f>();
+		// 结果只在本次采样内被 positions 读取；复用线程私有存储，避免每顶点数组/矩阵/流对象。
+		var scratch = this.scratch.get();
+		scratch.skin.clear();
+		int poolIndex = 0;
+
 		for (var entry : definition.weights().entrySet()) {
 			checkCancelled();
-			double total = entry.getValue().stream().mapToDouble(Weight::value).sum();
+			double total = 0;
+
+			for (var influence : entry.getValue()) {
+				total += influence.value();
+			}
+
 			if (total <= 0) {
 				continue;
 			}
-			float[] combined = new float[16];
-			float[] values = new float[16];
+
+			Arrays.fill(scratch.skinCombined, 0);
+
 			for (var influence : entry.getValue()) {
-				skin[skeleton.indices().get(influence.boneId())].get(values);
+				skin[skeleton.indices().get(influence.boneId())].get(scratch.skinValues);
 				float weight = (float) (influence.value() / total);
-				for (int component = 0; component < values.length; component++) {
-					combined[component] += values[component] * weight;
+
+				for (int component = 0; component < scratch.skinValues.length; component++) {
+					scratch.skinCombined[component] += scratch.skinValues[component] * weight;
 				}
 			}
-			var matrix = new Matrix4f().set(combined);
+
+			Matrix4f matrix;
+
+			if (poolIndex < scratch.skinPool.size()) {
+				matrix = scratch.skinPool.get(poolIndex);
+			} else {
+				matrix = new Matrix4f();
+				scratch.skinPool.add(matrix);
+			}
+
+			poolIndex++;
+			matrix.set(scratch.skinCombined);
+
 			if (!matrix.isFinite()) {
 				throw new IllegalArgumentException("模型蒙皮结果包含非有限数值。");
 			}
-			result.put(entry.getKey(), matrix);
+
+			scratch.skin.put(entry.getKey(), matrix);
 		}
-		return result;
+
+		return scratch.skin;
 	}
 
 	private Vector3f dimensions(PhotonModelDefinition definition, Part part, Input input, Vector3 source) {
@@ -489,17 +607,29 @@ public class PhotonModelPoseSampler {
 		return matrix.determinant3x3() == 0 ? null : matrix.normal(new Matrix3f());
 	}
 
-	private static Vector3f faceNormal(Map<Integer, Vector3> points, List<Integer> face) {
-		var result = new Vector3f();
-		var origin = vector(points.get(face.getFirst()));
+	@Nullable
+	private Matrix3f normalMatrixInto(Matrix4f matrix) {
+		return matrix.determinant3x3() == 0 ? null : matrix.normal(scratch.get().normalTransform);
+	}
+
+	private void faceNormal(int partIndex, List<Integer> face) {
+		var scratch = this.scratch.get();
+		var origin = positionValue(partIndex, face.getFirst());
+		float ox = origin.x();
+		float oy = origin.y();
+		float oz = origin.z();
+		scratch.faceNormal.zero();
 
 		for (int index = 1; index + 1 < face.size(); index++) {
-			var a = vector(points.get(face.get(index))).sub(origin);
-			var b = vector(points.get(face.get(index + 1))).sub(origin);
-			result.add(a.cross(b));
+			var first = positionValue(partIndex, face.get(index));
+			var second = positionValue(partIndex, face.get(index + 1));
+			scratch.faceEdgeA.set(first.x() - ox, first.y() - oy, first.z() - oz);
+			scratch.faceEdgeB.set(second.x() - ox, second.y() - oy, second.z() - oz);
+			scratch.faceEdgeA.cross(scratch.faceEdgeB);
+			scratch.faceNormal.add(scratch.faceEdgeA);
 		}
 
-		return normalized(result);
+		normalized(scratch.faceNormal);
 	}
 
 	private static Vector3f normalized(Vector3f value) {

@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-26：复测、探针隔离与动画采样分配治理
+
+- 授权与边界：用户重新授权游戏/构建/测试/Debug；Sodium 全程加载；spark 进入测试后全程开启，结束按正常退出等待输出；未推送、未改动画/LOD/原资源/材质/排序。
+- 基准夹具：新增 `PhotonBenchCameraAudit`、`PhotonBenchFocusAudit`；`PhotonModelRenderScenario` 增加显式位姿门禁、相机指纹/变化计数、失焦与恢复计数、实体普查与 tag 归属清理、world/难度/探针/验证时间戳；`QueenBeamPerformanceFixture` 增加 `discardOrphanedFixtures` 与 `census`；`PhotonBenchCapture` 支持探针关闭与主采集边界；`PhotonSubmissionDiagnostics`/`PhotonBenchMixinPlugin` 增加 `lobecorp.photon.bench.probes` 开关；`build.gradle.kts` 增加 `-PphotonShader`、`-PphotonSpark`、`-PphotonRequireFocus` 与 spark backgroundProfiler 参数（修复首轮 prepare 覆盖 Iris 配置）。
+- 性能优化：`PhotonModelPoseSampler` 改为线程私有采样槽（ThreadLocal SamplingScratch），重写 `morph`/`positions`/`skinMatrices`/`faceNormal`/包围盒循环，去掉每帧 HashMap、Integer 装箱、`computeIfAbsent` lambda、`float[16]`/`Matrix4f` 临时对象与无形状键时的整表复制；顶点位置/法线/UV/颜色/光照的浮点运算顺序与不可变输出语义不变。
+- 实测：五轮各 13 场景 PASSED（P0/P2b/P1c/S1/S0，run id 与相机指纹见 [性能审查](photon-performance-audit.md#本轮复测结果2026-10-26-1125-完成)）；40/90/91/92 渲染线程分配下降 59%～72%，16/32 动画 CPU 均值下降 24%～40%；92 帧时间未改善，主因施法期 Codec/`IFXObject.deepCopy` 尖峰；探针自身使 92 均值 +40%、P99 +22%。光影 S0（无探针）E2 均值 8.202/P99 16.422 达标，E3 均值 12.332/P99 36.580 未达标，最长帧 723/247 ms。
+- 检查：IDEA 诊断修改代码 0 错误（保留 `applyExpectedPose` 命名提示）；相关测试 26 项 25 通过，唯一失败为既有 `samplesExistingModelOccurrencesWithoutChangingOriginals`（P04 缺 `src/main/resources/fxpacks`，未改断言）；IDEA 编译与 BenchMod 构建通过；五轮运行 `environment.valid=true`、0 失焦帧。
+- 边界：跨轮相机仍因 `holdPose` 还原滞后漂移（A/A′），已按轮记录、不作跨相机 A/B；像素级同机位视觉 A/B 未完成；spark 开启的 plain 同代码开关对照未做。问题只维护于 [唯一清单](../issues.md)。
+- 证据与备份：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026`（runs/analysis）；修改前原件由 `git show HEAD:<path>` 备份于同根 `backup-before-20261026/`。本轮未推送，提交编号见最终回复。
+
 ## 2026-10-26：完成双光影四组运行与最终对照报告
 
 - 四组各13个Photon场景通过，共52项；独立Debug确认录制当次提交及整块缓存路径，标准Minecraft MCP桥19877取得运行状态／实体／截图。误用Sweeper profile的一次运行与独立Debug全部排除性能对照。

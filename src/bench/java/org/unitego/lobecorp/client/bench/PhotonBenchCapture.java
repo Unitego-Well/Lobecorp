@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.bench;
 
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
 import org.unitego.lobecorp.client.photon.performance.PhotonBenchConditions;
@@ -19,6 +20,7 @@ public class PhotonBenchCapture {
 	private boolean capturing;
 	private boolean naturalDuration;
 	private double requestedSeconds;
+	private final boolean submissionProbes;
 
 	public PhotonBenchCapture(String label, long seed) {
 		this.label = label;
@@ -31,7 +33,10 @@ public class PhotonBenchCapture {
 			throw new IllegalStateException("不能覆盖其他所有者的提交诊断。");
 		}
 		PhotonBenchConditions.begin(seed);
-		PhotonSubmissionDiagnostics.beginCase(label);
+		submissionProbes = PhotonSubmissionDiagnostics.probesRequested();
+		if (submissionProbes) {
+			PhotonSubmissionDiagnostics.beginCase(label);
+		}
 	}
 
 	public void start(double seconds, Runnable cast) {
@@ -41,11 +46,15 @@ public class PhotonBenchCapture {
 		}
 		naturalDuration = cast != null;
 		requestedSeconds = seconds;
-		setupSubmissions = PhotonSubmissionDiagnostics.endCase();
-		PhotonSubmissionDiagnostics.beginCase(label + "_measure");
+		if (submissionProbes) {
+			setupSubmissions = PhotonSubmissionDiagnostics.endCase();
+			PhotonSubmissionDiagnostics.beginCase(label + "_measure");
+		}
 		PhotonFrameCapture.start(label.replace('-', '_'), seconds);
 		capturing = true;
-		PhotonSubmissionDiagnostics.bindFrameCapture();
+		if (submissionProbes) {
+			PhotonSubmissionDiagnostics.bindFrameCapture();
+		}
 		if (cast != null) {
 			PhotonFrameCapture.phase("cast_0", 4, cast);
 			PhotonFrameCapture.phase("cast_1", 31, cast);
@@ -60,7 +69,7 @@ public class PhotonBenchCapture {
 		}
 
 		capture = ownedSnapshot();
-		measuredSubmissions = PhotonSubmissionDiagnostics.endCase();
+		measuredSubmissions = submissionProbes ? PhotonSubmissionDiagnostics.endCase() : null;
 		capturing = false;
 		validateCapture();
 		return true;
@@ -91,7 +100,8 @@ public class PhotonBenchCapture {
 		} else if (!state.equals("STOPPED")) {
 			throw new IllegalStateException("按基准 tick 结束的帧窗口意外提前终止：" + state);
 		}
-		if (measuredSubmissions.get("scope_protocol_errors").getAsLong() != 0) {
+		if (submissionProbes && measuredSubmissions != null
+				&& measuredSubmissions.get("scope_protocol_errors").getAsLong() != 0) {
 			throw new IllegalStateException("提交诊断作用域不平衡。");
 		}
 	}
@@ -104,7 +114,7 @@ public class PhotonBenchCapture {
 		ownedSnapshot();
 		PhotonFrameCapture.stop();
 		capture = ownedSnapshot();
-		measuredSubmissions = PhotonSubmissionDiagnostics.endCase();
+		measuredSubmissions = submissionProbes ? PhotonSubmissionDiagnostics.endCase() : null;
 		capturing = false;
 	}
 
@@ -112,6 +122,8 @@ public class PhotonBenchCapture {
 		stop();
 		report.addProperty("seed", context.seed());
 		report.addProperty("capture_mode", naturalDuration ? "natural_wall_duration" : "bench_measure_ticks");
+		report.addProperty("submission_probes", submissionProbes);
+		report.addProperty("probe_switch", PhotonSubmissionDiagnostics.probeState());
 		report.addProperty("wp0_cross_run_gate_verified", false);
 		report.addProperty("fixed_camera_observed", measuredSubmissions != null
 				&& measuredSubmissions.get("camera_changes").getAsLong() == 0
@@ -122,9 +134,11 @@ public class PhotonBenchCapture {
 		report.addProperty("seeded_objects", PhotonBenchConditions.seededObjects());
 		report.addProperty("particle_seed_determinism_verified", false);
 		report.addProperty("player_pose", context.automation().pose().toString());
-		report.add("setup_submissions", setupSubmissions);
-		report.add("measure_submissions", measuredSubmissions);
+		report.add("setup_submissions", setupSubmissions == null ? JsonNull.INSTANCE : setupSubmissions);
+		report.add("measure_submissions", measuredSubmissions == null ? JsonNull.INSTANCE : measuredSubmissions);
 		report.add("capture", capture);
+		report.addProperty("main_capture_started_ns", capture.get("started_ns").getAsLong());
+		report.addProperty("main_capture_frames", capture.get("frame_count").getAsInt());
 		validateCapture();
 
 		var path = Path.of(capture.get("saved_path").getAsString()).toAbsolutePath().normalize();

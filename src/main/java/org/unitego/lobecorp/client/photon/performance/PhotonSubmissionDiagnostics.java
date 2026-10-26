@@ -79,6 +79,18 @@ public class PhotonSubmissionDiagnostics {
 		return active != null && active.thread == Thread.currentThread();
 	}
 
+	/// 高频提交探针的显式对照开关；与 PhotonBenchMixinPlugin 中的同名字面量必须一致。
+	public static final String PROBES_PROPERTY = "lobecorp.photon.bench.probes";
+
+	/// 关闭时基准 Mixin 不注入；生产路径不读取该属性，也不改变提交缓冲。
+	public static boolean probesRequested() {
+		return Boolean.parseBoolean(System.getProperty(PROBES_PROPERTY, "true"));
+	}
+
+	public static String probeState() {
+		return probesRequested() ? "enabled" : "disabled";
+	}
+
 	public static void bindFrameCapture() {
 		var sample = Objects.requireNonNull(active, "提交诊断尚未开启。");
 		checkThread(sample);

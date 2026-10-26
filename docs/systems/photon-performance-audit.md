@@ -1,5 +1,143 @@
 # 当前性能静态审查与优化计划
 
+## 2026-10-26 复测与瓶颈复核（进行中，未验收）
+
+本节记录本轮“重新审查结论→修正测试条件→重测→定位瓶颈→实施优化”的进行中状态；所有数字在正式重测完成前都不得当作收益。台账只维护在 [唯一问题清单](../issues.md)。
+
+### 授权、环境与固定约束
+
+- 用户已明确授权启动游戏、构建、测试与 Debug；正式测量区间不设断点。Sodium 在全部轮次保持加载，不参与对照开关；每轮客户端按 BenchMod 正常退出，测试结束关闭客户端时等待 Sodium 退出输出后再结束进程。
+- 允许清理能证明属于本夹具的对象；归属不明实体只登记，不删除。世界、玩家位姿、窗口、光影、负载、代码版本与实验开关须逐轮记录。
+- 本轮证据根：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026`；旧证据根 `.../2026/10/23/01a1669e-.../photon-runtime-comparison-20261025` 只作有条件历史对照。
+
+### 已确认事实（代码与运行证据）
+
+1. **首次门禁轮无效，不计入任何对照。** 运行 `client-1792980111074`（2026-10-26 10:01:51～10:02:11）13 个场景全部 FAILED：`IllegalStateException: 实际光影状态与本轮预期不符：false`。原因是 `verifyBenchClient` 重跑了 `prepareBenchClientOptions`，把已改为 `enableShaders=false` 的 `config/iris.properties` 又写回 `enableShaders=true`。已改为 `-PphotonShader=<bool>` 由构建参数写入隔离配置，待重跑验证。
+2. **渲染路径事实（经 IDEA 库源码核对）：** `PhotonWorldRenderState#drain` 每视图每帧只 bake 一次；Bloom 每 drain 一次；顶点上传每 drain 一次（`PhotonBufferCache#write` 仅在容量不足时重建）；framebuffer 切换为每 run 一个 `RenderPass`（`drawRun:931`／`createRenderPass:962`）；`Emitter#bakeJob:733` 每材质每视图新建 64 KiB `ByteBufferBuilder`。
+3. `Emitter#bakeJob/build` 不做缓存、逐帧重建；`sortQuads` 只在 `SortMode.DISTANCE` 执行，`RendererSetting` 默认 `NONE`（`SortMode#sortOrigin:71`），因此排序不是当前默认开销点。
+4. `PhotonModelOutput#sampleLocalFrame:383` 每帧每模型构造 `Input`（3 次 `Map.copyOf`）、多次 `settings()` 与字符串槽查表；稳定帧快照 `matches:664` 包含 `world`（含相机平移），相机变化即失效。
+5. `PhotonModelClipUtil#clear:44` 在每次 `apply` 中遍历 runtime 全部对象做 map 删除（每帧 entries×objects）；`PhotonChildSpawner` 每个子实例 `createRuntime(true)` 整份深拷贝并经 `PhotonSpawnTemplateUtil:110-155` 递归过滤，单槽 prepared 只省一次。
+6. `IrisCompat#isShadowPass` 全库唯一引用是 `IrisDiagnostics:28`；`PhotonFXRenderState#submit:29-38` 对非 `IPhotonFXCollector` 的 collector（影子 pass）整体跳过。**Photon 对象级没有可省影子提交点**，光影 shadow 成本属 Iris 自身。
+7. Sodium 0.9.2 在 26.1 为 GpuDevice/CommandList 实现，不提供外部 pass 的实例化捷径；Photon 原生实例化是 `Emitter#bakeInstancedGroup:561`（base mesh + 每实例记录 + 排序 + VAT 需 `PhotonData`），而 `PhotonModelOutput` 完全绕过它（override `bakeBatches:442`→CPU 四边形）。
+8. **退出 GUI 断连异常**在本轮 FAILED 轮同样出现（10:02:12.374 `Trying to return to in-game GUI during disconnection`），与场景成败无关，属客户端关闭生命周期；保留待归因，不计入性能。
+
+### 证据支持的推断与优化候选（未实施，按重复量×证据×风险排序）
+
+1. 默认启用已实现的稳定快照整块提交（需先证明透明排序/动态覆盖/光影等价，且当前 `matches` 含相机 `world`）。
+2. `PhotonModelClipUtil#clear` 改为定向清理，避免每帧遍历全部对象。
+3. 池化每材质每视图的 64 KiB builder（需核对原生所有权与释放）。
+4. 合并同目标/同材质的 run 为单 `RenderPass`。
+5. 无混合时跳过 seed 拷贝；`Input` 快路径减少 `Map.copyOf`／槽查表。
+6. 命名计划按内容 revision 预编译；子发射模板/定义分离复用。
+
+### 测量夹具修正（本轮已改/待验证）
+
+- 已改 `build.gradle.kts`：`-PphotonShader=<bool>` 决定隔离 Iris 配置，避免 prepare 覆盖手改。
+- 已改探针对照开关 `-Dlobecorp.photon.bench.probes=<bool>`：为 false 时 `PhotonBenchMixinPlugin` 不注入四个高频提交探针；`PhotonBenchCapture` 在关闭时不启用提交诊断用例并记录开关状态。
+- 待做：相机位姿显式门禁与跨轮指纹（不再只依赖 `holdPose`）、失焦/恢复计数与自动还原、实体普查与 tag 归属清理、主采集与验证截图的时间戳分离。
+
+### 旧结论逐条复核（截至当前证据）
+
+| 旧结论 | 复核结果 | 证据与修正 |
+|---|---|---|
+| 16 静态 reserve/Job 2048→1、调用减少 99.951%、顶点数不变 | **不能作为收益证据，需修正** | 旧 baseline 的 `reserve_calls` 数值等于 `cpu_vertices`（submissions×2048），candidate 的 `reserve_calls` 等于 `buffers_created`，两个构建的计数器口径不一致，不能用它计算调用减少比例。更关键的是整块路径只在稳定快照命中时启用，而 `GeometrySnapshot.matches` 的 `world` 含 `-renderOrigin`（相机位置）：相机移动即逐帧失效（[PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的 `bakeBatches`/`matches`）。Bench 相机固定才会命中，真实游戏常态基本不命中。顶点数不变成立。 |
+| 纯静态 resize=0，混合激光有真实扩容 | **成立** | 30/40 场景 `resize=0`；91/92 旧轮 2330～6172、本轮 2386/3116 次 `ByteBufferBuilder.resize`。它是提交缓冲扩容次数，不是窗口/framebuffer resize。 |
+| 动画仍逐顶点提交，渲染线程分配约 5.6～6.6 MiB/帧 | **成立，需补充归因** | 旧轮 5.60/6.58 MiB/帧；`jdk.ObjectAllocationSample` 归因：94% 在 `PhotonModelPoseSampler`（skinMatrices 38–47%、positions 17–18%、immutable 10–13%），几何写入 0 分配，探针 0.1%；不是模型独占全部、不是存活量或泄漏。 |
+| 光影两轮相机 Y＋7／Z－10 | **事实成立，根因修正** | 该轮 `player_pose` 等于 `holdPose` 前的位置、相机为未应用 hold 的姿态；即 `holdPose` 静默未生效，不是夹具漂移或世界保存导致。新夹具改为显式 `setPose`＋逐帧 `pose`/相机指纹核对：本轮 13 场景 `pose_gate_verified=true`、`camera_audit_changes=0`。 |
+| observeReserve／observeBuffer 高频探针出现在热栈 | **成立** | 旧 self/inclusive 18–41%；已新增 `-Dlobecorp.photon.bench.probes=false`，在 Mixin 注入层关闭四个探针，待 probe-off 对照轮给出净差。 |
+| 背景动物与 3 只存活女皇归属不明 | **部分修正** | 新夹具在首次 setup 清理了 8 个带 `laser_profile_fixture` tag 的遗留实体；同世界仍有 14–16 只未带 tag 的鸡/猪等，`entity_census` 记录类型/UUID/坐标，未删除；它们属世界背景而非夹具。 |
+| 四轮日志退出 GUI 断连异常 | **保留观察** | 本轮 FAILED 轮同样出现，与场景成败无关；属客户端关闭生命周期，不归因渲染。 |
+| 历史样本早于录制漏提交修复，不能直接当基线 | **成立** | 旧 `client-1792904292331` 只有 8 场景且提交不同；旧 plain 对为 3a89929b vs 3b7d41c0，不是同一提交，只有 shader 那对同提交。 |
+| （新增）施法尖峰与异常风暴 | **新确认事实** | 92 每轮施法尖峰 187–232 ms，Codec 27–38%、deepCopy 16–26%；91 首次 718 ms 且 CPU 只占 0.9%（停顿在 render 外）。每次施法出现 22–80 对 `NoSuchFileException`＋`WindowsException`：77.3% 来自 Photon ShaderGraph 材质构建的 GLSL `#import` 资源探测（渲染线程、`drain→bakeGroup→bakeBatches` 内），13.1% 为首次施法动态类加载；Iris 着色器缓存已排除。 |
+
+### 本轮复测结果（2026-10-26 11:25 完成）
+
+证据根：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026`（每轮 `runs/<轮次>/` 保存 artifacts、summary.json、console 日志、截图；`analysis/` 为只读 JFR/分配/施法分析）。以下均为本轮实际测得的数值，不是历史复制。
+
+#### 运行台账（全部 `status=PASSED`、`environment.valid=true`；Sodium 全程加载）
+
+| 轮次 | run id（UTC 起止） | 光影 | packed | 探针 | spark | 相机指纹（00-empty） |
+|---|---|---|---|---|---|---|
+| P0 旧采样器基线 | client-1792980753772（02:12:33～02:20:21） | 关 | 关 | 开 | 关 | (-6.5, -36.7767, -44.5) |
+| P2b 新采样器 | client-1792981928748（02:32:08～02:39:57） | 关 | 关 | 开 | 关 | (-6.5, -36.7767, -44.5) |
+| P1c 新采样器·探针关 | client-1792983479080（02:57:59～03:05:46） | 关 | 关 | 关 | 关 | (-6.5, -24.7767, -68.5) |
+| S1 光影·探针开 | client-1792984044114（03:07:24～03:15:17） | 开 | 关 | 开 | 开 | (-6.5, -24.7767, -68.5) |
+| S0 光影·探针关 | client-1792984613162（03:16:53～03:24:41） | 开 | 关 | 关 | 开 | (-6.5, -24.7767, -68.5) |
+
+- 每轮 13 个 Photon 场景；`frame_count` 与捕获帧一致、GPU errors=0、失焦帧=0（P1c/S1/S0 用 `-PphotonRequireFocus=false` 让 BenchMod 不因外部聊天抢焦点直接判无效，改由夹具的 `focus_audit` 与逐帧 flags 复核；本批 `measure_focus_valid=true`、0 失焦帧）。
+- **相机仍会跨轮漂移**：P0/P2b 为 A 位姿，P1c/S1/S0 为 A′（Y＋12、Z－24），原因是 BenchMod `holdPose` 的还原在服务器侧存在滞后，下一轮 `origin` 取到上一轮某个极端场景的保持位姿。本轮已记录每轮真实相机指纹，跨相机轮次不作帧时间 A/B；修复建议见 P14。
+- 旧 `P2-invalid-focus` 轮（client-1792981301652）因 `client.window.minimized`/`focus_lost` 判为 INVALID，已单独归档，不进入任何对照。首次门禁轮 `client-1792980111074` 因 prepare 覆盖 Iris 配置 13 场景 FAILED，同样作废。
+
+#### 优化 A/B：动画采样分配治理（同相机、同探针、同 spark，仅代码不同）
+
+| 场景 | 帧间隔 均值／P99（P0→P2b, ms） | CPU 均值（ms） | 渲染线程分配（MiB/帧） |
+|---|---|---|---|
+| 00-empty（对照） | 2.890→2.554 | 1.447→1.264 | 0.127→0.126 |
+| 30-static-sixteen | 5.485→5.183 | 3.630→2.681 | 0.184→0.186 |
+| 40-animated-sixteen | 7.824→6.204（−20.7%） P99 14.418→10.735 | 6.321→4.820（−23.8%） | **5.508→1.740（−68.4%）** |
+| 90-animated-thirtytwo | 12.781→7.866（−38.5%） P99 25.061→13.956 | 11.088→6.634（−40.2%） | **10.882→3.047（−72.0%）** |
+| 91-mixed-32＋1 束 | 10.300→9.654 | 8.104→7.367 | **7.323→2.276（−68.9%）** |
+| 92-mixed-64＋4 束 | 22.906→23.442（无改善） P99 94.287→105.232 | 16.821→15.616 | **17.223→6.975（−59.5%）** |
+
+结论（证据支持）：改动按设计消除了动画采样的每帧对象分配（−59%～−72%），并带动 16/32 动画与混合场景 CPU 均值下降；`40/90` 的帧时间与 P99 同向改善。**92 的帧时间与 P99 没有改善**，其主导项是每次施法的 Codec／深拷贝尖峰（见下），不是采样分配。
+
+#### 探针效应（同代码、同相机、同 spark；S1→S0 为干净对照）
+
+| 场景 | 光影·探针开 S1 | 光影·探针关 S0 | 降幅 |
+|---|---|---|---|
+| 30-static-sixteen | 7.868／P99 10.305 | 6.945／P99 8.187 | −11.7% |
+| 40-animated-sixteen | 8.241／14.121 | 6.978／8.842 | −15.3% |
+| 90-animated-thirtytwo | 10.867／19.170 | 7.502／11.079 | −31.0% |
+| 91-mixed-32＋1 束 | 12.879／32.957 | 8.202／16.422 | −36.3% |
+| 92-mixed-64＋4 束 | 15.233／46.112 | 12.332／36.580 | −19.0% |
+
+- plain 的 P2b（探针开，相机 A）→P1c（探针关，相机 A′）不能作干净对照（相机不同），仅作参考：40-animated 6.204→4.995、91 9.654→7.165、92 23.442→11.993。
+- 结论（确认事实）：四个高频提交探针在本轮是**可观的测量开销**（最高一项使 92 均值 +40%、P99 +22%）。历史 52 项数据均带探针开销，不能直接当作生产帧时间；本轮 S0/P1c 才是无探针的产品侧读数。
+
+#### 目标逐项对照（S0=SLO 场景真值；E2=91、E3=92，plain 用 P1c）
+
+| 指标（计划 SLO） | E2 目标 | E2 实测 S0 | E3 目标 | E3 实测 S0 | 判定 |
+|---|---|---|---|---|---|
+| 施放窗口均值 | ≤10 ms | 8.202 | ≤12 ms | 12.332 | E2 达标；E3 差 0.33 ms 未达标 |
+| P99 | ≤22 ms | 16.422 | ≤25 ms | 36.580 | E2 达标；E3 未达标 |
+| 单帧最长（非首帧） | ≤50 ms | 723.730 | ≤50 ms | 246.518 | **未达标**（施法尖峰） |
+| 渲染线程 CPU 均值 | ≤5 ms | 6.304 | ≤5 ms | 9.857 | 未达标 |
+| GPU 有效查询均值 | ≤10 ms | 7.875 | ≤10 ms | 10.115 | E2 达标；E3 临界超出 |
+| 内存（无持续 GC/有上限） | — | 分配已降 59%～72%，快照仍有上限 | — | 同左 | 部分：分配显著下降，未做长时 GC 账本 |
+| 视觉等价 | — | 逐顶点语义与几何测试通过；截图已归档 | — | 同左 | 未做像素级同机位 A/B（跨轮相机漂移） |
+
+- 施法尖峰（本轮 JFR 确认）：92 每轮施法 187～232 ms，窗口内 Codec 27%～38%、`IFXObject.deepCopy` 16%～26%；91 首次 718 ms 且 CPU 只占帧长 0.9%（停顿在 render 外），第 2/3 次 92/80 ms。每次施法还有 22～80 对 `NoSuchFileException`＋`WindowsException`：77.3% 来自 Photon ShaderGraph 材质构建的 GLSL `#import` 资源探测，13.1% 为首次施法动态类加载；Iris 着色器缓存已排除。
+- 因此“未达标”的主因已从“逐顶点提交/预留调用”修正为：**施法期同步的 FX 深拷贝＋Codec 往返与 ShaderGraph 材质重建**，以及光影下的 GPU/CPU 基线；采样分配优化只解决了动画稳态的一部分。
+
+#### 视觉与截图（可直接查看）
+
+- P0（旧代码，plain）：`.../runs/P0-plain-probes-on-packed-off/artifacts/screenshots/photon-*.png`
+- P2b（新代码，plain）：`.../runs/P2b-plain-probes-on-quiet/artifacts/screenshots/photon-*.png`
+- P1c（新代码，plain，探针关）：`.../runs/P1c-plain-probes-off/artifacts/screenshots/photon-*.png`
+- S1／S0（光影）：`.../runs/S1-shader-probes-on-spark-on/artifacts/screenshots/`、`.../runs/S0-shader-probes-off-spark-on/artifacts/screenshots/`（含 `*-beam.png` 施法验证截图）
+- 旧基线截图：`.../photon-runtime-comparison-20261025/before/build/modBench/raw-results/default/client/artifacts/screenshots/`
+- 像素差只应在同相机轮次内解释：P0 与 P2b 同为相机 A（旧 plain-baseline 也是 A），S1 与 S0 同为 A′；P0↔P1c 的差异包含相机位移，不能当视觉回归。逐顶点属性由 `PhotonModelGeometryTest`／快照测试保证；像素级同机位 A/B 仍需先修 P14 相机漂移。
+
+#### 事实、推断与假设（本轮新增）
+
+- **确认事实**：分配归因 94% 在 `PhotonModelPoseSampler`（skinMatrices 38%～47%、positions 17%～18%、immutable 10%～13%），几何写入 0 分配；优化后 40/90 分配降 68%/72%；探针本身使 92 均值 +40%；92 每次施法都有 187～232 ms 尖峰且与 Codec/deepCopy 同窗；91 首次 718 ms 停顿在 render 外；跨轮相机仍因 `holdPose` 还原滞后漂移；世界内有 14～16 只未加 tag 的背景动物，首次 setup 清理了 8 个带夹具 tag 的遗留实体。
+- **证据支持的推断**：施法尖峰的稳态化需要消除每次施法的 FX 子树深拷贝／Codec 往返与 ShaderGraph 材质重建（P06/P19），继续微调逐顶点提交对 P99 帮助有限；光影 E3 的 GPU 10.1 ms 已接近上限，进一步收益要靠减少重复 pass/材质重建而不是跳过阴影。
+- **待验证假设**：把 ShaderGraph 材质／GLSL import 结果按内容代次缓存能否消除 77% 的异常风暴与部分尖峰；把相机原点改为世界固定锚点能否同时消除跨轮漂移；spark 全程开启时（本轮 S0/S1）与关闭时的净差值（本轮 plain 组为 spark 关，未做同代码开关对照）。
+
+#### 复现（本轮实际命令）
+
+```text
+JAVA_HOME=<IDEA jbr 25>
+JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.bench.shader=<true|false> -Dlobecorp.photon.bench.probes=<true|false>
+./gradlew.bat verifyBenchClient -PphotonBench=true -PphotonShader=<true|false> -PphotonSpark=<true|false> -PphotonRequireFocus=false --offline
+```
+
+`-PphotonShader` 决定隔离 Iris 配置（修复首轮 prepare 覆盖问题）；`-PphotonSpark` 决定 spark backgroundProfiler（本轮 S0/S1 为 true，此前 plain 轮为 false，差异已在台账标注）；`-Dlobecorp.photon.bench.probes=false` 从 Mixin 注入层关闭四个提交探针（生产路径不受影响）。
+
+### 下一步
+
+按“无光影/光影 × packed 关/开 × 探针开/关”做重复配对；每轮记录相机、投影、分辨率、窗口/焦点、帧率、世界、实体、光影、负载、代码版本与开关，截图归档；随后用 JFR/GPU/帧数据区分 CPU 求值/提交、资源准备、GPU 执行与工具开销。未达标就如实报告，不以“场景通过”代替性能验收。
+
 ## 2026-10-26：无光影／光影四组运行对照与结论修订
 
 本节为当前测试结论，旧节均为当时历史，不能将旧节的“未运行”当作当前状态。用户已重新授权游戏测试；完成 Sodium＋BenchMod＋Minecraft MCP＋IDEA MCP＋独立 Debug。四组各 13 个 Photon 场景全部 PASSED，共 52 项；Sweeper 为 SKIPPED，不计通过数。实验缺省仍关闭，动画、LOD、原资源与生产渲染源码没有因本轮测试改变。**确认静态快照整块提交减少 reserve 调用；尚不能确认正式环境的稳定帧时收益，G0／G1 未通过。** 当前待办只在 [唯一清单](../issues.md) 维护。

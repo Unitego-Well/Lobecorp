@@ -11,20 +11,20 @@ import java.util.Set;
 
 /// 高频探针限定于显式 Photon Bench，整块提交由独立实验开关控制；其余 Mixin 选择不变。
 public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
-    private static final Set<String> BENCH_MIXINS = Set.of(
-            "org.unitego.lobecorp.mixin.photon.performance.client.FXObjectMixin",
-            "org.unitego.lobecorp.mixin.photon.performance.client.EmitterMixin",
-            "org.unitego.lobecorp.mixin.photon.performance.client.ByteBufferBuilderMixin",
-            "org.unitego.lobecorp.mixin.photon.performance.client.GlCommandEncoderMixin");
+	private static final Set<String> BENCH_MIXINS = Set.of(
+			"org.unitego.lobecorp.mixin.photon.performance.client.FXObjectMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.EmitterMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.ByteBufferBuilderMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.GlCommandEncoderMixin");
 
-    @Override
-    public void onLoad(String mixinPackage) {
-    }
+	@Override
+	public void onLoad(String mixinPackage) {
+	}
 
-    @Override
-    public @Nullable String getRefMapperConfig() {
-        return null;
-    }
+	@Override
+	public @Nullable String getRefMapperConfig() {
+		return null;
+	}
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
@@ -32,24 +32,29 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 			return Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY);
 		}
 
-		return !BENCH_MIXINS.contains(mixinClassName)
-				|| System.getProperty("modBench.scenarios", "").contains("lobecorp.photon-");
+		if (BENCH_MIXINS.contains(mixinClassName)) {
+			// 字面量与 PhotonSubmissionDiagnostics.PROBES_PROPERTY 一致；这里不加载 Minecraft 类。
+			return Boolean.parseBoolean(System.getProperty("lobecorp.photon.bench.probes", "true"))
+					&& System.getProperty("modBench.scenarios", "").contains("lobecorp.photon-");
+		}
+
+		return true;
 	}
 
-    @Override
-    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
-    }
+	@Override
+	public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
+	}
 
-    @Override
-    public @Nullable List<String> getMixins() {
-        return null;
-    }
+	@Override
+	public @Nullable List<String> getMixins() {
+		return null;
+	}
 
-    @Override
-    public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-    }
+	@Override
+	public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+	}
 
-    @Override
-    public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-    }
+	@Override
+	public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+	}
 }

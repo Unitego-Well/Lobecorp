@@ -1,5 +1,19 @@
 # Photon 极端优化执行文档（供 GPT 编码代理）
 
+## 2026-10-26 复测阶段实施：动画采样分配治理（A1，进行中）
+
+依据本轮重新取得的证据实施，不是历史计划照抄：
+
+- **对应瓶颈**：`jdk.ObjectAllocationSample` 显示 40-animated-sixteen 渲染线程约 5.6 MiB/帧，其中 94% 落在 `PhotonModelPoseSampler`（`skinMatrices` 38–47%、`positions` 17–18%、`immutable` 10–13%、lambda 流式中间对象 11–13%）；几何写入 0 分配、探针 0.1%。短场景最长帧主要由 GC 停顿解释。
+- **代码位置**：`PhotonModelPoseSampler` 的 `sample`/`positions`/`skinMatrices`/`morph`/`faceNormal`。
+- **消除的重复工作**：每帧每模型重复创建的 `HashMap<Integer,Vector3>` 与 Integer 装箱、`computeIfAbsent` 捕获 lambda、`byte[]/float[16]`×2、`Matrix4f`/`Matrix3f` 临时对象、`stream().mapToDouble()`、无形状键时的两次整表复制、每面 3 个 `Vector3f`、每角法线与包围盒临时向量。
+- **数据所有权、线程边界、失效规则**：全部复用缓冲都是采样器实例私有，只在渲染线程的 `sample()` 调用内使用；不进入 `Frame`/`Group`/`Vertex` 发布对象，不跨帧、不跨实例、不作为缓存键。`boneOverrides`/`partOverrides`/`morphWeights` 语义与求值顺序不变；`Input.equals` 命中路径仍是唯一的姿态复用条件。
+- **等价性风险**：顶点位置/法线/UV/颜色/光照的浮点运算顺序保持原样（同一 `sub`/`cross`/`add`/`normalize` 顺序），因此逐顶点属性应逐位一致；发布对象仍是新的不可变 `Frame`，`snapshotFrame` 比较语义不变。透明排序、LOD、材质、动画片段与资源内容均未改。
+- **预期收益**：动画 16/32 场景每帧分配显著下降、GC 频率与最长帧下降；平均值不保证同比。**验证**：probe-off/probe-on 配对、`frames.json` 分配与 GC 对照、`PhotonModelPoseSamplerTest` 与几何属性回归、同机位截图。**回退**：本改动是等价重写，无运行时开关；若属性对照或截图不一致，按 Git 差异回退该文件。
+- **未做**：GPU 实例化、VAT、阴影跳过、减少动画更新率、修改 LOD/资源。
+- **本轮结果（2026-10-26 11:25）**：五轮各 13 场景 PASSED（P0 旧采样器、P2b 新采样器、P1c 探针关、S1 光影探针开、S0 光影探针关）。同相机 P0→P2b：40/90/91/92 分配 −68%/−72%/−69%/−60%，16/32 动画 CPU 均值 −24%/−40%，40/90 均值 −21%/−38%；92 均值未改善（施法 Codec/deepCopy 尖峰）。S1→S0 探针净差最高使 92 均值 −19%、P99 −50%。S0 光影 E2 均值 8.202/P99 16.422 达标，E3 均值 12.332/P99 36.580 与最长 246.5 ms 未达标；主因登记 P19，相机漂移登记 P14/P21。详见 [性能审查复测节](photon-performance-audit.md#本轮复测结果2026-10-26-1125-完成)。
+
+
 > 2026-10-26 实际运行收尾：无光影／光影×packed关闭／开启四组各13场景通过，共52项；独立Debug已确认录制当次提交和真实缓存路径。静态reserve/Job 2048→1、顶点不变，但光影相机跨轮位移、阴性控制波动与探针开销使G0／G1仍未通过。动画／混合扩容与长帧仍在，WP1缺省关闭，WP2～WP7未实施。正式采样结束，配置原字节恢复，临时进程／断点已清理。完整实际结果见[最终对照报告](photon-performance-audit.md#2026-10-26无光影光影四组运行对照与结论修订)，待办只维护[唯一问题清单](../issues.md)。本页下方默认硬件分辨率是计划值，本轮实际2560×1494。
 
 > 当前会话约束（2026-10-25 后续）：用户已明确授权启动游戏并要求 Sodium＋BenchMod＋Minecraft MCP＋IDEA MCP＋Debug，覆盖无光影与光影；此前禁令已撤销。当前仅实施测试、对照与必要夹具修正，不据授权直接宣布 G0／G1 通过或开始 WP2。测量区间不得有断点暂停，Debug 独立归档。

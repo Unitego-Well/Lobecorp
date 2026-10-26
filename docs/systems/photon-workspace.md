@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。
+
 2026-10-26 12:52 R2 首帧渲染侧预热（部分正面，默认开启）：新增 `client/photon/performance/PhotonRenderPrewarm`（`-Dlobecorp.photon.prewarmRender`，默认 true，置 false 关闭）——预热壳内按绘制同一入口（`MaterialSetting#getRenderType`）预构建材质/着色图/CPU 管线，GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA）另经 `PhotonPipelines.graphShader`＋`precompilePipeline`，`PhotonModelOutput.prewarmRenderTypes()` 预准备模型材质，并递归预热子发射器模板（`PhotonChildSpawner.preparedTemplate()`，深度 2 已覆盖 15 个 spawner/50 个渲染类型）；任务队列每 tick 预算 10 ms，避免女皇出现时一次性冻结。单施法同条件 A/B（每轮重开客户端、plain、探针开、spark 关）：基线最长帧 680.3 ms、>250 ms 帧 3、窗口均值 12.84 ms → 预热 129.0～167.5 ms、>250 ms 帧 0、均值 8.03～9.85 ms；首施法 tick 68.3→70.9～75.3 ms 未退化。同步预热（B1/B2）反而更差（797.9/268.7 ms），证明必须递归覆盖＋分摊。剩余 +0.08～1.18 s 处 52～167 ms 长帧，疑为未覆盖的实例化变体与首次模拟类加载，**P22 未关闭**。证据 `photon-reaudit-20261026/first-cast/r2-*`（A/B/B2/B3/B4/B5 日志与 artifacts）。
 
 2026-10-26 12:22 R1 运行态复用实验（阴性，默认关闭）：实现 `-Dlobecorp.photon.poolBeam`（`PhotonGeoEffect.restart()`＋`QueenBeamEffects` 池化 borrow/recycle），91 场景同条件 A/B：pool off 第 1/2/3 次施法 42.8/26.6/34.4 ms、帧均值 6.356、>50 ms 帧 9；pool on 32.0/37.1/42.3 ms、帧均值 8.181、>50 ms 帧 16。复用省掉约 6 ms `createRuntime`，但 `prepareNext` 由 18～27 升到 33～38 ms，整体帧数下降（11002 vs 14161），**默认关闭、代码保留实验**。结论：真正大头是子实例准备与首帧材质/管线，下一步优先 **R3 子模板缓存 → R2 材质/管线预构建**。证据 `photon-reaudit-20261026/pool/`（runA/runB 日志与 A/B-artifacts）。

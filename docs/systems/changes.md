@@ -1,5 +1,9 @@
 # 系统修改记录
 
+## 2026-10-26 提问 API 优先规则
+
+- 2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。
+
 ## 2026-10-26：R2 首帧渲染侧预热（部分正面，默认开启）
 
 - 新增 `client/photon/performance/PhotonRenderPrewarm`：预热壳内按绘制同一入口预构建材质/着色图/CPU 管线（`MaterialSetting#getRenderType`），按发射器类型预构建 GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA，`PhotonPipelines.graphShader`＋`precompilePipeline`），`PhotonModelOutput.prewarmRenderTypes()` 预准备模型资源与材质；任务队列每 tick 预算 10 ms，开关 `-Dlobecorp.photon.prewarmRender`（默认 true，false 关闭）。

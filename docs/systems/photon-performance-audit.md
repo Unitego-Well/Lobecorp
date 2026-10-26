@@ -153,6 +153,17 @@ JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.bench
 - 视觉：run3 与 run4 同一施放截图 `mean_abs=1.741`、`max=255`、`diff>8` 像素 2.69%，差异集中在光束粒子相位；未发现缺失网格、排序或材质整体变化，但同帧像素对照仍未完成。
 - 证据：`runs` → `C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/first-cast/run{1..5b}-*.log`、`run3|run4|run5b-artifacts/`、`analysis/FirstCastWindows.java`；casts/截图在各 artifacts/custom。
 
+#### 剩余优化空间评估（2026-10-26 12:00，未实施）
+
+| 目标 | 当前证据 | 可做手段 | 预估收益 | 风险 |
+|---|---|---|---|---|
+| 首施法首帧渲染侧 1.0～1.4 s | run5b 长帧 545.9/424.8/307.4/153.1/141.5/82.5 ms；JFR 同窗口：Mixin 类转换/加载、GLSL import 探测异常、JSON 节点图、OGG 解码 | 受控隐藏预渲染/预热管线与音频；或缓存 GLSL import 结果 | 首施法可见停顿大部分可移到女皇出现时；若再配合运行时池化可避免后续释放重建 | 视觉/状态泄漏；隐藏渲染需验证不产生残留粒子、时间线偏移 |
+| 后续每次施法 190～250 ms | 首施法分段：深拷贝 53＋emit 50～72＋prepareNext 85～116＋命名 12；首施法已可预热 | 运行态池化复用（destroy→re-emit）、子实例 prepared 多槽/模板缓存 | 每次施法有望降到 50～80 ms，极端可到 15～30 ms | re-emit 状态重置与命名运行时/子实例所有权，需逐帧对照 |
+| 稳态子发射器反复调用 | 旧 JFR：E2/E3 MEASURE 中 `IFXObject.deepCopy` 约 2.3% inclusive、`mc.CODEC` 3.2%；`prepareNext` 116 ms 首次 | 多槽 prepared、模板与定义分离、按内容代次缓存 | 降低持续播放/连发时的抖动与分配 | 子实例随机数/路径/作用域语义 |
+| 测量口径 | 首施法截图自身 135 ms 落在帧窗口 | 把截图移出测量窗口或独立 session | 仅影响测量，不影响游戏 | 低 |
+
+结论：**还能继续优化，且剩余收益主要在后两项（首帧渲染侧预构建、运行态/子实例池化）**；需要决定优先实施哪一项。
+
 ### 下一步
 
 按“无光影/光影 × packed 关/开 × 探针开/关”做重复配对；每轮记录相机、投影、分辨率、窗口/焦点、帧率、世界、实体、光影、负载、代码版本与开关，截图归档；随后用 JFR/GPU/帧数据区分 CPU 求值/提交、资源准备、GPU 执行与工具开销。未达标就如实报告，不以“场景通过”代替性能验收。

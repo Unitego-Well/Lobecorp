@@ -6,6 +6,7 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
@@ -18,11 +19,13 @@ import com.mojang.blaze3d.vertex.VertexFormatElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
@@ -30,6 +33,7 @@ import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
 import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
 import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -160,8 +164,9 @@ public class HordeGpuRenderer {
 
 	public static void requestResources(HordeVisualDefinition visual) {
 		HordeMeshCache.request(visual);
-		int tiers = HordeVisualConfig.LOD_ENABLED.get() ? 4 : 1;
-		for (int tier = 0; tier < tiers; tier++) {
+		int[] tiers = HordeVisualConfig.LOD_ENABLED.get() && HordeVisualConfig.CARD_DISTANCE.get() >= 0
+				? new int[]{0, 3} : new int[]{0};
+		for (int tier : tiers) {
 			var key = meshKey(visual, tier);
 			if (!GEOMETRY.containsKey(key) || irisPath() && !IRIS_ANIMATIONS.containsKey(key)) {
 				PENDING_VISUALS.add(key);
@@ -173,23 +178,18 @@ public class HordeGpuRenderer {
 		if (!HordeVisualConfig.LOD_ENABLED.get()) {
 			return 0;
 		}
-		double near = HordeVisualConfig.LOD_NEAR.get();
-		double far = Math.max(near + 1, HordeVisualConfig.LOD_FAR.get());
-		double band = Math.min(2, near * 0.1);
+		int cardDistance = HordeVisualConfig.CARD_DISTANCE.get();
+		if (cardDistance < 0) {
+			// 不使用片：只保留完整模型。
+			return 0;
+		}
+		double band = Math.max(1, cardDistance * 0.1);
 		double distance = batch.block().center().distanceTo(Minecraft.getInstance().gameRenderer.getMainCamera().position());
 		var states = LOD_STATES.computeIfAbsent(batch.event().id, _ -> new HashMap<>());
-		int initial = distance <= near ? 0 : distance <= far ? 1 : 2;
-		int previous = states.getOrDefault(batch.block().index(), initial);
-		int tier = switch (previous) {
-			case 0 -> distance > far + band ? 2 : distance > near + band ? 1 : 0;
-			case 1 -> distance < near - band ? 0 : distance > far + band ? 2 : 1;
-			default -> distance < near - band ? 0 : distance < far - band ? 1 : 2;
-		};
-		int cardDistance = HordeVisualConfig.CARD_DISTANCE.get();
-		if (cardDistance > 0) {
-			// 片档：超过配置距离使用6方向面片盒子；回退带迟滞，避免在边界抖动。
-			tier = previous == 3 ? distance < cardDistance - band ? 2 : 3 : distance >= cardDistance ? 3 : tier;
-		}
+		int previous = states.getOrDefault(batch.block().index(), distance >= cardDistance ? 3 : 0);
+		int tier = previous == 3
+				? (distance < cardDistance - band ? 0 : 3)
+				: (distance >= cardDistance ? 3 : 0);
 		states.put(batch.block().index(), tier);
 		return tier;
 	}
@@ -654,7 +654,8 @@ public class HordeGpuRenderer {
 		upload.putInt(item.event().units.mask()).putInt((int) row).putInt((int) (row >>> 32)).putInt((int) drawSerial);
 		put(0.75f, 8, 0.05f, HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get() ? 1 : 0);
 		upload.putInt(item.event().units.ringMask()).putInt(item.event().units.columnTiles()).putInt(1).putInt(0);
-		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.CARD_DISTANCE.get(), 0f, 0f);
+		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.CARD_DISTANCE.get(),
+				item.geometry().model.tier() == 3 ? 1f : 0f, 0f);
 	}
 
 	private static void put(float a, float b, float c, float d) {
@@ -696,12 +697,28 @@ public class HordeGpuRenderer {
 			animation = new HordeDataTexture("Horde baked animation frames", model.frameVertices());
 			uvs = new HordeDataTexture("Horde static UVs", uvData);
 			var minecraft = Minecraft.getInstance();
-			var base = minecraft.getTextureManager().getTexture(visual.texture());
+			AbstractTexture base = minecraft.getTextureManager().getTexture(visual.texture());
 			Identifier glowId = visual.texture().withPath(path -> path.replace(".png", "_glowmask.png"));
 			boolean hasGlow = minecraft.getResourceManager().getResource(glowId).isPresent();
-			var glow = hasGlow ? minecraft.getTextureManager().getTexture(glowId) : base;
+			AbstractTexture glow = hasGlow ? minecraft.getTextureManager().getTexture(glowId) : base;
+			DynamicTexture cardAtlas = null;
+			if (model.tier() == 3) {
+				// 片档用6方向×20帧的烘焙图集取代原模型贴图；失败则回退普通贴图+UV方向面。
+				try (var input = minecraft.getResourceManager().getResourceOrThrow(visual.texture()).open();
+				     var image = NativeImage.read(input)) {
+					var atlas = HordeCardBake.bake(HordeMeshCache.ready(visual, 0), image);
+					if (atlas != null) {
+						cardAtlas = new DynamicTexture(() -> "Horde card atlas", atlas);
+						base = cardAtlas;
+						glow = cardAtlas;
+						hasGlow = false;
+					}
+				} catch (IOException | RuntimeException failure) {
+					Lobecorp.LOGGER.warn("群体片图集未生成，回退6面盒贴图：{}", visual.texture(), failure);
+				}
+			}
 			preparations++;
-			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius);
+			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius, cardAtlas);
 		} catch (RuntimeException exception) {
 			if (buffer != null) {
 				buffer.close();
@@ -817,6 +834,9 @@ public class HordeGpuRenderer {
 			geometry.vertices.close();
 			geometry.animation.close();
 			geometry.uvs.close();
+			if (geometry.cardAtlas != null) {
+				geometry.cardAtlas.close();
+			}
 		});
 		GEOMETRY.clear();
 		MODEL_KEYS.clear();
@@ -905,7 +925,8 @@ public class HordeGpuRenderer {
 
 	private record Geometry(GpuBuffer vertices, int indices, HordeDataTexture animation, HordeDataTexture uvs,
 	                        HordeMeshCache.Model model,
-	                        AbstractTexture base, AbstractTexture glow, boolean hasGlow, float radius) {
+	                        AbstractTexture base, AbstractTexture glow, boolean hasGlow, float radius,
+	                        @Nullable DynamicTexture cardAtlas) {
 	}
 
 	private record Prepared(HordeClient.Batch batch, Geometry geometry, EventData event, int offset, int count) {

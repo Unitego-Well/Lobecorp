@@ -64,4 +64,12 @@ void main() {
     }
     glowing = AnimationInfo.w;
     texCoord = UV0;
+    if (FrameLod.z > 0.5) {
+        // 片图集：UV编码(方向*2+角点)/12，动画帧从运动缓冲的帧基址取。
+        float index = floor(UV0.x * 12.0);
+        float face = floor(index * 0.5);
+        float cornerU = index - face * 2.0;
+        int frame = int(scalar(HordeMotion, cached + 7)) / int(AnimationInfo.x);
+        texCoord = vec2((face + cornerU) / 6.0, (float(frame) + UV0.y) / AnimationInfo.y);
+    }
 }

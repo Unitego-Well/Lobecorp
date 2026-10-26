@@ -21,6 +21,11 @@ public class HordeMeshReduction {
 	private static final int[][] BOX = {{0, 4, 6, 2}, {1, 3, 7, 5}, {0, 1, 5, 4},
 			{2, 6, 7, 3}, {0, 2, 3, 1}, {4, 5, 7, 6}};
 	private static final int BOX_VERTICES = 24;
+
+	/// 片图集方向与盒面顺序一致，供CPU方向烘焙与GPU取tile共用。
+	static int[][] boxFaces() {
+		return BOX;
+	}
 	// 中景部位分组：腿脚、躯干、双臂（合并）、头、背后的罐子/生物质；远景只合并为上下两个包围盒。
 	private static final int PART_LOWER = 0;
 	private static final int PART_TORSO = 1;
@@ -56,8 +61,8 @@ public class HordeMeshReduction {
 			}
 		}
 		var full = select(source, indices.toIntArray(), 0);
-		return new HordeMeshCache.Model[]{full, proxy(source, full, cubes, bones, rigidGroups, visible, 1),
-				proxy(source, full, cubes, bones, rigidGroups, visible, 2),
+		// 只保留完整模型与拼接片：中景/远景简化盒不再生成，避免额外烘焙与显存。
+		return new HordeMeshCache.Model[]{full, null, null,
 				proxy(source, full, cubes, bones, rigidGroups, visible, 3)};
 	}
 
@@ -319,7 +324,8 @@ public class HordeMeshReduction {
             }
             double[] box = bounds(source.vertices(), piece.indices(), STRIDE, 0);
             boolean redOnBack = containsBiomass(piece.indices(), owner, names);
-            for (int[] face : BOX) {
+            for (int faceIndex = 0; faceIndex < BOX.length; faceIndex++) {
+                int[] face = BOX[faceIndex];
                 double[] normal = faceNormal(box, face);
                 int uv = bestFace(source.vertices(), piece.indices(), normal, redOnBack, owner, names);
                 for (int corner = 0; corner < 4; corner++) {
@@ -329,8 +335,14 @@ public class HordeMeshReduction {
                         vertices[target + axis] = (float) point[axis];
                         vertices[target + 5 + axis] = (float) normal[axis];
                     }
-                    vertices[target + 3] = source.vertices()[(uv + corner) * STRIDE + 3];
-                    vertices[target + 4] = source.vertices()[(uv + corner) * STRIDE + 4];
+                    if (tier == 3) {
+                        // 片档UV编码方向与角点（方向*2+角点，避免角点1跨到下一方向）；图集坐标由GPU按帧计算。
+                        vertices[target + 3] = (faceIndex * 2 + (corner == 1 || corner == 2 ? 1 : 0)) / 12f;
+                        vertices[target + 4] = corner >= 2 ? 1f : 0f;
+                    } else {
+                        vertices[target + 3] = source.vertices()[(uv + corner) * STRIDE + 3];
+                        vertices[target + 4] = source.vertices()[(uv + corner) * STRIDE + 4];
+                    }
                     vertices[target + 8] = piece.bone();
                 }
                 for (int frame = 0; frame < source.frames(); frame++) {
@@ -433,7 +445,7 @@ public class HordeMeshReduction {
 				vertices[offset + index * stride + 2]};
 	}
 
-	private static double[] corner(double[] bounds, int corner) {
+	static double[] corner(double[] bounds, int corner) {
 		return new double[]{bounds[(corner & 1) != 0 ? 3 : 0], bounds[(corner & 2) != 0 ? 4 : 1],
 				bounds[(corner & 4) != 0 ? 5 : 2]};
 	}

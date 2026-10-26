@@ -26,7 +26,19 @@ void main() {
     int cached = (MotionInfo.x + instance) * HORDE_MOTION_VALUES;
     uint bits;
     if (word == 4 || word == 5) {
-        bits = floatBitsToUint(scalar(HordeUVs, vertex * 4 + word - 4));
+        if (FrameLod.z > 0.5) {
+            // 片图集：静态UV编码(方向*2+角点)/12，这里加上由动画帧决定的图集行。
+            float encoded = scalar(HordeUVs, vertex * 4);
+            float index = floor(encoded * 12.0);
+            float face = floor(index * 0.5);
+            float cornerU = index - face * 2.0;
+            float cornerV = scalar(HordeUVs, vertex * 4 + 1);
+            int frame = int(scalar(HordeMotion, cached + 7)) / int(AnimationInfo.x);
+            vec2 atlasUv = vec2((face + cornerU) / 6.0, (float(frame) + cornerV) / AnimationInfo.y);
+            bits = floatBitsToUint(word == 4 ? atlasUv.x : atlasUv.y);
+        } else {
+            bits = floatBitsToUint(scalar(HordeUVs, vertex * 4 + word - 4));
+        }
     } else if (word == 6) {
         bits = 10u << 16u;
     } else if (word == 7) {

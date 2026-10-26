@@ -36,35 +36,35 @@ import java.util.regex.Pattern;
 
 /// 在隔离客户端构造仅用于显示的事件快照；不代表真实参战或网络性能。
 public class HordeRenderScenario implements BenchClientScenario {
-    private static final UUID EVENT_ID = UUID.fromString("85fb7af6-51fc-4f6e-985f-46409699774d");
+	private static final UUID EVENT_ID = UUID.fromString("85fb7af6-51fc-4f6e-985f-46409699774d");
 	private static final int UNLIMITED_BENCH_COUNT = 10000;
 	private int configuredCount;
 	private int count;
-    private static final int MEASURE_TICKS = 1200;
-    private static final String SPARK_START = "sparkc profiler start --timeout 30";
+	private static final int MEASURE_TICKS = 1200;
+	private static final String SPARK_START = "sparkc profiler start --timeout 30";
 	private static final Pattern SPARK_LINK = Pattern.compile("https://spark\\.lucko\\.me/[A-Za-z0-9]+");
 	private Set<String> sparkLinksBefore = Set.of();
 	private static final double WIDTH = 512;
-    private static final double SPEED = 0.3;
-    private static final BenchMetricDescriptor INSTANCES = new BenchMetricDescriptor(
-            "lobecorp.horde_render.instances", "count", MetricDirection.NEUTRAL);
-    private BenchClientPose originalPose;
-    private BenchPoseHold pose;
-    private CompletableFuture<Path> screenshot;
-    private Path screenshotPath;
-    private Vec3 origin;
-    private CompoundTag header;
-    private long sequence;
-    private long baseTick;
-    private long firstFrame;
-    private int elapsed;
-    private int phaseTicks;
-    private int previousMaximum;
-    private int previousRange;
+	private static final double SPEED = 0.3;
+	private static final BenchMetricDescriptor INSTANCES = new BenchMetricDescriptor(
+			"lobecorp.horde_render.instances", "count", MetricDirection.NEUTRAL);
+	private BenchClientPose originalPose;
+	private BenchPoseHold pose;
+	private CompletableFuture<Path> screenshot;
+	private Path screenshotPath;
+	private Vec3 origin;
+	private CompoundTag header;
+	private long sequence;
+	private long baseTick;
+	private long firstFrame;
+	private int elapsed;
+	private int phaseTicks;
+	private int previousMaximum;
+	private int previousRange;
 	private int temporaryHeightSamples;
-    private boolean initialized;
-    private boolean previousEnabled;
-    private boolean profilerStarted;
+	private boolean initialized;
+	private boolean previousEnabled;
+	private boolean profilerStarted;
 	private boolean ownsStageCapture;
 	private boolean ownsEvent;
 	private boolean poseSaved;
@@ -96,42 +96,46 @@ public class HordeRenderScenario implements BenchClientScenario {
 			.map(counter -> new BenchMetricDescriptor("lobecorp.horde." + counter.name().toLowerCase(Locale.ROOT), counter == HordeRenderMetrics.Counter.PENETRATION_MAX ? "microblocks" : counter.name().endsWith("_BYTES") ? "bytes" : "count", MetricDirection.NEUTRAL))
 			.toArray(BenchMetricDescriptor[]::new);
 
-    @Override
-    public void setup(BenchClientContext context) {
-	    renderFailureBaseline = HordeRenderMetrics.failureSequence();
-        originalPose = context.automation().pose();
-	    poseSaved = true;
-        origin = context.player().position();
-        previousMaximum = HordeVisualConfig.MAX_VISIBLE.get();
-	    configuredCount = previousMaximum;
-	    count = configuredCount == -1 ? UNLIMITED_BENCH_COUNT : configuredCount;
-	    if (count <= 0) {
-		    throw new IllegalArgumentException("浪潮基准需要正的配置数量，-1按10000测量");
-	    }
-        previousRange = HordeVisualConfig.DISTANCE.get();
-        previousEnabled = HordeVisualConfig.ENABLED.get();
-	    configurationSaved = true;
-	    HordeVisualConfig.MAX_VISIBLE.set(count);
-        HordeVisualConfig.DISTANCE.set(-1);
-        HordeVisualConfig.ENABLED.set(true);
-        GLFW.glfwMaximizeWindow(context.minecraft().getWindow().handle());
-	    HordeRenderMetrics.start(context.resultDirectory().resolve("artifacts/stages/horde-stages.jsonl"),
-			    true, HordeRenderMetrics.GpuMode.FULL_STAGE_SUM);
-	    ownsStageCapture = true;
-    }
+	@Override
+	public void setup(BenchClientContext context) {
+		renderFailureBaseline = HordeRenderMetrics.failureSequence();
+		originalPose = context.automation().pose();
+		poseSaved = true;
+		origin = context.player().position();
+		previousMaximum = HordeVisualConfig.MAX_VISIBLE.get();
+		configuredCount = previousMaximum;
+		count = configuredCount == -1 ? UNLIMITED_BENCH_COUNT : configuredCount;
+		if (count <= 0) {
+			throw new IllegalArgumentException("浪潮基准需要正的配置数量，-1按10000测量");
+		}
+		previousRange = HordeVisualConfig.DISTANCE.get();
+		previousEnabled = HordeVisualConfig.ENABLED.get();
+		configurationSaved = true;
+		HordeVisualConfig.MAX_VISIBLE.set(count);
+		HordeVisualConfig.DISTANCE.set(-1);
+		HordeVisualConfig.ENABLED.set(true);
+		var window = context.minecraft().getWindow().handle();
+		GLFW.glfwMaximizeWindow(window);
+		BenchWindow.reset();
+		BenchWindow.ensure(window);
+		HordeRenderMetrics.start(context.resultDirectory().resolve("artifacts/stages/horde-stages.jsonl"),
+				true, HordeRenderMetrics.GpuMode.FULL_STAGE_SUM);
+		ownsStageCapture = true;
+	}
 
-    @Override
-    public BenchClientStepResult stabilize(BenchClientContext context) {
-	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.STABILIZE);
-	    requireGpuProgress();
-        if (!initialized && !initialize(context)) {
-            return BenchClientStepResult.CONTINUE;
-        }
-        advance();
-        return ++phaseTicks >= LobecorpBenchConfig.STABILIZE_TICKS
-                && context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)
-                ? completePhase() : BenchClientStepResult.CONTINUE;
-    }
+	@Override
+	public BenchClientStepResult stabilize(BenchClientContext context) {
+		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.STABILIZE);
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		requireGpuProgress();
+		if (!initialized && !initialize(context)) {
+			return BenchClientStepResult.CONTINUE;
+		}
+		advance();
+		return ++phaseTicks >= LobecorpBenchConfig.STABILIZE_TICKS
+				&& context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)
+				? completePhase() : BenchClientStepResult.CONTINUE;
+	}
 
 	private boolean initialize(BenchClientContext context) {
 		// 事件和相机必须以实际地面为锚点：玩家位置可能悬空，旧的 origin.y+64 会把相机抬到地面之上约192格，全部进入雾外。
@@ -193,31 +197,32 @@ public class HordeRenderScenario implements BenchClientScenario {
 		return true;
 	}
 
-    private void send(String kind, CompoundTag body) {
-        var packet = new CompoundTag();
-        packet.putString("id", EVENT_ID.toString());
-        packet.putString("kind", kind);
-        packet.putLong("sequence", ++sequence);
-        packet.put("body", body.copy());
-        HordeClient.apply(packet);
-    }
+	private void send(String kind, CompoundTag body) {
+		var packet = new CompoundTag();
+		packet.putString("id", EVENT_ID.toString());
+		packet.putString("kind", kind);
+		packet.putLong("sequence", ++sequence);
+		packet.put("body", body.copy());
+		HordeClient.apply(packet);
+	}
 
-    private void advance() {
-        elapsed++;
-        if (elapsed % 20 == 0) {
-            header.putLong("tick", baseTick + elapsed);
-            send("header", header);
-        }
-    }
+	private void advance() {
+		elapsed++;
+		if (elapsed % 20 == 0) {
+			header.putLong("tick", baseTick + elapsed);
+			send("header", header);
+		}
+	}
 
-    private BenchClientStepResult completePhase() {
-        phaseTicks = 0;
-        return BenchClientStepResult.COMPLETE;
-    }
+	private BenchClientStepResult completePhase() {
+		phaseTicks = 0;
+		return BenchClientStepResult.COMPLETE;
+	}
 
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
 		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.WARMUP);
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		requireGpuProgress();
 		advance();
 		if (++phaseTicks < LobecorpBenchConfig.WARMUP_TICKS) {
@@ -250,43 +255,46 @@ public class HordeRenderScenario implements BenchClientScenario {
 		return completePhase();
 	}
 
-    @Override
-    public BenchClientStepResult measure(BenchClientContext context) {
-	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.MEASURE);
-	    requireGpuProgress();
-	    drainGpu(context);
-	    if (phaseTicks > 0 && context.frames().sampleCount() > firstFrame) {
-		    for (var stage : HordeRenderMetrics.Stage.values()) {
-			    context.metrics().record(STAGE_CPU[stage.ordinal()], HordeRenderMetrics.cpu(stage));
-		    }
-		    for (var counter : HordeRenderMetrics.Counter.values()) {
-			    long value = HordeRenderMetrics.value(counter);
-			    if (value >= 0) {
-				    context.metrics().record(COUNTERS[counter.ordinal()], value);
-			    }
-		    }
-	    }
-        advance();
-        if (phaseTicks == 0) {
-            firstFrame = context.frames().sampleCount();
-	        if (PhotonFrameCapture.active()) {
-		        throw new IllegalStateException("已有GPU捕获正在进行，不能替换其他捕获");
-	        }
-	        environment = new HordeBenchmarkEnvironment();
-	        gpuCaptureToken = PhotonFrameCapture.start("horde_bench_gpu", 30, HordeRenderMetrics::worldGpuFrame);
-            sparkLinksBefore = sparkLinks(context);
-            profilerStarted = ClientCommandHandler.runCommand(SPARK_START);
-            if (!profilerStarted) {
-                throw new IllegalStateException("Spark client profiler command is unavailable");
-            }
-        }
-        long count = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
-        context.metrics().record(INSTANCES, count);
-	    if (count != this.count || HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
-            throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
-        }
-        return ++phaseTicks >= MEASURE_TICKS ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
-    }
+	@Override
+	public BenchClientStepResult measure(BenchClientContext context) {
+		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.MEASURE);
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		requireGpuProgress();
+		drainGpu(context);
+		if (phaseTicks > 0 && context.frames().sampleCount() > firstFrame) {
+			for (var stage : HordeRenderMetrics.Stage.values()) {
+				context.metrics().record(STAGE_CPU[stage.ordinal()], HordeRenderMetrics.cpu(stage));
+			}
+			for (var counter : HordeRenderMetrics.Counter.values()) {
+				long value = HordeRenderMetrics.value(counter);
+				if (value >= 0) {
+					context.metrics().record(COUNTERS[counter.ordinal()], value);
+				}
+			}
+		}
+		advance();
+		if (phaseTicks == 0) {
+			firstFrame = context.frames().sampleCount();
+			// 只统计MEASURE阶段的失焦/恢复，预热阶段的偶发切换不计入验收窗口。
+			BenchWindow.reset();
+			if (PhotonFrameCapture.active()) {
+				throw new IllegalStateException("已有GPU捕获正在进行，不能替换其他捕获");
+			}
+			environment = new HordeBenchmarkEnvironment();
+			gpuCaptureToken = PhotonFrameCapture.start("horde_bench_gpu", 30, HordeRenderMetrics::worldGpuFrame);
+			sparkLinksBefore = sparkLinks(context);
+			profilerStarted = ClientCommandHandler.runCommand(SPARK_START);
+			if (!profilerStarted) {
+				throw new IllegalStateException("Spark client profiler command is unavailable");
+			}
+		}
+		long count = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
+		context.metrics().record(INSTANCES, count);
+		if (count != this.count || HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
+			throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
+		}
+		return ++phaseTicks >= MEASURE_TICKS ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+	}
 
 	@Override
 	public void verify(BenchClientContext context) throws Exception {
@@ -299,6 +307,12 @@ public class HordeRenderScenario implements BenchClientScenario {
 			throw new AssertionError("GPU horde did not produce the expected drawing and contrast screenshots");
 		}
 		verifyVisible(context);
+		var window = context.minecraft().getWindow().handle();
+		if (!BenchWindow.focused(window) || BenchWindow.iconified(window) || BenchWindow.losses() > 0) {
+			throw new AssertionError("基准窗口在MEASURE期间失焦或最小化，结果不能用于验收：focused="
+					+ BenchWindow.focused(window) + ", iconified=" + BenchWindow.iconified(window)
+					+ ", losses=" + BenchWindow.losses() + ", restores=" + BenchWindow.restores());
+		}
 		saveSpark(context);
 		var capture = PhotonFrameCapture.snapshot();
 		if (gpuCaptureToken == null || !capture.has("capture_id") || capture.get("capture_id").isJsonNull()
@@ -368,18 +382,18 @@ public class HordeRenderScenario implements BenchClientScenario {
 
 
 	private void saveSpark(BenchClientContext context) throws Exception {
-	    for (String link : sparkLinks(context)) {
-		    if (sparkLinksBefore.contains(link)) {
-			    continue;
-		    }
-		    Path file = context.resultDirectory().resolve("artifacts/spark/horde-profile.txt");
-		    Files.createDirectories(file.getParent());
-		    Files.writeString(file, link + System.lineSeparator());
-		    context.artifacts().register(file, "text/plain");
-		    return;
-	    }
-	    throw new AssertionError("Spark did not return a new profile link for this run");
-    }
+		for (String link : sparkLinks(context)) {
+			if (sparkLinksBefore.contains(link)) {
+				continue;
+			}
+			Path file = context.resultDirectory().resolve("artifacts/spark/horde-profile.txt");
+			Files.createDirectories(file.getParent());
+			Files.writeString(file, link + System.lineSeparator());
+			context.artifacts().register(file, "text/plain");
+			return;
+		}
+		throw new AssertionError("Spark did not return a new profile link for this run");
+	}
 
 	private Set<String> sparkLinks(BenchClientContext context) {
 		try {
@@ -392,13 +406,13 @@ public class HordeRenderScenario implements BenchClientScenario {
 					while (matcher.find()) {
 						links.add(matcher.group());
 					}
-                }
-            }
-	        return links;
-        } catch (ReflectiveOperationException exception) {
-	        throw new IllegalStateException("Cannot identify Spark profile links for this run", exception);
-        }
-    }
+				}
+			}
+			return links;
+		} catch (ReflectiveOperationException exception) {
+			throw new IllegalStateException("Cannot identify Spark profile links for this run", exception);
+		}
+	}
 
 	@Override
 	public void teardown(BenchClientContext context) throws Exception {
@@ -484,6 +498,11 @@ public class HordeRenderScenario implements BenchClientScenario {
 		value.addProperty("camera_pose", context.automation().pose().toString());
 		value.addProperty("camera_ground_y", groundY);
 		value.addProperty("camera_eye_height_above_ground", context.automation().pose().y() - groundY);
+		var window = context.minecraft().getWindow().handle();
+		value.addProperty("window_focused_at_end", BenchWindow.focused(window));
+		value.addProperty("window_iconified_at_end", BenchWindow.iconified(window));
+		value.addProperty("focus_losses", BenchWindow.losses());
+		value.addProperty("focus_restores", BenchWindow.restores());
 		value.addProperty("event_anchor", origin.toString());
 		value.addProperty("visible_pixels", visiblePixels);
 		value.addProperty("visible_pixel_bounds", Arrays.toString(visibleBounds));
@@ -531,5 +550,5 @@ public class HordeRenderScenario implements BenchClientScenario {
 		} catch (IOException exception) {
 			throw new IllegalStateException("群体阶段统计保存失败", exception);
 		}
-    }
+	}
 }

@@ -69,6 +69,8 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		origin = context.player().blockPosition().offset(-columns * GRID_SPACING / 2, 0,
 				-columns * GRID_SPACING / 2);
 		GLFW.glfwMaximizeWindow(context.minecraft().getWindow().handle());
+		BenchWindow.reset();
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
 	}
 
 	private BlockPos position(int index) {
@@ -77,6 +79,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		if (corpses.isEmpty()) {
 			for (int index = 0; index < count; index++) {
 				var at = position(index);
@@ -125,6 +128,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		requireOwned(context);
 		if (++warmup < LobecorpBenchConfig.WARMUP_TICKS) {
 			return BenchClientStepResult.CONTINUE;
@@ -144,6 +148,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult measure(BenchClientContext context) {
+		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		requireOwned(context);
 		if (measured == 0) {
 			if (PhotonFrameCapture.active()) {

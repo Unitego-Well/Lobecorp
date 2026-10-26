@@ -46,6 +46,7 @@ import com.google.gson.JsonArray;
 import java.util.Comparator;
 
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+
 import java.util.OptionalDouble;
 import java.util.OptionalInt;
 import java.util.UUID;
@@ -54,29 +55,29 @@ import java.util.UUID;
 public class HordeGpuRenderer {
 	// std140共17个vec4，与horde_motion.glsl的HordeParameters一致。
 	private static final int PARAMETER_BYTES = 272;
-    private static final int VERTEX_BYTES = 28;
-    private static final int INSTANCES_PER_DRAW = 65536;
+	private static final int VERTEX_BYTES = 28;
+	private static final int INSTANCES_PER_DRAW = 65536;
 	// 位置、朝向角、光照、sin/cos和帧顶点基址，与GLSL布局一致。
 	private static final int MOTION_VALUES = 8;
 	private static final int MAX_RETRY_SECONDS = 5;
 	private static int resourceFailures;
 	private static long retryAtNanos;
-    private static final int MOTION_ROW_WIDTH = 1024;
-    private static final VertexFormat FORMAT = VertexFormat.builder()
-            .add("Position", VertexFormatElement.POSITION).add("UV0", VertexFormatElement.UV0)
-            .add("Color", VertexFormatElement.COLOR).add("Normal", VertexFormatElement.NORMAL).padding(1).build();
-    private static final RenderPipeline NORMAL = pipeline(false);
-    private static final RenderPipeline REVERSE = pipeline(true);
-    private static final RenderPipeline MOTION = RenderPipeline.builder()
-            .withLocation(Lobecorp.id("pipeline/horde_motion"))
-            .withVertexShader(Lobecorp.id("core/horde_motion")).withFragmentShader(Lobecorp.id("core/horde_motion"))
-		    .withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeRegions").withSampler("HordeRegionState")
-		    .withSampler("HordeLight").withSampler("HordeLightIndex").withSampler("HordeTerrain")
-		    .withSampler("HordeSpatial32").withSampler("HordeSpatial16").withSampler("HordeSpatial8")
-		    .withSampler("HordeUnitCurrent").withSampler("HordeUnitIndex")
-            .withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
-            .withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
-            .withColorTargetState(ColorTargetState.DEFAULT).build();
+	private static final int MOTION_ROW_WIDTH = 1024;
+	private static final VertexFormat FORMAT = VertexFormat.builder()
+			.add("Position", VertexFormatElement.POSITION).add("UV0", VertexFormatElement.UV0)
+			.add("Color", VertexFormatElement.COLOR).add("Normal", VertexFormatElement.NORMAL).padding(1).build();
+	private static final RenderPipeline NORMAL = pipeline(false);
+	private static final RenderPipeline REVERSE = pipeline(true);
+	private static final RenderPipeline MOTION = RenderPipeline.builder()
+			.withLocation(Lobecorp.id("pipeline/horde_motion"))
+			.withVertexShader(Lobecorp.id("core/horde_motion")).withFragmentShader(Lobecorp.id("core/horde_motion"))
+			.withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeRegions").withSampler("HordeRegionState")
+			.withSampler("HordeLight").withSampler("HordeLightIndex").withSampler("HordeTerrain")
+			.withSampler("HordeSpatial32").withSampler("HordeSpatial16").withSampler("HordeSpatial8")
+			.withSampler("HordeUnitCurrent").withSampler("HordeUnitIndex")
+			.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
+			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
+			.withColorTargetState(ColorTargetState.DEFAULT).build();
 	private static final RenderPipeline UNIT_UPDATE = RenderPipeline.builder()
 			.withLocation(Lobecorp.id("pipeline/horde_unit_update"))
 			.withVertexShader(Lobecorp.id("core/horde_unit")).withFragmentShader(Lobecorp.id("core/horde_unit"))
@@ -87,15 +88,15 @@ public class HordeGpuRenderer {
 			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
 			.withColorTargetState(ColorTargetState.DEFAULT).build();
 	private static final Map<GeometryKey, Geometry> GEOMETRY = new HashMap<>();
-    private static final Map<UUID, EventData> EVENTS = new HashMap<>();
+	private static final Map<UUID, EventData> EVENTS = new HashMap<>();
 	private static final Map<GeometryKey, HordeIrisAnimation> IRIS_ANIMATIONS = new HashMap<>();
-    private static final HordeLightField LIGHT = new HordeLightField();
+	private static final HordeLightField LIGHT = new HordeLightField();
 	private static final IrisVertices IRIS = new IrisVertices();
-    private static GpuTexture motion;
-    private static GpuTextureView motionView;
-    private static int motionWidth;
-    private static int motionHeight;
-    private static GpuBuffer parameters;
+	private static GpuTexture motion;
+	private static GpuTextureView motionView;
+	private static int motionWidth;
+	private static int motionHeight;
+	private static GpuBuffer parameters;
 	private static ByteBuffer upload;
 	private static long drawn;
 	private static int batches;
@@ -592,6 +593,11 @@ public class HordeGpuRenderer {
 				case 2 -> HordeRenderMetrics.Counter.LOD_FAR_BLOCKS;
 				default -> HordeRenderMetrics.Counter.LOD_NEAR_BLOCKS;
 			}, 1);
+			HordeRenderMetrics.add(switch (tier) {
+				case 1 -> HordeRenderMetrics.Counter.LOD_MID_INSTANCES;
+				case 2 -> HordeRenderMetrics.Counter.LOD_FAR_INSTANCES;
+				default -> HordeRenderMetrics.Counter.LOD_NEAR_INSTANCES;
+			}, batch.count());
 			var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
 			data.updateHeights(event);
 			data.regions.update(event, batch.time());

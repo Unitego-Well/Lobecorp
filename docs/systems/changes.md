@@ -1,5 +1,19 @@
 # 系统修改记录
 
+## 2026-10-26 第二轮：测试失焦防护、外观改善与普通/光影复测
+
+- 用户要求：关闭光影组也测试；测试期间焦点不能被抢走；每轮测试必须截屏给人看并写入项目规范；中远景外观不要过度简化；仍按先测试、再修改、再测试执行。
+- 基线（修改前，同一夹具）：光影 client-1792975839616 帧均/P95/P99 13.889/15.811/17.863 ms、世界 GPU 13.305 ms、draw 7.239 ms、展开 658,284、复制 36.9 MB；普通 client-1792976051992 帧 3.402/4.498/5.690 ms、世界 GPU 2.026 ms、draw 1.507 ms。
+- 失焦防护：新增 `BenchWindow`（每 tick 还原最小化/重新聚焦并计数）；Horde/Sweeper/Corpse 的 setup 与 STABILIZE/WARMUP/MEASURE tick 调用；Horde 在 MEASURE 开始重置计数，verify 增加 `focused/iconified/focus_losses==0` 硬门禁，`horde-environment.json` 记录 `window_focused_at_end`、`window_iconified_at_end`、`focus_losses`、`focus_restores`。实测两轮因焦点问题被拒绝（client-1792977705014 losses=2；client-1792978004840 BenchMod 环境 `client.window.focus_lost`），保留原始制品但不计数据。
+- 外观：`HordeMeshReduction` 中景由 4 盒 112 顶点改为 5 盒 136 顶点（腿脚/躯干/头/左右臂，薄片保留真实几何），远景由 1 盒 24 改为 2 盒 48（上下）；近景 520 全精度、4 帧动画、发光与 LOD 迟滞不变。新增 `lobecorp.horde.lod_{near,mid,far}_instances` 计数。
+- 复测（光影，三轮，均 PASSED/10000 实例）：client-1792976399030/1792976864064/1792977119469 帧均 14.365/15.059/15.026 ms、P99 18.064/18.624/17.971 ms、世界 GPU 13.834/14.398/14.534 ms、draw 7.818/8.457/8.193 ms、展开 898,328/898,320/898,291、复制 50.3 MB；中景实例 4753、远景 5246、近景 0；三轮焦点 0/0。帧均≤16.7、P99≤20、世界 GPU≤15 全部满足。
+- 复测（普通，关闭光影，有效两轮）：client-1792977359699/1792978532864 帧 6.168/6.184 ms（P99 7.552/8.130）、世界 GPU 2.026/1.897 ms、draw 1.359/1.225 ms；当前显示器 165Hz 形成约 6.06 ms 帧间隔地板，与早前 3.40 ms 基线不可直接比较，GPU 阶段未见外观退化。
+- 截图：基准 `artifacts/screenshots/` 四张；游戏内铺满取景 `build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`（人群填满全屏、左右出屏）、`fill-F.png`、`fill-night.png`。游戏内 overlay 记录 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
+- 规则：把“基准/游戏测试必须保持窗口焦点，失焦自动恢复并记录，测量期失焦不得作为有效结果；每轮测试必须截屏并交付可查看路径”写入原始项目 `AGENTS.md` 与 `docs/standards/workflow.md`（另同步工作区副本）。
+- 配置与清理：运行前后恢复隔离 Bench Iris（`enableShaders`）；临时开启的 `run/client` Iris 配置从 `build/agent-backups/20261026-appearance-final/iris.properties.client.before` 按 SHA256 还原；游戏内事件用 `/lobecorp horde clear` 清除、模式还原、保存退出；无游戏/调试进程残留。
+- 备份：修改前源码与 SHA256 在 `build/agent-backups/20261026-appearance-final/before/`；基线、候选与最终轮制品及哈希在 `build/agent-backups/20261026-appearance-baseline/` 与 `20261026-appearance-final/`。本次提交含代码、基准场景与同步文档；不夹带 `build.gradle.kts`、并行文档整理与日志；未推送。
+
+
 ## 2026-10-26：基准有效性修复、可信复测与 LOD/单位历史优化
 
 - 核实 H27：基准把事件与相机锚在 `context.player().position()`，实际玩家悬空（y≈68.6），地面为 -60；相机被抬到地面之上约 192.6 格，超过 12 区块渲染雾端 192 格，整片地面与浪潮全在雾外，截图近乎天空，而计数/文件门禁仍 PASSED。改为按中心地面高度重建事件与相机锚点；新增同机位关闭浪潮的对照截图、像素差异门禁、相机-地面几何断言与 `visible_pixels` 指标，错误画面不能再通过。修复前两轮空画面证据仍保留，不当作性能收益。

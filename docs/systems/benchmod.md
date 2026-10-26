@@ -1,5 +1,52 @@
 # BenchMod 基准工具链
 
+## 2026-10-26 第二轮：失焦防护、外观改善与普通/光影复测
+
+### 需求与顺序
+用户要求：关闭光影也要测试；测试期间焦点不能被抢走；测试必须截屏给人看（该规则已写入项目规范）；中远景外观不要过度简化；仍按“先测试、再修改、再测试”执行。本轮先跑当前代码的普通/光影基线，再修改焦点与外观，最后复测两组。
+
+### 失焦防护（测试夹具）
+- 新增 `src/bench/java/org/unitego/lobecorp/client/bench/BenchWindow.java`：每 tick 检查窗口，最小化则还原并最大化，失焦则重新聚焦，累计 `focus_losses`/`focus_restores`。
+- Horde/Sweeper/Corpse 三个场景的 setup 与每个 STABILIZE/WARMUP/MEASURE tick 调用 `BenchWindow.ensure`；Horde 在 MEASURE 开始时重置计数，只统计测量窗口。
+- Horde verify 增加硬门禁：MEASURE 结束必须 `focused=true`、`iconified=false`、`focus_losses==0`，否则判失败；`horde-environment.json` 新增 `window_focused_at_end`、`window_iconified_at_end`、`focus_losses`、`focus_restores`。
+- 实测：接受的三轮光影与两轮普通均为 0 失焦/0 恢复；另有两轮被拒绝并保留证据——client-1792977705014（本轮门禁捕获 losses=2）、client-1792978004840（BenchMod 环境判定 `client.window.focus_lost` 为 INCONCLUSIVE）。这说明焦点门禁实际生效，外部程序仍可能抢焦点，被拒绝的轮次不作为数据。
+
+### 外观改动（中/远景显式 LOD）
+- 修改前：中景 4 个包围盒 112 顶点（躯体含腿、头、左右臂），远景 1 个整体包围盒 24 顶点；高位截图呈块状板。
+- 修改后：中景按腿脚/躯干/头/左右臂 5 个包围盒 136 顶点（薄片仍保留真实几何），远景上下 2 个包围盒 48 顶点；近景 520 全精度不动，动画仍 4 帧、发光 pass 与迟滞不变。`HordeMeshReduction` 的 `PARTS=5` 与远景 2 盒由 `partOf` 分类实现。
+- 新增按档实例计数 `lobecorp.horde.lod_{near,mid,far}_instances`，本轮中景 4753、远景 5246、近景 0（夹具相机 48–96/96+ 格，无近景实例）。
+
+### 光影复测（同一夹具，三轮）
+| 指标 | 修改前 client-1792975839616 | 修改后 client-1792976399030 / 1792976864064 / 1792977119469 |
+| --- | --- | --- |
+| 帧均/P95/P99 ms | 13.889 / 15.811 / 17.863 | 14.365/15.993/18.064、15.059/17.255/18.624、15.026/16.791/17.971 |
+| 世界 GPU 均值 ms | 13.305 | 13.834 / 14.398 / 14.534 |
+| Horde draw ms | 7.239 | 7.818 / 8.457 / 8.193 |
+| expand / base / units GPU ms | 2.749 / 2.583 / 1.069 | 3.556/2.892/0.417、3.627/2.918/0.701、3.668/2.954/— |
+| 展开顶点 / 复制 | 658284 / 36.9MB | 898291–898328 / 50.3MB |
+| 焦点 | — | 0/0，0/0，0/0 |
+
+三轮均 PASSED、10000 实例不降；帧均≤16.7、P99≤20、世界 GPU≤15 仍全部满足（最差世界 GPU 14.534）。外观增加的约 24 万顶点换来世界 GPU 约 +0.5–1.2 ms，仍在目标内。
+
+### 普通组复测（关闭光影）
+| 指标 | 修改前 client-1792976051992 | 修改后 client-1792977359699 / 1792978532864 |
+| --- | --- | --- |
+| 帧均/P95/P99 ms | 3.402 / 4.498 / 5.690 | 6.168/7.054/7.552、6.184/7.163/8.130 |
+| 世界 GPU 均值 ms | 2.026 | 2.026 / 1.897 |
+| Horde draw ms | 1.507 | 1.359 / 1.225 |
+| 焦点 | — | 0/0，0/0 |
+
+普通组帧间隔出现约 6.15 ms 的一致地板：当前显示器为 2560×1600@165Hz（1/165≈6.06 ms），而早前同代码普通基线在刷新/呈现条件不同时为 3.40 ms，故普通组帧间隔不与早前直接可比；GPU 阶段（世界 GPU 2.03→1.90–2.03、draw 1.51→1.23–1.36）显示外观增加顶点没有让普通组变差。
+
+### 截图（本轮交付）
+- 基准制品：各轮 `artifacts/screenshots/horde-render.png`、`horde-render-off.png`、`sweeper-render.png`、`corpse-render.png`（例如 `build/agent-backups/20261026-appearance-final/iris-run3/artifacts/screenshots/`）。
+- 游戏内铺满取景（光影开启，2560×1494）：`build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`（人群填满全屏、左右出屏）、`fill-F.png`（大范围铺满）、`fill-night.png`（夜间发光）。实机 overlay 显示 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
+- 取景说明：基准固定相机位于上方 64 格、后方 100 格，用于一次容纳全部 10000 实例做可重复测量，因此基准截图不是“贴脸铺满”视角；游戏内把相机放到人群内部即可看到从屏幕外到屏幕外的铺满效果，计数仍为真实事件规模。
+
+### 限制
+- 普通组只取得两轮有效数据（另一轮被焦点门禁拒绝、一轮被 BenchMod 焦点环境判 INCONCLUSIVE，均保留但不算数据）；E4 换包/重载未做；焦点仍可能被外部程序短暂抢走，门禁会拒绝该轮而不是美化结果；游戏内截图由 MCP 采集，不能作为帧时间证据。
+
+
 ## 2026-10-26 基准有效性修复与修改前后对照
 
 本轮先证明旧门禁失效，再在同一夹具下取得修改前后数据。全部运行均为隔离 BenchMod Client：MC26.1.2、NeoForge26.1.2.100、Sodium0.9.2、JBR25.0.2、RTX3060 Laptop/NVIDIA616.64、2560×1494、视距/模拟12、VSync关闭、260、seed7 flat 世界；光影组 Iris1.11.4 + ComplementaryReimagined_r5.9.3，普通组关闭 Iris 着色器。每轮含 64 真实清道夫、10000 虚拟实例、64 尸体三段，summary 均 PASSED。

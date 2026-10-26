@@ -19,6 +19,7 @@ public class PhotonBenchCapture {
 	private JsonObject capture;
 	private boolean capturing;
 	private boolean naturalDuration;
+	private boolean singleCast;
 	private double requestedSeconds;
 	private final boolean submissionProbes;
 
@@ -40,11 +41,16 @@ public class PhotonBenchCapture {
 	}
 
 	public void start(double seconds, Runnable cast) {
+		start(seconds, cast, false);
+	}
+
+	public void start(double seconds, Runnable cast, boolean singleCast) {
 		if (PhotonFrameCapture.liveStatus().has("state")
 				&& PhotonFrameCapture.liveStatus().get("state").getAsString().equals("RUNNING")) {
 			throw new IllegalStateException("主测量开始前出现其他所有者的帧采集。");
 		}
 		naturalDuration = cast != null;
+		this.singleCast = singleCast;
 		requestedSeconds = seconds;
 		if (submissionProbes) {
 			setupSubmissions = PhotonSubmissionDiagnostics.endCase();
@@ -56,9 +62,13 @@ public class PhotonBenchCapture {
 			PhotonSubmissionDiagnostics.bindFrameCapture();
 		}
 		if (cast != null) {
-			PhotonFrameCapture.phase("cast_0", 4, cast);
-			PhotonFrameCapture.phase("cast_1", 31, cast);
-			PhotonFrameCapture.phase("cast_2", 58, cast);
+			if (singleCast) {
+				PhotonFrameCapture.phase("cast_0", 2, cast);
+			} else {
+				PhotonFrameCapture.phase("cast_0", 4, cast);
+				PhotonFrameCapture.phase("cast_1", 31, cast);
+				PhotonFrameCapture.phase("cast_2", 58, cast);
+			}
 		}
 	}
 
@@ -92,9 +102,10 @@ public class PhotonBenchCapture {
 		}
 		var state = capture.get("state").getAsString();
 		if (naturalDuration) {
+			int expectedPhases = singleCast ? 1 : 3;
 			if (!state.equals("DURATION") || capture.get("elapsed_seconds").getAsDouble() + 0.001 < requestedSeconds
-					|| capture.getAsJsonArray("phases").size() != 3
-					|| capture.get("current_phase_id").getAsInt() != 3) {
+					|| capture.getAsJsonArray("phases").size() != expectedPhases
+					|| capture.get("current_phase_id").getAsInt() != expectedPhases) {
 				throw new IllegalStateException("真实激光主采集没有自然完成请求时长和全部阶段：" + state);
 			}
 		} else if (!state.equals("STOPPED")) {

@@ -265,7 +265,7 @@ modBench {
     clientWorldId = "lobecorp-bench"
     clientRequireWindowFocus = providers.gradleProperty("photonRequireFocus").map(String::toBoolean).orElse(true).get()
     if (photonBenchEnabled.get()) {
-        scenarioFilter = "lobecorp.photon-*"
+        scenarioFilter = providers.gradleProperty("photonScenarios").orElse("lobecorp.photon-*").get()
     }
 }
 

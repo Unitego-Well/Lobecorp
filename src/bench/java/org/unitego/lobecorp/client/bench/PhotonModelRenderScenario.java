@@ -66,6 +66,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private final int count;
 	private final boolean animated;
 	private final boolean cold;
+	private final boolean singleCast;
 	private final int staticCount;
 	private final int animatedCount;
 	private final int meshGrid;
@@ -108,6 +109,11 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	}
 
 	public PhotonModelRenderScenario(String label, int staticCount, int animatedCount, int meshGrid, int beamCount, boolean cold) {
+		this(label, staticCount, animatedCount, meshGrid, beamCount, cold, false);
+	}
+
+	public PhotonModelRenderScenario(String label, int staticCount, int animatedCount, int meshGrid, int beamCount, boolean cold,
+	                                 boolean singleCast) {
 		workload = new PhotonBenchWorkloadUtil.Layout(staticCount, animatedCount, meshGrid, beamCount);
 
 		this.label = label;
@@ -118,6 +124,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		this.meshGrid = meshGrid;
 		this.beamCount = beamCount;
 		this.cold = cold;
+		this.singleCast = singleCast;
 	}
 
 	@Override
@@ -290,7 +297,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				create(context);
 			}
 			context.metrics().record(STARTUP, createNanos);
-			capture.start(beamCount > 0 ? 90 : 120, beamCount > 0 ? () -> cast(context, true) : null);
+			capture.start(beamCount > 0 ? (singleCast ? 20 : 90) : 120, beamCount > 0 ? () -> cast(context, true) : null,
+					singleCast);
 		}
 		for (var model : models) {
 			if (model.failure() != null || model.getParticleAmount() == 0) {
@@ -305,6 +313,28 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		readCast();
 		recordPhases();
+
+		if (singleCast) {
+			if (pendingCast == null && allBeamsOutput() && verificationOutputFrame < 0) {
+				verificationOutputFrame = context.frames().sampleCount();
+			}
+			if (beamScreenshot == null && verificationOutputFrame >= 0
+					&& context.frames().sampleCount() >= verificationOutputFrame + 2) {
+				if (!allBeamsOutput()) {
+					throw new IllegalStateException("首次释放截图前光束已离开输出阶段。");
+				}
+				beamScreenshot = context.automation().captureScreenshot(label + "-beam", BenchCaptureOptions.immediate());
+			}
+			if (!capture.complete()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+			if (beamScreenshot == null || !beamScreenshot.isDone()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+			beamScreenshot.join();
+			return BenchClientStepResult.COMPLETE;
+		}
+
 		if (!verificationCast) {
 			if (!capture.complete()) {
 				return BenchClientStepResult.CONTINUE;
@@ -384,10 +414,10 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("shaderpack", IrisCompat.packName());
 		report.addProperty("shaderpack_enabled", IrisCompat.isUsingShaderPack());
 		report.addProperty("bench_measure_includes_visual_validation", beamCount > 0);
-		report.addProperty("primary_capture_seconds", beamCount > 0 ? 90 : 0);
+		report.addProperty("primary_capture_seconds", beamCount > 0 ? (singleCast ? 20 : 90) : 0);
 		report.addProperty("measured_casts", measuredCasts);
 		report.add("beam_marks", beamMarks);
-		if (beamCount > 0 && measuredCasts != beamCount * 3) {
+		if (beamCount > 0 && measuredCasts != beamCount * (singleCast ? 1 : 3)) {
 			throw new AssertionError("真实光束施放数量不完整。");
 		}
 		verifyBeamPhases();
@@ -574,8 +604,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 					.filter(mark -> mark.get("event").getAsString().equals("client_removed")
 							&& !mark.get("verification").getAsBoolean()
 							&& mark.get("queen").getAsInt() == member.queenId()).count();
-			if (removed != 3) {
-				throw new AssertionError("真实激光未完成三次移除：" + member.queenId() + "=" + removed);
+			if (removed != (singleCast ? 1 : 3)) {
+				throw new AssertionError("真实激光未完成移除：" + member.queenId() + "=" + removed);
 			}
 			for (int phase = 0; phase < 3; phase++) {
 				int expectedPhase = phase;
@@ -584,7 +614,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 								&& !mark.get("verification").getAsBoolean()
 								&& mark.get("queen").getAsInt() == member.queenId()
 								&& mark.get("phase").getAsDouble() == expectedPhase).count();
-				if (count != 3) {
+				if (count != (singleCast ? 1 : 3)) {
 					throw new AssertionError("真实激光客户端阶段不完整：" + member.queenId() + "/" + phase + "=" + count);
 				}
 			}

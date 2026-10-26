@@ -134,6 +134,25 @@ JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.bench
 
 `-PphotonShader` 决定隔离 Iris 配置（修复首轮 prepare 覆盖问题）；`-PphotonSpark` 决定 spark backgroundProfiler（本轮 S0/S1 为 true，此前 plain 轮为 false，差异已在台账标注）；`-Dlobecorp.photon.bench.probes=false` 从 Mixin 注入层关闭四个提交探针（生产路径不受影响）。
 
+### 首次释放专项诊断（进行中，2026-10-26 11:40 起）
+
+- 用户要求：**只测第一次释放**，施放完成立即诊断，然后重开游戏；其他场景暂停。另需关注“发射器/子发射器等会被到处调用”的路径，避免只优化首次施放而忽略反复调用的成本。
+- 已加诊断代码：`PhotonCastProfiler`（仅在 `-Dlobecorp.photon.diag.cast=true` 时记录分段毫秒，默认空操作）；在 `QueenBeamEffects.Beam` 构造与首 tick 打点：`fxDefinition`、`createRuntime`、`childDefinition`、`controllerSetup`、`anchor`、`emit`、`namedBegin/namedSeek`、`prepareNext`；首个 Beam 构造的 tick 输出 `CASTPROF` 日志。
+- 计划：新增“首次施放”单场景（注册为第一个场景、只触发 1 次真实施法、输出+2 帧截图后立即完成），用 `runBenchClient` 只跑该场景并读 `CASTPROF`＋JFR＋帧时间＋marks；每轮重开客户端，先测再改，改后再测同条件。
+- 结果（单场景、每轮重开客户端；证据 `first-cast/`）：
+  | 轮次 | 改动 | 首施法 tick 总耗时 | 首施法长帧 max | 状态 |
+  |---|---|---|---|---|
+  | run1 | 无预热 | **695.705 ms** | 未归档（截图校验失败） | FAILED |
+  | run2 | 预加载 FX 定义 | **194.965 ms** | 未归档 | PASSED |
+  | run3 | ＋预建运行态壳＋子实例预准备 | **62.690 ms** | 566.4 ms | PASSED |
+  | run4 | ＋命名运行时预热 | **59.172 ms** | 557.6 ms | PASSED |
+  | run5b | 改为“128 格内有女皇才预热” | **64.402 ms** | 545.9 ms | PASSED |
+- 首施法 tick 侧分段（run1 → run5b，ms）：`fxDefinition 167.6→0.4`、`createRuntime 53.0→0(采用预建)`、`childDefinition 270.9→0.05`、`emit 71.8→50.1`、`namedBegin 15.2→12.9`、`prepareNext 116.0→0.02`；controller/anchor 合计 <2 ms。预热门控 `CASTPREWARM` 672～712 ms、`prepared=2`，仅在检测到 128 格内有女皇时执行（不把成本转给每次进世界），可用 `-Dlobecorp.photon.prewarmBeam=false` 关闭。
+- **仍存在的首施法停顿**（run5b 帧 >50 ms：545.9/424.8/307.4/153.1/141.5/82.5 ms）不在 Beam 构造里。同窗口 JFR（12/9/8 个全线程样本，不能把单方法当整段耗时）显示首帧渲染侧一次性成本：Mixin 类转换/类加载（`MixinApplicatorStandard`、`DirectMethodHandle`、`NoSuchMethodError` 6 次、`IncompatibleClassChangeError` 2 次）、ShaderGraph 材质构建的 GLSL `#import` 资源探测（`NoSuchFileException`+`WindowsException` 每窗口 18～22 对）、Gson/JSON 节点图解析、OGG 音频解码，以及夹具截图自身 135 ms。
+- 结论：**tick 侧首施法已从 695.7 ms 降到 64.4 ms（−90.7%）**，但首帧渲染侧仍有约 1.0～1.4 s 的一次性构建，用户看到的“第一次释放巨卡”仍会存在；需继续做 P22（预热阶段预构建 ShaderGraph 管线/缓存 GLSL import，或受控隐藏预渲染），并把截图移出测量窗口后再验收。
+- 视觉：run3 与 run4 同一施放截图 `mean_abs=1.741`、`max=255`、`diff>8` 像素 2.69%，差异集中在光束粒子相位；未发现缺失网格、排序或材质整体变化，但同帧像素对照仍未完成。
+- 证据：`runs` → `C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/first-cast/run{1..5b}-*.log`、`run3|run4|run5b-artifacts/`、`analysis/FirstCastWindows.java`；casts/截图在各 artifacts/custom。
+
 ### 下一步
 
 按“无光影/光影 × packed 关/开 × 探针开/关”做重复配对；每轮记录相机、投影、分辨率、窗口/焦点、帧率、世界、实体、光影、负载、代码版本与开关，截图归档；随后用 JFR/GPU/帧数据区分 CPU 求值/提交、资源准备、GPU 执行与工具开销。未达标就如实报告，不以“场景通过”代替性能验收。

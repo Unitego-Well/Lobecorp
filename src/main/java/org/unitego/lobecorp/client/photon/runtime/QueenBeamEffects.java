@@ -2,11 +2,13 @@ package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -18,6 +20,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
@@ -28,6 +31,8 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQue
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
+
+import javax.annotation.Nullable;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,6 +46,12 @@ import java.util.UUID;
 public class QueenBeamEffects {
 	private static final Map<UUID, Beam> PLAYING = new HashMap<>();
 	private static final Map<UUID, Long> RETIRED = new HashMap<>();
+	/// 首次施放预热：仅预加载 FX 定义（含子 FX 定义），运行态仍按原路径创建；默认开启，可用属性关闭。
+	private static final boolean PREWARM = !"false".equals(System.getProperty("lobecorp.photon.prewarmBeam", "true"));
+	private static @Nullable Level prewarmedLevel;
+	private static boolean prewarmed;
+	/// 预热好的首次运行态（含已准备的子实例）；只给首个同定义施放使用，用后即移除。
+	private static final Map<Identifier, PhotonGeoEffect> PREPARED = new HashMap<>();
 	/// 历史法阵起点相对身体中心前移一格，服务端命中原点保持原值。
 	private static final double VISUAL_FORWARD = 1;
 
@@ -49,6 +60,16 @@ public class QueenBeamEffects {
 		if (level == null) {
 			clear();
 			return;
+		}
+		if (PREWARM) {
+			if (level != prewarmedLevel) {
+				discardPrepared();
+				prewarmedLevel = level;
+				prewarmed = false;
+			}
+			if (!prewarmed && level.getGameTime() % 20 == 0 && hasQueen(level)) {
+				prewarm();
+			}
 		}
 		var visible = new HashSet<UUID>();
 		for (var snapshot : LcClientAnimations.snapshots()) {
@@ -69,10 +90,14 @@ public class QueenBeamEffects {
 					beam = null;
 				}
 				if (beam == null) {
+					PhotonCastProfiler.begin("beam:" + snapshot.definitionId());
 					beam = new Beam(owner, snapshot);
 					PLAYING.put(id, beam);
+					beam.update(snapshot);
+					PhotonCastProfiler.end("cast-tick");
+				} else {
+					beam.update(snapshot);
 				}
-				beam.update(snapshot);
 				if (!beam.effect.isAlive()) {
 					finish(id);
 					RETIRED.put(id, snapshot.playbackRevision());
@@ -91,6 +116,70 @@ public class QueenBeamEffects {
 		RETIRED.keySet().retainAll(visible);
 	}
 
+	/// 只有当前世界存在女皇时才预热，避免每次进世界都为未出现的技能付出解析与内存。
+	private static boolean hasQueen(Level level) {
+		var player = Minecraft.getInstance().player;
+
+		if (player == null) {
+			return false;
+		}
+
+		return !level.getEntitiesOfClass(TheQueenOfHatred.class, player.getBoundingBox().inflate(128)).isEmpty();
+	}
+
+	/// 预加载并预建首次施放需要的 FX 运行态与子实例；失败不改变技能，首次施放回退原路径。
+	private static void prewarm() {
+		prewarmed = true;
+		long started = System.nanoTime();
+		var shells = new HashMap<Identifier, PhotonGeoEffect>();
+
+		try {
+			for (var animationId : List.of(
+					TheQueenOfHatredAnimationDefinitions.LASER,
+					TheQueenOfHatredAnimationDefinitions.LASER_PHASE_TWO,
+					TheQueenOfHatredAnimationDefinitions.STAR_BEAM,
+					TheQueenOfHatredAnimationDefinitions.STAR_BEAM_PHASE_TWO)) {
+				var animation = LcAnimationDefinitions.resolve(animationId);
+				var effectId = animation == null ? null : animation.effectId();
+
+				if (effectId == null || shells.containsKey(effectId)) {
+					continue;
+				}
+
+				var effect = FXHelper.getFX(effectId);
+
+				if (effect == null) {
+					continue;
+				}
+
+				var shell = new PhotonGeoEffect(effect, prewarmedLevel);
+
+				if (!(shell.runtime().findObject("laser") instanceof PhotonChildSpawner spawner)) {
+					shell.close();
+					continue;
+				}
+
+				if (spawner.config.fxLocation != null) {
+					FXHelper.getFX(spawner.config.fxLocation);
+				}
+
+				spawner.prepareNext();
+				((PhotonNamedAccess) shell.runtime()).lobecorp$prepareNamedRuntime();
+				shells.put(effectId, shell);
+			}
+
+			PREPARED.putAll(shells);
+			shells.clear();
+		} catch (RuntimeException failure) {
+			Lobecorp.LOGGER.warn("光束 FX 预热失败，首次施放将回退原加载路径", failure);
+		} finally {
+			shells.values().forEach(PhotonGeoEffect::close);
+		}
+
+		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}",
+				(System.nanoTime() - started) / 1_000_000, PREPARED.size());
+	}
+
 	private static void finish(UUID id) {
 		var beam = PLAYING.remove(id);
 		if (beam != null) {
@@ -102,6 +191,13 @@ public class QueenBeamEffects {
 		PLAYING.values().forEach(value -> value.effect.close());
 		PLAYING.clear();
 		RETIRED.clear();
+		discardPrepared();
+	}
+
+	/// 释放未使用的预热运行态；已采用的在 Beam 生命周期内由 effect 自己关闭。
+	private static void discardPrepared() {
+		PREPARED.values().forEach(PhotonGeoEffect::close);
+		PREPARED.clear();
 	}
 
 	private static class Beam {
@@ -133,16 +229,26 @@ public class QueenBeamEffects {
 			star = TheQueenOfHatredAnimationDefinitions.isStarBeam(snapshot.definitionId());
 			var id = LcAnimationDefinitions.resolve(snapshot.definitionId()).effectId();
 			var definition = id == null ? null : FXHelper.getFX(id);
+			PhotonCastProfiler.mark("fxDefinition");
 			if (definition == null) {
 				throw new IllegalArgumentException("特效定义缺失或受保护：" + id);
 			}
-			effect = new PhotonGeoEffect(definition, owner.level());
+			var prepared = PREPARED.remove(id);
+
+			if (prepared != null) {
+				effect = prepared;
+				PhotonCastProfiler.mark("adoptPrepared");
+			} else {
+				effect = new PhotonGeoEffect(definition, owner.level());
+				PhotonCastProfiler.mark("createRuntime");
+			}
 			try {
 				if (!(effect.runtime().findObject("laser") instanceof PhotonChildSpawner source)) {
 					throw new IllegalArgumentException("光束生成器缺失。");
 				}
 				emitter = source;
 				var child = emitter.config.fxLocation == null ? null : FXHelper.getFX(emitter.config.fxLocation);
+				PhotonCastProfiler.mark("childDefinition");
 				var anchor = child == null ? null : child.getFxData().objects().stream().filter(value -> value.getName().equals("laser_anchor")).findFirst().orElse(null);
 				var circle = effect.runtime().findObject("circle");
 				if (anchor == null || circle == null) {
@@ -174,8 +280,11 @@ public class QueenBeamEffects {
 						controller.definition(library);
 					}
 				}
+				PhotonCastProfiler.mark("controllerSetup");
 				anchor();
+				PhotonCastProfiler.mark("anchor");
 				effect.start();
+				PhotonCastProfiler.mark("emit");
 				var rootObject = (FXObject) effect.runtime().root;
 				var previousFrame = rootObject.getOnUpdateFrame();
 				rootObject.setOnUpdateFrame(partial -> {
@@ -196,8 +305,10 @@ public class QueenBeamEffects {
 					}
 				});
 				var charge = animations().play("charge_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.WINDUP_TICKS), true, Map.of());
+				PhotonCastProfiler.mark("namedBegin");
 				if (parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE) != Phase.CHARGE.ordinal()) {
 					animations().seek(charge, charge.authoredDuration());
+					PhotonCastProfiler.mark("namedSeek");
 				}
 			} catch (RuntimeException invalid) {
 				effect.close();
@@ -286,7 +397,9 @@ public class QueenBeamEffects {
 			var next = value == Phase.OUTPUT.ordinal() ? Phase.OUTPUT : value == Phase.RECOVERY.ordinal() ? Phase.RECOVERY : Phase.CHARGE;
 			witnessedCharge |= next == Phase.CHARGE;
 			if (next == Phase.CHARGE && !preparedOutput) {
+				PhotonCastProfiler.mark("prepareNextStart");
 				preparedOutput = emitter.prepareNext();
+				PhotonCastProfiler.mark("prepareNext");
 			}
 			// 瞬时技能同刻进入恢复；只为已见蓄力的实例保留一次发射呈现，不补播晚追踪的历史输出。
 			if (star && next == Phase.RECOVERY && !active && witnessedCharge) {
@@ -355,7 +468,7 @@ public class QueenBeamEffects {
 				var child = emitter.animations(id);
 				var handle = child == null ? null : child.playback("laser_start");
 				if (handle != null) {
-                    child.stageParameters(handle, beamInputs);
+					child.stageParameters(handle, beamInputs);
 				}
 			}
 		}

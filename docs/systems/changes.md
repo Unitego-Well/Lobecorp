@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-10-26：首次释放专项诊断与预热（tick 侧）
+
+- 用户要求暂停其他场景，只测第一次释放，施放完成立即诊断再重开游戏，并注意发射器/子发射器等到处调用的路径。
+- 新增诊断：`PhotonCastProfiler`（`-Dlobecorp.photon.diag.cast=true` 时记录毫秒分段，默认空操作）；`QueenBeamEffects.Beam` 打点 `fxDefinition/createRuntime/childDefinition/controllerSetup/anchor/emit/namedBegin/prepareNext`；新增“首次施放”单场景 `lobecorp.photon-00-first-cast`（只 1 次真实施法、输出+2 帧截图后立即完成）与 `-PphotonScenarios` 过滤、`runBenchClient` 单场景运行；`PhotonBenchCapture` 支持单施放采集与校验；`build.gradle.kts` 增加过滤属性。
+- 实测（每轮重开客户端，单场景）：首施法 tick 总耗时 run1 **695.705 ms**（fxDefinition 167.6／createRuntime 53.0／childDefinition 270.9／emit 71.8／namedBegin 15.2／prepareNext 116.0）→ run2 定义预热 194.965 ms → run3 预建运行态壳＋子实例预准备 **62.690 ms** → run4 命名预热 59.172 ms → run5b 女皇在场才预热 64.402 ms（**−90.7%**）。预热 672～712 ms、prepared=2，仅 128 格内有女皇时执行；`-Dlobecorp.photon.prewarmBeam=false` 可关闭。
+- 未解决：首施法首帧仍有约 1.0～1.4 s 渲染侧一次性构建（run5b 最长帧 545.9/424.8/307.4 ms；JFR 显示 Mixin 类转换/类加载、ShaderGraph GLSL import 资源探测异常风暴、JSON 节点图解析、OGG 解码、夹具截图自身 135 ms），登记 P22。
+- 视觉：run3/run4 同一施放截图 mean_abs 1.741、diff>8 2.69%，差异集中在粒子相位；场景 PASSED、相机/位姿门禁通过。
+- 证据：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/first-cast/`（run1～run5b 日志、run3/4/5b artifacts、FirstCastWindows 分析）；未改动画、LOD、资源、材质语义；未推送。
+
 ## 2026-10-26：复测、探针隔离与动画采样分配治理
 
 - 授权与边界：用户重新授权游戏/构建/测试/Debug；Sodium 全程加载；spark 进入测试后全程开启，结束按正常退出等待输出；未推送、未改动画/LOD/原资源/材质/排序。

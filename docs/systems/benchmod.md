@@ -1,9 +1,9 @@
 # BenchMod 基准工具链
 
-## 2026-10-26 第三轮：罐子/红色元素补回、Sodium 保持启用与测试环境记录
+## 2026-10-26 第三轮：罐子/红色元素补回、Spark 全程采样与测试环境记录
 
 ### 需求
-清道夫背后的罐子（模型骨骼 `can`，子骨骼 `biomass`）是角色元素之一，简化模型丢失了红色；Sodium 必须一直启用直到手动关闭；所有测试要截屏并交付；仍按先测试、再修改、再测试执行（本轮先跑旧构建基线，再改，再跑新构建）。
+清道夫背后的罐子（模型骨骼 `can`，子骨骼 `biomass`）是角色元素之一，简化模型丢失了红色；Spark 性能采样必须在进入测试后一直开启到测试结束（不再只开 30 秒），测试完成后先关闭 Spark、等上传链接输出后再关闭客户端；所有测试要截屏并交付；仍按先测试、再修改、再测试执行。
 
 ### 模型核对（`resources/entity/sweeper/sweeper_a.geo.json`，128×128 纹理）
 - `can` 有 6 个立方体（灰罐体，范围 y≈8–34、z≈2.5–14.1）；子骨骼 `biomass` 是 9×19×9 立方体，UV [0,29]，扩散纹理与 `sweeper_a_glowmask.png` 都以红色为主（区域平均 RGB≈145,69,74，红像素 495）；双臂薄刀面 UV [0,65] 也是红色（≈174,72,71）。
@@ -11,7 +11,7 @@
 
 ### 修改
 - `HordeMeshReduction.partOf` 识别 `can/jar/pot/biomass` → `PART_CAN`；中景 5 盒改为“腿脚/躯干/双臂（合并）/头/罐子”，顶点数仍 136（薄刀面仍直出）；远景仍 2 盒 48。
-- `bestFace` 先在法线匹配（dot≥0.9）的候选面中按 UV 中心像素“红色优势”选面，再回退法线最大；罐子/生物质与红刀面因此在代理盒上保留红色。纹理解析失败时 `redness` 返回 0、回退原行为；`NativeImage` 在全部选面完成后关闭（第一次实现提前 close 导致“Image is not allocated”并使模型准备失败，已修复）。
+- `bestFace` 只在罐子/上身的**背面（+z）**优先取 `biomass` 红色面，其余面保持罐体/身体灰色，形成“灰身体+灰罐体+局部红色开口”，避免整个代理被染红；纹理解析失败时按法线选择。`NativeImage` 在全部选面完成后关闭（第一次实现提前 close 导致“Image is not allocated”并使模型准备失败，已修复）。
 - 近景 520 全精度、4 帧动画、发光 pass、LOD 迟滞不变；中景双臂由两个盒合并为一个，换取罐子独立盒（顶点预算不变）。
 
 ### 视觉证据
@@ -19,15 +19,19 @@
 - 若认为“过红”或罐体轮廓应更接近原模型的灰色外壳，请指出，我再按同一 UV 选择逻辑改为灰壳优先、局部红面。
 
 ### 本轮运行与环境（不冒充达标数据）
-- Sodium 全程启用，没有为了对比关闭 Sodium；客户端保持运行到用户手动关闭，不强制 kill。
+- Spark 全程开启：`BenchSpark.start` 在浪潮 setup 启动 `sparkc profiler start --timeout 600`（覆盖整个浪潮场景，不再 30 秒超时）；浪潮 measure 结束后 `BenchSpark.stop`，随后尸体场景每个 tick 轮询上传链接，拿到本次新链接后写入 `artifacts/spark/horde-profile.txt`；尸体 measure 结束前 `requireSaved` 硬门禁，没拿到 Spark 输出不允许结束客户端。Sodium 模组始终随客户端加载，不为了对比关闭。
+- 客户端保持运行到用户手动关闭，不强制 kill；Spark 停止与链接落盘发生在客户端退出前。
 - `client-1792980038619`：新增 `redness` 提前关闭 NativeImage，模型准备失败（已修复），horde FAILED。
 - `client-1792980328267`：horde 场景 PASSED，帧 15.403/17.653/18.837ms、世界 GPU 14.620ms、draw 8.855ms、展开 897,237、中景实例 4741/远景 5258；但整轮被 BenchMod 判 INCONCLUSIVE（`client.window.focus_lost`，外部抢焦点）。
 - `client-1792980557725`：本夹具焦点硬门禁捕获 MEASURE 失焦 1 次（losses=1），FAILED，保留证据不计数据。
 - `client-1792980845712`、`client-1792981136050`：PASSED 且环境 valid，但 GPU 被并行负载拖慢（世界 GPU 33.229/25.472ms、帧 34.361/20.723ms），不能用于性能达标。
 - 因此本构建只有一次场景级 14.620ms 世界 GPU 的数据；同顶点档位（520/136/48）的干净三轮仍是上一轮的 14.365/15.059/15.026ms、世界 GPU 13.834/14.398/14.534ms。**新构建缺少干净的三轮达标证据**，不写成已达标；待 GPU 空闲时补跑。
 
+- `client-1792983163376`（Spark 全程覆盖 + 灰罐体局部红）：PASSED，帧 25.097/32.433/34.945ms、世界 GPU 23.013ms（并行负载），Spark 链接 `https://spark.lucko.me/1kvmGBN9y2` 已写入 `artifacts/spark/horde-profile.txt`，模型三档 520/136/48；该轮同样不能作为性能达标。
+- 视觉证据：`build/agent-backups/20261026-appearance-can/can-A3.png`、`can-B3.png` 是“整体红罐”旧版；`build/agent-backups/20261026-appearance-spark/artifacts/screenshots/horde-render.png` 是修正后的灰身体/灰罐体+局部红。
+
 ### 规则记录
-- Sodium 始终启用，直到用户手动关闭；测试完成后客户端按正常退出，不强制结束进程；每轮测试必须截屏并交付路径（见原始项目 `AGENTS.md`/`workflow.md` 的焦点与截屏规则）。
+- Spark 全程采样：进入浪潮测试后开启，测试结束后停止并等待上传链接落盘，再允许关闭客户端；Sodium 保持加载，不为了对比关闭。每轮测试必须截屏并交付路径（见原始项目 `AGENTS.md`/`workflow.md` 的焦点与截屏规则）。
 - 焦点被外部程序抢走时，本夹具会拒绝该轮（保留证据），不能通过放宽门禁或删日志美化。
 
 ## 2026-10-26 第二轮：失焦防护、外观改善与普通/光影复测

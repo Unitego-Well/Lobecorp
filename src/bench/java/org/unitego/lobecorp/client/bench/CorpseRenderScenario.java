@@ -80,6 +80,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		BenchSpark.capture(context);
 		if (corpses.isEmpty()) {
 			for (int index = 0; index < count; index++) {
 				var at = position(index);
@@ -129,6 +130,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		BenchSpark.capture(context);
 		requireOwned(context);
 		if (++warmup < LobecorpBenchConfig.WARMUP_TICKS) {
 			return BenchClientStepResult.CONTINUE;
@@ -149,6 +151,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult measure(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		BenchSpark.capture(context);
 		requireOwned(context);
 		if (measured == 0) {
 			if (PhotonFrameCapture.active()) {
@@ -163,8 +166,12 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		context.metrics().record(STATIC_DRAWN, stats.get("static_drawn").getAsLong());
 		context.metrics().record(FALLBACK, stats.get("fallback").getAsLong());
 		context.metrics().record(DRAWS, stats.get("draws").getAsLong());
-		return ++measured >= LobecorpBenchConfig.CORPSE_MEASURE_TICKS
-				? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+		boolean done = ++measured >= LobecorpBenchConfig.CORPSE_MEASURE_TICKS;
+		if (done) {
+			// 客户端关闭前确认 Spark 已停止并已输出上传链接。
+			BenchSpark.requireSaved();
+		}
+		return done ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
 	}
 
 	@Override

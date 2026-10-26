@@ -41,9 +41,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private int configuredCount;
 	private int count;
     private static final int MEASURE_TICKS = 1200;
-    private static final String SPARK_START = "sparkc profiler start --timeout 30";
-	private static final Pattern SPARK_LINK = Pattern.compile("https://spark\\.lucko\\.me/[A-Za-z0-9]+");
-	private Set<String> sparkLinksBefore = Set.of();
 	private static final double WIDTH = 512;
     private static final double SPEED = 0.3;
     private static final BenchMetricDescriptor INSTANCES = new BenchMetricDescriptor(
@@ -64,7 +61,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private int temporaryHeightSamples;
     private boolean initialized;
     private boolean previousEnabled;
-    private boolean profilerStarted;
 	private boolean ownsStageCapture;
 	private boolean ownsEvent;
 	private boolean poseSaved;
@@ -118,6 +114,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 		GLFW.glfwMaximizeWindow(window);
 		BenchWindow.reset();
 		BenchWindow.ensure(window);
+		BenchSpark.start(context);
 	    HordeRenderMetrics.start(context.resultDirectory().resolve("artifacts/stages/horde-stages.jsonl"),
 			    true, HordeRenderMetrics.GpuMode.FULL_STAGE_SUM);
 	    ownsStageCapture = true;
@@ -282,18 +279,18 @@ public class HordeRenderScenario implements BenchClientScenario {
 	        }
 	        environment = new HordeBenchmarkEnvironment();
 	        gpuCaptureToken = PhotonFrameCapture.start("horde_bench_gpu", 30, HordeRenderMetrics::worldGpuFrame);
-            sparkLinksBefore = sparkLinks(context);
-            profilerStarted = ClientCommandHandler.runCommand(SPARK_START);
-            if (!profilerStarted) {
-                throw new IllegalStateException("Spark client profiler command is unavailable");
-            }
         }
         long count = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
         context.metrics().record(INSTANCES, count);
 	    if (count != this.count || HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
             throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
         }
-        return ++phaseTicks >= MEASURE_TICKS ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+        boolean done = ++phaseTicks >= MEASURE_TICKS;
+        if (done) {
+            // 整个浪潮场景结束后才关闭 Spark，让采样覆盖完整测量而不是只采样 30 秒。
+            BenchSpark.stop();
+        }
+        return done ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
     }
 
 	@Override
@@ -313,7 +310,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 					+ BenchWindow.focused(window) + ", iconified=" + BenchWindow.iconified(window)
 					+ ", losses=" + BenchWindow.losses() + ", restores=" + BenchWindow.restores());
 		}
-		saveSpark(context);
 		var capture = PhotonFrameCapture.snapshot();
 		if (gpuCaptureToken == null || !capture.has("capture_id") || capture.get("capture_id").isJsonNull()
 				|| !gpuCaptureToken.toString().equals(capture.get("capture_id").getAsString())) {
@@ -381,39 +377,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 	}
 
 
-	private void saveSpark(BenchClientContext context) throws Exception {
-	    for (String link : sparkLinks(context)) {
-		    if (sparkLinksBefore.contains(link)) {
-			    continue;
-		    }
-		    Path file = context.resultDirectory().resolve("artifacts/spark/horde-profile.txt");
-		    Files.createDirectories(file.getParent());
-		    Files.writeString(file, link + System.lineSeparator());
-		    context.artifacts().register(file, "text/plain");
-		    return;
-	    }
-	    throw new AssertionError("Spark did not return a new profile link for this run");
-    }
-
-	private Set<String> sparkLinks(BenchClientContext context) {
-		try {
-			var field = ChatComponent.class.getDeclaredField("allMessages");
-			field.setAccessible(true);
-			var links = new LinkedHashSet<String>();
-			for (var entry : (List<?>) field.get(context.minecraft().gui.getChat())) {
-				if (entry instanceof GuiMessage message) {
-					var matcher = SPARK_LINK.matcher(message.content().getString());
-					while (matcher.find()) {
-						links.add(matcher.group());
-					}
-                }
-            }
-	        return links;
-        } catch (ReflectiveOperationException exception) {
-	        throw new IllegalStateException("Cannot identify Spark profile links for this run", exception);
-        }
-    }
-
 	@Override
 	public void teardown(BenchClientContext context) throws Exception {
 		Throwable failure = null;
@@ -432,12 +395,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 			failure = cleanup(failure, () -> {
 				send("remove", new CompoundTag());
 				ownsEvent = false;
-			});
-		}
-		if (profilerStarted) {
-			failure = cleanup(failure, () -> {
-				ClientCommandHandler.runCommand("sparkc profiler stop");
-				profilerStarted = false;
 			});
 		}
 		if (screenshot != null && !screenshot.isDone()) {

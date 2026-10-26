@@ -56,8 +56,8 @@ public class HordeMeshReduction {
 			}
 		}
 		var full = select(source, indices.toIntArray(), 0);
-		return new HordeMeshCache.Model[]{full, proxy(source, full, cubes, bones, rigidGroups, visible, texture, 1),
-				proxy(source, full, cubes, bones, rigidGroups, visible, texture, 2)};
+		return new HordeMeshCache.Model[]{full, proxy(source, full, cubes, bones, rigidGroups, visible, 1),
+				proxy(source, full, cubes, bones, rigidGroups, visible, 2)};
 	}
 
 	private static void filter(float[] vertices, List<Cube> cubes, boolean[] visible, @Nullable NativeImage image) {
@@ -240,11 +240,16 @@ public class HordeMeshReduction {
 
 	/// 中景按腿脚/躯干/双臂/头/罐子合并为5个包围盒（薄片保留真实几何），远景合并为上下2个包围盒；近景完整几何不受影响。
     private static HordeMeshCache.Model proxy(HordeMeshCache.Model source, HordeMeshCache.Model full,
-                                              List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible,
-                                              Identifier texture, int tier) {
+                                              List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible, int tier) {
 		int boxes = tier == 1 ? MID_BOXES : 2;
         var clusters = new IntArrayList[boxes];
         var bones = new int[boxes];
+        int[] owner = new int[source.vertexCount()];
+        for (var cube : cubes) {
+            for (int vertex = cube.first(); vertex < cube.first() + cube.count(); vertex++) {
+                owner[vertex] = cube.bone();
+            }
+        }
         for (int index = 0; index < boxes; index++) {
             clusters[index] = new IntArrayList();
             bones[index] = -1;
@@ -277,7 +282,6 @@ public class HordeMeshReduction {
                 bones[cluster] = cube.bone();
             }
         }
-        var image = loadTexture(texture);
         for (int index = 0; index < boxes; index++) {
             if (clusters[index].isEmpty()) {
                 continue;
@@ -309,9 +313,10 @@ public class HordeMeshReduction {
                 continue;
             }
             double[] box = bounds(source.vertices(), piece.indices(), STRIDE, 0);
+            boolean redOnBack = containsBiomass(piece.indices(), owner, names);
             for (int[] face : BOX) {
                 double[] normal = faceNormal(box, face);
-                int uv = bestFace(source.vertices(), piece.indices(), normal, image);
+                int uv = bestFace(source.vertices(), piece.indices(), normal, redOnBack, owner, names);
                 for (int corner = 0; corner < 4; corner++) {
                     double[] point = corner(box, face[corner]);
                     int target = (at + corner) * STRIDE;
@@ -339,9 +344,6 @@ public class HordeMeshReduction {
                 at += 4;
             }
         }
-        if (image != null) {
-            image.close();
-        }
         return new HordeMeshCache.Model(vertices, frames, count, source.frames(), source.duration(),
                 source.sourceVertexCount(), tier);
     }
@@ -350,28 +352,29 @@ public class HordeMeshReduction {
 		return Arrays.stream(indices).filter(index -> visible[index / 4]).toArray();
 	}
 
-	private static int bestFace(float[] vertices, int[] indices, double[] normal, @Nullable NativeImage image) {
+	private static int bestFace(float[] vertices, int[] indices, double[] normal, boolean redOnBack,
+	                            int[] owner, List<String> names) {
+		boolean redFace = redOnBack && normal[2] > 0.9;
 		int selected = -1;
-		double bestRed = -Double.MAX_VALUE;
+		double best = -Double.MAX_VALUE;
 		for (int i = 0; i < indices.length; i += 4) {
 			int vertex = indices[i];
+			if (biomass(vertex, owner, names) != redFace) {
+				continue;
+			}
 			double score = 0;
 			for (int axis = 0; axis < 3; axis++) {
 				score += vertices[vertex * STRIDE + 5 + axis] * normal[axis];
 			}
-			if (score < 0.9) {
-				continue;
-			}
-			double red = redness(vertices, vertex, image);
-			if (red > bestRed) {
-				bestRed = red;
+			if (score > best) {
+				best = score;
 				selected = vertex;
 			}
 		}
 		if (selected >= 0) {
 			return selected;
 		}
-		double best = -Double.MAX_VALUE;
+		best = -Double.MAX_VALUE;
 		selected = indices[0];
 		for (int i = 0; i < indices.length; i += 4) {
 			int vertex = indices[i];
@@ -387,32 +390,18 @@ public class HordeMeshReduction {
 		return selected;
 	}
 
-	/// 以UV中心像素的红色优势选择面；罐子/生物质和红色刀面因此能在代理盒上保留红色，而不是被灰色躯干面覆盖。
-	private static double redness(float[] vertices, int vertex, @Nullable NativeImage image) {
-		if (image == null) {
-			return 0;
+	private static boolean containsBiomass(int[] indices, int[] owner, List<String> names) {
+		for (int i = 0; i < indices.length; i += 4) {
+			if (biomass(indices[i], owner, names)) {
+				return true;
+			}
 		}
-		double u = 0;
-		double v = 0;
-		for (int corner = 0; corner < 4; corner++) {
-			u += vertices[(vertex + corner) * STRIDE + 3];
-			v += vertices[(vertex + corner) * STRIDE + 4];
-		}
-		int x = Math.clamp((int) Math.floor(u / 4 * image.getWidth()), 0, image.getWidth() - 1);
-		int y = Math.clamp((int) Math.floor(v / 4 * image.getHeight()), 0, image.getHeight() - 1);
-		int rgb = image.getPixel(x, y);
-		int r = (rgb >> 16) & 0xff;
-		int g = (rgb >> 8) & 0xff;
-		int b = rgb & 0xff;
-		return r - Math.max(g, b);
+		return false;
 	}
 
-	private static @Nullable NativeImage loadTexture(Identifier texture) {
-		try (var input = Minecraft.getInstance().getResourceManager().getResourceOrThrow(texture).open()) {
-			return NativeImage.read(input);
-		} catch (IOException | RuntimeException failure) {
-			return null;
-		}
+	/// 生物质只用于罐子背面的一块红色开口面；其余面保持罐体/身体的灰色，避免整个代理被染红。
+	private static boolean biomass(int vertex, int[] owner, List<String> names) {
+		return names.get(owner[vertex]).toLowerCase(Locale.ROOT).contains("biomass");
 	}
 
 	private static int[] range(int first, int count) {

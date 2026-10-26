@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-26 第四轮：远档片、20帧烘焙与GPU距离降帧（机制验证）
+
+- 用户要求远档改为烘焙 6 方向片组成盒子，并在游戏开始预烘 20 个跑步帧；按到相机绝对距离降帧：<10 全 20 帧、10–20 10 帧、20–30 5 帧、>30 静止，帧均匀取样；片也要完整 20 帧；新增“使用片的距离（-1 不使用）”“帧的距离（-1 不降低，0 不动）”配置，全部缓存、GPU 处理。
+- 实现：`HordeVisualConfig` 默认 `animationFrames=20`，新增 `cardDistance`/`frameDistance`；`HordeMeshReduction`/`HordeMeshCache` 增加第4档片模型（520/136/48/24）；`HordeGpuRenderer.selectLod` 按 `cardDistance` 切片档并加迟滞、新增 `lod_card_*` 计数；`HordeParameters` 增加第18个 vec4 `FrameLod`（288B）；`horde_motion.fsh` 用 GPU 按相机绝对距离量化帧数；`Data` 已重新生成两份语言文件。
+- 验证：client-1792986006389 PASSED，四档均 frames=20；片档 72 块/4673 实例，展开 785,071，帧 13.079/14.291/14.915ms，世界 GPU 12.702ms，焦点 0；截图/配置/summary 在 `build/agent-backups/20261026-card-lod/`。
+- 限制：片目前是6方向面片盒+逐帧包围盒动画，不是离屏方向视图烘焙；默认 cardDistance/frameDistance=-1 不改变默认画质；旧配置 animationFrames=4 会覆盖新默认；10 项新测试矩阵尚未实现/执行。详见 benchmod.md 第四轮节与 horde-issues I39。
+
 ## 2026-10-26 第三轮：罐子/红色元素补回与测试环境记录
 
 - 用户指出清道夫背后的罐子（模型骨骼 `can`/`biomass`）是角色元素，简化模型丢失了红色；要求 Spark 全程采样（不是 30 秒）、测试完成后先停 Spark 等输出再关客户端、测试必须截屏留档、仍先测试再修改再测试。

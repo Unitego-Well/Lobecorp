@@ -104,7 +104,7 @@ public class HordeMeshCache {
 	}
 
 	public static @Nullable Model ready(HordeVisualDefinition visual, int tier) {
-		if (tier < 0 || tier > 2) {
+		if (tier < 0 || tier > 3) {
 			throw new IllegalArgumentException("群体模型精度档无效");
 		}
 		var key = key(visual);

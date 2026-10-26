@@ -32,7 +32,23 @@ void main() {
     } else {
         float phase = fract((WorldSection.w + float(row)) * 0.375 + float(column) * 0.625);
         float frame = fract(OriginTime.w / (20.0 * AnimationInfo.z) + phase) * AnimationInfo.y;
-        value = float(int(floor(frame)) % int(AnimationInfo.y) * int(AnimationInfo.x));
+        int frames = int(AnimationInfo.y);
+        int raw = int(floor(frame)) % frames;
+        // 距离降帧在GPU完成：<base 全帧，base..2base 半数，2base..3base 四分之一，更远静止；-1不降，0静止。
+        int effective = frames;
+        float base = FrameLod.x;
+        if (base == 0.0) {
+            effective = 1;
+        } else if (base > 0.0) {
+            vec3 point = unitPosition(row, column, station, lateral, seed) + OriginTime.xyz;
+            float distance = length(point);
+            effective = distance < base ? frames
+                    : distance < base * 2.0 ? max(1, frames / 2)
+                    : distance < base * 3.0 ? max(1, frames / 4) : 1;
+        }
+        int sampled = effective > 1 ? int(floor(float(raw) * float(effective) / float(frames))) : 0;
+        int mapped = effective > 1 ? int(round(float(sampled) * float(frames - 1) / float(effective - 1))) : 0;
+        value = float(mapped * int(AnimationInfo.x));
     }
     uint bits = floatBitsToUint(value);
     fragColor = vec4(uvec4(bits & 255u, (bits >> 8u) & 255u,

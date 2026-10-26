@@ -54,7 +54,7 @@ import java.util.UUID;
 /// 常驻模型、线路和骨骼动画；每批只上传时间与编号区间，不上传逐单位变换。
 public class HordeGpuRenderer {
 	// std140共17个vec4，与horde_motion.glsl的HordeParameters一致。
-	private static final int PARAMETER_BYTES = 272;
+	private static final int PARAMETER_BYTES = 288;
     private static final int VERTEX_BYTES = 28;
     private static final int INSTANCES_PER_DRAW = 65536;
 	// 位置、朝向角、光照、sin/cos和帧顶点基址，与GLSL布局一致。
@@ -140,7 +140,8 @@ public class HordeGpuRenderer {
 		var keys = MODEL_KEYS.get(visual);
 		if (keys == null || keys[0].settings() != settings) {
 			keys = new GeometryKey[]{new GeometryKey(visual, 0, settings),
-					new GeometryKey(visual, 1, settings), new GeometryKey(visual, 2, settings)};
+					new GeometryKey(visual, 1, settings), new GeometryKey(visual, 2, settings),
+					new GeometryKey(visual, 3, settings)};
 			MODEL_KEYS.put(visual, keys);
 		}
 		return keys[tier];
@@ -148,7 +149,7 @@ public class HordeGpuRenderer {
 
 	private static float visualRadius(HordeVisualDefinition visual) {
 		float radius = 0;
-		for (int tier = 0; tier < 3; tier++) {
+		for (int tier = 0; tier < 4; tier++) {
 			var model = GEOMETRY.get(meshKey(visual, tier));
 			if (model != null) {
 				radius = Math.max(radius, model.radius());
@@ -159,7 +160,7 @@ public class HordeGpuRenderer {
 
 	public static void requestResources(HordeVisualDefinition visual) {
 		HordeMeshCache.request(visual);
-		int tiers = HordeVisualConfig.LOD_ENABLED.get() ? 3 : 1;
+		int tiers = HordeVisualConfig.LOD_ENABLED.get() ? 4 : 1;
 		for (int tier = 0; tier < tiers; tier++) {
 			var key = meshKey(visual, tier);
 			if (!GEOMETRY.containsKey(key) || irisPath() && !IRIS_ANIMATIONS.containsKey(key)) {
@@ -184,6 +185,11 @@ public class HordeGpuRenderer {
 			case 1 -> distance < near - band ? 0 : distance > far + band ? 2 : 1;
 			default -> distance < near - band ? 0 : distance < far - band ? 1 : 2;
 		};
+		int cardDistance = HordeVisualConfig.CARD_DISTANCE.get();
+		if (cardDistance > 0) {
+			// 片档：超过配置距离使用6方向面片盒子；回退带迟滞，避免在边界抖动。
+			tier = previous == 3 ? distance < cardDistance - band ? 2 : 3 : distance >= cardDistance ? 3 : tier;
+		}
 		states.put(batch.block().index(), tier);
 		return tier;
 	}
@@ -591,11 +597,13 @@ public class HordeGpuRenderer {
 			HordeRenderMetrics.add(switch (tier) {
 				case 1 -> HordeRenderMetrics.Counter.LOD_MID_BLOCKS;
 				case 2 -> HordeRenderMetrics.Counter.LOD_FAR_BLOCKS;
+				case 3 -> HordeRenderMetrics.Counter.LOD_CARD_BLOCKS;
 				default -> HordeRenderMetrics.Counter.LOD_NEAR_BLOCKS;
 			}, 1);
 			HordeRenderMetrics.add(switch (tier) {
 				case 1 -> HordeRenderMetrics.Counter.LOD_MID_INSTANCES;
 				case 2 -> HordeRenderMetrics.Counter.LOD_FAR_INSTANCES;
+				case 3 -> HordeRenderMetrics.Counter.LOD_CARD_INSTANCES;
 				default -> HordeRenderMetrics.Counter.LOD_NEAR_INSTANCES;
 			}, batch.count());
 			var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
@@ -646,6 +654,7 @@ public class HordeGpuRenderer {
 		upload.putInt(item.event().units.mask()).putInt((int) row).putInt((int) (row >>> 32)).putInt((int) drawSerial);
 		put(0.75f, 8, 0.05f, HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get() ? 1 : 0);
 		upload.putInt(item.event().units.ringMask()).putInt(item.event().units.columnTiles()).putInt(1).putInt(0);
+		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.CARD_DISTANCE.get(), 0f, 0f);
 	}
 
 	private static void put(float a, float b, float c, float d) {

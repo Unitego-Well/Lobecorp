@@ -57,7 +57,8 @@ public class HordeMeshReduction {
 		}
 		var full = select(source, indices.toIntArray(), 0);
 		return new HordeMeshCache.Model[]{full, proxy(source, full, cubes, bones, rigidGroups, visible, 1),
-				proxy(source, full, cubes, bones, rigidGroups, visible, 2)};
+				proxy(source, full, cubes, bones, rigidGroups, visible, 2),
+				proxy(source, full, cubes, bones, rigidGroups, visible, 3)};
 	}
 
 	private static void filter(float[] vertices, List<Cube> cubes, boolean[] visible, @Nullable NativeImage image) {
@@ -238,10 +239,11 @@ public class HordeMeshReduction {
 		return PART_TORSO;
 	}
 
-	/// 中景按腿脚/躯干/双臂/头/罐子合并为5个包围盒（薄片保留真实几何），远景合并为上下2个包围盒；近景完整几何不受影响。
+	/// 中景按腿脚/躯干/双臂/头/罐子合并为5个包围盒（薄片保留真实几何），远景合并为上下2盒，
+	/// 更远片档用整体1盒（6方向面片组成盒子）并由GPU按距离降低动作帧；近景完整几何不受影响。
     private static HordeMeshCache.Model proxy(HordeMeshCache.Model source, HordeMeshCache.Model full,
                                               List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible, int tier) {
-		int boxes = tier == 1 ? MID_BOXES : 2;
+		int boxes = tier == 1 ? MID_BOXES : tier == 2 ? 2 : 1;
         var clusters = new IntArrayList[boxes];
         var bones = new int[boxes];
         int[] owner = new int[source.vertexCount()];
@@ -274,8 +276,11 @@ public class HordeMeshReduction {
                     case PART_HEAD -> 3;
                     default -> 4;
                 };
-            } else {
+            } else if (tier == 2) {
                 cluster = part == PART_LOWER ? 0 : 1;
+            } else {
+                // 片档：6方向面片组成整体盒子，所有部位合并到同一包围盒。
+                cluster = 0;
             }
             clusters[cluster].addElements(clusters[cluster].size(), indices);
             if (bones[cluster] < 0) {

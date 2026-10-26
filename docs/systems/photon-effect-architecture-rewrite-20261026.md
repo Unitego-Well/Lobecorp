@@ -86,3 +86,4 @@ EffectPlayer / RenderBridge
 - 已完成：R0 夹具/诊断；首次释放预热（临时替代）。
 - 未开始：R1 实例池、R2 Asset/材质预构建、R3 spawner 分离、R4 几何缓存、R5 批处理、R6 GPU。
 - 数据入口：`docs/systems/photon-performance-audit.md#首次释放专项诊断进行中2026-10-26-1140-起`、`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/first-cast`。
+- 执行手册：`docs/systems/photon-effect-rewrite-execution-plan-20261026.md`（R1～R6 步骤、代码地图、测试命令、验收与恢复清单）。

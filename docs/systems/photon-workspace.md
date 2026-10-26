@@ -4,7 +4,7 @@
 
 ## 当前任务进度
 
-2026-10-26 12:10 特效运行时底层重构方案：用户选择从底层架构重写而非继续微调。方案写在 [特效运行时底层重构方案](photon-effect-architecture-rewrite-20261026.md)：拆分不可变 EffectAsset（对象树/轨道/网格/材质变体/子模板/音频）与池化 EffectInstance（时间线游标/TRS/发射器/命名状态），迁移 R1 运行态复用→R2 材质/管线预构建→R3 spawner 分离→R4 几何资产空间缓存→R5 批处理→R6 可选 GPU，每阶段开关/回退/同条件 A/B。现有首次释放预热与采样器分配治理作为中间态保留；R1/R2 未开始。
+2026-10-26 12:10 特效运行时底层重构方案：用户选择从底层架构重写而非继续微调。方案写在 [特效运行时底层重构方案](photon-effect-architecture-rewrite-20261026.md)：拆分不可变 EffectAsset（对象树/轨道/网格/材质变体/子模板/音频）与池化 EffectInstance（时间线游标/TRS/发射器/命名状态），迁移 R1 运行态复用→R2 材质/管线预构建→R3 spawner 分离→R4 几何资产空间缓存→R5 批处理→R6 可选 GPU，每阶段开关/回退/同条件 A/B。现有首次释放预热与采样器分配治理作为中间态保留；R1/R2 未开始。可交接的执行手册见 [特效底层重构执行计划（交接版）](photon-effect-rewrite-execution-plan-20261026.md)，含代码地图、R1～R6 步骤、测试命令、验收与恢复检查清单。
 
 2026-10-26 11:54 首次释放专项（tick 侧已修，渲染侧未完成）：按用户要求只测第一次释放、每轮重开客户端。新增 `PhotonCastProfiler`（`-Dlobecorp.photon.diag.cast=true`）与“首次施放”单场景（只施放 1 次、输出截图后立即完成）。实测首施法 tick 总耗时 **695.7→64.4 ms（−90.7%）**：根因是首次 FX 定义解析 438 ms、运行态深拷贝 53 ms、子实例准备 116 ms、emit 72 ms；现改为“检测到 128 格内有女皇后预热 FX 定义＋预建运行态壳＋预准备子实例”（`CASTPREWARM 672～712 ms, prepared=2`，`-Dlobecorp.photon.prewarmBeam=false` 可关）。但首施法仍有约 1.0～1.4 s 的首帧渲染侧一次性构建（Mixin 类转换/类加载、ShaderGraph GLSL import 资源探测异常风暴、JSON 节点图解析、OGG 解码），需 P22 继续；run3/run4 施放截图差异仅粒子相位（mean_abs 1.741、diff>8 2.69%）。详见 [性能审查](photon-performance-audit.md#首次释放专项诊断进行中2026-10-26-1140-起)；问题见 [唯一清单](../issues.md)。
 

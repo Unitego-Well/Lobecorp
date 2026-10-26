@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-10-26 第六轮：I41 光影性能 A/B（展开微优化，负结果）
+
+- 用户选择继续优化 I41 光影轮，先限定“只做低风险微优化、不改数量、不改 24 顶点六面片、不改画面”，并授权优化前后同夹具游戏 A/B（重启客户端、焦点门禁、Spark 全程、截图归档）。
+- 只读核对：`HordeRendering.render` 在 Iris 阴影阶段直接返回，阴影重复绘制不成立；`CommandEncoder` 无 compute，`TextureFormat` 仅 RGBA8/RED8/RED8I，byte-packed 的“1 word = 1 像素”结构不能用 MRT 合并多字，因此 14 字/顶点与单位更新每单位重算 7 次这两处冗余无法靠布局改造消除。
+- 唯一改动落在 `src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh` 的局部冗余（不触碰共享 `HordeIrisAnimation` 帧缓存，避免影响尸体路径）：片图集 UV 按输出 word 拆支、法线归一化移入 word8 分支。A/B 实测 expand 4.442 vs 基线 4.437 ms、世界 GPU 19.159 vs 19.201 ms，**无可测收益**，已还原为原字节，本轮不保留生产代码改动。
+- 口径修正：阶段开销须看 `gpu_frame_sum_ns`，`gpu_sample_ns` 是每周期单阶段轮换采样；归档第 09 轮完整均值为 expand 4.262、units 2.743、base 2.336、spatial 1.701 ms。本轮两次运行夹具状态与第 09 轮不同（regions 2 vs 90、spatial 1 级 vs 3 级、base 6.09 vs 2.34 ms），第 09 轮成本结构不可直接沿用。
+- 检查：IDEA `BenchMod Compile` 退出 0；两轮 `lobecorp.horde-render` 均 PASSED（光影开、wardens=0、500×500/2400 tick/站 400/speed 0.75）；夹具配置已恢复 `enableShaders=false`、`hordeWardens=10`。
+- 备份：基线轮归档 `build/agent-backups/20261026-i41-expand-opt/baseline-reverted/`；修改版原始产物被同目录下一次运行覆盖，数值取自其 20:43:18 报告与 GPU 捕获。未推送。
+
 ## 2026-10-26 提问 API 优先规则
 
 - 2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。

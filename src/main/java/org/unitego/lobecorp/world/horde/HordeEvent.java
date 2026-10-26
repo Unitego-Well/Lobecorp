@@ -104,13 +104,18 @@ public class HordeEvent {
 	}
 
 	public boolean covers(Vec3 point) {
-		double station = route.nearest(point, tail(), head());
+		// 必须落在当前波带 [tail, head] 内，而不是“离波头一个半径内”：否则宽度500时波头前方250格的目标
+		// 也会被判定覆盖，真实清道夫/粒子会在浪潮到达前提前出现在远处目标身边。
+		double station = route.nearest(point, 0, route.length());
+		if (station < tail() - 0.001 || station > head() + 0.001) {
+			return false;
+		}
 		return route.point(station, 0).distanceToSqr(point)
 				<= Math.pow(rules.width() / 2 + rules.margin(), 2);
 	}
 
 	public double station(Vec3 point) {
-		return route.nearest(point, tail(), head());
+		return Math.clamp(route.nearest(point, 0, route.length()), tail(), head());
 	}
 
 	public CompoundTag header() {

@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.bench;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.zhongbai233.bench.api.BenchMetricDescriptor;
 import com.zhongbai233.bench.api.MetricDirection;
@@ -10,6 +11,12 @@ import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.monster.warden.Warden;
+import net.minecraft.util.Unit;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.ClientCommandHandler;
@@ -22,8 +29,11 @@ import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
+import org.unitego.lobecorp.world.horde.HordeEvents;
 import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
+import org.unitego.lobecorp.world.horde.HordeStartRequest;
+import org.unitego.lobecorp.world.horde.HordeStopMode;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
 import java.io.IOException;
@@ -41,8 +51,9 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private int configuredCount;
 	private int count;
     private static final int MEASURE_TICKS = 1200;
+	private static final double COMBAT_HEALTH = 100000.0;
 	private static final double WIDTH = 512;
-    private static final double SPEED = 0.3;
+    private final double speed = LobecorpBenchConfig.hordeSpeed();
     private static final BenchMetricDescriptor INSTANCES = new BenchMetricDescriptor(
             "lobecorp.horde_render.instances", "count", MetricDirection.NEUTRAL);
     private BenchClientPose originalPose;
@@ -57,6 +68,14 @@ public class HordeRenderScenario implements BenchClientScenario {
     private long firstFrame;
     private int elapsed;
     private int phaseTicks;
+    private int poseLockTicks;
+    private String originalGameMode;
+	// 监守者轮使用真实 HordeEvent：事件本身生成真实清道夫参与者，与监守者真实战斗。
+	private final boolean realEvent = LobecorpBenchConfig.hordeWardens() > 0;
+	@Nullable private UUID realEventId;
+	private boolean realEventFailed;
+	private String realEventFailure = "";
+	private int realEventWaitTicks;
     private int previousMaximum;
     private int previousRange;
 	private int temporaryHeightSamples;
@@ -71,6 +90,8 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private long renderFailureBaseline;
 	private static final BenchMetricDescriptor VISIBLE_PIXELS = new BenchMetricDescriptor(
 			"lobecorp.horde_render.visible_pixels", "count", MetricDirection.NEUTRAL);
+	private static final BenchMetricDescriptor WARDEN_COUNT = new BenchMetricDescriptor(
+			"lobecorp.horde.wardens", "count", MetricDirection.NEUTRAL);
 	// 与原夹具一致的侧上方视角；锚点必须是实际地面，不能沿用可能悬空的玩家Y。
 	private static final int CAMERA_HEIGHT = 64;
 	private static final int CAMERA_DISTANCE = 100;
@@ -79,6 +100,15 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private Path baselineScreenshotPath;
 	private boolean baselineCaptured;
 	private boolean hordeResumed;
+	private final int wardens = LobecorpBenchConfig.hordeWardens();
+	private int wardenRepicks;
+	private BenchServerWorkload wardenWorkload;
+	private CompletableFuture<Path> passAScreenshot;
+	private CompletableFuture<Path> passBScreenshot;
+	private Path passAPath;
+	private Path passBPath;
+	private int sparkWaitTicks;
+	private boolean measureComplete;
 	private int visiblePixels = -1;
 	private int[] visibleBounds = new int[0];
 	private static final BenchMetricDescriptor[] STAGE_CPU = Arrays.stream(HordeRenderMetrics.Stage.values())
@@ -134,6 +164,25 @@ public class HordeRenderScenario implements BenchClientScenario {
         if (!initialized && !initialize(context)) {
             return BenchClientStepResult.CONTINUE;
         }
+        if (realEvent) {
+            if (realEventFailed) {
+                throw new AssertionError("真实浪潮事件启动失败：" + realEventFailure);
+            }
+            long syncedInstances = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
+            if (realEventId == null || syncedInstances < 1000) {
+                if (++realEventWaitTicks > 600) {
+                    throw new AssertionError("真实浪潮事件 600 tick 内未同步出足够虚影实例：event=" + realEventId
+                            + ", instances=" + syncedInstances);
+                }
+                return BenchClientStepResult.CONTINUE;
+            }
+        }
+        if (wardenWorkload != null) {
+	        wardenWorkload.audit(context);
+	        if (!wardenWorkload.await(context, expectedWorkload(), LobecorpBenchConfig.entitySyncTimeoutTicks(), "浪潮监守者+真实清道夫")) {
+		        return BenchClientStepResult.CONTINUE;
+	        }
+        }
         advance();
         return ++phaseTicks >= LobecorpBenchConfig.STABILIZE_TICKS
                 && context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)
@@ -165,35 +214,56 @@ public class HordeRenderScenario implements BenchClientScenario {
 		})) {
 			return false;
 		}
-		var nodes = new ListTag();
-		for (int index = 0; index < route.size(); index++) {
-			nodes.add(route.node(index).save());
+		if (realEvent) {
+			// 用户澄清：清道夫由事件本身生成。监守者轮改为启动真实 HordeEvent（事件自己刷真实清道夫参与者），
+			// 不再发送伪造客户端快照；客户端通过正常 HordeSync 接收路线/快照并渲染。
+			var start = route.point(0, 0);
+			var end = route.point(route.length(), 0);
+			var server = context.minecraft().getSingleplayerServer();
+			if (server == null) {
+				throw new IllegalStateException("真实浪潮事件需要集成服务端");
+			}
+			server.execute(() -> {
+				var result = HordeEvents.start(server.overworld(), MidnightCleanup.ID,
+						new HordeStartRequest(start, end, List.of(), 6000, LobecorpBenchConfig.hordeWidth()));
+				if (result.started()) {
+					realEventId = result.eventId();
+				} else {
+					realEventFailure = result.message();
+					realEventFailed = true;
+				}
+			});
+		} else {
+			var nodes = new ListTag();
+			for (int index = 0; index < route.size(); index++) {
+				nodes.add(route.node(index).save());
+			}
+			header = new CompoundTag();
+			header.putInt("format", 1);
+			header.putString("dimension", context.level().dimension().identifier().toString());
+			header.put("rules", rules.save());
+			header.putLong("stop", 6000);
+			header.putDouble("length", route.length());
+			header.putDouble("speed", speed);
+			header.putInt("node_count", route.size());
+			var visual = new MidnightCleanup().visuals();
+			header.putString("model", visual.model().toString());
+			header.putString("animation", visual.animation().toString());
+			header.putString("run", visual.runAnimation());
+			header.putString("texture", visual.texture().toString());
+			header.putDouble("light_probe_height", new MidnightCleanup().dimensions().eyeHeight());
+			header.putDouble("entity_height", new MidnightCleanup().dimensions().height());
+			baseTick = (long) Math.ceil(route.length() / speed) + 40;
+			header.putLong("tick", baseTick);
+			header.putBoolean("reset", true);
+			ownsEvent = true;
+			send("header", header);
+			header.putBoolean("reset", false);
+			var page = new CompoundTag();
+			page.putInt("first", 0);
+			page.put("nodes", nodes);
+			send("route", page);
 		}
-		header = new CompoundTag();
-		header.putInt("format", 1);
-		header.putString("dimension", context.level().dimension().identifier().toString());
-		header.put("rules", rules.save());
-		header.putLong("stop", 6000);
-		header.putDouble("length", route.length());
-		header.putDouble("speed", SPEED);
-		header.putInt("node_count", route.size());
-		var visual = new MidnightCleanup().visuals();
-		header.putString("model", visual.model().toString());
-		header.putString("animation", visual.animation().toString());
-		header.putString("run", visual.runAnimation());
-		header.putString("texture", visual.texture().toString());
-		header.putDouble("light_probe_height", new MidnightCleanup().dimensions().eyeHeight());
-		header.putDouble("entity_height", new MidnightCleanup().dimensions().height());
-		baseTick = (long) Math.ceil(route.length() / SPEED) + 40;
-		header.putLong("tick", baseTick);
-		header.putBoolean("reset", true);
-		ownsEvent = true;
-		send("header", header);
-		header.putBoolean("reset", false);
-		var page = new CompoundTag();
-		page.putInt("first", 0);
-		page.put("nodes", nodes);
-		send("route", page);
 		int station = LobecorpBenchConfig.hordePlayerStation();
 		BenchClientPose view;
 		if (station >= 0) {
@@ -216,12 +286,104 @@ public class HordeRenderScenario implements BenchClientScenario {
 		if (station >= 0) {
 			naturalPose = view;
 			context.minecraft().player.setNoGravity(true);
+			if (wardens > 0) {
+				// 用户要求：玩家旁观者模式，真实实体互相打（清道夫×10 对监守者×10）。
+				originalGameMode = context.minecraft().player.isCreative() ? "creative"
+						: context.minecraft().player.isSpectator() ? "spectator" : "survival";
+				switchPlayerGameMode(context, "spectator");
+			} else {
+				context.minecraft().player.setInvulnerable(true);
+			}
+		}
+		if (wardens > 0) {
+			spawnWardens(context, route, station);
 		}
 		initialized = true;
 		return true;
 	}
 
-    /// 服务端执行命令固定时间：客户端时间由服务端同步，避免直接改 Level 时间不同步。
+	/// 在玩家站位附近、路线两侧随机位置服务端生成真实监守者；它们会进入客户端区域分割的 target 集合。
+	private void spawnWardens(BenchClientContext context, HordeRoute route, int station) {
+		var server = context.minecraft().getSingleplayerServer();
+		if (server == null) {
+			throw new IllegalStateException("浪潮监守者需要集成服务端");
+		}
+		// 监守者是 Monster：和平难度下即使 persistenceRequired 也会被 checkDespawn 移除（只在 entity-ticking 区块发生，
+		// 所以表现为“个别监守者每次补生成成功后下一 tick 又消失”）。先切普通难度，队列在生成任务之前。
+		var difficulty = wardens > 0 ? "normal" : null;
+		if (difficulty != null) {
+			server.execute(() -> server.getCommands().performPrefixedCommand(
+					server.createCommandSourceStack(), "difficulty " + difficulty));
+		}
+		var random = new Random(context.seed() * 31L + 0x5EED);
+		double center = station >= 0 ? Math.min(station, route.length()) : route.length() / 2;
+		double span = Math.min(80, route.length() / 2);
+		var specs = new ArrayList<BenchServerWorkload.Spec>(wardens);
+		for (int index = 0; index < wardens; index++) {
+			float yaw = (float) (random.nextDouble() * 360.0);
+			int x = 0;
+			int z = 0;
+			boolean usable = false;
+			// 确定性伪随机重抽：跳过未加载/越界/无有效地面的位置，但不降低 expected。
+			for (int attempt = 0; attempt < 20; attempt++) {
+				double along = Math.clamp(center + (random.nextDouble() * 2 - 1) * span, 0, route.length());
+				double lateral = (random.nextDouble() * 2 - 1) * 60;
+				var point = route.point(along, lateral);
+				x = (int) Math.floor(point.x);
+				z = (int) Math.floor(point.z);
+				if (wardenPositionUsable(context, x, z)) {
+					usable = true;
+					break;
+				}
+				wardenRepicks++;
+			}
+			if (!usable) {
+				wardenRepicks++;
+			}
+			var uuid = UUID.nameUUIDFromBytes(("lobecorp-bench:horde-warden:" + context.seed() + ":" + index)
+					.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			int anchorX = x;
+			int anchorZ = z;
+			specs.add(new BenchServerWorkload.Spec(uuid, anchorX, anchorZ, 32, level -> {
+				var warden = new Warden(EntityType.WARDEN, level);
+				// 真实战斗模拟：保留监守者全部 AI（不再 setNoAi），用锚点 leash 限制其漫游范围。
+				warden.setPersistenceRequired();
+				var health = warden.getAttribute(Attributes.MAX_HEALTH);
+				if (health != null) {
+					health.setBaseValue(COMBAT_HEALTH);
+				}
+				warden.setHealth((float) COMBAT_HEALTH);
+				warden.setYRot(yaw);
+				warden.setYHeadRot(yaw);
+				// 程序生成不经过 TRIGGERED 的 finalizeSpawn；显式清掉 emerging/digging 状态，避免一直播放脱离/挖掘动画。
+				warden.setPose(Pose.STANDING);
+				warden.getBrain().eraseMemory(MemoryModuleType.IS_EMERGING);
+				warden.getBrain().setMemoryWithExpiry(MemoryModuleType.DIG_COOLDOWN, Unit.INSTANCE, 24000L);
+				return warden;
+			}));
+		}
+		wardenWorkload = new BenchServerWorkload();
+		wardenWorkload.spawn(context, specs);
+	}
+
+	/// 监守者场景的实体总数：10 个真实监守者；真实清道夫由真实 HordeEvent 自身生成。
+	private int expectedWorkload() {
+		return wardens;
+	}
+
+	/// 客户端侧可生成性预检：世界边界内、区块已加载、地面高度有效。
+	private boolean wardenPositionUsable(BenchClientContext context, int x, int z) {
+		if (x < -29_999_000 || z < -29_999_000 || x > 29_999_000 || z > 29_999_000) {
+			return false;
+		}
+		if (!context.level().getChunkSource().hasChunk(x >> 4, z >> 4)) {
+			return false;
+		}
+		int height = context.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+		return height > context.level().getMinY() + 1 && height < context.level().getMaxY() - 2;
+	}
+
+	/// 服务端执行命令固定时间：客户端时间由服务端同步，避免直接改 Level 时间不同步。
     private void setNight(BenchClientContext context) {
         var server = context.minecraft().getSingleplayerServer();
         if (server != null) {
@@ -237,7 +399,48 @@ public class HordeRenderScenario implements BenchClientScenario {
     private void keepPose(BenchClientContext context) {
         if (naturalPose != null) {
             context.automation().holdPose(naturalPose);
+            // AI 实体的推挤/攻击可能让客户端固定姿态漂移：定期在服务端把玩家拉回锚点并清零速度。
+            if (++poseLockTicks % 5 == 0) {
+                lockPlayerOnServer(context);
+            }
         }
+    }
+
+    private void lockPlayerOnServer(BenchClientContext context) {
+        var server = context.minecraft().getSingleplayerServer();
+        if (server == null || naturalPose == null) {
+            return;
+        }
+        var player = context.minecraft().player;
+        var uuid = player.getUUID();
+        double eyeX = naturalPose.x();
+        double eyeY = naturalPose.y();
+        double eyeZ = naturalPose.z();
+        server.execute(() -> {
+            var serverPlayer = server.overworld().getPlayerByUUID(uuid);
+            if (serverPlayer == null) {
+                return;
+            }
+            serverPlayer.setPos(eyeX, eyeY - serverPlayer.getEyeHeight(), eyeZ);
+            serverPlayer.setDeltaMovement(Vec3.ZERO);
+            serverPlayer.setNoGravity(true);
+        });
+    }
+
+    private void switchPlayerGameMode(BenchClientContext context, String mode) {
+        var server = context.minecraft().getSingleplayerServer();
+        if (server == null) {
+            return;
+        }
+        var uuid = context.minecraft().player.getUUID();
+        server.execute(() -> {
+            var serverPlayer = server.overworld().getPlayerByUUID(uuid);
+            if (serverPlayer == null) {
+                return;
+            }
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
+                    "gamemode " + mode + " " + serverPlayer.getName().getString());
+        });
     }
 
     private void send(String kind, CompoundTag body) {        var packet = new CompoundTag();
@@ -249,6 +452,9 @@ public class HordeRenderScenario implements BenchClientScenario {
     }
 
     private void advance() {
+        if (realEvent) {
+            return;
+        }
         elapsed++;
         if (elapsed % 20 == 0) {
             header.putLong("tick", baseTick + elapsed);
@@ -266,6 +472,9 @@ public class HordeRenderScenario implements BenchClientScenario {
 		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.WARMUP);
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		keepPose(context);
+		if (wardenWorkload != null) {
+			wardenWorkload.audit(context);
+		}
 		requireGpuProgress();
 		advance();
 		if (++phaseTicks < LobecorpBenchConfig.WARMUP_TICKS) {
@@ -303,6 +512,10 @@ public class HordeRenderScenario implements BenchClientScenario {
 	    HordeRenderMetrics.phase(HordeRenderMetrics.Phase.MEASURE);
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		keepPose(context);
+		if (wardenWorkload != null) {
+			wardenWorkload.audit(context);
+		}
+	    BenchSpark.capture(context, "horde-profile.txt");
 	    requireGpuProgress();
 	    drainGpu(context);
 	    if (phaseTicks > 0 && context.frames().sampleCount() > firstFrame) {
@@ -328,6 +541,9 @@ public class HordeRenderScenario implements BenchClientScenario {
 	        environment = new HordeBenchmarkEnvironment();
 	        gpuCaptureToken = PhotonFrameCapture.start("horde_bench_gpu", 30, HordeRenderMetrics::worldGpuFrame);
         }
+		if (wardenWorkload != null) {
+			context.metrics().record(WARDEN_COUNT, wardenWorkload.synced(context));
+		}
         long count = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
         // -1 无限模式下事件仍在持续生成，实例数会增长；记录最新值而不是断言工作负载恒定。
         if (configuredCount < 0) {
@@ -339,12 +555,32 @@ public class HordeRenderScenario implements BenchClientScenario {
 	    if (HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
             throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
         }
-        boolean done = ++phaseTicks >= LobecorpBenchConfig.hordeMeasureTicks();
-        if (done) {
-            // 整个浪潮场景结束后才关闭 Spark，让采样覆盖完整测量而不是只采样 30 秒。
-            BenchSpark.stop();
+        int total = LobecorpBenchConfig.hordeMeasureTicks();
+        // 避让视觉取证：早期/后期各截一张，沿用同一第一人称位姿，供矩阵轮次对比“两侧绕过、不停顿”。
+        if (passAScreenshot == null && phaseTicks == Math.max(1, total / 3)) {
+            passAScreenshot = context.automation().captureScreenshot("horde-render-pass-a");
         }
-        return done ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+        if (passBScreenshot == null && phaseTicks == Math.max(2, total * 2 / 3)) {
+            passBScreenshot = context.automation().captureScreenshot("horde-render-pass-b");
+        }
+        if (!measureComplete) {
+            phaseTicks++;
+            if (phaseTicks >= total) {
+                measureComplete = true;
+                // 整个浪潮场景结束后才关闭 Spark，让采样覆盖完整测量而不是只采样 30 秒。
+                BenchSpark.stop();
+            }
+        }
+        if (measureComplete) {
+            if (!BenchSpark.saved()) {
+                if (++sparkWaitTicks > LobecorpBenchConfig.sparkSaveTimeoutTicks()) {
+                    throw new AssertionError("Spark 未在停止后返回上传链接，不能结束客户端");
+                }
+                return BenchClientStepResult.CONTINUE;
+            }
+            return BenchClientStepResult.COMPLETE;
+        }
+        return BenchClientStepResult.CONTINUE;
     }
 
 	@Override
@@ -352,10 +588,26 @@ public class HordeRenderScenario implements BenchClientScenario {
 		drainGpu(context);
 		HordeRenderMetrics.phase(HordeRenderMetrics.Phase.VERIFY);
 		requireGpuProgress();
-		if (context.frames().sampleCount() <= firstFrame || screenshotPath == null || baselineScreenshotPath == null
+		if (!measureComplete || context.frames().sampleCount() <= firstFrame || screenshotPath == null
+				|| baselineScreenshotPath == null
 				|| !Files.isRegularFile(screenshotPath) || !Files.isRegularFile(baselineScreenshotPath)
-				|| !HordeGpuRenderer.statistics().contains("instances=" + count)) {
+				|| !realEvent && !HordeGpuRenderer.statistics().contains("instances=" + count)) {
 			throw new AssertionError("GPU horde did not produce the expected drawing and contrast screenshots");
+		}
+		if (passAScreenshot == null || !passAScreenshot.isDone() || passBScreenshot == null || !passBScreenshot.isDone()) {
+			throw new AssertionError("浪潮中途避让截图（pass-a/pass-b）未完成");
+		}
+		passAPath = passAScreenshot.join();
+		passBPath = passBScreenshot.join();
+		if (!Files.isRegularFile(passAPath) || !Files.isRegularFile(passBPath)) {
+			throw new AssertionError("浪潮中途避让截图文件缺失");
+		}
+		if (wardenWorkload != null && (wardenWorkload.synced(context) != expectedWorkload()
+				|| wardenWorkload.serverPresent() != expectedWorkload())) {
+			throw new AssertionError("浪潮监守者/真实清道夫数量在测量后改变：expected=" + expectedWorkload()
+					+ ", serverPresent=" + wardenWorkload.serverPresent()
+					+ ", clientSynced=" + wardenWorkload.synced(context) + ", "
+					+ wardenWorkload.report(context).issues());
 		}
 		verifyVisible(context);
 		var window = context.minecraft().getWindow().handle();
@@ -376,6 +628,11 @@ public class HordeRenderScenario implements BenchClientScenario {
 		Files.createDirectories(gpu.getParent());
 		Files.copy(Path.of(capture.get("saved_path").getAsString()), gpu, StandardCopyOption.REPLACE_EXISTING);
 		context.artifacts().register(gpu, "application/json");
+		BenchSpark.requireSaved();
+		context.artifacts().register(screenshotPath, "image/png");
+		context.artifacts().register(baselineScreenshotPath, "image/png");
+		context.artifacts().register(passAPath, "image/png");
+		context.artifacts().register(passBPath, "image/png");
 	}
 
 	/// 同机位A/B证明浪潮像素真的进入画面；相机悬空、雾外、全黑或光照剔除都会在这里失败。
@@ -443,6 +700,20 @@ public class HordeRenderScenario implements BenchClientScenario {
 		}
 		failure = cleanup(failure, () -> saveEnvironment(context));
 		failure = cleanup(failure, () -> saveStages(context));
+		failure = cleanup(failure, BenchSpark::stop);
+		if (wardenWorkload != null) {
+			failure = cleanup(failure, () -> wardenWorkload.discard(context));
+		}
+		if (realEventId != null) {
+			var eventId = realEventId;
+			realEventId = null;
+			failure = cleanup(failure, () -> {
+				var server = context.minecraft().getSingleplayerServer();
+				if (server != null) {
+					server.execute(() -> HordeEvents.stop(server, eventId, HordeStopMode.CLEAR));
+				}
+			});
+		}
 		if (gpuCaptureToken != null) {
 			failure = cleanup(failure, () -> {
 				PhotonFrameCapture.cancel(gpuCaptureToken);
@@ -458,6 +729,12 @@ public class HordeRenderScenario implements BenchClientScenario {
 		if (screenshot != null && !screenshot.isDone()) {
 			failure = cleanup(failure, () -> screenshot.cancel(false));
 		}
+		if (passAScreenshot != null && !passAScreenshot.isDone()) {
+			failure = cleanup(failure, () -> passAScreenshot.cancel(false));
+		}
+		if (passBScreenshot != null && !passBScreenshot.isDone()) {
+			failure = cleanup(failure, () -> passBScreenshot.cancel(false));
+		}
 		if (pose != null) {
 			failure = cleanup(failure, () -> {
 				pose.close();
@@ -467,9 +744,15 @@ public class HordeRenderScenario implements BenchClientScenario {
 		if (poseSaved) {
 			failure = cleanup(failure, () -> context.automation().setPose(originalPose));
 		}
+		if (originalGameMode != null) {
+			String restore = originalGameMode;
+			originalGameMode = null;
+			failure = cleanup(failure, () -> switchPlayerGameMode(context, restore));
+		}
 		if (naturalPose != null) {
 			failure = cleanup(failure, () -> {
 				context.minecraft().player.setNoGravity(false);
+				context.minecraft().player.setInvulnerable(false);
 				naturalPose = null;
 			});
 		}
@@ -532,6 +815,54 @@ public class HordeRenderScenario implements BenchClientScenario {
 		value.addProperty("temporary_unloaded_height_samples", temporaryHeightSamples);
 		value.addProperty("fixture_instances", count);
 		value.addProperty("configured_instances", configuredCount);
+		value.addProperty("horde_wardens", wardens);
+		value.addProperty("horde_wardens_synced", wardenWorkload == null ? 0 : wardenWorkload.synced(context));
+		if (wardenWorkload != null) {
+			var wardenReport = wardenWorkload.report(context);
+			value.addProperty("warden_server_present", wardenReport.serverPresent());
+			value.addProperty("warden_respawn_count", wardenReport.respawns());
+			value.addProperty("warden_spawn_failure_count", wardenReport.spawnFailures());
+			value.addProperty("warden_server_difficulty", wardenReport.difficulty());
+			value.addProperty("warden_previous_difficulty", wardenReport.previousDifficulty());
+			value.addProperty("warden_repicks", wardenRepicks);
+			value.addProperty("warden_difficulty_command", wardens > 0 ? "normal" : "none");
+			value.addProperty("warden_client_missing_recreate_count", wardenReport.recreated());
+			value.addProperty("gamerule_spawn_mobs_disabled", wardenReport.gameruleDisabled());
+			value.addProperty("gamerule_previous_spawn_mobs", wardenReport.previousSpawnMobs());
+			value.addProperty("gamerule_previous_spawn_monsters", wardenReport.previousSpawnMonsters());
+			value.add("warden_workload_issues", new Gson().toJsonTree(wardenReport.issues()));
+		}
+		value.addProperty("horde_wardens_role",
+				"Real integrated-server wardens with full AI retained + 10 real AI sweepers spawned as opponents; player is spectator, both sides fight each other (real-combat simulation), anchors leashed to 32");
+		value.addProperty("horde_wardens_ai", wardens > 0 ? "all_ai_retained" : "none");
+		value.addProperty("horde_wardens_leash_radius", 32);
+		value.addProperty("horde_combat_sweepers", 0);
+		value.addProperty("horde_combat_health", COMBAT_HEALTH);
+		value.addProperty("horde_real_event", realEvent);
+		value.addProperty("horde_real_event_id", realEventId == null ? null : realEventId.toString());
+		value.addProperty("horde_player_mode", wardens > 0 ? "spectator" : "fixed");
+		value.addProperty("horde_workload_expected", expectedWorkload());
+		value.addProperty("measure_complete", measureComplete);
+		value.addProperty("spark_artifact", "artifacts/spark/horde-profile.txt");
+		value.addProperty("avoidance_pass_a", passAPath == null ? null : passAPath.toString());
+		value.addProperty("avoidance_pass_b", passBPath == null ? null : passBPath.toString());
+		if (wardenWorkload != null) {
+			var wardenList = new JsonArray();
+			for (var uuid : wardenWorkload.uuids()) {
+				var warden = new com.google.gson.JsonObject();
+				warden.addProperty("uuid", uuid.toString());
+				var entity = context.level().getEntity(uuid);
+				warden.addProperty("client_present", entity != null);
+				if (entity != null) {
+					warden.addProperty("type", entity.getType().toString());
+					warden.addProperty("x", entity.getX());
+					warden.addProperty("y", entity.getY());
+					warden.addProperty("z", entity.getZ());
+				}
+				wardenList.add(warden);
+			}
+			value.add("wardens", wardenList);
+		}
 		value.addProperty("unlimited_benchmark_fallback", configuredCount == -1);
 		value.addProperty("route", "(160,y,0) -> (-160,y,0), relative to benchmark origin");
 		value.addProperty("stage_capture_mode", "FULL_STAGE_SUM");

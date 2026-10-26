@@ -1,5 +1,68 @@
 # BenchMod 基准工具链
 
+## 2026-10-26 第五轮：GPU 避让重写、片颜色/发光/裁剪与 12 项矩阵
+
+### 需求
+- 用户要求整体重写 GPU 避让（不再在 `location()`/`advanceUnit` 上打小补丁）：每单位 GPU 速度/避让状态、玩家胶囊、邻居分离、被分割区域沿代价梯度向外。
+- 用 500×500、2 分钟、数量 -1、玩家路线 400 格处地面、夜晚、面向事件反方向、第一人称不飞的夹具验证“从两侧绕过去、不原地停、分割区域向外”。
+- 判读后用户追加：浪潮速度改到 **0.75 格/刻**（原夹具 0.3 的 2.5 倍）；推进要“方向不变、提前分割、加大侧向速度”；绕行结束后要**会合**；新生物刷新导致的突然空白要改成被推/主动离开而不是突然消失。
+- 片（card）纹理要**发光**、**不渲染反面**、走**透明裁剪（cutout，非半透明）**；片颜色要正确（红色）。
+
+### 实现（GPU 推进与避让）
+- 单位状态布局保持 12 值（`HordeUnitState.VALUES=12`）：0–2 位置、3–4 行位、5 列、6 更新时间、7–8 速度（xz）、9 穿透、10 约束异常、11 绘制序号。朝向不再持久化，由速度派生。
+- `horde_motion.glsl` 的 `location()` 退化为**纯路线锚点**（线路+地形流场+个体摆动），不再含区域推挤/玩家绕行；新增 `motionDrift/motionSway/motionGroundHeight` 供推进与高度恢复复用。
+- 新增 `horde_avoid.glsl`：玩家竖直胶囊切线绕行、分割区域前向走廊分流（带宽随速度增大：0.75 格/刻约提前 9 格）、区域内向外代价梯度、区域外软化斥力、格点邻居横向分离、硬投影辅助。
+- `horde_unit.fsh::advanceUnit` 重写：读上一帧位置/速度/时间 → 期望速度 = 前向基速 + 锚点回拉 + 横向阻尼（会合）+ 玩家/区域/邻居避让 → 限速积分 → 每帧限幅的平滑向外推出（不再瞬移或整批清空）→ 记录穿透/约束异常。状态时间最多容忍 1 秒、`elapsed` 最多 5 tick，避免服务端尖峰导致整批重播种。
+- 渲染朝向改为“前向为主 + 0.35×横向速度”偏置，避免绕行时突然转向；侧向速度上限提升到 `max(UnitLimits.x, 2.4×事件速度)`。
+- 文件：`horde_motion.glsl`、`horde_unit.glsl`、`horde_avoid.glsl`（新）、`core/horde_unit.fsh`。
+
+### 实现（片渲染）
+- **颜色修正（根因）**：`NativeImage.getPixel()` 返回 **ARGB**，旧烘焙代码按 ABGR 解读并用 `setPixelABGR` 写入，红蓝互换，导致片整体偏蓝紫；旧调试图又在导出时交换一次，掩盖了缺陷。现改为 `setPixel(ARGB)`，红色/发光均恢复正确。
+- **片发光**：新增 `HordeCardBake.bakeGlow`，用 glowmask 以同一 6 方向×20 帧布局烘焙（无方向光照）；tier3 `hasGlow=true`，原版在 `horde_instanced` 内混合，Iris 走 EYES 发光层；随模型缓存释放。
+- **片去反面/裁剪**：tier3 使用独立管线（背面剔除），Iris 基础层用 `ENTITY_CUTOUT_CULL`；片盒按 cutout 渲染，透明区域丢弃，不做半透明混合，也不再填实心底。
+- 文件：`HordeCardBake`、`HordeGpuRenderer`。
+
+### 实现（基准与夹具）
+- `HordeRenderScenario`：新增 `hordeSpeed`（默认 0.75，可配置）；中途 1/3、2/3 各截一张 `horde-render-pass-a/-b`；wardens 走真实服务端实体并审计。
+- 新增 `Sweeper30RenderScenario`（`lobecorp.sweeper30-ai/-noai`）、`RandomCorpseRenderScenario`（`lobecorp.corpse-random100`）、`BenchServerWorkload`（服务端实体规格化生成 + 逐 tick 审计/补生成/leash，SPAWN_MOBS 保存恢复）；`CorpseRenderScenario` 支持 30 具；Spark 上传链接等待统一到 600 tick；每场景截图/焦点门禁/环境 JSON。
+- 所有轮次命令：`.\gradlew.bat --console=plain verifyBenchClient "-PbenchScenarios=<id>" -x verifyBenchClientReport`（`verifyBenchClientReport` 固定期望旧场景，单场景过滤时必须排除）。
+
+### 监守者轮改为真实事件（用户澄清“清道夫事件本身就会生成清道夫”）
+- 合成快照场景从不启动 `HordeEvent`，因此服务端不会生成真实清道夫参与者，也就没有真实战斗；这是“看不到清道夫生成/不动”的根因。
+- 监守者轮（`hordeWardens=10`）改为直接调用 `HordeEvents.start(...)`：路线长 500、宽 500、6000 tick，玩家站在路线 400 处并切换为**旁观者模式**（AI 不会选中玩家，避免击退导致姿态漂移），事件自身生成真实清道夫参与者去攻击 10 个监守者；`hordeWardens=0` 的 09/10 仍用合成快照，保证性能表可比。
+- 监守者保留全部 AI；生成后显式 `Pose.STANDING`、清 `IS_EMERGING`、写入 24k tick `DIG_COOLDOWN`（程序生成不经过 `TRIGGERED` 的 `finalizeSpawn`，否则会一直播放脱离/挖掘动画）；血量 100000 防止被秒杀导致实体数量漂移；旁观者玩家每 5 tick 在服务端锁定回锚点并清零速度，teardown 恢复原游戏模式。
+- 11/12 的数据表标注“真实事件”，与 09/10 的合成夹具不做逐项横向比较。
+
+### 12 项矩阵（6 场景 × 光影/非光影，每轮独立重启客户端；全部 PASSED，焦点 losses=0）
+| 轮次 | 场景 | 光影 | 帧均 / P95 / P99 (ms) | 世界GPU (ms) | draw GPU (ms) | 实例/实体 | Spark |
+|---|---|---|---|---|---:|---:|---|---|
+| 01 | sweeper30-ai | 光影 | 10.394 / 15.857 / 20.258 | 8.132 | n/a | 30（同步30/30） | https://spark.lucko.me/uHVOy9cAtn |
+| 02 | sweeper30-ai | 非光影 | 4.605 / 7.294 / 10.012 | 1.073 | n/a | 30 | https://spark.lucko.me/AY9WXVVIrl |
+| 03 | sweeper30-noai | 光影 | 8.217 / 11.758 / 15.812 | 7.318 | n/a | 30 | https://spark.lucko.me/wS5ETGw8yC |
+| 04 | sweeper30-noai | 非光影 | 4.313 / 6.900 / 9.094 | 0.997 | n/a | 30 | https://spark.lucko.me/YEX9uz8VMz |
+| 05 | corpse-render(30) | 光影 | 6.797 / 9.105 / 11.642 | 6.249 | n/a | 30（static_drawn 30） | https://spark.lucko.me/8UqMGtGGHt |
+| 06 | corpse-render(30) | 非光影 | 3.203 / 5.632 / 7.157 | 0.898 | n/a | 30 | https://spark.lucko.me/jCRifoJFIj |
+| 07 | corpse-random100 | 光影 | 11.184 / 20.223 / 24.789 | 10.051 | n/a | 100（同步100/100） | https://spark.lucko.me/7RTylwVTzR |
+| 08 | corpse-random100 | 非光影 | 5.827 / 9.075 / 11.524 | 1.673 | n/a | 100 | https://spark.lucko.me/85u342RCak |
+| 09 | horde wardens=0（合成夹具） | 光影 | 19.196 / 22.989 / 25.037 | 19.082 | 12.295 | 25,642 | https://spark.lucko.me/KyY3Bbzr0y |
+| 10 | horde wardens=0（合成夹具） | 非光影 | 6.534 / 9.609 / 12.381 | 7.486 | 5.249 | 25,640 | https://spark.lucko.me/1sXlObSY3I |
+| 11 | horde wardens=10（真实事件，全 AI） | 光影 | 20.814 / 26.035 / 30.115 | 20.652 | 12.882 | 25,604 | https://spark.lucko.me/Gy3e9Erk0D |
+| 12 | horde wardens=10（真实事件，全 AI） | 非光影 | 9.336 / 12.512 / 15.478 | 4.143 | 2.362 | 25,543 | https://spark.lucko.me/rZS0VqNJ1e |
+
+- 05/06 在片 cutout 渲染改动前采集，但尸体场景不经过 horde 片渲染，路径未变，仍作为该场景有效数据；01-08 不受多缺口/波带修复影响。
+- 09-12 为 regionfix（多缺口稳定性）+ `VISUAL_GAP_SCALE=1.5` + `HordeEvent.covers` 波带修复后的重测数据；09/10 为合成夹具（性能可比），11/12 为真实 HordeEvent（事件自身生成真实清道夫、与全 AI 监守者真实战斗；玩家旁观者锁锚点），**不要与 09/10 直接等价比**。
+- 浪潮夹具：宽/长 500、2400 tick（2 分钟）、玩家站 400 格地面、夜晚、面向事件反方向、第一人称不飞、`hordeSpeed=0.75`、`maximumVisible=-1`（无限，实例约 2.56 万）、`cardDistance=32`、`frameDistance=10`、`animationFrames=20`。
+- 监守者轮：10 个真实服务端监守者（AI 全部保留、leash=32、Pose.STANDING/清 IS_EMERGING/长 DIG_COOLDOWN、血量 100000），真实事件自行生成清道夫与其交战；玩家旁观者模式、每 5 tick 服务端锁位，teardown 恢复游戏模式。
+- `HordeEvent.covers` 修复：目标必须落在当前波带 `[tail, head]` 内才被事件覆盖，消除“潮未到就提前生成清道夫/粒子”（11 截图 `horde-render.png` 浪潮仍在地平线且玩家附近无清道夫，`pass-a/b` 到达后才交战）。
+- 限制：11/12 的 `warden_respawn_count/issues≈20` 为全 AI 移动下审计重复补生成的记录（最终 10/10、spawn_failure=0）；09/11 光影轮世界GPU 19–21ms 未达 15ms 目标。
+- 数据同时导出 `build/agent-backups/20261026-matrix12/matrix.md`、`matrix.csv`（含 Spark/截图/焦点/无效尝试次数）。
+
+### 证据与限制
+- 每轮归档：`build/agent-backups/20261026-matrix12/<轮次>/`（summary/report/artifacts/config 快照/round.json/focus.json/metrics.csv/sha256.txt）；截图在每轮 `artifacts/screenshots/`（horde 轮含 `horde-render.png`、`horde-render-off.png`、`horde-render-pass-a/-b.png`；sweeper/corpse 轮各自 `*-render.png`）。
+- 无效尝试全部保留且未计入：01 服务端同步 29/30；07/09/10/11/12 焦点被外部窗口抢占（focus-monitor CSV 显示 QQ/资源管理器/剪映/搜索等前台切换）；10 attempt1 Spark bytebin 上传失败（回退本地 `.sparkprofile`）；11/12 首轮 warden 在 peaceful 世界被每 tick 移除（根因 difficulty=peaceful，已修为 normal）。旧 09/10（非 cutout 代码）改名 `-attempt1-oldbench` 保留。
+- 判定：12 轮均 PASSED、焦点 losses=0、Spark 链接齐全；但 horde 光影轮（09 合成 19.196/22.989/25.037ms、世界GPU 19.082；11 真实事件 20.814/26.035/30.115ms、世界GPU 20.652）**未达 16.7/20/15 ms 目标**，非光影轮（10/12）达标；`HordeEvent.covers` 波带修复后 11 截图确认浪潮到前无清道夫/粒子。片 cutout+颜色修复后 P95/P99 明显改善（旧卡 09 为 43.2/58.7 ms，新卡约 23.0/25.0 ms）。
+- 限制：多人/多事件、移动镜头、真实事件（非夹具）连续录像与定量未做；片 cutout 下透明区域会透出背景（用户明确要求透明渲染，非半透明）；E4 换包/重载与光源变化未复验。
+
 ## 2026-10-26 第四轮：远档片、20帧烘焙与GPU距离降帧（实现验证，测试矩阵未跑）
 
 ### 已实现

@@ -187,6 +187,9 @@ public class HordeAmbient {
 	private static boolean insideTide(HordeClient.ClientEvent event, Vec3 point) {
 		double radius = HordeGpuRenderer.modelRadius(event.visual);
 		for (var box : event.regions.values()) {
+			if (box == null) {
+				continue;
+			}
 			if (point.y < box.y() + box.sizeY() && point.y + event.entityHeight > box.y()
 					&& point.x > box.x() - radius && point.x < box.x() + box.sizeX() + radius
 					&& point.z > box.z() - radius && point.z < box.z() + box.sizeZ() + radius) {

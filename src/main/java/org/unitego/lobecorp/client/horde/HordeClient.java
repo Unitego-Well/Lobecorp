@@ -35,7 +35,8 @@ public class HordeClient {
 	private static final int BLOCK_SEGMENTS = 16;
 	private static final double MODEL_PADDING = 6;
 	// 水平分割宽深按实际体型三倍，Y仍采用真实高度，避免高处误分割。
-	private static final double VISUAL_GAP_SCALE = 3;
+	// 生物分割范围：缺口相对目标包围盒的放大倍率（用户要求 3 → 1.5）。
+	private static final double VISUAL_GAP_SCALE = 1.5;
 	// 从目标包围盒向外至少三格；GPU另加清道夫模型半径。
 	private static final double MIN_VISUAL_CLEARANCE = 3;
 	private static List<Batch> lastBatches = List.of();
@@ -145,6 +146,9 @@ public class HordeClient {
 			if (event.ready && !event.failed && event.routeBounds != null) {
 				result.add(new DebugRange(event.routeBounds, 0xFF00FFFF));
 				for (var box : event.regions.values()) {
+					if (box == null) {
+						continue;
+					}
 					result.add(new DebugRange(new AABB(box.x(), box.y(), box.z(),
 							box.x() + box.sizeX(), box.y() + box.sizeY(), box.z() + box.sizeZ()), 0xFFFF8000));
 				}
@@ -276,6 +280,9 @@ public class HordeClient {
 		public List<Block> blocks = List.of();
 		public final Map<String, RegionBox> regions = new TreeMap<>();
 		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
+		private final Map<String, RegionBox> lingeringTargets = new TreeMap<>();
+		private final Map<String, Double> lingeringTargetUntil = new TreeMap<>();
+		private static final double REGION_LINGER_TICKS = 30;
 		public double regionsChanged;
 		public float entityHeight;
 		public double length;
@@ -501,11 +508,31 @@ public class HordeClient {
 		}
 
 		private void updateGaps(List<Mob> targets, List<Mob> members, Player player) {
+			double now = time(0);
 			var updated = new TreeMap<String, RegionBox>();
 			updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
 			for (var entity : targets) {
-				updated.put("target:" + entity.getUUID(),
-						RegionBox.forEntity(entity.getBoundingBox()));
+				// 只对浪潮可视范围内的目标开缺口：远处的生物（含其他无关事件/动物）不应在空地上制造分割。
+				if (!isRelevantTarget(entity, player)) {
+					continue;
+				}
+				var key = "target:" + entity.getUUID();
+				var box = RegionBox.forEntity(entity.getBoundingBox());
+				updated.put(key, box);
+				lingeringTargets.put(key, box);
+				lingeringTargetUntil.put(key, now + REGION_LINGER_TICKS);
+			}
+			// 目标短暂丢失/事件成员退场时保留缺口 30 tick 再移除，避免缺口突然出现/消失导致单位瞬移。
+			var iterator = lingeringTargetUntil.entrySet().iterator();
+			while (iterator.hasNext()) {
+				var entry = iterator.next();
+				var lingering = lingeringTargets.get(entry.getKey());
+				if (lingering == null || now >= entry.getValue()) {
+					iterator.remove();
+					lingeringTargets.remove(entry.getKey());
+					continue;
+				}
+				updated.putIfAbsent(entry.getKey(), lingering);
 			}
 
 			// 成员不单独创建缺口，只扩展同层、正在参战目标的已有战斗包围。
@@ -525,9 +552,20 @@ public class HordeClient {
 				previousRegions.putAll(regions);
 				regions.clear();
 				regions.putAll(updated);
-				regionsChanged = time(0);
+				regionsChanged = now;
 				regionVersion++;
 			}
+		}
+
+		private boolean isRelevantTarget(Mob entity, Player player) {
+			double range = HordeVisualConfig.rangeBlocks();
+			if (player.distanceToSqr(entity) > range * range) {
+				return false;
+			}
+			if (routeBounds != null && !routeBounds.inflate(48).contains(entity.position())) {
+				return false;
+			}
+			return entity.isAlive() && !entity.isSpectator() && !HordeParticipant.isEvent(entity);
 		}
 
 

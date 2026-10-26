@@ -1,5 +1,16 @@
 # 系统修改记录
 
+## 2026-10-26 第五轮：GPU 避让重写、片颜色/发光/裁剪与 12 项矩阵
+
+- 用户要求整体重写 GPU 避让（RVO/流场代价方向），禁止继续在 `location()`/`advanceUnit` 上打小补丁；用 500×500、2 分钟、数量 -1、玩家路线 400 格处地面、夜晚、面向事件反方向、第一人称不飞的夹具验证“从两侧绕过去、不原地停、分割区域向外”。看效果后追加：浪潮速度改 0.75 格/刻；推进要“方向不变、提前分割、加大侧向速度”；绕行后要会合；生物刷新导致的突然空白要改成“被推/主动离开”而不是突然消失。片（card）要求能发光、不渲染反面、走透明裁剪（非半透明）、颜色正确；监守者要保留全部 AI 模拟真实战斗。
+- 避让重写（生产代码）：`HordeUnitState` 12 值布局改为位置/速度/时间/身份状态，朝向由速度派生；`horde_motion.glsl::location` 退化为纯路线锚点；新增 `horde_avoid.glsl`（玩家竖直胶囊、区域代价梯度+前向走廊提前分流、格点邻居横向分离、硬投影辅助）；`horde_unit.fsh::advanceUnit` 重写为限速积分 + 每帧限幅平滑推出 + 横向阻尼会合；状态时间容忍 1 秒、`elapsed`≤5 tick，避免服务端尖峰整批重播种；渲染朝向以前向为主 + 0.35 横向偏置。涉及 `horde_motion.glsl`、`horde_unit.glsl`、`horde_avoid.glsl`（新）、`core/horde_unit.fsh`。
+- 片渲染（生产代码）：修复 `NativeImage.getPixel()` 返回 ARGB 而旧代码按 ABGR+`setPixelABGR` 写入导致的红蓝互换（片偏蓝紫根因）；新增 `HordeCardBake.bakeGlow` 用 glowmask 同布局烘焙发光图集（tier3 `hasGlow=true`，原版混合、Iris EYES 层）；tier3 改用独立 cutout + 背面剔除管线（Iris `ENTITY_CUTOUT_CULL`），按用户要求“透明渲染、非半透明”；不填实心底。涉及 `HordeCardBake`、`HordeGpuRenderer`。
+- 基准（src/bench）：`HordeRenderScenario` 新增 `hordeSpeed`（默认 0.75）、`hordeWardens`（0/10）、pass-a/pass-b 中途截图、Spark 等待 600 tick。监守者轮（10 个）按用户澄清改为**真实事件**：服务端 `HordeEvents.start(...)` 启动 500×500/6000 tick 真实 HordeEvent，事件自身生成真实清道夫参与者与保留全部 AI 的监守者真实战斗；玩家切旁观者模式（不参与 AI 目标选择、每 5 tick 服务端锁位，teardown 恢复游戏模式）；监守者生成后显式 `Pose.STANDING`、清 `IS_EMERGING`、写 24k tick `DIG_COOLDOWN`，避免脱离/挖掘动画循环。09/10（wardens=0）仍用合成快照保证性能表可比。另新增 `Sweeper30RenderScenario`（ai/noai 两 ID）、`RandomCorpseRenderScenario`、`BenchServerWorkload`（服务端实体规格化生成、难度/自然刷怪处理、逐 tick 审计补生成/重追踪、位置预检重抽、诊断字段）；`CorpseRenderScenario` 支持 30 具；所有场景截图/焦点门禁/环境 JSON。
+- 多缺口分割修复（生产代码）：`HordeClient.updateGaps` 只对玩家视距内且落在路线包围盒的目标开缺口（消除远处无关生物造成的“空地分割”），目标离场后缺口滞留 30 tick 再移除；`horde_avoid.glsl` 的走廊分流只取权重最大的单个缺口（不再逐区域累加导致左右逐帧翻转）、硬推力只取穿透最深的缺口（不再求和抵消）；按用户要求把生物分割范围 `VISUAL_GAP_SCALE` 从 3 降到 1.5（最小外扩 3 格不变）。文件 `HordeClient.java`、`HordeAmbient.java`（null 防御）、`horde_avoid.glsl`。
+- 12 项测试矩阵：6 场景（清道夫30 AI、清道夫30 无AI、清道夫尸体30、随机生物尸体100、500×500 无限浪潮 wardens=0、同上 wardens=10）× 光影/非光影，每轮独立重启客户端；逐轮 summary/report/截图/Spark/焦点证据与数据表见 `build/agent-backups/20261026-matrix12/`（matrix.md/csv）和 [BenchMod](benchmod.md) 第五轮节。无效尝试（焦点被外部抢占、Spark bytebin 上传失败、服务端实体同步丢 1、warden 生成失败）均保留证据且未计入数据、未放宽门禁。
+- 检查：`compileJava`/`compileBenchJava`/`processResources` BUILD SUCCESSFUL；intellij-index 对本次改动 Java/GLSL 文件 errors=0；矩阵 12 轮均 PASSED（焦点 losses=0，Spark 链接齐全）。未达目标项：500×500 无限浪潮光影轮帧均/世界GPU 仍高于 16.7/15 ms；片 cutout 的透明区会透出背景（用户选择）；多人多事件/移动镜头/真实事件连续录像未复验。
+- 备份：`build/agent-backups/20261026-matrix12/`（12 轮+无效尝试+runbook+focus-monitor+sha256）；`build/agent-backups/20261026-matrix12-runbook/`。未推送。
+
 ## 2026-10-26 第四轮：远档片、20帧烘焙与GPU距离降帧（机制验证）
 
 - 用户要求远档改为烘焙 6 方向片组成盒子，并在游戏开始预烘 20 个跑步帧；按到相机绝对距离降帧：<10 全 20 帧、10–20 10 帧、20–30 5 帧、>30 静止，帧均匀取样；片也要完整 20 帧；新增“使用片的距离（-1 不使用）”“帧的距离（-1 不降低，0 不动）”配置，全部缓存、GPU 处理。

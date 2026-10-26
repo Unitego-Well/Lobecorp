@@ -55,6 +55,8 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	private int measured;
 	private long firstFrame;
 	private long failureBaseline;
+	private int sparkWaitTicks;
+	private boolean measureComplete;
 	private static final BenchMetricDescriptor STATIC_DRAWN = new BenchMetricDescriptor(
 			"lobecorp.corpse_render.static_drawn", "count", MetricDirection.NEUTRAL);
 	private static final BenchMetricDescriptor FALLBACK = new BenchMetricDescriptor(
@@ -71,6 +73,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		GLFW.glfwMaximizeWindow(context.minecraft().getWindow().handle());
 		BenchWindow.reset();
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
+		BenchSpark.start(context);
 	}
 
 	private BlockPos position(int index) {
@@ -80,7 +83,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
-		BenchSpark.capture(context);
+		BenchSpark.capture(context, "corpse-profile.txt");
 		if (corpses.isEmpty()) {
 			for (int index = 0; index < count; index++) {
 				var at = position(index);
@@ -130,7 +133,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
-		BenchSpark.capture(context);
+		BenchSpark.capture(context, "corpse-profile.txt");
 		requireOwned(context);
 		if (++warmup < LobecorpBenchConfig.WARMUP_TICKS) {
 			return BenchClientStepResult.CONTINUE;
@@ -151,9 +154,11 @@ public class CorpseRenderScenario implements BenchClientScenario {
 	@Override
 	public BenchClientStepResult measure(BenchClientContext context) {
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
-		BenchSpark.capture(context);
+		BenchSpark.capture(context, "corpse-profile.txt");
 		requireOwned(context);
 		if (measured == 0) {
+			// 只统计MEASURE阶段的失焦/恢复，预热阶段的偶发切换不计入验收窗口。
+			BenchWindow.reset();
 			if (PhotonFrameCapture.active()) {
 				throw new IllegalStateException("已有GPU捕获，不能替换其他捕获");
 			}
@@ -166,12 +171,23 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		context.metrics().record(STATIC_DRAWN, stats.get("static_drawn").getAsLong());
 		context.metrics().record(FALLBACK, stats.get("fallback").getAsLong());
 		context.metrics().record(DRAWS, stats.get("draws").getAsLong());
-		boolean done = ++measured >= LobecorpBenchConfig.CORPSE_MEASURE_TICKS;
-		if (done) {
-			// 客户端关闭前确认 Spark 已停止并已输出上传链接。
-			BenchSpark.requireSaved();
+		if (!measureComplete) {
+			measured++;
+			if (measured >= LobecorpBenchConfig.CORPSE_MEASURE_TICKS) {
+				measureComplete = true;
+				BenchSpark.stop();
+			}
 		}
-		return done ? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+		if (measureComplete) {
+			if (!BenchSpark.saved()) {
+				if (++sparkWaitTicks > LobecorpBenchConfig.sparkSaveTimeoutTicks()) {
+					throw new AssertionError("Spark 未在停止后返回上传链接，不能结束客户端");
+				}
+				return BenchClientStepResult.CONTINUE;
+			}
+			return BenchClientStepResult.COMPLETE;
+		}
+		return BenchClientStepResult.CONTINUE;
 	}
 
 	@Override
@@ -180,7 +196,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		if (CorpseBatchRenderer.failures() != failureBaseline) {
 			throw new AssertionError("尸体冻结批渲染曾失败，不能仅按实体数量判定通过");
 		}
-		if (measured != LobecorpBenchConfig.CORPSE_MEASURE_TICKS
+		if (!measureComplete || measured < LobecorpBenchConfig.CORPSE_MEASURE_TICKS
 				|| context.frames().sampleCount() <= firstFrame || screenshotPath == null
 				|| !Files.isRegularFile(screenshotPath)) {
 			throw new AssertionError("尸体基准没有完整帧样本或截图");
@@ -195,12 +211,21 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		Files.createDirectories(output.getParent());
 		Files.copy(Path.of(capture.get("saved_path").getAsString()), output, StandardCopyOption.REPLACE_EXISTING);
 		context.artifacts().register(output, "application/json");
+		var window = context.minecraft().getWindow().handle();
+		if (!BenchWindow.focused(window) || BenchWindow.iconified(window) || BenchWindow.losses() > 0) {
+			throw new AssertionError("基准窗口在MEASURE期间失焦或最小化：focused=" + BenchWindow.focused(window)
+					+ ", iconified=" + BenchWindow.iconified(window) + ", losses=" + BenchWindow.losses()
+					+ ", restores=" + BenchWindow.restores());
+		}
+		BenchSpark.requireSaved();
+		context.artifacts().register(screenshotPath, "image/png");
 	}
 
 	@Override
 	public void teardown(BenchClientContext context) throws Exception {
 		Throwable failure = null;
 		failure = cleanup(failure, () -> saveEnvironment(context));
+		failure = cleanup(failure, BenchSpark::stop);
 		if (gpuToken != null) {
 			failure = cleanup(failure, () -> PhotonFrameCapture.cancel(gpuToken));
 		}
@@ -242,6 +267,14 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		snapshot.addProperty("measure_ticks", LobecorpBenchConfig.CORPSE_MEASURE_TICKS);
 		snapshot.addProperty("gpu_seconds", GPU_SECONDS);
 		snapshot.addProperty("scope", "Client-only corpses without event source; GPU covers 28 seconds of the 600-tick MEASURE");
+		snapshot.addProperty("spawn_side", "client_local");
+		snapshot.addProperty("spark_artifact", "artifacts/spark/corpse-profile.txt");
+		snapshot.addProperty("measure_complete", measureComplete);
+		var window = context.minecraft().getWindow().handle();
+		snapshot.addProperty("window_focused_at_end", BenchWindow.focused(window));
+		snapshot.addProperty("window_iconified_at_end", BenchWindow.iconified(window));
+		snapshot.addProperty("focus_losses", BenchWindow.losses());
+		snapshot.addProperty("focus_restores", BenchWindow.restores());
 		var workload = new JsonArray();
 		for (var corpse : corpses) {
 			var entity = new JsonObject();

@@ -44,8 +44,13 @@ public final class BenchSpark {
 		running = false;
 	}
 
-	/// 在每个 tick 调用；上传完成后把本次链接写入制品并登记。
+	/// 每个 tick 调用；上传完成后把本次链接写入制品并登记。
 	public static void capture(BenchClientContext context) {
+		capture(context, "horde-profile.txt");
+	}
+
+	/// 每个场景使用独立文件名，避免同一轮多场景互相覆盖 Spark 制品。
+	public static void capture(BenchClientContext context, String filename) {
 		if (saved) {
 			return;
 		}
@@ -53,7 +58,7 @@ public final class BenchSpark {
 			if (before.contains(link)) {
 				continue;
 			}
-			Path file = context.resultDirectory().resolve("artifacts/spark/horde-profile.txt");
+			Path file = context.resultDirectory().resolve("artifacts/spark").resolve(filename);
 			try {
 				Files.createDirectories(file.getParent());
 				Files.writeString(file, link + System.lineSeparator());
@@ -64,6 +69,11 @@ public final class BenchSpark {
 			saved = true;
 			return;
 		}
+	}
+
+	/// 本轮 Spark 链接是否已经写入并登记制品。
+	public static boolean saved() {
+		return saved;
 	}
 
 	public static void requireSaved() {

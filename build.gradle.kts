@@ -246,6 +246,10 @@ neoForge {
 
 modBench {
     targetMod = modId
+    // 测试矩阵按需只跑指定场景，避免每次重启都带跑其它场景。
+    scenarioFilter.set(providers.gradleProperty("benchScenarios").orElse(""))
+    // 2分钟浪潮需要2400测量tick，放大阶段超时以免被默认1200截断。
+    phaseTimeoutTicks.set(3600L)
     expectedProviderCount = 1
     seed = 7
     jfrEnabled = true

@@ -15,15 +15,23 @@ final class HordeCardBake {
 	}
 
 	static @Nullable NativeImage bake(HordeMeshCache.Model model, NativeImage texture) {
+		return bake(model, texture, true);
+	}
+
+	/// 发光图集：同一方向/帧布局，但不做方向光照，保留 glowmask 原色与透明度。
+	static @Nullable NativeImage bakeGlow(HordeMeshCache.Model model, NativeImage texture) {
+		return bake(model, texture, false);
+	}
+
+	private static @Nullable NativeImage bake(HordeMeshCache.Model model, NativeImage texture, boolean shaded) {
 		try {
 			int frames = model.frames();
 			int width = TILE * 6;
 			int height = TILE * Math.max(1, frames);
 			var image = new NativeImage(width, height, true);
 			for (int face = 0; face < 6; face++) {
-				bakeFace(model, texture, image, face);
+				bakeFace(model, texture, image, face, shaded);
 			}
-			dump(image);
 			return image;
 		} catch (RuntimeException failure) {
 			Lobecorp.LOGGER.warn("群体方向片烘焙失败，回退6面盒贴图", failure);
@@ -31,7 +39,7 @@ final class HordeCardBake {
 		}
 	}
 
-	private static void bakeFace(HordeMeshCache.Model model, NativeImage texture, NativeImage atlas, int face) {
+	private static void bakeFace(HordeMeshCache.Model model, NativeImage texture, NativeImage atlas, int face, boolean shaded) {
 		double[] box = bounds(model);
 		int[] corners = HordeMeshReduction.boxFaces()[face];
 		double[] p0 = HordeMeshReduction.corner(box, corners[0]);
@@ -68,10 +76,12 @@ final class HordeCardBake {
 				int b = at + 1;
 				int c = at + 2;
 				int d = at + 3;
-				double light = faceLight(frameVertices, frame, model.vertexCount(), a, b, c);
+				double light = shaded ? faceLight(frameVertices, frame, model.vertexCount(), a, b, c) : 1.0;
 				textureTriangle(texture, staticVertices, projected, a, b, c, zbuffer, pixels, shade, light);
 				textureTriangle(texture, staticVertices, projected, a, c, d, zbuffer, pixels, shade, light);
 			}
+			// 片盒走透明裁剪（cutout）渲染：透明区域保持透明，由渲染管线丢弃，不填实心底。
+			// 注意：NativeImage.getPixel() 返回 ARGB，写入必须用 setPixel(ARGB)，不能用 setPixelABGR。
 			for (int y = 0; y < TILE; y++) {
 				for (int x = 0; x < TILE; x++) {
 					int pixel = pixels[y * TILE + x];
@@ -79,30 +89,13 @@ final class HordeCardBake {
 						continue;
 					}
 					float factor = shade[y * TILE + x];
-					int r = (int) ((pixel & 0xff) * factor);
+					int r = (int) (((pixel >> 16) & 0xff) * factor);
 					int g = (int) (((pixel >> 8) & 0xff) * factor);
-					int blue = (int) (((pixel >> 16) & 0xff) * factor);
-					atlas.setPixelABGR(face * TILE + x, frame * TILE + y,
-							(255 << 24) | (blue << 16) | (g << 8) | r);
+					int b = (int) ((pixel & 0xff) * factor);
+					atlas.setPixel(face * TILE + x, frame * TILE + y,
+							(255 << 24) | (r << 16) | (g << 8) | b);
 				}
 			}
-		}
-	}
-
-	private static void dump(NativeImage image) {
-		try {
-			var buffered = new java.awt.image.BufferedImage(image.getWidth(), image.getHeight(),
-					java.awt.image.BufferedImage.TYPE_INT_ARGB);
-			for (int y = 0; y < image.getHeight(); y++) {
-				for (int x = 0; x < image.getWidth(); x++) {
-					int p = image.getPixel(x, y);
-					int argb = (p & 0xff00ff00) | ((p & 0xff) << 16) | ((p >> 16) & 0xff);
-					buffered.setRGB(x, y, argb);
-				}
-			}
-			javax.imageio.ImageIO.write(buffered, "png", java.nio.file.Path.of("card-atlas-debug.png").toFile());
-		} catch (java.io.IOException | RuntimeException failure) {
-			Lobecorp.LOGGER.warn("无法输出片图集调试图", failure);
 		}
 	}
 

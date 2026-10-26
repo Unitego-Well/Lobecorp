@@ -8,8 +8,10 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.shaders.UniformType;
+import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
@@ -70,8 +72,11 @@ public class HordeGpuRenderer {
     private static final VertexFormat FORMAT = VertexFormat.builder()
             .add("Position", VertexFormatElement.POSITION).add("UV0", VertexFormatElement.UV0)
             .add("Color", VertexFormatElement.COLOR).add("Normal", VertexFormatElement.NORMAL).padding(1).build();
-    private static final RenderPipeline NORMAL = pipeline(false);
-    private static final RenderPipeline REVERSE = pipeline(true);
+    private static final RenderPipeline NORMAL = pipeline(false, false);
+    private static final RenderPipeline REVERSE = pipeline(true, false);
+    // 片档是封闭的6面盒：走透明裁剪（cutout，非半透明混合）并开启背面剔除，不渲染盒子内侧。
+    private static final RenderPipeline CARD_NORMAL = cardPipeline(false);
+    private static final RenderPipeline CARD_REVERSE = cardPipeline(true);
     private static final RenderPipeline MOTION = RenderPipeline.builder()
             .withLocation(Lobecorp.id("pipeline/horde_motion"))
             .withVertexShader(Lobecorp.id("core/horde_motion")).withFragmentShader(Lobecorp.id("core/horde_motion"))
@@ -109,9 +114,9 @@ public class HordeGpuRenderer {
 	private static long preparations;
 	private static final long PREPARATION_BUDGET_NS = 3_000_000L;
 	private static final Set<GeometryKey> PENDING_VISUALS = new LinkedHashSet<>();
-	private static final int PIPELINE_COUNT = 10;
-	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 4, 8, 0, 6, 7, 1, 5, 9};
-	private static final int[] IRIS_PIPELINE_ORDER = {2, 3, 4, 8, 0, 1, 5, 6, 7, 9};
+	private static final int PIPELINE_COUNT = 12;
+	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 4, 8, 0, 6, 7, 1, 5, 9, 10, 11};
+	private static final int[] IRIS_PIPELINE_ORDER = {2, 3, 4, 8, 0, 1, 5, 6, 7, 9, 10, 11};
 	private static final boolean[] COMPILED_PIPELINES = new boolean[PIPELINE_COUNT];
 	private static final int[] PIPELINE_FAILURES = new int[PIPELINE_COUNT];
 	private static final long[] PIPELINE_RETRY_AT = new long[PIPELINE_COUNT];
@@ -123,16 +128,22 @@ public class HordeGpuRenderer {
 	private static final Map<HordeVisualDefinition, GeometryKey[]> MODEL_KEYS = new HashMap<>();
 	private static final Map<UUID, Map<Integer, Integer>> LOD_STATES = new HashMap<>();
 
-	private static RenderPipeline pipeline(boolean reverse) {
+	private static RenderPipeline pipeline(boolean reverse, boolean cull) {
+		String location = reverse ? "pipeline/horde_gpu_reverse" : "pipeline/horde_gpu";
 		return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_LIGHT_DIR_SNIPPET)
-				.withLocation(Lobecorp.id(reverse ? "pipeline/horde_gpu_reverse" : "pipeline/horde_gpu"))
+				.withLocation(Lobecorp.id(cull ? location + "_cull" : location))
 				.withVertexShader(Lobecorp.id("core/horde_instanced")).withFragmentShader(Lobecorp.id("core/horde_instanced"))
 				.withSampler("Sampler0").withSampler("Sampler2").withSampler("Glowmask")
 				.withSampler("HordeMotion").withSampler("HordeAnimation")
 				.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
-				.withVertexFormat(FORMAT, VertexFormat.Mode.QUADS).withCull(false)
+				.withVertexFormat(FORMAT, VertexFormat.Mode.QUADS).withCull(cull)
 				.withDepthStencilState(new DepthStencilState(reverse ? CompareOp.GREATER_THAN_OR_EQUAL : CompareOp.LESS_THAN_OR_EQUAL, true))
 				.withColorTargetState(ColorTargetState.DEFAULT).build();
+	}
+
+	/// 片档专用：透明裁剪（cutout）+ 背面剔除；按不透明队列绘制，不做半透明混合。
+	private static RenderPipeline cardPipeline(boolean reverse) {
+		return pipeline(reverse, true);
 	}
 
 	private static boolean irisPath() {
@@ -233,6 +244,8 @@ public class HordeGpuRenderer {
 					case 7 -> device.precompilePipeline(REVERSE).isValid();
 					case 8 -> device.precompilePipeline(UNIT_UPDATE).isValid();
 					case 9 -> HordeUnitStats.precompile();
+					case 10 -> device.precompilePipeline(CARD_NORMAL).isValid();
+					case 11 -> device.precompilePipeline(CARD_REVERSE).isValid();
 					default -> throw new IllegalStateException("群体管线预热步骤无效");
 				};
 				if (!valid) {
@@ -539,17 +552,46 @@ public class HordeGpuRenderer {
 		}
 
 		long baseStarted = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.BASE, total);
+		try {
+			// 片档是封闭盒：单独用开启背面剔除的管线，不渲染盒子内侧（也减少背面填充）。
+			drawNativePass(prepared, reverse ? CARD_REVERSE : CARD_NORMAL, true,
+					transforms, indexBuffer, indices.type(), colorTarget, depthTarget, linear, nearest, stride);
+			drawNativePass(prepared, reverse ? REVERSE : NORMAL, false,
+					transforms, indexBuffer, indices.type(), colorTarget, depthTarget, linear, nearest, stride);
+		} finally {
+			HordeRenderMetrics.end(HordeRenderMetrics.Stage.BASE, baseStarted);
+		}
+	}
+
+	/// 按是否片档拆成两趟绘制：片档开启背面剔除，完整模型保持双面。
+	private static void drawNativePass(List<Prepared> prepared, RenderPipeline pipeline, boolean card,
+	                                   GpuBufferSlice transforms, GpuBuffer indexBuffer, VertexFormat.IndexType indexType,
+	                                   GpuTextureView colorTarget, GpuTextureView depthTarget, GpuSampler linear,
+	                                   GpuSampler nearest, int stride) {
+		boolean any = false;
+		for (var item : prepared) {
+			if ((item.geometry().model.tier() == 3) == card) {
+				any = true;
+				break;
+			}
+		}
+		if (!any) {
+			return;
+		}
 		try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
-				() -> "Lobecorp GPU horde", colorTarget, OptionalInt.empty(),
+				() -> card ? "Lobecorp GPU horde cards" : "Lobecorp GPU horde", colorTarget, OptionalInt.empty(),
 				depthTarget, OptionalDouble.empty())) {
-			pass.setPipeline(reverse ? REVERSE : NORMAL);
+			pass.setPipeline(pipeline);
 			RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("DynamicTransforms", transforms);
-			pass.bindTexture("Sampler2", minecraft.gameRenderer.lightmap(), linear);
+			pass.bindTexture("Sampler2", Minecraft.getInstance().gameRenderer.lightmap(), linear);
 			pass.bindTexture("HordeMotion", motionView, nearest);
-			pass.setIndexBuffer(indexBuffer, indices.type());
+			pass.setIndexBuffer(indexBuffer, indexType);
 			for (int i = 0; i < prepared.size(); i++) {
 				var item = prepared.get(i);
+				if ((item.geometry().model.tier() == 3) != card) {
+					continue;
+				}
 				pass.setUniform("HordeParameters", parameters.slice((long) i * stride, PARAMETER_BYTES));
 				pass.bindTexture("Sampler0", item.geometry().base.getTextureView(), item.geometry().base.getSampler());
 				pass.bindTexture("Glowmask", item.geometry().glow.getTextureView(), item.geometry().glow.getSampler());
@@ -561,8 +603,6 @@ public class HordeGpuRenderer {
 				HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
 			}
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
-		} finally {
-			HordeRenderMetrics.end(HordeRenderMetrics.Stage.BASE, baseStarted);
 		}
 	}
 
@@ -702,11 +742,13 @@ public class HordeGpuRenderer {
 			boolean hasGlow = minecraft.getResourceManager().getResource(glowId).isPresent();
 			AbstractTexture glow = hasGlow ? minecraft.getTextureManager().getTexture(glowId) : base;
 			DynamicTexture cardAtlas = null;
+			DynamicTexture cardGlowAtlas = null;
 			if (model.tier() == 3) {
 				// 片档用6方向×20帧的烘焙图集取代原模型贴图；失败则回退普通贴图+UV方向面。
+				var source = HordeMeshCache.ready(visual, 0);
 				try (var input = minecraft.getResourceManager().getResourceOrThrow(visual.texture()).open();
 				     var image = NativeImage.read(input)) {
-					var atlas = HordeCardBake.bake(HordeMeshCache.ready(visual, 0), image);
+					var atlas = HordeCardBake.bake(source, image);
 					if (atlas != null) {
 						cardAtlas = new CardAtlasTexture(atlas);
 						base = cardAtlas;
@@ -716,9 +758,26 @@ public class HordeGpuRenderer {
 				} catch (IOException | RuntimeException failure) {
 					Lobecorp.LOGGER.warn("群体片图集未生成，回退6面盒贴图：{}", visual.texture(), failure);
 				}
+				// 发光图集：glowmask用同一方向/帧布局再烘焙一份，片档也能在夜间发光。
+				if (cardAtlas != null && source != null) {
+					var glowResource = minecraft.getResourceManager().getResource(glowId);
+					if (glowResource.isPresent()) {
+						try (var input = glowResource.get().open();
+						     var image = NativeImage.read(input)) {
+							var atlas = HordeCardBake.bakeGlow(source, image);
+							if (atlas != null) {
+								cardGlowAtlas = new CardAtlasTexture(atlas);
+								glow = cardGlowAtlas;
+								hasGlow = true;
+							}
+						} catch (IOException | RuntimeException failure) {
+							Lobecorp.LOGGER.warn("群体片发光图集未生成，片保持无发光：{}", visual.texture(), failure);
+						}
+					}
+				}
 			}
 			preparations++;
-			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius, cardAtlas);
+			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius, cardAtlas, cardGlowAtlas);
 		} catch (RuntimeException exception) {
 			if (buffer != null) {
 				buffer.close();
@@ -837,6 +896,9 @@ public class HordeGpuRenderer {
 			if (geometry.cardAtlas != null) {
 				geometry.cardAtlas.close();
 			}
+			if (geometry.cardGlowAtlas != null) {
+				geometry.cardGlowAtlas.close();
+			}
 		});
 		GEOMETRY.clear();
 		MODEL_KEYS.clear();
@@ -934,7 +996,7 @@ public class HordeGpuRenderer {
 	private record Geometry(GpuBuffer vertices, int indices, HordeDataTexture animation, HordeDataTexture uvs,
 	                        HordeMeshCache.Model model,
 	                        AbstractTexture base, AbstractTexture glow, boolean hasGlow, float radius,
-	                        @Nullable DynamicTexture cardAtlas) {
+	                        @Nullable DynamicTexture cardAtlas, @Nullable DynamicTexture cardGlowAtlas) {
 	}
 
 	private record Prepared(HordeClient.Batch batch, Geometry geometry, EventData event, int offset, int count) {
@@ -1128,50 +1190,71 @@ public class HordeGpuRenderer {
 					glow |= items.get(i).geometry().hasGlow;
 				}
 			}
-			for (int layer = 0; layer < (glow ? 2 : 1); layer++) {
-				var stage = layer == 0 ? HordeRenderMetrics.Stage.BASE : HordeRenderMetrics.Stage.GLOW;
-				long started = HordeRenderMetrics.begin(stage, vertices);
-				try (var pass = encoder.createRenderPass(() -> "Horde Iris merged entity material", colorTarget,
-						OptionalInt.empty(), depthTarget, OptionalDouble.empty())) {
-					pass.setPipeline(layer == 0 ? RenderPipelines.ENTITY_CUTOUT : RenderPipelines.EYES);
-					RenderSystem.bindDefaultUniforms(pass);
-					pass.setUniform("DynamicTransforms", transforms);
-					if (layer == 0) {
-						pass.bindTexture("Sampler1", minecraft.gameRenderer.overlayTexture().getTextureView(), nearest);
-					}
-					pass.bindTexture("Sampler2", minecraft.gameRenderer.lightmap(), linear);
-					pass.setIndexBuffer(indexBuffer, indices.type());
-					HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
-					for (var chunk : chunks) {
-						pass.setVertexBuffer(0, chunk.slot().vertices);
-						for (int i = chunk.first(); i < chunk.last(); ) {
-							var item = items.get(i);
-							if (layer != 0 && !item.geometry().hasGlow) {
-								i++;
-								continue;
-							}
-							var material = layer == 0 ? item.geometry().base : item.geometry().glow;
-							int begin = offsets[i];
-							int count = item.count() * item.geometry().model.vertexCount();
-							i++;
-							while (i < chunk.last()) {
-								var next = items.get(i);
-								if (layer != 0 && !next.geometry().hasGlow
-										|| (layer == 0 ? next.geometry().base : next.geometry().glow) != material) {
-									break;
-								}
-								count += next.count() * next.geometry().model.vertexCount();
-								i++;
-							}
-							pass.bindTexture("Sampler0", material.getTextureView(), material.getSampler());
-							pass.drawIndexed(begin, 0, count / 4 * 6, 1);
-							batches++;
-							HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
-						}
-					}
-				} finally {
-					HordeRenderMetrics.end(stage, started);
+			// 片档是封闭盒：基础层单独用开启背面剔除的原版管线，完整模型保持双面。
+			drawMaterialPass(items, chunks, offsets, transforms, colorTarget, depthTarget, minecraft,
+					encoder, nearest, linear, indexBuffer, indices.type(), vertices, false, false);
+			drawMaterialPass(items, chunks, offsets, transforms, colorTarget, depthTarget, minecraft,
+					encoder, nearest, linear, indexBuffer, indices.type(), vertices, false, true);
+			if (glow) {
+				drawMaterialPass(items, chunks, offsets, transforms, colorTarget, depthTarget, minecraft,
+						encoder, nearest, linear, indexBuffer, indices.type(), vertices, true, false);
+			}
+		}
+
+		private void drawMaterialPass(List<Prepared> items, List<Chunk> chunks, int[] offsets,
+		                              GpuBufferSlice transforms, GpuTextureView colorTarget, GpuTextureView depthTarget,
+		                              Minecraft minecraft, CommandEncoder encoder, GpuSampler nearest, GpuSampler linear,
+		                              GpuBuffer indexBuffer, VertexFormat.IndexType indexType, int vertices,
+		                              boolean glowLayer, boolean cardOnly) {
+			var stage = glowLayer ? HordeRenderMetrics.Stage.GLOW : HordeRenderMetrics.Stage.BASE;
+			long started = HordeRenderMetrics.begin(stage, vertices);
+			try (var pass = encoder.createRenderPass(
+					() -> glowLayer ? "Horde Iris glow material" : "Horde Iris merged entity material", colorTarget,
+					OptionalInt.empty(), depthTarget, OptionalDouble.empty())) {
+				pass.setPipeline(glowLayer ? RenderPipelines.EYES
+						: cardOnly ? RenderPipelines.ENTITY_CUTOUT_CULL : RenderPipelines.ENTITY_CUTOUT);
+				RenderSystem.bindDefaultUniforms(pass);
+				pass.setUniform("DynamicTransforms", transforms);
+				if (!glowLayer) {
+					pass.bindTexture("Sampler1", minecraft.gameRenderer.overlayTexture().getTextureView(), nearest);
 				}
+				pass.bindTexture("Sampler2", minecraft.gameRenderer.lightmap(), linear);
+				pass.setIndexBuffer(indexBuffer, indexType);
+				HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
+				for (var chunk : chunks) {
+					pass.setVertexBuffer(0, chunk.slot().vertices);
+					for (int i = chunk.first(); i < chunk.last(); ) {
+						var item = items.get(i);
+						if (glowLayer ? !item.geometry().hasGlow : (item.geometry().model.tier() == 3) != cardOnly) {
+							i++;
+							continue;
+						}
+						var material = glowLayer ? item.geometry().glow : item.geometry().base;
+						int begin = offsets[i];
+						int count = item.count() * item.geometry().model.vertexCount();
+						i++;
+						while (i < chunk.last()) {
+							var next = items.get(i);
+							if (glowLayer && !next.geometry().hasGlow) {
+								break;
+							}
+							if (!glowLayer && (next.geometry().model.tier() == 3) != cardOnly) {
+								break;
+							}
+							if ((glowLayer ? next.geometry().glow : next.geometry().base) != material) {
+								break;
+							}
+							count += next.count() * next.geometry().model.vertexCount();
+							i++;
+						}
+						pass.bindTexture("Sampler0", material.getTextureView(), material.getSampler());
+						pass.drawIndexed(begin, 0, count / 4 * 6, 1);
+						batches++;
+						HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
+					}
+				}
+			} finally {
+				HordeRenderMetrics.end(stage, started);
 			}
 		}
 

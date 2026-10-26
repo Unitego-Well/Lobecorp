@@ -53,24 +53,8 @@ float heightAt(int node, float lateral) {
     return terrainAt(node, lateral, 0);
 }
 
-float regionPush(int slot, vec3 point, vec2 forward, vec2 side, float time, float preferredSide) {
-    int region = slot * 13;
-    float prediction = (time - OriginTime.w) / 20.0;
-    vec3 origin = vector3(HordeRegionState, region) + vector3(HordeRegionState, region + 6) * prediction;
-    vec3 halfSize = max(vec3(0.0), vector3(HordeRegionState, region + 3)
-    + vector3(HordeRegionState, region + 9) * prediction);
-    if (min(halfSize.x, halfSize.z) <= 0.0001) {
-        return 0.0;
-    }
-    float separation = max(origin.y - halfSize.y - (point.y + LightRoute.w), point.y - (origin.y + halfSize.y));
-    float vertical = 1.0 - smoothstep(0.0, 0.5, separation);
-    vec2 delta = point.xz - origin.xz;
-    halfSize.xz += vec2(intBitsToFloat(SpatialTextures.w));
-    return vertical * hordeGapPush(dot(delta, forward), dot(delta, side),
-            dot(abs(side), halfSize.xz), dot(abs(forward), halfSize.xz), preferredSide);
-}
-
-vec3 location(float station, float lateral, float time, float preferredSide) {
+// 纯路线锚点：只由线路、地形流场和个体摆动决定。避让不再修改锚点，改由GPU速度状态推进。
+vec3 location(float station, float lateral) {
     float s = clamp(station, 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
     int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
@@ -87,73 +71,12 @@ vec3 location(float station, float lateral, float time, float preferredSide) {
     forward = length(forward) > 0.0001 ? normalize(forward) : vec2(0.0, 1.0);
     vec2 side = vec2(-forward.y, forward.x);
     vec3 center = mix(vector3(HordeRoute, a), vector3(HordeRoute, b), weight);
-    vec2 point = center.xz + side * lateral;
     float terrainFlow = mix(terrainAt(node, lateral, 2), terrainAt(node + 1, lateral, 2), weight);
-    point += side * terrainFlow;
-    float groundY = mix(heightAt(node, lateral + terrainFlow), heightAt(node + 1, lateral + terrainFlow), weight);
-    ivec2 cell = spatialCell(vec3(point.x, groundY, point.y));
-    float combined = 0.0;
-    int regions = int(SegmentRegions.w);
-    int words = (regions + 31) / 32;
-    for (int word = 0; word < words; word++) {
-        uint possible = spatialWord(cell, word + 1);
-        if (possible == 0u) continue;
-        for (int bit = 0; bit < 32 && word * 32 + bit < regions; bit++) {
-            if ((possible & (1u << uint(bit))) == 0u) continue;
-            float push = regionPush(regionSlot(word * 32 + bit),
-                    vec3(point.x, groundY, point.y), forward, side, time, preferredSide);
-            combined = hordeMergePush(combined, push);
-        }
-    }
-    float displacement = terrainFlow + preferredSide * combined;
-    float adjusted = lateral + clamp(displacement, -ProbeInfo.w, ProbeInfo.w);
-    point = center.xz + side * adjusted;
-
-    // 重写的GPU侧向避让：只改变横向偏移，前进档位保持不变，单位不会停在原地。
-    // 1) 玩家/障碍：按单位相对侧向选一个稳定的绕行方向，平滑推到半径外。
-    vec2 player = -OriginTime.xz;
-    vec2 toUnit = point - player;
-    float distance = length(toUnit);
-    float avoidRadius = 3.0;
-    if (distance < avoidRadius) {
-        float sideSign = dot(toUnit, side) >= 0.0 ? 1.0 : -1.0;
-        if (abs(dot(toUnit, side)) < 0.001) {
-            sideSign = preferredSide;
-        }
-        float pressure = (avoidRadius - distance) / avoidRadius;
-        adjusted += sideSign * pressure * (avoidRadius - distance);
-    }
-
-    // 2) 被挤进实体区域：沿区域中心向外推出，直到离开边界。
-    for (int pass = 0; pass < 2; pass++) {
-        vec3 probe = vec3(center.x + side.x * adjusted, heightAt(node, adjusted), center.z + side.y * adjusted);
-        ivec2 cell = spatialCell(probe);
-        float outward = 0.0;
-        for (int word = 0; word < words; word++) {
-            uint possible = spatialWord(cell, word + 1);
-            if (possible == 0u) continue;
-            for (int bit = 0; bit < 32 && word * 32 + bit < regions; bit++) {
-                if ((possible & (1u << uint(bit))) == 0u) continue;
-                vec3 minimum;
-                vec3 maximum;
-                if (!regionBounds(regionSlot(word * 32 + bit), minimum, maximum)
-                        || !regionContains(probe, minimum, maximum)) continue;
-                vec2 fromCenter = probe.xz - (minimum.xz + maximum.xz) * 0.5;
-                outward += dot(fromCenter, side) >= 0.0 ? 1.0 : -1.0;
-            }
-        }
-        if (outward == 0.0) break;
-        adjusted += sign(outward) * 0.75;
-    }
-
-    // 3) 保持在浪潮横向范围内；越界时向内侧收，但不反向。
-    adjusted = clamp(adjusted, -ProbeInfo.w, ProbeInfo.w);
-
-    point = center.xz + side * adjusted;
-    float y = mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
-    return vec3(point.x, y, point.y);
+    float adjusted = lateral + terrainFlow;
+    vec2 point = center.xz + side * adjusted;
+    float groundY = mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
+    return vec3(point.x, groundY, point.y);
 }
-
 
 vec2 routeForward(float station) {
     int count = int(LightRoute.y);
@@ -173,18 +96,42 @@ float motionRandom(float seed, float salt) {
 }
 
 // 稳定个体种子派生不同频率和幅度；基础速度不变，连续加减速且不反向。
-vec3 movingLocation(float station, float lateral, float time, float seed) {
+float motionDrift(float time, float seed) {
+    float a = motionRandom(seed, 1.0);
+    float b = motionRandom(seed, 2.0);
+    float phase = a * 6.2831853;
+    return (1.2 * sin(time * mix(0.04, 0.07, b) + phase)
+    + 0.6 * sin(time * mix(0.015, 0.03, b) + b * 6.2831853))
+    * min(1.0, CameraSpeed.w / 0.25);
+}
+
+// 最大摆幅1.5格，与HordeSamplingUtil的采样覆盖一致。
+float motionSway(float time, float seed) {
     float a = motionRandom(seed, 1.0);
     float b = motionRandom(seed, 2.0);
     float c = motionRandom(seed, 3.0);
     float phase = a * 6.2831853;
-    float drift = (1.2 * sin(time * mix(0.04, 0.07, b) + phase)
-    + 0.6 * sin(time * mix(0.015, 0.03, c) + c * 6.2831853))
-    * min(1.0, CameraSpeed.w / 0.25);
-    // 最大摆幅1.5格，与HordeSamplingUtil的采样覆盖一致。
-    float sway = (0.9 * sin(time * mix(0.012, 0.03, c) + phase)
+    return (0.9 * sin(time * mix(0.012, 0.03, c) + phase)
     + 0.6 * sin(time * mix(0.006, 0.016, a) + b * 6.2831853)) * mix(0.5, 1.0, b);
-    return location(station + drift, lateral + sway, time, a < 0.5 ? -1.0 : 1.0);
+}
+
+vec3 movingLocation(float station, float lateral, float time, float seed) {
+    return location(station + motionDrift(time, seed), lateral + motionSway(time, seed));
+}
+
+// 指定横向偏移处的实际地面高度；只在位置分量上调用，避让后脚底仍贴合地形。
+float motionGroundHeight(float station, float lateral, float lateralDelta, float seed) {
+    float s = clamp(station + motionDrift(OriginTime.w, seed), 0.0, SpacingLength.w);
+    int count = int(LightRoute.y);
+    int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
+    while (node + 2 < count && scalar(HordeRoute, (node + 1) * 16 + 3) <= s) node++;
+    int a = node * 16, b = a + 16;
+    float first = scalar(HordeRoute, a + 3), last = scalar(HordeRoute, b + 3);
+    float weight = clamp((s - first) / max(last - first, 0.0001), 0.0, 1.0);
+    float base = lateral + motionSway(OriginTime.w, seed);
+    float flow = mix(terrainAt(node, base, 2), terrainAt(node + 1, base, 2), weight);
+    float adjusted = base + flow + lateralDelta;
+    return mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
 }
 
 vec2 lightAt(vec3 position) {
@@ -213,3 +160,4 @@ vec2 lightAt(vec3 position) {
 }
 
 #moj_import <lobecorp:horde_unit.glsl>
+#moj_import <lobecorp:horde_avoid.glsl>

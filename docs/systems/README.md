@@ -4,6 +4,18 @@
 
 整理日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
+## 项目工具链
+
+本项目的开发与验收工具链固定为下列五项，各自环节不得用其他方式替代：
+
+- **Sodium**：客户端渲染后端基线，`lib/sodium-neoforge-0.9.2+mc26.1.2.jar`。普通组与光影组的对照都以 Sodium 已加载为前提，不代表任意第三方模组组合。
+- **BenchMod**：项目内基准夹具（`src/bench`），通过 IDEA 的 `BenchClient`、`BenchServer`、`BenchPairedServer`、`BenchRemoteClient` 运行配置启动；场景、门禁与历史数据见 [BenchMod](benchmod.md)。
+- **mc mcp**：Minecraft MCP 桥接（`lib/minecraft-mcp`，固定端口 `MC_MCP_PORT=19876`），负责 `ping`、`screenshot`、`enumerate_widgets`、`execute_command` 与输入控制；接入与限制见 [Minecraft MCP 工作区接入](minecraft-mcp-workspace.md)。
+- **idea mcp**：IDEA MCP（JetBrains 插件，`http://127.0.0.1:64342/stream`），负责源码读写、诊断、运行配置与后台 Git。
+- **debug**：IDEA Debug 会话，负责断点、栈帧与表达式求值，并与 mc mcp 共同完成进游戏、控制与截图。
+
+静态诊断、编译、Data、无游戏测试、实机画面与性能分别记录，不能互相代替。Sodium 与 BenchMod 只对应当前构建与夹具配置；换包、关光影或改窗口后的结果须重新记录。
+
 ## 功能与入口
 
 | 系统 | 入口 |

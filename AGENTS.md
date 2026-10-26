@@ -20,7 +20,7 @@
 - 协作仅使用未归档的 AI 聊天，不检索、恢复或唤醒已归档聊天。
 - 工作区统一位于原始仓库 `.workspace/lobecorp_<content>`，由 Git worktree 管理并由原始仓库忽略；现有聊天完成后再为后续任务开新聊天，旧路径兼容链接不得提前移除。详见[工作区目录](docs/systems/workspace-layout.md)。
 - Minecraft MCP 只消费外部仓库构建并提交到 `lib` 的 JAR 和桥接制品；不恢复 `modules/minecraft-mcp` 或源码子项目。升级和隔离见[制品规范](docs/systems/minecraft-mcp-artifacts.md)。
-- 开发与验收工具链固定为 **Sodium、BenchMod、mc mcp、idea mcp、debug**，各环节用途与入口见[项目工具链](docs/systems/README.md#项目工具链)；不得用其他方式替代对应环节。
+- 开发与验收工具链固定为 **spark、BenchMod、mc mcp、idea mcp、debug**，各环节用途与入口见[项目工具链](docs/systems/README.md#项目工具链)；不得用其他方式替代对应环节。
 - 默认使用不抢焦点的 MCP/API；固定连续步骤合批，在开始、结束、分支或失败时读取必要状态。只修改本次授权范围；不顺带重构、清理、改名、格式化或修复。
 - 保留未修改区域的原文件排版及用户已有暂存、未暂存、未跟踪和未保存内容；先对比再局部合并，不擅自覆盖、重置、暂存、提交或删除。并行任务明确文件归属，不同时修改同一物理文件。
 - 代码格式纳入编辑规则：新增代码文件与本次修改行的格式调整属于本次编辑范围，完成代码修改后必须通过 IDEA

@@ -2,8 +2,8 @@
 
 ## 2026-10-26 工具链文档化
 
-- 用户明确要求把 **Sodium + BenchMod + mc mcp + idea mcp + debug** 写入项目文档，作为本项目固定的开发与验收工具链。
-- [系统文档索引](README.md) 新增「项目工具链」一节，逐项写明 Sodium（渲染后端基线）、BenchMod（`src/bench` 夹具与运行配置）、mc mcp（固定端口 19876 的桥接与控制）、idea mcp（源码/诊断/Git）、debug（断点、栈帧、求值）的职责与入口，并声明各环节不能互相代替。
+- 用户明确要求把 **spark + BenchMod + mc mcp + idea mcp + debug** 写入项目文档，作为本项目固定的开发与验收工具链。
+- [系统文档索引](README.md) 新增「项目工具链」一节，逐项写明 spark（性能剖析与采样链接）、BenchMod（`src/bench` 夹具、自动建场景与运行配置）、mc mcp（固定端口 19876 的桥接与控制）、idea mcp（源码/诊断/Git）、debug（断点、栈帧、求值）的职责与入口，并声明各环节不能互相代替。
 - [AGENTS.md](../../AGENTS.md) 工具段新增一条指向该节的固定工具链说明。
 - 检查：仅文档编辑，IDEA 回读确认写入；未执行构建、Data、测试、重载或游戏操作。
 
@@ -16,8 +16,10 @@
 - 粒子：新增 `HordeParticleSamples` 与 `core/horde_particle_samples.fsh`，GPU 从相机 32 格内筛真实单位，256 候选 × 9 字、9216 字节异步回读，携带 8 邻居掩码与站程，快照带事件身份、世代和 1 tick/100 ms 新鲜度限制；`HordeGpuRenderer` 增加第 13 条管线并在各组更新后捕获。`HordeAmbient` 移除原 3/2/1 网格混发，改为边界碎屑与灰尘同点、刀光独立批次；新增 `client/particle/horde/HordeDustParticle`（继承原版篝火烟雾物理），`RegisterParticleProviders` 仅额外绑定短烟 SpriteSet；`HordeVisualConfig` 新增 `fragmentGroups` 默认 20、范围 0–100。
 - 服务端：新增 `HordeCombatRegion` 与 `HordeTargetSpatialState`，战斗区改为运行期 XZ 正方形（边长取包围盒水平最长边加两倍 regionMargin，Y 真实），玩家 32 格内每 tick、其他目标最坏 10 tick 更新，完整发现每 10 tick、近圈每 tick；`HordeRuntime` 位置写入收敛到 `refreshSpatial` 唯一入口，创建前补 live 同维度、domain/profile、严格波带与资格复核；`HordeSpawnPlanner` 优先方区内候选并在失败时保留原距离候选。
 - 测试：新增 `HordeCircularMotionContractTest`（4 项）、`HordeParticleSamplesTest`（6 项）、`HordeTargetSpatialStateTest`（7 项），并适配 `HordeRegionTest`、`HordeSpatialFieldTest`、`HordeOptimizationTest` 的旧整数与矩形断言。
+- 粒子外观修正（用户复核后）：烟雾不再使用篝火烟雾派生类，改为直接生成 `short_smoke`，即清道夫飞扑起跳用的同一粒子、同一 `big_smoke` 纹理、同一无重力短烟行为；速度沿用飞扑参数（水平散布 0.6、垂直 0.1、速度 0.04），不额外缩放。删除 `client/particle/horde/HordeDustParticle.java` 与 `RegisterParticleProviders` 里的额外 SpriteSet 绑定，恢复原 Provider。
 - 检查：`BenchMod Compile` 退出 0（含 `compileBenchJava`、`jar`、`verifyProductionJarHasNoBenchContent`）；8 套无游戏测试共 61 项全部通过；`Data` 退出 0，`fragment_groups` 中英文键已生成到 `src/generated`（该目录被忽略）；本轮 Java/GLSL 静态诊断 0 错误，`HordeClient` 保留原有 2 项可空警告。
-- 未执行：硬件 GLSL 编译、游戏内圆核心/胶囊/深包围轨迹、粒子分区与缩放、多人及跨维度服务端调度、性能对比；均需实机验收，不以静态检查代替。
+- 实机基准（2026-10-27 00:37，IDEA `BenchClient` + BenchMod `lobecorp.horde-render` + spark）：**PASSED**，焦点门禁 losses=0。25,525 个实例、370 个逻辑批次、1 组、regions 101–128（圆核心逐生物生效）、particles 8.48/刻、particle_areas 4.78、`visible_pixels` 45,010；帧均 11.351 ms / P95 17.914 / P99 25.126 ms，horde draw GPU 8.670 ms，units 5.456 ms，spatial 1.641 ms，failures=0、degraded=0。spark 链接 `https://spark.lucko.me/9sx6xJHDmT`；截图 4 张、JFR 与 GPU 捕获在 `build/modBench/raw-results/default/client/artifacts/`。
+- 未执行：人工确认圆核心/胶囊外观与粒子分区画面（本会话模型不能读取图片，截图已归档待人工查看）；多人及跨维度服务端调度；性能对比不作为本轮目标。
 - 备份：工作树未做整目录备份；改动范围见本次提交。未推送。
 
 ## 2026-10-26 第六轮：I41 光影性能 A/B（展开微优化，负结果）

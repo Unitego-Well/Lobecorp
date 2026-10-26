@@ -35,4 +35,6 @@
 
 当前检查：`BenchMod Compile` 退出 0（含 `compileBenchJava`、`jar`、`verifyProductionJarHasNoBenchContent`）；`HordeCircularMotionContractTest`（4）、`HordeParticleSamplesTest`（6）、`HordeTargetSpatialStateTest`（7）、`HordeRegionTest`（4）、`HordeSpatialFieldTest`（9）、`HordeOptimizationTest`（10）、`HordeRulesTest`（18）、`HordeCleanupTest`（3）共 61 项通过；`Data` 退出 0 并生成 `fragment_groups` 中英文键；本轮 Java/GLSL 静态诊断 0 错误，`HordeClient` 保留原有 2 项可空警告。
 
+实机基准：IDEA `BenchClient` + BenchMod `lobecorp.horde-render` + spark，**PASSED**（焦点 losses=0）。25,525 实例、regions 101–128、`particles` 8.48/刻、`visible_pixels` 45,010、帧均 11.351 ms / P99 25.126 ms、horde draw GPU 8.670 ms、failures=0；spark 链接 `https://spark.lucko.me/9sx6xJHDmT`，截图/JFR 在 `build/modBench/raw-results/default/client/artifacts/`。
+
 尚未执行：硬件 GLSL 编译、游戏内圆核心与胶囊外观、多目标与深包围轨迹、粒子分区与缩放、多人/跨维度服务端调度、性能对比。Minecraft MCP 当前连接不可用；后续需通过本工作区固定端口的既有桥接能力核实，不改全局配置或恢复缺失模块。上述未执行项不得以编译或静态检查代替。

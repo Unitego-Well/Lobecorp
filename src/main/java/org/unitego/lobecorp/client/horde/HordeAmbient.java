@@ -13,7 +13,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.client.particle.horde.HordeDustParticle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -164,11 +163,14 @@ public class HordeAmbient {
 			}
 
 			if (allowed(point)) {
-				var dust = HordeDustParticle.create(level, point);
-				if (dust != null) {
-					Minecraft.getInstance().particleEngine.add(dust);
-					emittedParticles++;
-				}
+				// 直接复用清道夫飞扑起跳的短烟粒子：同纹理、同无重力短烟行为，不额外缩放。
+				var random = level.getRandom();
+				double speed = 0.04;
+				particle(LcParticleTypes.SHORT_SMOKE.get(),
+						point.add((random.nextDouble() * 2 - 1) * 0.6, (random.nextDouble() * 2 - 1) * 0.1,
+								(random.nextDouble() * 2 - 1) * 0.6),
+						(random.nextDouble() * 2 - 1) * speed, (random.nextDouble() * 2 - 1) * speed,
+						(random.nextDouble() * 2 - 1) * speed);
 			}
 		}
 	}
@@ -261,6 +263,17 @@ public class HordeAmbient {
 		var setting = minecraft.options.particles().get();
 		return setting != ParticleStatus.MINIMAL
 				&& (setting != ParticleStatus.DECREASED || level.getRandom().nextInt(3) != 0);
+	}
+
+	/// 不改变粒子自身缩放；仅用于复用其它系统已有的粒子外观与行为。
+	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz) {
+		if (!allowed(point)) {
+			return;
+		}
+
+		if (Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz) != null) {
+			emittedParticles++;
+		}
 	}
 
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz, float scale) {

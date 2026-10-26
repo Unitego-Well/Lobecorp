@@ -21,6 +21,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
@@ -57,6 +58,10 @@ public class QueenBeamEffects {
 	/// 运行态复用：默认关闭的实验；通过后同一内容的下一次施放复用已销毁对象树并重新 emit。
 	private static final boolean POOL = Boolean.getBoolean("lobecorp.photon.poolBeam");
 	private static final int MAX_IDLE = 2;
+	/// 渲染预热的子模板递归深度（光束 → 命中特效 → 更深子特效）。
+	private static final int PREWARM_DEPTH = 2;
+	/// 渲染预热的逐 tick 任务队列；预热完成后置空，施放采用壳时不影响。
+	private static @Nullable PhotonRenderPrewarm.Queue prewarmQueue;
 	private static final Map<Identifier, Deque<PhotonGeoEffect>> IDLE = new HashMap<>();
 	/// 历史法阵起点相对身体中心前移一格，服务端命中原点保持原值。
 	private static final double VISUAL_FORWARD = 1;
@@ -120,6 +125,7 @@ public class QueenBeamEffects {
 			}
 		}
 		RETIRED.keySet().retainAll(visible);
+		drainPrewarm();
 	}
 
 	/// 只有当前世界存在女皇时才预热，避免每次进世界都为未出现的技能付出解析与内存。
@@ -138,6 +144,7 @@ public class QueenBeamEffects {
 		prewarmed = true;
 		long started = System.nanoTime();
 		var shells = new HashMap<Identifier, PhotonGeoEffect>();
+		var queue = PhotonRenderPrewarm.enabled() ? new PhotonRenderPrewarm.Queue() : null;
 
 		try {
 			for (var animationId : List.of(
@@ -171,19 +178,40 @@ public class QueenBeamEffects {
 
 				spawner.prepareNext();
 				((PhotonNamedAccess) shell.runtime()).lobecorp$prepareNamedRuntime();
+
+				if (queue != null) {
+					queue.add(shell.runtime(), PREWARM_DEPTH);
+				}
+
 				shells.put(effectId, shell);
 			}
 
 			PREPARED.putAll(shells);
 			shells.clear();
+			prewarmQueue = queue;
 		} catch (RuntimeException failure) {
 			Lobecorp.LOGGER.warn("光束 FX 预热失败，首次施放将回退原加载路径", failure);
 		} finally {
 			shells.values().forEach(PhotonGeoEffect::close);
 		}
 
-		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}",
-				(System.nanoTime() - started) / 1_000_000, PREPARED.size());
+		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}",
+				(System.nanoTime() - started) / 1_000_000, PREPARED.size(), queue != null);
+	}
+
+	/// 预热渲染侧：把剩余预热任务按每 tick 固定预算推进；完成后记录一次汇总。
+	private static void drainPrewarm() {
+		if (prewarmQueue == null) {
+			return;
+		}
+
+		prewarmQueue.drain();
+
+		if (prewarmQueue.done()) {
+			Lobecorp.LOGGER.info("CASTPREWARM render done, built={}, spawners={}, failed={}",
+					prewarmQueue.built(), prewarmQueue.spawners(), prewarmQueue.failed());
+			prewarmQueue = null;
+		}
 	}
 
 	private static void finish(UUID id) {
@@ -209,6 +237,11 @@ public class QueenBeamEffects {
 
 	/// 释放未使用的预热/复用运行态；已采用的在 Beam 生命周期内由 effect 自己关闭或归还。
 	private static void discardPrepared() {
+		if (prewarmQueue != null) {
+			prewarmQueue.clear();
+			prewarmQueue = null;
+		}
+
 		PREPARED.values().forEach(PhotonGeoEffect::close);
 		PREPARED.clear();
 		closeIdle();

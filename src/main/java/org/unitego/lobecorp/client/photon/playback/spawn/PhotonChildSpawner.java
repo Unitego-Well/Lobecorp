@@ -91,6 +91,11 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		return PhotonSpawnTemplateUtil.create(this);
 	}
 
+	/// 预热用：读取已准备但未消费的子模板；所有权仍在本生成器，调用方只可读、不得销毁或转移。
+	public @Nullable PhotonSpawnTemplateUtil.Template preparedTemplate() {
+		return prepared;
+	}
+
 	private void discardPrepared() {
 		if (prepared != null) {
 			prepared.runtime().destroy(true);

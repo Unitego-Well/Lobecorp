@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-10-26：R2 首帧渲染侧预热（部分正面，默认开启）
+
+- 新增 `client/photon/performance/PhotonRenderPrewarm`：预热壳内按绘制同一入口预构建材质/着色图/CPU 管线（`MaterialSetting#getRenderType`），按发射器类型预构建 GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA，`PhotonPipelines.graphShader`＋`precompilePipeline`），`PhotonModelOutput.prewarmRenderTypes()` 预准备模型资源与材质；任务队列每 tick 预算 10 ms，开关 `-Dlobecorp.photon.prewarmRender`（默认 true，false 关闭）。
+- `PhotonChildSpawner.preparedTemplate()`：只读暴露已准备子模板供预热递归使用（所有权不变）；`QueenBeamEffects` 预热改为壳＋递归子模板（深度 2，覆盖 15 个 spawner/50 个渲染类型）并逐 tick drain；`discardPrepared()`/掉线清空队列。
+- 同条件 A/B（单施法场景、每轮重开客户端、plain、探针开、spark 关）：基线最长帧 680.3 ms、>250 ms 帧 3、窗口均值 12.84 ms、首施法 tick 68.3 ms → 预热（队列 10 ms、深度 2）最长帧 167.5 ms、>250 ms 帧 0、均值 9.85 ms、tick 75.3 ms；另两轮 129.0/172.9 ms。同步预热（无队列）反而更差（797.9/268.7 ms），已记录为反例。
+- 未关闭 P22：仍余 +0.08～1.18 s 处 52～167 ms 长帧，疑为未覆盖变体与首次模拟类加载；视觉只做到“无缺失材质/几何”的人工检查，同相位像素对照未完成。
+- 检查：`benchClasses` BUILD SUCCESSFUL；IDEA 诊断新文件 0 错误（修 1 处未用 import、2 处警告）；A/B/B2/B3/B4/B5 六轮场景 PASSED；未改动画、LOD、原资源与材质语义；未推送。
+- 证据：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/first-cast/r2-*`、`analysis/FirstCastDeep.java`；修改前原件备份于同根 `backup-before-20261026-r2/`。
+
 ## 2026-10-26：R1 运行态复用实验（阴性，默认关闭）
 
 - 实现 `PhotonGeoEffect.restart()`（`stop(true)` 后重新 `emit`）与 `QueenBeamEffects` 的 `IDLE` 池（`borrow/recycle/closeIdle`、错误路径 `finishAndClose`），开关 `-Dlobecorp.photon.poolBeam`（默认 false）；正常结束归还池，异常关闭。

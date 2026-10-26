@@ -33,6 +33,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
+import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
@@ -211,6 +212,28 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		failure = null;
+	}
+
+	/// 预热渲染侧：准备模型资源并预构建其材质渲染类型；不发射、不推进时间线。
+	public int prewarmRenderTypes() {
+		try {
+			prepare();
+		} catch (IOException invalid) {
+			Photon.LOGGER.warn("模型渲染预热准备失败：{}", getName(), invalid);
+			return 0;
+		}
+
+		if (materials == null) {
+			return 0;
+		}
+
+		int built = 0;
+
+		for (int group : groupOrder) {
+			built += PhotonRenderPrewarm.prebuild(materials.group(group), geometryMode());
+		}
+
+		return built;
 	}
 
 	private PhotonModelDefinition definition() {

@@ -4,9 +4,9 @@
 
 ## 0. 一句话现状
 
-- 已完成：首次释放**tick 侧**从 **695.7 ms → 64.4 ms（−90.7%）**（预热方案，提交 `3f41ff79`）；动画采样分配 −59～72%（提交 `37f70cc2`）。
-- 未完成：首施法**首帧渲染侧**仍有约 **1.0～1.4 s**；后续每次释放约 **190～250 ms**；根因是运行时把不可变内容与可变状态绑死，每次播放整树深拷贝并重建材质/类/音频。
-- 下一步：R1 已做 A/B（**阴性，默认关闭**：`poolBeam` 消除了约 6 ms 的 `createRuntime`，但 `prepareNext` 18→33～38 ms，整体帧数下降，见 §6.0）；下一步优先 **R3（子实例模板缓存，prepareNext 是当前 18～38 ms/次的稳态大头）→ R2（首帧材质/管线预构建）**，再回头决定是否继续池化。
+- 已完成：首次释放**tick 侧**从 **695.7 ms → 64.4 ms（−90.7%）**（预热方案，提交 `3f41ff79`）；动画采样分配 −59～72%（提交 `37f70cc2`）；**R2 首帧渲染侧预构建**把首施放最长帧 **680.3→129.0～167.5 ms**、>250 ms 帧 3→0（默认开启，见 §7.4）。
+- 未完成：首施法仍有 52～167 ms 残余长帧；后续每次释放约 **190～250 ms**（`prepareNext` 18～38 ms/次、运行态深拷贝等）；根因是运行时把不可变内容与可变状态绑死，每次播放整树深拷贝并重建材质/类/音频。
+- 下一步：R1 已做 A/B（**阴性，默认关闭**，见 §6.0）；R2 已实施并 A/B（**部分正面**，见 §7.4）；下一步优先 **R2 残余（未覆盖变体/首次模拟类加载/同相位像素对照）→ R3（子实例模板缓存，`prepareNext` 18～38 ms/次）→ R4 几何资产空间缓存**，再决定是否继续池化。
 
 ## 1. 恢复上下文必读（按顺序）
 
@@ -143,6 +143,14 @@ run5b 首施法长帧：545.9/424.8/307.4/153.1/141.5/82.5 ms；JFR 同窗口成
 ### 7.3 实施顺序
 先 1 + 2（不动绘制路径、可单测：观察异常数与首帧窗口），不足再做 3；每步记录 JFR 窗口、帧 >50 ms 次数、异常计数（`analysis/FirstCastWindows` 可复用）。
 
+### 7.4 实施结果（2026-10-26 12:52，部分正面）
+
+- 已实现 §7.2 的 1（材质/渲染类型预构建）和 §7.2-4 的模型资源准备；对 §7.2-3 采用“逐 tick 预算队列”的替代实现（不做隐藏预渲染）：`client/photon/performance/PhotonRenderPrewarm`，开关 `-Dlobecorp.photon.prewarmRender`（**默认开**，false 关闭）。
+- 覆盖：壳内每个发射器的材质/着色图/CPU 管线＋GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA）；`PhotonModelOutput.prewarmRenderTypes()`；递归子模板（`PhotonChildSpawner.preparedTemplate()`，深度 2 覆盖 15 个 spawner/50 个渲染类型）；队列每 tick 10 ms。
+- 同条件单施法 A/B：最长帧 **680.3→129.0～167.5 ms**、>250 ms 帧 **3→0**、窗口均值 12.84→8.03～9.85 ms、首施法 tick 68.3→70.9～75.3 ms（未退化）。同步预热（无队列）反而更差（797.9/268.7 ms），作为反例保留。
+- 未完成：剩余 +0.08～1.18 s 处 52～167 ms 长帧（疑为未覆盖的实例化变体与首次模拟类加载）；§7.2-2 GLSL import memoize 未实施（异常风暴已移出施放窗口，需复评）；同相位像素对照未做。
+- 证据：`docs/systems/photon-performance-audit.md` 的“R2 首帧渲染侧预热 A/B（部分正面）”。
+
 ## 8. R3～R6（简版，实施时再细化）
 
 - **R3 Spawner 分离**：`PhotonSpawnTemplateUtil.create` 改为“编译模板（FXData/子图/材质一次）+ 每实例状态”；`PhotonChildSpawner.prepared` 改多槽/按路径缓存；目标：连发/多束时子模板创建次数≈0，E2/E3 稳态 `deepCopy`/CODEC 占比下降。开关 `-Dlobecorp.photon.spawnTemplateCache`。
@@ -206,4 +214,4 @@ set JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.b
 2. 读第 1 节列出的文档；确认最新进度与未决项。
 3. 构建：`JAVA_HOME=<jbr> ./gradlew.bat benchClasses -PphotonBench=true --offline --console=plain` 应 BUILD SUCCESSFUL。
 4. 跑一次单施法基线（命令见第 10 节），期望：`CASTPREWARM ... prepared=2`、`CASTPROF ... end:cast-tick ≈ 60～70 ms`、`run_complete status=PASSED`。若不符，先查环境（Sodium/spark/Iris 配置、JBR、focus）再继续。
-5. 从 **R3** 开始（R1 已做阴性 A/B，见 §6.0；`poolBeam` 默认关闭）：先做子实例模板缓存降低 `prepareNext` 18～38 ms/次，再做 R2 首帧材质/管线预构建；每步更新文档并提交。
+5. 进度：**R1 已做阴性 A/B**（§6.0，`poolBeam` 默认关闭）；**R2 已实施并 A/B（部分正面，§7.4）**——`-Dlobecorp.photon.prewarmRender` 默认开，首施放最长帧 680→129～168 ms、>250 ms 帧清零，但仍有 52～167 ms 残余尖峰。下一步：①R2 残余（未覆盖的实例化变体、首次模拟类加载、同相位像素对照、GLSL import memoize 复评）；②R3 子实例模板缓存/多槽，降低 `prepareNext` 18～38 ms/次；③R4 几何资产空间缓存。

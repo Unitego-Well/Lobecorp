@@ -177,6 +177,33 @@ JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.bench
 - 结论：**R1 单独复用运行态无正收益，默认关闭**（`-Dlobecorp.photon.poolBeam=false`，代码保留作实验与后续池化基础）。首次释放里的 53 ms 深拷贝主要是首次类加载/解析，类与 JIT 热后仅约 6 ms；真正大头是**子实例准备 `prepareNext`（18～38 ms/次）与首帧材质/管线构建**——下一步优先 R3（子模板缓存）与 R2（材质/管线预构建）。
 - 证据：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/pool/`（runA-pool-off.log、runB-pool-on.log、A/B-artifacts）。
 
+#### R2 首帧渲染侧预热 A/B（部分正面，2026-10-26 12:50）
+
+- 背景：按“只测第一次释放、每轮重开客户端”的口径，目标从 tick 侧转到首帧渲染侧（P22）。对 run5b／本轮 A 的长帧窗口复核：Java 样本很少，`RenderTypeFactory#buildPipeline`、`ShaderGraphRuntime#compile` 与每窗 20～57 次 `NoSuchFileException`（资源/`#import` 探测）同窗出现，说明耗时主要在原生 GL 管线与着色编译，JFR 无法直接量到；因此改为“预热阶段用绘制同一入口提前构建”。
+- 实现（`client/photon/performance/PhotonRenderPrewarm`，开关 `-Dlobecorp.photon.prewarmRender`，**默认开启**，`false` 关闭）：
+  - 预热壳内每个发射器按 `MaterialSetting#getRenderType(geometryMode)`（与 `Emitter#bakeGroup` 同一入口）建材质、着色图与 CPU 管线；GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA）另经 `PhotonPipelines.graphShader` + `precompilePipeline`；
+  - `PhotonModelOutput.prewarmRenderTypes()` 预准备模型资源与材质；`PhotonChildSpawner.preparedTemplate()` 递归覆盖子发射器（深度 2 已覆盖本轮全部 15 个 spawner、50 个渲染类型）；
+  - 任务队列化：每 tick 预算 10 ms，避免女皇出现时一次性冻结；壳创建仍同步（约 0.9～1.05 s）。
+- 同条件 A/B（`lobecorp.photon-00-first-cast` 单场景、每轮重开客户端、plain、探针开、spark 关；数值为 `PhotonFrameCapture` 施放窗口）：
+
+| 轮次 | prewarmRender | 壳创建 | 预热队列 | 首施法 tick | 窗口最长帧 | >250 ms | >100 ms | >50 ms（全轮） | 窗口均值 | 采集帧数 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A 基线 | false | 888 ms | — | 68.3 ms | **680.3 ms** | 3 | 4 | 7 | 12.84 ms | 4744 |
+| B1 同步·仅顶层 | true | 1619 ms | — | 87.5 | 797.9 | 3 | 6 | 7 | 27.25 | 3814 |
+| B2 同步·深度3 | true | 2669 ms | — | 105.9 | 268.7 | 1 | 4 | 12 | 17.96 | 3303 |
+| B3 队列20 ms·深度3 | true | 1063 ms | 3 s | 99.2 | 172.9 | 0 | 3 | 8 | 11.39 | 3507 |
+| B4 队列20 ms·深度2 | true | 984 ms | 1 s | 70.9 | **129.0** | 0 | 1 | 5 | 8.03 | 4202 |
+| B5 队列10 ms·深度2 | true | 1047 ms | 2 s | 75.3 | 167.5 | 0 | 2 | 6 | 9.85 | 4111 |
+| B6 默认（不传 -D） | 默认 true | 1090 ms | 2 s | 90.5 | 208.7 | 0 | 4 | 8 | 15.80 | 3995 |
+
+- 结论：
+  - **同步预热无收益**（B1 反而更差）：只把成本搬到女皇出现时，首施法仍缺内容；
+  - 递归覆盖 + 每 tick 预算（B3/B4/B5）才有效：首施放窗口最长帧 680→129～168 ms（−75%～−81%），>250 ms 帧 3→0，>100 ms 帧 4→1～2，窗口均值 12.84→8.03～9.85 ms，首施法 tick 68→71～75 ms 未退化；
+  - **不能写成“首施法已不卡”**：B5 仍有 +0.08/+0.29/+0.39/+1.18 s 处 52～167 ms 帧，残余疑为未覆盖的实例化变体、首次模拟类加载与 tick 侧首帧工作，需下一步；
+  - 代价：女皇出现时壳创建约 1 s（同步）＋预热队列约 1～3 s 的每 tick ≤10 ms 额外帧时；未做长时内存账本；
+  - 视觉：B4 截图与基线相位不同（基线为光束展开、B4 为蓄力阶段），未发现材质缺失或几何丢失；同相位像素对照仍未完成。
+- 证据：`first-cast/r2-{A,B,B2,B3,B4,B5}-artifacts/`、`run{A,B,B2,B3,B4,B5}-r2-*.log`；长帧分析器 `analysis/FirstCastDeep.java`（窗口内 self/异常调用栈/管线构建调用链/GC/分配）。
+
 ### 下一步
 
 按“无光影/光影 × packed 关/开 × 探针开/关”做重复配对；每轮记录相机、投影、分辨率、窗口/焦点、帧率、世界、实体、光影、负载、代码版本与开关，截图归档；随后用 JFR/GPU/帧数据区分 CPU 求值/提交、资源准备、GPU 执行与工具开销。未达标就如实报告，不以“场景通过”代替性能验收。

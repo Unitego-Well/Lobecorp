@@ -34,6 +34,8 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +54,10 @@ public class QueenBeamEffects {
 	private static boolean prewarmed;
 	/// 预热好的首次运行态（含已准备的子实例）；只给首个同定义施放使用，用后即移除。
 	private static final Map<Identifier, PhotonGeoEffect> PREPARED = new HashMap<>();
+	/// 运行态复用：默认关闭的实验；通过后同一内容的下一次施放复用已销毁对象树并重新 emit。
+	private static final boolean POOL = Boolean.getBoolean("lobecorp.photon.poolBeam");
+	private static final int MAX_IDLE = 2;
+	private static final Map<Identifier, Deque<PhotonGeoEffect>> IDLE = new HashMap<>();
 	/// 历史法阵起点相对身体中心前移一格，服务端命中原点保持原值。
 	private static final double VISUAL_FORWARD = 1;
 
@@ -103,7 +109,7 @@ public class QueenBeamEffects {
 					RETIRED.put(id, snapshot.playbackRevision());
 				}
 			} catch (RuntimeException invalid) {
-				finish(id);
+				finishAndClose(id);
 				RETIRED.put(id, snapshot.playbackRevision());
 				Lobecorp.LOGGER.warn("无法接入女皇特效实例 {} / {}", id, snapshot.definitionId(), invalid);
 			}
@@ -183,7 +189,14 @@ public class QueenBeamEffects {
 	private static void finish(UUID id) {
 		var beam = PLAYING.remove(id);
 		if (beam != null) {
-			beam.effect.close();
+			beam.release(true);
+		}
+	}
+
+	private static void finishAndClose(UUID id) {
+		var beam = PLAYING.remove(id);
+		if (beam != null) {
+			beam.release(false);
 		}
 	}
 
@@ -194,15 +207,55 @@ public class QueenBeamEffects {
 		discardPrepared();
 	}
 
-	/// 释放未使用的预热运行态；已采用的在 Beam 生命周期内由 effect 自己关闭。
+	/// 释放未使用的预热/复用运行态；已采用的在 Beam 生命周期内由 effect 自己关闭或归还。
 	private static void discardPrepared() {
 		PREPARED.values().forEach(PhotonGeoEffect::close);
 		PREPARED.clear();
+		closeIdle();
+	}
+
+	private static @Nullable PhotonGeoEffect borrow(Identifier effectId) {
+		if (!POOL || effectId == null) {
+			return null;
+		}
+
+		var queue = IDLE.get(effectId);
+		var effect = queue == null ? null : queue.pollFirst();
+
+		if (effect != null) {
+			PhotonCastProfiler.mark("borrow");
+		}
+
+		return effect;
+	}
+
+	private static void recycle(Identifier effectId, PhotonGeoEffect effect) {
+		if (!POOL || effectId == null) {
+			effect.close();
+			return;
+		}
+
+		effect.stop(true);
+		var queue = IDLE.computeIfAbsent(effectId, _ -> new ArrayDeque<>());
+
+		if (queue.size() >= MAX_IDLE) {
+			effect.close();
+			return;
+		}
+
+		queue.addLast(effect);
+		PhotonCastProfiler.mark("recycle");
+	}
+
+	private static void closeIdle() {
+		IDLE.values().forEach(queue -> queue.forEach(PhotonGeoEffect::close));
+		IDLE.clear();
 	}
 
 	private static class Beam {
 		private final TheQueenOfHatred owner;
 		private final PhotonGeoEffect effect;
+		private final Identifier effectId;
 		private final PhotonChildSpawner emitter;
 		private final boolean star;
 		private final UUID instanceId;
@@ -228,16 +281,22 @@ public class QueenBeamEffects {
 			revision = snapshot.playbackRevision();
 			star = TheQueenOfHatredAnimationDefinitions.isStarBeam(snapshot.definitionId());
 			var id = LcAnimationDefinitions.resolve(snapshot.definitionId()).effectId();
+			effectId = id;
 			var definition = id == null ? null : FXHelper.getFX(id);
 			PhotonCastProfiler.mark("fxDefinition");
 			if (definition == null) {
 				throw new IllegalArgumentException("特效定义缺失或受保护：" + id);
 			}
 			var prepared = PREPARED.remove(id);
+			var borrowed = prepared == null ? borrow(id) : null;
+			boolean pooled = borrowed != null;
 
 			if (prepared != null) {
 				effect = prepared;
 				PhotonCastProfiler.mark("adoptPrepared");
+			} else if (pooled) {
+				effect = borrowed;
+				PhotonCastProfiler.mark("reuseRuntime");
 			} else {
 				effect = new PhotonGeoEffect(definition, owner.level());
 				PhotonCastProfiler.mark("createRuntime");
@@ -283,8 +342,15 @@ public class QueenBeamEffects {
 				PhotonCastProfiler.mark("controllerSetup");
 				anchor();
 				PhotonCastProfiler.mark("anchor");
-				effect.start();
-				PhotonCastProfiler.mark("emit");
+				if (pooled) {
+					if (!effect.restart()) {
+						throw new IllegalStateException("复用运行态重启失败。");
+					}
+					PhotonCastProfiler.mark("reuseEmit");
+				} else {
+					effect.start();
+					PhotonCastProfiler.mark("emit");
+				}
 				var rootObject = (FXObject) effect.runtime().root;
 				var previousFrame = rootObject.getOnUpdateFrame();
 				rootObject.setOnUpdateFrame(partial -> {
@@ -296,7 +362,7 @@ public class QueenBeamEffects {
 							}
 						}
 					} catch (RuntimeException invalid) {
-						finish(instanceId);
+						finishAndClose(instanceId);
 						RETIRED.put(instanceId, revision);
 						Lobecorp.LOGGER.warn("女皇特效帧更新失败 {}", instanceId, invalid);
 					}
@@ -327,6 +393,14 @@ public class QueenBeamEffects {
 						((CompoundTag) clip).putString("mode", "CONTROLLED");
 					}
 				}
+			}
+		}
+
+		private void release(boolean recycle) {
+			if (recycle && POOL) {
+				QueenBeamEffects.recycle(effectId, effect);
+			} else {
+				effect.close();
 			}
 		}
 

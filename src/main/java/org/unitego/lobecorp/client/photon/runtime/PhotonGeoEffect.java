@@ -45,6 +45,18 @@ public class PhotonGeoEffect implements IEffectExecutor, AutoCloseable {
 		}
 	}
 
+	/// 复用前调用：先由 stop(true) 销毁，再重新 emit 同一对象树；失败返回 false 由调用方回退新建。
+	public boolean restart() {
+		if (!stopped) {
+			return false;
+		}
+
+		stopped = false;
+		started = false;
+		start();
+		return started;
+	}
+
 	public boolean isAlive() {
 		return !stopped && Minecraft.getInstance().level == level
 				&& (!started || !runtime.isFinished() && runtime.isValid()

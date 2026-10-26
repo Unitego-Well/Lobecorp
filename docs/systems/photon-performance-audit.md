@@ -164,6 +164,19 @@ JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.bench
 
 结论：**还能继续优化，且剩余收益主要在后两项（首帧渲染侧预构建、运行态/子实例池化）**；需要决定优先实施哪一项。
 
+#### R1 运行态复用 A/B（阴性结果，默认关闭）
+
+同场景（91，3 次真实施法，plain、探针关、spark 关、prewarm 开、新客户端）只改 `-Dlobecorp.photon.poolBeam`：
+
+| 轮次 | 第 1/2/3 次施法 tick 总耗时（ms） | 帧均值 | >50 ms 帧 | >100 ms 帧 |
+|---|---|---|---|---|
+| A：pool off | 42.776 / 26.576 / 34.376 | 6.356 | 9 | 4 |
+| B：pool on | 32.033 / 37.055 / 42.317 | 8.181 | 16 | 5 |
+
+- pool 复用确实消除了 `createRuntime`（本场景仅 6.4/5.9 ms，`reuseEmit` 2.5～3.5 ms），但 `prepareNext` 从 18.4/26.9 ms 升至 33.4/38.5 ms，第 2/3 次施法 tick 反而略升；整体帧数 B 明显少于 A（11002 vs 14161），存在帧时间退化风险。
+- 结论：**R1 单独复用运行态无正收益，默认关闭**（`-Dlobecorp.photon.poolBeam=false`，代码保留作实验与后续池化基础）。首次释放里的 53 ms 深拷贝主要是首次类加载/解析，类与 JIT 热后仅约 6 ms；真正大头是**子实例准备 `prepareNext`（18～38 ms/次）与首帧材质/管线构建**——下一步优先 R3（子模板缓存）与 R2（材质/管线预构建）。
+- 证据：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/pool/`（runA-pool-off.log、runB-pool-on.log、A/B-artifacts）。
+
 ### 下一步
 
 按“无光影/光影 × packed 关/开 × 探针开/关”做重复配对；每轮记录相机、投影、分辨率、窗口/焦点、帧率、世界、实体、光影、负载、代码版本与开关，截图归档；随后用 JFR/GPU/帧数据区分 CPU 求值/提交、资源准备、GPU 执行与工具开销。未达标就如实报告，不以“场景通过”代替性能验收。

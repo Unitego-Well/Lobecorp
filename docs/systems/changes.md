@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-26：R1 运行态复用实验（阴性，默认关闭）
+
+- 实现 `PhotonGeoEffect.restart()`（`stop(true)` 后重新 `emit`）与 `QueenBeamEffects` 的 `IDLE` 池（`borrow/recycle/closeIdle`、错误路径 `finishAndClose`），开关 `-Dlobecorp.photon.poolBeam`（默认 false）；正常结束归还池，异常关闭。
+- 同场景（91，3 次真实施法，plain/探针关/spark 关/prewarm 开，新客户端）A/B：pool off 施法 tick 42.776/26.576/34.376 ms、帧均值 6.356、>50 ms 帧 9；pool on 32.033/37.055/42.317 ms、帧均值 8.181、>50 ms 帧 16。复用省约 6 ms `createRuntime`，但 `prepareNext` 18.4/26.9→33.4/38.5 ms，整体帧数 11002 vs 14161（下降）。
+- 结论：R1 单独复用无正收益且有退化风险，默认关闭保留作实验；下一步优先 R3 子模板缓存与 R2 材质/管线预构建。证据 `photon-reaudit-20261026/pool/`。
+- 检查：`benchClasses` BUILD SUCCESSFUL；pool off 与 on 两轮场景均 PASSED、pose/camera 门禁通过；未改动画/LOD/资源；未推送。
+
 ## 2026-10-26：首次释放专项诊断与预热（tick 侧）
 
 - 用户要求暂停其他场景，只测第一次释放，施放完成立即诊断再重开游戏，并注意发射器/子发射器等到处调用的路径。

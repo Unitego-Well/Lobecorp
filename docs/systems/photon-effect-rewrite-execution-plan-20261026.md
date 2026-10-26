@@ -6,7 +6,7 @@
 
 - 已完成：首次释放**tick 侧**从 **695.7 ms → 64.4 ms（−90.7%）**（预热方案，提交 `3f41ff79`）；动画采样分配 −59～72%（提交 `37f70cc2`）。
 - 未完成：首施法**首帧渲染侧**仍有约 **1.0～1.4 s**；后续每次释放约 **190～250 ms**；根因是运行时把不可变内容与可变状态绑死，每次播放整树深拷贝并重建材质/类/音频。
-- 下一步：按本文 **R1（运行态池化复用）→ R2（Asset 编译与材质/管线预构建）** 实施，再 R3～R6。
+- 下一步：R1 已做 A/B（**阴性，默认关闭**：`poolBeam` 消除了约 6 ms 的 `createRuntime`，但 `prepareNext` 18→33～38 ms，整体帧数下降，见 §6.0）；下一步优先 **R3（子实例模板缓存，prepareNext 是当前 18～38 ms/次的稳态大头）→ R2（首帧材质/管线预构建）**，再回头决定是否继续池化。
 
 ## 1. 恢复上下文必读（按顺序）
 
@@ -86,7 +86,22 @@ run5b 首施法长帧：545.9/424.8/307.4/153.1/141.5/82.5 ms；JFR 同窗口成
 - 等价性：透明排序、法线/光照、动画时序（partial tick/循环/优先级/事件）、材质变体、LOD/资源、随机数、所有权。
 - 每个新路径必须有开关（默认关闭或可回退）与旧路径回退；没有同条件 A/B 与视觉对照不得宣布收益。
 
-## 6. R1：运行态池化复用（下一步先做）
+## 6. R1：运行态池化复用（已做 A/B：阴性，默认关闭）
+
+### 6.0 实施结果（2026-10-26 12:22，必读）
+
+实现：`PhotonGeoEffect.restart()`（`stop(true)` 后重新 `emit`）＋`QueenBeamEffects` 的 `IDLE` 池（`borrow/recycle/closeIdle`），开关 `-Dlobecorp.photon.poolBeam`（默认 false）；`finish` 正常回收，错误路径 `finishAndClose`。
+
+同场景（`lobecorp.photon-91-mixed-thirtytwo-laser`，3 次真实施法，plain、探针关、spark 关、prewarm 开、新客户端）：
+
+| 轮次 | 第 1/2/3 次施法 tick（ms） | 帧均值 | >50 ms 帧 | >100 ms 帧 |
+|---|---|---|---|---|
+| A pool off | 42.776 / 26.576 / 34.376 | 6.356 | 9 | 4 |
+| B pool on | 32.033 / 37.055 / 42.317 | 8.181 | 16 | 5 |
+
+结论：复用消除了 `createRuntime`（本场景仅 6.4/5.9 ms，`reuseEmit` 2.5～3.5 ms），但 `prepareNext` 从 18.4/26.9 升到 33.4/38.5 ms，第 2/3 次 tick 反而略升，帧数 B 明显少于 A（11002 vs 14161）。**R1 不单独推进，默认关闭**；保留代码作实验与后续池化基础。下一步优先 **R3（`prepareNext` 子模板缓存，18～38 ms/次）→ R2（首帧材质/管线预构建）**。
+
+证据：`C:/Users/wang_/.codex/visualizations/2026/10/26/photon-reaudit-20261026/pool/`。
 
 ### 6.1 目标与验收
 - 目标：消除每次释放的 `FXData.copy(true)/deepCopy`，复用同一 `PhotonGeoEffect` 运行态（`destroy→re-emit`），并显式 reset 命名/子实例/发射器状态。
@@ -191,4 +206,4 @@ set JAVA_TOOL_OPTIONS=-Dlobecorp.photon.packedSnapshot=false -Dlobecorp.photon.b
 2. 读第 1 节列出的文档；确认最新进度与未决项。
 3. 构建：`JAVA_HOME=<jbr> ./gradlew.bat benchClasses -PphotonBench=true --offline --console=plain` 应 BUILD SUCCESSFUL。
 4. 跑一次单施法基线（命令见第 10 节），期望：`CASTPREWARM ... prepared=2`、`CASTPROF ... end:cast-tick ≈ 60～70 ms`、`run_complete status=PASSED`。若不符，先查环境（Sodium/spark/Iris 配置、JBR、focus）再继续。
-5. 从 **R1** 开始：按第 6 节步骤，先加开关默认关闭，再 A/B；每步更新文档并提交。
+5. 从 **R3** 开始（R1 已做阴性 A/B，见 §6.0；`poolBeam` 默认关闭）：先做子实例模板缓存降低 `prepareNext` 18～38 ms/次，再做 R2 首帧材质/管线预构建；每步更新文档并提交。

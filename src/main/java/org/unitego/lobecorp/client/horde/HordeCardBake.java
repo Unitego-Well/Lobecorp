@@ -23,6 +23,7 @@ final class HordeCardBake {
 			for (int face = 0; face < 6; face++) {
 				bakeFace(model, texture, image, face);
 			}
+			dump(image);
 			return image;
 		} catch (RuntimeException failure) {
 			Lobecorp.LOGGER.warn("群体方向片烘焙失败，回退6面盒贴图", failure);
@@ -85,6 +86,23 @@ final class HordeCardBake {
 							(255 << 24) | (blue << 16) | (g << 8) | r);
 				}
 			}
+		}
+	}
+
+	private static void dump(NativeImage image) {
+		try {
+			var buffered = new java.awt.image.BufferedImage(image.getWidth(), image.getHeight(),
+					java.awt.image.BufferedImage.TYPE_INT_ARGB);
+			for (int y = 0; y < image.getHeight(); y++) {
+				for (int x = 0; x < image.getWidth(); x++) {
+					int p = image.getPixel(x, y);
+					int argb = (p & 0xff00ff00) | ((p & 0xff) << 16) | ((p >> 16) & 0xff);
+					buffered.setRGB(x, y, argb);
+				}
+			}
+			javax.imageio.ImageIO.write(buffered, "png", java.nio.file.Path.of("card-atlas-debug.png").toFile());
+		} catch (java.io.IOException | RuntimeException failure) {
+			Lobecorp.LOGGER.warn("无法输出片图集调试图", failure);
 		}
 	}
 

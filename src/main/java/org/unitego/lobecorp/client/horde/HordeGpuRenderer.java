@@ -708,7 +708,7 @@ public class HordeGpuRenderer {
 				     var image = NativeImage.read(input)) {
 					var atlas = HordeCardBake.bake(HordeMeshCache.ready(visual, 0), image);
 					if (atlas != null) {
-						cardAtlas = new DynamicTexture(() -> "Horde card atlas", atlas);
+						cardAtlas = new CardAtlasTexture(atlas);
 						base = cardAtlas;
 						glow = cardAtlas;
 						hasGlow = false;
@@ -921,6 +921,14 @@ public class HordeGpuRenderer {
 	}
 
 	private record GeometryKey(HordeVisualDefinition visual, int tier, int settings) {
+	}
+
+	/// 片图集用夹边最近邻采样，避免远距离mipmap把相邻方向/帧tile混成噪点。
+	private static final class CardAtlasTexture extends DynamicTexture {
+		private CardAtlasTexture(NativeImage image) {
+			super(() -> "Horde card atlas", image);
+			this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+		}
 	}
 
 	private record Geometry(GpuBuffer vertices, int indices, HordeDataTexture animation, HordeDataTexture uvs,

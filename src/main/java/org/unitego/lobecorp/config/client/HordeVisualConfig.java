@@ -27,8 +27,8 @@ public class HordeVisualConfig {
 			LOD_ENABLED = b.translation(HordeLang.config("visual.lod_enabled", "Distance model quality", "按距离调整模型精度")).define("lodEnabled", true);
 			LOD_NEAR = b.translation(HordeLang.config("visual.lod_near", "Full quality distance (blocks)", "全精度距离（格）")).defineInRange("lodNear", 48, 1, 4096);
 			LOD_FAR = b.translation(HordeLang.config("visual.lod_far", "Medium quality distance (blocks)", "中精度距离（格）")).defineInRange("lodFar", 96, 2, 8192);
-		CARD_DISTANCE = b.translation(HordeLang.config("visual.card_distance", "Card distance (blocks, -1 off)", "使用片的距离（格，-1：不使用）")).defineInRange("cardDistance", -1, -1, 4096);
-		FRAME_DISTANCE = b.translation(HordeLang.config("visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）")).defineInRange("frameDistance", -1, -1, 4096);
+		CARD_DISTANCE = b.translation(HordeLang.config("visual.card_distance", "Card distance (blocks, -1 off)", "使用片的距离（格，-1：不使用）")).defineInRange("cardDistance", 32, -1, 4096);
+		FRAME_DISTANCE = b.translation(HordeLang.config("visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）")).defineInRange("frameDistance", 10, -1, 4096);
 			b.pop().translation(ClientConfig.translation("horde.ambient", "Ambient effects", "环境效果")).push("ambient");
 			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate footsteps", "聚合脚步声")).define("sound", true);
 			SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);

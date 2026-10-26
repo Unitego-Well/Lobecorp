@@ -61,8 +61,8 @@
 ### 2.4 文档与提交状态（下一个会话务必先核对 `git status`）
 
 - 已更新：`docs/systems/benchmod.md`（第五轮节+12 行表+修复说明）、`changes.md`（第五轮）、`horde-issues.md`（I39–I44）、`horde-index.md`（本轮进度段，仅追加在 DOC-HORDE-01 之前）、本交接文档。
-- **提交状态需核对**：若 `git log` 尚无本轮提交，按 §5 提交；若已提交，核对只含本次授权范围。
-- 不得提交他人未提交内容：`build.gradle.kts` 的 `reserveBuildIdentity` 改动、`docs/standards/entity-contracts.md`、`horde-index.md` 中 DOC-HORDE-01/格式重排。只提交我们自己的 hunk（`build.gradle.kts` 的 `scenarioFilter` + `phaseTimeoutTicks=3600`；`horde-index.md` 的本轮进度段）。
+- **已提交**：`2bc4fe72`「Horde 第五轮：GPU避让重写、真实事件战斗、多缺口与波带修复、12项矩阵」（23 个文件；未推送）。
+- 提交后工作区仍有他人未提交改动，勿动/勿提交：`build.gradle.kts` 的 `reserveBuildIdentity` 改动、`docs/standards/entity-contracts.md`、`horde-index.md` 中 DOC-HORDE-01/格式重排、未跟踪的 `logs/2026-10-23-1.log.gz`。若需再提交，只提交本次授权文件与自己的 hunk（`build.gradle.kts` 的 `scenarioFilter` + `phaseTimeoutTicks=3600`；`horde-index.md` 的本轮进度段）。
 
 ## 3. 关键文件
 

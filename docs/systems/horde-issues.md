@@ -20,13 +20,15 @@
 - 未完成：区域 3 格净空/平滑退出的定量读数、E4、真实事件 256 尸体；截图与哈希见 `build/agent-backups/20261026-runtime-event/`。
 
 ### 新增/剩余问题
-- **I29 [P1／待验收] 中远 LOD 外观与切换**：2026-10-26 第二轮已把中景从 4 盒 112 顶点改为 5 盒 136 顶点（腿脚/躯干/头/左右臂，薄片保留真实几何）、远景从 1 盒 24 改为 2 盒 48（上下），近景 520 全精度与 4 帧动画不变。游戏内铺满取景（`build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`、`fill-F.png`、`fill-night.png`）显示人群可从屏幕外到屏幕外铺满、单位轮廓与发光可见；但中远仍是包围盒代理，需用户按截图确认是否可接受，LOD 切换迟滞尚未录像验证无跳变。不得以“性能达标”代替外观验收。
+- **I29 [P1／待验收] 中远 LOD 外观与切换**：2026-10-26 第二轮把中景从 4 盒 112 顶点改为 5 盒 136 顶点、远景从 1 盒 24 改为 2 盒 48；第三轮又按模型骨骼核对补回背后的罐子（`can`+`biomass`）独立盒与红色 UV：中景 5 盒现为腿脚/躯干/双臂(合并)/头/罐子（136 顶点不变），远景仍 2 盒；`bestFace` 在法线匹配面中优先红色 UV。游戏内截图 `build/agent-backups/20261026-appearance-can/can-A3.png`、`can-B3.png` 显示红色罐体/红刀面已保留，但背面视角整体偏红、罐体轮廓仍是包围盒，需用户确认是否接受“红色罐体”效果，LOD 切换迟滞仍未录像验证无跳变。近景仍 520 全精度、动画仍 4 帧。不得以“性能达标”代替外观验收。
 - **I30 [P1／部分完成] 游戏内功能矩阵**：2026-10-26 已用 Debug 客户端 + Minecraft MCP 完成真实事件部分取证：`/lobecorp horde start` 启动事件并在画面可见；客户端 overlay 显示 events=1、submitted=GPU instances 随波次 3180→9484、batches 56→154、lightSections 153→476、gpuCopy=0；Debug 求值确认 animationFrames=4、LOD/ENABLED=true、modelBuilds=3、irisMiWords=16/slots=2；夜间截图可见单位发光，近/中/远三档与两次 650ms 间隔的位姿变化、x=110→60 镜头移动下单位持续可见。**未完成**：区域 3 格净空与平滑退出的定量证据（未取到 penetration/rejected 回读；召唤 3 头牛后仅取得目标附近截图，不足以证明不进入区域）、E4 换包/重载/窗口变化、真实事件下的 256 尸体。契约级补充：`HordeRegionTest`（3 格净空/中断进出连续）、`HordeSpatialFieldTest`、`HordeRulesTest`、`HordeCleanupTest`（200tick 尸体）、`HordeOptimizationTest` 本轮 IDEA 运行均退出 0，不替代游戏内定量。证据 `build/agent-backups/20261026-runtime-event/`（截图、runtime-event.json、sha256）。
 - **I31 [P2] 首帧与稳定尖峰**：修改后 STABILIZE 216–341 ms、WARMUP 最大 29–98 ms、MEASURE 单帧最大 45–69 ms；H11 首帧≤100 ms 未过，模型烘焙/管线预热的尖峰仍在。
 - **I32 [P2] 单位历史页预算边界**：行环页按可见行跨度与 32 MiB 预算缩 ring；超宽/超长路线可能降低方向平滑（`unitMatches` 回退解析位置，不截断、不隐藏单位）。本轮已修复“列片数按单块 9 列计算导致多数列历史查找失败”的缺陷，全列覆盖仅在 bench 验证。
 - **I33 [P2] 余量与未覆盖矩阵**：外观改善后世界 GPU 余量约 0.47–1.17 ms（三轮最差 14.534/15）；E4 换包/关光影/重载/改窗口、GPU 频率/功耗同步采样与本轮 JFR 未完成，环境波动或后台负载可能吃掉余量。普通组 256 尸体已补测（帧均 1.986 ms/P99 4.382 ms，static_drawn 256、fallback 0、draws 1）。
 - **I34 [P3] 全精度隐藏面**：520→520（0%），W0 的 15–35% 减面门禁仍未达到；本轮未改全精度几何。
 - **I35 [P3] Iris missing program**：region_update、terrain_update、spatial_index、unit_update、motion、iris_vertices、unit_stats 等告警仍存在，未关闭，也未证明无渲染影响。
+- **I38 [P2／测试环境] Sodium 保持启用与并行 GPU 负载**：按用户要求 Sodium 全程启用，不为了对比关闭 Sodium；客户端测试后正常退出、不强制结束，留到手动关闭。但同一时段并行 GPU 负载会让世界 GPU 从约 14ms 涨到 25–33ms（client-1792980845712/1792981136050），即使环境 valid；这类轮次不能用于达标。应在 GPU 空闲时重跑；同时本构建只有一次场景级 14.620ms，缺少干净三轮。IDE MCP 会话在关闭原始项目后丢失，运行改由同一 Gradle `verifyBenchClient` 任务执行，属可复现回退。
+
 - **I36 [P2／取证流程] 并行运行干扰**：00:59–01:08 另一 Photon 工作区在同一 GPU/窗口跑基准，期间一轮样本终止丢弃。后续每轮启动前必须确认没有其他 Minecraft 进程/窗口，并在结束时归档上一轮制品与运行 ID。
 - **I37 [P2／环境] 焦点与显示刷新**：BenchMod 要求窗口焦点，外部程序抢焦点会让运行判 INCONCLUSIVE（client-1792978004840 的 `client.window.focus_lost`）；现已加每 tick 自动还原/重聚焦、MEASURE 失焦硬门禁与环境字段，但外部抢占仍可能拒绝整轮（client-1792977705014 losses=2），只能重跑不能美化。当前显示器 2560×1600@165Hz 使普通组帧间隔出现约 6.06–6.15 ms 地板，普通组帧间隔不可与早前 3.40 ms 基线直接比较，比较以世界 GPU/draw 等阶段指标为准。
 - **清理边界**：隔离 Iris 配置已按备份恢复；本轮临时开启的 `run/client` Iris 配置也已按备份 SHA256 还原；run/client 下本轮创建的多个“新的世界”为临时测试世界，保留未删除用户其他世界；Debug 会话与游戏进程已停止；会话级断点静音已恢复 false，未删除/改动用户既有断点。真实功能矩阵剩余项（区域定量、E4、256 尸体）若要补做，须重新授权并在有命令的隔离世界进行。

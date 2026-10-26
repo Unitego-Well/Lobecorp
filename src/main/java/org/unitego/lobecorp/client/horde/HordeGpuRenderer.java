@@ -114,9 +114,9 @@ public class HordeGpuRenderer {
 	private static long preparations;
 	private static final long PREPARATION_BUDGET_NS = 3_000_000L;
 	private static final Set<GeometryKey> PENDING_VISUALS = new LinkedHashSet<>();
-	private static final int PIPELINE_COUNT = 12;
-	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 4, 8, 0, 6, 7, 1, 5, 9, 10, 11};
-	private static final int[] IRIS_PIPELINE_ORDER = {2, 3, 4, 8, 0, 1, 5, 6, 7, 9, 10, 11};
+	private static final int PIPELINE_COUNT = 13;
+	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 4, 8, 0, 6, 7, 1, 5, 9, 10, 11, 12};
+	private static final int[] IRIS_PIPELINE_ORDER = {2, 3, 4, 8, 0, 1, 5, 6, 7, 9, 10, 11, 12};
 	private static final boolean[] COMPILED_PIPELINES = new boolean[PIPELINE_COUNT];
 	private static final int[] PIPELINE_FAILURES = new int[PIPELINE_COUNT];
 	private static final long[] PIPELINE_RETRY_AT = new long[PIPELINE_COUNT];
@@ -246,6 +246,7 @@ public class HordeGpuRenderer {
 					case 9 -> HordeUnitStats.precompile();
 					case 10 -> device.precompilePipeline(CARD_NORMAL).isValid();
 					case 11 -> device.precompilePipeline(CARD_REVERSE).isValid();
+					case 12 -> HordeParticleSamples.precompile();
 					default -> throw new IllegalStateException("群体管线预热步骤无效");
 				};
 				if (!valid) {
@@ -393,6 +394,15 @@ public class HordeGpuRenderer {
 			}
 			drawGroup(prepared.subList(first, last), modelView, reverse, colorTarget, depthTarget);
 			first = last;
+		}
+		var sampled = new HashSet<EventData>();
+		for (var item : prepared) {
+			if (COMPILED_PIPELINES[12] && sampled.add(item.event())) {
+				// 借用事件缓存；由remove/clear释放，采样不取得其资源所有权。
+				@SuppressWarnings("resource") var event = item.event();
+				long row = item.batch().firstRow() + (item.batch().offset() + item.offset()) / item.batch().block().columns();
+				event.particleSamples.capture(event.units, item.batch().event(), item.batch().time(), drawSerial, row);
+			}
 		}
 		if (HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get()) {
 			var seen = new HashSet<EventData>();
@@ -889,6 +899,11 @@ public class HordeGpuRenderer {
 	}
 
 	public static void clearModels() {
+		HordeParticleSamples.invalidate();
+		for (var event : EVENTS.values()) {
+			event.particleSamples.close();
+			event.particleSamples = new HordeParticleSamples();
+		}
 		GEOMETRY.values().forEach(geometry -> {
 			geometry.vertices.close();
 			geometry.animation.close();
@@ -1340,6 +1355,7 @@ public class HordeGpuRenderer {
 		private final HordeSpatialIndex spatial = new HordeSpatialIndex();
 		private final HordeUnitState units = new HordeUnitState();
 		private final HordeUnitStats unitStats = new HordeUnitStats();
+		private HordeParticleSamples particleSamples = new HordeParticleSamples();
 
 		private EventData(HordeClient.ClientEvent event) {
 			route = new HordeDataTexture("Horde fixed route " + event.id, event.routeData);
@@ -1368,6 +1384,7 @@ public class HordeGpuRenderer {
 			spatial.close();
 			units.close();
 			unitStats.close();
+			particleSamples.close();
 		}
 	}
 }

@@ -25,7 +25,7 @@ public class HordeSpawnPlanner {
 	// 优先在目标后方较远处生成，失败时逐级缩短，避免 16 格附近不可达时完全不生成。
 	private static final double[] SPAWN_DISTANCES = {16, 12, 8, 4};
 
-	public static @Nullable Vec3 candidate(ServerLevel level, HordeEvent event, LivingEntity target, int attempt, EntityDimensions dimensions) {
+	public static @Nullable Vec3 candidate(ServerLevel level, HordeEvent event, LivingEntity target, HordeCombatRegion region, int attempt, EntityDimensions dimensions) {
 		attempt = Math.floorMod(attempt, POSITION_ATTEMPTS);
 		double station = event.station(target.position());
 		Vec3 direction = event.route().direction(station);
@@ -37,11 +37,13 @@ public class HordeSpawnPlanner {
 		int lateralStep = (localAttempt + 1) / 2;
 		double lateral = lateralStep * (localAttempt % 2 == 0 ? 1 : -1) * REACH_GRID;
 		Vec3 point = target.position().subtract(direction.scale(distance)).add(side.scale(localAttempt == 0 ? 0 : lateral));
-		Vec3 floor = HordeRoute.ground(level, point);
-		if (floor == null || !safe(level, floor, dimensions) || !reachable(level, floor, target.position(), dimensions)) {
-			return null;
+		// 方区先提供局部候选；狭小方区无法落脚时仍尝试原距离，避免阻断出生。
+		Vec3 floor = HordeRoute.ground(level, region.clampHorizontal(point, dimensions.width() / 2));
+		if (floor != null && valid(level, floor, target.position(), dimensions)) {
+			return floor;
 		}
-		return floor;
+		floor = HordeRoute.ground(level, point);
+		return floor != null && valid(level, floor, target.position(), dimensions) ? floor : null;
 	}
 
 	public static boolean hidden(ServerLevel level, Vec3 point, EntityDimensions dimensions) {
@@ -55,6 +57,10 @@ public class HordeSpawnPlanner {
 		return true;
 	}
 
+	public static boolean valid(ServerLevel level, Vec3 point, Vec3 goal, EntityDimensions dimensions) {
+		return safe(level, point, dimensions) && reachable(level, point, goal, dimensions);
+	}
+
 	private static boolean safe(ServerLevel level, Vec3 point, EntityDimensions dimensions) {
 		BlockPos block = BlockPos.containing(point);
 		return level.getChunkSource().getChunkNow(block.getX() >> 4, block.getZ() >> 4) != null
@@ -62,7 +68,7 @@ public class HordeSpawnPlanner {
 				&& level.noCollision(dimensions.makeBoundingBox(point));
 	}
 
-	private static boolean reachable(ServerLevel level, Vec3 start, Vec3 goal, EntityDimensions dimensions) {
+	public static boolean reachable(ServerLevel level, Vec3 start, Vec3 goal, EntityDimensions dimensions) {
 		return reachable(start, goal, point -> HordeRoute.ground(level, point), point -> safe(level, point, dimensions));
 	}
 

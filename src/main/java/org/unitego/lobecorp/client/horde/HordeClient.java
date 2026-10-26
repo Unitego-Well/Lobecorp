@@ -34,8 +34,7 @@ public class HordeClient {
 	private static final double BLOCK_WIDTH = 16;
 	private static final int BLOCK_SEGMENTS = 16;
 	private static final double MODEL_PADDING = 6;
-	// 水平分割宽深按实际体型三倍，Y仍采用真实高度，避免高处误分割。
-	// 生物分割范围：缺口相对目标包围盒的放大倍率（用户要求 3 → 1.5）。
+	// 圆核心按水平体型1.5倍，Y仍采用真实高度，避免高处误分割。
 	private static final double VISUAL_GAP_SCALE = 1.5;
 	// 从目标包围盒向外至少三格；GPU另加清道夫模型半径。
 	private static final double MIN_VISUAL_CLEARANCE = 3;
@@ -112,9 +111,9 @@ public class HordeClient {
 		}
 		var player = minecraft.player;
 		var area = simulationBounds();
-		var nearby = minecraft.level.getEntitiesOfClass(Mob.class, area, entity -> entity.isAlive() && !entity.isSpectator());
-		var targets = nearby.stream().filter(ClientEvent::isGapTarget).toList();
-		var members = nearby.stream().filter(HordeParticipant::isEvent).toList();
+		var nearby = minecraft.level.getEntitiesOfClass(LivingEntity.class, area, entity -> entity.isAlive() && !entity.isSpectator());
+		var targets = nearby.stream().filter(entity -> entity != player && ClientEvent.isGapTarget(entity)).toList();
+		var members = nearby.stream().filter(Mob.class::isInstance).map(Mob.class::cast).filter(HordeParticipant::isEvent).toList();
 		for (var event : EVENTS.values()) {
 			if (event.ready && !event.failed) {
 				event.updateGaps(targets, members, player);
@@ -234,6 +233,30 @@ public class HordeClient {
 	public static boolean ambientVisible(Vec3 point) {
 		return ambientFrustum != null && HordeVisualConfig.ENABLED.get()
 				&& ambientFrustum.isVisible(new AABB(point, point).inflate(0.5));
+	}
+
+	/// 含玩家自身核心的目标圆查询；仅供粒子候选筛选，不代表GPU平滑状态或实际单位占据。
+	public static boolean ambientGapClear(Vec3 point) {
+		for (var event : EVENTS.values()) {
+			if (!event.ready || event.failed) {
+				continue;
+			}
+			for (var box : event.regions.values()) {
+				if (box.contains(point)) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/// 含玩家自身核心的胶囊引导轮廓有符号距离；仅用于CPU候选，实际单位占据须查询GPU。
+	public static double ambientGapBoundaryDistance(ClientEvent event, Vec3 point, Vec3 forward) {
+		double distance = Double.POSITIVE_INFINITY;
+		for (var box : event.regions.values()) {
+			distance = Math.min(distance, box.contourDistance(point, forward, event.speed));
+		}
+		return distance;
 	}
 
 	public static List<Batch> batches() {
@@ -507,7 +530,7 @@ public class HordeClient {
 					maxY + MODEL_PADDING, Math.max(a.z, b.z) + maxZ + MODEL_PADDING);
 		}
 
-		private void updateGaps(List<Mob> targets, List<Mob> members, Player player) {
+		private void updateGaps(List<LivingEntity> targets, List<Mob> members, Player player) {
 			double now = time(0);
 			var updated = new TreeMap<String, RegionBox>();
 			updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
@@ -522,7 +545,7 @@ public class HordeClient {
 				lingeringTargets.put(key, box);
 				lingeringTargetUntil.put(key, now + REGION_LINGER_TICKS);
 			}
-			// 目标短暂丢失/事件成员退场时保留缺口 30 tick 再移除，避免缺口突然出现/消失导致单位瞬移。
+			// target:与member:共享滞留表；生物消失或成员淡出后都保留30tick，再交GPU收缩退场。
 			var iterator = lingeringTargetUntil.entrySet().iterator();
 			while (iterator.hasNext()) {
 				var entry = iterator.next();
@@ -535,16 +558,24 @@ public class HordeClient {
 				updated.putIfAbsent(entry.getKey(), lingering);
 			}
 
-			// 成员不单独创建缺口，只扩展同层、正在参战目标的已有战斗包围。
+			// 每个参战生物保留自己的圆核心，不把多个核心合并成矩形禁区。
 			var seeds = members.isEmpty() ? Map.<String, RegionBox>of() : Map.copyOf(updated);
 			for (var member : members) {
 				var source = HordeParticipant.get(member);
 				var key = "target:" + source.targetId();
-				var target = seeds.get(key);
+				var target = source.targetId().equals(player.getUUID().toString()) ? seeds.get("local") : seeds.get(key);
 				if (target == null || source.fading() || !source.eventId().equals(id.toString())) {
 					continue;
 				}
-				updated.put(key, RegionBox.includeCombat(target, updated.get(key), member.getBoundingBox(), rules.regionMargin()));
+				var bounds = member.getBoundingBox();
+				if (bounds.minY >= target.y() + target.sizeY() || bounds.maxY <= target.y()) {
+					continue;
+				}
+				var memberKey = "member:" + member.getUUID();
+				var box = RegionBox.forEntity(bounds);
+				updated.put(memberKey, box);
+				lingeringTargets.put(memberKey, box);
+				lingeringTargetUntil.put(memberKey, now + REGION_LINGER_TICKS);
 			}
 
 			if (!regions.equals(updated) || !previousRegions.equals(regions)) {
@@ -557,7 +588,7 @@ public class HordeClient {
 			}
 		}
 
-		private boolean isRelevantTarget(Mob entity, Player player) {
+		private boolean isRelevantTarget(LivingEntity entity, Player player) {
 			double range = HordeVisualConfig.rangeBlocks();
 			if (player.distanceToSqr(entity) > range * range) {
 				return false;
@@ -574,26 +605,42 @@ public class HordeClient {
         }
     }
 
-    /// 向GPU提交的整数世界坐标和尺寸，向外取整，避免截断负坐标及实体边界。
-    public record RegionBox(int x, int y, int z, int sizeX, int sizeY, int sizeZ) {
-	    public static RegionBox forEntity(AABB bounds) {
-		    double extra = (VISUAL_GAP_SCALE - 1) * 0.5;
-		    return of(bounds.inflate(Math.max(MIN_VISUAL_CLEARANCE, bounds.getXsize() * extra), 0,
-				    Math.max(MIN_VISUAL_CLEARANCE, bounds.getZsize() * extra)), 1);
-	    }
+	/// 圆核心的正方形外包围与真实高度；GPU仅将外包围用于候选索引，窄相位使用圆。
+	public record RegionBox(double x, double y, double z, double sizeX, double sizeY, double sizeZ) {
+		public static RegionBox forEntity(AABB bounds) {
+			double bodyRadius = Math.hypot(bounds.getXsize(), bounds.getZsize()) * 0.5;
+			double radius = Math.max(bodyRadius * VISUAL_GAP_SCALE, bodyRadius + MIN_VISUAL_CLEARANCE);
+			var center = bounds.getCenter();
+			return new RegionBox(center.x - radius, bounds.minY, center.z - radius,
+					radius * 2, bounds.getYsize(), radius * 2);
+		}
 
 
-	    public static RegionBox includeCombat(RegionBox target, RegionBox current, AABB member, double margin) {
-		    var original = new AABB(target.x(), target.y(), target.z(), target.x() + target.sizeX(),
-				    target.y() + target.sizeY(), target.z() + target.sizeZ());
-		    if (member.minY >= original.maxY + 0.5 || member.maxY <= original.minY - 0.5
-				    || original.distanceToSqr(member.getCenter()) > margin * margin) {
-			    return current;
-		    }
-		    var combined = new AABB(current.x(), current.y(), current.z(), current.x() + current.sizeX(),
-				    current.y() + current.sizeY(), current.z() + current.sizeZ());
-		    return of(combined.minmax(member.inflate(MIN_VISUAL_CLEARANCE, 0, MIN_VISUAL_CLEARANCE)), 1);
-	    }
+		public double radius() {
+			return Math.max(sizeX, sizeZ) * 0.5;
+		}
+
+		public boolean contains(Vec3 point) {
+			double dx = point.x - x - sizeX * 0.5;
+			double dz = point.z - z - sizeZ * 0.5;
+			return point.y >= y && point.y < y + sizeY && dx * dx + dz * dz < radius() * radius();
+		}
+
+		/// 引导外轮廓沿潮方向延长，但不扩大圆核心禁区。
+		public double contourDistance(Vec3 point, Vec3 forward, double speed) {
+			if (point.y < y || point.y >= y + sizeY) {
+				return Double.POSITIVE_INFINITY;
+			}
+			var direction = forward.multiply(1, 0, 1).normalize();
+			double dx = point.x - x - sizeX * 0.5;
+			double dz = point.z - z - sizeZ * 0.5;
+			double along = dx * direction.x + dz * direction.z;
+			double across = -dx * direction.z + dz * direction.x;
+			double radius = radius() + 0.45;
+			double band = 3.2 + speed * 8;
+			double nearest = Math.clamp(along, -band - radius * 0.6, band * 0.6 + radius * 0.5);
+			return Math.hypot(along - nearest, across) - radius;
+		}
 
 	    public static RegionBox of(AABB bounds, int grid) {
             int x = Math.floorDiv((int) Math.floor(bounds.minX), grid) * grid;

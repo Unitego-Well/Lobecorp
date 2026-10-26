@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.horde;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -12,24 +13,18 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.client.particle.horde.HordeDustParticle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
-/// 少量聚合声源和近处扬尘，数量不随全部虚拟个体逐个增长。
+/// 聚合声源，以及由短时 GPU 实际脚点快照驱动的边界扬尘和潮内刀光。
 public class HordeAmbient {
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static long tick;
-	private static final int POINT_ATTEMPTS = 12;
-	private static final List<Tier> TIERS = List.of(
-			new Tier(0, 8, 8, 3, 2, 4, 2),
-			new Tier(8, 16, 16, 2, 1, 2, 1),
-			new Tier(16, 32, 32, 1, 1, 1, 1));
+	private static long nextSlashTick;
 	private static int selectedAreas;
 	private static int emittedParticles;
 
@@ -40,9 +35,6 @@ public class HordeAmbient {
 	public static int emittedParticles() {
 		return emittedParticles;
 	}
-	// 清扫位置提示只保留一秒，不积压已经离开视野的旧刀光。
-	private static final int CLEANUP_CUE_TICKS = 20;
-	private static final Map<BlockPos, CleanupCue> CLEANUP = new LinkedHashMap<>();
 
 	public static void tick() {
 		selectedAreas = 0;
@@ -52,8 +44,6 @@ public class HordeAmbient {
 			return;
 		}
 		tick++;
-		long now = minecraft.level.getGameTime();
-		CLEANUP.values().removeIf(cue -> now - cue.created() > CLEANUP_CUE_TICKS || !inView(cue.point()));
 		var nearest = HordeClient.batches().stream()
 				.filter(batch -> batch.block().bounds().distanceToSqr(minecraft.player.position()) < 32 * 32).toList();
 		if (nearest.isEmpty()) {
@@ -78,17 +68,14 @@ public class HordeAmbient {
 						SoundSource.HOSTILE, volume, 0.8f + i * 0.07f, false);
 			}
 		}
-		if (HordeVisualConfig.DUST.get() && tick % HordeVisualConfig.PARTICLE_INTERVAL.get() == 0) {
+		if (HordeVisualConfig.DUST.get()) {
 			emitVisibleAreas(nearest);
 		}
 	}
 
+	// 清扫提示不是虚拟浪潮占据证明，不据此在潮外发射刀光或边界碎屑。
+	@SuppressWarnings("unused")
 	public static void queueCleanup(double x, double y, double z) {
-		var minecraft = Minecraft.getInstance();
-		var point = new Vec3(x, y, z);
-		if (minecraft.level != null && HordeVisualConfig.DUST.get() && inView(point)) {
-			CLEANUP.put(BlockPos.containing(point), new CleanupCue(point, minecraft.level.getGameTime()));
-		}
 	}
 
 	private static boolean inView(Vec3 point) {
@@ -96,7 +83,7 @@ public class HordeAmbient {
 		var level = minecraft.level;
 		var player = minecraft.player;
 		return player != null && level != null
-				&& point.distanceToSqr(player.position()) <= Math.pow(HordeVisualConfig.PARTICLE_RANGE.get(), 2)
+				&& point.distanceToSqr(minecraft.gameRenderer.getMainCamera().position()) <= Math.pow(HordeVisualConfig.PARTICLE_RANGE.get(), 2)
 				&& level.getChunkSource().hasChunk((int) Math.floor(point.x / 16), (int) Math.floor(point.z / 16))
 				&& HordeClient.ambientVisible(point);
 	}
@@ -107,155 +94,194 @@ public class HordeAmbient {
 		var player = minecraft.player;
 		return level != null && player != null && inView(point)
 				&& level.clip(new ClipContext(minecraft.gameRenderer.getMainCamera().position(),
-				point.add(0, 0.25, 0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
+				point, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
 				player)).getType() == HitResult.Type.MISS;
 	}
 
 	private static void emitVisibleAreas(List<HordeClient.Batch> nearest) {
-		var selected = new HashSet<AreaKey>();
-		var cues = CLEANUP.values().iterator();
-		while (cues.hasNext()) {
-			var cue = cues.next();
-			cues.remove();
-			if (unobstructed(cue.point())) {
-				emit(cue.point(), TIERS.getFirst());
-				break;
-			}
-		}
-		for (var tier : TIERS) {
-			for (int area = 0; area < tier.areas(); area++) {
-				var point = emissionPoint(nearest, tier, selected);
-				if (point != null) {
-					emit(point, tier);
-				}
-			}
-		}
-	}
-
-	private static Vec3 emissionPoint(List<HordeClient.Batch> nearest, Tier tier, Set<AreaKey> selected) {
-		var minecraft = Minecraft.getInstance();
-		var level = minecraft.level;
-		var player = minecraft.player;
-		if (level == null || player == null) {
-			return null;
-		}
-		var random = level.getRandom();
-		for (int attempt = 0; attempt < POINT_ATTEMPTS; attempt++) {
-			var batch = nearest.get(random.nextInt(nearest.size()));
-			long ordinal = batch.offset() + random.nextInt(batch.count());
-			long row = batch.firstRow() + ordinal / batch.block().columns();
-			int column = batch.block().firstColumn() + (int) (ordinal % batch.block().columns());
-			double station = batch.time() * batch.event().speed - row * batch.event().rules.rowSpacing();
-			if (station < batch.block().first() || station >= batch.block().last() || station < 0 || station >= batch.event().length) {
-				continue;
-			}
-			double lateral = (column - (batch.event().columns - 1) / 2d) * batch.event().rules.columnSpacing();
-			var point = particlePoint(batch.event(), station, lateral);
-			double distance = point.distanceToSqr(player.position());
-			if (distance < tier.minimum() * tier.minimum() || distance > tier.maximum() * tier.maximum()
-					|| !insideTide(batch.event(), point) || !unobstructed(point)) {
-				continue;
-			}
-			var key = new AreaKey(batch.event().id, tier.cell(), (int) Math.floor(point.x / tier.cell()),
-					(int) Math.floor(point.y / tier.cell()), (int) Math.floor(point.z / tier.cell()));
-			if (selected.add(key)) {
-				return point;
-			}
-		}
-		return null;
-	}
-
-	private static Vec3 particlePoint(HordeClient.ClientEvent event, double station, double lateral) {
-		int low = 0, high = event.nodes.length - 2;
-		while (low < high) {
-			int middle = (low + high + 1) / 2;
-			if (event.nodes[middle].distance() <= station) {
-				low = middle;
-			} else {
-				high = middle - 1;
-			}
-		}
-		var a = event.nodes[low];
-		var b = event.nodes[low + 1];
-		double weight = Math.clamp((station - a.distance()) / Math.max(0.0001, b.distance() - a.distance()), 0, 1);
-		var forward = b.at().subtract(a.at()).multiply(1, 0, 1).normalize();
-		var center = a.at().lerp(b.at(), weight);
-		double y = a.height(lateral) + (b.height(lateral) - a.height(lateral)) * weight;
-		return new Vec3(center.x - forward.z * lateral, y, center.z + forward.x * lateral);
-	}
-
-	private static boolean insideTide(HordeClient.ClientEvent event, Vec3 point) {
-		double radius = HordeGpuRenderer.modelRadius(event.visual);
-		for (var box : event.regions.values()) {
-			if (box == null) {
-				continue;
-			}
-			if (point.y < box.y() + box.sizeY() && point.y + event.entityHeight > box.y()
-					&& point.x > box.x() - radius && point.x < box.x() + box.sizeX() + radius
-					&& point.z > box.z() - radius && point.z < box.z() + box.sizeZ() + radius) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private static void emit(Vec3 point, Tier tier) {
 		var level = Minecraft.getInstance().level;
 		if (level == null) {
 			return;
 		}
-		selectedAreas++;
-		var random = level.getRandom();
-		for (int index = 0; index < Math.max(tier.smoke(), Math.max(tier.fragments(), tier.slashes())); index++) {
-			var at = point.add((random.nextDouble() - 0.5) * 1.6, 0, (random.nextDouble() - 0.5) * 1.6);
-			if (index < tier.smoke()) {
-				particle(ParticleTypes.CAMPFIRE_COSY_SMOKE, at.add(0, 0.15 + random.nextDouble(), 0), 0, 0.03, 0);
+
+		var samples = new ArrayList<LocatedSample>();
+		var events = new HashSet<UUID>();
+		for (var batch : nearest) {
+			if (!events.add(batch.event().id)) {
+				continue;
 			}
-			if (index < tier.fragments()) {
-				var ground = level.getBlockState(BlockPos.containing(at).below());
-				if (!ground.isAir()) {
-					particle(new BlockParticleOption(ParticleTypes.BLOCK, ground), at.add(0, 0.05, 0),
-							(random.nextDouble() - 0.5) * 0.16, 0.04, (random.nextDouble() - 0.5) * 0.16);
+
+			var snapshot = HordeParticleSamples.latest(batch.event(), batch.time());
+			if (snapshot != null) {
+				for (var sample : snapshot.samples()) {
+					if (HordeClient.ambientGapClear(sample.ground()) && inView(sample.ground())) {
+						samples.add(new LocatedSample(batch.event(), batch.time(), sample));
+					}
 				}
 			}
-			if (index < tier.slashes()) {
+		}
+
+		if (samples.isEmpty()) {
+			return;
+		}
+
+		if (tick % HordeVisualConfig.PARTICLE_INTERVAL.get() == 0) {
+			emitFragments(samples, HordeVisualConfig.FRAGMENT_GROUPS.get());
+		}
+
+		if (tick >= nextSlashTick) {
+			nextSlashTick = tick + 1 + level.getRandom().nextInt(4);
+			emitSlashes(samples);
+		}
+	}
+
+	private static void emitFragments(List<LocatedSample> samples, int groups) {
+		var level = Minecraft.getInstance().level;
+		if (level == null || groups == 0) {
+			return;
+		}
+
+		var candidates = samples.stream().filter(sample -> boundary(sample, samples)).toList();
+		if (candidates.isEmpty()) {
+			return;
+		}
+
+		var selected = new HashSet<BlockPos>();
+		int limit = Math.clamp(groups, 0, 100);
+		int start = level.getRandom().nextInt(candidates.size());
+		for (int i = 0; i < candidates.size() && selected.size() < limit; i++) {
+			var point = candidates.get((start + i) % candidates.size()).sample().ground().add(0, 0.05, 0);
+			if (!selected.add(BlockPos.containing(point.scale(4))) || !unobstructed(point)) {
+				continue;
+			}
+
+			selectedAreas++;
+			var ground = level.getBlockState(BlockPos.containing(point.add(0, -0.1, 0)));
+			if (!ground.isAir()) {
+				particle(new BlockParticleOption(ParticleTypes.BLOCK, ground), point,
+						(level.getRandom().nextDouble() - 0.5) * 0.16, 0.04,
+						(level.getRandom().nextDouble() - 0.5) * 0.16, 1);
+			}
+
+			if (allowed(point)) {
+				var dust = HordeDustParticle.create(level, point);
+				if (dust != null) {
+					Minecraft.getInstance().particleEngine.add(dust);
+					emittedParticles++;
+				}
+			}
+		}
+	}
+
+	private static boolean boundary(LocatedSample located, List<LocatedSample> samples) {
+		var event = located.event();
+		var sample = located.sample();
+		var point = sample.ground();
+		double spacing = Math.max(event.rules.rowSpacing(), event.rules.columnSpacing());
+		double station = sample.station();
+		double headStation = Math.min(event.length, located.time() * event.speed);
+		double tailStation = Math.max(0, (located.time() - event.rules.duration()) * event.speed);
+		// 缺邻可能来自视锥截断；必须再由真实外行/外列或当前缺口轮廓确认。
+		if (sample.boundary() && (sample.column() == 0 || sample.column() == event.columns - 1
+				|| Math.abs(headStation - station) <= spacing
+				|| Math.abs(station - tailStation) <= spacing)) {
+			return true;
+		}
+
+		var forward = forward(event, station);
+		double gapDistance = HordeClient.ambientGapBoundaryDistance(event, point, forward);
+		if (sample.boundary() && Math.abs(gapDistance) <= spacing) {
+			return true;
+		}
+
+		// 跨事件接合按两潮真实脚点的同层距离判定，不复用单潮邻格 mask 的身份邻接语义。
+		for (var other : samples) {
+			double contactDistance = Math.max(spacing, Math.max(other.event().rules.rowSpacing(), other.event().rules.columnSpacing()));
+			if (!other.event().id.equals(event.id) && Math.abs(other.sample().ground().y - point.y) <= 1.5
+					&& other.sample().ground().distanceToSqr(point) <= contactDistance * contactDistance) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static Vec3 forward(HordeClient.ClientEvent event, double station) {
+		for (int i = 1; i < event.nodes.length; i++) {
+			if (station <= event.nodes[i].distance() || i == event.nodes.length - 1) {
+				return event.nodes[i].at().subtract(event.nodes[i - 1].at()).multiply(1, 0, 1).normalize();
+			}
+		}
+
+		return new Vec3(0, 0, 1);
+	}
+
+	private static void emitSlashes(List<LocatedSample> samples) {
+		var level = Minecraft.getInstance().level;
+		if (level == null) {
+			return;
+		}
+
+		var interior = samples.stream().filter(sample -> sample.sample().interior()).toList();
+		if (interior.isEmpty()) {
+			return;
+		}
+
+		var random = level.getRandom();
+		int count = 4 + random.nextInt(7);
+		int start = random.nextInt(interior.size());
+		for (int i = 0; i < Math.min(count, interior.size()); i++) {
+			var point = interior.get((start + i) % interior.size()).sample().ground().add(0, 1.7, 0);
+			if (!HordeClient.ambientGapClear(point) || !unobstructed(point)) {
+				continue;
+			}
+
+			selectedAreas++;
+			int particles = 1 + random.nextInt(3);
+			for (int j = 0; j < particles; j++) {
 				var slash = switch (random.nextInt(3)) {
 					case 0 -> LcParticleTypes.SIMPLE_SHORT_SLASH.get();
 					case 1 -> LcParticleTypes.SIMPLE_LONG_SLASH.get();
 					default -> LcParticleTypes.SIMPLE_DOUBLE_SLASH.get();
 				};
-				particle(slash, at.add(0, 0.5 + random.nextDouble() * 0.6, 0), 0, 0, 0);
+				particle(slash, point, 0, 0, 0, 0.7f + random.nextFloat() * 0.5f);
 			}
 		}
 	}
 
-	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz) {
+	private static boolean allowed(Vec3 point) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
-		var player = minecraft.player;
-		// 用最终出生坐标再次检查，不能只验证地面选区而让高处烟雾穿过范围或遮挡。
-		if (level == null || player == null || !inView(point)
-				|| level.clip(new ClipContext(minecraft.gameRenderer.getMainCamera().position(), point,
-				ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player)).getType() != HitResult.Type.MISS) {
+		// unobstructed 已同时执行可配置范围（1至32格）与最终坐标可见性检查。
+		if (level == null || !unobstructed(point)) {
+			return false;
+		}
+
+		// 等价于原版 alwaysShow=false、overrideLimiter=false，避免篝火类型绕过设置。
+		var setting = minecraft.options.particles().get();
+		return setting != ParticleStatus.MINIMAL
+				&& (setting != ParticleStatus.DECREASED || level.getRandom().nextInt(3) != 0);
+	}
+
+	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz, float scale) {
+		if (!allowed(point)) {
 			return;
 		}
-		level.addParticle(type, point.x, point.y, point.z, dx, dy, dz);
-		emittedParticles++;
+
+		var particle = Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz);
+		if (particle != null) {
+			particle.scale(scale);
+			emittedParticles++;
+		}
 	}
 
-	private record Tier(int minimum, int maximum, int cell, int areas, int smoke, int fragments, int slashes) {
-	}
-
-	private record AreaKey(UUID event, int cell, int x, int y, int z) {
-	}
-
-	private record CleanupCue(Vec3 point, long created) {
+	private record LocatedSample(HordeClient.ClientEvent event, double time, HordeParticleSamples.Sample sample) {
 	}
 
 	public static void clear() {
 		SOURCES.clear();
-		CLEANUP.clear();
 		tick = 0;
+		nextSlashTick = 0;
 		selectedAreas = 0;
 		emittedParticles = 0;
 	}

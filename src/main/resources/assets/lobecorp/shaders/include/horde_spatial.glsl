@@ -41,65 +41,56 @@ int regionSlot(int ordinal) {
     return integer(HordeRegions, int(LightRoute.z) * 7 + ordinal);
 }
 
-bool regionClear(vec3 point) {
-    ivec2 cell = spatialCell(point);
-    int count = int(SegmentRegions.w);
-    int words = (count + 31) / 32;
-    float radius = intBitsToFloat(SpatialTextures.w);
-    ivec3 originBlock = ivec3(WorldSection.xyz) * 16;
-    for (int word = 0; word < words; word++) {
-        uint possible = spatialWord(cell, word + 1);
-        if (possible == 0u) continue;
-        for (int bit = 0; bit < 32 && word * 32 + bit < count; bit++) {
-            if ((possible & (1u << uint(bit))) == 0u) continue;
-            int slot = regionSlot(word * 32 + bit);
-            int raw = slot * 7;
-            if (integer(HordeRegions, raw + 6) <= 0) continue;
-            ivec3 worldMinimum = ivec3(integer(HordeRegions, raw),
-                    integer(HordeRegions, raw + 1), integer(HordeRegions, raw + 2));
-            vec3 minimum = vec3(worldMinimum - originBlock) - WidthFraction.yzw;
-            vec3 dimensions = vec3(integer(HordeRegions, raw + 3),
-                    integer(HordeRegions, raw + 4), integer(HordeRegions, raw + 5));
-            if (point.y < minimum.y + dimensions.y && point.y + LightRoute.w > minimum.y
-                && all(greaterThan(point.xz, minimum.xz - vec2(radius)))
-                && all(lessThan(point.xz, minimum.xz + dimensions.xz + vec2(radius)))) {
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
+// 此路径与unitPosition统一使用event局部坐标，不能在这里加相机偏移OriginTime。
+// 外包围只用于索引与传递圆参数；活动与退场都读取同一份GPU连续状态。
 bool regionBounds(int slot, out vec3 minimum, out vec3 maximum) {
-    int at = slot * 7;
     minimum = vec3(0.0);
     maximum = vec3(0.0);
-    if (integer(HordeRegions, at + 6) <= 0) return false;
-    ivec3 world = ivec3(integer(HordeRegions, at), integer(HordeRegions, at + 1), integer(HordeRegions, at + 2));
-    minimum = vec3(world - ivec3(WorldSection.xyz) * 16) - WidthFraction.yzw;
-    maximum = minimum + vec3(integer(HordeRegions, at + 3),
-            integer(HordeRegions, at + 4), integer(HordeRegions, at + 5));
-    float radius = intBitsToFloat(SpatialTextures.w);
-    minimum.xz -= vec2(radius);
-    maximum.xz += vec2(radius);
+    int generation = abs(integer(HordeRegions, slot * 7 + 6));
+    int at = slot * 13;
+    if (generation == 0 || integer(HordeRegionState, at + 12) != generation) return false;
+    vec3 center = vector3(HordeRegionState, at);
+    vec3 halfSize = max(vec3(0.0), vector3(HordeRegionState, at + 3));
+    float core = max(halfSize.x, halfSize.z);
+    if (core <= 0.0001) return false;
+    float radius = core + intBitsToFloat(SpatialTextures.w) * smoothstep(0.0, 0.45, core);
+    minimum = center - vec3(radius, halfSize.y, radius);
+    maximum = center + vec3(radius, halfSize.y, radius);
     return true;
 }
 
 bool regionContains(vec3 point, vec3 minimum, vec3 maximum) {
+    vec2 relative = point.xz - (minimum.xz + maximum.xz) * 0.5;
+    float radius = (maximum.x - minimum.x) * 0.5;
     return point.y < maximum.y && point.y + LightRoute.w > minimum.y
-    && all(greaterThan(point.xz, minimum.xz)) && all(lessThan(point.xz, maximum.xz));
+    && dot(relative, relative) < radius * radius;
+}
+
+bool regionClear(vec3 point) {
+    ivec2 cell = spatialCell(point);
+    int count = int(SegmentRegions.w);
+    for (int word = 0; word < (count + 31) / 32; word++) {
+        uint possible = spatialWord(cell, word + 1);
+        for (int bit = 0; bit < 32 && word * 32 + bit < count; bit++) {
+            if ((possible & (1u << uint(bit))) == 0u) continue;
+            vec3 minimum, maximum;
+            if (regionBounds(regionSlot(word * 32 + bit), minimum, maximum)
+                && regionContains(point, minimum, maximum)) return false;
+        }
+    }
+    return true;
 }
 
 bool regionBlocked(vec3 point) {
     return !regionClear(point);
 }
 
-// 固定逃逸方向保持相交区域中的纠正单调；最多两轮几何求解，时间收敛由单位历史限速。
+// 沿固定方向求圆的远端交点；相交核心不会用相反法线互相抵消。
 vec3 regionClamp(vec3 point, vec2 direction) {
     direction = length(direction) > 0.0001 ? normalize(direction) : vec2(1.0, 0.0);
     int count = int(SegmentRegions.w);
     for (int iteration = 0; iteration < 2; iteration++) {
-        bool changed = false;
+        float reach = 0.0;
         ivec2 cell = spatialCell(point);
         for (int word = 0; word < (count + 31) / 32; word++) {
             uint possible = spatialWord(cell, word + 1);
@@ -108,16 +99,15 @@ vec3 regionClamp(vec3 point, vec2 direction) {
                 vec3 minimum, maximum;
                 if (!regionBounds(regionSlot(word * 32 + bit), minimum, maximum)
                     || !regionContains(point, minimum, maximum)) continue;
-                vec2 distance = vec2(1e20);
-                if (abs(direction.x) > 0.0001) distance.x =
-                ((direction.x > 0.0 ? maximum.x : minimum.x) - point.x) / direction.x;
-                if (abs(direction.y) > 0.0001) distance.y =
-                ((direction.y > 0.0 ? maximum.z : minimum.z) - point.z) / direction.y;
-                point.xz += direction * (max(0.0, min(distance.x, distance.y)) + UnitLimits.z);
-                changed = true;
+                vec2 relative = point.xz - (minimum.xz + maximum.xz) * 0.5;
+                float radius = (maximum.x - minimum.x) * 0.5;
+                float projection = dot(relative, direction);
+                reach = max(reach, -projection + sqrt(max(0.0,
+                        projection * projection + radius * radius - dot(relative, relative))));
             }
         }
-        if (!changed) break;
+        if (reach <= 0.0) break;
+        point.xz += direction * (reach + UnitLimits.z);
     }
     return point;
 }
@@ -133,8 +123,8 @@ float regionPenetration(vec3 point) {
             vec3 minimum, maximum;
             if (!regionBounds(regionSlot(word * 32 + bit), minimum, maximum)
                 || !regionContains(point, minimum, maximum)) continue;
-            vec2 edge = min(point.xz - minimum.xz, maximum.xz - point.xz);
-            depth = max(depth, min(edge.x, edge.y));
+            float radius = (maximum.x - minimum.x) * 0.5;
+            depth = max(depth, radius - length(point.xz - (minimum.xz + maximum.xz) * 0.5));
         }
     }
     return depth;

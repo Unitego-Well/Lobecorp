@@ -91,11 +91,11 @@ public class HordeOptimizationTest {
 		int generation = targets.words()[6];
 		targets.update(Map.of("mob", moved), 1);
 		assertEquals(generation, targets.words()[6]);
-		assertEquals(21, targets.words()[0]);
+		assertEquals(21, Float.intBitsToFloat(targets.words()[0]));
 		targets.update(Map.of(), 2);
 		assertEquals(-generation, targets.words()[6]);
-		assertEquals(6, targets.words()[3]);
-		assertEquals(2, targets.words()[4]);
+		assertEquals(6, Float.intBitsToFloat(targets.words()[3]));
+		assertEquals(2, Float.intBitsToFloat(targets.words()[4]));
 		assertFalse(targets.expired(41));
 		targets.update(Map.of("mob", moved), 41);
 		assertEquals(generation, targets.words()[6]);

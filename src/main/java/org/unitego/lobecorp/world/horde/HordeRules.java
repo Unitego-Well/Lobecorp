@@ -4,7 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.config.server.HordeEventConfig;
 
 /// 事件启动时固定的服务端规则；计时均为服务器逻辑刻。
-/// scanTicks与transitionTicks保留快照结构；当前每tick扫描，GPU不再使用旧区域过渡计时。
+/// scanTicks与transitionTicks保留快照结构；发现与空间更新由运行期调度，GPU不再使用旧区域过渡计时。
 public record HordeRules(int duration, double width, double rowSpacing, double columnSpacing, double margin,
                          int initialQuota,
                          int maximumMultiplier, int reinforceTicks, int unreachableTicks, int retryTicks,

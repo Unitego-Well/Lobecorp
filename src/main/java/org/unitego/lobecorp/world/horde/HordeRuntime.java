@@ -42,7 +42,10 @@ public class HordeRuntime {
 	private final Map<UUID, Mob> loaded = new LinkedHashMap<>();
 	private final Map<String, SpawnRequest> requests = new LinkedHashMap<>();
 	private final Map<UUID, Long> blockedSince = new HashMap<>();
-	// 只限制归档清理，不限制每tick目标、成员与区域检查。
+	private final Map<String, HordeTargetSpatialState> spatial = new HashMap<>();
+	private final List<List<HordeTargetAssignment>> regionGroups = new ArrayList<>();
+	private boolean regionsDirty;
+	// 只限制归档清理；目标有效性、成员与战斗计时仍逐tick检查。
 	private static final int CHECK_INTERVAL = 20;
 	private final HordeSync sync = new HordeSync();
 	private boolean stopping;
@@ -189,8 +192,9 @@ public class HordeRuntime {
 				continue;
 			}
 		}
-		tickParticipants(data);
 		scan(data);
+		refreshSpatial(data);
+		tickParticipants(data);
 		clearDebris(data);
 		tickTargets(data);
 		updateRegions(data);
@@ -227,7 +231,7 @@ public class HordeRuntime {
 				transferOrFade(mob, allocation, event, true);
 				continue;
 			}
-			allocation.position = target.position();
+
 			if (!event.covers(target.position())) {
 				if (allocation.outsideSince < 0) {
 					allocation.outsideSince = data.clock();
@@ -251,6 +255,25 @@ public class HordeRuntime {
 		}
 	}
 
+	private void refreshSpatial(HordeSavedData data) {
+		if (spatial.keySet().removeIf(key -> !data.targets().containsKey(key))) {
+			regionsDirty = true;
+		}
+		for (var allocation : data.targets().values()) {
+			var target = targetEntity(allocation);
+			if (target == null) {
+				continue;
+			}
+			var state = spatial.computeIfAbsent(allocation.key, _ -> new HordeTargetSpatialState(allocation.target));
+			boolean near = target.level().players().stream().anyMatch(player ->
+					HordeTargetSpatialState.near(player.distanceToSqr(target)));
+			if (state.due(data.clock(), near)) {
+				regionsDirty |= state.refresh(data.clock(), target.position(), target.getBoundingBox(), allocation.rules.regionMargin());
+				allocation.position = state.position();
+			}
+		}
+	}
+
 	private void scan(HordeSavedData data) {
 		for (var level : server.getAllLevels()) {
 			if (data.events().values().stream().noneMatch(event -> event.dimension().equals(level.dimension()))) {
@@ -261,8 +284,11 @@ public class HordeRuntime {
 			int chunks = server.getPlayerList().getSimulationDistance();
 			for (var player : level.players()) {
 				var center = player.chunkPosition();
-				var area = new AABB((center.x() - chunks) * 16d, level.getMinY(), (center.z() - chunks) * 16d,
-						(center.x() + chunks + 1) * 16d, level.getMaxY(), (center.z() + chunks + 1) * 16d);
+				boolean fullScan = HordeTargetSpatialState.fullScanDue(data.clock());
+				var area = fullScan
+						? new AABB((center.x() - chunks) * 16d, level.getMinY(), (center.z() - chunks) * 16d,
+						(center.x() + chunks + 1) * 16d, level.getMaxY(), (center.z() + chunks + 1) * 16d)
+						: player.getBoundingBox().inflate(HordeTargetSpatialState.NEAR_DISTANCE);
 				for (var target : level.getEntitiesOfClass(LivingEntity.class, area)) {
 					if (!seen.add(target.getUUID())) {
 						continue;
@@ -282,7 +308,6 @@ public class HordeRuntime {
 						String key = domain + "|" + target.getUUID();
 						var allocation = data.targets().computeIfAbsent(key,
 								_ -> new HordeTargetAssignment(key, domain, target.getUUID(), target.position(), event.rules()));
-						allocation.position = target.position();
 						allocation.seenAt = data.clock();
 						scanned++;
 					}
@@ -372,13 +397,6 @@ public class HordeRuntime {
 				}
 			}
 
-			if (allocation.seenAt == data.clock()) {
-				LivingEntity target = targetEntity(allocation);
-				if (target == null) {
-					continue;
-				}
-				allocation.position = target.position();
-			}
 			boolean present = allocation.members.stream().anyMatch(loaded::containsKey);
 			if (allocation.engaged && present && allocation.retryUntil <= data.clock()) {
 				allocation.fightTicks++;
@@ -410,11 +428,17 @@ public class HordeRuntime {
 	}
 
 	private @Nullable HordeEvent provider(HordeTargetAssignment target, HordeSavedData data) {
+		var living = targetEntity(target);
+		if (living == null) {
+			return null;
+		}
+		var position = living.position();
 		return data.events().values().stream().filter(HordeEvent::running).filter(event -> {
 			var profile = HordeEvents.profile(event.profile());
-			return profile != null && domain(event, profile).equals(target.domain) && event.covers(target.position);
-		}).min(Comparator.comparingDouble((HordeEvent event) -> event.route().point(event.station(target.position),
-						0).distanceToSqr(target.position))
+			return profile != null && domain(event, profile).equals(target.domain)
+					&& living.level().dimension().equals(event.dimension()) && event.covers(position);
+		}).min(Comparator.comparingDouble((HordeEvent event) -> event.route().point(event.station(position),
+						0).distanceToSqr(position))
 				.thenComparing(HordeEvent::id)).orElse(null);
 	}
 
@@ -428,7 +452,11 @@ public class HordeRuntime {
 			var event = data.events().get(request.event);
 			var level = event == null ? null : server.getLevel(event.dimension());
 			var target = targetEntity(request.target);
-			if (event == null || !event.running() || level == null || target == null
+			var profile = event == null ? null : HordeEvents.profile(event.profile());
+			if (event == null || !event.running() || level == null || target == null || target.level() != level
+					|| profile == null || !domain(event, profile).equals(request.target.domain)
+					|| !event.covers(target.position())
+					|| !profile.acceptsTarget(new HordeTargetContext(level, target.position(), profile.faction()), target)
 					|| request.target.occupied() > Math.min(request.target.quota, HordeRules.MAXIMUM_TARGET_QUOTA)) {
 				cancel(request);
 				continue;
@@ -455,12 +483,14 @@ public class HordeRuntime {
 				continue;
 			}
 			work.merge(level, 1, Integer::sum);
-			var profile = HordeEvents.profile(event.profile());
-			if (profile == null) {
-				cancel(request);
+			var state = spatial.get(request.target.key);
+			if (state == null) {
 				continue;
 			}
-			var position = HordeSpawnPlanner.candidate(level, event, target, request.attempt++, profile.dimensions());
+			var position = HordeSpawnPlanner.candidate(level, event, target, state.region(), request.attempt++, profile.dimensions());
+			if (request.fallback != null && !HordeSpawnPlanner.valid(level, request.fallback, target.position(), profile.dimensions())) {
+				request.fallback = null;
+			}
 			if (position == null) {
 				continue;
 			}
@@ -535,7 +565,14 @@ public class HordeRuntime {
 						&& (allowExcess || candidate.missing() > 0))
 				.filter(candidate -> {
 					var target = targetEntity(candidate);
-					return target != null && event.covers(target.position());
+					var profile = HordeEvents.profile(event.profile());
+					var state = spatial.get(candidate.key);
+					return target != null && target.level() == mob.level() && event.covers(target.position())
+							&& profile != null && target.level() instanceof ServerLevel level
+							&& profile.acceptsTarget(new HordeTargetContext(level, mob.position(), profile.faction()), target)
+							&& state != null && state.region().containsHorizontal(mob.position())
+							&& level.noCollision(mob)
+							&& HordeSpawnPlanner.reachable(level, mob.position(), target.position(), mob.getDimensions(mob.getPose()));
 				}).min(Comparator.comparingInt((HordeTargetAssignment candidate) -> candidate.missing() > 0 ? 0 : 1)
 						.thenComparingDouble(candidate -> mob.distanceToSqr(candidate.position)))
 				.orElse(null);
@@ -642,6 +679,31 @@ public class HordeRuntime {
 	}
 
 	private void updateRegions(HordeSavedData data) {
+		if (regionsDirty) {
+			rebuildRegionGroups(data);
+			regionsDirty = false;
+		}
+		for (var group : regionGroups) {
+			var start = group.getFirst();
+			UUID leader = group.stream().map(target -> target.target).min(UUID::compareTo).orElse(start.target);
+			UUID region = HordeTargetAssignment.regionId(start.domain, leader);
+			for (var member : group) {
+				boolean merging = group.stream().anyMatch(other -> other.region.equals(region));
+				if (member.region.equals(region) || merging) {
+					member.region = region;
+					member.splitSince = -1;
+				} else if (member.splitSince < 0) {
+					member.splitSince = data.clock();
+				} else if (data.clock() - member.splitSince >= member.rules.splitTicks()) {
+					member.region = region;
+					member.splitSince = -1;
+				}
+			}
+		}
+	}
+
+	private void rebuildRegionGroups(HordeSavedData data) {
+		regionGroups.clear();
 		var targets = new ArrayList<>(data.targets().values());
 		var byCell = new HashMap<String, List<HordeTargetAssignment>>();
 		double cellSize = 32;
@@ -673,20 +735,7 @@ public class HordeRuntime {
 					}
 				}
 			}
-			UUID leader = group.stream().map(target -> target.target).min(UUID::compareTo).orElse(start.target);
-			UUID region = HordeTargetAssignment.regionId(start.domain, leader);
-			for (var member : group) {
-				boolean merging = group.stream().anyMatch(other -> other.region.equals(region));
-				if (member.region.equals(region) || merging) {
-					member.region = region;
-					member.splitSince = -1;
-				} else if (member.splitSince < 0) {
-					member.splitSince = data.clock();
-				} else if (data.clock() - member.splitSince >= member.rules.splitTicks()) {
-					member.region = region;
-					member.splitSince = -1;
-				}
-			}
+			regionGroups.add(group);
 		}
 	}
 
@@ -706,7 +755,7 @@ public class HordeRuntime {
 			if (!domains.contains(target.domain) || living == null) {
 				return true;
 			}
-			target.position = living.position();
+
 			if (provider(target, data) != null) {
 				target.outsideSince = -1;
 				return false;

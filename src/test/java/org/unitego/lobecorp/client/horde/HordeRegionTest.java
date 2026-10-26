@@ -13,10 +13,11 @@ public class HordeRegionTest {
 	public void bodyGapKeepsThreeBlockClearanceWithoutExpandingHeight() {
 		var bounds = new AABB(-1, 10, -2, 1, 12, 2);
 		var box = HordeClient.RegionBox.forEntity(bounds);
-		assertEquals(-4, box.x());
-		assertEquals(8, box.sizeX());
-		assertEquals(-6, box.z());
-		assertEquals(12, box.sizeZ());
+		double radius = Math.hypot(2, 4) * 0.5 + 3;
+		assertEquals(-radius, box.x(), 0.000001);
+		assertEquals(radius * 2, box.sizeX(), 0.000001);
+		assertEquals(box.x(), box.z());
+		assertEquals(box.sizeX(), box.sizeZ());
 		assertEquals(10, box.y());
 		assertEquals(2, box.sizeY());
 	}
@@ -30,8 +31,8 @@ public class HordeRegionTest {
             assertTrue(box.x() + box.sizeX() >= bounds.maxX);
             assertTrue(box.y() + box.sizeY() >= bounds.maxY);
             assertTrue(box.z() + box.sizeZ() >= bounds.maxZ);
-            assertEquals(0, Math.floorMod(box.x(), grid));
-            assertEquals(0, Math.floorMod(box.sizeX(), grid));
+		    assertEquals(0, Math.floorMod((long) box.x(), grid));
+		    assertEquals(0, Math.floorMod((long) box.sizeX(), grid));
         }
     }
 

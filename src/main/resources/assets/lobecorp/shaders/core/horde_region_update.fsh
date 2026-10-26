@@ -27,17 +27,17 @@ void main() {
     if (component == 12) {
         bits = uint(generation);
     } else if (generation != 0) {
-        ivec3 minimum = ivec3(integer(RegionTargets, raw), integer(RegionTargets, raw + 1), integer(RegionTargets, raw + 2));
-        vec3 halfSize = vec3(integer(RegionTargets, raw + 3), integer(RegionTargets, raw + 4),
-                integer(RegionTargets, raw + 5)) * 0.5;
-        vec3 center = vec3(minimum - RegionOrigin.xyz) - RegionUpdate.xyz + halfSize;
+        vec3 minimum = vector3(RegionTargets, raw);
+        vec3 halfSize = vector3(RegionTargets, raw + 3) * 0.5;
+        vec3 center = minimum + halfSize;
         int axis = component % 3;
         bool radius = component % 6 >= 3;
-        float target = radius ? (signedGeneration < 0 ? 0.0 : halfSize[axis]) : center[axis];
+        // 退场仅收水平圆半径；真实Y区间不随出现/消失收缩，避免不同楼层误触发。
+        float target = radius ? (signedGeneration < 0 && axis != 1 ? 0.0 : halfSize[axis]) : center[axis];
         int base = slot * 13;
         bool fresh = integer(RegionPrevious, base + 12) != generation;
         int positionComponent = component % 6;
-        float old = fresh ? (radius ? 0.0 : target) : scalar(RegionPrevious, base + positionComponent);
+        float old = fresh ? (radius && axis != 1 ? 0.0 : target) : scalar(RegionPrevious, base + positionComponent);
         float velocity = fresh ? 0.0 : scalar(RegionPrevious, base + positionComponent + 6);
         float omega = RegionSettings.x;
         float dt = RegionUpdate.w;

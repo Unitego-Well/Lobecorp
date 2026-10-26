@@ -1,5 +1,18 @@
 # 系统修改记录
 
+## 2026-10-26 第七轮：圆形核心、真实脚点粒子与独立战斗方区
+
+- 用户先要求“先计划”，随后授权“开始执行”，并明确本轮只做视觉效果与连续过渡，不含 I41 性能优化；不得以减少数量、模型面数或显示范围换取效果。视觉契约见[视觉过渡与战斗区域](horde-visual-transition.md)，实现契约见[渲染实现](horde-rendering-implementation.md#2026-10-26-圆形核心事件局部编码与真实脚点粒子)。
+- 客户端区域模型：`HordeClient` 每 tick 为本地玩家、每个参战成员和每个目标各建一个圆核心，`RegionBox` 改为 double 事件局部坐标，半径取水平半径乘 1.5 与水平半径加 3 的较大值，Y 保持真实高度；目标与成员共用 30 tick 滞留，GPU 保持 40 tick 退场。删除 `includeCombat` 链式并入，成员核心不再并进目标矩形。
+- GPU 状态与窄相位：`HordeRegionState.Targets` 六个坐标/尺寸改 floatBits 事件局部编码，代次与活跃索引仍为整数；`horde_region_update.fsh` 继续输出 13 字连续状态。`horde_spatial.glsl` 的 `regionBounds`、`regionContains`、`regionClamp`、`regionPenetration` 全部改读平滑状态并按圆判定；`horde_spatial_index.fsh` 的保守包围改用平滑状态加原始目标与速度外扩，索引域与区域状态统一为事件局部坐标。
+- 单位运动：`horde_unit.fsh` 改为持久速度加限加速度积分，取消相机假玩家重复斥力、位置投影和硬钳制；被组合圆覆盖时沿固定方向连续退出，`horde_avoid.glsl` 的胶囊引导系数与 CPU `contourDistance` 对齐，绕行后横向阻尼回正。
+- 粒子：新增 `HordeParticleSamples` 与 `core/horde_particle_samples.fsh`，GPU 从相机 32 格内筛真实单位，256 候选 × 9 字、9216 字节异步回读，携带 8 邻居掩码与站程，快照带事件身份、世代和 1 tick/100 ms 新鲜度限制；`HordeGpuRenderer` 增加第 13 条管线并在各组更新后捕获。`HordeAmbient` 移除原 3/2/1 网格混发，改为边界碎屑与灰尘同点、刀光独立批次；新增 `client/particle/horde/HordeDustParticle`（继承原版篝火烟雾物理），`RegisterParticleProviders` 仅额外绑定短烟 SpriteSet；`HordeVisualConfig` 新增 `fragmentGroups` 默认 20、范围 0–100。
+- 服务端：新增 `HordeCombatRegion` 与 `HordeTargetSpatialState`，战斗区改为运行期 XZ 正方形（边长取包围盒水平最长边加两倍 regionMargin，Y 真实），玩家 32 格内每 tick、其他目标最坏 10 tick 更新，完整发现每 10 tick、近圈每 tick；`HordeRuntime` 位置写入收敛到 `refreshSpatial` 唯一入口，创建前补 live 同维度、domain/profile、严格波带与资格复核；`HordeSpawnPlanner` 优先方区内候选并在失败时保留原距离候选。
+- 测试：新增 `HordeCircularMotionContractTest`（4 项）、`HordeParticleSamplesTest`（6 项）、`HordeTargetSpatialStateTest`（7 项），并适配 `HordeRegionTest`、`HordeSpatialFieldTest`、`HordeOptimizationTest` 的旧整数与矩形断言。
+- 检查：`BenchMod Compile` 退出 0（含 `compileBenchJava`、`jar`、`verifyProductionJarHasNoBenchContent`）；8 套无游戏测试共 61 项全部通过；`Data` 退出 0，`fragment_groups` 中英文键已生成到 `src/generated`（该目录被忽略）；本轮 Java/GLSL 静态诊断 0 错误，`HordeClient` 保留原有 2 项可空警告。
+- 未执行：硬件 GLSL 编译、游戏内圆核心/胶囊/深包围轨迹、粒子分区与缩放、多人及跨维度服务端调度、性能对比；均需实机验收，不以静态检查代替。
+- 备份：工作树未做整目录备份；改动范围见本次提交。未推送。
+
 ## 2026-10-26 第六轮：I41 光影性能 A/B（展开微优化，负结果）
 
 - 用户选择继续优化 I41 光影轮，先限定“只做低风险微优化、不改数量、不改 24 顶点六面片、不改画面”，并授权优化前后同夹具游戏 A/B（重启客户端、焦点门禁、Spark 全程、截图归档）。

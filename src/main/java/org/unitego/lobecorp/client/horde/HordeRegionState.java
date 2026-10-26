@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.OptionalInt;
 
-/// CPU只提交整数目标与稳定身份；中心、半径及速度的持续状态全部留在GPU。
+/// CPU只提交事件局部目标与稳定身份；中心、半径及速度的持续状态全部留在GPU。
 public class HordeRegionState implements AutoCloseable {
 	private static final int STATE_WORDS = 13;
 	private static final int ROW_WIDTH = 1024;
@@ -57,7 +57,7 @@ public class HordeRegionState implements AutoCloseable {
 		boolean changed = version != event.regionVersion || targets.expired(time);
 		if (changed) {
 			targets.update(event.regions, time);
-			int[] words = targets.words();
+			int[] words = targets.words(event.origin.x, event.origin.y, event.origin.z);
 			if (raw == null || words.length > rawCapacity) {
 				int size = Math.multiplyExact(Integer.highestOneBit(Math.max(1, words.length - 1)), 2);
 				var replacement = new HordeDataTexture("Horde stable region targets", new int[size]);
@@ -218,7 +218,7 @@ public class HordeRegionState implements AutoCloseable {
 		}
 	}
 
-	/// 保留退场身份两秒，编码仍为六个整数坐标/尺寸与一个有符号代次。
+	/// 保留退场身份两秒；六个局部浮点坐标/尺寸按原始位编码，末字仍为有符号代次。
 	public static class Targets {
 		private static final double RETIRE_TICKS = 40;
 		private final Map<String, Slot> byKey = new HashMap<>();
@@ -282,6 +282,10 @@ public class HordeRegionState implements AutoCloseable {
 		}
 
 		public int[] words() {
+			return words(0, 0, 0);
+		}
+
+		public int[] words(double originX, double originY, double originZ) {
 			int[] words = new int[Math.max(1, slots.size() * 7 + activeCount)];
 			int cursor = slots.size() * 7;
 			for (var slot : slots) {
@@ -290,12 +294,12 @@ public class HordeRegionState implements AutoCloseable {
 				}
 				var box = slot.box;
 				int at = slot.index * 7;
-				words[at] = box.x();
-				words[at + 1] = box.y();
-				words[at + 2] = box.z();
-				words[at + 3] = box.sizeX();
-				words[at + 4] = box.sizeY();
-				words[at + 5] = box.sizeZ();
+				words[at] = Float.floatToRawIntBits((float) (box.x() - originX));
+				words[at + 1] = Float.floatToRawIntBits((float) (box.y() - originY));
+				words[at + 2] = Float.floatToRawIntBits((float) (box.z() - originZ));
+				words[at + 3] = Float.floatToRawIntBits((float) box.sizeX());
+				words[at + 4] = Float.floatToRawIntBits((float) box.sizeY());
+				words[at + 5] = Float.floatToRawIntBits((float) box.sizeZ());
 				words[at + 6] = slot.retireAt == Double.POSITIVE_INFINITY ? slot.generation : -slot.generation;
 				words[cursor++] = slot.index;
 			}

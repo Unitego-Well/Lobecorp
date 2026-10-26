@@ -22,6 +22,7 @@ uint population(uint bits) {
 }
 
 bool overlaps(int ordinal, vec3 minimum, vec3 maximum) {
+    // state、raw和格子边界统一使用event局部坐标；此处不引入相机坐标。
     int slot = integer(IndexTargets, IndexLayout.z * 7 + ordinal);
     int state = slot * 13;
     vec3 origin = vector3(IndexState, state);
@@ -31,11 +32,10 @@ bool overlaps(int ordinal, vec3 minimum, vec3 maximum) {
     float horizontal = 4.0 * (halfSize.x + halfSize.z + IndexFraction.w * 2.0) + 3.0;
     vec3 low = origin - vec3(horizontal, halfSize.y + IndexSettings.x + 0.5, horizontal) - velocity;
     vec3 high = origin + vec3(horizontal, halfSize.y + 0.5, horizontal) + velocity;
-    // 安全净空使用原始目标；即使新目标仍在平滑展开，也不能漏掉三格保护。
+    // 索引同时覆盖原始目标，避免展开或移动时漏候选；窄相位只读连续圆状态。
     int raw = slot * 7;
-    ivec3 rawMinimum = ivec3(integer(IndexTargets, raw), integer(IndexTargets, raw + 1), integer(IndexTargets, raw + 2));
-    vec3 rawSize = vec3(integer(IndexTargets, raw + 3), integer(IndexTargets, raw + 4), integer(IndexTargets, raw + 5));
-    vec3 local = vec3(rawMinimum - IndexOrigin.xyz) - IndexFraction.xyz;
+    vec3 local = vector3(IndexTargets, raw);
+    vec3 rawSize = vector3(IndexTargets, raw + 3);
     low = min(low, local - vec3(IndexFraction.w, IndexSettings.x, IndexFraction.w));
     high = max(high, local + rawSize + vec3(IndexFraction.w, 0.0, IndexFraction.w));
     return all(lessThanEqual(low, maximum)) && all(greaterThanEqual(high, minimum));

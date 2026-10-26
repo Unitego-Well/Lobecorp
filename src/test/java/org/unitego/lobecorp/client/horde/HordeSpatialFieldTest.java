@@ -19,16 +19,21 @@ public class HordeSpatialFieldTest {
 		assertTrue(box.x() + box.sizeX() >= body.maxX + 3);
 		assertTrue(box.z() + box.sizeZ() >= body.maxZ + 3);
 		assertEquals(64, box.y());
-		assertEquals(2, box.sizeY());
+		assertEquals(1.8, box.sizeY(), 0.000001);
 	}
 
 	@Test
-	public void combatEnvelopeIncludesNearbyMembersWithoutChainingAcrossTheWorld() {
+	public void combatMembersKeepIndependentCirclesWithoutChainingAcrossTheWorld() {
 		var target = HordeClient.RegionBox.forEntity(new AABB(-1, 0, -1, 1, 2, 1));
-		var expanded = HordeClient.RegionBox.includeCombat(target, target, new AABB(9, 0, -1, 11, 2, 1), 8);
-		assertEquals(14, expanded.x() + expanded.sizeX());
-		assertSame(expanded, HordeClient.RegionBox.includeCombat(target, expanded, new AABB(18, 0, -1, 20, 2, 1), 8));
-		assertSame(target, HordeClient.RegionBox.includeCombat(target, target, new AABB(0, 12, 0, 2, 14, 2), 8));
+		var member = HordeClient.RegionBox.forEntity(new AABB(9, 0, -1, 11, 2, 1));
+		var farMember = HordeClient.RegionBox.forEntity(new AABB(18, 0, -1, 20, 2, 1));
+		var cores = List.of(target, member, farMember);
+		assertEquals(10, member.x() + member.sizeX() * 0.5);
+		assertEquals(member.sizeX(), member.sizeZ());
+		assertEquals(0, target.x() + target.sizeX() * 0.5);
+		assertEquals(19, farMember.x() + farMember.sizeX() * 0.5);
+		assertSame(target, cores.getFirst());
+		assertEquals(3, cores.size());
 	}
 
 	@Test

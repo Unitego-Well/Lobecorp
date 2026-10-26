@@ -12,6 +12,7 @@
 | 实体与 AI | [实体与 AI](entities-ai.md) |
 | 群体事件与清道夫浪潮 | [深夜清扫、固定间距、参战配额与配置](horde-events.md) |
 | 群体事件渲染实现 | [固定线路、客户端目标区域检测、GPU让行、烘焙帧动画、区段光场](horde-rendering-implementation.md) |
+| 浪潮视觉过渡与战斗区域 | [圆核心、胶囊轮廓、真实脚点粒子与服务端方区](horde-visual-transition.md) |
 | Horde 问题汇总 | [缺陷、性能候选、验收与历史遗留的唯一清单](horde-issues.md) |
 | 仇恨、群体与阵营 | [战斗关系](combat.md) |
 | 四色伤害与生物资源 | [四色伤害、固定防御、承伤系数与精神／灵魂值](four-color-damage.md) |

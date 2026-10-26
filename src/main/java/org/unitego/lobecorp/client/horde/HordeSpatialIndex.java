@@ -170,12 +170,12 @@ public class HordeSpatialIndex implements AutoCloseable {
             long minX = Long.MAX_VALUE, minY = Long.MAX_VALUE, minZ = Long.MAX_VALUE;
             long maxX = Long.MIN_VALUE, maxY = Long.MIN_VALUE, maxZ = Long.MIN_VALUE;
             for (var box : boxes) {
-                minX = Math.min(minX, box.x());
-                minY = Math.min(minY, box.y());
-                minZ = Math.min(minZ, box.z());
-                maxX = Math.max(maxX, (long) box.x() + box.sizeX());
-                maxY = Math.max(maxY, (long) box.y() + box.sizeY());
-                maxZ = Math.max(maxZ, (long) box.z() + box.sizeZ());
+	            minX = Math.min(minX, (long) Math.floor(box.x()));
+	            minY = Math.min(minY, (long) Math.floor(box.y()));
+	            minZ = Math.min(minZ, (long) Math.floor(box.z()));
+	            maxX = Math.max(maxX, (long) Math.ceil(box.x() + box.sizeX()));
+	            maxY = Math.max(maxY, (long) Math.ceil(box.y() + box.sizeY()));
+	            maxZ = Math.max(maxZ, (long) Math.ceil(box.z() + box.sizeZ()));
             }
             long x = Math.floorDiv(minX - DOMAIN_PADDING, COARSE_SIZE) * COARSE_SIZE;
             long y = Math.floorDiv(minY - DOMAIN_PADDING, COARSE_SIZE) * COARSE_SIZE;

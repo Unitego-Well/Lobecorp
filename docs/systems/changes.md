@@ -11,6 +11,7 @@
 - 截图：基准 `artifacts/screenshots/` 四张；游戏内铺满取景 `build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`（人群填满全屏、左右出屏）、`fill-F.png`、`fill-night.png`。游戏内 overlay 记录 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
 - 规则：把“基准/游戏测试必须保持窗口焦点，失焦自动恢复并记录，测量期失焦不得作为有效结果；每轮测试必须截屏并交付可查看路径”写入原始项目 `AGENTS.md` 与 `docs/standards/workflow.md`（另同步工作区副本）。
 - 配置与清理：运行前后恢复隔离 Bench Iris（`enableShaders`）；临时开启的 `run/client` Iris 配置从 `build/agent-backups/20261026-appearance-final/iris.properties.client.before` 按 SHA256 还原；游戏内事件用 `/lobecorp horde clear` 清除、模式还原、保存退出；无游戏/调试进程残留。
+- 复核：本轮 IDEA 全文件格式化曾改动未修改区域排版；已按 `HEAD~1` 原排版还原六个代码文件、只保留语义改动，BenchMod Compile 退出 0（BUILD SUCCESSFUL in 20s），并单独提交恢复。`git diff -w HEAD~1 HEAD` 仅剩本轮语义改动。
 - 备份：修改前源码与 SHA256 在 `build/agent-backups/20261026-appearance-final/before/`；基线、候选与最终轮制品及哈希在 `build/agent-backups/20261026-appearance-baseline/` 与 `20261026-appearance-final/`。本次提交含代码、基准场景与同步文档；不夹带 `build.gradle.kts`、并行文档整理与日志；未推送。
 
 

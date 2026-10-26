@@ -235,98 +235,98 @@ public class HordeMeshReduction {
 	}
 
 	/// 中景按腿脚/躯干/头/左右臂合并为5个包围盒（薄片保留真实几何），远景合并为上下2个包围盒；近景完整几何不受影响。
-	private static HordeMeshCache.Model proxy(HordeMeshCache.Model source, HordeMeshCache.Model full,
-	                                          List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible, int tier) {
+    private static HordeMeshCache.Model proxy(HordeMeshCache.Model source, HordeMeshCache.Model full,
+                                              List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible, int tier) {
 		int boxes = tier == 1 ? PARTS : 2;
-		var clusters = new IntArrayList[boxes];
-		var bones = new int[boxes];
-		for (int index = 0; index < boxes; index++) {
-			clusters[index] = new IntArrayList();
-			bones[index] = -1;
-		}
-		var pieces = new ArrayList<Piece>();
-		for (var cube : cubes) {
-			var indices = range(cube.first(), cube.count());
-			var box = bounds(source.vertices(), indices, STRIDE, 0);
-			boolean flat = box[3] - box[0] <= EPSILON || box[4] - box[1] <= EPSILON || box[5] - box[2] <= EPSILON;
-			if (tier == 1 && flat) {
-				// 刀面等薄片保留真实几何，避免中景丢失轮廓。
-				pieces.add(new Piece(visible(indices, visible), true, cube.bone()));
-				continue;
-			}
-			int part = partOf(names.get(cube.bone()));
-			int cluster = tier == 1
+        var clusters = new IntArrayList[boxes];
+        var bones = new int[boxes];
+        for (int index = 0; index < boxes; index++) {
+            clusters[index] = new IntArrayList();
+            bones[index] = -1;
+        }
+        var pieces = new ArrayList<Piece>();
+        for (var cube : cubes) {
+            var indices = range(cube.first(), cube.count());
+            var box = bounds(source.vertices(), indices, STRIDE, 0);
+            boolean flat = box[3] - box[0] <= EPSILON || box[4] - box[1] <= EPSILON || box[5] - box[2] <= EPSILON;
+            if (tier == 1 && flat) {
+                // 刀面等薄片保留真实几何，避免中景丢失轮廓。
+                pieces.add(new Piece(visible(indices, visible), true, cube.bone()));
+                continue;
+            }
+            int part = partOf(names.get(cube.bone()));
+            int cluster = tier == 1
 					? part
 					: part == PART_LOWER ? 0 : 1;
-			clusters[cluster].addElements(clusters[cluster].size(), indices);
-			if (bones[cluster] < 0) {
-				bones[cluster] = cube.bone();
-			}
-		}
-		for (int index = 0; index < boxes; index++) {
-			if (clusters[index].isEmpty()) {
-				continue;
-			}
-			int[] kept = visible(clusters[index].toIntArray(), visible);
-			if (kept.length == 0) {
-				continue;
-			}
-			pieces.add(new Piece(kept, false, bones[index] < 0 ? cubes.getFirst().bone() : bones[index]));
-		}
-		int count = pieces.stream().mapToInt(piece -> piece.direct() ? piece.indices().length : BOX_VERTICES).sum();
-		if (count >= full.vertexCount() || count == 0) {
-			return new HordeMeshCache.Model(full.vertices(), full.frameVertices(), full.vertexCount(),
-					full.frames(), full.duration(), full.sourceVertexCount(), tier);
-		}
-		var vertices = new float[Math.multiplyExact(count, STRIDE)];
-		var frames = new float[Math.multiplyExact(Math.multiplyExact(source.frames(), count), FRAME_STRIDE)];
-		int at = 0;
-		for (var piece : pieces) {
-			if (piece.direct()) {
-				for (int index : piece.indices()) {
-					System.arraycopy(source.vertices(), index * STRIDE, vertices, at * STRIDE, STRIDE);
-					for (int frame = 0; frame < source.frames(); frame++) {
-						System.arraycopy(source.frameVertices(), (frame * source.vertexCount() + index) * FRAME_STRIDE,
-								frames, (frame * count + at) * FRAME_STRIDE, FRAME_STRIDE);
-					}
-					at++;
-				}
-				continue;
-			}
-			double[] box = bounds(source.vertices(), piece.indices(), STRIDE, 0);
-			for (int[] face : BOX) {
-				double[] normal = faceNormal(box, face);
-				int uv = bestFace(source.vertices(), piece.indices(), normal);
-				for (int corner = 0; corner < 4; corner++) {
-					double[] point = corner(box, face[corner]);
-					int target = (at + corner) * STRIDE;
-					for (int axis = 0; axis < 3; axis++) {
-						vertices[target + axis] = (float) point[axis];
-						vertices[target + 5 + axis] = (float) normal[axis];
-					}
-					vertices[target + 3] = source.vertices()[(uv + corner) * STRIDE + 3];
-					vertices[target + 4] = source.vertices()[(uv + corner) * STRIDE + 4];
-					vertices[target + 8] = piece.bone();
-				}
-				for (int frame = 0; frame < source.frames(); frame++) {
-					double[] posed = bounds(source.frameVertices(), piece.indices(), FRAME_STRIDE,
-							frame * source.vertexCount() * FRAME_STRIDE);
-					double[] posedNormal = faceNormal(posed, face);
-					for (int vertex = 0; vertex < 4; vertex++) {
-						double[] point = corner(posed, face[vertex]);
-						int target = (frame * count + at + vertex) * FRAME_STRIDE;
-						for (int axis = 0; axis < 3; axis++) {
-							frames[target + axis] = (float) point[axis];
-							frames[target + 3 + axis] = (float) posedNormal[axis];
-						}
-					}
-				}
-				at += 4;
-			}
-		}
-		return new HordeMeshCache.Model(vertices, frames, count, source.frames(), source.duration(),
-				source.sourceVertexCount(), tier);
-	}
+            clusters[cluster].addElements(clusters[cluster].size(), indices);
+            if (bones[cluster] < 0) {
+                bones[cluster] = cube.bone();
+            }
+        }
+        for (int index = 0; index < boxes; index++) {
+            if (clusters[index].isEmpty()) {
+                continue;
+            }
+            int[] kept = visible(clusters[index].toIntArray(), visible);
+            if (kept.length == 0) {
+                continue;
+            }
+            pieces.add(new Piece(kept, false, bones[index] < 0 ? cubes.getFirst().bone() : bones[index]));
+        }
+        int count = pieces.stream().mapToInt(piece -> piece.direct() ? piece.indices().length : BOX_VERTICES).sum();
+        if (count >= full.vertexCount() || count == 0) {
+            return new HordeMeshCache.Model(full.vertices(), full.frameVertices(), full.vertexCount(),
+                    full.frames(), full.duration(), full.sourceVertexCount(), tier);
+        }
+        var vertices = new float[Math.multiplyExact(count, STRIDE)];
+        var frames = new float[Math.multiplyExact(Math.multiplyExact(source.frames(), count), FRAME_STRIDE)];
+        int at = 0;
+        for (var piece : pieces) {
+            if (piece.direct()) {
+                for (int index : piece.indices()) {
+                    System.arraycopy(source.vertices(), index * STRIDE, vertices, at * STRIDE, STRIDE);
+                    for (int frame = 0; frame < source.frames(); frame++) {
+                        System.arraycopy(source.frameVertices(), (frame * source.vertexCount() + index) * FRAME_STRIDE,
+                                frames, (frame * count + at) * FRAME_STRIDE, FRAME_STRIDE);
+                    }
+                    at++;
+                }
+                continue;
+            }
+            double[] box = bounds(source.vertices(), piece.indices(), STRIDE, 0);
+            for (int[] face : BOX) {
+                double[] normal = faceNormal(box, face);
+                int uv = bestFace(source.vertices(), piece.indices(), normal);
+                for (int corner = 0; corner < 4; corner++) {
+                    double[] point = corner(box, face[corner]);
+                    int target = (at + corner) * STRIDE;
+                    for (int axis = 0; axis < 3; axis++) {
+                        vertices[target + axis] = (float) point[axis];
+                        vertices[target + 5 + axis] = (float) normal[axis];
+                    }
+                    vertices[target + 3] = source.vertices()[(uv + corner) * STRIDE + 3];
+                    vertices[target + 4] = source.vertices()[(uv + corner) * STRIDE + 4];
+                    vertices[target + 8] = piece.bone();
+                }
+                for (int frame = 0; frame < source.frames(); frame++) {
+                    double[] posed = bounds(source.frameVertices(), piece.indices(), FRAME_STRIDE,
+                            frame * source.vertexCount() * FRAME_STRIDE);
+                    double[] posedNormal = faceNormal(posed, face);
+                    for (int vertex = 0; vertex < 4; vertex++) {
+                        double[] point = corner(posed, face[vertex]);
+                        int target = (frame * count + at + vertex) * FRAME_STRIDE;
+                        for (int axis = 0; axis < 3; axis++) {
+                            frames[target + axis] = (float) point[axis];
+                            frames[target + 3 + axis] = (float) posedNormal[axis];
+                        }
+                    }
+                }
+                at += 4;
+            }
+        }
+        return new HordeMeshCache.Model(vertices, frames, count, source.frames(), source.duration(),
+                source.sourceVertexCount(), tier);
+    }
 
 	private static int[] visible(int[] indices, boolean[] visible) {
 		return Arrays.stream(indices).filter(index -> visible[index / 4]).toArray();

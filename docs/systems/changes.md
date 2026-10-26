@@ -7,6 +7,7 @@
 - 验证：client-1792986006389 PASSED，四档均 frames=20；片档 72 块/4673 实例，展开 785,071，帧 13.079/14.291/14.915ms，世界 GPU 12.702ms，焦点 0；截图/配置/summary 在 `build/agent-backups/20261026-card-lod/`。
 - 续：实现真6方向CPU烘焙图集（`HordeCardBake`，6方向×20帧×64px）、tier3图集UV编码与Iris/原版着色器取tile；按用户要求移除中景/远景简化盒，只保留完整模型+片两档。验证 client-1792987990655 PASSED，但 cardDistance=100 时近处完整模型过多（展开 2,882,499，horde 34.435/118.543ms），且远片颜色偏蓝偏暗，需继续校准；详情 benchmod 第四轮节。
 - 复测（用户设定 cardDistance=32/frameDistance=10/animationFrames=20）：client-1792988762923 PASSED，10000 全部走片，展开 240,000、draw 5.450ms、世界 GPU 11.065ms、帧 13.054/23.695/27.035ms；片颜色仍偏蓝偏暗（调试图集本身正常），P99 偏高，需继续校准。归档 build/agent-backups/20261026-card32-retest/。
+- 无限数量：maximumVisible=-1 改为按实际无限生成（不再按10000折算），client-1792989806860 PASSED，实际 29,456 实例、展开706,956、draw11.011ms、帧17.358/20.462/24.163ms；片在光影下偏蓝/暗是光影本身效果，按用户要求不改光影。
 
 ## 2026-10-26 第三轮：罐子/红色元素补回与测试环境记录
 

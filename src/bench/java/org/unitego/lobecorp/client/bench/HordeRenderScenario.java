@@ -100,14 +100,17 @@ public class HordeRenderScenario implements BenchClientScenario {
         origin = context.player().position();
         previousMaximum = HordeVisualConfig.MAX_VISIBLE.get();
 	    configuredCount = previousMaximum;
-	    count = configuredCount == -1 ? UNLIMITED_BENCH_COUNT : configuredCount;
-	    if (count <= 0) {
-		    throw new IllegalArgumentException("浪潮基准需要正的配置数量，-1按10000测量");
+	    // -1 表示真正的无限：不改写可见上限，实例数在首帧测量时按实际批次统计。
+	    count = configuredCount;
+	    if (count == 0) {
+		    throw new IllegalArgumentException("浪潮基准数量不能为0；-1表示无限");
 	    }
         previousRange = HordeVisualConfig.DISTANCE.get();
         previousEnabled = HordeVisualConfig.ENABLED.get();
 	    configurationSaved = true;
-	    HordeVisualConfig.MAX_VISIBLE.set(count);
+	    if (count > 0) {
+		    HordeVisualConfig.MAX_VISIBLE.set(count);
+	    }
         HordeVisualConfig.DISTANCE.set(-1);
         HordeVisualConfig.ENABLED.set(true);
 		var window = context.minecraft().getWindow().handle();
@@ -281,8 +284,14 @@ public class HordeRenderScenario implements BenchClientScenario {
 	        gpuCaptureToken = PhotonFrameCapture.start("horde_bench_gpu", 30, HordeRenderMetrics::worldGpuFrame);
         }
         long count = HordeClient.batches().stream().mapToLong(HordeClient.Batch::count).sum();
+        // -1 无限模式下事件仍在持续生成，实例数会增长；记录最新值而不是断言工作负载恒定。
+        if (configuredCount < 0) {
+            this.count = (int) Math.min(Integer.MAX_VALUE, count);
+        } else if (count != this.count) {
+            throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
+        }
         context.metrics().record(INSTANCES, count);
-	    if (count != this.count || HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
+	    if (HordeClient.batches().stream().anyMatch(batch -> batch.event().failed)) {
             throw new AssertionError("GPU horde workload changed: " + count + ", " + HordeGpuRenderer.statistics());
         }
         boolean done = ++phaseTicks >= MEASURE_TICKS;

@@ -11,6 +11,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.Sweeper30RenderScenario;
 import org.unitego.lobecorp.client.bench.HordeRenderScenario;
+import org.unitego.lobecorp.client.bench.HordeTideAcceptanceScenario;
 import org.unitego.lobecorp.client.bench.CorpseRenderScenario;
 import org.unitego.lobecorp.client.bench.RandomCorpseRenderScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
@@ -45,6 +46,8 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
                 _ -> new SweeperRenderScenario());
 	    registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.HORDE_SCENARIO, "GPU horde workload",
 			    Set.of("client", "horde", "gpu"), LobecorpBenchConfig.HORDE_PHASE_TIMEOUT), _ -> new HordeRenderScenario());
+        registrar.register(new ScenarioDescriptor(HordeTideAcceptanceScenario.ID, "Seven-part tide visual acceptance capture",
+                Set.of("client", "horde", "visual", "acceptance"), HordeTideAcceptanceScenario.PHASE_TIMEOUT), _ -> new HordeTideAcceptanceScenario());
 	    registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.CORPSE_SCENARIO, "Static corpse renderer workload",
 			    Set.of("client", "corpse", "render"), LobecorpBenchConfig.PHASE_TIMEOUT), _ -> new CorpseRenderScenario());
 	    registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.SWEEPER30_AI_SCENARIO,

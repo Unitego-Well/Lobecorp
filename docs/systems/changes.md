@@ -1,5 +1,28 @@
 # 系统修改记录
 
+## 2026-10-27 视觉测试改为低频截图保存（代码阶段完成）
+
+- 按用户确认仅重写 `HordeTideAcceptanceScenario`：移除 warmup、采集、verify/收尾链路中的图片解码、像素对比和 on/off 像素门禁；图片分析统一记 `DEFERRED_OFFLINE`，只保存截图与轻量元数据。
+- 截图使用单个异步请求、实际 scheduler 间隔至少 100 tick（正常 20TPS 约 5 秒）、每段最多 3 张、同一受控 elapsed 去重；七段320 tick配方不变，warmup两张也串行限频。完整性只核对文件存在且非空，不宣称内容可见或行为通过。本场景 `HordeRenderMetrics.start` 的 GPU 开关为 false，不进行全阶段 GPU 查询。
+- 保留 Spark 全程、有界上传等待、原始失败、目标/事件/世界规则恢复；保持游戏最大化和焦点，失焦只记录。生产片比例修复和已有 WIP 未修改；未新增安静模式、线程池、场景或优化路径。
+- 检查：IDEA 无错误/警告，单文件编译成功。本次未运行游戏、Debug、Data 或运行期回归；启动前先向用户报告并等待确认，CPU/GPU 卡顿仍属待实测。
+- 原字节备份：`build/agent-backups/20261027-visual-capture-rewrite/`，原哈希 `c71700830c58946eef0b8a09c447fdf4d3ea02e2309d66abc26c00002e0a5103`，新哈希 `e2e285201b30e14b046678ed2f2de930f9b4c2ad2503800ea2c866787f1e07c7`。旧截图、JFR及失败轮保留。
+
+## 2026-10-27 无割圆首次绘制修复与验收门禁准备
+
+- 实机复现：无割圆首次绘制时 `HordeSplitState.view()` 在 motion render pass 内创建空纹理并上传，触发 `Close the existing render pass before performing additional commands`。仅在 `publish()` 的零圆分支提前分配纹理，新增 3 行，保留排序/平滑/数量与全部既有 WIP。
+- 备份：`build/agent-backups/20261027-split-empty-texture/`；原始/备份 SHA256 `51f89065e3f3f82e4d79ade713728c94f24bc54822560173a7bc67629f7c199f`。修复版 IDEA 无错误、BenchMod Compile 成功；粒子/圆区/优化既有测试共 15 项通过。
+- 运行边界：修复版诊断轮已显示浪潮且原异常未复现，但未保持最大化，不能作正式矩阵或性能有效样本。两轮 Spark 已上传，PID62036/53904 正常退出；逐项证据位于 `build/agent-backups/20261027-horde-acceptance-runtime/`，完整运行报告仅放自有 `.agent/`。
+- 当前阶段：新增独立视觉矩阵与严格窗口性能入口，保留现有 `BenchWindow` 和五份场景 WIP。尚未取得七段完整画面、I49 GPU 世界坐标误差或普通/光影各三轮，不记为验收通过。
+
+## 2026-10-27 Horde 重写验收准备与粒子差异纠正
+
+- 范围：仅 Horde 工作区文档与 `/.agent/` 忽略规则；业务代码、夹具及其他 WIP 不改。本阶段等待本对话游戏/Debug/性能及重负载构建放行。
+- 静态核对 `a1de8439`：粒子未应用 GPU 分割；低速漂移缩放、正弦哈希精度、地形高度与横向流阻尼也存在差异。更正 I49，保留“实机偏差是否超过 1 格”未验证状态，不恢复 GPU 回读、不选新架构。
+- 准备：核对现有运行配置及 500×500/0.75/10 监守者/站程 400/2400 tick 参数；自有 `.agent/` 保存矩阵和冻结清单，不提交运行报告。开测时还须取得世界/seed、实际制品哈希、光影、窗口、相机及进程归属。
+- 保护：IDEA 检查 13 份文件无未保存差异，并按原字节备份至 `build/agent-backups/20261027-horde-acceptance-preflight/`，SHA256 一致；保留现存 Gradle、五份基准、烘焙/减面/指标、旧备份删除和日志 WIP。
+- 检查边界：仅 IDEA 快照、粒子类诊断（0 错误、4 项既有警告）、后台 Git 与离线审查；未执行构建、Data、游戏、Debug、截图或性能采样。系统进程查询不可用，不能据此断言其他任务已释放 GPU。本阶段未创建游戏或 Debug 对象。
+
 ## 2026-10-27 按进度的潮与确定性分割（重写）
 
 - 用户要求先备份、再整体重写：先做「按进度的潮」，再做「分割」，并补齐大量调试信息。备份为 Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`，含当时 17 项未提交改动）与 `build/agent-backups/20261027-pre-rewrite/`（src、docs、`working-tree.patch`、`status.txt`）。

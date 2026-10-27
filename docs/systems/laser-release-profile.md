@@ -142,37 +142,37 @@ SINGLE_CAPTURE 不启用时自动再采一组相反的 Spark 状态；Spark 指�
 
 仍未完成：首次及第二次释放的稳定 100 FPS、重复蓄力的 43～55 ms 尖峰、全部长帧精确归因、多实例/动态相机/网络抖动长期测试、星束真实法杖位置和二阶段视觉验收。后续应对开始复制、控制器绑定、emit/reset、释放播放、模型/材质首次解析分别记录时段，再与精确执行栈和 GC 关联；不靠删除首帧或降低 50 格内画质达标。
 
-[本轮文本备份与修改索引](../../backups/laser-release-profile-20261018/README.md)。
+本轮文本备份与修改索引（历史引用，当前工作区缺失：`../../backups/laser-release-profile-20261018/README.md`）。
 
 ### 本轮相关文件
 
 - [src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)
 - [src/main/java/org/unitego/lobecorp/client/photon/performance/QueenBeamPerformanceTrial.java](../../src/main/java/org/unitego/lobecorp/client/photon/performance/QueenBeamPerformanceTrial.java)
-- [src/main/java/org/unitego/lobecorp/util/photon/runtime/QueenBeamPrewarmUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/QueenBeamPrewarmUtil.java)
-- [src/main/java/org/unitego/lobecorp/client/photon/emitter/model/PhotonModelEmitter.java](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/model/PhotonModelEmitter.java)
+- src/main/java/org/unitego/lobecorp/util/photon/runtime/QueenBeamPrewarmUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/QueenBeamPrewarmUtil.java`）
+- src/main/java/org/unitego/lobecorp/client/photon/emitter/model/PhotonModelEmitter.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/model/PhotonModelEmitter.java`）
 - [src/main/java/org/unitego/lobecorp/client/photon/performance/PhotonFrameCapture.java](../../src/main/java/org/unitego/lobecorp/client/photon/performance/PhotonFrameCapture.java)
-- [src/main/java/org/unitego/lobecorp/util/photon/render/PhotonShaderPipelineCacheUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonShaderPipelineCacheUtil.java)
-- [src/main/java/org/unitego/lobecorp/mixin/kilagraph/client/RenderTypeFactoryMixin.java](../../src/main/java/org/unitego/lobecorp/mixin/kilagraph/client/RenderTypeFactoryMixin.java)
-- [src/main/java/org/unitego/lobecorp/mixin/minecraft/client/GlDeviceMixin.java](../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/GlDeviceMixin.java)
+- src/main/java/org/unitego/lobecorp/util/photon/render/PhotonShaderPipelineCacheUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonShaderPipelineCacheUtil.java`）
+- src/main/java/org/unitego/lobecorp/mixin/kilagraph/client/RenderTypeFactoryMixin.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/mixin/kilagraph/client/RenderTypeFactoryMixin.java`）
+- src/main/java/org/unitego/lobecorp/mixin/minecraft/client/GlDeviceMixin.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/GlDeviceMixin.java`）
 - [src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffect.java](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffect.java)
 - [src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects.java)
-- [src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java](../../src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java)
-- [src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java)
+- src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java`）
+- src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java`）
 - [src/main/java/org/unitego/lobecorp/config/client/VisualQualityConfig.java](../../src/main/java/org/unitego/lobecorp/config/client/VisualQualityConfig.java)
 - [run/client/config/lobecorp-visual-quality.toml](../../run/client/config/lobecorp-visual-quality.toml)
-- [src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java)
+- src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java`）
 - [src/main/java/org/unitego/lobecorp/world/entity/abnormalitie/the_queen_of_hatred/TheQueenOfHatredBeamAnimation.java](../../src/main/java/org/unitego/lobecorp/world/entity/abnormalitie/the_queen_of_hatred/TheQueenOfHatredBeamAnimation.java)
 - [src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimations.java](../../src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimations.java)
 - [src/main/java/org/unitego/lobecorp/client/animation/LcAnimationBoneAdapter.java](../../src/main/java/org/unitego/lobecorp/client/animation/LcAnimationBoneAdapter.java)
 - [src/main/java/org/unitego/lobecorp/mixin/geckolib/client/RenderPassInfoMixin.java](../../src/main/java/org/unitego/lobecorp/mixin/geckolib/client/RenderPassInfoMixin.java)
 - [src/main/java/org/unitego/lobecorp/client/entity/abnormalitie/the_queen_of_hatred/renderer/TheQueenOfHatredRenderer.java](../../src/main/java/org/unitego/lobecorp/client/entity/abnormalitie/the_queen_of_hatred/renderer/TheQueenOfHatredRenderer.java)
 - [src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimationResources.java](../../src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimationResources.java)
-- [src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java)
-- [src/main/java/org/unitego/lobecorp/mixin/ldlib2/client/PersistedParserMixin.java](../../src/main/java/org/unitego/lobecorp/mixin/ldlib2/client/PersistedParserMixin.java)
-- [src/main/java/org/unitego/lobecorp/config/photon/animation/PhotonAnimationDefinition.java](../../src/main/java/org/unitego/lobecorp/config/photon/animation/PhotonAnimationDefinition.java)
+- src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java`）
+- src/main/java/org/unitego/lobecorp/mixin/ldlib2/client/PersistedParserMixin.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/mixin/ldlib2/client/PersistedParserMixin.java`）
+- src/main/java/org/unitego/lobecorp/config/photon/animation/PhotonAnimationDefinition.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/config/photon/animation/PhotonAnimationDefinition.java`）
 - [src/main/java/org/unitego/lobecorp/client/photon/performance/QueenBeamAllocationCapture.java](../../src/main/java/org/unitego/lobecorp/client/photon/performance/QueenBeamAllocationCapture.java)
 - [src/main/java/org/unitego/lobecorp/mixin/photon/client/PhotonBloomAccessor.java](../../src/main/java/org/unitego/lobecorp/mixin/photon/client/PhotonBloomAccessor.java)
-- [src/main/java/org/unitego/lobecorp/mixin/minecraft/client/DynamicUniformStorageMixin.java](../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/DynamicUniformStorageMixin.java)
-- [src/main/java/org/unitego/lobecorp/util/photon/model/editor/PhotonModelMaterialUtil.java](../../src/main/java/org/unitego/lobecorp/util/photon/model/editor/PhotonModelMaterialUtil.java)
+- src/main/java/org/unitego/lobecorp/mixin/minecraft/client/DynamicUniformStorageMixin.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/DynamicUniformStorageMixin.java`）
+- src/main/java/org/unitego/lobecorp/util/photon/model/editor/PhotonModelMaterialUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/model/editor/PhotonModelMaterialUtil.java`）
 - [src/main/resources/META-INF/lobecorp.mixins.json](../../src/main/resources/META-INF/lobecorp.mixins.json)
 - [scripts/analyze_laser_release.py](../../scripts/analyze_laser_release.py)

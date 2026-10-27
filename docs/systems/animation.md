@@ -114,7 +114,7 @@ GeckoLib 触发接口；运行回调会在服务端及同步客户端执行。�
 - [LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcDataTickets.java)提供渲染状态数据；模型读取对应
   ticket，而不是自行复制一套实体业务状态。
 - GeckoLib 动画切换与定位器 Mixin 对 Photon
-  效果及锚点有集成；关联入口为 [PhotonGeoEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java)
+  效果及锚点有集成；关联入口为 PhotonGeoEffects（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`）
   。切换、停止、取消和实体移除时必须核对效果是否清理，不假定动画结束一定清理所有独立粒子。
 
 持续事实优先使用既有同步状态；瞬时触发复用既有生命周期与事件入口。新增网络同步前先检查已有能力，避免同一表现被状态、实体事件与自定义载荷重复驱动。
@@ -139,8 +139,8 @@ ticket 选择纹理；清道夫模型保留当前变体映射和尸体处理。
 
 ## 修改前核对与尚未验收
 
-修改前读取[动画规范](../../.codex/skills/lobecorp-entity-animation/SKILL.md)
-和[视觉同步规范](../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md)，再用 IDEA 确认当前 GeckoLib 类型、Mixin
+修改前读取动画规范（入口缺失：`../../.codex/skills/lobecorp-entity-animation/SKILL.md`）
+和视觉同步规范（入口缺失：`../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md`），再用 IDEA 确认当前 GeckoLib 类型、Mixin
 目标、控制器引用和调用侧。历史类名与文档不能替代当前解析结果。
 
 核对动画层顺序、遮罩骨骼、默认姿态、暂停标记、重触发、移动倍率、服务端权威、晚加入同步，以及完成、取消、卸载后的姿态与粒子清理。不要改变技能前摇、后摇或碰撞时间来补偿纯视觉过渡。

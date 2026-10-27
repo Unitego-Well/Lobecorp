@@ -202,7 +202,7 @@ H7：实际无限上限、多事件/密集目标/低位粒子和服务器负载�
 | P2 H24 | 测试有界双缓冲/批次依赖，区分执行、复制、材质与呈现，不先承诺带宽收益（H2/H3） | 同一draw L646复制、L700材质绘制 | 内存预算显式记录；同工作量GPU/CPU与时间线下降，不能把逻辑字节当PCIe数据 |
 | P2 H07 | packed SectionPos primitive集合去重，缓存必要集合/排序/槽位不变部分，避免每tick重复Section包装（F8/I3） | [HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java) L68–137、L161–165 | 保留逐tick加载失效、5tick光照和天空光回退；比较每秒分配/时间，不能只比较不同FPS的每帧均值 |
 | P2 H07/H10 | 相同Geometry的纹理/VBO绑定去重、复用稳定buffer slice/描述数据（F8/I6） | [drawGroup](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L240–252、[drawMotion](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L432–455 | 跨材质、资源代际和缓冲扩容正确；JFR TextureViewAndSampler/GpuBufferSlice及CPU阶段有可重复下降 |
-| P2 H15 | 补GPU非空细档/查询命中/完整回退指标，再研究稀疏索引或更紧Y域（H4） | [HordeSpatialIndex](../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java) L29–30、L173–192；[索引shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_spatial_index.fsh) | 不能盲缩128或截断候选；保留平滑旧状态、瞬移、负坐标和域外完整回退 |
+| P2 H15 | 补GPU非空细档/查询命中/完整回退指标，再研究稀疏索引或更紧Y域（H4） | HordeSpatialIndex（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java`） L29–30、L173–192；索引shader（历史引用，当前工作区缺失：`../../src/main/resources/assets/lobecorp/shaders/core/horde_spatial_index.fsh`） | 不能盲缩128或截断候选；保留平滑旧状态、瞬移、负坐标和域外完整回退 |
 | P2 H11 | 在正确GPU上下文预热已知管线/资源，分开记录模型烘焙与程序创建（F10/I5） | [prepare](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java) L263–298；本地GpuDevice.precompilePipeline | 当前API确有precompilePipeline；不能把GPU调用丢到任意CPU线程，也不能只将首帧停顿移成加载期卡顿不记录 |
 | P2 H14/H24 | 真实实体路径优先减少重复变换/临时向量和Iris顶点写入工作（F9/I4） | [SweeperRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/ordeal/indigo/renderer/SweeperRenderer.java)、GeckoLib/NormalHelper当前版本代码 | 属跨框架路径，先划职责；不共享可变骨骼状态、不通过降动画率/数量掩盖 |
 | P2 H24.4/H23 | 核对数据管线映射和退出时GUI/执行器时序（F12/H5） | [GPU管线定义](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[ConductorControls](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorControls.java) | 把兼容日志与退出缺陷单列；不靠吞异常或忽略保存失败通过 |
@@ -318,12 +318,12 @@ H7：实际无限上限、多事件/密集目标/低位粒子和服务器负载�
 | --- | --- | --- |
 | H15.1 | [RegionBox.forEntity/includeCombat](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java) | 至少3格水平外扩、保留较大体型三倍余量、Y不扩大；近处同层成员并入已有战斗包围。规则回归通过，动态移动/不同体型观感待验收 |
 | H15.2 | [共享流场](../../src/main/resources/assets/lobecorp/shaders/include/horde_flow.glsl)、[location](../../src/main/resources/assets/lobecorp/shaders/include/horde_motion.glsl) | 同侧连续上包络、前后切线朝向；横穿、反向、重叠目标交接与加速度连续性仍需实机 |
-| H15.3 | [HordeRegionState](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRegionState.java) | 六整数目标+稳定代次，GPU持久阻尼/速度、退场40tick和重入身份保留；身份/复用回归通过，30/60/144FPS硬件验收未执行 |
+| H15.3 | HordeRegionState（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeRegionState.java`） | 六整数目标+稳定代次，GPU持久阻尼/速度、退场40tick和重入身份保留；身份/复用回归通过，30/60/144FPS硬件验收未执行 |
 | H15.4 | 同一GLSL与[HordeSync](../../src/main/java/org/unitego/lobecorp/world/horde/network/HordeSync.java) | 真实目标Y与当前地面到实体高度判断；5/16/32格高处不误分割、地形更新后的层次隔离仍需画面 |
 | H15.5 | [isGapTarget/HordeParticipant](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java) | 事件成员不单独创建缺口，仅参与其已有目标战斗包围；首次追踪、重进范围、重载和普通来源区别仍待联机 |
 | H15.6 | [HordeTerrainState](../../src/main/java/org/unitego/lobecorp/client/horde/HordeTerrainState.java)、[地形shader](../../src/main/resources/assets/lobecorp/shaders/core/horde_terrain_update.fsh) | 与分割相同的GPU阻尼和排斥，地形高度/绕行持续更新；粗采样不能承诺薄墙、屋檐、坑洞、窄道与多层精确碰撞 |
 | H15.7 | movingLocation与[采样覆盖](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java) | 间距1.8、横摆最大1.5、纵向扰动1.8，基础速度和20FPS动画不变；批次/视角变化后的随机身份稳定性待验收 |
-| H15.8 | [HordeSpatialIndex](../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java) | GPU 32/16/8位图与密度细分，容量/域外完整回退；容量、远坐标、部分字回归通过，GPU候选完整性和实际加速仍未验收 |
+| H15.8 | HordeSpatialIndex（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java`） | GPU 32/16/8位图与密度细分，容量/域外完整回退；容量、远坐标、部分字回归通过，GPU候选完整性和实际加速仍未验收 |
 | H15.9 | [HordeRenderClock](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRenderClock.java)、GPU绘制异常路径 | 时钟接续/单调回归通过，异常保留缓存并下一帧重试；整潮抖动/停显真实触发条件及恢复画面仍待验证 |
 
 ## H11 [P2／未解决] 首次模型烘焙仍可能卡顿
@@ -481,6 +481,20 @@ CPU提交动态六整数目标与稳定身份，GPU保留平滑状态，不在CP
 - 静态模型/线路/高度与光照CPU准备仍在；粗高度不能完成真实多层路径求解。未验证项继续保留，只有用户要求时再询问。
 
 本轮尸体与粒子备份：C:/Users/wang_/AppData/Local/Temp/horde-cleanup-particles-20261024-5761ddab。普通无来源尸体扩清理被自动审批拒绝的操作未执行；来源和GPU粒子边界见H26。
+
+## DOC-HORDE-01 文档入口与历史来源边界
+
+2026-10-27 仅整理导航与历史引用，不执行构建、Data、测试或游戏操作。以下专项 Skill 入口在当前工作区缺失，文档原路径已保留为文字；现有 `.agents/skills` 中的三份技能职责不同，不能冒充替代：
+
+- `.codex/skills/lobecorp-conductor/SKILL.md`
+- `.codex/skills/lobecorp-effect-authoring/SKILL.md`
+- `.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md`
+- `.codex/skills/lobecorp-entity-animation/SKILL.md`
+- `.codex/skills/lobecorp-entity-visual-sync/SKILL.md`
+- `.codex/skills/lobecorp-event-architecture/SKILL.md`
+- `.codex/skills/lobecorp-minecraft-mcp/SKILL.md`
+
+旧 Photon 源码、历史截图/备份和 DS 已移除的 Horde 实现只保留原路径及缺失说明；此为来源边界，不是问题已修复，也不在本工作区代管 Photon 未完成项。源码/资源继续变更时须重新核对当前入口，不恢复缺失文件来消除链接报告。
 
 ## 证据与维护
 

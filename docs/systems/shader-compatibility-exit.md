@@ -61,7 +61,7 @@ IDEA 已确认当前 Iris 具有 ImmediateState.bypass、线程局部 skipExtens
 
 [PhotonOcclusionPipelineUtil](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonOcclusionPipelineUtil.java) 只支持已识别的原生 particle 顶点和 HDR/Pixel/Sprite 片元组合；自定义材质 Uniform、线框和未知着色器不走该深度变体。颜色仍保留 Photon 原管线，深度预写不等于 EXIT 的玻璃/手掩码。
 
-[PhotonFixedRenderUtil](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonFixedRenderUtil.java) 为 Emitter 和 PhotonModelEmitter 接入既有修复渲染状态。这不是“固定最终颜色”或“已绕过光影”的开关。完整排序、遮挡及已知限制见[粒子与渲染](particle-rendering.md#photon-不透明像素遮挡扩展)。
+PhotonFixedRenderUtil（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonFixedRenderUtil.java`） 为 Emitter 和 PhotonModelEmitter 接入既有修复渲染状态。这不是“固定最终颜色”或“已绕过光影”的开关。完整排序、遮挡及已知限制见[粒子与渲染](particle-rendering.md#photon-不透明像素遮挡扩展)。
 
 Mixin 中仍有 Photon 26.1.2.2 的位点说明，当前依赖已经是 .3。当前可解析到相应 drain 签名不等于运行注入成功；本轮没有改注释、调整注入或重新运行客户端。
 
@@ -73,7 +73,7 @@ Mixin 中仍有 Photon 26.1.2.2 的位点说明，当前依赖已经是 .3。当
 | 世界文字粒子             | [TextParticleGroup.State.submit](../../src/main/java/org/unitego/lobecorp/client/particle/text/TextParticleGroup.java) 按字体 RenderType 合批提交                                                                                                                                                 | 有独立提交边界；不能因接入 Photon 就自动覆盖此路径     |
 | 旧女皇星束粒子           | [QueenLaserParticle](../../src/main/java/org/unitego/lobecorp/client/particle/QueenLaserParticle.java) 使用 SingleQuadParticle、TRANSLUCENT、FULL_BRIGHT                                                                                                                                          | 属于原版粒子组；FULL_BRIGHT 不保证绕过光影后处理       |
 | 女皇实体主体             | [TheQueenOfHatredRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/abnormalitie/the_queen_of_hatred/renderer/TheQueenOfHatredRenderer.java) 继承 GeoEntityRenderer                                                                                                                 | 普通实体渲染不是可直接全局替换的 EXIT 通道             |
-| Photon 编辑器预览        | [PhotonEditorWorldRenderMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/render/client/PhotonEditorWorldRenderMixin.java) 及 LDLib2 自有场景                                                                                                                                          | 目标、相机与生命周期独立，世界场景接入不证明编辑器兼容 |
+| Photon 编辑器预览        | PhotonEditorWorldRenderMixin（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/mixin/photon/render/client/PhotonEditorWorldRenderMixin.java`） 及 LDLib2 自有场景                                                                                                                                          | 目标、相机与生命周期独立，世界场景接入不证明编辑器兼容 |
 
 本表确认的是源码路径存在，不保证这些旧粒子仍被所有当前技能调用；本轮没有更改技能调用链或 ParticleStorm 关键帧分发。
 

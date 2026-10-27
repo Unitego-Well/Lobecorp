@@ -16,10 +16,10 @@ FPS，不能以单实例平均 139.75 FPS 代替稳定性验收。
 
 本轮新增／修改源码：
 
-- [复制作用域](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java)、[模型配置](../../src/main/java/org/unitego/lobecorp/config/photon/emitter/model/PhotonModelEmitterConfig.java)。
-- [模板复制](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java)、[模板动画复制](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterAnimationUtil.java)。
-- [动画混合](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java)、[缓冲池](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonVertexBufferUtil.java)。
-- [树归属检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonRuntimeCopyRegression.java)、[加载回归入口](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRuntimeRegression.java)、[作用域 JUnit](../../src/test/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtilTest.java)。
+- 复制作用域（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtil.java`）、模型配置（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/config/photon/emitter/model/PhotonModelEmitterConfig.java`）。
+- 模板复制（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java`）、模板动画复制（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterAnimationUtil.java`）。
+- 动画混合（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java`）、缓冲池（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonVertexBufferUtil.java`）。
+- 树归属检查（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonRuntimeCopyRegression.java`）、加载回归入口（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRuntimeRegression.java`）、作用域 JUnit（历史引用，当前工作区缺失：`../../src/test/java/org/unitego/lobecorp/util/photon/runtime/PhotonRuntimeCopyUtilTest.java`）。
 - [离线统计脚本](../../tools/photon/analyze_world_performance.py)。
 
 ## 条件与统计定义
@@ -126,14 +126,14 @@ GC暂停总量单实例48.86→59.37ms、四实例127.41→140.65ms， **未改�
 
 | 记录     | 帧JSON                                                                                                                                                                        | JFR                                             |
 |----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------|
-| 单实例前 | [world_v1_before_one_20261018-20261018-043649-740-131147063336800.json](../../run/client/performance/world_v1_before_one_20261018-20261018-043649-740-131147063336800.json)   | world_v1_before_one_20261018_1792298076798.jfr  |
-| 单实例后 | [world_v2_after_one_20261018-20261018-060947-829-136725096768500.json](../../run/client/performance/world_v2_after_one_20261018-20261018-060947-829-136725096768500.json)     | world_v2_after_one_20261018_1792303657044.jfr   |
-| 四实例前 | [world_v1_before_four_20261018-20261018-043003-307-130740640032700.json](../../run/client/performance/world_v1_before_four_20261018-20261018-043003-307-130740640032700.json) | world_v1_before_four_20261018_1792297670803.jfr |
-| 四实例后 | [world_v2_after_four_20261018-20261018-061328-008-136945274404100.json](../../run/client/performance/world_v2_after_four_20261018-20261018-061328-008-136945274404100.json)   | world_v2_after_four_20261018_1792303878302.jfr  |
+| 单实例前 | world_v1_before_one_20261018-20261018-043649-740-131147063336800.json（历史引用，当前工作区缺失：`../../run/client/performance/world_v1_before_one_20261018-20261018-043649-740-131147063336800.json`）   | world_v1_before_one_20261018_1792298076798.jfr  |
+| 单实例后 | world_v2_after_one_20261018-20261018-060947-829-136725096768500.json（历史引用，当前工作区缺失：`../../run/client/performance/world_v2_after_one_20261018-20261018-060947-829-136725096768500.json`）     | world_v2_after_one_20261018_1792303657044.jfr   |
+| 四实例前 | world_v1_before_four_20261018-20261018-043003-307-130740640032700.json（历史引用，当前工作区缺失：`../../run/client/performance/world_v1_before_four_20261018-20261018-043003-307-130740640032700.json`） | world_v1_before_four_20261018_1792297670803.jfr |
+| 四实例后 | world_v2_after_four_20261018-20261018-061328-008-136945274404100.json（历史引用，当前工作区缺失：`../../run/client/performance/world_v2_after_four_20261018-20261018-061328-008-136945274404100.json`）   | world_v2_after_four_20261018_1792303878302.jfr  |
 
-离线输出 [world_comparison_20261018.json](../../run/client/performance/world_comparison_20261018.json)
+离线输出 world_comparison_20261018.json（历史引用，当前工作区缺失：`../../run/client/performance/world_comparison_20261018.json`）
 包含原始文件SHA256、分阶段结果、每周期结果、窗口／限帧、缓冲差值、GC重叠与最长10帧。四份对应的 _analysis.json
-保留JFR稳态样本和栈；[模型等价记录](../../run/client/performance/model_copy_equivalence_all.json)有12个模型全部相等。
+保留JFR稳态样本和栈；模型等价记录（历史引用，当前工作区缺失：`../../run/client/performance/model_copy_equivalence_all.json`）有12个模型全部相等。
 
 以下记录保留但排除：
 
@@ -149,7 +149,7 @@ JUnit配置，退出码均0：PhotonRuntimeCopyUtilTest和已有PhotonAnimationR
 
 三个周期源实例problems均为空，持续期每实例laser来源为1，结束各源归零，缓冲借出归零。IDEA编译成功、problems为空；正常Data已完成并保持19文件写入0／删除0，生成目录差异另以Git检查。回归入口接入的最终诊断与收尾记录见[修改记录](changes.md)。
 
-六个既有Java修改前的IDEA文本快照位于 [备份目录](../../backups/world-fx-performance-20261018)
+六个既有Java修改前的IDEA文本快照位于 备份目录（历史引用，当前工作区缺失：`../../backups/world-fx-performance-20261018`）
 ，仅供恢复源码内容，不声称字节完全相同。本轮没有删除资源、手动暂存、提交、推送或重置已有更改。
 
 ## 尚未完成与后续策略

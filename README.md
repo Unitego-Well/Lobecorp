@@ -6,5 +6,3 @@
 - [Horde 问题汇总（唯一清单）](docs/systems/horde-issues.md)
 - [全系统基线索引](docs/systems/README.md)：保留其他系统说明，Photon 状态不作为本工作区验收。
 - [项目开发规范](AGENTS.md)、[工作区目录](docs/systems/workspace-layout.md)、[Minecraft MCP 制品](docs/systems/minecraft-mcp-artifacts.md)
-
-2026-10-23 本轮仅更新文档；没有执行构建、Data、业务测试或游戏验收。当前实现包含既有暂存和未暂存内容，不能仅用 HEAD 判断完成度。

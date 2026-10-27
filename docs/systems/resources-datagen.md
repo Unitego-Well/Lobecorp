@@ -36,7 +36,7 @@ Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，
 - [服务端动画](../../src/main/resources/data/lobecorp/animation/animations/example/attachment_draw.animation.json)：`data/lobecorp/animation/animations/example/attachment_draw.animation.json`。
 - [客户端动画覆盖](../../src/main/resources/assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json)：`assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json`。
 
-示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；命令、代码包装、刀的客户端物品显示与清理见[独立拔刀接入示例](animation-runtime.md#独立拔刀接入示例)。
+示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；命令、代码包装、刀的客户端物品显示与清理见[动画运行时](animation-runtime.md)（历史章节 `#独立拔刀接入示例` 已不在当前文档）。
 
 ## 手动语言合并的实际路径
 
@@ -88,4 +88,4 @@ build.gradle.kts 的 sourceSets.main.resources 排除 **/*.fxproj、**/*.mfxproj
 
 当前 14 份女皇纹理材质包装均位于 assets/lobecorp/textures/particle/the_queen_of_hatred，与各自 PNG 并排；原有 13 份之外新增 laser_tail.material.nbt，对应同目录 laser_tail.png。例如 [particle.material.nbt](../../src/main/resources/assets/lobecorp/textures/particle/the_queen_of_hatred/particle.material.nbt) 对应同目录 particle.png。counterattack 的 OBJ、lcmodel.json 和 mfxproj 原已同目录。ShaderGraph 是原始图资产，material.meta.nbt 是资源管理器配置；这两类按各自用途保存。
 
-本轮只读检查 64 份当前源资产后，确认实际改动为 13 份包装移动、五个工程的九处材质路径，以及 material.meta.nbt 的两个 provider 目录。保留原包装字节、PNG 内容、显示名称和用户工程其他数据，使用原生 NBT 按原压缩格式保存并回读；运行定义与依赖包继续由原生导出器生成。备份见[迁移记录](../../backups/queen-arcana-star-sprites-20261016-012856/README.md)。
+本轮只读检查 64 份当前源资产后，确认实际改动为 13 份包装移动、五个工程的九处材质路径，以及 material.meta.nbt 的两个 provider 目录。保留原包装字节、PNG 内容、显示名称和用户工程其他数据，使用原生 NBT 按原压缩格式保存并回读；运行定义与依赖包继续由原生导出器生成。备份见迁移记录（历史引用，当前工作区缺失：`../../backups/queen-arcana-star-sprites-20261016-012856/README.md`）。

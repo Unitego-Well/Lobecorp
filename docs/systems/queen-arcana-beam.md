@@ -49,7 +49,7 @@ white_lines 每 tick 4 颗、上限 32，初始大小 0.02～0.033、拉伸系�
 
 材质通过 UIResourceMaterial 引用同目录包装文件，可继续在编辑器中编辑。13 份同类材质包装已全部与对应 PNG 并排放在 assets/lobecorp/textures/particle/the_queen_of_hatred；PNG 资源 ID 保持原样。资源目录配置和五个用户工程中的 11 处旧路径已同步，目录约定见[资源说明](resources-datagen.md#源资源包装与原始文件同目录2026-10-16)。
 
-本轮通过 IDEA Debug 的原生复制、校验与可撤销事务创建三层，原生保存 dirty=false。运行定义更新 38 处便携路径，依赖包完整 ID 保持不变，包含 23 文件，warnings=[]。IDEA 编译通过，Data 退出 0；未新增视觉、性能、联机或发行环境验收。修改前工程、未保存快照、13 组原始资源和受影响引用文件均有[备份](../../backups/queen-arcana-star-sprites-20261016-012856/README.md)。
+本轮通过 IDEA Debug 的原生复制、校验与可撤销事务创建三层，原生保存 dirty=false。运行定义更新 38 处便携路径，依赖包完整 ID 保持不变，包含 23 文件，warnings=[]。IDEA 编译通过，Data 退出 0；未新增视觉、性能、联机或发行环境验收。修改前工程、未保存快照、13 组原始资源和受影响引用文件均有备份（历史引用，当前工作区缺失：`../../backups/queen-arcana-star-sprites-20261016-012856/README.md`）。
 
 ## 持续粒子与反向长度（2026-10-16）
 
@@ -57,13 +57,13 @@ white_lines 每 tick 4 颗、上限 32，初始大小 0.02～0.033、拉伸系�
 
 反向半椭圆本地长度、主时间轴基值、命名动画基值及 muzzleLength 默认值同步设为 0.5 / 1.2，最终长度为 0.5，最终直径仍为 2.2。原生保存时 dirty=false；收尾回读为 31 tick 暂停、dirty=true，保留保存之后的编辑器状态。首次导出回执超时，已核对实际定义和包均已写入，并通过原生反序列化读到 28 对象及本地长度 0.41666666；本轮未取得导出 warnings 回执，未执行编译、Data、性能或新增视觉采样。
 
-修改前磁盘工程、定义、包和含未保存修改的实时工程备份于 backups/queen-arcana-particles-20261016-011008，见 [live-before.fxproj](../../backups/queen-arcana-particles-20261016-011008/live-before.fxproj)。
+修改前磁盘工程、定义、包和含未保存修改的实时工程备份于 backups/queen-arcana-particles-20261016-011008，见 live-before.fxproj（历史引用，当前工作区缺失：`../../backups/queen-arcana-particles-20261016-011008/live-before.fxproj`）。
 
 ## 2026-10-16 尺寸调整
 
 本轮仅修改整体缩放、五个模型生成器的缩放继承和反向开口宽度，连同主时间轴基值、命名动画基值及 muzzleRadius 默认值同步调整；保留当前工程未保存的其他修改。原生保存 dirty=false，批量编辑后时钟停在 0 tick，保留用户透视相机。定义与依赖包重新导出，包 ID 保持完整，17 文件、warnings=[]。本轮没有修改着色器或 Java，也没有执行编译、Data、测试或新增视觉采样。
 
-修改前的磁盘工程、定义、包，以及包含未保存编辑的工程已备份至 backups/queen-arcana-resize-20261016-005840，其中 [live-before.fxproj](../../backups/queen-arcana-resize-20261016-005840/live-before.fxproj) 保留本轮修改前的实时编辑内容。
+修改前的磁盘工程、定义、包，以及包含未保存编辑的工程已备份至 backups/queen-arcana-resize-20261016-005840，其中 live-before.fxproj（历史引用，当前工作区缺失：`../../backups/queen-arcana-resize-20261016-005840/live-before.fxproj`） 保留本轮修改前的实时编辑内容。
 
 ## 初版交付的保存、导出与实际检查
 
@@ -73,6 +73,6 @@ white_lines 每 tick 4 颗、上限 32，初始大小 0.02～0.033、拉伸系�
 
 已通过 IDEA Debug 检查默认值、缩短／变窄／降低强度、两类开关与重播恢复：长度 6、外柱宽 0.5、强度 0.4、反向半径 1.4、长度 0.6 的组合生效，problems=[]。属性采用运行时组合值查询，不能以采样作用域之外的基础 config 值判断变量失效。16 图的原生编译错误均为空。
 
-已查看 10、23、80、195、200 tick 的透视截图和侧向角度，200 tick 无可见残留。尚未进行发行环境启动、实体技能接入、联机或独立性能采样；截图中的后台 FPS 不作为性能结论。20 份模板原文件与修改前备份逐份 mismatch 一致，见[备份](../../backups/queen-arcana-and-resource-roots-20261015/README.md)。
+已查看 10、23、80、195、200 tick 的透视截图和侧向角度，200 tick 无可见残留。尚未进行发行环境启动、实体技能接入、联机或独立性能采样；截图中的后台 FPS 不作为性能结论。20 份模板原文件与修改前备份逐份 mismatch 一致，见备份（历史引用，当前工作区缺失：`../../backups/queen-arcana-and-resource-roots-20261015/README.md`）。
 
 最终 IDEA Data 退出 0，生成目录无 Git 差异；主资源输出包含新定义、依赖包及 16 份字节一致的图，不包含新 fxproj。相关七个 Java 文件与 Mixin 配置诊断无错误／警告，新文档两张表仅局部对齐后诊断为空。收尾时游戏主窗 maximized=1、编辑器 embedded=true、透视、80 tick 暂停且 dirty=false；资源管理器已定位新工程所在源码目录，鼠标已释放并退出 MCP 控制模式。

@@ -115,7 +115,7 @@ API、Mixin 目标及行为。
 `CLIENT` 表示本项目在客户端要求该依赖；不等于该库本身只能安装客户端，也不覆盖该库自己的依赖声明。`BOTH`
 表示该声明在客户端和专用服务器都生效。本轮不顺便收窄既有 Curios／ParticleStorm 条目的发行侧。
 
-审计源码入口包括 [ClientRuntimeEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)、[ConductorHud](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorHud.java)、[PhotonGeoEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java)
+审计源码入口包括 [ClientRuntimeEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)、[ConductorHud](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorHud.java)、PhotonGeoEffects（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`）
 和 [Mixin 配置](../../src/main/resources/META-INF/lobecorp.mixins.json)。第三方 Mixin 位于 client 数组；没有
 IMixinConfigPlugin 或 ModList 条件门控，不能当作可选集成。
 

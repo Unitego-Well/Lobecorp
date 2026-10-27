@@ -81,6 +81,6 @@ charge_start／charge_end 各十条轨道，复用三法阵与汇聚粒子的原
 
 最终正式嵌入场景连续调用 charge_start → charge_end → laser_start → light_ball_burst → laser_end → 再次启动：蓄力五个源各一份，释放时光球/光束各一份，重复爆发仍为一份，结束后两份归零。length=6 的光束及开始/结束参数继承检查通过，父子 problems=[]；已查看透视蓄力/激光截图，不作为性能或全部角度验收。整工程更新后关闭并重开命名工作区，避免旧库继续控制新运行树。
 
-本轮资产字节备份、实时法术工程、原生阶段回执与包回执见[拆分备份](../../backups/laser-light-ball-split-20261018)。未修改共享模型、ShaderGraph、PNG、模板或实体技能。随后已实现技能绑定与精简星束，实际改动及未进行实机验收的边界见[技能特效](queen-beam-skill-effects.md)。
+本轮资产字节备份、实时法术工程、原生阶段回执与包回执见拆分备份（历史引用，当前工作区缺失：`../../backups/laser-light-ball-split-20261018`）。未修改共享模型、ShaderGraph、PNG、模板或实体技能。随后已实现技能绑定与精简星束，实际改动及未进行实机验收的边界见[技能特效](queen-beam-skill-effects.md)。
 
-此前 counterattack.mfxproj 缺少 renderer/playback 的导出限制、四阶段及首次集成历史见[四阶段备份](../../backups/laser-spell-phases-20261016/README.md)与[首次接入备份](../../backups/laser-spell-integration-20261016/README.md)，本轮没有处理该模型工程。
+此前 counterattack.mfxproj 缺少 renderer/playback 的导出限制、四阶段及首次集成历史见四阶段备份（历史引用，当前工作区缺失：`../../backups/laser-spell-phases-20261016/README.md`）与首次接入备份（历史引用，当前工作区缺失：`../../backups/laser-spell-integration-20261016/README.md`），本轮没有处理该模型工程。

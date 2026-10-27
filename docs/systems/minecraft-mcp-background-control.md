@@ -5,7 +5,7 @@
 
 ## 当前鼠标契约（2026-10-22）
 
-已接入[独立仓库固定版本](minecraft-mcp-workspace.md)。保留开发默认激活，enter／exit 不改变系统鼠标捕获，取消每 tick 持续释放；模拟输入仅走内部回调，在同步作用域内阻止 grabMouse 居中，真人点击保留原版捕获。显式 release_mouse 只释放一次。本次未构建或运行验收；下方持续释放与历史实测属于旧实现，不代表当前版本。
+已接入[独立仓库固定版本](minecraft-mcp-artifacts.md#历史接入记录)。保留开发默认激活，enter／exit 不改变系统鼠标捕获，取消每 tick 持续释放；模拟输入仅走内部回调，在同步作用域内阻止 grabMouse 居中，真人点击保留原版捕获。显式 release_mouse 只释放一次。本次未构建或运行验收；下方持续释放与历史实测属于旧实现，不代表当前版本。
 
 ## 2026-10-21 现象与原因（历史）
 
@@ -20,7 +20,7 @@ setGrabbed (true)，会在退出时主动恢复抓取。不是 stdio MCP 本身�
 修复契约：退出清理 MCP 控制状态与模拟输入，释放鼠标，不主动 grab／lock；由用户主动点击游戏恢复原版鼠标操作。存在 GUI 时仍按
 GUI 的鼠标规则处理。不能通过强写 grabbed=true、强制 GLFW 隐藏／禁用光标或把窗口抢到前台来“恢复控制”。
 
-对应源码：[ControlModeHelper.java](../../modules/minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/ControlModeHelper.java)
+对应源码：ControlModeHelper.java（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/ControlModeHelper.java`）
 。已移除退出路径中的主动抓取，退出保持普通光标；客户端 Pre tick 在接管期间持续释放鼠标，防止切入世界或关闭 GUI 后重新抓取。实际验收见文末。
 
 ### 原版后台与 AFK 节流
@@ -43,7 +43,7 @@ AFK 或最小化限帧。
 修复限定在开发环境且 MCP 接管有效时，使 getThrottleReason 返回 NONE；继续保留玩家配置的最大帧率与垂直同步。退出接管后条件自然失效，原版节流立即恢复，不修改或保存
 Options，也不伪造真人输入来刷新时间戳。
 
-对应源码：[FramerateLimitTrackerMixin.java](../../modules/minecraft-mcp/packages/mods/26.1.2/neoforge/src/main/java/xyz/langyo/minecraft/mcp/mod/mixin/client/FramerateLimitTrackerMixin.java)
+对应源码：FramerateLimitTrackerMixin.java（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/packages/mods/26.1.2/neoforge/src/main/java/xyz/langyo/minecraft/mcp/mod/mixin/client/FramerateLimitTrackerMixin.java`）
 。Mixin 已编译并由重启后的开发客户端加载；接管和退出分支取得运行证据，完整边界见文末。
 
 ### 优化 Mod 的独立限制

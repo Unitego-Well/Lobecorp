@@ -13,7 +13,7 @@
 - Photon 主编辑器的固定图元列表记录实际修改，先用整表标量包围盒排除不交叠，再按 16 项块查询。固定规范边界的小列表或索引预算不足时直接按底层 ArrayList 下标短路扫描，避免 AbstractList 迭代器；未知／动态／异常边界及帧代次失效仍回退。追加有效边界可直接扩大整表包围盒，其余修改按版本失效；小列表不申请 32 项索引数组，不改变层级选择。
 - 模型与动画补充语义回归。几何共享流、独占姿态、UV 接缝、材质回退、镜像、伸长边界、形状键／蒙皮、实时 mute／children、同 tick 替换和 HOLD 继续推进分别检查。
 
-源码入口：[模型采样](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelSamplerUtil.java)、[缓冲池](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonVertexBufferUtil.java)、[动画调度](../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java)。运行、编译、测试、Data 和性能结果在实际完成后更新，不能把这里的实现状态当成验收通过。
+源码入口：模型采样（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelSamplerUtil.java`）、缓冲池（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonVertexBufferUtil.java`）、动画调度（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java`）。运行、编译、测试、Data 和性能结果在实际完成后更新，不能把这里的实现状态当成验收通过。
 
 ## 优化前前台基线
 
@@ -78,7 +78,7 @@ editor_split_final_20261018-20261017-195246-519-99703877720100.json 为 40.0079 
 
 ## 扩展编辑器遮挡主世界
 
-新入口内嵌、最大化且窗口以不透明纯色完整覆盖游戏 GUI 时，`PhotonEditorWorldRenderMixin` 只改 `GameRenderer.extract/render` 首个 `Minecraft.level` 读取所决定的 shouldRenderLevel；不写真实 level、advanceGameTime 或 pause，不取消完整 render。GUI／PIP、主相机更新、世界 tick、预览粒子时钟及 RenderFrame.Post 清理保留。同帧复用 extract 开始的条件，异常及 render finally 清理缓存。原生编辑器、OS 宿主、非满屏、透明、变换、遮罩、布局／样式待更新或 UI 动画运行时均回退主世界绘制，粒子／模型动画不属于这个 UI 动画队列。维护入口为 [PhotonEditorWorldRenderUtil](../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonEditorWorldRenderUtil.java)，stats 记录条件命中与提取／绘制跳过次数。
+新入口内嵌、最大化且窗口以不透明纯色完整覆盖游戏 GUI 时，`PhotonEditorWorldRenderMixin` 只改 `GameRenderer.extract/render` 首个 `Minecraft.level` 读取所决定的 shouldRenderLevel；不写真实 level、advanceGameTime 或 pause，不取消完整 render。GUI／PIP、主相机更新、世界 tick、预览粒子时钟及 RenderFrame.Post 清理保留。同帧复用 extract 开始的条件，异常及 render finally 清理缓存。原生编辑器、OS 宿主、非满屏、透明、变换、遮罩、布局／样式待更新或 UI 动画运行时均回退主世界绘制，粒子／模型动画不属于这个 UI 动画队列。维护入口为 PhotonEditorWorldRenderUtil（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonEditorWorldRenderUtil.java`），stats 记录条件命中与提取／绘制跳过次数。
 
 该优化只支持正常提取不透明编辑器 GUI 的事件链。第三方取消／替换 ScreenEvent.Render.Pre 的 GUI 提取发生在主世界提取之后，当前无法安全补回本帧世界；不声称这种替换可安全回退。升级须重新核对两个 FIELD ordinal、GUI／PIP 与帧末清理路径，不能只凭 Mixin 能启动认定兼容。
 

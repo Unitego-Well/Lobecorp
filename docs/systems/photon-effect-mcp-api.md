@@ -36,7 +36,7 @@ IDE验证入口为`:minecraft-mcp:probeEffectAnimation`（stdio），或显式�
 
 ## 使用顺序
 
-AI 制作与参考视频复刻使用项目 [特效制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md)，按需读取其原生操作参考。技能复用本系统工具，固定操作在入口、出口及分支处确认，不增加独立制作服务器或固定效果代码配方。
+AI 制作与参考视频复刻使用项目 特效制作技能（入口缺失：`../../.codex/skills/lobecorp-effect-authoring/SKILL.md`），按需读取其原生操作参考。技能复用本系统工具，固定操作在入口、出口及分支处确认，不增加独立制作服务器或固定效果代码配方。
 
 1. 客户端已运行时复用现有会话；需要启动时通过已授权的 IDEA Client Debug，让本项目 bridge 连接游戏。创建工程前进入世界。Photon 场景需要世界维度注册表，标题界面创建返回 WORLD_REQUIRED，并且不创建窗口／工程。写操作需要原有 MCP 控制模式，后端不会绕过激活条件。
 2. 调用 `effect_capabilities` 读取当前发射器、参数、轨道模板、操作与允许文件目录；调用 `effect_state` 读取扩展编辑器中已打开的工程。仅操作 `lobecorp:photon_editor` 窗口与 PhotonEffectEditor／模型子类；原生 `/photon_editor` 中的工程不被枚举或接管。
@@ -122,7 +122,7 @@ revision 为实际工程内容的 SHA-256，人工编辑同样使旧请求失效
 
 ## 生命周期、文件与依赖
 
-业务入口为 [PhotonEffectAutomation](../../src/main/java/org/unitego/lobecorp/client/photon/editor/automation/PhotonEffectAutomation.java)，客户端注册为 [LcPhotonMcpCommands](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonMcpCommands.java)，工具分派为 [effectHandlers.ts](../../modules/minecraft-mcp/packages/minecraft-mod-mcp/src/mcp/effectHandlers.ts)。MCP common 的通用 McpExtensionRegistry 保留 JSON 层次，不依赖 Photon；Lobecorp 只在 mcpmod 存在时通过唯一客户端初始化入口注册。
+业务入口为 [PhotonEffectAutomation](../../src/main/java/org/unitego/lobecorp/client/photon/editor/automation/PhotonEffectAutomation.java)，客户端注册为 [LcPhotonMcpCommands](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonMcpCommands.java)，工具分派为 effectHandlers.ts（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/packages/minecraft-mod-mcp/src/mcp/effectHandlers.ts`）。MCP common 的通用 McpExtensionRegistry 保留 JSON 层次，不依赖 Photon；Lobecorp 只在 mcpmod 存在时通过唯一客户端初始化入口注册。
 
 请求在客户端线程经历 QUEUED／RUNNING／COMMITTING／DONE。排队和副本准备超过 8 秒可取消，取消后晚到任务不能提交；进入 COMMITTING 后等待真实结果，不假报取消。请求最多 2 MiB、256 个操作，单次 seek 最多 1200 tick。保存／导出编码在 RUNNING 只写独占临时文件，正式提交才发布目标；失败或取消清理临时文件，原生资源编码仍可能耗时。
 

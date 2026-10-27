@@ -59,9 +59,9 @@ V3 用原生 ControlTrack 安排出生起点，所有粒子 startDelay=0；片�
 
 ## 参考特效与批处理入口
 
-本轮制作脚本为 [create-reference-effects.mjs](../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/create-reference-effects.mjs)
-，配方分别位于 [star-trail.mjs](../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/effects/star-trail.mjs)
-和 [variable-laser.mjs](../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/effects/variable-laser.mjs)。IDEA
+本轮制作脚本为 create-reference-effects.mjs（历史源码路径：`../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/create-reference-effects.mjs`；当前[发布脚本](../../lib/minecraft-mcp/bridge/scripts/create-reference-effects.mjs)）
+，配方分别位于 star-trail.mjs（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/effects/star-trail.mjs`）
+和 variable-laser.mjs（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/packages/minecraft-mod-mcp/scripts/effects/variable-laser.mjs`）。IDEA
 的 `Minecraft MCP Reference Inspect／Create／Save` 顺序创建临时工程、应用完整配方、保存工程与导出定义／包。当前会话仍通过已构建的新
 bridge 调用，不能据此宣称旧会话的工具注册表已刷新。生成诊断位于 `build/mcp`，不手工修改其内容。
 
@@ -96,7 +96,7 @@ SNBT 往返校验，没有放宽全局整数、UUID 或协议类型规则。
 
 此前按用户要求仅清空 V3 工程内部内容：`run/client/ldlib2/assets/lobecorp/tutorial_shockwave/v3/tutorial_shockwave_v3.fxproj` 通过游戏内 MCP 移除全部 17 个对象和 3 条原生时间轴轨道并保存，当时返回对象 0、轨道 0、dirty=false。工程文件、着色器、此前导出的 `.fx`／`.fxpack` 及旧版本均保留；旧导出仍是清空前内容。后续仅重做蓄力，见下节；原 V3 的整束导出不作为蓄力版入口。
 
-完整复核已按同一视频的 27 个分解步骤建立 [对应表](../../.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md)。续作工程为 `run/client/ldlib2/assets/lobecorp/tutorial_shockwave/refined/tutorial_shockwave_refined.fxproj`，已保存同名 `.fx`／`.fxpack`。当前包含 6 模型、9 粒子、1 控制器、22 份图、44 条绑定和 3 条原生场景后期轨道；原工程、原九份图及 `before-refinement-20261014.fxproj` 均保留。双蓄力辉光、环带、宽拖尾、拉伸球能量体、暗波／暗能量、六层束体、沿束火花和地面层已进入组合预览；真实点光与局部雾／体积散射尚未接入，可复用入口见下节，不能记为完美复刻。
+完整复核已按同一视频的 27 个分解步骤建立 对应表（入口缺失：`../../.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md`）。续作工程为 `run/client/ldlib2/assets/lobecorp/tutorial_shockwave/refined/tutorial_shockwave_refined.fxproj`，已保存同名 `.fx`／`.fxpack`。当前包含 6 模型、9 粒子、1 控制器、22 份图、44 条绑定和 3 条原生场景后期轨道；原工程、原九份图及 `before-refinement-20261014.fxproj` 均保留。双蓄力辉光、环带、宽拖尾、拉伸球能量体、暗波／暗能量、六层束体、沿束火花和地面层已进入组合预览；真实点光与局部雾／体积散射尚未接入，可复用入口见下节，不能记为完美复刻。
 
 当前变量仍为 length=12、width=2.4、intensity=1、enabled=true，时长 140 tick。width 同时带动源头、火花范围与速度；length 控制主束及沿束火花的纵向范围／中心。intensity 乘算模型与粒子 Alpha，不控制独立 HDR 或场景后期。实测运行槽 6／1.2／0.5、沿束范围 [0.5,0.5,6] 与中心 [0,0,3]、关闭及重触发通过，problems=[]。22 图编译有效；保存 dirty=false，两类导出 warnings=[]，包 23 文件，fxId=lobecorp:tutorial_shockwave_refined。细节和检查边界见对应表。
 

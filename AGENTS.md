@@ -41,5 +41,5 @@
 | 兼容、迁移、旧格式读取 | [开始任务前](docs/standards/workflow.md#开始任务前)：先确认是否兼容；模型文件仅用 .mfxproj／.mfx／.mfxpack，不兼容此前格式 |
 | Java、注释、常量、可见性、接口、系统边界或包整理 | [Java 与包规范](docs/standards/java-and-packages.md)；Java 任务还须读 [Java 25 专项](docs/java-25-language-and-comments.md) |
 | 实体、AI、技能、动画、同步或星束命中 | [实体契约](docs/standards/entity-contracts.md)适用章节，再读对应项目 Skill |
-| 进入游戏、截图、控制、连接或 Debug | [Minecraft MCP Skill](.codex/skills/lobecorp-minecraft-mcp/SKILL.md)：真实主窗先最大化，编辑器嵌入游戏，快速测试世界流程合批 |
-| 制作、修改或对照验收特效 | [特效制作 Skill](.codex/skills/lobecorp-effect-authoring/SKILL.md)：按问题读取制作参考，使用透视 |
+| 进入游戏、截图、控制、连接或 Debug | Minecraft MCP Skill（入口缺失：`.codex/skills/lobecorp-minecraft-mcp/SKILL.md`）：真实主窗先最大化，编辑器嵌入游戏，快速测试世界流程合批 |
+| 制作、修改或对照验收特效 | 特效制作 Skill（入口缺失：`.codex/skills/lobecorp-effect-authoring/SKILL.md`）：按问题读取制作参考，使用透视 |

@@ -45,4 +45,4 @@
 
 ## 使用入口
 
-复用方法使用全局 `game-vfx-authoring` 技能；在本项目制作时再读 [Lobecorp 制作入口](../../.codex/skills/lobecorp-effect-authoring/SKILL.md)。仅阅读当前问题对应的参考，不将本案例全参数或历史采样注入每次任务。
+复用方法使用全局 `game-vfx-authoring` 技能；在本项目制作时再读 Lobecorp 制作入口（入口缺失：`../../.codex/skills/lobecorp-effect-authoring/SKILL.md`）。仅阅读当前问题对应的参考，不将本案例全参数或历史采样注入每次任务。

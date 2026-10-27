@@ -424,7 +424,7 @@
 
 具体问题只在[horde-issues.md](horde-issues.md)维护。处理顺序：先修基准可见性门禁并核对空画面根因，再验证LOD画面；随后对同夹具做光照分配/天空光回退、expand及单位历史的单变量A/B。对应入口为HordeRenderScenario.verify（约270行）、HordeGpuRenderer.drawUnitHistories/IrisVertices、HordeMeshReduction、HordeLightField.requiredSections/updateSection、HordeLightCoverage.loaded、HordeUnitState.prepare。当前报告不授权额外改代码，也不把当前profile直接变成生产修复。
 
-源码定位：[基准断言](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java)、[GPU历史/展开/复制](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[隐藏面与闭合代理](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshReduction.java)、[光照候选及天空光回退](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、[单位编号页](../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitState.java)、[约束标量归约](../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitStats.java)。
+源码定位：[基准断言](../../src/bench/java/org/unitego/lobecorp/client/bench/HordeRenderScenario.java)、[GPU历史/展开/复制](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)、[隐藏面与闭合代理](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshReduction.java)、[光照候选及天空光回退](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、单位编号页（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitState.java`）、约束标量归约（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeUnitStats.java`）。
 
 测试结束恢复隔离Iris原true标志及原注释时间戳；Bench options归一化换行后的完整文本与开始一致，未声称字节哈希完全相同。NeoForge自动补入9项新配置，原文本备份保留，不删除引擎合法新增项。Shader ZIP/Sodium未手工修改，但本轮未记录它们开始哈希，不补造前后哈希证明。
 

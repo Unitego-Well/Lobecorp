@@ -177,7 +177,7 @@ Mob、且不是尸体实体时创建尸体；不能据此推导玩家或所有 L
 3. 转向复用 [EntityFacingUtil](../../src/main/java/org/unitego/lobecorp/util/entity/EntityFacingUtil.java)
    ，头和身体同时转向，保留限速，不写引擎插值旧值。
 4. 核对状态互斥、尺寸刷新及客户端同步；临时修饰符与永久修饰符分别处理。
-5. 保留唯一事件入口、总线、优先级及取消语义，遵循[事件规范](../event-registration.md)。
+5. 保留唯一事件入口、总线、优先级及取消语义，遵循[事件规范](events.md#事件监听规范)。
 
 ## 核对范围与尚未验收
 

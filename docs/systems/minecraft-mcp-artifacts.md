@@ -15,3 +15,15 @@
 2026-10-23：外部 IDEA 构建成功；消费方导入、编译及 Data 结果在本次修改记录另行记录，不能用历史结果替代。尚未启动游戏或验证四类操控和鼠标运行表现。
 
 备份：原始 Git common-dir 下 `mcp-externalization/20261023` 保留删除前源码与生成缓存；工作区迁移记录在 `workspace-relocations`。用户已有改动须先保存并比较，差异不能因删除源码而丢弃。冲突按内容合并，禁止直接选 ours/theirs。
+
+## 历史接入记录
+
+以下完整保留 2026-10-22 原 `minecraft-mcp-workspace.md` 接入记录；其中工作区源码快照、源码锁和源码升级方式已于 2026-10-23 被本页外部制品方案取代，不能作为当前操作入口。提交、备份与当时未验收边界仍为历史证据。
+
+2026-10-22：90be 通过版本锁（历史引用，当前工作区缺失：`../../modules/minecraft-mcp.lock.json`）消费独立仓库 E:/xm/mc/mod/Unitego-Well/minecraft-mcp 的 aa8289a485cfaf2b90eca073f2ce1eb719328b6c。modules/minecraft-mcp 保持工作区独立源码快照，不共享 build、node_modules、dist 或 run。
+
+接入通用鼠标修复、独立构建入口及已提交的特效桥接扩展。保留开发默认授权，取消每 tick 强制释放，模拟输入仅调用内部回调；同步模拟作用域阻止 grabMouse 居中，真人输入不全局禁用。默认端口19876、运行配置、存档、既有 MCP 配置修改及 consts.ts 文案不改变。consts.ts 原有未提交状态保留。
+
+前轮批量补丁遇到 CRLF 上下文失败后暂停，现已核对原文，通过 IDEA 文档 API 逐块完成，未使用终端改写源码。wrapper JAR 直接复制并核对 SHA256 一致，不重建。提交前备份为 refs/backups/before-mcp-integration-90be-20261022/{head,wip,index}；原有业务暂存内容通过独立 Git 索引保护，仅提交本次 MCP 和文档。
+
+只做 IDEA 静态诊断与源码/配置差异核对，不执行构建、测试、Data、安装、重连或游戏操作。源码接入不代表运行中的旧客户端和 bridge 已加载修复。后续升级通过 IDEA 合并源提交差异，保留本地修改，冲突停止。

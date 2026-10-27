@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-27 DOC-HORDE-01 文档导航与重复页整合
+
+- 重新盘点 99 份自有 Markdown；两份重复页完整迁入[事件监听规范](events.md#事件监听规范)与[MCP 历史接入记录](minecraft-mcp-artifacts.md#历史接入记录)后删除，保留 97 份，分类入口沿用[系统索引](README.md#全部保留文档分类索引)。根 README 只保留介绍与基本入口。
+- 更新全部合并页入链，修正可核对的现存入口与锚点；缺失源码、截图、备份和 Skill 保留原路径及历史/缺失边界，统一问题入口见[DOC-HORDE-01](horde-issues.md#doc-horde-01-文档入口与历史来源边界)。不恢复源码、不代管 Photon 问题、不改变业务正文。
+- 原始字节备份：`build/agent-backups/20261027-doc-horde-resume/`。保护既有暂存、未暂存和未保存内容，三份并行所有者文档由协调方单独收尾。
+- 检查范围仅为 IDEA Document/VFS 回读、最小文档诊断、文件/锚点/可达性静态核对；实际结果由所属总览记录。未执行构建、Data、业务测试、游戏、配置或资源操作。
+
 ## 2026-10-27 视觉过渡交接文档
 
 - 新增[视觉过渡交接文档](horde-handoff-visual-transition.md)：记录已完成提交、约 17 个未提交本地改动、未解决问题与已排除猜测（含实测依据）、最新排查方向、复现与验证方式、已知限制与检查边界。
@@ -376,7 +383,7 @@
 - 修正烘焙动画的朝向和动画错误：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L109) 不再自写骨骼矩阵，改用 GeckoLib `BoneSnapshot`、`LcAnimationBoneAdapter`、`RenderUtil.prepMatrixForBone` 链和 `GeoCube.render` 生成每帧静态顶点位置/法线；父链、枢轴、基础旋转、缩放和法线由 GeckoLib 处理，并修正 `transformToBone` 额外枢轴平移导致的变换错误。`BoneSnapshot`、帧捕获器和 `PoseStack` 只创建一次并复用，每帧结果写入一次分配好的 `frameData` 后缓存在 `Model`。
 - GPU 端布局不变：仍由 [horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按相位选帧并读取 6 个 float，循环切换。
 - IDEA 项目构建成功（约 5.8 秒）；`runData` 成功（BUILD SUCCESSFUL，约 30 秒，23 缓存输出，written=0，removed stale=0）。用户已实机确认烘焙朝向和动画正常；本轮未做自动截图、着色器单独编译或性能采样。
-- 同步更新[渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计第9节](horde-issues.md)。
+- 同步更新[渲染实现](horde-rendering-implementation.md)（历史行号 `#L28-L34`，不作当前定位）和[性能审计第9节](horde-issues.md)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 
 ## 2026-10-23：目标分割刷新加密与真实实体未生成排查
@@ -386,7 +393,7 @@
 - 另外改用其他实体仍不生成时，[HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L17-L38) 增加出生距离回退：前 4 次仍优先 16 格，之后依次退到 12/8/4 格，避免远处候选全部不安全/不可达时完全不生成。
 - 新增客户端调试渲染：`lobecorp-horde-visuals.toml` 的 `debugRanges` 打开后，青色线框绘制事件整条线路范围，黄色线框绘制本地玩家 `rangeBlocks` 精细范围；实现位于 [HordeRendering](../../src/main/java/org/unitego/lobecorp/client/horde/HordeRendering.java#L21-L100) 和 [HordeClient.debugRanges](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java#L106-L121)。
 - IDEA 项目构建成功（约 18.1 秒）；`runData` 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=2，removed stale=0）。未启动游戏，未做真实生成和分割视觉复核。
-- 同步更新[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计第10、11节](horde-issues.md)。
+- 同步更新[渲染实现](horde-rendering-implementation.md)（历史行号 `#L7-L12`，不作当前定位）和[性能审计第10、11节](horde-issues.md)。
 - 代码所在文件已有其他未提交修改，本次代码未单独提交。
 
 ## 2026-10-22：虚拟潮客户端目标区域检测、线路平滑与出生调整
@@ -395,7 +402,7 @@
 - [HordeSamplingUtil](../../src/main/java/org/unitego/lobecorp/util/horde/HordeSamplingUtil.java#L20-L71) 改为向心 Catmull-Rom 和按长度自适应采样（8—64），改善转弯平滑度；[HordeRulesTest](../../src/test/java/org/unitego/lobecorp/world/horde/HordeRulesTest.java#L90-L95) 不再断言固定样本数；[HordeRegionTest](../../src/test/java/org/unitego/lobecorp/client/horde/HordeRegionTest.java#L9-L40) 改用本地区域更新入口。
 - [HordeSpawnPlanner](../../src/main/java/org/unitego/lobecorp/world/horde/HordeSpawnPlanner.java#L24-L38) 出生距离优先 16 格（后续已增加 12/8/4 格失败回退），保持在目标后方并按虚拟潮来向一侧生成；[HordeRuntime](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java#L411-L432) 创建后立即朝向目标，并在加入世界前绑定目标。
 - IDEA 项目构建成功（约 6.7 秒）；`HordeRegionTest` 2/2、`HordeRulesTest` 9/9 通过；`runData` 成功（BUILD SUCCESSFUL，约 35 秒，23 缓存输出，written=0，removed stale=0）。
-- 同步更新[群体事件文档](horde-events.md#L21-L33)、[渲染实现](horde-rendering-implementation.md#L7-L12)和[性能审计](horde-issues.md)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
+- 同步更新[群体事件文档](horde-events.md)（历史行号 `#L21-L33`，不作当前定位）、[渲染实现](horde-rendering-implementation.md)（历史行号 `#L7-L12`，不作当前定位）和[性能审计](horde-issues.md)。未启动游戏、未做运行时着色器/视觉/性能验证；客户端目标筛选、区域数量和出生距离需实机确认。
 - 按用户选择 B，保留客户端宽目标筛选，不新增目标 UUID 同步；普通生物可能触发让行缺口，作为已知代价记录。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交。
 
@@ -404,7 +411,7 @@
 - 按[性能审计](horde-issues.md)的 P1 第一项，把动画改为烘焙后的静态帧：[HordeMeshCache](../../src/main/java/org/unitego/lobecorp/client/horde/HordeMeshCache.java#L65-L181) 在资源准备阶段把每帧所有骨骼变换后的顶点烘焙成静态帧数据，每顶点每帧保存模型空间位置和法线 6 个 float；[horde_instanced.vsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_instanced.vsh#L21-L56) 按单位相位选择帧号并读取该帧位置/法线，循环切换，不再执行骨骼矩阵、父链遍历或四元数插值。
 - 顶点读取量从约 22×骨骼链深度次降为固定 6 次；帧切换无插值，每秒 20 帧下可能出现跳变，单位仍保留行列相位差。本次未修改骨骼 X 平移符号等已知问题。
 - IDEA 静态诊断 HordeMeshCache、HordeGpuRenderer 无错误；IDEA 项目构建成功（约 25.8 秒）；runData 成功（BUILD SUCCESSFUL，约 37 秒，23 缓存输出，written=0，removed stale=0）。
-- 同步更新[当前渲染实现](horde-rendering-implementation.md#L28-L34)和[性能审计](horde-issues.md)。未启动游戏、未编译运行时着色器、未做视觉或性能采样；不能声称帧率或视觉通过。
+- 同步更新[当前渲染实现](horde-rendering-implementation.md)（历史行号 `#L28-L34`，不作当前定位）和[性能审计](horde-issues.md)。未启动游戏、未编译运行时着色器、未做视觉或性能采样；不能声称帧率或视觉通过。
 - 工作区目标文件已有其他未提交修改；为避免混入既有改动，本次代码未单独提交，提交受阻场景已如实记录。
 
 ## 2026-10-22：深夜清扫性能与 CPU 侧审计
@@ -437,7 +444,7 @@
 
 - 使用绝对仓库路径 E:/xm/mc/mod/Unitego-Well/minecraft-mcp，固定 aa8289a485cfaf2b90eca073f2ce1eb719328b6c，保留 modules/minecraft-mcp 的独立源码副本。接入鼠标输入隔离、独立构建入口与已提交的特效桥接扩展。
 - 保留 consts.ts 原有文案与未提交状态、端口19876、运行配置和其他已暂存／未暂存业务内容；通过独立 Git 索引仅收录本次变更。未构建、测试、Data、安装、重连或启动游戏。
-- [接入记录](minecraft-mcp-workspace.md)说明固定版本、备份和运行边界；源码更新不代表旧进程已经加载修复。
+- [接入记录](minecraft-mcp-artifacts.md#历史接入记录)说明固定版本、备份和运行边界；源码更新不代表旧进程已经加载修复。
 
 
 +## 2026-10-22：深夜清扫渲染实现说明
@@ -635,7 +642,7 @@
 
 - PhotonProjectPreviewPanel补新建测试草稿、制作属性、复制选中轨道和工程历史应用；完整原树比较防过期覆盖，保护检查和当前实例的轨道准备失败时不应用。PhotonProjectPreviewUtil保留原UUID、轨道、未知字段和未改名的存量名称。
 - IDEA编译成功，JUnit5项通过，8份现有测试定义原文件字节未变；Data BUILD SUCCESSFUL，23输出written=0/removed=0。未运行本轮客户端GUI、撤销重做或文件往返，原有运行时借用警告保留，不替代完整工作区或G1验收。
-- 备份refs/backups/before-photon-g1-workspace-20261020指向1c4cba9。按用户最新指令，重设计方案允许提前开展高级扩展，G1标准与文件保护不变；本轮尚无高级能力实现。完整命名工作区、旧循环/渲染字段及全量兼容仍待完成，具体边界见[进度](photon-redesign-progress.md#工程测试制作基础2026-10-20)。
+- 备份refs/backups/before-photon-g1-workspace-20261020指向1c4cba9。按用户最新指令，重设计方案允许提前开展高级扩展，G1标准与文件保护不变；本轮尚无高级能力实现。完整命名工作区、旧循环/渲染字段及全量兼容仍待完成，具体边界见[进度](photon-redesign-progress.md#工程测试制作基础2026-10-20620b3fb阶段证据)。
 
 ## 2026-10-20：复核最终限制并恢复激活语义/制作入口
 
@@ -867,7 +874,7 @@
 - 选择持杖和上半身随瞄准俯仰。新增四个 TheQueenOfHatredAnimationDefinitions，包装完整 data 资源 aim/aim2，声明 up_body 姿态修饰与 effectId。新增 TheQueenOfHatredBeamAnimation，技能生命周期创建/更新/停止动画；LcAnimationInstance 可显式关闭自动片段结束，默认行为不变。
 - LaserSkill/StarBeamSkill 不再触发原 AIM action。删除已备份的 EntitySkillClientEvents 五个特效监听；QueenBeamEffects 按动画 UUID 与阶段快照拥有实例，复用已有 LcAnimationStatePayload。客户端本地资源覆盖合并代码骨骼绝对结果，头部俯仰依据动画状态去重，不依赖特效加载结果。技能伤害、命中规则、射程、冷却和注册时序未改。
 - PhotonSpawnedEffects/Spawner 支持每源最多一个未发射 FX 预备实例。女皇蓄力期间复制光束、预解析独占动画库及模型/拓扑，释放时消费；重启、真正结束、来源变化分别处理保留、回收和失效。FXRuntimeMixin 与 PhotonAnimationRuntime 共用校验后的库，避免发射重复解码。锚点与长度共用射线结果，不将活动运行态或随机采样入共享池。
-- 新增服务端完整模型/动画副本，已按正文及 JSON 解析核对与 assets 原文件一致；原 Photon 工程、模型/着色器资产和特效定义未改。系统文档、入口与[备份索引](../../backups/queen-code-animation-20261018/README.md)已更新。
+- 新增服务端完整模型/动画副本，已按正文及 JSON 解析核对与 assets 原文件一致；原 Photon 工程、模型/着色器资产和特效定义未改。系统文档、入口与备份索引（历史引用，当前工作区缺失：`../../backups/queen-code-animation-20261018/README.md`）已更新。
 - 17 个 Java 经 IDEA 诊断、修改范围格式化，保留既有无关警告；本次新增类与特效/模型预备路径无新增诊断。最终 IDEA 编译 isSuccess=true/problems=[]；Data exitCode=0。旧特效事件及两个技能旧 AIM 调用已检查，无测试、游戏启动、资源重载或性能/视觉实测。不将代码优化或历史性能数据当作本轮稳定 100 FPS 证明。
 
 ## 2026-10-18：编辑器设置翻译与提示换行
@@ -994,7 +1001,7 @@
 - laser 新增 laser_start／laser_end 两个命名阶段，75／54 轨道；原 200t laser 动画及主时间轴保留。通过原生模型片段、激活和运行时属性保持光柱与持续发射，结束时从原片段 180t 收尾。未改 Java、模型几何、UV、着色器或模板。
 - 两份工程保存 dirty=false，定义原生回读及完整 ID 加载通过；依赖包 37／59 条目、warnings=[]。同一个原生预览运行实例依次完成蓄力保持 481t、蓄力结束、激光保持 481t、激光结束与再次启动；开始各来源最多一个实例，结束归零，problems=[]。结束沿用原激光 handle；额外修正结束阶段覆盖默认尺寸，length=6、width=0.5、intensity=0.7 开始后，结束采样仍为长度 6、内柱宽 0.50420165、强度 0.7。
 - IDEA 编译 isSuccess=true、problems=[]；正常 Data 日志 BUILD SUCCESSFUL in 29s，19 文件写入 0、删除 0，MCP 未返回退出码。工程、定义、包与主资源输出的动画名称一致，输出定义与源定义一致，主资源输出不含被排除的工程输入；对象资源、变换、十个辅助动画、空基线、原 laser 动画及主时间轴逐项对比不变。四份修改文档最终诊断为空，生成目录 Git 差异为空；鼠标恢复并退出控制模式，三处用户断点保留、无代理断点。
-- [备份](../../backups/laser-spell-phases-20261016/README.md)包含两份修改前实时工程、磁盘工程／定义／包及三份文档，receipt.json 和 receipt-end-parameters.json 记录实际检查。未新增性能、联机或实体技能验收，未手动暂存、重置或提交。
+- 备份（历史引用，当前工作区缺失：`../../backups/laser-spell-phases-20261016/README.md`）包含两份修改前实时工程、磁盘工程／定义／包及三份文档，receipt.json 和 receipt-end-parameters.json 记录实际检查。未新增性能、联机或实体技能验收，未手动暂存、重置或提交。
 
 ## 2026-10-16：激光法术改为直接调用激光
 
@@ -1013,7 +1020,7 @@
 - 源码的 11 个 FX 工程均已生成同目录 .fx，原生回读及完整 ID 加载的缺失列表为空；同时规范字符串及模型 JSON 字节数组中的便携图路径。laser／laser_spell 包分别 37／59 条目，warnings=[]，组合包有七份 FX 定义。counterattack.mfxproj 缺 renderer／playback，原生读取报 invalid_renderer；旁边 JSON 与工程模型不同，未替换、未修改原模型、未导出 MFX，导出配置待确认。
 - 两个工程保存 dirty=false。IDEA 编译 isSuccess=true、problems=[]；IDEA Data 日志 BUILD SUCCESSFUL，19 文件写入 0、删除 0，MCP 未回传退出码。生成目录无 Git 差异；主资源输出含全部 11 份 FX、两个新包与尾粒子材质，fxproj／mfxproj／zip／bbmodel 数为 0，旧运行定义无残留；未单独构建完整 JAR、运行独立测试或新增性能／联机／发行环境验收。
 - 已查看透视持续画面与末端粒子。MCP 直接 seek 在命名动画暂停时只推进场景，整工程替换后旧工作区还会保留旧库；本轮重建两工作区，工程快照变化为 0，再用 scrub 与同步 simulateTo 复核。最终采样实际动画时间 347、problems=[]、六发射器 inactive 且实例数为 0，结束画面无残留；旧 MCP 347／348 截图不计作收尾证据。未修改这两处 Java 接口，流程限制记录于激光法术文档。
-- [备份](../../backups/laser-spell-integration-20261016/README.md)包含改名前文件、实时工程、外观调整前资产及导出回执。精确核对后移除四个旧名资产和本轮两个中文副本；没有删除其他用户工程。整文档自动格式化被自动审批拒绝，改为仅对本轮五张表格局部对齐；新文档和激光资产文档诊断为空，既有 AGENTS／系统索引表格提示及资源文档失效锚点保留。收尾保留用户新调整的透视相机与播放状态，鼠标释放并退出 MCP 控制，恢复断点全局未静音状态，三处用户断点保留且本轮 agent 断点为 0。未手动暂存、重置或提交。
+- 备份（历史引用，当前工作区缺失：`../../backups/laser-spell-integration-20261016/README.md`）包含改名前文件、实时工程、外观调整前资产及导出回执。精确核对后移除四个旧名资产和本轮两个中文副本；没有删除其他用户工程。整文档自动格式化被自动审批拒绝，改为仅对本轮五张表格局部对齐；新文档和激光资产文档诊断为空，既有 AGENTS／系统索引表格提示及资源文档失效锚点保留。收尾保留用户新调整的透视相机与播放状态，鼠标释放并退出 MCP 控制，恢复断点全局未静音状态，三处用户断点保留且本轮 agent 断点为 0。未手动暂存、重置或提交。
 
 ## 2026-10-16：三色序列星粒与全部同类包装归位
 
@@ -1059,7 +1066,7 @@
 - 根 AGENTS 的 15 个规则章节完整迁入 docs/standards 的 workflow、java-and-packages、entity-contracts，约束效力不变。全局 AGENTS／dev-standards／提示词及索引同步按需路由；项目根入口与系统索引合计从 14,357 减为 3,725 字符，约减少 74.1%，这是文本字符统计，不是实际 token 消耗测量。
 - Photon 特效 MCP 拆为简短入口、API 与限制、制作／故障／验收历史；新增制作经验和系统导航补充。当前工程统一指向 queen_star_beam；27 步对应表明确为 2026-10-14 基线，旧 refined／V3 记录不再充当活动工程指令或新一轮验收。
 - 已静态核对文件内容、Skill 基础前置元数据、本地链接／锚点及原规则迁移，未发现新增缺失；12 份修改前备份哈希一致。原暂存条目保持，已有 67 个代码／资源文件哈希未变；未暂存、提交或重置。官方 quick_validate.py 因缺少 PyYAML 无法运行，未安装依赖，基础静态检查不等于官方校验通过或新会话自动发现。
-- 备份与静态报告位于 [vfx-guidance-20261015-201054](../../backups/vfx-guidance-20261015-201054/README.md)，包含全局与项目原文件、SHA-256、修改前暂存清单和实际检查边界。未进行新的源码、性能、视觉或发行 JAR 验收。
+- 备份与静态报告位于 vfx-guidance-20261015-201054（历史引用，当前工作区缺失：`../../backups/vfx-guidance-20261015-201054/README.md`），包含全局与项目原文件、SHA-256、修改前暂存清单和实际检查边界。未进行新的源码、性能、视觉或发行 JAR 验收。
 
 ## 2026-10-15：星束正式命名、开发资源直读与 run 资产迁移
 
@@ -1314,7 +1321,7 @@
 
 ## 2026-10-13：Minecraft MCP 源码子项目与 Photon 特效专用接口
 
-- 按用户选择“专用 MCP 工具 + 源码复制”，将修复工程的 common、当前 NeoForge 26.1.2 模组、TypeScript bridge、共享 i18n 与原始图标纳入 `modules/minecraft-mcp`，保留基础提交 `50e059dccb09a9e23b91833ffdbf42efd97fa6e6`、四份本地源码修复和三份原许可证；原修复工作树、账户和个人配置不改动。根 settings/build 增加 `:minecraft-mcp`，共用 Java 25／NeoForge 26.1.2.100／ModDev，Client 加载源码，Data／Server 不加载 MCP 模组；Lobecorp compileOnly 引用，不内嵌 MCP JAR。具体来源与依赖见[子项目说明](../../modules/minecraft-mcp/README.md)。
+- 按用户选择“专用 MCP 工具 + 源码复制”，将修复工程的 common、当前 NeoForge 26.1.2 模组、TypeScript bridge、共享 i18n 与原始图标纳入 `modules/minecraft-mcp`，保留基础提交 `50e059dccb09a9e23b91833ffdbf42efd97fa6e6`、四份本地源码修复和三份原许可证；原修复工作树、账户和个人配置不改动。根 settings/build 增加 `:minecraft-mcp`，共用 Java 25／NeoForge 26.1.2.100／ModDev，Client 加载源码，Data／Server 不加载 MCP 模组；Lobecorp compileOnly 引用，不内嵌 MCP JAR。具体来源与依赖见子项目说明（历史引用，当前工作区缺失：`../../modules/minecraft-mcp/README.md`）。
 - 新增通用 `McpExtensionRegistry` 与 HTTP JSON 扩展分派，不在 MCP common 引用 Photon；bridge 保留原 46 工具，新增 8 项 `effect_*`。Lobecorp 新增 `PhotonEffectAutomation`、异常码、5 个职责分离的 Util、注册入口与 Editor Accessor，既有接入只涉及 `LobecorpClientEvents` 和 Mixin 配置。复用原生工程、UUID、模型会话、时间轴、历史、保存与 FXPack 导出，支持参数／模型资产／播放／时间轴／原生 SNBT 批量编辑。
 - 版本由实际工程内容 SHA-256 决定；副本校验后一次提交，只有正式批次实际改变内容才新增一次历史，dryRun 不写入。已知范围、原生枚举和 NumberFunction 注册名从锁定 API／配置器提取，未知范围／单位明确 null。写操作保持原控制门禁，客户端队列可取消阶段与提交阶段隔离；文件仅允许原生资源根内，默认拒绝覆盖，先临时编码再发布。FX 主时间轴播放可能改变持久变换，固定使用 pause → state → edit_batch。协议、8 类操作及限制见[Photon 特效 MCP](photon-effect-mcp.md)。
 - 实际标题界面创建因原生场景缺失 dimension_type 注册表失败；已增加 WORLD_REQUIRED 前置检查，位于创建窗口／工程等副作用前。重新通过 IDEA 编译与 Data 后，在既有隔离世界 `新的世界 (5)` 运行真实 stdio → HTTP → 客户端检查：独立模型的编辑、dryRun、单次历史、版本冲突、undo／redo、四种预览、5.5 tick、保存后 clean、定义／包导出与覆盖／越界拒绝通过；补充 FX 中模型发射器 UUID、模型资产赋值、暂停保持、定位／停止、保存和定义导出，最终 29 项检查通过，模型 packWarnings=[]。输出目录及默认白模边界见接口文档，未以此宣称全部参数、着色器 GPU 外观、多人或性能验收。
@@ -1344,7 +1351,7 @@
 
 ## 2026-10-13：Minecraft MCP 项目技能、操作文档与粒子运行检查
 
-- 按用户要求新增 [lobecorp-minecraft-mcp](../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md) 与 [Minecraft MCP 文档](minecraft-mcp.md)，在系统索引增加入口。常规使用先 `ping` 握手，仅在失败、版本或桥接变化时重新排查；记录 Mod HTTP 与 bridge stdio 的分层、端口覆盖、截图 JSON 解析、控件枚举、Debug 路径格式、单执行者归属、临时断点释放及项目栈帧求值限制。
+- 按用户要求新增 lobecorp-minecraft-mcp（入口缺失：`../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md`） 与 [Minecraft MCP 文档](minecraft-mcp.md)，在系统索引增加入口。常规使用先 `ping` 握手，仅在失败、版本或桥接变化时重新排查；记录 Mod HTTP 与 bridge stdio 的分层、端口覆盖、截图 JSON 解析、控件枚举、Debug 路径格式、单执行者归属、临时断点释放及项目栈帧求值限制。
 - 已通过 IDEA 核对本地 26.1.2 NeoForge Mod JAR、修复工程和 bridge；当前 46 项工具匹配。第二次 Client Debug 实际进入主菜单和隔离新世界，`ping` 得到 pong，控制模式和截图成功。按钮重复／空标签、坐标偏离和文本输入回显未生效的现象按实测记录，不把工具返回成功当成界面结果。
 - 世界文本截图确认可见方向、黑色轮廓和 LEFT_TO_RIGHT 逐字中间状态；MutableComponent 后续追加不影响已存文本。相同 revision 的两次周期同步保留 Particle／layout 对象身份，playback 从 620 增长到 648。CENTER_OUT 的 17 字符中心排名通过 Debug 核对；完整单字动画和自动范围边缘尚未视觉验收。详见[文本粒子实测](text-particles.md#2026-10-13-debug-与-minecraft-mcp-实测)。
 - 真实伤害链路中，generic 的 2、1 和当前玩家近战的 1 均到达服务端发包断点，生命 1000 → 996。第三次会话重做后，客户端恰有 amount=3／centered=false 与 amount=1／centered=true 两个实例，MCP 截图确认身体位置与中心上浮；显式 hurtAt 的 2.5 保留完整指定坐标，非文本 diamond 纹理可见。自然到期后的对象字段清空、同一池壳复用、单批正文／描边与跨帧缓存身份均通过 Debug 核对。
@@ -1434,9 +1441,9 @@
 - 通过 IDEA Debug 确认默认物品循环的跳变根因：`example/item_pose` 没有客户端覆盖，`visualClip=null`；1.95→2.00 秒快照的 Euler Y 从约 −351° 回零，旧半刻插值为 −175.5°，与正确旋转相差约 180°。`LcClientAnimations` 在同播放修订跨循环时，按派生资源的取模时间重新采样旋转；代码声明拥有的骨骼仍保留同步结果，位移／缩放保持原快照插值。显式播放修订直接采用当前姿态与世界变换。`LcClientAnimationResources.contentClip` 按内容版本和动画名缓存，完整 clear 时清理。
 - 本轮 Java 修改为 `LcPlayerAnimationPolicy`、`LcPlayerFirstPersonRenderer`、`LcPlayerAnimationDemo`、`LcAnimationStatePayload`、`LcPayloads`、`LcClientAnimations`、`LcClientAnimationResources`；同步玩家动画、动画运行时、通用附着、网络、系统索引及本记录。全部项目编辑通过 IDEA，Java 修改范围已格式化且关闭导入优化／成员重排；没有资源内容改动或手工编辑生成输出。
 - IDEA 最终检查 7 份 Java 无错误或新增警告，保留 6 条既有未使用 API／枚举可见性提示；6 份系统文档无错误，索引／动画运行时／网络各保留一条表格弱警告。项目编译 `isSuccess=true`、`problems=[]`。Data 配置退出码 0；VFS 刷新后 25 份生成文件（含缓存）与执行前读取文本完全相同，文件集合无新增／删除。策略构造、builder 与 Payload 读写的语义引用已核对，没有过时构造调用；未运行 JUnit。
-- Minecraft MCP + IDEA Debug 第一轮实测无动画 `frames=0/open=null`，[原版第一人称截图](../../run/client/screenshots/player-first-person-gated-vanilla-20261012.png) 已实际查看。同一暂停玩家动画 `cf73d0d1-2ed2-491f-abb9-62f7b2e77918` 声明 false 时 `open=null`；改为 true 后 `scope=true/activeDuring=true`，关闭 scope 后 active=false，[显式自定义姿态截图](../../run/client/screenshots/player-first-person-gated-active-20261012.png) 已实际查看。
+- Minecraft MCP + IDEA Debug 第一轮实测无动画 `frames=0/open=null`，原版第一人称截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-gated-vanilla-20261012.png`） 已实际查看。同一暂停玩家动画 `cf73d0d1-2ed2-491f-abb9-62f7b2e77918` 声明 false 时 `open=null`；改为 true 后 `scope=true/activeDuring=true`，关闭 scope 后 active=false，显式自定义姿态截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-gated-active-20261012.png`） 已实际查看。
 - 第二轮原配置重启后，物品实例 `25dd4fa5-5e1e-4289-81dd-8ee637a13091` 的实际跨圈快照为 3.999999999999994→4.049999999999994 秒。旧半刻 Y=−184.500005°，修复后为 −4.500000125°，与资源期望一致，四元数角误差 0；positionPreserved／scalePreserved=true、overrides=0、sameRevision=true。代码拥有骨骼的跳过分支仅做源码检查，没有把本例当作该分支的运行证据。
-- 服务端直接停止玩家 `519f03d8-dd39-4afe-8ea4-51d121fa36b9` 和物品后，客户端实测 `frames=0/pending=0/openNull=true/active=false`，[停止后的原版截图](../../run/client/screenshots/player-first-person-gated-stopped-20261012.png) 已实际查看；服务端动画／物品／附着均为 0。没有取得本轮淡出中间权重，不将到期回退当作中间淡出验收。日志开关均为 false，代理断点全部移除，仅保留两个原有禁用用户异常断点；Client Debug 恢复 running，退出 MCP 控制模式。
+- 服务端直接停止玩家 `519f03d8-dd39-4afe-8ea4-51d121fa36b9` 和物品后，客户端实测 `frames=0/pending=0/openNull=true/active=false`，停止后的原版截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-gated-stopped-20261012.png`） 已实际查看；服务端动画／物品／附着均为 0。没有取得本轮淡出中间权重，不将到期回退当作中间淡出验收。日志开关均为 false，代理断点全部移除，仅保留两个原有禁用用户异常断点；Client Debug 恢复 running，退出 MCP 控制模式。
 - 首轮恢复执行时 JVM 意外退出，`run/client/hs_err_pid36000.log` 确认 18:11:44 Render thread 的 `EXCEPTION_ACCESS_VIOLATION`，问题帧为 JBR 25.0.4.1 `DirectMethodHandle$Holder.invokeStatic`；触发原因未确定，没有修改 JVM／第三方模组／运行配置或声称修复。第二轮日志有 6 条 JEI 配方登记耗时超过一分钟的 ERROR，以及 Debug 追帧／环境 WARN；未扩大为第三方修复，也不作为正常性能证据。
 - 玩家位置 (55.936713553182834,56,204.9339730493009)、yaw=128.94997、pitch=63.89987、FIRST_PERSON、hideGui=false，主手 AIR／副手 1 个 sandstone 保持本轮基线，没有移动或修改背包。Git 仍为 dev、612 条状态、297 暂存／564 未暂存、0 冲突；未手动暂存、提交、推送、重置或创建备份。长淡入期间运动目标跨 180° 的最短路径翻支风险仍保留，资源自身不连续与代码显式跳变也不被此修复改写；未验收多人、专用服务器、全部物品与着色器组合。
 
@@ -1449,9 +1456,9 @@
 - 新增 LcAttachedItems、LcItemAnimationSession 和 example/item_pose 的循环局部 TRS；整体物品动画使用独立播放实例，内部 GeoItem 骨骼继续沿 GeckoLib。进出过渡使用完整配置时长；SEQUENTIAL 替换延后新显示开始，并同时冻结新物品与父附着时钟；软停止冻结姿态，按世界时间淡出，不受暂停或 speed=0 阻塞。空物品在命令、登记及快照入口拒绝。
 - 统一命令为 /lobecorp animation player|attachment|item，支持玩家选择器、独立速度、进出时长、OVERLAP／SEQUENTIAL、旋转过渡及暂停／恢复／停止；attachment 另支持 BACK／HAND／WORLD 切锚和物品自身控制。玩家 dynamic 时间点只改来源，保留命令指定过渡。移除旧 DemoClient 和旧命令别名，实际语法见[动画调试命令](animation-runtime.md#动画调试命令)。
 - 新增默认关闭的 LcAttachmentDebugUtil.ENABLED，仅开发环境记录创建、切锚、视觉来源及释放边沿。全部项目编辑通过 IDEA，代码修改范围已格式化并关闭导入优化／成员重排；资源保持原排版。IDEA 编译 isSuccess=true、problems=[]；Data 退出码 0。经 VFS 刷新比对 25 份生成文件，只有 en_us／zh_cn 各新增 commands.lobecorp.animation.empty_item 及两份对应缓存时间／哈希变化，文件集合不变；未手工编辑生成输出。
-- Minecraft MCP + IDEA Debug 实测客户端无动画绑定 f2bd5950-083e-441b-a692-75d6f18d34e8：本地绑定／物品各 1、动画 0，接收空 full 后仍为 1；[本地世界物品截图](../../run/client/screenshots/attachment-local-20261012.png) 已实际查看。[本地第一人称手部截图](../../run/client/screenshots/attachment-local-hand-20261012.png) 确认无自身动画的本地显示可使用最终手节点。两个本地测试对象均已释放。
-- 通过服务端线程的真实 Brigadier 命令树执行参数验证：AIR 返回中文错误，独立世界物品采用 speed=0.5、12 tick、SEQUENTIAL；[世界物品截图](../../run/client/screenshots/item-animation-world-20261012.png) 已查看。替换瞬间实测旧物品 paused、新物品 time=0／paused，startedTick=当前 tick+12；之后客户端只余新播放。speed=0／暂停后的 stop 正常完成淡出清理。Minecraft MCP execute_command 在当前版本返回 no command method found，因此命令由 Debug 调用同一服务端 dispatcher，没有把 MCP 返回错误报告为成功。
-- 真实玩家附着 44e69e40-728c-41f0-af94-f97877b67505 手动 BACK→HAND→WORLD 保留绑定 UUID，父时间线 paused／speed=0 时自身动画继续并可独立改为 0.25；[背部截图](../../run/client/screenshots/attachment-back-20261012.png)和[世界路线截图](../../run/client/screenshots/attachment-world-20261012.png)均已实际查看。新自然播放 fdc60dfe-0041-4819-98d9-00f903b9795c 的绑定 b106633e-07a7-4656-b966-c99c34acb31b 记录 1.5 秒手部切换、3 秒世界切换、6 秒结束，随后自身物品淡出并释放。
+- Minecraft MCP + IDEA Debug 实测客户端无动画绑定 f2bd5950-083e-441b-a692-75d6f18d34e8：本地绑定／物品各 1、动画 0，接收空 full 后仍为 1；本地世界物品截图（历史引用，当前工作区缺失：`../../run/client/screenshots/attachment-local-20261012.png`） 已实际查看。本地第一人称手部截图（历史引用，当前工作区缺失：`../../run/client/screenshots/attachment-local-hand-20261012.png`） 确认无自身动画的本地显示可使用最终手节点。两个本地测试对象均已释放。
+- 通过服务端线程的真实 Brigadier 命令树执行参数验证：AIR 返回中文错误，独立世界物品采用 speed=0.5、12 tick、SEQUENTIAL；世界物品截图（历史引用，当前工作区缺失：`../../run/client/screenshots/item-animation-world-20261012.png`） 已查看。替换瞬间实测旧物品 paused、新物品 time=0／paused，startedTick=当前 tick+12；之后客户端只余新播放。speed=0／暂停后的 stop 正常完成淡出清理。Minecraft MCP execute_command 在当前版本返回 no command method found，因此命令由 Debug 调用同一服务端 dispatcher，没有把 MCP 返回错误报告为成功。
+- 真实玩家附着 44e69e40-728c-41f0-af94-f97877b67505 手动 BACK→HAND→WORLD 保留绑定 UUID，父时间线 paused／speed=0 时自身动画继续并可独立改为 0.25；背部截图（历史引用，当前工作区缺失：`../../run/client/screenshots/attachment-back-20261012.png`）和世界路线截图（历史引用，当前工作区缺失：`../../run/client/screenshots/attachment-world-20261012.png`）均已实际查看。新自然播放 fdc60dfe-0041-4819-98d9-00f903b9795c 的绑定 b106633e-07a7-4656-b966-c99c34acb31b 记录 1.5 秒手部切换、3 秒世界切换、6 秒结束，随后自身物品淡出并释放。
 - 玩家 dynamic 实例 1047566b-e8a6-420b-8067-f8cb32bb76e0 在 1.5 秒变更 vanilla_idle 时，服务端和客户端均保留 12 tick／SEQUENTIAL；模型日志实测淡入 0.3541666667、来源变更后 0.1875、结束淡出 0.1875。收尾 Debug 实测重复写入与奇异切锚均拒绝且 revision 不变；本地绑定／描述、附着帧、客户端播放以及服务端绑定／描述／播放均为 0。
 - 最终日志开关均恢复 false，移除全部代理断点，仅保留两个原有禁用用户异常断点，Client Debug 恢复 running 并退出 MCP 控制模式。位置 (70.54768729371958,56,236.6327550873684)、yaw=0.9999179、pitch=31.200022、FIRST_PERSON、hideGui=false，主手 1 个 evoker_spawn_egg／副手 1 个 sandstone 保持本轮基线；未修改库存或移动玩家。第二次启动完整日志读取无 ERROR／FATAL，暂停引起的追帧 WARN 不作为性能证据。
 - 首次 Client 进入世界后 JVM 退出，run/client/hs_err_pid32300.log 记录 16:19:17 Render thread 的 EXCEPTION_ACCESS_VIOLATION，问题帧为 DirectMethodHandle$Holder.invokeStatic；尚未确认触发原因，没有归因于本功能或声称修复。原配置重启后完成以上检查。未验收专用服务器、多人晚加入／失去追踪、全部姿态、全部特殊物品和着色器组合；未运行 JUnit，未修改第三方模组或运行配置，未新增手工备份、暂存、提交、推送或重置。
@@ -1461,14 +1468,14 @@
 
 - 按用户要求重新综合验证，未修改 Java、Mixin 配置、依赖或运行配置。14 份相关 Java 的 IDEA 检查为 0 ERROR、6 条既有未使用 API 警告；第一人称渲染器、Mixin／Accessor、姿态桥接等核心文件及 Mixin JSON 无问题。重新核对来源混合、过渡、独立模型、相机矩阵、延迟提交及原版／NeoForge／Iris 入口。
 - IDEA 新一轮编译 `isSuccess=true`、`problems=[]`；Data 退出码 0。经 IDEA VFS 刷新后，25 份生成文件（含缓存）与执行前读取文本一致，文件集合无新增／删除；没有手工修改生成输出。随后通过 IDEA 启动新的 Client Debug 并进入既有单人世界，运行期间未编译或热替换。
-- 本轮基线为 SLIM、creative，位置 (62.20273619533319, 56, 182.02224929062757)，FIRST_PERSON，yaw=-24.650059／pitch=3.150028；主手 1 个 barrier、副手 1 个 sandstone，四个盔甲槽为空，默认日志关闭。[新基线截图](../../run/client/screenshots/player-comprehensive-baseline-20261012.png) 实际确认双臂／袖层和双手当前物品；截图时临时 pitch=65。
+- 本轮基线为 SLIM、creative，位置 (62.20273619533319, 56, 182.02224929062757)，FIRST_PERSON，yaw=-24.650059／pitch=3.150028；主手 1 个 barrier、副手 1 个 sandstone，四个盔甲槽为空，默认日志关闭。新基线截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-baseline-20261012.png`） 实际确认双臂／袖层和双手当前物品；截图时临时 pitch=65。
 - 不设中途断点的 dynamic 播放实例 `6e154f55-be97-4153-8fa8-407d6d9ed633` 实际完成 1.5 秒 vanilla_idle 策略修订、3 秒 FINISHED，第一人称模型记录 fadeOut=0.125 与随后 0.96875，最终 Debug 确认 frames=0、histories=0。首次 MODEL_LAYER 的 fadeIn 已为 1，本轮没有新的淡入中间帧证据，不能将前轮证据混作本轮结果。
 - 已确认静态数据来源边界：实际持物从当前玩家 render state 提取，原版每手事件与 Iris HEAD 透明判断使用原版换装缓存，两者可在换装期间不同。临时将无组件修补的副手 sandstone 替换为 glass 后，稳定帧实测绘制值／缓存均为 glass；不一致条件断点未命中，光影可见症状尚未复现。副手已恢复并实测为 1 个 sandstone，主手未改。
 - 第一人称普通物品只复用第三人称 ItemInHandLayer／ArmPose 效果，不执行被替换分支中的第一人称吃喝、刷子、弓弩屏幕布局或 applyForgeHandTransform。当前默认吃喝没有食物送嘴的屏幕抖动；这是现有真实身体路径的行为边界，本轮没有扩展物品动作。
 - 用户要求断点命中不抢焦点后，先移除暂停临时断点并恢复运行，改用 NONE 日志点；实际收到 currentOff=eventOff=sandstone、FIRST_PERSON、invisible=false、scopesBefore=0，无断点表达式错误。NONE 日志点没有因 temporary 自动移除，已显式清理。MCP 没有 IDEA 全局焦点设置接口；用户随后报告已手动完成设置，并明确允许继续暂停断点，本轮未替用户修改或验证全局设置值。
-- 恢复暂停式 Debug 后，override 实例 `5663f715-dd33-4742-9918-52206bd07aad` 在服务端跳至 1 秒并暂停播放；实际第一人称模型右臂 X=1.7453293、Z=-0.2617994，左臂 Z=0.17453292 弧度，history=1、frames=1。[覆盖姿态截图](../../run/client/screenshots/player-comprehensive-override-20261012.png) 已通过 MCP 实际查看，右臂位于相机后方的示例行为仍沿用前轮边界。
-- F1 运行检查已完成：从上述活动姿态设置 hideGui=true 后主动 stop，[F1 截图](../../run/client/screenshots/player-comprehensive-f1-20261012.png) 没有界面、手臂或持物；原始字段实测 HISTORIES=1、FRAMES=0、PENDING=0，确认模型历史有界留存。已确认原因是 F1 跳过手部及本地相机实体状态提取，历史清理仍由 prepare 的空帧分支触发；恢复渲染后实测 history=0、frames=0、pending=0。维护时不能把动画帧到期等同于模型历史立即释放，也不能把该缓存留存当作继续绘制；本轮未扩大为即时清理改动。WIDE、其他动作组合、实际地图内容、多人与着色器组合仍未验收。
-- [第三人称正面截图](../../run/client/screenshots/player-comprehensive-third-person-20261012.png) 实际确认完整头部、身体、双腿与双手持物；停止后 scope=0。最终 Debug 实测主手 1 个 barrier、副手 1 个 sandstone、四个盔甲槽为空；恢复 FIRST_PERSON、yaw=-24.650059、pitch=3.150028、hideGui=false，并关闭开发日志。MCP 确认位置、旋转、创造模式与生命／饥饿值保持基线；仅保留两个原有禁用用户异常断点，Client Debug 为 running。经 IDEA VFS 刷新读取当前完整日志，未出现 ERROR／FATAL。
+- 恢复暂停式 Debug 后，override 实例 `5663f715-dd33-4742-9918-52206bd07aad` 在服务端跳至 1 秒并暂停播放；实际第一人称模型右臂 X=1.7453293、Z=-0.2617994，左臂 Z=0.17453292 弧度，history=1、frames=1。覆盖姿态截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-override-20261012.png`） 已通过 MCP 实际查看，右臂位于相机后方的示例行为仍沿用前轮边界。
+- F1 运行检查已完成：从上述活动姿态设置 hideGui=true 后主动 stop，F1 截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-f1-20261012.png`） 没有界面、手臂或持物；原始字段实测 HISTORIES=1、FRAMES=0、PENDING=0，确认模型历史有界留存。已确认原因是 F1 跳过手部及本地相机实体状态提取，历史清理仍由 prepare 的空帧分支触发；恢复渲染后实测 history=0、frames=0、pending=0。维护时不能把动画帧到期等同于模型历史立即释放，也不能把该缓存留存当作继续绘制；本轮未扩大为即时清理改动。WIDE、其他动作组合、实际地图内容、多人与着色器组合仍未验收。
+- 第三人称正面截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-third-person-20261012.png`） 实际确认完整头部、身体、双腿与双手持物；停止后 scope=0。最终 Debug 实测主手 1 个 barrier、副手 1 个 sandstone、四个盔甲槽为空；恢复 FIRST_PERSON、yaw=-24.650059、pitch=3.150028、hideGui=false，并关闭开发日志。MCP 确认位置、旋转、创造模式与生命／饥饿值保持基线；仅保留两个原有禁用用户异常断点，Client Debug 为 running。经 IDEA VFS 刷新读取当前完整日志，未出现 ERROR／FATAL。
 - 本轮只补充玩家动画文档与本记录；既有 591 条 Git 状态（276 暂存、546 未暂存、0 冲突）保留，没有手动暂存、提交、重置或额外备份。新截图保留，未运行 JUnit；日志中的 Debug 追帧、spark 超时及启动环境警告不作为正常性能证据。
 
 ## 2026-10-12：玩家第一人称双臂与随手物品
@@ -1479,9 +1486,9 @@
 - 普通随手物品调用原版 `ItemInHandLayer` 变换，地图在最终手部变换下调用原版 `renderMap`，保留地图背景、内容和装饰入口。上述内容／装饰入口已按本地当前版本源码确认，实际地图内容和装饰尚未验收；没有承诺任意特殊物品或第三方模组自动适配。
 - 所有项目修改通过 IDEA；三份新 Java 与两份既有 Java 的修改范围经 IDEA 格式化，关闭导入优化与成员重排，资源排版保留。最终五份 Java 和 Mixin JSON 的 IDEA 诊断均为 0 问题。语义引用核对新渲染器 12 处、注册方法 1 处、地图 Invoker 1 处，AddLayers 与 RenderHandEvent 仍沿用既有唯一监听入口。
 - IDEA 编译 `isSuccess=true`、`problems=[]`；Data 退出码 0。25 份生成文件（含缓存）读取文本与执行前相同，生成文件集合无新增／删除；没有手工编辑生成输出。完成后启动新 Client Debug，运行期间没有再次编译或热替换，也没有运行 JUnit。
-- Minecraft MCP 实际截图确认第一人称双臂／袖层和主手刷怪蛋可见，未绘制身体；[默认姿态截图](../../run/client/screenshots/player-first-person-idle-20261012.png)。覆盖示例在服务端 seek(1)／暂停后，独立第一人称模型右臂 X=1.7453293、Z=-0.2617994，fadeIn=1；右臂移到相机后方，左臂可见，[向下观察截图](../../run/client/screenshots/player-first-person-override-down-20261012.png) 不作为右臂可见证据。
-- 不设中途断点的 dynamic 播放实际记录到第一人称模型 fadeIn=0.8125、1.5 秒修订为 vanilla_idle 时新 fadeIn=0.125、3 秒 FINISHED 后 fadeOut=0.15625，最后客户端帧／模型历史均清零。暂停 stop 的晚到包直接到期，不作为渐变过程证据。[地图截图](../../run/client/screenshots/player-first-person-map-20261012.png) 实际显示副手地图背景／边框和主手物品，本轮测试地图没有 map_id。
-- [第三人称正面截图](../../run/client/screenshots/player-first-person-third-person-20261012.png) 确认完整头身腿和手持物仍可见。临时副手恢复为空，主手仍为原刷怪蛋；日志 false、history=0、渲染作用域 inactive。视角恢复 FIRST_PERSON、yaw=-71.60007／pitch=-33.6，MCP 确认位置／旋转；移除全部临时断点，仅保留两条用户原有禁用异常断点，Client Debug 继续运行。
+- Minecraft MCP 实际截图确认第一人称双臂／袖层和主手刷怪蛋可见，未绘制身体；默认姿态截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-idle-20261012.png`）。覆盖示例在服务端 seek(1)／暂停后，独立第一人称模型右臂 X=1.7453293、Z=-0.2617994，fadeIn=1；右臂移到相机后方，左臂可见，向下观察截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-override-down-20261012.png`） 不作为右臂可见证据。
+- 不设中途断点的 dynamic 播放实际记录到第一人称模型 fadeIn=0.8125、1.5 秒修订为 vanilla_idle 时新 fadeIn=0.125、3 秒 FINISHED 后 fadeOut=0.15625，最后客户端帧／模型历史均清零。暂停 stop 的晚到包直接到期，不作为渐变过程证据。地图截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-map-20261012.png`） 实际显示副手地图背景／边框和主手物品，本轮测试地图没有 map_id。
+- 第三人称正面截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-third-person-20261012.png`） 确认完整头身腿和手持物仍可见。临时副手恢复为空，主手仍为原刷怪蛋；日志 false、history=0、渲染作用域 inactive。视角恢复 FIRST_PERSON、yaw=-71.60007／pitch=-33.6，MCP 确认位置／旋转；移除全部临时断点，仅保留两条用户原有禁用异常断点，Client Debug 继续运行。
 - 未验收 WIDE 皮肤、全部动作组合、袖层开关、特殊物品使用、实际地图数据／装饰、多人与第三方着色器／模组组合。当前日志读取未见 ERROR／FATAL；Debug 暂停导致追帧及 spark 超时警告，不作为正常性能证据。本轮未创建额外备份，没有手动暂存、提交、推送或重置；IDEA 自动将三份新 Java 加入索引，既有工作区修改保留。接口、限制与运行证据同步到玩家动画文档、动画运行态、网络及系统索引。
 - 六份相关文档 IDEA 检查无 ERROR，系统索引和网络文档各保留一条既有表格 WEAK WARNING，其余四份无问题；范围内 `git diff --check HEAD` 退出码 0，仅提示 LF／CRLF 策略。最终 Git 为 591 条、276 暂存／546 未暂存／0 冲突，相对本轮开始新增三份 Java；现有注册文件原已暂存，本轮新增调用保留为未暂存修改。
 
@@ -1493,7 +1500,7 @@
 - 所有项目编辑均通过 IDEA。新增工具类与四份 Java 的修改行通过 IDEA 格式化，关闭导入优化与成员重排。五份 Java 最终检查为 0 ERROR、6 条既有 WARNING；新工具、运行提取和姿态桥接无错误／警告。IDEA 语义引用核对工具的 16 处引用，未发现过时调用。
 - IDEA 编译成功，`isSuccess=true`、`problems=[]`；Data 退出码 0。25 份生成文件（含缓存）读取文本与执行前相同，文件集合无新增／删除，未手工编辑生成输出；Data 输出预览截断并含环境警告，不声称全量日志无警告。运行期间未再次编译或热替换，也未运行 JUnit。
 - 已实际通过 Minecraft MCP + 新 Client Debug 进入现有单人世界。Debug 确认初始 ENABLED/effective 均 false，关闭时执行 dynamic 无动画日志；开启后同一 dynamic 播放出现 SERVER_START → SERVER_POLICY（1.5 秒，revision 0→1，仅 vanilla_idle）→ SERVER_STOP（FINISHED），客户端及模型层收到对应边沿并清理尾部。再次关闭后停止冻结播放并执行 dynamic，没有新增动画日志。主动停止胸甲示例另确认 STOPPED 原因和 fadeOut=0.40625。
-- 覆盖示例在服务端线程调用 seek(1)／setPaused(true)，随后在本项目姿态桥接取值：时间 1 秒、fadeIn=1、sources 为空，主 PlayerModel 右臂 X=1.7453293、Z=-0.2617994 弧度（100°／-15°）。临时将原空胸部槽替换为钻石胸甲，独立护甲 PlayerModel（modelIdentity=1390645920，与主模型 2066557984 不同）得到相同角度。MCP 保存并实际查看 [玩家截图](../../run/client/screenshots/player-animation-override-20261012.png) 和 [胸甲截图](../../run/client/screenshots/player-animation-chest-20261012.png)，均为 854×480，可见手臂及胸甲一致姿态。
+- 覆盖示例在服务端线程调用 seek(1)／setPaused(true)，随后在本项目姿态桥接取值：时间 1 秒、fadeIn=1、sources 为空，主 PlayerModel 右臂 X=1.7453293、Z=-0.2617994 弧度（100°／-15°）。临时将原空胸部槽替换为钻石胸甲，独立护甲 PlayerModel（modelIdentity=1390645920，与主模型 2066557984 不同）得到相同角度。MCP 保存并实际查看 玩家截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-animation-override-20261012.png`） 和 胸甲截图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-animation-chest-20261012.png`），均为 854×480，可见手臂及胸甲一致姿态。
 - 调试收尾已停止示例，客户端帧／模型历史均为 0，胸部槽恢复为空，开关恢复 false；设置回本轮记录的 FIRST_PERSON、yaw=-71.60007／pitch=-33.6。临时断点已移除，保留两个用户原有禁用异常断点，Client Debug 继续运行。本轮未使用原生 Screenshot 调试调用、未更改运行配置、第三方模组或库存中的其他物品；两份 MCP 截图保留，没有创建额外备份或手动暂存／提交／推送／重置。
 - 本轮未复现前轮 Sodium 崩溃，根因仍未确认。暂停 Debug 引发服务端追帧和 spark 统计超时 WARN，不作为正常性能证据；头盔／护腿／靴子各槽、多人与晚加入、第三方适配、组合压力及第一人称未验收。相关开关入口、边界与截图同步到玩家动画文档及系统索引。
 - 四份涉及文档最终 IDEA 检查无 ERROR，系统索引保留一条既有表格格式弱警告，其余三份无问题；范围内 `git diff --check HEAD` 退出码 0，仅提示 LF／CRLF 策略。最终 Git 为 588 条、273 暂存／544 未暂存／0 冲突，相对开始仅新增工具文件一条（由 IDEA 自动加入索引）；既有工作区继续保留。当前 Client 日志未检出 ERROR／FATAL，不把此前警告或历史崩溃报告清零。
@@ -1508,7 +1515,7 @@
 - 清理了四个临时编辑器的工程及 JVM 引用，临时断点全部移除，原有两个禁用异常断点保留；已退出 MCP 控制模式，Client Debug 保持运行。唯一测试前缀 `mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47` 的工程／OBJ／定义保留于 `run/client/ldlib2/assets`，模型包保留于 `run/client/photon/fxpacks`，未删除测试产物或既有备份。
 - 本轮使用默认白模，未验收自定义 PNG 依赖收集／GC、模组 JAR 内包、多人、快捷键实际按键与检视器全部控件。后期 MCP 截图为黑屏；原生事件链与运行数值不代表完整视觉效果或物理双击间隔已验收。一次标题界面创建编辑器的调试探测因缺少维度注册表失败，进入现有世界后上述路径完成；调试表达式的 API／编译错误不作为功能失败或成功证据。
 - 同日按用户要求重新打开：上次 Client 正常退出后，重新启动 Client Debug（会话 `f52aa94b-a640-4362-9786-b6bfabf92d5a`），从新原生 `FXEditor.fileMenu.openProject` 打开上述已存 `.mfxproj`，自动创建 `PhotonModelProjectEditor`。标题、工程文件路径及后缀正确，非脏状态且完整资产与磁盘一致；重启后的独立 `.mfx` 和包内 `probe_a` 被 `FXHelper` 发现并加载，资产 JSON 与工程相等。Minecraft MCP 在 9876 重新 ping 连接成功，当前日志无 ERROR／FATAL，保留 Iris 更新网络 WARN。
-- 重开时 MCP 截图只返回 854×480 局部；原生 `Screenshot.grab` 使用非空 `System.out::println` 回调生成 [2560×1494 完整帧截图](../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png)，已实际查看整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。仅补充静态画面证据，物理双击、实际快捷键、纹理依赖／GC、JAR 包及多人等未验收范围不变。
+- 重开时 MCP 截图只返回 854×480 局部；原生 `Screenshot.grab` 使用非空 `System.out::println` 回调生成 2560×1494 完整帧截图（历史引用，当前工作区缺失：`../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png`），已实际查看整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。仅补充静态画面证据，物理双击、实际快捷键、纹理依赖／GC、JAR 包及多人等未验收范围不变。
 - 本轮仅通过 IDEA 补充本记录及 [模型特效维护记录](photon-model-effects.md#维护与实际检查)，未修改生产代码、运行配置或第三方工具，未单独执行编译、Data 或 JUnit。两份文档的 IDEA 诊断无新增问题，模型文档保留第 90 行既有表格格式弱警告；范围内 `git diff --check HEAD` 退出码 0，仅提示 LF／CRLF 策略。当前 Client 日志检索无 ERROR／FATAL，仍含启动环境 WARN。保留用户原有工作区，未手动暂存、提交、推送或创建额外备份。
 
 ## 2026-10-12：玩家第三人称 GeckoLib 姿态与原版来源混合
@@ -1636,7 +1643,7 @@
 - 原生 saveAsProject 弹窗通过 Screen 鼠标事件确认后，文件存在、currentProjectFile 正确、dirty=false；再由 PhotonModelProject.TYPE 读盘，完整 JSON 相等。调用 editor.exit(null) 后，工程清空、场景控制器清空及标签移除均为 true；从原标签的 fileMenu.openProject(file) 重开后，完整 JSON 相等、dirty=false、场景控制器存在、标题正确，旋转、缩放与轴心值均保留。
 - 保存重开后再次拖动轴心，通过原生 Screen 右键取消，完整 JSON 精确恢复保存快照，undoStack 数量不变，drag=false、liveBefore=null、cameraMoving=false。轴心编辑中切换 ROTATE 并执行 Preview.updateFrame 后，轴心模式退出，Gizmo 目标恢复为 PhotonModelPartTransform，dirty=false。
 - 临时工程保留在 `run/client/ldlib2/assets/pivot-acceptance-20261010-a064452e-580e-4f57-a5c4-c14969ed3055.lcmodelproj.json`；已查看的初始截图位于 Client 游戏目录的 `screenshots/pivot-acceptance-initial-20261010.png`。本轮 IDEA Client 启动日志全量检索 ERROR／FATAL／Unreported exception／EXCEPTION_ACCESS 结果为空。
-- 保存弹窗、重开与[最终截图](../../run/client/screenshots/pivot-acceptance-final-20261010.png)均已写盘并实际查看，尺寸均为 1600×1000；最终画面清晰显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于偏离模型中心的新轴心。
+- 保存弹窗、重开与最终截图（历史引用，当前工作区缺失：`../../run/client/screenshots/pivot-acceptance-final-20261010.png`）均已写盘并实际查看，尺寸均为 1600×1000；最终画面清晰显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于偏离模型中心的新轴心。
 - 40 个临时调试对象引用已清理，只移除本轮两个代理断点，原两个禁用的用户异常断点保留。Debug 恢复 running，Minecraft MCP connected=true、port=9876、processAlive=true，玩家只读查询再次成功，日志全量错误过滤再次为空；重开验收标签与唯一临时工程保留供用户查看。
 - 上述输入通过调试求值、受控射线与原生 Screen 事件链执行，没有使用桌面控制或物理鼠标，不能视为全部真实输入验收；参数输入字段只确认了外观，未验收字段输入修改。此次只更新两份系统文档，无生产代码修复、运行配置或 JDK 修改，未重新编译、运行 Data 或执行 JUnit；上一条记录的静态检查与当时未运行 Client 的事实继续保留。
 
@@ -2054,7 +2061,7 @@
 - 配置升为 v6：Definition 持有独立 parameters／durationParameter，Parameter 使用 UUID；绑定新增 scaleParameter／offsetParameter。Rule 仅保留来源条件及 target／duration／inputs，旧库共享参数及 Action 运行层移除；公开形参操作指定播放句柄，停止／重启不误操作新的 owner。
 - 旧版严格迁移：单本实例 PLAY、固定输入与可归属共享参数自动转换；未知枚举／轨道类型、畸形轨道数据、动态共享来源、未归属参数、子作用域及多操作链报告受阻。保留 originalDefinition 副本及只读迁移报告，不写为新格式；Editor 保存／另存、FXData 持久化与 FX／FXPack 导出先检查完整数据再提交，避免部分迁移或保存成功提示失真。
 - 原生参数／触发／输入数组及选择保留，动画形参候选按所属签名定位；删除／改型不以同名误处理其他动画或子资源。场景基础 Timeline 没有命名形参来源，子片段只传固定值；不暴露无效速度控件。
-- 调整既有状态、运行、GUI 和共享时间轴回归以新契约执行，保留时钟、八类原生轨道、多态采样、合成及历史检查。旧 Action 仅作为迁移 NBT 输入夹具；新增 [迁移检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java)及[子片段检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java)，分别纳入 Timeline／Runtime 菜单目录。
+- 调整既有状态、运行、GUI 和共享时间轴回归以新契约执行，保留时钟、八类原生轨道、多态采样、合成及历史检查。旧 Action 仅作为迁移 NBT 输入夹具；新增 迁移检查（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java`）及子片段检查（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java`），分别纳入 Timeline／Runtime 菜单目录。
 - 新增 scanProjects(Path) 只读递归扫描真实 .fxproj／.fx：通过锁定版 IDEA 源核实工程为未压缩 NBT、导出 .fx 为 GZIP NBT；在 type=lobecorp_animation_controller 下读取 definition，逐文件报告控制器数、版本、原始规则／共享参数／形参数量、迁移后的规则／形参数量及受阻原因。扫描不创建项目或预览、不写资源、不 emit 粒子；注册表未完成时返回解析失败，不能报告迁移通过。
 - 修正边界并加入断言：零长度窗口进度定义为 1，不做 0/0；父停止／回退清理其已保持末帧的受控贡献，旧 token 无法停止被新 owner 接管的播放。实时跟随在来源结束后冻结最后值，COMPLETE 在 RELEASE 前冻结输入，不从已经移除的播放表反查形参。静默回放仍处理内部规则，原生信号的 executor 与全局监听两路外部回调分别静默；新增真实宿主信号回归。
 - 文档当前用法已改为 v6；历史版本的实际检查保留并明确标记。并行文件归属独立，项目文件均通过 IDEA 修改，保存完整文本基线；没有创建磁盘备份，未提交／推送或手写生成输出。IDEA 创建 8 个新文件时自动暂存，安全删除 4 个原暂存新增类时也自动移除其索引条目；首次仅撤回这 8 项自动暂存的操作被审批拒绝，未执行成功，未绕过审批。相对原索引 110 项，当时为 114 项；其他索引内容保持原件。

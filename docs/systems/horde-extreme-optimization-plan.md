@@ -251,7 +251,7 @@
 | 文档核查用归档 | `C:/Users/wang_/AppData/Local/Temp/horde-sodium-diagnosis-20261025-6d507349` |
 | 代码入口 | [HordeGpuRenderer](../../src/main/java/org/unitego/lobecorp/client/horde/HordeGpuRenderer.java)（`MAX_WORDS` L539、块循环 L229、expand L620–641、copy L643–654、材质 L663–707） |
 | 展开 shader | [horde_iris_vertices.fsh](../../src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh) |
-| 运动/光照/索引 | `horde_motion.fsh`、[HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、[HordeSpatialIndex](../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java) |
+| 运动/光照/索引 | `horde_motion.fsh`、[HordeLightField](../../src/main/java/org/unitego/lobecorp/client/horde/HordeLightField.java)、HordeSpatialIndex（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/horde/HordeSpatialIndex.java`） |
 
 ---
 

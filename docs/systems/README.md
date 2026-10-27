@@ -2,7 +2,7 @@
 
 本工作区负责 **Horde／清道夫**。先读 [Horde 当前入口](horde-index.md)与[问题汇总](horde-issues.md)，再按下表查询共同基线；其他系统状态不作为本工作区验收。根入口见 [README](../../README.md)。
 
-整理日期：2026-10-23。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
+整理日期：2026-10-27。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
 ## 项目工具链
 
@@ -10,7 +10,7 @@
 
 - **spark**：性能剖析基线，`lib/spark-1.10.172-neoforge.jar`。用于帧耗时、GPU 阶段与热点采样；剖析链接与本地 profile 分别记录，本地文件不能冒充已上传链接，不代表任意第三方模组组合。
 - **BenchMod**：项目内基准夹具（`src/bench`），通过 IDEA 的 `BenchClient`、`BenchServer`、`BenchPairedServer`、`BenchRemoteClient` 运行配置启动；场景、门禁与历史数据见 [BenchMod](benchmod.md)。
-- **mc mcp**：Minecraft MCP 桥接（`lib/minecraft-mcp`，固定端口 `MC_MCP_PORT=19876`），负责 `ping`、`screenshot`、`enumerate_widgets`、`execute_command` 与输入控制；接入与限制见 [Minecraft MCP 工作区接入](minecraft-mcp-workspace.md)。
+- **mc mcp**：Minecraft MCP 桥接（`lib/minecraft-mcp`，固定端口 `MC_MCP_PORT=19876`），负责 `ping`、`screenshot`、`enumerate_widgets`、`execute_command` 与输入控制；接入与限制见 [Minecraft MCP 外部制品消费](minecraft-mcp-artifacts.md)。
 - **idea mcp**：IDEA MCP（JetBrains 插件，`http://127.0.0.1:64342/stream`），负责源码读写、诊断、运行配置与后台 Git。
 - **debug**：IDEA Debug 会话，负责断点、栈帧与表达式求值，并与 mc mcp 共同完成进游戏、控制与截图。
 
@@ -68,7 +68,7 @@
 | 工作区共同地基 | [dev 提交自动同步、保护与暂停恢复](workspace-sync.md) |
 | 架构建图 MCP | [独立 Normify MCP、CLI 与 Skill](../../tools/lobecorp-normify/README.md) |
 | Minecraft MCP 外部制品 | [外部构建、lib、Git 分发与端口隔离](minecraft-mcp-artifacts.md) |
-| Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
+| Minecraft MCP | [历史固定版本接入](minecraft-mcp-artifacts.md#历史接入记录)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | [制作经验与维护规范](effect-authoring-lessons.md) |
 | AI 特效制作 | [制作规范入口](../../AGENTS.md) |
@@ -83,3 +83,116 @@
 - [项目资料](../project-reference/README.md)、[Java 25](../java-25-language-and-comments.md)、[架构](../java-architecture.md)、[锁定版本](../../gradle/libs.versions.toml)：涉及对应内容时读取。
 
 静态诊断、编译／Data、运行加载、视觉与性能检查分别记录；不能用历史结果替代本次验收。
+
+## 全部保留文档分类索引
+
+范围：项目自有 Markdown，排除运行/构建输出、缓存、备份及符号链接目录。以下 97 份文档保留；系统计划与报告按各自历史边界读取，不因导航整理视为已完成。许可证、程序读取夹具与第三方原文不修改。
+
+### 项目入口、规范与设计
+
+- [AGENTS.md](../../AGENTS.md)
+- [README.md](../../README.md)
+- [docs/java-25-language-and-comments.md](../../docs/java-25-language-and-comments.md)
+- [docs/java-architecture.md](../../docs/java-architecture.md)
+- [docs/java-class-organization.md](../../docs/java-class-organization.md)
+- [docs/java-formatting-audit.md](../../docs/java-formatting-audit.md)
+- [docs/java-package-organization-plan.md](../../docs/java-package-organization-plan.md)
+- [docs/standards/entity-contracts.md](../../docs/standards/entity-contracts.md)
+- [docs/standards/java-and-packages.md](../../docs/standards/java-and-packages.md)
+- [docs/standards/workflow.md](../../docs/standards/workflow.md)
+
+### 系统、计划与历史证据
+
+- [docs/systems/animation-runtime.md](../../docs/systems/animation-runtime.md)
+- [docs/systems/animation.md](../../docs/systems/animation.md)
+- [docs/systems/attachments.md](../../docs/systems/attachments.md)
+- [docs/systems/benchmod.md](../../docs/systems/benchmod.md)
+- [docs/systems/changes.md](../../docs/systems/changes.md)
+- [docs/systems/client-ui.md](../../docs/systems/client-ui.md)
+- [docs/systems/combat.md](../../docs/systems/combat.md)
+- [docs/systems/conductor.md](../../docs/systems/conductor.md)
+- [docs/systems/effect-authoring-lessons.md](../../docs/systems/effect-authoring-lessons.md)
+- [docs/systems/entities-ai.md](../../docs/systems/entities-ai.md)
+- [docs/systems/entity-grab.md](../../docs/systems/entity-grab.md)
+- [docs/systems/entity-skills.md](../../docs/systems/entity-skills.md)
+- [docs/systems/events.md](../../docs/systems/events.md)
+- [docs/systems/four-color-damage.md](../../docs/systems/four-color-damage.md)
+- [docs/systems/hitbox.md](../../docs/systems/hitbox.md)
+- [docs/systems/horde-events.md](../../docs/systems/horde-events.md)
+- [docs/systems/horde-extreme-execution-plan.md](../../docs/systems/horde-extreme-execution-plan.md)
+- [docs/systems/horde-extreme-optimization-plan.md](../../docs/systems/horde-extreme-optimization-plan.md)
+- [docs/systems/horde-handoff-visual-transition.md](../../docs/systems/horde-handoff-visual-transition.md)
+- [docs/systems/horde-handoff.md](../../docs/systems/horde-handoff.md)
+- [docs/systems/horde-index.md](../../docs/systems/horde-index.md)
+- [docs/systems/horde-issues.md](../../docs/systems/horde-issues.md)
+- [docs/systems/horde-posttest-optimization.md](../../docs/systems/horde-posttest-optimization.md)
+- [docs/systems/horde-pretest-optimization.md](../../docs/systems/horde-pretest-optimization.md)
+- [docs/systems/horde-rendering-implementation.md](../../docs/systems/horde-rendering-implementation.md)
+- [docs/systems/horde-visual-transition.md](../../docs/systems/horde-visual-transition.md)
+- [docs/systems/laser-release-profile.md](../../docs/systems/laser-release-profile.md)
+- [docs/systems/laser-spell.md](../../docs/systems/laser-spell.md)
+- [docs/systems/light-ball.md](../../docs/systems/light-ball.md)
+- [docs/systems/minecraft-mcp-artifacts.md](../../docs/systems/minecraft-mcp-artifacts.md)
+- [docs/systems/minecraft-mcp-background-control.md](../../docs/systems/minecraft-mcp-background-control.md)
+- [docs/systems/minecraft-mcp-controls.md](../../docs/systems/minecraft-mcp-controls.md)
+- [docs/systems/minecraft-mcp.md](../../docs/systems/minecraft-mcp.md)
+- [docs/systems/navigation-notes.md](../../docs/systems/navigation-notes.md)
+- [docs/systems/network.md](../../docs/systems/network.md)
+- [docs/systems/particle-rendering.md](../../docs/systems/particle-rendering.md)
+- [docs/systems/photon-dependency-upgrade.md](../../docs/systems/photon-dependency-upgrade.md)
+- [docs/systems/photon-detailed-performance-plan.md](../../docs/systems/photon-detailed-performance-plan.md)
+- [docs/systems/photon-editor.md](../../docs/systems/photon-editor.md)
+- [docs/systems/photon-effect-authoring-history.md](../../docs/systems/photon-effect-authoring-history.md)
+- [docs/systems/photon-effect-mcp-api.md](../../docs/systems/photon-effect-mcp-api.md)
+- [docs/systems/photon-effect-mcp.md](../../docs/systems/photon-effect-mcp.md)
+- [docs/systems/photon-emitter-spawner.md](../../docs/systems/photon-emitter-spawner.md)
+- [docs/systems/photon-g1-code-stage-20261021.md](../../docs/systems/photon-g1-code-stage-20261021.md)
+- [docs/systems/photon-ldlib2-fixes.md](../../docs/systems/photon-ldlib2-fixes.md)
+- [docs/systems/photon-model-effects.md](../../docs/systems/photon-model-effects.md)
+- [docs/systems/photon-model-redesign.md](../../docs/systems/photon-model-redesign.md)
+- [docs/systems/photon-named-animations.md](../../docs/systems/photon-named-animations.md)
+- [docs/systems/photon-performance-audit.md](../../docs/systems/photon-performance-audit.md)
+- [docs/systems/photon-performance-tool.md](../../docs/systems/photon-performance-tool.md)
+- [docs/systems/photon-performance.md](../../docs/systems/photon-performance.md)
+- [docs/systems/photon-redesign-progress.md](../../docs/systems/photon-redesign-progress.md)
+- [docs/systems/photon-removal-plan.md](../../docs/systems/photon-removal-plan.md)
+- [docs/systems/photon-removal-result.md](../../docs/systems/photon-removal-result.md)
+- [docs/systems/photon-rewrite-requirements.md](../../docs/systems/photon-rewrite-requirements.md)
+- [docs/systems/photon-world-performance-comparison.md](../../docs/systems/photon-world-performance-comparison.md)
+- [docs/systems/player-animation.md](../../docs/systems/player-animation.md)
+- [docs/systems/player-hud-shields.md](../../docs/systems/player-hud-shields.md)
+- [docs/systems/queen-arcana-beam.md](../../docs/systems/queen-arcana-beam.md)
+- [docs/systems/queen-beam-skill-effects.md](../../docs/systems/queen-beam-skill-effects.md)
+- [docs/systems/queen-star-beam.md](../../docs/systems/queen-star-beam.md)
+- [docs/systems/README.md](../../docs/systems/README.md)
+- [docs/systems/registration-data.md](../../docs/systems/registration-data.md)
+- [docs/systems/resources-datagen.md](../../docs/systems/resources-datagen.md)
+- [docs/systems/screen-damage-particles.md](../../docs/systems/screen-damage-particles.md)
+- [docs/systems/shader-compatibility-exit.md](../../docs/systems/shader-compatibility-exit.md)
+- [docs/systems/text-particles.md](../../docs/systems/text-particles.md)
+- [docs/systems/visual-quality.md](../../docs/systems/visual-quality.md)
+- [docs/systems/workspace-layout.md](../../docs/systems/workspace-layout.md)
+- [docs/systems/workspace-sync.md](../../docs/systems/workspace-sync.md)
+
+### 项目资料
+
+- [docs/project-reference/01-project-baseline.md](../../docs/project-reference/01-project-baseline.md)
+- [docs/project-reference/02-rules-and-workflow.md](../../docs/project-reference/02-rules-and-workflow.md)
+- [docs/project-reference/03-architecture-and-data.md](../../docs/project-reference/03-architecture-and-data.md)
+- [docs/project-reference/04-api-registries-resources.md](../../docs/project-reference/04-api-registries-resources.md)
+- [docs/project-reference/05-ide-mcp-skills.md](../../docs/project-reference/05-ide-mcp-skills.md)
+- [docs/project-reference/06-local-mcp-reference.md](../../docs/project-reference/06-local-mcp-reference.md)
+- [docs/project-reference/07-evidence-and-gaps.md](../../docs/project-reference/07-evidence-and-gaps.md)
+- [docs/project-reference/08-external-development-reference.md](../../docs/project-reference/08-external-development-reference.md)
+- [docs/project-reference/09-particle-effects-research.md](../../docs/project-reference/09-particle-effects-research.md)
+- [docs/project-reference/README.md](../../docs/project-reference/README.md)
+
+### 技能、FAQ、第三方与工具
+
+- [.agents/skills/lobecorp-mcp-background-control/SKILL.md](../../.agents/skills/lobecorp-mcp-background-control/SKILL.md)
+- [.agents/skills/lobecorp-normify/SKILL.md](../../.agents/skills/lobecorp-normify/SKILL.md)
+- [.agents/skills/lobecorp-workspace-sync/SKILL.md](../../.agents/skills/lobecorp-workspace-sync/SKILL.md)
+- [.cherry-assistant/faq.md](../../.cherry-assistant/faq.md)
+- [docs/third-party/photon2mcp.md](../../docs/third-party/photon2mcp.md)
+- [lib/minecraft-mcp/README.md](../../lib/minecraft-mcp/README.md)
+- [tools/lobecorp-normify/README.md](../../tools/lobecorp-normify/README.md)

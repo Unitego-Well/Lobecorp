@@ -59,12 +59,17 @@ import java.util.UUID;
 
 /// 常驻模型、线路和骨骼动画；每批只上传时间与编号区间，不上传逐单位变换。
 public class HordeGpuRenderer {
-	// std140共17个vec4，与horde_motion.glsl的HordeParameters一致。
-	private static final int PARAMETER_BYTES = 288;
+	// std140共15个vec4，与horde_motion.glsl的HordeParameters一致。
+	private static final int PARAMETER_BYTES = 240;
     private static final int VERTEX_BYTES = 28;
     private static final int INSTANCES_PER_DRAW = 65536;
 	// 位置、朝向角、光照、sin/cos和帧顶点基址，与GLSL布局一致。
 	private static final int MOTION_VALUES = 8;
+	// 分割让步的几何系数：基础带宽、推出强度、提前带宽度与单侧最大偏移（格）。
+	private static final double SPLIT_BASE_BAND = 3.2;
+	private static final float SPLIT_STRENGTH = 1.0f;
+	private static final float SPLIT_LEAD = 2.5f;
+	private static final float SPLIT_MAXIMUM_OFFSET = 16.0f;
 	private static final int MAX_RETRY_SECONDS = 5;
 	private static int resourceFailures;
 	private static long retryAtNanos;
@@ -77,25 +82,14 @@ public class HordeGpuRenderer {
     // 片档是封闭的6面盒：走透明裁剪（cutout，非半透明混合）并开启背面剔除，不渲染盒子内侧。
     private static final RenderPipeline CARD_NORMAL = cardPipeline(false);
     private static final RenderPipeline CARD_REVERSE = cardPipeline(true);
-    private static final RenderPipeline MOTION = RenderPipeline.builder()
+	private static final RenderPipeline MOTION = RenderPipeline.builder()
             .withLocation(Lobecorp.id("pipeline/horde_motion"))
             .withVertexShader(Lobecorp.id("core/horde_motion")).withFragmentShader(Lobecorp.id("core/horde_motion"))
-		    .withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeRegions").withSampler("HordeRegionState")
-		    .withSampler("HordeLight").withSampler("HordeLightIndex").withSampler("HordeTerrain")
-		    .withSampler("HordeSpatial32").withSampler("HordeSpatial16").withSampler("HordeSpatial8")
-		    .withSampler("HordeUnitCurrent").withSampler("HordeUnitIndex")
+		    .withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeLight")
+		    .withSampler("HordeLightIndex").withSampler("HordeTerrain").withSampler("HordeSplit")
             .withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
             .withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
             .withColorTargetState(ColorTargetState.DEFAULT).build();
-	private static final RenderPipeline UNIT_UPDATE = RenderPipeline.builder()
-			.withLocation(Lobecorp.id("pipeline/horde_unit_update"))
-			.withVertexShader(Lobecorp.id("core/horde_unit")).withFragmentShader(Lobecorp.id("core/horde_unit"))
-			.withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeRegions").withSampler("HordeRegionState")
-			.withSampler("HordeTerrain").withSampler("HordeSpatial32").withSampler("HordeSpatial16").withSampler("HordeSpatial8")
-			.withSampler("HordeUnitPrevious").withSampler("HordeUnitIndex")
-			.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
-			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
-			.withColorTargetState(ColorTargetState.DEFAULT).build();
 	private static final Map<GeometryKey, Geometry> GEOMETRY = new HashMap<>();
     private static final Map<UUID, EventData> EVENTS = new HashMap<>();
 	private static final Map<GeometryKey, HordeIrisAnimation> IRIS_ANIMATIONS = new HashMap<>();
@@ -114,9 +108,10 @@ public class HordeGpuRenderer {
 	private static long preparations;
 	private static final long PREPARATION_BUDGET_NS = 3_000_000L;
 	private static final Set<GeometryKey> PENDING_VISUALS = new LinkedHashSet<>();
-	private static final int PIPELINE_COUNT = 13;
-	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 4, 8, 0, 6, 7, 1, 5, 9, 10, 11, 12};
-	private static final int[] IRIS_PIPELINE_ORDER = {2, 3, 4, 8, 0, 1, 5, 6, 7, 9, 10, 11, 12};
+	// 0=MOTION，1=Iris顶点烘焙，2=地形，3=Iris动画，4/5=原生模型正反向，6/7=片正反向。
+	private static final int PIPELINE_COUNT = 8;
+	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 1, 0, 4, 5, 6, 7};
+	private static final int[] IRIS_PIPELINE_ORDER = {1, 3, 2, 0, 4, 5, 6, 7};
 	private static final boolean[] COMPILED_PIPELINES = new boolean[PIPELINE_COUNT];
 	private static final int[] PIPELINE_FAILURES = new int[PIPELINE_COUNT];
 	private static final long[] PIPELINE_RETRY_AT = new long[PIPELINE_COUNT];
@@ -236,17 +231,12 @@ public class HordeGpuRenderer {
 				boolean valid = switch (index) {
 					case 0 -> device.precompilePipeline(MOTION).isValid();
 					case 1 -> device.precompilePipeline(IrisVertices.BAKE).isValid();
-					case 2 -> HordeRegionState.precompile();
-					case 3 -> HordeTerrainState.precompile();
-					case 4 -> HordeSpatialIndex.precompile();
-					case 5 -> HordeIrisAnimation.precompile();
-					case 6 -> device.precompilePipeline(NORMAL).isValid();
-					case 7 -> device.precompilePipeline(REVERSE).isValid();
-					case 8 -> device.precompilePipeline(UNIT_UPDATE).isValid();
-					case 9 -> HordeUnitStats.precompile();
-					case 10 -> device.precompilePipeline(CARD_NORMAL).isValid();
-					case 11 -> device.precompilePipeline(CARD_REVERSE).isValid();
-					case 12 -> HordeParticleSamples.precompile();
+					case 2 -> HordeTerrainState.precompile();
+					case 3 -> HordeIrisAnimation.precompile();
+					case 4 -> device.precompilePipeline(NORMAL).isValid();
+					case 5 -> device.precompilePipeline(REVERSE).isValid();
+					case 6 -> device.precompilePipeline(CARD_NORMAL).isValid();
+					case 7 -> device.precompilePipeline(CARD_REVERSE).isValid();
 					default -> throw new IllegalStateException("群体管线预热步骤无效");
 				};
 				if (!valid) {
@@ -362,6 +352,7 @@ public class HordeGpuRenderer {
 	private static void drawPrepared(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
 		drawn = 0;
 		batches = 0;
+		HordeDebugState.setGroups(0);
 		uploadedBytes = 0;
 		gpuCopiedBytes = 0;
 		if (source.isEmpty()) {
@@ -385,7 +376,7 @@ public class HordeGpuRenderer {
 		if (prepared.isEmpty()) {
 			return;
 		}
-		prepareUnitHistories(prepared);
+		int groupCount = 0;
 		for (int first = 0; first < prepared.size(); ) {
 			int last = first;
 			int instances = 0;
@@ -393,85 +384,18 @@ public class HordeGpuRenderer {
 				instances += prepared.get(last++).count();
 			}
 			drawGroup(prepared.subList(first, last), modelView, reverse, colorTarget, depthTarget);
+			groupCount++;
 			first = last;
 		}
+		HordeDebugState.setGroups(groupCount);
+		HordeDebugState.drawn(drawn);
 		var sampled = new HashSet<EventData>();
 		for (var item : prepared) {
-			if (COMPILED_PIPELINES[12] && sampled.add(item.event())) {
+			if (sampled.add(item.event())) {
 				// 借用事件缓存；由remove/clear释放，采样不取得其资源所有权。
 				@SuppressWarnings("resource") var event = item.event();
-				long row = item.batch().firstRow() + (item.batch().offset() + item.offset()) / item.batch().block().columns();
-				event.particleSamples.capture(event.units, item.batch().event(), item.batch().time(), drawSerial, row);
-			}
-		}
-		if (HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get()) {
-			var seen = new HashSet<EventData>();
-			for (var item : prepared) {
-				if (seen.add(item.event())) {
-					item.event().unitStats.capture(item.event().units,
-							PhotonFrameCapture.renderFrameId(), drawSerial);
-				}
-			}
-		}
-	}
-
-	private static void prepareUnitHistories(List<Prepared> prepared) {
-		var ranges = new LinkedHashMap<EventData, List<HordeUnitState.Range>>();
-		for (var item : prepared) {
-			ranges.computeIfAbsent(item.event(), _ -> new ArrayList<>()).add(
-					new HordeUnitState.Range(item.batch(), item.offset(), item.count()));
-		}
-		long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.UNITS, prepared.size());
-		try {
-			for (var entry : ranges.entrySet()) {
-				entry.getKey().units.prepare(entry.getValue(), drawSerial);
-			}
-		} finally {
-			HordeRenderMetrics.end(HordeRenderMetrics.Stage.UNITS, started);
-		}
-	}
-
-	private static void drawUnitHistories(List<Prepared> prepared, int stride) {
-		var groups = new LinkedHashMap<EventData, List<Integer>>();
-		for (int index = 0; index < prepared.size(); index++) {
-			groups.computeIfAbsent(prepared.get(index).event(), _ -> new ArrayList<>()).add(index);
-		}
-		var encoder = RenderSystem.getDevice().createCommandEncoder();
-		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-		for (var entry : groups.entrySet()) {
-			var data = entry.getKey();
-			var state = data.units;
-			long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.UNITS, entry.getValue().size());
-			try {
-				long bytes = state.beginFrame(drawSerial);
-				if (bytes > 0) {
-					HordeRenderMetrics.add(HordeRenderMetrics.Counter.HISTORY_COPIES, 1);
-					HordeRenderMetrics.add(HordeRenderMetrics.Counter.HISTORY_COPY_BYTES, bytes);
-				}
-				try (var pass = encoder.createRenderPass(() -> "Horde stable unit movement", state.current(), OptionalInt.empty())) {
-					pass.setPipeline(UNIT_UPDATE);
-					pass.setViewport(0, 0, state.width(), state.height());
-					pass.bindTexture("HordeUnitPrevious", state.previous(), nearest);
-					pass.bindTexture("HordeUnitIndex", state.index(), nearest);
-					pass.bindTexture("HordeRoute", data.route.texture().getTextureView(), nearest);
-					pass.bindTexture("HordeHeights", data.heights.texture().getTextureView(), nearest);
-					pass.bindTexture("HordeRegions", data.regions.raw().texture().getTextureView(), nearest);
-					pass.bindTexture("HordeRegionState", data.regions.view(), nearest);
-					pass.bindTexture("HordeTerrain", data.terrain.view(), nearest);
-					pass.bindTexture("HordeSpatial32", data.spatial.view(0, data.regions), nearest);
-					pass.bindTexture("HordeSpatial16", data.spatial.view(1, data.regions), nearest);
-					pass.bindTexture("HordeSpatial8", data.spatial.view(2, data.regions), nearest);
-					for (int index : entry.getValue()) {
-						var item = prepared.get(index);
-						pass.setUniform("HordeParameters", parameters.slice((long) index * stride, PARAMETER_BYTES));
-						pass.draw(0, Math.multiplyExact(6, item.count()));
-						HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
-						HordeRenderMetrics.add(HordeRenderMetrics.Counter.HISTORY_INSTANCES, item.count());
-					}
-					HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
-				}
-			} finally {
-				HordeRenderMetrics.end(HordeRenderMetrics.Stage.UNITS, started);
+				event.particleSamples.capture(item.batch().event(), item.batch().time(), drawSerial,
+						item.batch().firstRow(), item.batch().block().firstColumn(), item.batch().block().columns());
 			}
 		}
 	}
@@ -549,7 +473,6 @@ public class HordeGpuRenderer {
 		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		var linear = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
 
-		drawUnitHistories(prepared, stride);
 		long motionStarted = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.MOTION, total);
 		try {
 			drawMotion(prepared, offsets, stride);
@@ -658,9 +581,8 @@ public class HordeGpuRenderer {
 			}, batch.count());
 			var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
 			data.updateHeights(event);
-			data.regions.update(event, batch.time());
+			event.split.update(event, batch.time());
 			data.terrain.update(event, data.heights, batch.time());
-			data.spatial.update(event, data.regions, batch.time(), visualRadius(event.visual));
 			for (int offset = 0; offset < batch.count(); ) {
 				int limit = irisPath() ? IRIS.instanceLimit(geometry.model.vertexCount()) : INSTANCES_PER_DRAW;
 				int count = Math.min(limit, batch.count() - offset);
@@ -680,13 +602,16 @@ public class HordeGpuRenderer {
 		long offset = batch.offset() + item.offset();
 		long row = batch.firstRow() + offset / batch.block().columns();
 		int columnOffset = (int) (offset % batch.block().columns());
+		var split = event.split;
+		HordeDebugState.addSplit(split);
+		HordeRenderMetrics.set(HordeRenderMetrics.Counter.REGIONS, split.count());
 		put((float) origin.x, (float) origin.y, (float) origin.z, (float) batch.time());
 		put((float) camera.x, (float) camera.y, (float) camera.z, (float) event.speed);
 		put((float) event.rules.rowSpacing(), (float) event.rules.columnSpacing(), event.columns, (float) event.length);
 		put((float) (batch.time() * event.speed - row * event.rules.rowSpacing()), batch.block().firstColumn(), batch.block().columns(), columnOffset);
-		put((float) batch.block().first(), (float) batch.block().last(), vertexOffset, item.event().regions.activeCount());
+		put((float) batch.block().first(), (float) batch.block().last(), vertexOffset, split.count());
 		put(item.geometry().model.vertexCount(), item.geometry().model.frames(), item.geometry().model.duration(), item.geometry().hasGlow ? 1 : 0);
-		put(LIGHT.mask(), event.nodes.length, item.event().regions.slotCount(), event.entityHeight);
+		put(LIGHT.mask(), event.nodes.length, 0, event.entityHeight);
 		int sx = (int) Math.floor(event.origin.x / 16);
 		int sy = (int) Math.floor(event.origin.y / 16);
 		int sz = (int) Math.floor(event.origin.z / 16);
@@ -695,17 +620,18 @@ public class HordeGpuRenderer {
 				(float) (event.origin.x - sx * 16d), (float) (event.origin.y - sy * 16d), (float) (event.origin.z - sz * 16d));
 		put(event.lightProbeHeight, event.heightColumns, IrisVertices.rowWidth(), (float) HordeSamplingUtil.MAX_VISUAL_OFFSET);
 		upload.putInt(motionOffset).putInt(item.count()).putInt(motionWidth).putInt(IRIS.wordsPerVertex);
-		var spatial = item.event().spatial;
-		var grid = spatial.grid();
-		upload.putInt(grid.x()).putInt(grid.y()).putInt(grid.z()).putInt(grid.stride());
-		upload.putInt(grid.nx()).putInt(grid.ny()).putInt(grid.nz()).putInt(grid.flags());
-		upload.putInt(spatial.width(0)).putInt(spatial.width(1)).putInt(spatial.width(2))
-				.putInt(Float.floatToRawIntBits(visualRadius(event.visual)));
-		upload.putInt(item.event().units.mask()).putInt((int) row).putInt((int) (row >>> 32)).putInt((int) drawSerial);
-		put(0.75f, 8, 0.05f, HordeRenderMetrics.collecting() || HordeVisualConfig.STATISTICS.get() ? 1 : 0);
-		upload.putInt(item.event().units.ringMask()).putInt(item.event().units.columnTiles()).putInt(1).putInt(0);
+		// 分割让步：数量、纹理宽度（0 表示按实际纹理自适应）、提前带宽、调试标志。
+		put(split.count(), 0, splitBand(event.speed), HordeVisualConfig.STATISTICS.get() ? 1 : 0);
+		put(SPLIT_STRENGTH, SPLIT_LEAD, SPLIT_MAXIMUM_OFFSET, 0);
+		// 光照区段缺失时的回退亮度：露天（方块光0、天空光15），不伪造洞穴亮度也不隐藏单位。
+		put(0, 15, 0, 0);
 		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.CARD_DISTANCE.get(),
 				item.geometry().model.tier() == 3 ? 1f : 0f, 0f);
+	}
+
+	/// 迎潮侧提前分流的带宽（格）：随浪潮速度增大，低速时仍保留基础宽度。
+	private static float splitBand(double speed) {
+		return (float) (SPLIT_BASE_BAND + speed * 8.0);
 	}
 
 	private static void put(float a, float b, float c, float d) {
@@ -854,16 +780,10 @@ public class HordeGpuRenderer {
 			for (int i = 0; i < prepared.size(); i++) {
 				var item = prepared.get(i);
 				pass.setUniform("HordeParameters", parameters.slice((long) i * stride, PARAMETER_BYTES));
-				pass.bindTexture("HordeUnitCurrent", item.event().units.current(), nearest);
-				pass.bindTexture("HordeUnitIndex", item.event().units.index(), nearest);
 				pass.bindTexture("HordeRoute", item.event().route.texture().getTextureView(), nearest);
 				pass.bindTexture("HordeHeights", item.event().heights.texture().getTextureView(), nearest);
-				pass.bindTexture("HordeRegions", item.event().regions.raw().texture().getTextureView(), nearest);
-				pass.bindTexture("HordeRegionState", item.event().regions.view(), nearest);
 				pass.bindTexture("HordeTerrain", item.event().terrain.view(), nearest);
-				pass.bindTexture("HordeSpatial32", item.event().spatial.view(0, item.event().regions), nearest);
-				pass.bindTexture("HordeSpatial16", item.event().spatial.view(1, item.event().regions), nearest);
-				pass.bindTexture("HordeSpatial8", item.event().spatial.view(2, item.event().regions), nearest);
+				pass.bindTexture("HordeSplit", item.batch().event().split.view(), nearest);
 				int first = Math.multiplyExact(offsets[i], MOTION_VALUES) / motionWidth;
 				int last = Math.toIntExact(Math.ceilDiv((long) (offsets[i] + item.count()) * MOTION_VALUES, motionWidth));
 				pass.enableScissor(0, first, motionWidth, last - first);
@@ -1350,11 +1270,7 @@ public class HordeGpuRenderer {
 	private static class EventData implements AutoCloseable {
 		private final HordeDataTexture route;
 		private final HordeDataTexture heights;
-		private final HordeRegionState regions = new HordeRegionState();
 		private final HordeTerrainState terrain = new HordeTerrainState();
-		private final HordeSpatialIndex spatial = new HordeSpatialIndex();
-		private final HordeUnitState units = new HordeUnitState();
-		private final HordeUnitStats unitStats = new HordeUnitStats();
 		private HordeParticleSamples particleSamples = new HordeParticleSamples();
 
 		private EventData(HordeClient.ClientEvent event) {
@@ -1379,11 +1295,7 @@ public class HordeGpuRenderer {
 		public void close() {
 			route.close();
 			heights.close();
-			regions.close();
 			terrain.close();
-			spatial.close();
-			units.close();
-			unitStats.close();
 			particleSamples.close();
 		}
 	}

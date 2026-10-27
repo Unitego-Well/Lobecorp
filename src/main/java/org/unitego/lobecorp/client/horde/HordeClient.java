@@ -58,7 +58,7 @@ public class HordeClient {
 		try {
 			String kind = packet.getStringOr("kind", "");
 			if (kind.equals("remove")) {
-				EVENTS.remove(id);
+				closeEvent(EVENTS.remove(id));
 				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);
 				return;
@@ -71,7 +71,7 @@ public class HordeClient {
 				var replacement = new ClientEvent(id);
 				replacement.header(body);
 				replacement.sequence = sequence;
-				EVENTS.put(id, replacement);
+				closeEvent(EVENTS.put(id, replacement));
 				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);
 				return;
@@ -89,6 +89,13 @@ public class HordeClient {
 		} catch (IllegalArgumentException exception) {
 			requestSnapshot(id);
 			Lobecorp.LOGGER.warn("忽略无效群体事件快照 {}", id, exception);
+		}
+	}
+
+	/// 事件被替换或移除时释放它的分割圆表纹理。
+	private static void closeEvent(ClientEvent event) {
+		if (event != null) {
+			event.split.close();
 		}
 	}
 
@@ -158,6 +165,8 @@ public class HordeClient {
 
 	public static List<Batch> extract(float partialTick, Frustum frustum) {
 		ambientFrustum = frustum;
+		HordeDebugState.beginFrame();
+		HordeDebugState.setEvents(EVENTS.size());
 		long extractionStarted = HordeRenderMetrics.extractStarted();
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || !HordeVisualConfig.ENABLED.get()) {
@@ -225,6 +234,21 @@ public class HordeClient {
 			batches = limited;
 		}
 		lastBatches = List.copyOf(batches);
+		long submitted = 0;
+		for (var batch : lastBatches) {
+			submitted += batch.count();
+		}
+		HordeDebugState.setBatches(lastBatches.size(), submitted);
+		for (var event : EVENTS.values()) {
+			if (!event.ready || event.failed) {
+				continue;
+			}
+			double now = event.time(partialTick);
+			double head = HordeTide.head(now, event.speed);
+			HordeDebugState.setTide(head, Math.max(0, head - event.length), 0,
+					(long) Math.floor(Math.max(0, Math.min(head, event.length)) / event.rules.rowSpacing()));
+			break;
+		}
 		HordeRenderMetrics.extracted(extractionStarted, lastBatches.size());
 		return lastBatches;
 	}
@@ -263,12 +287,31 @@ public class HordeClient {
 		return lastBatches;
 	}
 
+	/// 只读事件集合，供调试叠层与 Gizmo 读取当帧状态。
+	public static List<ClientEvent> events() {
+		return List.copyOf(EVENTS.values());
+	}
+
 	public static String statistics() {
-		return "Horde events=" + EVENTS.size() + ", blocks=" + lastBatches.size()
-				+ ", submitted=" + lastBatches.stream().mapToLong(Batch::count).sum();
+		long submitted = lastBatches.stream().mapToLong(Batch::count).sum();
+		double head = 0;
+		double rows = 0;
+		int splits = 0;
+		for (var event : EVENTS.values()) {
+			if (!event.ready || event.failed) {
+				continue;
+			}
+			double now = event.time(0);
+			head = Math.max(head, HordeTide.head(now, event.speed));
+			rows += Math.max(0, HordeTide.head(now, event.speed) / event.rules.rowSpacing());
+			splits += event.split.count();
+		}
+		return "blocks=" + lastBatches.size() + ", submitted=" + submitted + ", tideHead="
+				+ String.format("%.1f", head) + ", rows=" + Math.round(rows) + ", splits=" + splits;
 	}
 
 	public static void clear() {
+		EVENTS.values().forEach(HordeClient::closeEvent);
 		EVENTS.clear();
 		SNAPSHOT_REQUESTS.clear();
 		lastBatches = List.of();
@@ -311,6 +354,10 @@ public class HordeClient {
 		public double length;
 		public double speed;
 		public float lightProbeHeight;
+		/// 按进度求位置的纯函数；路线就绪后创建，客户端不再保存逐单位状态。
+		public HordeTide tide;
+		/// 分割割圆表：CPU 平滑后上传，GPU 只做连续让步。
+		public final HordeSplitState split = new HordeSplitState();
 		public long stop;
 		public int columns;
 		public boolean ready;
@@ -437,6 +484,7 @@ public class HordeClient {
 				routeData[nodes.length * 16 + i] = segment;
 			}
 			blocks = List.copyOf(prepared);
+			tide = new HordeTide(routeData, heightData, nodes.length, heightColumns, length, groundWidth, origin);
 			double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
 			double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
 			double minZ = Double.POSITIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
@@ -571,14 +619,16 @@ public class HordeClient {
 				if (bounds.minY >= target.y() + target.sizeY() || bounds.maxY <= target.y()) {
 					continue;
 				}
+				// 成员核心按生物自身尺寸取圆，不加三格外扩：真实成员只是浪潮里的实体，不是需要绕行的目标。
 				var memberKey = "member:" + member.getUUID();
-				var box = RegionBox.forEntity(bounds);
+				var box = RegionBox.forMember(bounds);
 				updated.put(memberKey, box);
 				lingeringTargets.put(memberKey, box);
 				lingeringTargetUntil.put(memberKey, now + REGION_LINGER_TICKS);
 			}
 
 			if (!regions.equals(updated) || !previousRegions.equals(regions)) {
+				HordeDebugState.gapChanged();
 				previousRegions.clear();
 				previousRegions.putAll(regions);
 				regions.clear();
@@ -610,6 +660,14 @@ public class HordeClient {
 		public static RegionBox forEntity(AABB bounds) {
 			double bodyRadius = Math.hypot(bounds.getXsize(), bounds.getZsize()) * 0.5;
 			double radius = Math.max(bodyRadius * VISUAL_GAP_SCALE, bodyRadius + MIN_VISUAL_CLEARANCE);
+			var center = bounds.getCenter();
+			return new RegionBox(center.x - radius, bounds.minY, center.z - radius,
+					radius * 2, bounds.getYsize(), radius * 2);
+		}
+
+		/// 参战成员只按自身水平外接圆取核心，不加三格净空：成员是浪潮里的实体，不该撑出硬禁区。
+		public static RegionBox forMember(AABB bounds) {
+			double radius = Math.max(0.5, Math.hypot(bounds.getXsize(), bounds.getZsize()) * 0.5);
 			var center = bounds.getCenter();
 			return new RegionBox(center.x - radius, bounds.minY, center.z - radius,
 					radius * 2, bounds.getYsize(), radius * 2);

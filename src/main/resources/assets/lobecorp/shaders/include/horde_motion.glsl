@@ -1,6 +1,7 @@
 // 与HordeGpuRenderer.MOTION_VALUES一致：位置、角度、光照、sin/cos和帧顶点基址。
 const int HORDE_MOTION_VALUES = 8;
 
+// 15个vec4，与HordeGpuRenderer.PARAMETER_BYTES一致。
 layout(std140) uniform HordeParameters {
     vec4 OriginTime;
     vec4 CameraSpeed;
@@ -13,12 +14,9 @@ layout(std140) uniform HordeParameters {
     vec4 WidthFraction;
     vec4 ProbeInfo;
     ivec4 MotionInfo;
-    ivec4 SpatialMinimum;
-    ivec4 SpatialDimensions;
-    ivec4 SpatialTextures;
-    ivec4 UnitIdentity;
-    vec4 UnitLimits;
-    ivec4 UnitPage;
+    vec4 SplitInfo;
+    vec4 SplitShape;
+    vec4 DebugInfo;
     vec4 FrameLod;
 };
 
@@ -26,20 +24,13 @@ uniform sampler2D Sampler2;
 uniform sampler2D HordeRoute;
 uniform sampler2D HordeHeights;
 uniform sampler2D HordeAnimation;
-uniform sampler2D HordeRegions;
-uniform sampler2D HordeRegionState;
 uniform sampler2D HordeTerrain;
 uniform sampler2D HordeLight;
 uniform sampler2D HordeLightIndex;
-
+uniform sampler2D HordeSplit;
 uniform sampler2D HordeMotion;
-uniform sampler2D HordeUnitCurrent;
-uniform sampler2D HordeUnitPrevious;
-uniform sampler2D HordeUnitIndex;
 
 #moj_import <lobecorp:horde_data.glsl>
-#moj_import <lobecorp:horde_flow.glsl>
-#moj_import <lobecorp:horde_spatial.glsl>
 
 float terrainAt(int node, float lateral, int component) {
     float column = clamp(lateral / WidthFraction.x + 0.5, 0.0, 1.0) * (ProbeInfo.y - 1.0);
@@ -53,7 +44,12 @@ float heightAt(int node, float lateral) {
     return terrainAt(node, lateral, 0);
 }
 
-// 纯路线锚点：只由线路、地形流场和个体摆动决定。避让不再修改锚点，改由GPU速度状态推进。
+vec2 hordeSafeNormalize(vec2 value, vec2 fallback) {
+    float squared = dot(value, value);
+    return squared > 0.000001 ? value * inversesqrt(squared) : fallback;
+}
+
+// 纯路线锚点：只由线路、地形流场和个体摆动决定，不含任何逐单位状态。
 vec3 location(float station, float lateral) {
     float s = clamp(station, 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
@@ -119,7 +115,7 @@ vec3 movingLocation(float station, float lateral, float time, float seed) {
     return location(station + motionDrift(time, seed), lateral + motionSway(time, seed));
 }
 
-// 指定横向偏移处的实际地面高度；只在位置分量上调用，避让后脚底仍贴合地形。
+// 指定横向偏移处的实际地面高度；只在位置分量上调用，让步后脚底仍贴合地形。
 float motionGroundHeight(float station, float lateral, float lateralDelta, float seed) {
     float s = clamp(station + motionDrift(OriginTime.w, seed), 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
@@ -134,6 +130,7 @@ float motionGroundHeight(float station, float lateral, float lateralDelta, float
     return mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
 }
 
+// 光照区段缺失时返回负值，由调用方回退到事件级亮度而不是隐藏单位。
 vec2 lightAt(vec3 position) {
     vec3 local = floor(position + WidthFraction.yzw + vec3(0.0, ProbeInfo.x, 0.0));
     ivec3 section = ivec3(floor(local / 16.0)) + ivec3(WorldSection.xyz);
@@ -159,5 +156,4 @@ vec2 lightAt(vec3 position) {
     return vec2(0.0);
 }
 
-#moj_import <lobecorp:horde_unit.glsl>
-#moj_import <lobecorp:horde_avoid.glsl>
+#moj_import <lobecorp:horde_split.glsl>

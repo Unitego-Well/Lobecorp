@@ -2,6 +2,19 @@
 
 实现记录日期：2026-10-22；导航核对日期：2026-10-23。当前工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`，入口见 [Horde 索引](horde-index.md)。历史恢复工作区名为 horde-recovery；恢复快照为 `6328b11`，BenchMod 接入提交为 `1f30bde`。本文描述本次已写入的实现，构建、运行、视觉和性能状态分别记录，不能以旧版采样代替本版验收。
 
+## 2026-10-27 按进度的潮与确定性分割（当前实现）
+
+本节覆盖下方 2026-10-26 及更早记录中的「GPU 持久速度积分」「单位历史纹理」「GPU 区域阻尼状态」「空间索引位图」与「光照缺失隐藏」描述；模型烘焙、动画帧、LOD、片图集、粒子外观、服务端方区继续有效。
+
+- **位置是纯函数**：`HordeTide`（CPU）与 `horde_motion.glsl`（GPU）用同一组公式，位置只由波头站程 `head = time × speed`、行号 `station = head − row × rowSpacing`、列横向偏移与事件时钟决定，叠加有界的个体 `motionDrift`/`motionSway`。没有任何逐单位速度、位置或时间历史，因此帧率、视角、重载都不会改变同一行列的位置。
+- **分割是连续让步**：`horde_split.glsl` 遍历 CPU 平滑后的割圆（每圆 5 字：中心 xz、半径、Y 下界、Y 上界），把单位沿「远离圆心」方向推出一段，输出为站程延迟与横向偏移；固定两次迭代收敛，结果仍是位置与圆几何的连续函数。核心内压力满值、核心外到 `band + lead` 线性衰减，形成迎潮侧提前分流与背潮侧合流。
+- **可见性不再隐藏**：波带裁剪只由块的行范围与 `station` 决定（解析值即实际值）；光照区段缺失回退露天亮度（方块光 0、天空光 15）并保留单位。`horde_motion.fsh` 的亮度字不再出现 `-1`。
+- **参数布局**：`HordeParameters` 精简为 15 个 vec4（240 字节）——`OriginTime`、`CameraSpeed`、`SpacingLength`、`RowColumns`、`SegmentRegions`、`AnimationInfo`、`LightRoute`、`WorldSection`、`WidthFraction`、`ProbeInfo`、`MotionInfo`、`SplitInfo`、`SplitShape`、`DebugInfo`、`FrameLod`。管线数由 13 降为 8（删除单位推进与统计管线）。
+- **删除的组件**：`HordeUnitState`（12 字/单位环页历史）、`HordeUnitStats`（穿透/拒绝归约）、`HordeRegionState`（13 字 GPU 阻尼状态）、`HordeSpatialIndex`（32/16/8 位图）及其全部着色器与采样绑定。
+- **粒子采样**：`HordeParticleSamples` 改为 CPU 纯函数采样，以相机站程为中心取行窗口、全列扫描，8 邻居占据掩码按格点与波带直接判定，按帧轮换排名取至多 256 点；删除 GPU 采集 pass 与 9216 字节异步回读。与 GPU 的差异只有地形让步的横向位移。
+- **调试**：`HordeDebugState` 提供多行叠层（事件、批次、绘制组、实例、潮头/潮尾站程、可见行、分割圆数量与最大半径、圆表字数、目标变化次数）；`HordeDebugRenderer` 用 `Gizmos.circle` 画割圆、点标潮头潮尾；`Counter.REGIONS` 上报分割圆数量；粒子采样带节流日志。
+- 检查状态：IDEA 编译 0 错误、`BenchMod Compile` 退出 0、17 项无游戏测试通过、BenchMod `lobecorp.horde-render` 实机 PASSED（25,643 实例、分割圆 64、粒子 5.45/刻、`visible_pixels` 547,611、draw GPU 5.252 ms、帧 15.318/P99 33.154 ms、failures=0、spark `https://spark.lucko.me/8ZU75qbZIC`）。未执行：多目标/夹缝/高低楼层/多人/跨维度的实机矩阵与着色器行为定量。
+
 ## 2026-10-26 圆形核心、事件局部编码与真实脚点粒子
 
 本节覆盖下方 2026-10-25 及更早记录中的矩形缺口、整数区域、3/2/1 潮内网格粒子和“成员并入战斗包围”等描述；未提及的模型、动画、光照、Iris 与生命周期契约继续有效。

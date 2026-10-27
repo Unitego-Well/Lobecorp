@@ -83,42 +83,6 @@ public class HordeOptimizationTest {
 	}
 
 	@Test
-	public void regionRetargetKeepsIdentityAndRetirementKeepsFullCenterBox() {
-		var targets = new HordeRegionState.Targets();
-		var first = new HordeClient.RegionBox(20, 80, -10, 6, 2, 12);
-		var moved = new HordeClient.RegionBox(21, 82, -9, 6, 2, 12);
-		targets.update(Map.of("mob", first), 0);
-		int generation = targets.words()[6];
-		targets.update(Map.of("mob", moved), 1);
-		assertEquals(generation, targets.words()[6]);
-		assertEquals(21, Float.intBitsToFloat(targets.words()[0]));
-		targets.update(Map.of(), 2);
-		assertEquals(-generation, targets.words()[6]);
-		assertEquals(6, Float.intBitsToFloat(targets.words()[3]));
-		assertEquals(2, Float.intBitsToFloat(targets.words()[4]));
-		assertFalse(targets.expired(41));
-		targets.update(Map.of("mob", moved), 41);
-		assertEquals(generation, targets.words()[6]);
-		assertFalse(targets.expired(100));
-	}
-
-	@Test
-	public void expiredSlotsReuseWithNewGenerationAndActiveIndicesSkipHoles() {
-		var targets = new HordeRegionState.Targets();
-		var box = new HordeClient.RegionBox(0, 0, 0, 4, 2, 4);
-		targets.update(Map.of("a", box), 0);
-		int generation = targets.words()[6];
-		targets.update(Map.of(), 1);
-		targets.update(Map.of(), 41);
-		assertEquals(0, targets.activeCount());
-		assertEquals(0, targets.words()[6]);
-		targets.update(Map.of("b", box), 42);
-		assertEquals(1, targets.slotCount());
-		assertTrue(targets.words()[6] > generation);
-		assertEquals(0, targets.words()[7]);
-	}
-
-	@Test
 	public void packedChunksPreserveAllQuadsAndResetOnlyAtCapacity() {
 		var layout = new HordeVertexLayout(new int[]{8, 4, 8, 4}, 14, 14 * 12);
 		assertArrayEquals(new int[]{0, 8, 0, 8}, layout.offsets());

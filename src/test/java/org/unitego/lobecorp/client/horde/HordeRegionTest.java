@@ -63,4 +63,5 @@ public class HordeRegionTest {
 		assertEquals(10, region.changed);
 		assertTrue(region.expired(30, 20));
 	}
+
 }

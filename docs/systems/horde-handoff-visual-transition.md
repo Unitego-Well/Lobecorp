@@ -1,10 +1,20 @@
 # Horde 视觉过渡交接文档
 
-更新日期：2026-10-27。工作区 `.workspace/lobecorp_horde`，分支 `codex/horde`。本页记录本轮（圆核心、胶囊绕行、分区粒子、服务端方区）的已完成、未解决与下一步，供新会话直接接手。契约见[视觉过渡与战斗区域](horde-visual-transition.md)，实现见[渲染实现](horde-rendering-implementation.md)，问题见[Horde 问题汇总](horde-issues.md)。
+更新日期：2026-10-27。工作区 `.workspace/lobecorp_horde`，分支 `codex/horde`。本页原记录「区域被无过渡地重新填满」「单位进入区域后被清除」两个未解决现象；用户随后要求先备份、再整体重写，两个现象对应的机制已被删除。契约见[视觉过渡与战斗区域](horde-visual-transition.md)，实现见[渲染实现](horde-rendering-implementation.md)，问题见[Horde 问题汇总](horde-issues.md)。
+
+## 重写结果（2026-10-27，取代下方排查结论）
+
+- 用户要求「先备份、全部重写、先按进度的潮、再分割、加大量调试信息」。备份：Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`）与 `build/agent-backups/20261027-pre-rewrite/`。
+- 「无过渡重填」的机制已删除：单位位置不再来自 GPU 历史纹理，改为 `HordeTide` 纯函数；历史失效后回落解析锚点的路径不存在。
+- 「进入后被清除」的机制已删除：`horde_motion.fsh` 不再输出 `-1`，光照区段缺失回退露天亮度并保留单位。
+- 分割改为确定性让步：`horde_split.glsl` + `HordeSplitState`（CPU 平滑圆表），无速度积分、无空间位图、无左右端点状态。
+- 调试：`HordeDebugState` 多行叠层、`HordeDebugRenderer` 割圆与潮头潮尾 Gizmo、`Counter.REGIONS` 上报分割圆数量、粒子采样节流日志。
+- 实机：BenchMod `lobecorp.horde-render` PASSED（`valid=true`、焦点 losses=0）：25,643 实例、分割圆 64、粒子 5.45/刻、`visible_pixels` 547,611、draw GPU 5.252 ms、帧 15.318/P99 33.154 ms、failures=0、spark `https://spark.lucko.me/8ZU75qbZIC`。
+- 未完成：多目标聚散、狭窄夹缝、高低楼层、多玩家/跨维度矩阵；粒子地形让步位移与 GPU 最终位置的差异未逐点核对。
 
 ## 当前状态一句话
 
-视觉外观用户看过夹具截图并反馈「看起来没有问题」，但只覆盖固定夹具的截图片面，粒子的分区/密度并未逐项确认；**「绕行区域被无过渡地重新填满」和「单位进入后被清除」两个现象仍未解决**，本轮定位已推翻多个猜测，最新方向明确在波带着色器的可见性判定，详见下文「未解决问题」。
+（以下为 2026-10-27 重写前的排查记录，保留作历史证据，不再代表当前实现。）视觉外观用户看过夹具截图并反馈「看起来没有问题」，但只覆盖固定夹具的截图片面，粒子的分区/密度并未逐项确认；两个现象当时仍未解决。
 
 ## 固定工具链
 

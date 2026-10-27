@@ -1,5 +1,18 @@
 # 系统修改记录
 
+## 2026-10-27 按进度的潮与确定性分割（重写）
+
+- 用户要求先备份、再整体重写：先做「按进度的潮」，再做「分割」，并补齐大量调试信息。备份为 Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`，含当时 17 项未提交改动）与 `build/agent-backups/20261027-pre-rewrite/`（src、docs、`working-tree.patch`、`status.txt`）。
+- 删除整条持久状态链路：`HordeUnitState`、`HordeUnitStats`、`HordeRegionState`、`HordeSpatialIndex`，以及 `horde_unit.vsh/fsh`、`horde_unit.glsl`、`horde_avoid.glsl`、`horde_spatial.glsl`、`horde_region_update.fsh`、`horde_spatial_index.fsh`、`horde_unit_stats.fsh`、`horde_particle_samples.fsh`。单位不再有 GPU 历史纹理、速度积分、环形页、空间位图与光照/波带隐藏分支。
+- 按进度的潮：新增 `HordeTide`（纯函数位置，与 GLSL `movingLocation` 同公式）并重写 `horde_motion.glsl`、`horde_motion.fsh`；位置只由波头站程、行列与事件时钟决定，`HordeParameters` 由 17 个 vec4 精简为 15 个（240 字节）。同一行列在任何帧、任何视角下映射到同一位置，因此「历史失效→回落解析锚点」的重填路径不再存在。
+- 分割：新增 `horde_split.glsl`（只输出站程延迟与横向偏移，圆几何的连续函数，两次迭代收敛，无逐单位状态）与 `HordeSplitState`（CPU 平滑圆表，5 字/圆，线性扫描取代多层 GPU 位图）。`HordeClient` 持有分割圆表并在事件替换/移除/清空时释放纹理。
+- 可见性：`horde_motion.fsh` 不再输出 `-1` 隐藏；光照区段缺失时回退露天亮度（方块光 0、天空光 15）并保留单位，消除「进入区域后被清除」的隐藏路径。
+- 粒子：`HordeParticleSamples` 改为 CPU 纯函数采样（相机站程为中心的行窗口、8 邻居占据掩码、按帧轮换排名），删除 GPU 异步回读与 9 KiB 回读缓冲；与 GPU 的差异只有地形让步的横向位移，已在类注释与文档标注。
+- 调试信息：新增 `HordeDebugState`（事件/批次/绘制组/实例/潮头潮尾/可见行/分割圆数量/最大半径/圆表字数/目标变化多行叠层，`STATISTICS` 开关）；`HordeDebugRenderer` 用 `Gizmos.circle` 画分割割圆、点标潮头潮尾；`HordeGpuRenderer.statistics()` 增加 `GPU instances=`、光照区段与 Iris 状态；分割圆数量接入 `Counter.REGIONS` 报告指标；粒子采样带节流诊断日志。
+- 验证：IDEA 编译 0 错误；`BenchMod Compile` 退出 0（`compileBenchJava`、`jar`、`verifyProductionJarHasNoBenchContent`）；`HordeRegionTest`(4)、`HordeOptimizationTest`(8)、`HordeParticleSamplesTest`(3)、`HordeCircularMotionContractTest`(2) 共 17 项通过；BenchMod `lobecorp.horde-render` 实机 PASSED（`client.environment.valid=true`、焦点 losses=0）：25,643 实例、分割圆 64、粒子 5.45/刻、`visible_pixels` 547,611、horde draw GPU 5.252 ms、帧 15.318 ms / P99 33.154 ms、failures=0，spark 链接 `https://spark.lucko.me/8ZU75qbZIC`。
+- 未完成：多目标聚散、狭窄夹缝、高低楼层、多玩家与跨维度的实机矩阵；硬件 GLSL 之外的着色器行为定量；粒子地形让步位移与 GPU 最终位置的差异未逐点核对。另有两轮因窗口失焦判 INCONCLUSIVE（`client.window.focus_lost`），只作无效轮保留，未计入数据。
+- 证据归档：`build/agent-backups/20261027-tide-rewrite/`（`bench-run*.log`、`run1/`、`run2/`、`run3/` 历史轮次）；结果目录 `build/modBench/raw-results/default/client/`。
+
 ## 2026-10-27 DOC-HORDE-01 文档导航与重复页整合
 
 - 重新盘点 99 份自有 Markdown；两份重复页完整迁入[事件监听规范](events.md#事件监听规范)与[MCP 历史接入记录](minecraft-mcp-artifacts.md#历史接入记录)后删除，保留 97 份，分类入口沿用[系统索引](README.md#全部保留文档分类索引)。根 README 只保留介绍与基本入口。

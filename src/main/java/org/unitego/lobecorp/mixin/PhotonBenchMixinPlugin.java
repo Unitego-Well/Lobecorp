@@ -11,6 +11,9 @@ import java.util.Set;
 
 /// 高频探针限定于显式 Photon Bench，整块提交由独立实验开关控制；其余 Mixin 选择不变。
 public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
+	public static final String PRESERVE_WINDOW_PROPERTY = "lobecorp.photon.bench.preserveWindow";
+	private static final String WINDOW_MIXIN = "org.unitego.lobecorp.mixin.bench.ClientGraphicsControllerMixin";
+	private static boolean preservedWindowApplied;
 	private static final Set<String> BENCH_MIXINS = Set.of(
 			"org.unitego.lobecorp.mixin.photon.performance.client.FXObjectMixin",
 			"org.unitego.lobecorp.mixin.photon.performance.client.EmitterMixin",
@@ -47,7 +50,19 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public @Nullable List<String> getMixins() {
-		return null;
+		if (!System.getProperty("modBench.scenarios", "").equals("lobecorp.photon-00-first-cast")) {
+			return null;
+		}
+
+		if (!Boolean.getBoolean(PRESERVE_WINDOW_PROPERTY)) {
+			throw new IllegalStateException("首次释放基准要求显式开启 " + PRESERVE_WINDOW_PROPERTY + "，禁止启动时修改窗口尺寸或全屏状态。");
+		}
+
+		return List.of("bench.ClientGraphicsControllerMixin");
+	}
+
+	public static boolean preservedWindowApplied() {
+		return preservedWindowApplied;
 	}
 
 	@Override
@@ -56,5 +71,8 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+		if (WINDOW_MIXIN.equals(mixinClassName)) {
+			preservedWindowApplied = true;
+		}
 	}
 }

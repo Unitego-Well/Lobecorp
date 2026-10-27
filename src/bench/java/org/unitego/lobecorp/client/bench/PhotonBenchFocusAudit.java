@@ -1,19 +1,32 @@
 package org.unitego.lobecorp.client.bench;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 
-/// 显式基准的窗口焦点审计：失焦时尝试还原并计数；测量阶段发生失焦的轮次标记为无效，不据此出成绩。
+/// 显式基准只为当前游戏窗口补焦；真实失焦与补焦次数保留为观测，不据此拒绝样本。
 public final class PhotonBenchFocusAudit {
+	/// 只保留前 256 次焦点转换，计数和观测时长不因时间线截断而丢失。
+	private static final int MAX_TRANSITIONS = 256;
+	private final JsonArray timeline = new JsonArray();
+	private long droppedTransitions;
+	private long lastObservedNs;
+	private long unfocusedObservedNs;
 	private boolean focused = true;
 	private long losses;
 	private long restores;
+	private long restoreRequests;
 	private long ticks;
 	private long measureTicks;
-	private boolean measureInvalid;
+	private long measureUnfocusedTicks;
 
-	public void audit(boolean duringMeasure) {
+	public void audit(boolean duringMeasure, String phase) {
+		long now = System.nanoTime();
+		if (lastObservedNs != 0 && !focused) {
+			unfocusedObservedNs += now - lastObservedNs;
+		}
+
 		ticks++;
 
 		if (duringMeasure) {
@@ -22,6 +35,22 @@ public final class PhotonBenchFocusAudit {
 
 		var window = Minecraft.getInstance().getWindow();
 		boolean current = window.isFocused();
+		if (ticks == 1 || current != focused) {
+			if (timeline.size() < MAX_TRANSITIONS) {
+				var event = new JsonObject();
+				event.addProperty("observed_ns", now);
+				event.addProperty("phase", phase);
+				event.addProperty("focused", current);
+				event.addProperty("restore_requested", !current);
+				timeline.add(event);
+			} else {
+				droppedTransitions++;
+			}
+		}
+
+		if (ticks > 1 && current && !focused) {
+			restores++;
+		}
 
 		if (!current) {
 			if (focused) {
@@ -29,28 +58,34 @@ public final class PhotonBenchFocusAudit {
 			}
 
 			if (duringMeasure) {
-				measureInvalid = true;
+				measureUnfocusedTicks++;
 			}
 
-			if (window.isIconified()) {
-				GLFW.glfwRestoreWindow(window.handle());
-			}
-
-			GLFW.glfwShowWindow(window.handle());
 			GLFW.glfwFocusWindow(window.handle());
-			restores++;
+			restoreRequests++;
+
 		}
 
 		focused = current;
+		lastObservedNs = now;
 	}
 
 	public JsonObject snapshot() {
 		var result = new JsonObject();
 		result.addProperty("ticks", ticks);
+		result.add("focus_timeline", timeline.deepCopy());
+		result.addProperty("focus_timeline_dropped", droppedTransitions);
+		result.addProperty("unfocused_observed_ns", unfocusedObservedNs
+				+ (!focused && lastObservedNs != 0 ? System.nanoTime() - lastObservedNs : 0));
+		result.addProperty("duration_scope", "audit_tick_observation_intervals_not_continuous_window_callbacks");
 		result.addProperty("measure_ticks", measureTicks);
 		result.addProperty("focus_losses", losses);
 		result.addProperty("focus_restores", restores);
-		result.addProperty("measure_focus_valid", !measureInvalid);
+		result.addProperty("focus_restore_requests", restoreRequests);
+		result.addProperty("focus_restores_scope", "observed_false_to_true_transitions_after_initial_audit");
+		result.addProperty("focus_restore_requests_scope", "audit_requests_excludes_explicit_setup_focus");
+		result.addProperty("measure_unfocused_ticks", measureUnfocusedTicks);
+		result.addProperty("focus_gate_enforced", false);
 		result.addProperty("final_focused", focused);
 		return result;
 	}

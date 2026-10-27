@@ -143,18 +143,27 @@ public class PhotonBenchCapture {
 
 		var flags = raw.getAsJsonObject("frames").getAsJsonArray("flags");
 		var bits = raw.getAsJsonObject("flag_bits");
-		int required = bits.get("focused").getAsInt() | bits.get("maximized").getAsInt();
+		int focused = bits.get("focused").getAsInt();
+		int required = bits.get("maximized").getAsInt();
 		int iconified = bits.get("iconified").getAsInt();
 		if (flags.size() != value.get("frame_count").getAsInt()) {
 			throw new IllegalStateException("原始帧数量与窗口 summary 不一致。");
 		}
 
+		int unfocusedFrames = 0;
 		for (var flag : flags) {
 			int state = flag.getAsInt();
+			if ((state & focused) == 0) {
+				unfocusedFrames++;
+			}
+
 			if ((state & required) != required || (state & iconified) != 0) {
-				throw new IllegalStateException("正式帧窗口存在失焦、未最大化或最小化帧。");
+				throw new IllegalStateException("正式帧窗口存在未最大化或最小化帧。");
 			}
 		}
+
+		value.addProperty("unfocused_frames", unfocusedFrames);
+		value.addProperty("focus_gate_enforced", false);
 	}
 
 	private void validateFrames(JsonObject value) {

@@ -7,6 +7,7 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.lowdragmc.photon.client.fx.FX;
 import com.zhongbai233.bench.api.BenchMetricDescriptor;
+import com.zhongbai233.bench.api.BenchPhase;
 import com.zhongbai233.bench.api.MetricDirection;
 import com.zhongbai233.bench.api.neoforge.client.BenchCaptureOptions;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
@@ -22,6 +23,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
+import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceFixture;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
@@ -79,6 +81,17 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private CompletableFuture<Void> worldReady;
 	private CompletableFuture<List<QueenBeamPerformanceFixture.CastResult>> pendingCast;
 	private PhotonBenchCapture capture;
+	private PhotonBenchSpark spark;
+	private Runnable prepareFixture;
+	private boolean worldSetupQueued;
+	private boolean sparkStopping;
+	private boolean sparkArchived;
+	private Throwable deferredFailure;
+	private long failureCleanupStartedNs;
+	private boolean failureCaptureClosed;
+	private long sparkRequestedNs;
+	private long sparkReadyNs;
+	private long fixtureSetupTriggeredNs;
 	private CompletableFuture<Path> beamScreenshot;
 	private long verificationStarted;
 	private long verificationOutputFrame = -1;
@@ -134,10 +147,18 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (!ModList.get().isLoaded("sodium")) {
 			throw new IllegalStateException("本轮模型基准要求加载 Sodium。");
 		}
+		if (singleCast && System.getProperty("modBench.resultDirectory", "").isBlank()) {
+			throw new IllegalStateException("首次释放需要启动即生效的 BenchMod 原生鼠标隔离。");
+		}
+
+		if (singleCast && !PhotonBenchMixinPlugin.preservedWindowApplied()) {
+			throw new IllegalStateException("首次释放窗口保留桥未实际加载，禁止按完整夹具运行。");
+		}
+
 		var window = context.minecraft().getWindow();
 		GLFW.glfwMaximizeWindow(window.handle());
-		GLFW.glfwShowWindow(window.handle());
 		GLFW.glfwFocusWindow(window.handle());
+		focusAudit.audit(singleCast && beamCount > 0, "setup");
 		originalPose = context.automation().pose();
 		var player = context.player();
 		originalFlying = player.getAbilities().flying;
@@ -176,13 +197,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (beamCount > 0) {
 			beamFixture = new CompletableFuture<>();
 		}
-		if (singleCast && beamCount > 0) {
-			capture.startPrewarm();
-			focusAudit.audit(true);
-		}
-
 		var playerId = player.getUUID();
-		server.execute(() -> {
+		prepareFixture = () -> server.execute(() -> {
 			try {
 				QueenBeamPerformanceFixture.prepareBenchWorld(server);
 				var benchLevel = server.overworld();
@@ -226,11 +242,36 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				}
 			}
 		});
+		if (singleCast) {
+			sparkRequestedNs = System.nanoTime();
+			spark = PhotonBenchSpark.start(context.minecraft(), label);
+		} else {
+			worldSetupQueued = true;
+			prepareFixture.run();
+		}
 	}
 
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
-		focusAudit.audit(singleCast && beamCount > 0);
+		return step(context, BenchPhase.STABILIZE);
+	}
+
+	private BenchClientStepResult stabilizeStep(BenchClientContext context) {
+		focusAudit.audit(singleCast && beamCount > 0, "stabilize");
+		if (spark != null && !worldSetupQueued) {
+			if (!spark.poll()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+
+			sparkReadyNs = System.nanoTime();
+			if (beamCount > 0) {
+				capture.startPrewarm();
+				focusAudit.audit(true, "setup_prewarm");
+			}
+			fixtureSetupTriggeredNs = System.nanoTime();
+			worldSetupQueued = true;
+			prepareFixture.run();
+		}
 		if (!worldReady.isDone()) {
 			return BenchClientStepResult.CONTINUE;
 		}
@@ -263,7 +304,11 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
-		focusAudit.audit(singleCast && beamCount > 0);
+		return step(context, BenchPhase.WARMUP);
+	}
+
+	private BenchClientStepResult warmupStep(BenchClientContext context) {
+		focusAudit.audit(singleCast && beamCount > 0, "warmup");
 		if (++ticks < WARMUP) {
 			return BenchClientStepResult.CONTINUE;
 		}
@@ -330,7 +375,14 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult measure(BenchClientContext context) {
-		focusAudit.audit(true);
+		return step(context, BenchPhase.MEASURE);
+	}
+
+	private BenchClientStepResult measureStep(BenchClientContext context) {
+		focusAudit.audit(true, sparkStopping ? "spark_finalize" : "measure");
+		if (sparkStopping) {
+			return finishSpark(context);
+		}
 
 		if (ticks == 0 && !applyExpectedPose(context)) {
 			return BenchClientStepResult.CONTINUE;
@@ -380,7 +432,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				return BenchClientStepResult.CONTINUE;
 			}
 			beamScreenshot.join();
-			return BenchClientStepResult.COMPLETE;
+			return finishSpark(context);
 		}
 
 		if (!verificationCast) {
@@ -414,6 +466,107 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			return BenchClientStepResult.COMPLETE;
 		}
 		return BenchClientStepResult.CONTINUE;
+	}
+
+	private BenchClientStepResult step(BenchClientContext context, BenchPhase phase) {
+		if (deferredFailure != null) {
+			return finishFailedSpark(context);
+		}
+
+		try {
+			return switch (phase) {
+				case STABILIZE -> stabilizeStep(context);
+				case WARMUP -> warmupStep(context);
+				case MEASURE -> measureStep(context);
+				default -> throw new IllegalArgumentException("非客户端 tick 阶段：" + phase);
+			};
+		} catch (RuntimeException | AssertionError failure) {
+			if (spark == null) {
+				throw failure;
+			}
+
+			deferredFailure = failure;
+			failureCleanupStartedNs = System.nanoTime();
+			return finishFailedSpark(context);
+		}
+	}
+
+	private BenchClientStepResult finishSpark(BenchClientContext context) {
+		if (spark == null) {
+			return BenchClientStepResult.COMPLETE;
+		}
+
+		if (!sparkStopping) {
+			spark.poll();
+			spark.stop();
+			sparkStopping = true;
+		}
+		if (!spark.poll() || !spark.complete()) {
+			return BenchClientStepResult.CONTINUE;
+		}
+
+		try {
+			spark.archive(context);
+			sparkArchived = true;
+		} catch (Exception failure) {
+			throw new IllegalStateException("spark 完成实件归档失败。", failure);
+		}
+		return BenchClientStepResult.COMPLETE;
+	}
+
+	/// 只延迟本场景持有采样后的失败；不阻塞 render 等待需要客户端回执的保存。
+	@SuppressWarnings("SameReturnValue") // 等待时只能 CONTINUE，完成后必须重抛原失败。
+	private BenchClientStepResult finishFailedSpark(BenchClientContext context) {
+		focusAudit.audit(true, "failure_finalize");
+		if (!worldSetupQueued && beamFixture != null && !beamFixture.isDone()) {
+			beamFixture.completeExceptionally(deferredFailure);
+		}
+		if (!failureCaptureClosed) {
+			failureCaptureClosed = true;
+			try {
+				if (capture != null) {
+					capture.close(context);
+				}
+			} catch (RuntimeException cleanup) {
+				deferredFailure.addSuppressed(cleanup);
+			}
+		}
+
+		try {
+			if (System.nanoTime() - failureCleanupStartedNs > TimeUnit.SECONDS.toNanos(60)) {
+				throw new IllegalStateException("失败后的 spark 收尾超过 60 秒，完成未确认。");
+			}
+
+			if (!spark.poll()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+			if (!spark.complete()) {
+				spark.stop();
+				return BenchClientStepResult.CONTINUE;
+			}
+
+			spark.archive(context);
+			sparkArchived = true;
+		} catch (Exception cleanup) {
+			if (cleanup != deferredFailure) {
+				deferredFailure.addSuppressed(cleanup);
+			}
+		}
+
+		try {
+			var report = spark.snapshot();
+			report.add("focus_audit", focusAudit.snapshot());
+			report.addProperty("original_failure", deferredFailure.toString());
+			report.addProperty("cleanup_completion_confirmed", spark.complete() && sparkArchived);
+			context.artifacts().write(label + "-spark-failure.json", "application/json", report.toString());
+		} catch (Exception cleanup) {
+			deferredFailure.addSuppressed(cleanup);
+		}
+
+		if (deferredFailure instanceof RuntimeException failure) {
+			throw failure;
+		}
+		throw (AssertionError) deferredFailure;
 	}
 
 	private void markBeamScreenshot(BenchClientContext context) {
@@ -468,6 +621,18 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 		var report = new JsonObject();
 		report.addProperty("label", label);
+		report.addProperty("window_geometry_preserved_by_bench_bridge", PhotonBenchMixinPlugin.preservedWindowApplied());
+		report.addProperty("bench_input_isolation_contract_active", !System.getProperty("modBench.resultDirectory", "").isBlank());
+		report.addProperty("bench_input_isolation_source", "BenchInputIsolation.active_contract_BenchMod_0.1.5-beta_required_MouseHandlerMixin_InputConstantsMixin");
+		report.addProperty("bench_input_isolation_runtime_verification", "not_verified_by_source_contract");
+		report.addProperty("setup_focus_requests", 1);
+		report.addProperty("mouse_grabbed_observed", context.minecraft().mouseHandler.isMouseGrabbed());
+		report.addProperty("glfw_cursor_mode_observed",
+				GLFW.glfwGetInputMode(context.minecraft().getWindow().handle(), GLFW.GLFW_CURSOR));
+		report.add("spark_client", spark == null ? JsonNull.INSTANCE : spark.snapshot());
+		report.addProperty("spark_start_wait_ns", sparkReadyNs == 0 ? 0 : sparkReadyNs - sparkRequestedNs);
+		report.addProperty("spark_wait_scope", "before_queen_creation_and_setup_prewarm_capture");
+		report.addProperty("fixture_setup_triggered_ns", fixtureSetupTriggeredNs);
 		report.add("fixed_world_anchor", fixedAnchor == null ? JsonNull.INSTANCE : fixedAnchor);
 		report.add("beam_screenshot_request", beamScreenshotRequest == null ? JsonNull.INSTANCE : beamScreenshotRequest);
 		report.addProperty("expected_shaderpack_enabled", Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true")));
@@ -525,9 +690,6 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("camera_audit_unavailable_frames", cameraAudit.unavailableFrames());
 		var focus = focusAudit.snapshot();
 		report.add("focus_audit", focus);
-		if (!focus.get("measure_focus_valid").getAsBoolean() || !focus.get("final_focused").getAsBoolean()) {
-			throw new AssertionError("正式采集阶段发生失焦，不能通过夹具验收。");
-		}
 		report.addProperty("pose_requested", expectedPose == null ? "" : expectedPose.toString());
 		report.addProperty("pose_observed", context.automation().pose().toString());
 		report.addProperty("pose_gate_verified",
@@ -557,6 +719,14 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public void teardown(BenchClientContext context) {
+		try {
+			finishSynchronousSpark(context);
+		} finally {
+			teardownFixture(context);
+		}
+	}
+
+	private void teardownFixture(BenchClientContext context) {
 		try {
 			try {
 				if (capture != null) {
@@ -593,6 +763,57 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 					}
 				}
 			}
+		}
+	}
+
+	/// 上游取消／超时直接同步 teardown，不能在这里等待主线程回执；明确记录未确认边界。
+	private void finishSynchronousSpark(BenchClientContext context) {
+		if (!worldSetupQueued && beamFixture != null && !beamFixture.isDone()) {
+			beamFixture.completeExceptionally(new IllegalStateException("夹具创建前已结束。"));
+		}
+		if (spark == null) {
+			return;
+		}
+
+		RuntimeException failure = null;
+		try {
+			if (!spark.complete() && spark.poll() && !sparkStopping) {
+				spark.stop();
+				sparkStopping = true;
+			}
+		} catch (RuntimeException cleanup) {
+			failure = cleanup;
+		}
+
+		try {
+			spark.close();
+		} catch (RuntimeException cleanup) {
+			if (failure == null) {
+				failure = cleanup;
+			} else {
+				failure.addSuppressed(cleanup);
+			}
+		}
+
+		try {
+			var report = spark.snapshot();
+			report.add("focus_audit", focusAudit.snapshot());
+			report.addProperty("synchronous_teardown_wait_supported", false);
+			report.addProperty("cleanup_completion_confirmed", spark.complete() && sparkArchived);
+			context.artifacts().write(label + "-spark-teardown.json", "application/json", report.toString());
+		} catch (Exception cleanup) {
+			if (failure == null) {
+				failure = new IllegalStateException("spark 收尾状态归档失败。", cleanup);
+			} else {
+				failure.addSuppressed(cleanup);
+			}
+		}
+
+		if (failure != null) {
+			if (deferredFailure == null) {
+				throw failure;
+			}
+			deferredFailure.addSuppressed(failure);
 		}
 	}
 

@@ -1,5 +1,19 @@
 # 系统修改记录
 
+## 2026-10-27：补齐四个伴生 NBT 的容器结束标记
+
+- RESOURCE 生产接入后，独立只读解析确认旧四文件均缺 EndTag：laser_body 在原偏移343／596／847补3个00，其余dust_column346／reverse_muzzle350／source_dust347各补1个。总共只增加6字节，所有原字节与字段值保持；原JSON对应材质和全部raw_*逐项相同，真实骨骼／权重／形变数组为空。
+- 现有IDEA工具只有二进制备份，无二进制VFS写入；现有原生资源API强制type/data包装，不能保持该伴生格式。先准备修复清单和原字节备份，再由用户明确批准一次脚本方法例外，写前原hash／备份hash和写后候选hash均核对成功，随后IDEA刷新该资源目录。未放宽Reader或更改格式／模型／动画／材质值。
+- 原件：`.agent/backups/first-cast-20261027-nbt-boundaries/`；修复清单：`.agent/first-cast-20261027-nbt-endtag-repair.json`。当前仅静态／原字节一致性与内存解析验证，Java回归和游戏仍待Horde释放。用户随后要求扩展IDEA MCP二进制接口，工作属于独立插件仓库，本工作区不复制该插件源码。
+
+## 2026-10-27：测试方法改为专用接口与纯游戏内夹具
+
+- 用户最新连续指令：允许最大化自有 Minecraft 游戏窗口并维持焦点，取消失焦硬门禁；焦点变化和补焦次数保留，不仅因失焦判失败／作废。允许不动系统实体鼠标、不注入全局输入、不操控其它窗口／显示器的游戏内部模拟输入、GUI点击、后台定向操作和专用API。只恢复本游戏最大化／保持焦点；显示／还原／移动／切全屏／改窗口尺寸或分辨率仍不恢复。含失焦区间如实报告，其他验收条件保留。
+- 已按最新指令完成局部实现：只对本游戏窗口最大化与聚焦；FocusAudit／Scenario／raw flags 的失焦失败路径已取消，记录阶段／观测时长，并分开补焦请求和实际false→true恢复次数。临时Gradle准备参数为 `-PphotonRequireFocus=false`，运行后仍须核对生成值。
+- 新增bench-only `ClientGraphicsControllerMixin`，仅精确首发场景与 `lobecorp.photon.bench.preserveWindow=true` 加载，以require=1屏蔽上游窗口尺寸／全屏切换，postApply标记与场景启动核对真实桥应用。缺桥／缺开关拒绝启动。复用并只读核对BenchMod的required鼠标隔离，记录契约及实际mouseGrabbed／cursor状态，不新增抓鼠标路径。
+- 新增 `PhotonBenchSpark`：真实客户端start回执后才创建女皇；主20秒捕获结束后stop保存，验证profile的SHA256、protobuf、CLIENT来源、身份、时间与样本，归档后才COMPLETE。失败保留原异常并有界收尾；外部取消／上游phaseTimeout无法异步等候的边界记未确认。禁用重复服务端background配置，客户端Spark仍显式全程开启。
+- IDEA静态检查：新会话／Plugin／Capture／FocusAudit零问题，Scenario保留原辅助方法警告；动态Mixin保留两项静态注册提示，实际注册须运行验证。尚未运行，不将旧门禁状态当新验收结果。此前本对话只读取电脑控制技能，未执行桌面操控；当前仍未启动任何构建／游戏／Debug／GPU 采样。Horde 本轮释放门槛保持。
+
 ## 2026-10-27：首发长帧 R2 接续与原始证据核对（进行中）
 
 - 复用 `codex/photon`／19877 和现有工作树，记录新对话 `01a17d1d-80cf-74b1-a5dc-c8bd660dffc3`；旧对话保留但排除读取与调度，不同步原始分支。
@@ -7,7 +21,7 @@
 - 修正入口时点：较晚交接记录模型视觉已由用户确认，早期“未验收”只保留历史含义；比较图／备份／脚本当前缺失，不补造或无限追溯。现存旧样本有实际聚焦／最大化证据，但为旧提交 dirty，正式本轮指纹与确定性未建立，不能宣称新收益。
 - P23 补充已确认的单任务可突破 10 ms 预算、同世界 reload 后预热标记不复位与总预热成本边界；最小代码修复和诊断由 Sol 完成：Queue 按 DEFINE/SHELL/RENDER/CHILD 输出每 drain 次数／总耗时／最大值／剩余数／总延迟；关闭 diag.cast 不增加逐 job 计时，施法 scope 在异常时结束，clear 复位预热标记。静态诊断无新增问题，格式化误触已按精确上下文局部恢复。
 - P24 完整表现基线修复：`PhotonModelSourceUtil` 接入同一资源提供者读取／合并 `.mfx.nbt`，返回完整快照；`PhotonModelSplitUtil` 使用既有 Reader／Limits，损坏附加字段明确失败。新增 `PhotonModelResourceSourceTest` 六项回归，含四个真实模型与快照，尚未运行。未改资源、来源闸门、技能时序或渲染语义，也未增加缓存。
-- `PhotonBenchCapture`／`PhotonModelRenderScenario`：新增 singleCast 的 setup→warmup 独立预热帧捕获与原始文件归档、所有者标签和失败状态；主20秒与cast_0=2s不变。固定世界出生点锚点，女皇／靶／相机同源，实际相机变化或失焦失败；截图请求附真实技能阶段／时间／相机／帧号。IDEA按修改范围格式处理并静态检查，Capture无问题、Scenario保留原位姿辅助方法警告；尚未运行。
+- `PhotonBenchCapture`／`PhotonModelRenderScenario`：新增 singleCast 的 setup→warmup 独立预热帧捕获与原始文件归档、所有者标签和失败状态；主20秒与cast_0=2s不变。固定世界出生点锚点，女皇／靶／相机同源，实际相机变化失败；后续按用户新指令取消失焦失败，仅保留观测与补焦；截图请求附真实技能阶段／时间／相机／帧号。IDEA按修改范围格式处理并静态检查，Capture无问题、Scenario保留原位姿辅助方法警告；尚未运行。
 - 新增本地只读 `.agent/first_cast_audit.py`，旧归档及错配／队列解析轻量自检通过，不创建输出文件。临时 IDEA R2 编译回归、普通／光影准备配置已登记，仅用于本轮，尚未运行。
 - 补 `/.agent/` 忽略规则，避免本地报告／备份进入 Git；原 `.gitignore` 已备份。当前未构建、Data、游戏、Debug 或 GPU 采样，等待 Horde 本轮释放，不将本阶段文档更新视为任务验收完成。
 

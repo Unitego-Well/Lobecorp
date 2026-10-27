@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-10-27 低频截图视觉复测（一次，已结束）
+
+- 用户确认后通过 IDEA `BenchClient` 执行 `lobecorp.horde-tide-acceptance`，run `client-1793109801528`；复用 seed=7 的 `lobecorp-horde-visual-20261027-flat`、500×500/速度0.75、固定相机、无光影、Sodium加载。未改业务源码或已有WIP。
+- 七段均完成，每段3张，加warmup两张共23张；最短请求间隔100 tick，运行期间未读取/对比图片。场景报告PASSED仅代表控制/文件完整性完成，行为状态仍需画面复核及未测通道；结束后仅目视两张已保存代表图，未自动像素对比。
+- 测量23602帧：均值5.771ms、P95 12.215ms、P99 17.800ms、最长92.287ms，>50ms为3帧、>100ms为0。旧重型取证轮P99 77.095ms、>100ms为133帧；该历史对照同时调整了截图频率、图片分析和GPU计时，不能当严格生产性能A/B。启动/暖机仍有428.842/207.739ms尖峰，不能宣称全程无卡顿。
+- 环境有效、失焦0、GPU绘制失败0；本场景GPU计时disabled、查询0、报告丢弃0，不据此推断全部GPU问题解决。Spark已保存：https://spark.lucko.me/omg5qbAPH6。
+- 自有PID28636（22:02:45.773+08:00启动）正常退出，Debug为空；自有事件/目标0，30个探针无未完成项。Horde本轮游戏测试已结束并释放。
+- 本轮31份实际产物归档：`build/agent-backups/20261027-low-frequency-client-1793109801528/`；此前205份原始证据备份：`build/agent-backups/20261027-low-frequency-before-run/`。完整运行报告与截图路径放自有.agent。
+
 ## 2026-10-27 视觉测试改为低频截图保存（代码阶段完成）
 
 - 按用户确认仅重写 `HordeTideAcceptanceScenario`：移除 warmup、采集、verify/收尾链路中的图片解码、像素对比和 on/off 像素门禁；图片分析统一记 `DEFERRED_OFFLINE`，只保存截图与轻量元数据。

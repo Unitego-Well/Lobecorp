@@ -496,6 +496,8 @@ CPU提交动态六整数目标与稳定身份，GPU保留平滑状态，不在CP
 
 旧 Photon 源码、历史截图/备份和 DS 已移除的 Horde 实现只保留原路径及缺失说明；此为来源边界，不是问题已修复，也不在本工作区代管 Photon 未完成项。源码/资源继续变更时须重新核对当前入口，不恢复缺失文件来消除链接报告。
 
+2026-10-27 保护边界异常：收尾检查发现原受保护的 `docs/systems/photon-effect-mcp-api.md~` 从工作区消失，属于未暂存删除，未纳入文档提交 `c37277cf`。无本轮显式删除该文件的操作记录；本机IDE库确认安全写入在开关开启时会覆盖并在成功后删除同名 `~`，新文件工具会调用 `saveDocumentAsIs`，但缺少本次保存的运行时开关/文件审计，不能唯一归因，也不擅自恢复可能属于并行操作的删除。Git中原版本已保全到 `build/agent-backups/20261027-doc-horde-root-resume/protected-head-photon-effect-mcp-api.md~`，原blob与副本均为 `dc1d8dfc4970e69c3b476f8edbf89f35310691fc`；这是原提交版本，不冒充原磁盘字节快照。该项保留待核实，不再声称所有旧备份均已验证保持；未切换IDE安全写设置或进行复现实验。
+
 ## 证据与维护
 
 本轮备份根为C:/Users/wang_/AppData/Local/Temp/horde-rewrite-20261023-7e6b6a3d，包含baseline-client、after-client-1/2/3、运行前配置、Iris原始报告与截图；文档收尾前另存closeout-docs。旧文档合并备份horde-docs-consolidation-20261023-kwqkdh3p及旧修复备份horde-fixes-20261023-lhyy6_x_保留。本次追加文档、源码/配置快照及用户截图另存C:/Users/wang_/AppData/Local/Temp/horde-optimization-doc-20261024-991df925。问题解决且完成适用验证后从本页移除，不维护第二份待办。

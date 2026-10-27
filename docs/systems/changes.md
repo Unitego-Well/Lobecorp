@@ -1,5 +1,23 @@
 # 系统修改记录
 
+## 2026-10-27：特效管理工程（.mfxlib）与激光预热同步段治理
+
+- 用户要求：继续 Photon 重构；新建「特效管理器」项目类型（类似特效项目、模型特效项目，提取部分能力），解决「激光包含特效很多、初始化内容过多导致卡顿」；并拆分大 `.fx`。用户澄清「同时不要出现那么多」指**初始化量**而非视觉数量。
+- 新增 `client/photon/model/project/PhotonEffectLibraryProject`：`.mfxlib` 工程类型，只登记特效条目引用与共享子特效 ID，自身不含对象树与运行态；`serializeProject`/`deserializeProject` 存 `entries`/`shared`。
+- 新增 `client/photon/model/project/PhotonEffectLibraryPanel`：停靠面板（右槽），扫描资源根列出全部 `.fx` 的对象数/发射器数/子发射器数/估算渲染类型/子特效链接/递归深度/解压体积，按开销权重降序；选中条目才建立预览，切换即释放上一份（同一时刻只一个运行态）。
+- 新增 `util/photon/compat/PhotonEffectInventoryUtil`：只读 NBT 索引，不创建运行态、不解析材质、不触碰 GPU；单文件失败只记录在条目上不中断整批。
+- 新增 `util/photon/editor/PhotonEffectLibraryTextUtil` 并接入 `TranslationKeys`；`FXEditorMixin` 注册 `.mfxlib` 项目类型与「特效管理器」菜单入口。
+- 改 `client/photon/editor/PhotonEditorTools`：新增 `previewEffect(Identifier)` / `clearEffectPreview()` / `previewEffectId()`，用独立字段 `libraryPreview` 持有按需预览，不干扰原有 `previewRuntime` 语义。
+- 改 `client/photon/performance/PhotonRenderPrewarm`：`Queue` 新增 `prepend(Runnable)` 与 `addShell(FXRuntime, Runnable, int)`，用于把必须先完成的壳准备排到队首。
+- 改 `client/photon/runtime/QueenBeamEffects`：`prewarm()` 把「壳准备（`prepareNext`＋命名运行时）」与「子 FX 定义解析」移入预热队列；新增 `define`/`shell`/`child` 分段计时日志；`PREWARM_DEPTH` 改为可配 `-Dlobecorp.photon.prewarmDepth`（默认 **2**，A/B 证明降到 1 为阴性）。
+- 实测 A/B（单施法场景、每轮重开客户端、plain、探针开、spark 关、只改一个变量）：
+  - `prewarmDepth` 2→1：spawners 15→9，但帧均值 4.524→6.166 ms（**+36%**）、p99 20.494→24.426，**阴性，默认保持 2**。
+  - 子定义解析移出同步段（3 轮对 3 轮）：`beamDefinitions` 同步段均值 867→329 ms（**−62%**，`child` 340→0 ms）；帧均值 4.142→3.768 ms（−8.9%）、p99 17.90→16.14（−9.8%）、最长帧 175.3→141.8 ms（−19.1%）；>50 ms 帧两轮均为 0。判读：同步段改善机制清楚、可复现；帧指标方向一致但基线自身轮间方差大，不作强证据。
+- 资源分析（只读脚本，未改资源）：`.fx` 为 gzip+NBT；`laser.fx` 解压 500119 B、13 个对象，其中 **84.4% 体积来自 4 个内嵌模型发射器**（laser_body 146392／dust_column 123898／reverse_muzzle 100783／source_dust 43964 B），四者 `assetJson` SHA256 各不相同且均为 `EMBEDDED`，**没有可去重的重复内容**。
+- 检查：`benchClasses` BUILD SUCCESSFUL；`ide_build_project` success；新增 `PhotonEffectInventoryUtilTest` 4/4 通过（过程中修掉 4 个真实 bug：`type` 取错层级、不可变集合 `Set.of` 加元素、解压体积误取压缩字节、`animation` 类误计入 `models`）；`PhotonSpawnScheduleTest` 3/3 通过。`PhotonChildTrackTest`/`PhotonResourceBaselineTest` 仍有失败，原因是本工作区缺 `src/main/resources/fxpacks`（P04 既有问题，非本次引入）。未改动画、LOD、材质语义与原资源；未推送。
+- 证据：`agent-backups/photon-r3-20261027/`（`PROGRESS-20261027.md` 进度与结论、`bench/` 基准日志与 artifacts、`tools/` 只读分析脚本、各文件 HEAD 原件备份）。
+- 未做：`.fx` 资源拆分与内嵌模型外部化（需要游戏内视觉验收；且 `Source.RESOURCE` 在代码中尚无实现分支）。
+
 ## 2026-10-27：交接文档升级（特效底层重构执行计划）
 
 - 用户要求"编写交接文档"。将 `docs/systems/photon-effect-rewrite-execution-plan-20261026.md` 从"计划与操作手册"升级为完整交接文档，不改任何代码。

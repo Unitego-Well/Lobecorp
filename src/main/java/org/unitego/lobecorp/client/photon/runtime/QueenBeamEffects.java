@@ -59,7 +59,9 @@ public class QueenBeamEffects {
 	private static final boolean POOL = Boolean.getBoolean("lobecorp.photon.poolBeam");
 	private static final int MAX_IDLE = 2;
 	/// 渲染预热的子模板递归深度（光束 → 命中特效 → 更深子特效）。
-	private static final int PREWARM_DEPTH = 2;
+	/// A/B 实测：降到 1 会让深层子模板退回施放时按需构建，帧均值反而上升，因此默认保持 2。
+	private static final int PREWARM_DEPTH = Math.clamp(
+			Integer.getInteger("lobecorp.photon.prewarmDepth", 2), 0, 3);
 	/// 渲染预热的逐 tick 任务队列；预热完成后置空，施放采用壳时不影响。
 	private static @Nullable PhotonRenderPrewarm.Queue prewarmQueue;
 	private static final Map<Identifier, Deque<PhotonGeoEffect>> IDLE = new HashMap<>();
@@ -139,12 +141,17 @@ public class QueenBeamEffects {
 		return !level.getEntitiesOfClass(TheQueenOfHatred.class, player.getBoundingBox().inflate(128)).isEmpty();
 	}
 
-	/// 预加载并预建首次施放需要的 FX 运行态与子实例；失败不改变技能，首次施放回退原路径。
+	/// 预加载首次施放需要的 FX 运行态；子模板与命名运行时按逐 tick 预算推进，避免女皇出现时一次冻结。
+	///
+	/// 壳本身很轻（定义已缓存），真正昂贵的是子模板准备与命名运行时构建，因此把后者整体排进队列首位执行，
+	/// 保证首次施放优先拿到可用的运行态；队列未完成时施放回退到原有按需构建路径。
 	private static void prewarm() {
 		prewarmed = true;
 		long started = System.nanoTime();
 		var shells = new HashMap<Identifier, PhotonGeoEffect>();
 		var queue = PhotonRenderPrewarm.enabled() ? new PhotonRenderPrewarm.Queue() : null;
+		// 分段账本：解析定义、建壳、取子定义各自耗时，用于定位同步段里真正的大头。
+		var timing = new long[3];
 
 		try {
 			for (var animationId : List.of(
@@ -152,6 +159,7 @@ public class QueenBeamEffects {
 					TheQueenOfHatredAnimationDefinitions.LASER_PHASE_TWO,
 					TheQueenOfHatredAnimationDefinitions.STAR_BEAM,
 					TheQueenOfHatredAnimationDefinitions.STAR_BEAM_PHASE_TWO)) {
+				long phase = System.nanoTime();
 				var animation = LcAnimationDefinitions.resolve(animationId);
 				var effectId = animation == null ? null : animation.effectId();
 
@@ -160,6 +168,8 @@ public class QueenBeamEffects {
 				}
 
 				var effect = FXHelper.getFX(effectId);
+				timing[0] += System.nanoTime() - phase;
+				phase = System.nanoTime();
 
 				if (effect == null) {
 					continue;
@@ -172,15 +182,37 @@ public class QueenBeamEffects {
 					continue;
 				}
 
-				if (spawner.config.fxLocation != null) {
+				timing[1] += System.nanoTime() - phase;
+				phase = System.nanoTime();
+
+				var runtime = shell.runtime();
+
+				// 子定义只用于预热缓存，真正消费在 prepareNext 内部；排在队列里做，避免同步段重复解析一次几MB的定义。
+				if (queue != null) {
+					var childLocation = spawner.config.fxLocation;
+					queue.prepend(() -> {
+						if (childLocation != null && !runtime.isDestroyed()) {
+							FXHelper.getFX(childLocation);
+						}
+					});
+				} else if (spawner.config.fxLocation != null) {
 					FXHelper.getFX(spawner.config.fxLocation);
 				}
 
-				spawner.prepareNext();
-				((PhotonNamedAccess) shell.runtime()).lobecorp$prepareNamedRuntime();
+				timing[2] += System.nanoTime() - phase;
 
-				if (queue != null) {
-					queue.add(shell.runtime(), PREWARM_DEPTH);
+				if (queue == null) {
+					spawner.prepareNext();
+					((PhotonNamedAccess) runtime).lobecorp$prepareNamedRuntime();
+				} else {
+					queue.addShell(runtime, () -> {
+						try {
+							spawner.prepareNext();
+							((PhotonNamedAccess) runtime).lobecorp$prepareNamedRuntime();
+						} catch (RuntimeException invalid) {
+							Lobecorp.LOGGER.warn("壳预热失败：{}", effectId, invalid);
+						}
+					}, PREWARM_DEPTH);
 				}
 
 				shells.put(effectId, shell);
@@ -195,8 +227,9 @@ public class QueenBeamEffects {
 			shells.values().forEach(PhotonGeoEffect::close);
 		}
 
-		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}",
-				(System.nanoTime() - started) / 1_000_000, PREPARED.size(), queue != null);
+		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}, depth={}, define={}ms, shell={}ms, child={}ms",
+				(System.nanoTime() - started) / 1_000_000, PREPARED.size(), queue != null, PREWARM_DEPTH,
+				timing[0] / 1_000_000, timing[1] / 1_000_000, timing[2] / 1_000_000);
 	}
 
 	/// 预热渲染侧：把剩余预热任务按每 tick 固定预算推进；完成后记录一次汇总。

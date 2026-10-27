@@ -24,7 +24,9 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.PhotonParticleManager;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
@@ -64,11 +66,14 @@ import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import org.joml.Vector2f;
+import org.joml.Vector3f;
+import org.unitego.lobecorp.Lobecorp;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
@@ -141,6 +146,9 @@ public class PhotonEditorTools {
 	private String clipboardModule;
 	private Dialog parameterDialog;
 	private FXRuntime boundRuntime;
+	/// 特效管理工程单独持有一份按需预览运行态，避免与编辑器工程的预览互相覆盖。
+	private FXRuntime libraryPreview;
+	private Identifier libraryPreviewId;
 	private Map<AnimatedProperty, Map<Long, Integer>> linkedTangents = new WeakHashMap<>();
 	/// 只登记扩展模块开关控件；弱键不会保留已移除的面板。
 	private Map<UIElement, String> featureControls = new WeakHashMap<>();
@@ -981,8 +989,80 @@ public class PhotonEditorTools {
 		visibility.clear();
 	}
 
-	public void clearPreview() {
+	/// 特效管理工程用：把编辑器预览切换到指定特效，同一时刻只保留一份运行态。
+	///
+	/// 与打开FX工程不同，这里不经过工程文件，也不创建整个目录的运行态；传入null表示清空预览。
+	/// 返回是否切换成功，失败时保留原预览并记录原因。
+	public boolean previewEffect(@Nullable Identifier effect) {
+		if (effect == null) {
+			clearEffectPreview();
+			return true;
+		}
 
+		if (Objects.equals(libraryPreviewId, effect) && libraryPreview != null) {
+			return true;
+		}
+
+		var definition = FXHelper.getFX(effect);
+
+		if (definition == null) {
+			Lobecorp.LOGGER.warn("特效管理预览失败，定义缺失：{}", effect);
+			return false;
+		}
+
+		FXRuntime next;
+
+		try {
+			next = definition.createInternalRuntime();
+		} catch (RuntimeException invalid) {
+			Lobecorp.LOGGER.warn("特效管理预览失败，运行态创建异常：{}", effect, invalid);
+			return false;
+		}
+
+		clearEffectPreview();
+		libraryPreview = next;
+		libraryPreviewId = effect;
+		next.root.updatePos(new Vector3f(0.5f, 2, 0.5f));
+		editor.runtime = next;
+		previewRuntime = next;
+		editor.hierarchyView.loadFXRuntime(next);
+		editor.timelineView.rebuild();
+		editor.sceneView.loadScene();
+		editor.reloadEffect();
+		bindRuntime();
+		return true;
+	}
+
+	/// 释放特效管理预览持有的运行态；编辑器自身工程的预览不受影响。
+	public void clearEffectPreview() {
+		if (libraryPreview == null) {
+			return;
+		}
+
+		if (PREVIEWS.get(libraryPreview) != null) {
+			PREVIEWS.remove(libraryPreview);
+		}
+
+		var owned = libraryPreview;
+		libraryPreview = null;
+		libraryPreviewId = null;
+
+		if (editor.runtime == owned) {
+			editor.runtime = null;
+			previewRuntime = null;
+			editor.hierarchyView.clearFXRuntime();
+			editor.timelineView.clear();
+			editor.sceneView.clearScene();
+		}
+
+		boundRuntime = null;
+	}
+
+	public @Nullable Identifier previewEffectId() {
+		return libraryPreviewId;
+	}
+
+	public void clearPreview() {
 		linkedTangents.clear();
 
 		if (boundRuntime != null) {

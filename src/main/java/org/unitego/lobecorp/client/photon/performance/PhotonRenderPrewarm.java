@@ -194,6 +194,33 @@ public final class PhotonRenderPrewarm {
 		private int spawners;
 		private int failed;
 
+		/// 插到队列最前面执行；用于必须先完成的壳准备，保证首次施放能采用到预备好的运行态。
+		public void prepend(Runnable job) {
+			if (!ENABLED) {
+				job.run();
+				return;
+			}
+
+			jobs.addFirst(job);
+		}
+
+		/// 把一次“壳准备”登记为队列首个任务：准备子模板与命名运行时，再按深度递归排队。
+		public void addShell(FXRuntime runtime, Runnable prepare, int depth) {
+			if (!ENABLED) {
+				prepare.run();
+				return;
+			}
+
+			prepend(() -> {
+				if (runtime.isDestroyed()) {
+					return;
+				}
+
+				prepare.run();
+				add(runtime, depth);
+			});
+		}
+
 		/// 只登记任务，不做重活；`depth` 为子模板递归深度。
 		public void add(FXRuntime runtime, int depth) {
 			if (!ENABLED) {

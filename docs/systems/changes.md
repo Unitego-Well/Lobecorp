@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-27：新增本轮交接文档并迁移现状入口
+
+- 用户要求写交接文档。新增 `docs/systems/photon-effect-rewrite-handoff-20261027.md`，作为 2026-10-27 起的**当前有效交接入口**，内容覆盖：本轮三件事（`.mfxlib` 特效管理工程、激光预热同步段治理、模型资产外部化）的实现与实测数字；四条阴性结论（`prewarmDepth=1`、只同步解析第一个特效、内嵌模型改外部 JSON、R1 池化）以免后人重做；已确认事实（`.fx` 结构、模型资产不可去重、`RESOURCE` 分支早已存在、`EMBEDDED` 闸门来历、MC 26.1 NBT API 差异）；OBJ 生成规范五条；命令手册含两个基准运行必踩的坑（`bench.shader=false` 必须传、`prepareBenchClientOptions` 需单独跑）；恢复检查清单；下一步与未决问题。
+- `docs/systems/README.md`：新增「特效重构交接」行，指向 2026-10-27 版并保留 2026-10-26 执行计划入口。
+- `docs/systems/photon-effect-rewrite-execution-plan-20261026.md`：头部加迁移说明，明确本文件只保留 R1～R6 框架、R2 历史 A/B 数据与命令手册，不再单独维护现状。
+- 同步 `.agent/README.md` 索引与 `.agent/handoffs/20261027-photon-model-externalize.md`（会话级交接，不提交 Git）。
+- 检查：本轮为纯文档改动，按项目规则不运行构建、测试或游戏；仅做 IDEA 回读与诊断。
+
 ## 2026-10-27：模型资产外部化（OBJ 几何 + .mfx.nbt 附加数据）
 
 - 用户要求：模型本体必须外部可直接打开（OBJ），骨骼／蒙皮／形变／动画／材质参数像 `.shader_graph.nbt` 一样存独立 NBT；走资源包加载；FX 定义保持 Photon 内置体系不改。目标为**规矩与维护性**，不是性能。

@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-27 模型资产外部化（OBJ 几何 + `.mfx.nbt` 附加数据）：新增 `util/photon/model/PhotonModelSplitUtil` 合并 OBJ 与同名 NBT；`laser.fx` 的 4 个模型发射器改为 `source=RESOURCE` 指向 `assets/lobecorp/models/photon/the_queen_of_hatred/beam/*.obj`，骨骼／蒙皮／形变／动画／材质参数存同名 `.mfx.nbt`。为放行该来源，经用户授权修改 `PhotonModelFileValidationUtil#emitterData`：`RESOURCE` 要求资源标识非空、几何与片段引用延后到首次使用时校验，`FILE` 与其它来源仍拒绝（原闸门由 `11c575f8` 引入，只允许 `EMBEDDED`）。体积 405,987 → 63,313 B（−84%），顶点／面数与原 JSON 逐项一致；三轮基准 `built=50, spawners=15, failed=0`、`Failed to load fx` 为 0，与改动前一致。**未做视觉验收**；`define` 仍为约 300 ms，本次改动**不带来性能收益**（目标为可维护性）。证据 `agent-backups/photon-r3-20261027/`。
+
 2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。
 
 2026-10-26 12:52 R2 首帧渲染侧预热（部分正面，默认开启）：新增 `client/photon/performance/PhotonRenderPrewarm`（`-Dlobecorp.photon.prewarmRender`，默认 true，置 false 关闭）——预热壳内按绘制同一入口（`MaterialSetting#getRenderType`）预构建材质/着色图/CPU 管线，GPU 实例化变体（TILE/MODEL/BEAM/TRAIL/ARA）另经 `PhotonPipelines.graphShader`＋`precompilePipeline`，`PhotonModelOutput.prewarmRenderTypes()` 预准备模型材质，并递归预热子发射器模板（`PhotonChildSpawner.preparedTemplate()`，深度 2 已覆盖 15 个 spawner/50 个渲染类型）；任务队列每 tick 预算 10 ms，避免女皇出现时一次性冻结。单施法同条件 A/B（每轮重开客户端、plain、探针开、spark 关）：基线最长帧 680.3 ms、>250 ms 帧 3、窗口均值 12.84 ms → 预热 129.0～167.5 ms、>250 ms 帧 0、均值 8.03～9.85 ms；首施法 tick 68.3→70.9～75.3 ms 未退化。同步预热（B1/B2）反而更差（797.9/268.7 ms），证明必须递归覆盖＋分摊。剩余 +0.08～1.18 s 处 52～167 ms 长帧，疑为未覆盖的实例化变体与首次模拟类加载，**P22 未关闭**。证据 `photon-reaudit-20261026/first-cast/r2-*`（A/B/B2/B3/B4/B5 日志与 artifacts）。

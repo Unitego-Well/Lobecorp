@@ -9,6 +9,7 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -38,13 +39,30 @@ public class PhotonModelFileValidationUtil {
 	public static void emitterData(CompoundTag data) throws IOException {
 		var adapted = PhotonModelAssetUtil.adaptObject(data);
 		var config = adapted.getCompoundOrEmpty("config");
-		if (config.contains("source") && (!(config.get("source") instanceof StringTag(
-				var source
-		)) || !source.equals("EMBEDDED"))) {
-			throw new IOException("文件或资源来源模型仍需来源闭合验收，请保留原始数据。");
+		var source = config.getStringOr("source", "EMBEDDED");
+
+		// 文件来源仍禁止：外部绝对路径无法随资源包分发，保持原验收边界。
+		if (source.equals("FILE")) {
+			throw new IOException("文件来源模型仍需来源闭合验收，请保留原始数据。");
 		}
+
+		if (!source.equals("EMBEDDED") && !source.equals("RESOURCE")) {
+			throw new IOException("模型来源不受支持：" + source);
+		}
+
 		if (!(data.get("transform") instanceof CompoundTag transform) || !validIdentity(transform)) {
 			throw new IOException("模型对象身份缺失或无效。");
+		}
+
+		if (source.equals("RESOURCE")) {
+			// 资源来源的几何、骨骼与片段都在外部文件，加载期不解析；这里只确认标识存在，
+			// 片段引用与实际几何在首次使用时由来源读取路径校验，避免打开工程就同步读盘。
+			if (!(config.get("resource") instanceof StringTag(var resource)) || resource.isBlank()) {
+				throw new IOException("资源来源模型缺少资源标识。");
+			}
+
+			playback(config, null);
+			return;
 		}
 
 		var definition = definition(config.get("assetJson"), config.getCompoundOrEmpty("assetMaterialDependencies"));
@@ -94,7 +112,7 @@ public class PhotonModelFileValidationUtil {
 		return transform.read("id", UUIDUtil.CODEC).isPresent();
 	}
 
-	private static void playback(CompoundTag data, PhotonModelDefinition definition) throws IOException {
+	private static void playback(CompoundTag data, @Nullable PhotonModelDefinition definition) throws IOException {
 		for (var key : List.of("enabled", "looping", "paused")) {
 			if (data.contains(key) && (!(data.get(key) instanceof ByteTag value) || value.byteValue() < 0 || value.byteValue() > 1)) {
 				throw new IOException("模型布尔字段类型无效：" + key);
@@ -115,7 +133,8 @@ public class PhotonModelFileValidationUtil {
 			throw new IOException("模型片段标识类型无效。");
 		}
 		var clip = data.getStringOr("clip", "");
-		if (!clip.isEmpty() && definition.clips().stream().noneMatch(value -> value.id().equals(clip))) {
+		if (!clip.isEmpty() && definition != null
+				&& definition.clips().stream().noneMatch(value -> value.id().equals(clip))) {
 			throw new IOException("模型片段引用不存在：" + clip);
 		}
 	}

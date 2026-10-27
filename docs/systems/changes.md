@@ -1,5 +1,26 @@
 # 系统修改记录
 
+## 2026-10-27：模型资产外部化（OBJ 几何 + .mfx.nbt 附加数据）
+
+- 用户要求：模型本体必须外部可直接打开（OBJ），骨骼／蒙皮／形变／动画／材质参数像 `.shader_graph.nbt` 一样存独立 NBT；走资源包加载；FX 定义保持 Photon 内置体系不改。目标为**规矩与维护性**，不是性能。
+- 新增 `util/photon/model/PhotonModelSplitUtil`：合并 OBJ 文本与同名 `.mfx.nbt`，补齐 OBJ 无法表达的 `referenceLength`／`referenceWidth`／`forwardAxis`／`parts`／`bones`／`weights`／`morphs`／`clips`／材质参数；`dataPath()` 按 `foo.obj → foo.mfx.nbt` 推导；`companionData()` 从资源管理器读取配对 NBT。附加 NBT 兼容顶层字段与 `model` 包裹两种写法。
+- 改 `util/photon/model/PhotonModelFileValidationUtil#emitterData`：原先只允许 `source=EMBEDDED`，`RESOURCE`／`FILE` 一律拒绝（G1 阶段「来源闭合验收」保护，由提交 `11c575f8` 引入）。经用户授权放开 `RESOURCE`：要求 `resource` 标识非空，几何与片段引用延后到首次使用时由来源读取路径校验，避免打开工程即同步读盘；`FILE` 与其它来源仍拒绝。`playback` 的 `definition` 参数改为可空，`RESOURCE` 时跳过片段引用校验、保留全部字段类型校验。
+- 资源：`laser.fx` 的 4 个 `lobecorp_model_emitter`（laser_body／dust_column／source_dust／reverse_muzzle）改为 `source=RESOURCE` 指向 `lobecorp:models/photon/the_queen_of_hatred/beam/<name>.obj`，`assetJson` 清空、`snapshotSource` 置空。几何写入 `assets/lobecorp/models/photon/the_queen_of_hatred/beam/*.obj`，附加数据写同名 `.mfx.nbt`。
+- OBJ 生成按规范处理：定点十进制（无科学计数法）、UV 与法线按取值去重后复用索引、逐行指令白名单（仅 `v vt vn o g usemtl f s mtllib`，因 `PhotonModelObjUtil.read` 对其它指令抛异常）、精度用 `repr(float)` 展开保证无损。
+- 体积：4 个模型内嵌 JSON 合计 405,987 B → OBJ 52,346 B ＋ NBT 10,967 B，合计 63,313 B（−84%）。顶点／面数与原 JSON 逐项一致（200/164、160/144、145/252、81/80）。
+- 实测（单施法场景、每轮重开客户端、plain、探针开、spark 关）三轮：
+
+  | 轮次 | built | spawners | failed | 加载失败 | cast-tick | status |
+  |---|---|---|---|---|---|---|
+  | H1 | 50 | 15 | 0 | 0 | 76.3 ms | PASSED |
+  | H2 | 50 | 15 | 0 | 0 | 114.2 ms | PASSED |
+  | H3 | 50 | 15 | 0 | 0 | 72.4 ms | PASSED |
+
+  `built=50, spawners=15` 与改动前 `EMBEDDED` 版本完全一致，说明 4 个模型的材质与子模板全部正常构建；日志中 `Failed to load fx` 为 0（放开闸门前该计数为 1，`laser.fx` 整份加载失败）。
+- 检查：`benchClasses` BUILD SUCCESSFUL；`ide_build_project` success；新增 `PhotonModelSplitUtilTest` 6/6、`PhotonModelObjRoundTripTest` 3/3 通过；测试夹具 `src/test/resources/photon-model/*.json`。
+- **未验证**：视觉验收未做（基准截图已产出，需人工比对光束主体／尘埃柱／枪口反冲／源头尘埃四部分的形态、动画与材质是否与改动前一致）。另 `define` 耗时仍为 301／294 ms 量级，本次改动**不带来性能收益**，与预期一致。
+- 证据与原件：`agent-backups/photon-r3-20261027/`（`orig/laser.fx.orig`、`split/out/`、`bench/runH-*`、`tools/model_split.py`、`tools/fx_link_models.py`）；交接记录 `Lobecorp/.agent/handoffs/20261027-photon-model-externalize.md`（不提交）。
+
 ## 2026-10-27：特效管理工程（.mfxlib）与激光预热同步段治理
 
 - 用户要求：继续 Photon 重构；新建「特效管理器」项目类型（类似特效项目、模型特效项目，提取部分能力），解决「激光包含特效很多、初始化内容过多导致卡顿」；并拆分大 `.fx`。用户澄清「同时不要出现那么多」指**初始化量**而非视觉数量。

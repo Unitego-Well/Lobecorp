@@ -104,10 +104,15 @@ public class QueenBeamEffects {
 				}
 				if (beam == null) {
 					PhotonCastProfiler.begin("beam:" + snapshot.definitionId());
-					beam = new Beam(owner, snapshot);
-					PLAYING.put(id, beam);
-					beam.update(snapshot);
-					PhotonCastProfiler.end("cast-tick");
+					boolean completed = false;
+					try {
+						beam = new Beam(owner, snapshot);
+						PLAYING.put(id, beam);
+						beam.update(snapshot);
+						completed = true;
+					} finally {
+						PhotonCastProfiler.end(completed ? "cast-tick" : "cast-tick-failed");
+					}
 				} else {
 					beam.update(snapshot);
 				}
@@ -238,7 +243,8 @@ public class QueenBeamEffects {
 			return;
 		}
 
-		prewarmQueue.drain();
+		var level = Minecraft.getInstance().level;
+		prewarmQueue.drain(level == null ? -1 : level.getGameTime());
 
 		if (prewarmQueue.done()) {
 			Lobecorp.LOGGER.info("CASTPREWARM render done, built={}, spawners={}, failed={}",
@@ -266,6 +272,8 @@ public class QueenBeamEffects {
 		PLAYING.clear();
 		RETIRED.clear();
 		discardPrepared();
+		prewarmed = false;
+		prewarmedLevel = null;
 	}
 
 	/// 释放未使用的预热/复用运行态；已采用的在 Beam 生命周期内由 effect 自己关闭或归还。

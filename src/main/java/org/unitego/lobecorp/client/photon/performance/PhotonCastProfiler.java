@@ -8,8 +8,13 @@ public final class PhotonCastProfiler {
     private static final StringBuilder MARKS = new StringBuilder();
     private static long origin;
     private static long last;
+    private static boolean active;
 
     private PhotonCastProfiler() {
+    }
+
+    public static boolean enabled() {
+        return ENABLED;
     }
 
     public static void begin(String label) {
@@ -19,12 +24,13 @@ public final class PhotonCastProfiler {
 
         origin = System.nanoTime();
         last = origin;
+        active = true;
         MARKS.setLength(0);
         mark("begin:" + label);
     }
 
     public static void mark(String label) {
-        if (!ENABLED) {
+        if (!ENABLED || !active) {
             return;
         }
 
@@ -38,7 +44,7 @@ public final class PhotonCastProfiler {
     }
 
     public static void end(String label) {
-        if (!ENABLED) {
+        if (!ENABLED || !active) {
             return;
         }
 
@@ -48,7 +54,11 @@ public final class PhotonCastProfiler {
                 .append("ms(+")
                 .append(String.format(java.util.Locale.ROOT, "%.3f", (now - last) / 1_000_000d))
                 .append(") ");
-        Lobecorp.LOGGER.info("CASTPROF {}", MARKS);
-        MARKS.setLength(0);
+        active = false;
+        try {
+            Lobecorp.LOGGER.info("CASTPROF {}", MARKS);
+        } finally {
+            MARKS.setLength(0);
+        }
     }
 }

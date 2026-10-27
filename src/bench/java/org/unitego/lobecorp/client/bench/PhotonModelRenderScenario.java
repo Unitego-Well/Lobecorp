@@ -100,6 +100,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private BenchClientPose expectedPose;
 	private int poseRetries;
 	private JsonObject worldCensus;
+	private JsonObject fixedAnchor;
+	private JsonObject beamScreenshotRequest;
 	private int orphanedFixtures;
 	private final PhotonBenchCameraAudit cameraAudit = new PhotonBenchCameraAudit();
 	private final PhotonBenchFocusAudit focusAudit = new PhotonBenchFocusAudit();
@@ -144,12 +146,16 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		player.onUpdateAbilities();
 		context.automation().stopMovement();
 		capture = new PhotonBenchCapture(label, context.seed());
-		origin = new Vector3f((float) player.getX(), (float) player.getY(), (float) player.getZ());
+		if (!singleCast) {
+			origin = new Vector3f((float) player.getX(), (float) player.getY(), (float) player.getZ());
+		}
 		assetJson = count == 0 ? "" : asset().toString();
-		expectedPose = BenchClientPose.lookingAt(
-				player.getX(), player.getY() + (count > 16 ? 12 : 7), player.getZ() - (count > 16 ? 24 : 10),
-				player.getX(), player.getY() + 2, player.getZ() + 5);
-		poseHold = context.automation().holdPose(expectedPose);
+		if (!singleCast) {
+			expectedPose = BenchClientPose.lookingAt(
+					player.getX(), player.getY() + (count > 16 ? 12 : 7), player.getZ() - (count > 16 ? 24 : 10),
+					player.getX(), player.getY() + 2, player.getZ() + 5);
+			poseHold = context.automation().holdPose(expectedPose);
+		}
 		boolean expectedShader = Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true"));
 		if (IrisCompat.isUsingShaderPack() != expectedShader) {
 			throw new IllegalStateException("实际光影状态与本轮预期不符：" + expectedShader);
@@ -170,11 +176,40 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (beamCount > 0) {
 			beamFixture = new CompletableFuture<>();
 		}
+		if (singleCast && beamCount > 0) {
+			capture.startPrewarm();
+			focusAudit.audit(true);
+		}
+
 		var playerId = player.getUUID();
 		server.execute(() -> {
 			try {
 				QueenBeamPerformanceFixture.prepareBenchWorld(server);
 				var benchLevel = server.overworld();
+				if (singleCast) {
+					var spawn = server.getRespawnData();
+					var serverPlayer = server.getPlayerList().getPlayer(playerId);
+					if (!spawn.dimension().equals(benchLevel.dimension()) || serverPlayer == null
+							|| !serverPlayer.level().dimension().equals(benchLevel.dimension())) {
+						throw new IllegalStateException("首次释放夹具需要玩家与世界出生点都位于主世界。");
+					}
+
+					var position = Vec3.atBottomCenterOf(spawn.pos());
+					origin = new Vector3f((float) position.x, (float) position.y, (float) position.z);
+					fixedAnchor = new JsonObject();
+					fixedAnchor.addProperty("definition", "server_world_respawn_block_bottom_center");
+					fixedAnchor.addProperty("dimension", spawn.dimension().identifier().toString());
+					fixedAnchor.addProperty("spawn_block_x", spawn.pos().getX());
+					fixedAnchor.addProperty("spawn_block_y", spawn.pos().getY());
+					fixedAnchor.addProperty("spawn_block_z", spawn.pos().getZ());
+					fixedAnchor.addProperty("origin_x", origin.x);
+					fixedAnchor.addProperty("origin_y", origin.y);
+					fixedAnchor.addProperty("origin_z", origin.z);
+					fixedAnchor.addProperty("server_player_initial_x", serverPlayer.getX());
+					fixedAnchor.addProperty("server_player_initial_y", serverPlayer.getY());
+					fixedAnchor.addProperty("server_player_initial_z", serverPlayer.getZ());
+					fixedAnchor.addProperty("server_player_alignment_required", false);
+				}
 				orphanedFixtures = QueenBeamPerformanceFixture.discardOrphanedFixtures(benchLevel);
 				worldCensus = QueenBeamPerformanceFixture.census(benchLevel, new Vec3(origin.x, origin.y, origin.z), 128);
 				if (beamFixture != null) {
@@ -195,14 +230,25 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
+		focusAudit.audit(singleCast && beamCount > 0);
 		if (!worldReady.isDone()) {
 			return BenchClientStepResult.CONTINUE;
 		}
 		worldReady.join();
 
+		if (singleCast && expectedPose == null) {
+			expectedPose = BenchClientPose.lookingAt(
+					origin.x, origin.y + (count > 16 ? 12 : 7), origin.z - (count > 16 ? 24 : 10),
+					origin.x, origin.y + 2, origin.z + 5);
+			context.automation().setPose(expectedPose);
+			poseHold = context.automation().holdPose(expectedPose);
+		}
+
 		if (!applyExpectedPose(context)) {
 			return BenchClientStepResult.CONTINUE;
 		}
+
+		capture.prewarmPoseReady();
 
 		if (++ticks < LobecorpBenchConfig.STABILIZE_TICKS
 				|| !context.environment().isFrameStable(LobecorpBenchConfig.STABLE_FRAMES)) {
@@ -217,7 +263,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public BenchClientStepResult warmup(BenchClientContext context) {
-		focusAudit.audit(false);
+		focusAudit.audit(singleCast && beamCount > 0);
 		if (++ticks < WARMUP) {
 			return BenchClientStepResult.CONTINUE;
 		}
@@ -235,6 +281,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				return BenchClientStepResult.CONTINUE;
 			}
 		}
+		capture.finishPrewarm(context);
 		ticks = 0;
 		return BenchClientStepResult.COMPLETE;
 	}
@@ -323,6 +370,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				if (!allBeamsOutput()) {
 					throw new IllegalStateException("首次释放截图前光束已离开输出阶段。");
 				}
+				markBeamScreenshot(context);
 				beamScreenshot = context.automation().captureScreenshot(label + "-beam", BenchCaptureOptions.immediate());
 			}
 			if (!capture.complete()) {
@@ -355,6 +403,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			if (!allBeamsOutput()) {
 				throw new IllegalStateException("截图请求前真实光束已离开输出阶段。");
 			}
+			markBeamScreenshot(context);
 			beamScreenshot = context.automation().captureScreenshot(label + "-beam", BenchCaptureOptions.immediate());
 		}
 		if (beamScreenshot != null && beamScreenshot.isDone()) {
@@ -365,6 +414,44 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			return BenchClientStepResult.COMPLETE;
 		}
 		return BenchClientStepResult.CONTINUE;
+	}
+
+	private void markBeamScreenshot(BenchClientContext context) {
+		var mark = new JsonObject();
+		mark.addProperty("requested_ns", System.nanoTime());
+		mark.addProperty("bench_frame", context.frames().sampleCount());
+		mark.add("frame_capture", capture.observation());
+		mark.addProperty("player_pose", context.automation().pose().toString());
+		mark.addProperty("particle_time_equivalence_verified", false);
+		mark.addProperty("animation_time_scope", "latest_authoritative_client_snapshot_not_interpolated_particle_clock");
+		var camera = context.minecraft().gameRenderer.getMainCamera();
+		var actual = new JsonObject();
+		actual.addProperty("initialized", camera.isInitialized());
+		actual.addProperty("x", camera.position().x);
+		actual.addProperty("y", camera.position().y);
+		actual.addProperty("z", camera.position().z);
+		actual.addProperty("yaw", camera.yRot());
+		actual.addProperty("pitch", camera.xRot());
+		actual.addProperty("roll", camera.getRoll());
+		actual.addProperty("fov", camera.getFov());
+		mark.add("actual_camera", actual);
+		var phases = new JsonArray();
+		var ids = beamFixture.join().members().stream().map(QueenBeamPerformanceFixture.Member::queenId).toList();
+		for (var animation : LcClientAnimations.snapshots()) {
+			if (!ids.contains(animation.ownerEntityId()) || !TheQueenOfHatredAnimationDefinitions.isBeam(animation.definitionId())) {
+				continue;
+			}
+
+			var phase = new JsonObject();
+			phase.addProperty("queen", animation.ownerEntityId());
+			phase.addProperty("animation", animation.instanceId().toString());
+			phase.addProperty("phase", animation.parameters().getOrDefault(TheQueenOfHatredBeamAnimation.PHASE, -1.0));
+			phase.addProperty("animation_time_seconds", animation.timeSeconds());
+			phase.addProperty("server_tick", animation.serverTick());
+			phases.add(phase);
+		}
+		mark.add("beam_phases", phases);
+		beamScreenshotRequest = mark;
 	}
 
 	@Override
@@ -381,6 +468,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 		var report = new JsonObject();
 		report.addProperty("label", label);
+		report.add("fixed_world_anchor", fixedAnchor == null ? JsonNull.INSTANCE : fixedAnchor);
+		report.add("beam_screenshot_request", beamScreenshotRequest == null ? JsonNull.INSTANCE : beamScreenshotRequest);
 		report.addProperty("expected_shaderpack_enabled", Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true")));
 		report.addProperty("packed_snapshot_requested", Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY));
 		report.addProperty("packed_snapshot_mixin_applied", IPhotonPackedVertexSink.class.isAssignableFrom(BufferBuilder.class));
@@ -424,13 +513,21 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (beamScreenshot != null) {
 			context.artifacts().write(label + "-beam.png", "image/png", Files.readAllBytes(beamScreenshot.join()));
 		}
+		if (singleCast && (cameraAudit.samples() == 0 || cameraAudit.changes() != 0 || cameraAudit.unavailableFrames() != 0)) {
+			throw new AssertionError("首次释放实际主相机不完整或发生变化，不能通过跨轮相机门禁。");
+		}
+
 		report.addProperty("camera_gate_verified", cameraAudit.samples() > 0 && cameraAudit.changes() == 0);
 		report.add("camera_audit_first", cameraAudit.first() == null ? JsonNull.INSTANCE : cameraAudit.first());
 		report.add("camera_audit_last", cameraAudit.last() == null ? JsonNull.INSTANCE : cameraAudit.last());
 		report.addProperty("camera_audit_samples", cameraAudit.samples());
 		report.addProperty("camera_audit_changes", cameraAudit.changes());
 		report.addProperty("camera_audit_unavailable_frames", cameraAudit.unavailableFrames());
-		report.add("focus_audit", focusAudit.snapshot());
+		var focus = focusAudit.snapshot();
+		report.add("focus_audit", focus);
+		if (!focus.get("measure_focus_valid").getAsBoolean() || !focus.get("final_focused").getAsBoolean()) {
+			throw new AssertionError("正式采集阶段发生失焦，不能通过夹具验收。");
+		}
 		report.addProperty("pose_requested", expectedPose == null ? "" : expectedPose.toString());
 		report.addProperty("pose_observed", context.automation().pose().toString());
 		report.addProperty("pose_gate_verified",
@@ -463,7 +560,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		try {
 			try {
 				if (capture != null) {
-					capture.close();
+					capture.close(context);
 				}
 			} finally {
 				try {

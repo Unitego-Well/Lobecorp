@@ -45,6 +45,7 @@ repo/
 /.cursor/
 /.claude/
 /memory/
+/.agent/
 /.codex/
 /.backups/
 /.cherry-assistant/

@@ -1,5 +1,16 @@
 # 系统修改记录
 
+## 2026-10-27：首发长帧 R2 接续与原始证据核对（进行中）
+
+- 复用 `codex/photon`／19877 和现有工作树，记录新对话 `01a17d1d-80cf-74b1-a5dc-c8bd660dffc3`；旧对话保留但排除读取与调度，不同步原始分支。
+- 核对 HEAD `08890b8b`、原有配置／两测试与暂存状态，IDEA 原字节备份至 `.agent/backups/first-cast-20261027-initial/`。现存 summary／workload／frames／JFR／截图／日志经 SHA256 归档到 `.agent/evidence/first-cast-20261027-existing/`；新建 `.agent/first-cast-20261027.md` 与索引，不提交会话资料。
+- 修正入口时点：较晚交接记录模型视觉已由用户确认，早期“未验收”只保留历史含义；比较图／备份／脚本当前缺失，不补造或无限追溯。现存旧样本有实际聚焦／最大化证据，但为旧提交 dirty，正式本轮指纹与确定性未建立，不能宣称新收益。
+- P23 补充已确认的单任务可突破 10 ms 预算、同世界 reload 后预热标记不复位与总预热成本边界；最小代码修复和诊断由 Sol 完成：Queue 按 DEFINE/SHELL/RENDER/CHILD 输出每 drain 次数／总耗时／最大值／剩余数／总延迟；关闭 diag.cast 不增加逐 job 计时，施法 scope 在异常时结束，clear 复位预热标记。静态诊断无新增问题，格式化误触已按精确上下文局部恢复。
+- P24 完整表现基线修复：`PhotonModelSourceUtil` 接入同一资源提供者读取／合并 `.mfx.nbt`，返回完整快照；`PhotonModelSplitUtil` 使用既有 Reader／Limits，损坏附加字段明确失败。新增 `PhotonModelResourceSourceTest` 六项回归，含四个真实模型与快照，尚未运行。未改资源、来源闸门、技能时序或渲染语义，也未增加缓存。
+- `PhotonBenchCapture`／`PhotonModelRenderScenario`：新增 singleCast 的 setup→warmup 独立预热帧捕获与原始文件归档、所有者标签和失败状态；主20秒与cast_0=2s不变。固定世界出生点锚点，女皇／靶／相机同源，实际相机变化或失焦失败；截图请求附真实技能阶段／时间／相机／帧号。IDEA按修改范围格式处理并静态检查，Capture无问题、Scenario保留原位姿辅助方法警告；尚未运行。
+- 新增本地只读 `.agent/first_cast_audit.py`，旧归档及错配／队列解析轻量自检通过，不创建输出文件。临时 IDEA R2 编译回归、普通／光影准备配置已登记，仅用于本轮，尚未运行。
+- 补 `/.agent/` 忽略规则，避免本地报告／备份进入 Git；原 `.gitignore` 已备份。当前未构建、Data、游戏、Debug 或 GPU 采样，等待 Horde 本轮释放，不将本阶段文档更新视为任务验收完成。
+
 ## 2026-10-27：新增本轮交接文档并迁移现状入口
 
 - 用户要求写交接文档。新增 `docs/systems/photon-effect-rewrite-handoff-20261027.md`，作为 2026-10-27 起的**当前有效交接入口**，内容覆盖：本轮三件事（`.mfxlib` 特效管理工程、激光预热同步段治理、模型资产外部化）的实现与实测数字；四条阴性结论（`prewarmDepth=1`、只同步解析第一个特效、内嵌模型改外部 JSON、R1 池化）以免后人重做；已确认事实（`.fx` 结构、模型资产不可去重、`RESOURCE` 分支早已存在、`EMBEDDED` 闸门来历、MC 26.1 NBT API 差异）；OBJ 生成规范五条；命令手册含两个基准运行必踩的坑（`bench.shader=false` 必须传、`prepareBenchClientOptions` 需单独跑）；恢复检查清单；下一步与未决问题。

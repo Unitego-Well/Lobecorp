@@ -5,9 +5,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
-import org.unitego.lobecorp.Lobecorp;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceProvider;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -73,7 +76,7 @@ public class PhotonModelSplitUtil {
 
 			var text = raw.asString().orElse("");
 			if (text.isBlank()) {
-				continue;
+				throw new IOException("模型附加数据中的 " + key + " 不是有效 JSON。");
 			}
 
 			try {
@@ -82,6 +85,8 @@ public class PhotonModelSplitUtil {
 					result.add(key, parsed.getAsJsonArray());
 				} else if (parsed.isJsonObject()) {
 					result.add(key, parsed.getAsJsonObject());
+				} else {
+					throw new IOException("模型附加数据中的 " + key + " 必须是 JSON 数组或对象。");
 				}
 			} catch (RuntimeException invalid) {
 				throw new IOException("模型附加数据中的 " + key + " 不是有效 JSON。", invalid);
@@ -139,6 +144,10 @@ public class PhotonModelSplitUtil {
 			return inner;
 		}
 
+		if (model != null) {
+			throw new IOException("模型附加数据的 model 必须是 NBT 复合标签。");
+		}
+
 		return compound;
 	}
 
@@ -153,28 +162,31 @@ public class PhotonModelSplitUtil {
 		return modelPath.substring(0, dot) + DATA_SUFFIX;
 	}
 
-    /// 读取与模型同目录配对的附加 NBT；缺失返回 null，表示该模型只有几何。
-    public static CompoundTag companionData(net.minecraft.resources.Identifier model) {
-        if (model == null) {
-            return null;
-        }
+	/// 读取与模型同目录配对的附加 NBT；仅缺失时返回 null，损坏资源必须明确失败。
+	public static CompoundTag companionData(Identifier model) throws IOException {
+		return companionData(Minecraft.getInstance().getResourceManager(), model);
+	}
 
-        var path = dataPath(model.getPath());
-        var id = net.minecraft.resources.Identifier.fromNamespaceAndPath(model.getNamespace(), path);
-        var manager = Minecraft.getInstance().getResourceManager();
-        var resource = manager.getResource(id).orElse(null);
+	public static CompoundTag companionData(ResourceProvider resources, Identifier model) throws IOException {
+		if (model == null) {
+			return null;
+		}
 
-        if (resource == null) {
-            return null;
-        }
+		var id = Identifier.fromNamespaceAndPath(model.getNamespace(), dataPath(model.getPath()));
+		var resource = resources.getResource(id).orElse(null);
 
-        try (var input = new java.io.DataInputStream(resource.open())) {
-            return readData(NbtIo.read(input));
-        } catch (IOException | RuntimeException unreadable) {
-            Lobecorp.LOGGER.warn("模型附加数据无法读取：{}", id, unreadable);
-            return null;
-        }
-    }
+		if (resource == null) {
+			return null;
+		}
+
+		try (var input = resource.open()) {
+			var document = PhotonResourceReader.read(resource.sourcePackId() + ":" + id,
+					PhotonResourceDocument.Kind.NBT, input, PhotonResourceLimits.DEFAULT);
+			return readData(document.nbt());
+		} catch (IOException | RuntimeException unreadable) {
+			throw new IOException("模型附加数据无法读取：" + id, unreadable);
+		}
+	}
 
 
     /// 便于诊断：把合并结果写成文本，不参与运行路径。

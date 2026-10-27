@@ -22,6 +22,7 @@ import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
@@ -186,9 +187,20 @@ public final class PhotonRenderPrewarm {
 	}
 
 	/// 逐 tick 预算的预热队列：把整棵树拆成“每个对象一次材质预构建 + 每个子发射器一次子模板准备”，
-	/// 每 tick 只花固定时间，避免女皇出现时一次冻结数秒；子模板准备完成后把它自己的对象也排进队列。
+	/// 每 tick 在预算内开始任务，单个任务不可抢占，可能超过预算；子模板准备完成后把它自己的对象也排进队列。
 	public static final class Queue {
 		private static final long BUDGET_NANOS = 10_000_000L;
+		private static final boolean DIAGNOSTICS = PhotonCastProfiler.enabled();
+
+		private enum JobType {
+			DEFINE, SHELL, RENDER, CHILD
+		}
+
+		private final long queuedAt = DIAGNOSTICS ? System.nanoTime() : 0;
+		private final long[] jobNanos = DIAGNOSTICS ? new long[JobType.values().length] : null;
+		private final long[] jobMaxNanos = DIAGNOSTICS ? new long[JobType.values().length] : null;
+		private final int[] jobCounts = DIAGNOSTICS ? new int[JobType.values().length] : null;
+		private long drains;
 		private final Deque<Runnable> jobs = new ArrayDeque<>();
 		private int built;
 		private int spawners;
@@ -201,7 +213,7 @@ public final class PhotonRenderPrewarm {
 				return;
 			}
 
-			jobs.addFirst(job);
+			jobs.addFirst(measured(JobType.DEFINE, job));
 		}
 
 		/// 把一次“壳准备”登记为队列首个任务：准备子模板与命名运行时，再按深度递归排队。
@@ -211,14 +223,14 @@ public final class PhotonRenderPrewarm {
 				return;
 			}
 
-			prepend(() -> {
+			jobs.addFirst(measured(JobType.SHELL, () -> {
 				if (runtime.isDestroyed()) {
 					return;
 				}
 
 				prepare.run();
 				add(runtime, depth);
-			});
+			}));
 		}
 
 		/// 只登记任务，不做重活；`depth` 为子模板递归深度。
@@ -230,17 +242,17 @@ public final class PhotonRenderPrewarm {
 			var objects = List.copyOf(runtime.objects.values());
 
 			for (var object : objects) {
-				jobs.addLast(() -> {
+				jobs.addLast(measured(JobType.RENDER, () -> {
 					if (!runtime.isDestroyed()) {
 						built += prebuildObject(object);
 					}
-				});
+				}));
 			}
 
 			if (depth > 0) {
 				for (var object : objects) {
 					if (object instanceof PhotonChildSpawner spawner) {
-						jobs.addLast(() -> prepare(spawner, depth));
+						jobs.addLast(measured(JobType.CHILD, () -> prepare(spawner, depth)));
 					}
 				}
 			}
@@ -268,8 +280,37 @@ public final class PhotonRenderPrewarm {
 			return jobs.isEmpty();
 		}
 
-		/// 在预算内尽量推进；返回本轮执行的任务数。
+		private Runnable measured(JobType type, Runnable job) {
+			if (!DIAGNOSTICS) {
+				return job;
+			}
+
+			return () -> {
+				long started = System.nanoTime();
+				try {
+					job.run();
+				} finally {
+					long elapsed = System.nanoTime() - started;
+					int index = type.ordinal();
+					jobCounts[index]++;
+					jobNanos[index] += elapsed;
+					jobMaxNanos[index] = Math.max(jobMaxNanos[index], elapsed);
+				}
+			};
+		}
+
+		/// 在预算内尽量推进；单个任务可以超出预算，返回本轮执行的任务数。
 		public int drain() {
+			return drain(-1);
+		}
+
+		public int drain(long tick) {
+			if (DIAGNOSTICS) {
+				Arrays.fill(jobNanos, 0);
+				Arrays.fill(jobMaxNanos, 0);
+				Arrays.fill(jobCounts, 0);
+			}
+
 			long started = System.nanoTime();
 			int ran = 0;
 
@@ -289,7 +330,26 @@ public final class PhotonRenderPrewarm {
 				}
 			}
 
+			if (DIAGNOSTICS) {
+				logDrain(tick, started, ran);
+			}
+
 			return ran;
+		}
+
+		private void logDrain(long tick, long started, int ran) {
+			long ended = System.nanoTime();
+			var breakdown = new StringBuilder();
+			for (var type : JobType.values()) {
+				int index = type.ordinal();
+				breakdown.append(type).append("[count=").append(jobCounts[index])
+						.append(",us=").append(jobNanos[index] / 1_000)
+						.append(",maxUs=").append(jobMaxNanos[index] / 1_000).append("] ");
+			}
+
+			Lobecorp.LOGGER.info("CASTPREWARM queue tick={}, drain={}, ran={}, remaining={}, drainUs={}, elapsedUs={}, done={}, budgetUs={}, jobs={}",
+					tick, ++drains, ran, jobs.size(), (ended - started) / 1_000, (ended - queuedAt) / 1_000,
+					jobs.isEmpty(), BUDGET_NANOS / 1_000, breakdown);
 		}
 
 		public void clear() {

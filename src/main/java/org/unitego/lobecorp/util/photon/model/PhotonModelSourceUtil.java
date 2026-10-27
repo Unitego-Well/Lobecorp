@@ -5,6 +5,8 @@ import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.server.packs.resources.ResourceProvider;
+import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
@@ -118,6 +120,11 @@ public class PhotonModelSourceUtil {
 	}
 
 	public static Loaded load(PhotonModelOutputConfig config) throws IOException {
+		return load(config, null);
+	}
+
+	/// 使用同一资源视图读取几何与附加数据；null 使用当前资源管理器，文件和内嵌来源不访问资源提供者。
+	public static Loaded load(PhotonModelOutputConfig config, @Nullable ResourceProvider resources) throws IOException {
 		var snapshot = config.assetSnapshot();
 		if (usesSnapshot(config, snapshot)) {
 			return new Loaded(PhotonModelAssetUtil.read(snapshot, config.assetMaterialDependencies), snapshot, "embedded:" + config.snapshotSource, "");
@@ -126,21 +133,26 @@ public class PhotonModelSourceUtil {
 			throw new IOException("模型实例没有内嵌资产。");
 		}
 		PhotonResourceDocument document;
+		CompoundTag companion = null;
 		if (config.source == PhotonModelOutputConfig.Source.FILE) {
 			document = PhotonResourceReader.read(Path.of(config.file));
 		} else {
 			if (config.resource == null) {
 				throw new IOException("模型资源ID为空。");
 			}
-			var resource = Minecraft.getInstance().getResourceManager().getResource(config.resource)
+			var provider = resources == null ? Minecraft.getInstance().getResourceManager() : resources;
+			var resource = provider.getResource(config.resource)
 					.orElseThrow(() -> new IOException("模型资源缺失：" + config.resource));
 			try (var input = resource.open()) {
 				document = PhotonResourceReader.read(resource.sourcePackId() + ":" + config.resource,
 						PhotonResourceDocument.Kind.of(config.resource.getPath()), input, PhotonResourceLimits.DEFAULT);
 			}
+			if (document.kind() == PhotonResourceDocument.Kind.OBJ) {
+				companion = PhotonModelSplitUtil.companionData(provider, config.resource);
+			}
 		}
 		if (document.kind() == PhotonResourceDocument.Kind.OBJ) {
-			var json = PhotonModelObjUtil.read(new String(document.bytes(), StandardCharsets.UTF_8), config.flipObjV);
+			var json = PhotonModelSplitUtil.merge(new String(document.bytes(), StandardCharsets.UTF_8), companion, config.flipObjV);
 			return new Loaded(PhotonModelCodec.read(json), new ByteArrayTag(json.toString().getBytes(StandardCharsets.UTF_8)), document.origin(), document.sha256());
 		}
 		var models = PhotonModelCodec.readEmbedded(document);

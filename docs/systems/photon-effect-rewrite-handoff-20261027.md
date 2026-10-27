@@ -4,6 +4,8 @@
 
 目标：即使本次会话上下文丢失，只读本文件即可继续。
 
+2026-10-27 接续边界更新：当前 Photon 对话 `01a17d1d-80cf-74b1-a5dc-c8bd660dffc3`，旧对话排除读取与调度。当前任务优先 R2／P22／P23，暂不执行下文建议的其它三个大 FX 外部化或 R3/R4。所有编辑经 IDEA，Git 经 `git_background` 禁钩子；不复用下文历史 shell／checkout 操作。游戏／Debug／GPU／重负载构建等待新 Horde 本轮明确释放且清理，再在现有授权内完成验证。
+
 ## 0. 一句话现状
 
 本轮完成三件事，均已提交并验证：
@@ -147,7 +149,7 @@ assets/lobecorp/models/photon/the_queen_of_hatred/beam/
 
 `built=50, spawners=15` 与改动前 `EMBEDDED` 版本完全一致。放开闸门前该场景 `Failed to load fx` 计数 1、`built` 掉到 38、`status=FAILED`。
 
-**视觉验收：已由用户确认正常**（对比图在 `agent-backups/photon-r3-20261027/compare/`）。
+**历史人工视觉确认：已由用户确认正常**（原交接指向 `agent-backups/photon-r3-20261027/compare/`）。2026-10-27 接续核对：该备份目录、比较图、工具脚本与旧 re-audit 目录在当前工作区未找到；保留此较晚确认记录，不将其当作本轮独立像素／生命周期验收。现存原始样本已归档至本工作区 `.agent/evidence/first-cast-20261027-existing/`，其源码 dirty／粒子 seed／Spark 条件不能满足本轮正式配对要求。
 
 **无性能收益**：`define` 仍约 300 ms，与改动前持平。本轮目标是可维护性，不是性能。
 

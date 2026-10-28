@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-28：代理文档整理与证据迁移
+
+- 按统一文档规范把本工作区 `.agent/` 收敛为固定五类：`reports`、`handoffs`、`plans`、`memory`、`archive` 加 `README.md`；平铺的首发报告改名为 `reports/20261027-first-cast.md`。
+- 原 `.agent/backups/`（9 个组、36 文件）、`.agent/evidence/first-cast-20261027-existing/`（6 文件）、3 份指纹 JSON 与 `first_cast_audit.py` 迁到 `build/agent-backups/20261028-agent-doc-cleanup/` 下的 `backups|evidence|fingerprints|tools`；迁移前后逐文件 SHA256 比对 49/49 一致，0 不一致，清单见该目录 `migration-manifest-20261028.tsv`。
+- 本文档证据路径随之更正：首发报告改为 `.agent/reports/20261027-first-cast.md`，证据改为 `build/agent-backups/20261028-agent-doc-cleanup/evidence/first-cast-20261027-existing/`；[Photon 总览](photon-workspace.md)与[模型外部化交接](photon-effect-rewrite-handoff-20261027.md)同步。
+- 停工状态不变：本轮只改文档与目录，不构建、不跑测试、不启动游戏；Java／实机验收仍未完成。
+
 ## 2026-10-27：规则复核与安全停工
 
 - 已重读共享全局协议、Codex入口、项目AGENTS／工作流程与统一文档规范。按用户要求中断新增实现，协调和Horde均返回最终停工／自有负载清理确认；共享Gradle服务与IDEA／Codex保留，不擅自重启。旧测试队列放行不继续生效，等待用户明确恢复。

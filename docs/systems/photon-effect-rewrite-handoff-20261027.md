@@ -151,7 +151,7 @@ assets/lobecorp/models/photon/the_queen_of_hatred/beam/
 
 `built=50, spawners=15` 与改动前 `EMBEDDED` 版本完全一致。放开闸门前该场景 `Failed to load fx` 计数 1、`built` 掉到 38、`status=FAILED`。
 
-**历史人工视觉确认：已由用户确认正常**（原交接指向 `agent-backups/photon-r3-20261027/compare/`）。2026-10-27 接续核对：该备份目录、比较图、工具脚本与旧 re-audit 目录在当前工作区未找到；保留此较晚确认记录，不将其当作本轮独立像素／生命周期验收。现存原始样本已归档至本工作区 `.agent/evidence/first-cast-20261027-existing/`，其源码 dirty／粒子 seed／Spark 条件不能满足本轮正式配对要求。
+**历史人工视觉确认：已由用户确认正常**（原交接指向 `agent-backups/photon-r3-20261027/compare/`）。2026-10-27 接续核对：该备份目录、比较图、工具脚本与旧 re-audit 目录在当前工作区未找到；保留此较晚确认记录，不将其当作本轮独立像素／生命周期验收。现存原始样本已归档至本工作区 `build/agent-backups/20261028-agent-doc-cleanup/evidence/first-cast-20261027-existing/`，其源码 dirty／粒子 seed／Spark 条件不能满足本轮正式配对要求。
 
 **无性能收益**：`define` 仍约 300 ms，与改动前持平。本轮目标是可维护性，不是性能。
 

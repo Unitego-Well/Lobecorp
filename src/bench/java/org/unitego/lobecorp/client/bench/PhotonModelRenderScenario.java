@@ -44,6 +44,7 @@ import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
+import org.unitego.lobecorp.Lobecorp;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
@@ -59,6 +60,9 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private static final String SHADER_PROPERTY = "lobecorp.photon.bench.shader";
 	private static final int WARMUP = 100;
 	private static final int MEASURE = 300;
+	/// 窗口最大化请求允许跨 tick 生效，前置等待最多 10 秒。
+	private static final long WINDOW_MAXIMIZE_TIMEOUT_NS = TimeUnit.SECONDS.toNanos(10);
+	private static final long WORLD_SETTLE_NS = TimeUnit.SECONDS.toNanos(10);
 	private final PhotonBenchWorkloadUtil.Layout workload;
 	private static final BenchMetricDescriptor MODELS = new BenchMetricDescriptor(
 			"lobecorp.photon.loaded_models", "count", MetricDirection.NEUTRAL);
@@ -69,6 +73,12 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private final boolean animated;
 	private final boolean cold;
 	private final boolean singleCast;
+	private final EvidenceMode evidenceMode;
+	private long primaryCaptureEndFrame = -1;
+
+	public enum EvidenceMode {
+		PERFORMANCE, VISUAL
+	}
 	private final int staticCount;
 	private final int animatedCount;
 	private final int meshGrid;
@@ -91,6 +101,10 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private boolean failureCaptureClosed;
 	private long sparkRequestedNs;
 	private long sparkReadyNs;
+	private long worldAvailableNs;
+	private long worldSettledNs;
+	private long setupObservedNs;
+	private long windowMaximizeWaitStartedNs;
 	private long fixtureSetupTriggeredNs;
 	private CompletableFuture<Path> beamScreenshot;
 	private long verificationStarted;
@@ -129,6 +143,16 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	public PhotonModelRenderScenario(String label, int staticCount, int animatedCount, int meshGrid, int beamCount, boolean cold,
 	                                 boolean singleCast) {
+		this(label, staticCount, animatedCount, meshGrid, beamCount, cold, singleCast, EvidenceMode.VISUAL);
+	}
+
+	public PhotonModelRenderScenario(String label, int staticCount, int animatedCount, int meshGrid, int beamCount, boolean cold,
+	                                 boolean singleCast, EvidenceMode evidenceMode) {
+		this.evidenceMode = Objects.requireNonNull(evidenceMode, "evidenceMode");
+		if (evidenceMode == EvidenceMode.PERFORMANCE && (!singleCast || beamCount != 1 || staticCount != 0 || animatedCount != 0)) {
+			throw new IllegalArgumentException("性能专用场景要求一次真实光束施放，不混入合成模型。");
+		}
+
 		workload = new PhotonBenchWorkloadUtil.Layout(staticCount, animatedCount, meshGrid, beamCount);
 
 		this.label = label;
@@ -144,6 +168,12 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public void setup(BenchClientContext context) {
+		setupObservedNs = System.nanoTime();
+		if (evidenceMode == EvidenceMode.PERFORMANCE
+				&& !LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
+			throw new IllegalStateException("性能专用场景必须使用精确 profile，以装载无截图桥。");
+		}
+
 		if (!ModList.get().isLoaded("sodium")) {
 			throw new IllegalStateException("本轮模型基准要求加载 Sodium。");
 		}
@@ -242,10 +272,10 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				}
 			}
 		});
-		if (singleCast) {
+		if (singleCast && evidenceMode != EvidenceMode.PERFORMANCE) {
 			sparkRequestedNs = System.nanoTime();
 			spark = PhotonBenchSpark.start(context.minecraft(), label);
-		} else {
+		} else if (!singleCast) {
 			worldSetupQueued = true;
 			prepareFixture.run();
 		}
@@ -256,10 +286,55 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		return step(context, BenchPhase.STABILIZE);
 	}
 
+	private boolean awaitWorldSettle(BenchClientContext context) {
+		long now = System.nanoTime();
+		if (context.minecraft().level == null || context.minecraft().player == null
+				|| context.minecraft().screen != null || context.minecraft().getOverlay() != null) {
+			if (worldAvailableNs != 0) {
+				Lobecorp.LOGGER.info("PHOTONSTAGE stage=world_settle_reset ns={} previousStartNs={}", now, worldAvailableNs);
+				worldAvailableNs = 0;
+			}
+			return false;
+		}
+		if (worldAvailableNs == 0) {
+			worldAvailableNs = now;
+			Lobecorp.LOGGER.info("PHOTONSTAGE stage=world_available ns={} epochMs={} requiredNs={} setupNs={}",
+					now, System.currentTimeMillis(), WORLD_SETTLE_NS, setupObservedNs);
+		}
+		if (now - worldAvailableNs < WORLD_SETTLE_NS) {
+			return false;
+		}
+		worldSettledNs = now;
+		Lobecorp.LOGGER.info("PHOTONSTAGE stage=world_settled ns={} epochMs={} elapsedNs={} captureStarted=false fixtureQueued=false",
+				now, System.currentTimeMillis(), now - worldAvailableNs);
+		sparkRequestedNs = System.nanoTime();
+		spark = PhotonBenchSpark.start(context.minecraft(), label);
+		return true;
+	}
+
 	private BenchClientStepResult stabilizeStep(BenchClientContext context) {
 		focusAudit.audit(singleCast && beamCount > 0, "stabilize");
+		if (evidenceMode == EvidenceMode.PERFORMANCE && spark == null && !awaitWorldSettle(context)) {
+			return BenchClientStepResult.CONTINUE;
+		}
 		if (spark != null && !worldSetupQueued) {
 			if (!spark.poll()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+
+			var window = context.minecraft().getWindow();
+			if (singleCast && GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) != GLFW.GLFW_TRUE) {
+				long now = System.nanoTime();
+				if (windowMaximizeWaitStartedNs == 0) {
+					windowMaximizeWaitStartedNs = now;
+				}
+				if (now - windowMaximizeWaitStartedNs >= WINDOW_MAXIMIZE_TIMEOUT_NS) {
+					throw new IllegalStateException("首次释放窗口前置等待超过 10 秒：GLFW_MAXIMIZED 未读回 true；focused="
+							+ GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_FOCUSED) + "，iconified="
+							+ GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED));
+				}
+
+				GLFW.glfwMaximizeWindow(window.handle());
 				return BenchClientStepResult.CONTINUE;
 			}
 
@@ -269,6 +344,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 				focusAudit.audit(true, "setup_prewarm");
 			}
 			fixtureSetupTriggeredNs = System.nanoTime();
+			Lobecorp.LOGGER.info("PHOTONSTAGE stage=fixture_queue ns={} epochMs={} worldSettledNs={} sparkReadyNs={}",
+					fixtureSetupTriggeredNs, System.currentTimeMillis(), worldSettledNs, sparkReadyNs);
 			worldSetupQueued = true;
 			prepareFixture.run();
 		}
@@ -312,6 +389,12 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (++ticks < WARMUP) {
 			return BenchClientStepResult.CONTINUE;
 		}
+		if (evidenceMode == EvidenceMode.PERFORMANCE) {
+			capture.finishPrewarm(context);
+			ticks = 0;
+			return BenchClientStepResult.COMPLETE;
+		}
+
 		if (!cold && screenshot == null) {
 			screenshot = context.automation().captureScreenshot(label);
 			return BenchClientStepResult.CONTINUE;
@@ -392,6 +475,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		if (ticks == 0) {
 			firstFrame = context.frames().sampleCount();
+			Lobecorp.LOGGER.info("PHOTONSTAGE stage=main_capture_request ns={} epochMs={} seconds={} worldSettledNs={}",
+					System.nanoTime(), System.currentTimeMillis(), singleCast ? 20 : 90, worldSettledNs);
 			if (!created) {
 				create(context);
 			}
@@ -412,6 +497,15 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		readCast();
 		recordPhases();
+
+		if (singleCast && evidenceMode == EvidenceMode.PERFORMANCE) {
+			if (!capture.complete()) {
+				return BenchClientStepResult.CONTINUE;
+			}
+
+			primaryCaptureEndFrame = context.frames().sampleCount();
+			return finishSpark(context);
+		}
 
 		if (singleCast) {
 			if (pendingCast == null && allBeamsOutput() && verificationOutputFrame < 0) {
@@ -515,6 +609,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		if (!sparkStopping) {
 			spark.poll();
+			Lobecorp.LOGGER.info("PHOTONSTAGE stage=spark_stop_request ns={} epochMs={}", System.nanoTime(), System.currentTimeMillis());
 			spark.stop();
 			sparkStopping = true;
 		}
@@ -572,6 +667,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		try {
 			var report = spark.snapshot();
+			annotateEvidence(report);
 			report.add("focus_audit", focusAudit.snapshot());
 			report.addProperty("original_failure", deferredFailure.toString());
 			report.addProperty("cleanup_completion_confirmed", spark.complete() && sparkArchived);
@@ -638,6 +734,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 		var report = new JsonObject();
 		report.addProperty("label", label);
+		annotateEvidence(report);
 		report.addProperty("window_geometry_preserved_by_bench_bridge", PhotonBenchMixinPlugin.preservedWindowApplied());
 		report.addProperty("bench_input_isolation_contract_active", !System.getProperty("modBench.resultDirectory", "").isBlank());
 		report.addProperty("bench_input_isolation_source", "BenchInputIsolation.active_contract_BenchMod_0.1.5-beta_required_MouseHandlerMixin_InputConstantsMixin");
@@ -651,7 +748,9 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("spark_wait_scope", "before_queen_creation_and_setup_prewarm_capture");
 		report.addProperty("fixture_setup_triggered_ns", fixtureSetupTriggeredNs);
 		report.add("fixed_world_anchor", fixedAnchor == null ? JsonNull.INSTANCE : fixedAnchor);
-		report.add("beam_screenshot_request", beamScreenshotRequest == null ? JsonNull.INSTANCE : beamScreenshotRequest);
+		if (evidenceMode == EvidenceMode.VISUAL) {
+			report.add("beam_screenshot_request", beamScreenshotRequest == null ? JsonNull.INSTANCE : beamScreenshotRequest);
+		}
 		report.addProperty("expected_shaderpack_enabled", Boolean.parseBoolean(System.getProperty(SHADER_PROPERTY, "true")));
 		report.addProperty("packed_snapshot_requested", Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY));
 		report.addProperty("packed_snapshot_mixin_applied", IPhotonPackedVertexSink.class.isAssignableFrom(BufferBuilder.class));
@@ -684,7 +783,12 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("faces_per_model", meshGrid * meshGrid);
 		report.addProperty("shaderpack", IrisCompat.packName());
 		report.addProperty("shaderpack_enabled", IrisCompat.isUsingShaderPack());
-		report.addProperty("bench_measure_includes_visual_validation", beamCount > 0);
+		report.addProperty("bench_measure_includes_visual_validation", evidenceMode == EvidenceMode.VISUAL && beamCount > 0);
+		report.addProperty("bench_measure_includes_spark_finalize", spark != null);
+		report.addProperty("bench_measure_scope", "primary_capture_then_async_spark_stop_save_archive_tail");
+		report.addProperty("primary_capture_end_bench_frame", primaryCaptureEndFrame);
+		report.addProperty("post_primary_capture_bench_frames",
+				primaryCaptureEndFrame < 0 ? 0 : context.frames().sampleCount() - primaryCaptureEndFrame);
 		report.addProperty("primary_capture_seconds", beamCount > 0 ? (singleCast ? 20 : 90) : 0);
 		report.addProperty("measured_casts", measuredCasts);
 		report.add("beam_marks", beamMarks);
@@ -692,7 +796,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			throw new AssertionError("真实光束施放数量不完整。");
 		}
 		verifyBeamPhases();
-		if (beamScreenshot != null) {
+		if (evidenceMode == EvidenceMode.VISUAL && beamScreenshot != null) {
 			context.artifacts().write(label + "-beam.png", "image/png", Files.readAllBytes(beamScreenshot.join()));
 		}
 		if (singleCast && (cameraAudit.samples() == 0 || cameraAudit.changes() != 0 || cameraAudit.unavailableFrames() != 0)) {
@@ -726,12 +830,61 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 
 		capture.write(context, report);
+		if (evidenceMode == EvidenceMode.PERFORMANCE) {
+			verifyPerformanceLoad(report);
+		}
 		report.addProperty("create_emit_ns", createNanos);
 		report.addProperty("create_emit_in_frame_capture", false);
 		report.addProperty("measured_frames", context.frames().sampleCount() - firstFrame);
 		report.addProperty("sodium", ModList.get().getModContainerById("sodium").orElseThrow()
 				.getModInfo().getVersion().toString());
 		context.artifacts().write(label + "-workload.json", "application/json", report.toString());
+	}
+
+	private void annotateEvidence(JsonObject report) {
+		report.addProperty("setup_observed_ns", setupObservedNs);
+		report.addProperty("world_available_ns", worldAvailableNs);
+		report.addProperty("world_settled_ns", worldSettledNs);
+		report.addProperty("world_settle_required_ns", evidenceMode == EvidenceMode.PERFORMANCE ? WORLD_SETTLE_NS : 0);
+		report.addProperty("world_settle_elapsed_ns", worldSettledNs == 0 ? 0 : worldSettledNs - worldAvailableNs);
+		report.addProperty("world_settle_scope", "world_and_player_present_screen_and_overlay_absent_before_spark_and_fixture");
+		report.addProperty("readiness_confirmed_ns", sparkReadyNs);
+		report.addProperty("window_maximize_wait_started_ns", windowMaximizeWaitStartedNs);
+		report.addProperty("window_maximize_wait_ns", windowMaximizeWaitStartedNs == 0 || sparkReadyNs == 0
+				? 0 : sparkReadyNs - windowMaximizeWaitStartedNs);
+		report.addProperty("readiness_scope", "spark_ack_and_native_maximized_before_fixture_not_spark_ack_alone");
+		report.addProperty("evidence_mode", evidenceMode.name());
+		report.addProperty("image_validation", evidenceMode == EvidenceMode.PERFORMANCE ? "NOT_USED" : "VISUAL");
+		if (evidenceMode == EvidenceMode.PERFORMANCE) {
+			report.addProperty("performance_verdict", "NOT_EVALUATED");
+			report.addProperty("collection_verdict_scope", "load_and_capture_integrity_only");
+			report.addProperty("primary_metric_scope", "20_second_capture_excludes_Bench_MEASURE_spark_save_tail");
+		}
+	}
+
+	/// CPU 模型工作和真实 drain 绘制同时存在，避免空场帧率被当成有效性能负载。
+	private void verifyPerformanceLoad(JsonObject report) {
+		if (!report.has("measure_submissions") || !report.get("measure_submissions").isJsonObject()) {
+			throw new AssertionError("性能采集缺少 measure_submissions，不能用空场帧率验收。");
+		}
+
+		var submissions = report.getAsJsonObject("measure_submissions");
+		var model = submissions.getAsJsonObject("model");
+		if (model == null || model.get("cpu_submission_calls").getAsLong() <= 0
+				|| model.get("cpu_jobs_added").getAsLong() <= 0
+				|| model.get("cpu_vertices").getAsLong() <= 0
+				|| model.get("cpu_index_count").getAsLong() <= 0
+				|| model.get("failed_cpu_submissions").getAsLong() != 0
+				|| !submissions.get("frame_capture_bound").getAsBoolean()
+				|| !submissions.get("draw_call_count_available").getAsBoolean()
+				|| submissions.get("draw_calls").getAsLong() <= 0
+				|| submissions.get("failed_drains").getAsLong() != 0
+				|| submissions.get("scope_protocol_errors").getAsLong() != 0) {
+			throw new AssertionError("性能采集没有完整的真实模型 CPU jobs／顶点／绘制提交。");
+		}
+
+		report.addProperty("real_workload_verified", true);
+		report.addProperty("draw_evidence_scope", "Photon_drain_API_calls_not_model_attributed_or_hardware_completion");
 	}
 
 	@Override
@@ -814,6 +967,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 		try {
 			var report = spark.snapshot();
+			annotateEvidence(report);
 			report.add("focus_audit", focusAudit.snapshot());
 			report.addProperty("synchronous_teardown_wait_supported", false);
 			report.addProperty("cleanup_completion_confirmed", spark.complete() && sparkArchived);

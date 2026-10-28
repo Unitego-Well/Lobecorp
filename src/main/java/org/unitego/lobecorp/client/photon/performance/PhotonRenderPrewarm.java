@@ -347,9 +347,9 @@ public final class PhotonRenderPrewarm {
 						.append(",maxUs=").append(jobMaxNanos[index] / 1_000).append("] ");
 			}
 
-			Lobecorp.LOGGER.info("CASTPREWARM queue tick={}, drain={}, ran={}, remaining={}, drainUs={}, elapsedUs={}, done={}, budgetUs={}, jobs={}",
+			Lobecorp.LOGGER.info("CASTPREWARM queue tick={}, drain={}, ran={}, remaining={}, drainUs={}, elapsedUs={}, done={}, budgetUs={}, jobs={}, startNs={}, endNs={}",
 					tick, ++drains, ran, jobs.size(), (ended - started) / 1_000, (ended - queuedAt) / 1_000,
-					jobs.isEmpty(), BUDGET_NANOS / 1_000, breakdown);
+					jobs.isEmpty(), BUDGET_NANOS / 1_000, breakdown, started, ended);
 		}
 
 		public void clear() {

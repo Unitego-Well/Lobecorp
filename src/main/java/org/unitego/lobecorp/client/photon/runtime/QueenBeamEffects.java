@@ -232,9 +232,9 @@ public class QueenBeamEffects {
 			shells.values().forEach(PhotonGeoEffect::close);
 		}
 
-		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}, depth={}, define={}ms, shell={}ms, child={}ms",
+		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}, depth={}, define={}ms, shell={}ms, child={}ms, startNs={}, endNs={}",
 				(System.nanoTime() - started) / 1_000_000, PREPARED.size(), queue != null, PREWARM_DEPTH,
-				timing[0] / 1_000_000, timing[1] / 1_000_000, timing[2] / 1_000_000);
+				timing[0] / 1_000_000, timing[1] / 1_000_000, timing[2] / 1_000_000, started, System.nanoTime());
 	}
 
 	/// 预热渲染侧：把剩余预热任务按每 tick 固定预算推进；完成后记录一次汇总。

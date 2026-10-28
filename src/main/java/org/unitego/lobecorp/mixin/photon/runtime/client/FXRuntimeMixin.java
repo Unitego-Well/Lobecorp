@@ -17,6 +17,9 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+
 import javax.annotation.Nullable;
 import java.io.IOException;
 
@@ -50,13 +53,38 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("HEAD"))
 	private void lobecorp$prepareNamed(CallbackInfo ci) {
-		if (lobecorp$prepared) {
-			lobecorp$prepared = false;
-			if (lobecorp$named != null && lobecorp$named.matchesController()) {
-				return;
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		boolean wasPrepared = lobecorp$prepared;
+		boolean matchesChecked = false;
+		boolean matches = false;
+		boolean completed = false;
+		String reason = "not_prepared";
+		try {
+			if (lobecorp$prepared) {
+				lobecorp$prepared = false;
+				reason = "named_missing";
+				if (lobecorp$named != null) {
+					matchesChecked = true;
+					reason = "matches_controller";
+					matches = lobecorp$named.matchesController();
+					reason = matches ? "reuse" : "controller_changed";
+					if (matches) {
+						completed = true;
+						return;
+					}
+				}
+			}
+			lobecorp$buildNamed();
+			completed = true;
+		} finally {
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF prepareNamed runtime={} startNs={} endNs={} elapsedNs={} prepared={} matchesChecked={} matchesController={} reason={} completed={}",
+						System.identityHashCode(this), started, ended, ended - started, wasPrepared,
+						matchesChecked, matches, reason, completed);
 			}
 		}
-		lobecorp$buildNamed();
 	}
 
 	@Override
@@ -69,20 +97,35 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@Unique
 	private void lobecorp$buildNamed() {
-		lobecorp$closeNamed();
-		var runtime = (FXRuntime) (Object) this;
-		var controllers = runtime.objects.values().stream().filter(PhotonNamedController.class::isInstance)
-				.map(PhotonNamedController.class::cast).toList();
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		String phase = "close_old";
+		try {
+			lobecorp$closeNamed();
+			phase = "controllers";
+			var runtime = (FXRuntime) (Object) this;
+			var controllers = runtime.objects.values().stream().filter(PhotonNamedController.class::isInstance)
+					.map(PhotonNamedController.class::cast).toList();
 
-		if (controllers.size() > 1) {
-			throw new IllegalArgumentException("一个特效实例不能含多个命名控制器。");
-		}
+			if (controllers.size() > 1) {
+				throw new IllegalArgumentException("一个特效实例不能含多个命名控制器。");
+			}
 
-		if (!controllers.isEmpty()) {
-			try {
-				lobecorp$named = new PhotonNamedRuntime(runtime, controllers.getFirst());
-			} catch (IOException invalid) {
-				throw new IllegalArgumentException("命名动画库适配失败。", invalid);
+			if (!controllers.isEmpty()) {
+				phase = "create_named";
+				try {
+					lobecorp$named = new PhotonNamedRuntime(runtime, controllers.getFirst());
+				} catch (IOException invalid) {
+					throw new IllegalArgumentException("命名动画库适配失败。", invalid);
+				}
+			}
+			phase = "completed";
+		} finally {
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF buildNamed runtime={} startNs={} endNs={} elapsedNs={} phase={} named={}",
+						System.identityHashCode(this), started, ended, ended - started, phase,
+						System.identityHashCode(lobecorp$named));
 			}
 		}
 	}
@@ -107,20 +150,33 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 	@WrapMethod(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V")
 	private void lobecorp$captureEmission(IEffectExecutor executor, int delay, Operation<Void> original) {
-		if (!PhotonPerformanceTraceUtil.enabled(Stage.FX_EMIT)) {
-			original.call(executor, delay);
-			return;
-		}
-		int node = PhotonPerformanceOwnerUtil.runtime((FXRuntime) (Object) this);
-		PhotonPerformanceTraceUtil.generation(node, (int) ++lobecorp$profileGeneration);
-		PhotonPerformanceTraceUtil.mark(Stage.FX_EMIT, node, "emit", "", lobecorp$profileGeneration, delay);
-		long scope = PhotonPerformanceTraceUtil.begin(Stage.FX_EMIT, node);
-		boolean completed = false;
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		boolean emissionCompleted = false;
 		try {
-			original.call(executor, delay);
-			completed = true;
+			if (!PhotonPerformanceTraceUtil.enabled(Stage.FX_EMIT)) {
+				original.call(executor, delay);
+				emissionCompleted = true;
+				return;
+			}
+			int node = PhotonPerformanceOwnerUtil.runtime((FXRuntime) (Object) this);
+			PhotonPerformanceTraceUtil.generation(node, (int) ++lobecorp$profileGeneration);
+			PhotonPerformanceTraceUtil.mark(Stage.FX_EMIT, node, "emit", "", lobecorp$profileGeneration, delay);
+			long scope = PhotonPerformanceTraceUtil.begin(Stage.FX_EMIT, node);
+			boolean completed = false;
+			try {
+				original.call(executor, delay);
+				completed = true;
+				emissionCompleted = true;
+			} finally {
+				PhotonPerformanceTraceUtil.end(scope, completed);
+			}
 		} finally {
-			PhotonPerformanceTraceUtil.end(scope, completed);
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF emit runtime={} startNs={} endNs={} elapsedNs={} delay={} completed={}",
+						System.identityHashCode(this), started, ended, ended - started, delay, emissionCompleted);
+			}
 		}
 	}
 

@@ -6,6 +6,7 @@ public class LobecorpBenchConfig {
     public static final String PROVIDER_ID = "lobecorp";
     public static final String SERVER_SCENARIO = "lobecorp.sweeper-ai";
     public static final String CLIENT_SCENARIO = "lobecorp.sweeper-render";
+	public static final String PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO = "lobecorp.photon-02-first-cast-performance";
     public static final int GRID_WIDTH = 8;
     public static final int ENTITY_COUNT = GRID_WIDTH * GRID_WIDTH;
     public static final int GRID_SPACING = 3;

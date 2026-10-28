@@ -1,5 +1,19 @@
 # BenchMod 基准工具链
 
+## 2026-10-28 无截图性能采集与进入世界后延迟
+
+显式场景 `lobecorp.photon-02-first-cast-performance` 只运行一次真实光束，不混入合成模型。PERFORMANCE 模式跳过暖场／OUTPUT 截图与图片读取；精确 profile 的 bench-only 桥阻止框架失败截图，不伪造成功图片。验收改为真实模型 CPU jobs、顶点、索引及 drain draw calls 非零，且提交／drain／协议错误为零；采集通过不等于首施放性能达标。
+
+场景在客户端世界与玩家存在、screen 和 overlay 均消失后连续等待至少 10 秒，等待期间再次出现界面则重计。之后才启动本场景 Spark、预热帧采集与服务端夹具；BenchMod 自带 JFR／阶段计时仍可覆盖等待段，分析须按 world_available_ns／world_settled_ns 排除。WARMUP 原有 100 tick 保留。正式主窗口为 20 秒，MEASURE 还含 Spark 停采／导出／保存／实件验证尾部，不混用两者帧统计。
+
+`PHOTONSTAGE` 记录世界可用、等待完成、夹具投递、主采样与停采的单调时钟和 epoch 锚点。显式 `lobecorp.photon.diag.cast=true` 补充命名运行态 prepared／matchesController／重建原因、buildNamed／emit 完整耗时和子模板准备／采用／创建／启动；原预热队列与 CASTPROF 补绝对起止 ns。嵌套耗时不可相加；诊断开销未以开关对照量化。
+
+本轮普通／ComplementaryReimagined_r5.9.3 各三次独立进程、新世界与独立原始报告，全部等待 10.008–10.049 秒、真实负载通过、测试 PNG 为零。普通主窗口最大间隔 328.741／452.012／839.768 ms，光影 433.499／820.846／993.090 ms；预热最大间隔分别 5169.203／4274.698／3657.454 ms 与 2743.218／2916.295／4418.074 ms。前五轮总体 PASSED；光影第三轮场景 PASSED、总体 INCONCLUSIVE，原因是环境审计记录初始窗口 resize。用户明确不为该项补跑，标记原样保留。
+
+六轮均记录外层命名控制器改变后重建一次；子模板各复用 6 次、现场创建 192–199 次。首个 SHELL 任务 2.007–4.515 秒，确认 10 ms 队列预算无法限制单个同步任务。P22／P23 仍开放，不把延迟后结果与旧诊断配置直接解释为优化收益。原始数据位于 `build/modBench/raw-results/photon-delayed-20261028-{plain,shader}-0{1,2,3}/client`，完整控制台、采集摘要及逐帧 JFR 分析位于 `build/agent-backups/20261028-delayed-performance/`。
+
+本轮光影三轮另有28／27／27条 Iris `Missing program ... in override list`，在正式施放阶段输出 Throwable 全栈；当前 Iris `MixinShaderManager_Overrides.redirectIrisProgram` 按 missingShaders 集合首次遇到管线时记录，不能称为每帧无限重复。长帧 JFR 同时采到 Throwable 栈扩展／格式化、控制台与文件写入，证实日志路径参与开销，尚未量化独占时间。六轮最长正式间隔中的 GC 重叠为0–8.489ms，不能解释全部长帧；旧诊断中的 glCompileShader 证据不直接代替本轮逐帧归因。
+
 ## 2026-10-28 模型资源真实重载诊断
 
 显式场景 `lobecorp.photon-01-resource-reload` 由 `PhotonModelResourceReloadScenario` 继承单次真实光束夹具；默认 `photon-*` 集合不增加此场景，避免隐式扩大标准性能矩阵。主测量前验证四个生产 RESOURCE 模型在两个 config 下共享 sampler，调用真正 `Minecraft.reloadResourcePacks()`，等待 future、覆盖层退场及第二次稳定预热，再检查新 sampler 替换、完整定义／快照／组合指纹及多消费者帧隔离；随后交给原夹具施放和 OUTPUT 截图。失败走原异步 Spark 保存链。

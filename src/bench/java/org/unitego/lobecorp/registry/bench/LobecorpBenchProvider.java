@@ -38,6 +38,14 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
+		if (LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
+			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO,
+							"首次释放性能采集：20秒单次真实施放，无截图验收",
+							Set.of("client", "photon", "first-cast", "performance"), Duration.ofSeconds(120)),
+					_ -> new PhotonModelRenderScenario("photon-02-first-cast-performance", 0, 0, 16, 1, true, true,
+							PhotonModelRenderScenario.EvidenceMode.PERFORMANCE));
+		}
+
 		if (System.getProperty("modBench.scenarios", "").contains(PhotonModelResourceReloadScenario.ID)) {
 			registrar.register(new ScenarioDescriptor(PhotonModelResourceReloadScenario.ID, "资源重载诊断：单次真实激光，非性能 A/B",
 							Set.of("client", "photon", "resource-reload"), Duration.ofSeconds(240)),

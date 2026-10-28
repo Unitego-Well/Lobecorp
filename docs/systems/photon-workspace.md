@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-28 延迟十秒的纯诊断复测：普通／光影各三轮独立进程已完成，六轮实际等待10.008–10.049秒，真实模型负载均通过、测试截图为零。正式窗口最长间隔普通329／452／840ms、光影433／821／993ms；光影末轮初始窗口resize使总体INCONCLUSIVE，用户明确不补跑，保留标记。日志确认SHELL单任务2.007–4.515秒、每轮命名运行态因控制器变化重建一次、子模板现场创建192–199次，P22／P23仍开放。只补门禁与日志，未改渲染／资源算法；Data通过，29生成文件哈希不变。方法与证据见[BenchMod](benchmod.md#2026-10-28-无截图性能采集与进入世界后延迟)，证据根`build/agent-backups/20261028-delayed-performance/`。
+
 2026-10-28 标准实机测试已收尾：用户指定五件套并明确 Photon 独立、不等待 Horde。新增显式资源重载场景，普通 `client-1793187353534`／光影 `client-1793187656047` 四生产模型的共享、真实 reload 后替换及定义／快照／指纹／帧隔离均通过，真实光束 OUTPUT 截图已检查；Spark 实件验证归档后正常退出，标准 MCP 19877、IDEA 和 Debug 均使用。两轮场景 PASSED，但总体 INCONCLUSIVE（真实 reload 的暂停／覆盖层标记），不计为性能或完整视觉等价通过。一次复跑的测试实体清理 NPE 已修复为先收集已标记对象再删除，失败证据保留；最终配置原字节、三断点及临时对象均已收尾。Data 通过、29 生成文件指纹不变，证据 `build/agent-backups/20261028-standard-resource-test/`，详情见[BenchMod](benchmod.md#2026-10-28-模型资源真实重载诊断)。W1 全量失败基线、P22 长帧及完整长期生命周期仍开放。
 
 2026-10-28 架构优化恢复：用户已将 RESOURCE 模型准备共享确定为固定资源能力。已移除启动开关、16 项／16 MiB 淘汰及 Photon 渲染代次依赖，按当前 NeoForge `ObjLoader` 的资源生命周期方式保留已准备模型，由唯一客户端入口注册 `ResourceManagerReloadListener` 并在重载清空。先实际比较现有／NeoForge／Photon OBJ：四个真实原件证实 Neo 需要不同 MTL 输入契约、Photon 能输出几何但丢失原部件／材质名，故保留本项目解析器；修复无 UV OBJ 的默认面角 UV，混合缺失仍明确失败。首轮 48 项有 6 失败并保留原证据，修复后 50/50 通过（比较20、资源生命周期7），`benchClasses jar test` 退出码0，Data通过且29文件不变；IDEA修复后一次编译等待超时由后续实际Gradle编译结果补足。详见[模型特效](photon-model-effects.md#resource-模型准备共享2026-10-28)，备份 `build/agent-backups/20261028-model-resource-lifecycle/`。原WIP保留；未运行游戏或性能A/B，W1全量基线、P22/P23/P24实机及插件正式宿主验收仍开放。

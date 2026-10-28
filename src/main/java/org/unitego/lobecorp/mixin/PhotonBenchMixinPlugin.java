@@ -51,9 +51,11 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public @Nullable List<String> getMixins() {
 		var scenario = System.getProperty("modBench.scenarios", "");
+		// 与 Bench 注册项对应；Mixin 插件不能提前加载 Bench 类。
+		boolean performanceOnly = scenario.equals("lobecorp.photon-02-first-cast-performance");
 
 		if (!scenario.equals("lobecorp.photon-00-first-cast")
-				&& !scenario.equals("lobecorp.photon-01-resource-reload")) {
+				&& !scenario.equals("lobecorp.photon-01-resource-reload") && !performanceOnly) {
 			return null;
 		}
 
@@ -61,7 +63,9 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 			throw new IllegalStateException("首次释放基准要求显式开启 " + PRESERVE_WINDOW_PROPERTY + "，禁止启动时修改窗口尺寸或全屏状态。");
 		}
 
-		return List.of("bench.ClientGraphicsControllerMixin");
+		return performanceOnly
+				? List.of("bench.ClientGraphicsControllerMixin", "bench.ClientAutomationNoScreenshotMixin")
+				: List.of("bench.ClientGraphicsControllerMixin");
 	}
 
 	public static boolean preservedWindowApplied() {

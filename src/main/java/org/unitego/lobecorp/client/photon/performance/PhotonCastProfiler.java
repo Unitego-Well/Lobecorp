@@ -56,7 +56,7 @@ public final class PhotonCastProfiler {
                 .append(") ");
         active = false;
         try {
-            Lobecorp.LOGGER.info("CASTPROF {}", MARKS);
+            Lobecorp.LOGGER.info("CASTPROF startNs={} endNs={} marks={}", origin, now, MARKS);
         } finally {
             MARKS.setLength(0);
         }

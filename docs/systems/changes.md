@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-28：无截图性能诊断、世界稳定等待与六次实测
+
+- 新增显式 PERFORMANCE 场景，保留真实一次光束，跳过图像验收；只为该精确 profile 注入失败截图阻止桥。真实模型 CPU／顶点／索引及 drain 绘制断言取代图片门槛，采集 PASSED 不代表性能达标。
+- 世界与玩家可用且 screen／overlay 消失后等待至少十秒，再启动本场景 Spark 和夹具／预热采集；输出实际等待及单调时钟／epoch 锚点，固定 100 tick 暖场保持。
+- FXRuntimeMixin／PhotonChildSpawner 增补复用、失效原因、重建、创建与发射分段日志；不增加 matchesController／definition 调用，不修改业务判断。预热队列和 CASTPROF 补绝对起止 ns；诊断关闭时不新增计时或日志。
+- 普通／光影各三轮已执行，等待 10.008–10.049 秒，模型负载六轮通过、测试 PNG 为零。前五轮总体 PASSED，光影第三轮窗口 resize 为 INCONCLUSIVE，用户明确不补跑。正式主窗口最大间隔仍为 328.741–993.090 ms，P22／P23 保持开放；模型／动画／粒子／材质及 OBJ 解析器未改。
+- IDEA 编译、benchClasses 与生产包隔离通过；Data 成功，written=0／removed=0，含缓存 29 文件哈希不变。原有配置和三份测试 WIP 及暂存状态保留；无推送、跨工作区修改或截图验收。运行方法与边界见[BenchMod](benchmod.md#2026-10-28-无截图性能采集与进入世界后延迟)，备份／完整日志与离线分析见 `build/agent-backups/20261028-delayed-performance/`。
+
 ## 2026-10-28：标准模型资源游戏测试与复跑清理修复
 
 - 用户要求 spark／BenchMod／Minecraft MCP／IDEA／Debug 标准流，并明确 Photon 独立执行，不以 Horde 放行为门禁。新增显式 `PhotonModelResourceReloadScenario`，继承已有单次真实光束、最大化／焦点、截图及 Spark 收尾；默认性能场景集合不扩大。窗口保留桥只为新精确场景 ID 补充选择，未改常规运行。

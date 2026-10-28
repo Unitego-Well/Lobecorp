@@ -21,6 +21,9 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXHelper;
 
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,43 +55,104 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	/// 每个生成器只持有下一次独占实例；准备不发射粒子、音频或推进时间线。
 	public boolean prepareNext() {
-		if (prepared != null) {
-			return true;
-		}
-		if (config.source != PhotonSpawnConfig.Source.FX || config.fxLocation == null || stopped || removed) {
-			return false;
-		}
-		var definition = FXHelper.getFX(config.fxLocation);
-		if (definition == null) {
-			return false;
-		}
-		var candidate = PhotonSpawnTemplateUtil.create(this);
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		long createNs = 0;
+		boolean completed = false;
+		String reason = "check_prepared";
 		try {
-			((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
-			prepared = candidate;
-			preparedDefinition = definition;
-            return true;
-		} catch (RuntimeException invalid) {
-			candidate.runtime().destroy(true);
-			throw invalid;
+			if (prepared != null) {
+				reason = "already_prepared";
+				completed = true;
+				return true;
+			}
+			reason = "source_or_state_ineligible";
+			if (config.source != PhotonSpawnConfig.Source.FX || config.fxLocation == null || stopped || removed) {
+				completed = true;
+				return false;
+			}
+			reason = "definition_lookup";
+			var definition = FXHelper.getFX(config.fxLocation);
+			if (definition == null) {
+				reason = "definition_missing";
+				completed = true;
+				return false;
+			}
+			reason = "create";
+			long createStarted = diagnostic ? System.nanoTime() : 0;
+			PhotonSpawnTemplateUtil.Template candidate;
+			try {
+				candidate = PhotonSpawnTemplateUtil.create(this);
+			} finally {
+				if (diagnostic) {
+					createNs = System.nanoTime() - createStarted;
+				}
+			}
+			try {
+				reason = "prepare_named";
+				((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
+				prepared = candidate;
+				preparedDefinition = definition;
+				reason = "prepared";
+				completed = true;
+				return true;
+			} catch (RuntimeException invalid) {
+				candidate.runtime().destroy(true);
+				throw invalid;
+			}
+		} finally {
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} runtime={} startNs={} endNs={} elapsedNs={} createNs={} reason={} completed={}",
+						System.identityHashCode(this), prepared == null ? 0 : System.identityHashCode(prepared.runtime()),
+						started, ended, ended - started, createNs, reason, completed);
+			}
 		}
 	}
 
 	private PhotonSpawnTemplateUtil.Template nextTemplate() {
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		boolean completed = false;
+		String reason = "no_prepared";
 		var candidate = prepared;
-		prepared = null;
-		var definition = preparedDefinition;
-		preparedDefinition = null;
-		if (candidate != null) {
-			if (config.source == PhotonSpawnConfig.Source.FX && config.fxLocation != null
-					&& FXHelper.getFX(config.fxLocation) == definition && candidate.path().contains("fx:" + config.fxLocation)
-					&& candidate.path().size() == path.size() + 1 && candidate.path().containsAll(path)
-					&& path.size() < Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
-				return candidate;
+		try {
+			prepared = null;
+			var definition = preparedDefinition;
+			preparedDefinition = null;
+			if (candidate != null) {
+				if (config.source != PhotonSpawnConfig.Source.FX) {
+					reason = "source_changed";
+				} else if (config.fxLocation == null) {
+					reason = "location_missing";
+				} else if (FXHelper.getFX(config.fxLocation) != definition) {
+					reason = "definition_changed";
+				} else if (!candidate.path().contains("fx:" + config.fxLocation)) {
+					reason = "location_changed";
+				} else if (candidate.path().size() != path.size() + 1) {
+					reason = "path_size_changed";
+				} else if (!candidate.path().containsAll(path)) {
+					reason = "path_changed";
+				} else if (path.size() >= Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
+					reason = "depth_limit";
+				} else {
+					reason = "reuse";
+					completed = true;
+					return candidate;
+				}
+				candidate.runtime().destroy(true);
 			}
-			candidate.runtime().destroy(true);
+			candidate = PhotonSpawnTemplateUtil.create(this);
+			completed = true;
+			return candidate;
+		} finally {
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF nextTemplate spawner={} runtime={} startNs={} endNs={} elapsedNs={} reason={} completed={}",
+						System.identityHashCode(this), candidate == null ? 0 : System.identityHashCode(candidate.runtime()),
+						started, ended, ended - started, reason, completed);
+			}
 		}
-		return PhotonSpawnTemplateUtil.create(this);
 	}
 
 	/// 预热用：读取已准备但未消费的子模板；所有权仍在本生成器，调用方只可读、不得销毁或转移。
@@ -223,48 +287,95 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	}
 
 	public int emitNow(int count) {
-		if (count <= 0 || paused || stopped || removed || !isActive() || getEffectExecutor() == null) {
-			return 0;
-		}
-
-		prune();
-		double probability = function("probability").get(getRandomSource(), getT()).doubleValue();
-
-		if (!Double.isFinite(probability) || probability < 0 || probability > 1) {
-			throw new IllegalArgumentException("子发射概率无效。");
-		}
-
-		int attempts = Math.min(count, budget);
+		boolean diagnostic = PhotonCastProfiler.enabled();
+		long started = diagnostic ? System.nanoTime() : 0;
+		long templateNs = 0;
+		long createNs = 0;
+		long startNs = 0;
+		int attempts = 0;
 		int emitted = 0;
-
-		for (int attempt = 0; attempt < attempts; attempt++) {
-			if (instances.size() >= Math.max(0, integer("maxInstances")) || config.maxTotal > 0 && generated >= config.maxTotal) {
-				break;
+		int attemptLimit = 0;
+		boolean completed = false;
+		String phase = "eligibility";
+		try {
+			if (count <= 0 || paused || stopped || removed || !isActive() || getEffectExecutor() == null) {
+				completed = true;
+				return 0;
 			}
 
-			budget--;
+			phase = "probability";
+			prune();
+			double probability = function("probability").get(getRandomSource(), getT()).doubleValue();
 
-			if (getRandomSource().nextFloat() >= probability) {
-				continue;
+			if (!Double.isFinite(probability) || probability < 0 || probability > 1) {
+				throw new IllegalArgumentException("子发射概率无效。");
 			}
 
-			var template = nextTemplate();
-			PhotonSpawnInstance instance;
+			attemptLimit = Math.min(count, budget);
+			for (int attempt = 0; attempt < attemptLimit; attempt++) {
+				phase = "capacity";
+				if (instances.size() >= Math.max(0, integer("maxInstances")) || config.maxTotal > 0 && generated >= config.maxTotal) {
+					break;
+				}
 
-			try {
-				instance = new PhotonSpawnInstance(this, template);
-				instance.start();
-			} catch (RuntimeException invalid) {
-				template.runtime().destroy(true);
-				throw invalid;
+				budget--;
+				attempts++;
+				phase = "random";
+				if (getRandomSource().nextFloat() >= probability) {
+					continue;
+				}
+
+				phase = "template";
+				long phaseStarted = diagnostic ? System.nanoTime() : 0;
+				PhotonSpawnTemplateUtil.Template template;
+				try {
+					template = nextTemplate();
+				} finally {
+					if (diagnostic) {
+						templateNs += System.nanoTime() - phaseStarted;
+					}
+				}
+				PhotonSpawnInstance instance;
+				try {
+					phase = "create";
+					phaseStarted = diagnostic ? System.nanoTime() : 0;
+					try {
+						instance = new PhotonSpawnInstance(this, template);
+					} finally {
+						if (diagnostic) {
+							createNs += System.nanoTime() - phaseStarted;
+						}
+					}
+					phase = "start";
+					phaseStarted = diagnostic ? System.nanoTime() : 0;
+					try {
+						instance.start();
+					} finally {
+						if (diagnostic) {
+							startNs += System.nanoTime() - phaseStarted;
+						}
+					}
+				} catch (RuntimeException invalid) {
+					template.runtime().destroy(true);
+					throw invalid;
+				}
+
+				phase = "register";
+				instances.put(instance.id(), instance);
+				generated++;
+				emitted++;
 			}
 
-			instances.put(instance.id(), instance);
-			generated++;
-			emitted++;
+			completed = true;
+			return emitted;
+		} finally {
+			if (diagnostic) {
+				long ended = System.nanoTime();
+				Lobecorp.LOGGER.info("CASTPROF emitNow spawner={} startNs={} endNs={} elapsedNs={} requested={} attemptLimit={} attempts={} emitted={} templateNs={} createNs={} startDurationNs={} phase={} completed={}",
+						System.identityHashCode(this), started, ended, ended - started, count, attemptLimit,
+						attempts, emitted, templateNs, createNs, startNs, phase, completed);
+			}
 		}
-
-		return emitted;
 	}
 
 	private void prune() {

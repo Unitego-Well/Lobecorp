@@ -1,5 +1,8 @@
 # 系统修改记录
 
+2026-10-29 实机收尾与默认数量调整：189c4c2 Iris标准流七段23图PASSED，用户接受；随后默认边界粒子40组、刀光批位置×2，保留64格、频率与预算。按“默认粒子数量可以更多*2，不需要测试”仅IDEA静态检查，未构建/Data/JUnit/游戏复测加倍值。测试进程/桥接已结束，Iris原SHA89c870f7a3166eb15aacae6b2890c568f17fe3bad2bc355122d9c3b34fdd2dbe已恢复；隔离配置particleRange64/fragmentGroups40按用户要求保留。备份build/agent-backups/20261029-particle-double。
+
+
 ## 2026-10-29 近邻分割合并与扩大粒子稀疏覆盖
 
 实现局部软桥、最终发布圆同源快照、有界CPU粒子流场、最终出生筛选与64格粒子范围；生成数量/频率不变，声音仍32格。保持GPU状态、方向片、服务端判断和原WIP。32项回归、生产Java诊断、BenchMod Compile与Data成功；当前新版实机未运行，旧留观PID10404保持。实现/预算/误差见[horde渲染](horde-rendering-implementation.md#2026-10-29-近邻桥接与粗粒子流场)，报告.agent/reports/20261029-horde-merge-particles.md，原字节备份build/agent-backups/20261029-*。

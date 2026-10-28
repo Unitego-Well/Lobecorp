@@ -21,6 +21,8 @@ import java.util.UUID;
 
 /// 聚合声源，以及由短时 CPU 粗略流场快照驱动的边界扬尘和潮内刀光。
 public class HordeAmbient {
+	/// 刀光每批位置数加倍，保留原生成间隔和每处粒子数量。
+	private static final int SLASH_POSITION_MULTIPLIER = 2;
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static long tick;
 	private static long nextSlashTick;
@@ -236,7 +238,7 @@ public class HordeAmbient {
 		}
 
 		var random = level.getRandom();
-		int count = 4 + random.nextInt(7);
+		int count = SLASH_POSITION_MULTIPLIER * (4 + random.nextInt(7));
 		int start = random.nextInt(interior.size());
 		for (int i = 0; i < Math.min(count, interior.size()); i++) {
 			var located = interior.get((start + i) % interior.size());

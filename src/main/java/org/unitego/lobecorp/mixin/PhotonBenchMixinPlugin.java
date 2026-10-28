@@ -50,7 +50,10 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public @Nullable List<String> getMixins() {
-		if (!System.getProperty("modBench.scenarios", "").equals("lobecorp.photon-00-first-cast")) {
+		var scenario = System.getProperty("modBench.scenarios", "");
+
+		if (!scenario.equals("lobecorp.photon-00-first-cast")
+				&& !scenario.equals("lobecorp.photon-01-resource-reload")) {
 			return null;
 		}
 

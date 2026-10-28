@@ -10,6 +10,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelRenderScenario;
+import org.unitego.lobecorp.client.bench.PhotonModelResourceReloadScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
 
@@ -37,6 +38,12 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
+		if (System.getProperty("modBench.scenarios", "").contains(PhotonModelResourceReloadScenario.ID)) {
+			registrar.register(new ScenarioDescriptor(PhotonModelResourceReloadScenario.ID, "资源重载诊断：单次真实激光，非性能 A/B",
+							Set.of("client", "photon", "resource-reload"), Duration.ofSeconds(240)),
+					_ -> new PhotonModelResourceReloadScenario());
+		}
+
 		if (System.getProperty("modBench.scenarios", "").contains("lobecorp.photon-")) {
 			registrar.register(new ScenarioDescriptor("lobecorp.photon-00-first-cast", "首次释放诊断：只施放一次",
 							Set.of("client", "photon", "first-cast"), Duration.ofSeconds(120)),

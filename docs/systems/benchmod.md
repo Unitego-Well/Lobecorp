@@ -1,5 +1,22 @@
 # BenchMod 基准工具链
 
+## 2026-10-28 模型资源真实重载诊断
+
+显式场景 `lobecorp.photon-01-resource-reload` 由 `PhotonModelResourceReloadScenario` 继承单次真实光束夹具；默认 `photon-*` 集合不增加此场景，避免隐式扩大标准性能矩阵。主测量前验证四个生产 RESOURCE 模型在两个 config 下共享 sampler，调用真正 `Minecraft.reloadResourcePacks()`，等待 future、覆盖层退场及第二次稳定预热，再检查新 sampler 替换、完整定义／快照／组合指纹及多消费者帧隔离；随后交给原夹具施放和 OUTPUT 截图。失败走原异步 Spark 保存链。
+
+两轮通过 IDEA 准备 `benchClasses verifyProductionJarHasNoBenchContent prepareBenchClientRun prepareBenchClientOptions`，参数 `-PphotonBench=true -PphotonScenarios=lobecorp.photon-01-resource-reload -PphotonSpark=true -PphotonRequireFocus=false`，`photonShader` 分别为 false／true。Debug 启动显式设置 `-Dlobecorp.photon.bench.preserveWindow=true` 与匹配的 `-Dlobecorp.photon.bench.shader`；保持 Sodium、全程自有 Spark、固定 19877 MCP、IDEA 和 Debug。用户本轮明确要求 Photon 独立执行，不再等待 Horde 放行；不操作其工作区或实例。
+
+| 模式                           | 当前运行                          | 场景／总体结果                 |
+|--------------------------------|-----------------------------------|--------------------------------|
+| 普通                           | `client-1793187353534`，PID 49188 | 功能 PASSED；总体 INCONCLUSIVE |
+| ComplementaryReimagined_r5.9.3 | `client-1793187656047`，PID 70400 | 功能 PASSED；总体 INCONCLUSIVE |
+
+两轮四模型全部通过共享／替换／内容及采样隔离断言，真实光束截图已目视可见；Spark 为 COMPLETE，保存实件、SHA256、protobuf 身份／客户端来源／时间／样本验证与归档均确认后正常退出。窗口观测为最大化 2560×1494，主审计及重载审计均未记录失焦；这是逐 tick 观测，不代表连续窗口回调证明。总体 INCONCLUSIVE 来自真实重载造成的 `client.game.paused`／`client.overlay.active`，未取消这两个门禁，不能作为性能或修改前后逐像素等价结论。
+
+初次 Debug 诊断保留于 `plain-debug-first/`；一次重复运行在遗留测试实体清理时失败，保留于 `plain-repeat-failed/`。已修复遍历活实体集合时直接 discard 的问题：先收集带夹具标签的对象再删除，不删除归属不明实体；修复后普通／光影均完成。原生 MCP 工具缓存未连上，使用机器现有标准 SDK 驱动本工作区 CLI，固定 19877 获得 pong／连接与光影世界／截图证据，没有安装依赖或改全局配置。
+
+完整证据根为 `build/agent-backups/20261028-standard-resource-test/`，最终报告分别在 `plain-final/`、`shader-final/`，原始路径结构保留；临时启动配置在 `launch-configs/`。隔离 options／Iris／Spark 三文件恢复原字节，原三断点保留并恢复解除 mute，临时客户端／桥接及游戏已退出。补充 Data 成功、written=0／removed=0，含缓存 29 文件指纹不变。
+
 初次同步：2026-10-22，原 7903 特效工作区；来源为原始 dev 提交 278c418。WP0 文档更新：2026-10-25，当前真实工作区为 `.workspace/lobecorp_photon`。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
 
 ## 隔离与入口

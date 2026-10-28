@@ -4,6 +4,8 @@
 
 ## 当前任务进度
 
+2026-10-28 标准实机测试已收尾：用户指定五件套并明确 Photon 独立、不等待 Horde。新增显式资源重载场景，普通 `client-1793187353534`／光影 `client-1793187656047` 四生产模型的共享、真实 reload 后替换及定义／快照／指纹／帧隔离均通过，真实光束 OUTPUT 截图已检查；Spark 实件验证归档后正常退出，标准 MCP 19877、IDEA 和 Debug 均使用。两轮场景 PASSED，但总体 INCONCLUSIVE（真实 reload 的暂停／覆盖层标记），不计为性能或完整视觉等价通过。一次复跑的测试实体清理 NPE 已修复为先收集已标记对象再删除，失败证据保留；最终配置原字节、三断点及临时对象均已收尾。Data 通过、29 生成文件指纹不变，证据 `build/agent-backups/20261028-standard-resource-test/`，详情见[BenchMod](benchmod.md#2026-10-28-模型资源真实重载诊断)。W1 全量失败基线、P22 长帧及完整长期生命周期仍开放。
+
 2026-10-28 架构优化恢复：用户已将 RESOURCE 模型准备共享确定为固定资源能力。已移除启动开关、16 项／16 MiB 淘汰及 Photon 渲染代次依赖，按当前 NeoForge `ObjLoader` 的资源生命周期方式保留已准备模型，由唯一客户端入口注册 `ResourceManagerReloadListener` 并在重载清空。先实际比较现有／NeoForge／Photon OBJ：四个真实原件证实 Neo 需要不同 MTL 输入契约、Photon 能输出几何但丢失原部件／材质名，故保留本项目解析器；修复无 UV OBJ 的默认面角 UV，混合缺失仍明确失败。首轮 48 项有 6 失败并保留原证据，修复后 50/50 通过（比较20、资源生命周期7），`benchClasses jar test` 退出码0，Data通过且29文件不变；IDEA修复后一次编译等待超时由后续实际Gradle编译结果补足。详见[模型特效](photon-model-effects.md#resource-模型准备共享2026-10-28)，备份 `build/agent-backups/20261028-model-resource-lifecycle/`。原WIP保留；未运行游戏或性能A/B，W1全量基线、P22/P23/P24实机及插件正式宿主验收仍开放。
 
 2026-10-27 停工：用户要求重新梳理并收拢所有相关任务。本对话实现代理已停止，协调与Horde均已给出最终清理／停工确认；Horde释放不再自动放行Photon。当前没有自有构建、游戏、Debug或GPU负载，不重启／关闭IDEA、Codex及可能共享服务，等待用户明确恢复。现有两提交和WIP保留；Java／游戏验收、审计脚本焦点逻辑修正、文档布局纠偏、IDEA MCP二进制接口均未完成，不据静态检查宣称验收通过。

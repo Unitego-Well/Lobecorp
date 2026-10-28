@@ -10,6 +10,7 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.clock.ClockTimeMarkers;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -307,18 +308,22 @@ public class QueenBeamPerformanceFixture {
 	}
 
 	/// 只清理带夹具 tag 的遗留对象；调用前世界路径已由 prepareBenchWorld 校验，归属不明实体不删除。
-	public static int discardOrphanedFixtures(ServerLevel level) {
-		int removed = 0;
+    public static int discardOrphanedFixtures(ServerLevel level) {
+        var orphaned = new ArrayList<Entity>();
 
-		for (var entity : level.getAllEntities()) {
-			if (entity.entityTags().contains(FIXTURE_TAG)) {
-				entity.discard();
-				removed++;
-			}
-		}
+        for (var entity : level.getAllEntities()) {
+            if (entity.entityTags().contains(FIXTURE_TAG)) {
+                orphaned.add(entity);
+            }
+        }
 
-		return removed;
-	}
+        // 丢弃会修改原始实体集合，收集完归属明确的对象后再删除。
+        for (var entity : orphaned) {
+            entity.discard();
+        }
+
+        return orphaned.size();
+    }
 
 	/// 统计夹具原点附近实体；带 tag 的计数与归属不明样本分开，供报告核对背景实体来源。
 	public static JsonObject census(ServerLevel level, Vec3 center, double radius) {

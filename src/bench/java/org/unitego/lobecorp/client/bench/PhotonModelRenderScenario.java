@@ -491,6 +491,23 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		}
 	}
 
+	/// 子类只传入 RuntimeException 或 AssertionError；首个失败固定计时，后续 tick 继续保存后重抛。
+	protected BenchClientStepResult failWithSpark(BenchClientContext context, Throwable failure) {
+		if (deferredFailure == null) {
+			if (spark == null) {
+				if (failure instanceof RuntimeException runtime) {
+					throw runtime;
+				}
+				throw (AssertionError) failure;
+			}
+
+			deferredFailure = failure;
+			failureCleanupStartedNs = System.nanoTime();
+		}
+
+		return finishFailedSpark(context);
+	}
+
 	private BenchClientStepResult finishSpark(BenchClientContext context) {
 		if (spark == null) {
 			return BenchClientStepResult.COMPLETE;

@@ -1,5 +1,16 @@
 # 系统修改记录
 
+## 2026-10-28：标准模型资源游戏测试与复跑清理修复
+
+- 用户要求 spark／BenchMod／Minecraft MCP／IDEA／Debug 标准流，并明确 Photon 独立执行，不以 Horde 放行为门禁。新增显式 `PhotonModelResourceReloadScenario`，继承已有单次真实光束、最大化／焦点、截图及 Spark 收尾；默认性能场景集合不扩大。窗口保留桥只为新精确场景 ID 补充选择，未改常规运行。
+- 真实 reload 在主测量之前逐 tick 等待 future、覆盖层与稳定预热。四个生产 OBJ 通过两个 config 共享、重载后对象替换、完整定义／JSON／快照／组合指纹一致及所有片段的帧隔离断言。失败转入基类最小 protected `failWithSpark`，先异步保存实件再重抛。
+- 一次复跑在 `discardOrphanedFixtures` 出现 null.entityTags；IDEA 核对原版 `EntityLookup.getAllEntities()` 为 byId.values 的实时视图，原循环 discard 修改其遍历对象。已先收集带夹具 tag 的实体再删除，保留归属不明对象；失败报告与 Spark 留在 `plain-repeat-failed/`，修复后两模式完成。
+- 最终普通 `client-1793187353534`（PID49188）、光影 `client-1793187656047`（PID70400）场景 PASSED，Sodium 0.9.2 实际加载；光影实际为 ComplementaryReimagined_r5.9.3。真实 OUTPUT 截图已查看；窗口审计 2560×1494／最大化，逐 tick 未记录失焦，未把观测夸为连续证明。
+- 两轮总体 INCONCLUSIVE，原样保留 `client.game.paused`／`client.overlay.active`，因为本轮主动实际重载；没有放宽门禁或宣称性能／逐像素等价。Spark 分别保存5327211／5493522字节、126／129线程，均 COMPLETE、身份／SHA256／protobuf／时间与样本验证及归档完成后退出。
+- 原生 Minecraft MCP 工具缓存未连接；在本工作区用现有 SDK 与标准 CLI 固定19877连接，普通获 pong／状态，光影另获世界与帧缓冲截图。Node REPL 的进程模块限制由外部标准客户端解决，未安装依赖／改全局配置／调用其它游戏；临时 helper 与桥接关闭。Debug 仅在主测量前作一次暂停，原用户断点保留，会话 mute 已解除。
+- IDEA准备编译、生产包隔离通过；补充无窗口Data成功（23秒，written=0／removed=0），含缓存29文件SHA256不变。隔离 options／Iris／Spark 三文件恢复测试前原hash，原混合WIP和暂存测试保持；本轮不重跑未变化的50项CPU回归，不将其混入游戏场景计数。
+- 备份、完整原始报告、首轮工具诊断与失败轮、最终两轮截图／JFR／Spark／模型JSON及启动配置位于 `build/agent-backups/20261028-standard-resource-test/`；私有过程报告在 `.agent/reports/20261028-standard-model-resource-test.md`，当前运行说明见[BenchMod](benchmod.md#2026-10-28-模型资源真实重载诊断)。不推送、不跨区写入。
+
 ## 2026-10-28：模型资源固定复用、NeoForge 生命周期与 OBJ 实测补齐
 
 - 用户明确移除 RESOURCE 准备缓存开关，并要求容量按原版／NeoForge 模型资源处理。经当前依赖源码核对，NeoForge `ObjLoader` 按资源／选项保存几何及材质映射，在 `ResourceManagerReloadListener` 回调清空，无 16 项／16 MiB 淘汰。

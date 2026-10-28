@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.util.photon.playback;
 
-import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.lowdraglib2.math.Transform;
+import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
@@ -26,9 +26,22 @@ import java.util.stream.Collectors;
 
 /// 从已有定义或项目子树制作独占实例；只过滤未复制目标的贡献，不修改原库和原文件。
 public class PhotonSpawnTemplateUtil {
-	public record Template(FXRuntime runtime, IScene scope, Set<String> path) {
+	/// 来源定义可跨实例共享；每个实例仍从它复制独立的 runtime 和可变对象树。
+	public record Template(FXData source, Set<String> path) {
 		public Template {
 			path = Set.copyOf(path);
+		}
+
+		public FXRuntime createRuntime() {
+			var runtime = new FXRuntime(source.copy(true));
+
+			for (var object : runtime.objects.values()) {
+				if (object instanceof PhotonChildSpawner child) {
+					child.source(runtime, path);
+				}
+			}
+
+			return runtime;
 		}
 	}
 
@@ -47,8 +60,7 @@ public class PhotonSpawnTemplateUtil {
 				throw new IllegalArgumentException("子发射FX缺失或超出对象预算：" + location);
 			}
 
-			var runtime = fx.createRuntime(true);
-			return new Template(runtime, runtime, path);
+			return new Template(fx.getFxData(), path);
 		}
 
 		var scope = owner.sourceScope();
@@ -92,7 +104,7 @@ public class PhotonSpawnTemplateUtil {
 		copies.getFirst().transform()._setInternalParentID(FXRuntime.ROOT_UUID);
 		copies.getFirst().transform().localPosition(new Vector3f());
 		includeController(scope, copies);
-		return new Template(new FXRuntime(new FXData(copies, new Timeline())), scope, path);
+		return new Template(new FXData(copies, new Timeline()), path);
 	}
 
 	private static Set<String> descend(PhotonChildSpawner owner, String identity) {

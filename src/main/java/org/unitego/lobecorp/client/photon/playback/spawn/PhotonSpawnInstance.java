@@ -45,7 +45,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 	public PhotonSpawnInstance(PhotonChildSpawner owner, PhotonSpawnTemplateUtil.Template template) {
 		this.owner = owner;
-		runtime = template.runtime();
+		runtime = template.createRuntime();
 		delegate = owner.getEffectExecutor();
 
 		if (delegate == null) {
@@ -88,11 +88,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 		random = RandomSource.create(owner.getRandomSource().nextLong());
 
-		for (var object : runtime.objects.values()) {
-			if (object instanceof PhotonChildSpawner child) {
-				child.source(template.scope(), template.path());
-			}
-		}
+		// 子生成器来源已由模板在实例 runtime 上绑定，共享定义保持只读。
 	}
 
 	private Vector3f sampleShape() {

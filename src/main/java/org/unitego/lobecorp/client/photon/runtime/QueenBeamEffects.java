@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.fx.FXRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.nbt.CompoundTag;
@@ -32,6 +33,7 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQue
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedPlaybackDefinitionUtil;
 
 import javax.annotation.Nullable;
 
@@ -207,11 +209,13 @@ public class QueenBeamEffects {
 				timing[2] += System.nanoTime() - phase;
 
 				if (queue == null) {
+					finalizeControllers(runtime);
 					spawner.prepareNext();
 					((PhotonNamedAccess) runtime).lobecorp$prepareNamedRuntime();
 				} else {
 					queue.addShell(runtime, () -> {
 						try {
+							finalizeControllers(runtime);
 							spawner.prepareNext();
 							((PhotonNamedAccess) runtime).lobecorp$prepareNamedRuntime();
 						} catch (RuntimeException invalid) {
@@ -235,6 +239,15 @@ public class QueenBeamEffects {
 		Lobecorp.LOGGER.info("CASTPREWARM beamDefinitions {}ms, prepared={}, queued={}, depth={}, define={}ms, shell={}ms, child={}ms, startNs={}, endNs={}",
 				(System.nanoTime() - started) / 1_000_000, PREPARED.size(), queue != null, PREWARM_DEPTH,
 				timing[0] / 1_000_000, timing[1] / 1_000_000, timing[2] / 1_000_000, started, System.nanoTime());
+	}
+
+	/// 把控制器定义固定为最终播放形态，预热与施放使用同一份命名库。
+	private static void finalizeControllers(FXRuntime runtime) {
+		for (var object : runtime.objects.values()) {
+			if (object instanceof PhotonNamedController controller) {
+				controller.definition(PhotonNamedPlaybackDefinitionUtil.prepare(controller.definition()));
+			}
+		}
 	}
 
 	/// 预热渲染侧：把剩余预热任务按每 tick 固定预算推进；完成后记录一次汇总。
@@ -405,12 +418,7 @@ public class QueenBeamEffects {
 						((PhotonFixedRenderAccess) value.config.modelRenderer).lobecorp$useFixedRendering();
 					}
 					if (object instanceof PhotonNamedController controller) {
-						var library = controller.definition();
-						library.putString("defaultAnimation", "");
-						for (var animation : library.getListOrEmpty("animations")) {
-							controlled(((CompoundTag) animation).getListOrEmpty("tracks"));
-						}
-						controller.definition(library);
+						controller.definition(PhotonNamedPlaybackDefinitionUtil.prepare(controller.definition()));
 					}
 				}
 				PhotonCastProfiler.mark("controllerSetup");

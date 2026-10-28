@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-28：长帧准备与 Iris 边界最小修复
+
+- 六轮延迟十秒证据确认：SHELL 内子模板创建不是首轮唯一大头，命名运行态因施放时改写控制器定义而与预热库不一致；持续生成器的现场模板路径累计明显。修复把最终播放定义抽为纯 NBT 变换，预热与施放共用；子模板改为共享定义数据、每实例复制独立 runtime，来源绑定只写实例对象。
+- 预热队列为共享模板建立临时 runtime 仅用于安排任务，在完成或清理时销毁；不减少粒子、随机调用、时序或绘制内容。Iris 兼容只在 Photon 自有管线 `setPipeline` 与 Bloom `fullscreenPass` 边界切换 `ImmediateState.bypass` 并恢复，不关闭日志或光影。
+- IDEA 编译通过；定向测试 `PhotonNamedPlaybackDefinitionUtilTest`、`PhotonIrisPipelineAccessTest`、既有 `PhotonSpawnScheduleTest` 全部通过；Data 退出码 0，生成目录 29 文件 SHA256 全部不变。未运行游戏或性能 A/B，P22／P23 保持开放，不宣称帧时间收益。
+- 过程报告：`.agent/reports/20261028-ds-photon-stall-repair.md`；备份：`build/agent-backups/20261028-ds-stall-repair/`。原 WIP、暂存测试与 logs 未纳入本次提交。
+
 ## 2026-10-28：无截图性能诊断、世界稳定等待与六次实测
 
 - 新增显式 PERFORMANCE 场景，保留真实一次光束，跳过图像验收；只为该精确 profile 注入失败截图阻止桥。真实模型 CPU／顶点／索引及 drain 绘制断言取代图片门槛，采集 PASSED 不代表性能达标。

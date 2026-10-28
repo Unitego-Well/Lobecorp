@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceGpu;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 
 @Mixin(PhotonBloom.class)
 public class PhotonBloomMixin {
@@ -36,22 +37,24 @@ public class PhotonBloomMixin {
 	@WrapMethod(method = "fullscreenPass")
 	private static void lobecorp$captureBloomPass(RenderPipeline pipeline, GpuTextureView target,
 	                                              GpuTextureView input, GpuBufferSlice params, Operation<Void> original) {
-		if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
-			original.call(pipeline, target, input, params);
-			return;
-		}
-		String pass = "bloom:" + pipeline + "@" + target.getWidth(0) + "x" + target.getHeight(0);
-		int node = PhotonPerformanceTraceUtil.namedNode(PhotonPerformanceTraceUtil.currentNode(), "shared_bloom_pass",
-				pass, pass, pipeline.toString());
-		long scope = PhotonPerformanceTraceUtil.begin(Stage.DRAW, node);
-		long gpu = PhotonPerformanceGpu.begin(pass, node, true);
-		boolean completed = false;
-		try {
-			original.call(pipeline, target, input, params);
-			completed = true;
-		} finally {
-			PhotonPerformanceGpu.end(gpu, completed);
-			PhotonPerformanceTraceUtil.end(scope, completed);
-		}
+		PhotonIrisPipelineAccess.useNativePipeline(() -> {
+			if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
+				original.call(pipeline, target, input, params);
+				return;
+			}
+			String pass = "bloom:" + pipeline + "@" + target.getWidth(0) + "x" + target.getHeight(0);
+			int node = PhotonPerformanceTraceUtil.namedNode(PhotonPerformanceTraceUtil.currentNode(), "shared_bloom_pass",
+					pass, pass, pipeline.toString());
+			long scope = PhotonPerformanceTraceUtil.begin(Stage.DRAW, node);
+			long gpu = PhotonPerformanceGpu.begin(pass, node, true);
+			boolean completed = false;
+			try {
+				original.call(pipeline, target, input, params);
+				completed = true;
+			} finally {
+				PhotonPerformanceGpu.end(gpu, completed);
+				PhotonPerformanceTraceUtil.end(scope, completed);
+			}
+		});
 	}
 }

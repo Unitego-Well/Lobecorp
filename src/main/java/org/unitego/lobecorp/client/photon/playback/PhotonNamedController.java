@@ -5,6 +5,7 @@ import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonPlaybackTypes;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedPlaybackDefinitionUtil;
 
 import javax.annotation.Nullable;
 
@@ -14,6 +15,11 @@ public class PhotonNamedController extends EmptyFXObject {
 	private CompoundTag definition = new CompoundTag();
 	private CompoundTag original = new CompoundTag();
 	private @Nullable PhotonNamedRuntime playback;
+
+	/// 施放与预热共用的最终播放定义：默认动画不自动启动，子动画轨道由外层时间轴控制。
+	public CompoundTag playbackDefinition() {
+		return PhotonNamedPlaybackDefinitionUtil.prepare(definition);
+	}
 
 	@Override
 	public FXObjectType getFXObjectType() {

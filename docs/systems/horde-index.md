@@ -1,5 +1,7 @@
 # Horde 当前文档入口
 
+2026-10-28 实机：普通 `client-1793183928425` 与 Iris `client-1793184984851` 的七段低频采集均 PASSED，各23图、GPU错误0。普通测量均值/P99为6.660/20.877ms、>100ms为0；Iris为16.924/41.900ms、>100ms为11。实际碰撞资格分支已检查，连续视觉、六方向/64格边界及真实member仍未完整验收；本轮具体边界见[问题汇总](horde-issues.md)。
+
 2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。
 
 核对日期：2026-10-27。本工作区只负责 Horde；其他系统保留为[共同基线](README.md)。本文依据工作区当前源码与已有报告整理，包含未提交实现；源码存在、历史运行通过与本轮验收分别判断。

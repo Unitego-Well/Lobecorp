@@ -1,5 +1,9 @@
 # 系统修改记录
 
+## 2026-10-28 标准流普通与Iris复测
+
+普通/Iris各一次七段低频采集完成，报告为PASSED、GPU错误0，各23图且最短100tick；普通平均/P99为6.660/20.877ms、>100ms为0，Iris为16.924/41.900ms、>100ms为11。记录实际运行边界及未验收项，生产代码/夹具未改；旧UUID冲突失败记录保留，隔离Bench光影配置恢复原SHA，原WIP保留。对应唯一结果目录为 `build/modBench/raw-results/horde-20261028-visual-03/` 与 `horde-20261028-visual-04-iris/`。
+
 ## 2026-10-28 本轮集成验证
 
 2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。

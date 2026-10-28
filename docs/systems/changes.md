@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-28：RESOURCE 模型准备共享与资源代次失效
+
+- `PhotonModelSourceUtil` 在内嵌快照优先之后增加默认关闭的 `lobecorp.photon.resourcePreparationCache` 路径；同 provider 对象身份、Photon 资源代次、资源 ID 与 UV 翻转选项共享读取／解析／拓扑／CPU 求值器。缓存不保存世界、运行实例、时钟、动态绑定、材质运行态或输出帧；键弱持有 provider，强值 LRU 最多 16 项、合并快照估算 16 MiB，超预算不缓存，预算不等于精确堆上限。
+- `PhotonModelSplitUtil.companionDocument` 保留已验证伴生的原字节指纹；RESOURCE 组合指纹覆盖主资源、伴生缺失／存在及内容、UV 选项。FILE 读取、内嵌快照与损坏明确失败语义保留。
+- `PhotonRenderTypesMixin` 在现有重载 HEAD 清缓存，随后 Photon 原方法递增权威代次；新准备不会复用旧代次条目，不改变既有实例持有帧或重新定义其播放状态。
+- 新增 `PhotonModelResourcePreparationTest` 7/7：重复准备各资源只读一次、provider 值相等但身份不同、路径／UV 隔离、主资源与伴生增删改、损坏和缺失修复后重试、LRU／预算及两消费者帧隔离。新测试不依赖尚未提交的配置构造器 WIP。
+- 验证：IDEA 定向编译成功；IDEA Gradle `benchClasses jar test` 成功（17 秒），6 类 26/26；另经 IDEA 测试 API 运行正确 client 包的 `PhotonModelOutputSnapshotTest`，4/4，合计 30/30。首次 Gradle 配置中的快照测试包名错误，未计入 26，已用实际入口补齐，不将无匹配筛选当通过。保留 JOML 的 Unsafe 运行提示与 SplitUtil 两项既有 IDE 提示，无新增静态错误／警告。
+- Data 通过（25 秒）：23 个生成输出，written=2／removed=0；29 个文件含缓存中，两份语言文件及对应两份缓存更新，其他 25 个 SHA256 不变。生成文件只由 Data 写入，未手改、未纳入本提交。未执行游戏、视觉／性能 A/B，不关闭 P22/P23/P24，不宣称帧时间收益。
+- 备份／证据：`build/agent-backups/20261028-resource-preparation/`；原有四项未暂存、已暂存 StagedResourcesTest 与 logs 保留。验证在保留混合 WIP 的工作副本执行，W1 全量失败基线仍未补齐。仅提交本轮代码、测试和文档，不推送或同步其他工作区。
+
 ## 2026-10-28：代理文档整理与证据迁移
 
 - 按统一文档规范把本工作区 `.agent/` 收敛为固定五类：`reports`、`handoffs`、`plans`、`memory`、`archive` 加 `README.md`；平铺的首发报告改名为 `reports/20261027-first-cast.md`。

@@ -8,6 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceProvider;
+import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
@@ -168,6 +169,12 @@ public class PhotonModelSplitUtil {
 	}
 
 	public static CompoundTag companionData(ResourceProvider resources, Identifier model) throws IOException {
+		var document = companionDocument(resources, model);
+		return document == null ? null : readData(document.nbt());
+	}
+
+	/// 保留伴生原字节指纹，供组合资产身份使用；缺失与存在的空 NBT 明确区分。
+	public static @Nullable PhotonResourceDocument companionDocument(ResourceProvider resources, Identifier model) throws IOException {
 		if (model == null) {
 			return null;
 		}
@@ -182,7 +189,8 @@ public class PhotonModelSplitUtil {
 		try (var input = resource.open()) {
 			var document = PhotonResourceReader.read(resource.sourcePackId() + ":" + id,
 					PhotonResourceDocument.Kind.NBT, input, PhotonResourceLimits.DEFAULT);
-			return readData(document.nbt());
+			readData(document.nbt());
+			return document;
 		} catch (IOException | RuntimeException unreadable) {
 			throw new IOException("模型附加数据无法读取：" + id, unreadable);
 		}

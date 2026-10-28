@@ -1,5 +1,15 @@
 # Photon 模型特效
 
+## RESOURCE 模型准备共享（2026-10-28）
+
+本轮补齐资产准备与播放状态之间的边界：同一资源视图、模型路径和 OBJ UV 翻转选项下，复用已经读取、解析及拓扑准备的纯 CPU 求值器。播放时间、动态绑定、材质运行态和输出帧仍由每个实例独立持有；相机、世界位置及播放时间不是资产缓存键。
+
+内嵌快照继续优先；FILE 来源继续读取当前文件。OBJ 与同名 `.mfx.nbt` 共同确定模型内容，伴生缺失仍为纯 OBJ，存在但损坏则明确失败且不缓存失败。资源重载后新准备必须重新读取，伴生新增、删除和仅伴生内容变化均须生效。
+
+启动开关为 `-Dlobecorp.photon.resourcePreparationCache=true`，默认关闭，关闭时使用原准备路径；本轮不修改现有运行配置。LRU 最多 16 项、合并快照字节估算预算 16 MiB，超限单份资产不缓存；该预算不是精确堆内存上限。缓存值强持有准备结果，键弱持有资源提供者并按对象身份隔离；使用 Photon 的 `reloadGeneration()`，现有重载 HEAD 释放缓存，不维护平行代次。
+
+新增 `PhotonModelResourcePreparationTest` 7/7 通过，覆盖重复读取次数、provider 身份／路径／UV 选项、主资源与伴生增删改后的代次失效、损坏重试、LRU／字节预算及多消费者帧隔离。Gradle 相关回归 26/26 与 IDEA 输出快照 4/4 均通过，合计 30；IDEA 编译、基准源集编译及 jar 成功。Data 正常结束（23 个输出，written=2、removed=0）：两份语言文件及对应两份 `.cache` 更新，另 25 个文件 SHA256 未变，生成输出未手改或纳入提交。当前检查在保留原 WIP 的工作副本上执行，不代替 W1 全量失败基线或游戏验收；未进行视觉、性能 A/B，不据减少重复准备宣称帧时间收益。
+
 > 2026-10-23：当前模型由 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)、[PhotonModelProject](../../src/main/java/org/unitego/lobecorp/client/photon/model/project/PhotonModelProject.java) 与原生工作区接线，高级网格／材质／骨骼采样为未完整验收的 WIP，见 [当前能力](photon-workspace.md#当前能力与源码入口)。下文旧后端、测试路径、模型 LOD 与性能数字属于历史；不能据此调用已删除类。当前测试源码在 src/test/java 的 util/photon/model、util/photon/model/editor 和 client/photon/model，历史通过数不沿用。G1 未通过。
 
 > 2026-10-19 当前状态：本文描述的自建模型特效实现与专用界面已移除，模型资源文件保留；含缺失类型的工程暂时拒绝加载/覆盖。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。

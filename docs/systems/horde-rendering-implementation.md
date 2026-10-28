@@ -1,5 +1,42 @@
 # 深夜清扫：固定线路 GPU 三维浪潮
 
+## 2026-10-28 每事件 GPU 状态避让（当前实现）
+
+本节替代下方无历史静态草稿；3倍 sway 保留。新增 HordeAvoidanceState 与 core/horde_avoidance.fsh，CPU 只按事件/批次准备整窗和 uniform，不枚举虚拟单位。活动绕行与退场的 sway+avoidance 总横向状态按 0.7×常规速度积分，侧向历史不放入会被各 drawGroup 覆盖的 Motion8。源码与数值检查不等于 GPU、游戏或性能验收。
+
+- **身份和窗口**：每 EventData 独立双 RGBA8。4字分别为 offset、总横向速度、锁定侧/退场 phase、原始 uint row tag；全局行身份由 CPU long 首行差和 GPU 旧窗范围联合约束，低32位 tag 用 rawWord，不转成普通 float；row%1024 仅用于随机相位。first=max(0,floor((time×speed−length)/spacing)+1)，last=floor(min(stop,time)×speed/spacing)，末端半开、last<first 为空。窗口覆盖全 route 的活动行和所有列，range/frustum/MAX_VISIBLE 排序不参与身份。
+- **更新与迁移**：prepare 阶段在 renderpass 外分配；在组拆分及 prepareLight 递归拆分前，对每事件完整窗口更新一次。dt 使用事件 double 时间差上传，dt<=0 不推进；每事件 extract 已确认只计算一次 now，所有 Batch 同时钟。GPU 按 row+首行差映射旧源并检查 tag，重叠单位保留旧 offset/速度/锁侧；新身份 warm start 为 offset0 的自然摆动，不把新身份初始化当成旧单位连续证据。扩容只替换写目标，旧读纹理留到迁移提交完成；失败不交换读源或提交 previousFirst/rows/time。
+- **资源**：clearModels 保留 GPU 状态；remove/clear 通过 EventData.close 释放双纹理、view、window buffer 与本机小 uniform memory。纹理通过 device.createTexture 创建，不使用 HordeDataTexture/NativeImage 镜像。容量按 ceil(length/spacing)+1 行预留，不硬裁剪单位；500/1.8、277列约2.35MiB双纹理（1024宽取整示例2473984字节）。更长 route/更多列按乘积增长，设备容量不足明确失败；扩容瞬时包含旧读源与新写目标。resourceStatistics 新增 avoidance_state_texture_bytes / avoidance_state_words。
+- **控制方程**：prevTotal=oldOffset+sway(previousEventTime)，vLimit=0.7×speed，a=vLimit/4 tick；目标速度结合误差符号与 sqrt(2a×abs(error)) 刹车距离，限制加速度后积分单步，abs(delta)<=vLimit×实际dt，写回 newOffset=newTotal−sway(now)。Motion 只加一次 sway，heading 用已保存总横向速度驱动同源XZ局部速度采样。无遭遇且回到自然摆动、速度差满足本步加速度预算才解除侧锁；空圆继续平滑退场。0.7约束上述总横向控制状态；既有地形流及弯曲线路的世界坐标映射仍独立，不能冒称世界速度或地形净空均受此上界保证。
+- **目标和提前量**：首次遭遇共享左右候选并优先较短/可行通道，只有代价差≤0.25格时用独立salt7 seed打平；遭遇/退场期间只计算已锁侧，不按across符号重新选边。所需横移量除以 vLimit 加4tick加速时间，再乘 speed+drift导数上界，并加既有 band；锁侧后保留引导迟滞。多圆沿同一锁侧合成目标，模型半径复用现有 geometry.radius，0.45额外余量和小圆fade归零集中在标量 helper。16格控制上限、数量/采样/片大小、预烘焙选片、无碰撞资格、CPU圆平滑和服务端目标/仇恨保持原范围。无法通道或新圆直接包围单位时只做限速演进，不瞬移或隐藏，也不宣称全场景无穿透。
+- **最终XZ朝向**：位置与 heading 共用 motionXZ；只在3/5/6分量调用 motionVelocityXZ，对 actualStation±forwardVelocity×0.125tick、total±stateTotalVelocity×0.125tick 作两次XZ-only采样，再取局部速度。总侧速已含sway，一阶上等价于 offsetVelocity=stateTotalVelocity−swayVelocity 再合并自然摆动。两次样本使用同一当前terrain场、同一lateral输入，只取flow分量2，不取Y/height、不扫圆、不增逐单位XZ字段，纳入空间flow梯度及曲线side基旋转。terrain本身的时间变化没有历史样本，只能近似，不能宣称读取了前帧terrain。追加直线flow梯度、弯道非零offset的两个数值测试，遵守最新指令未运行。
+- **提前容量与初选侧审查**：16格内远侧不可达的圆，只要处于沿向前导范围就预先计算近侧容量，不等待当前position进入圆。容量本身不设置遭遇；无其它遭遇时返回natural。未锁侧时同一扫描共享圆数据，比较左右完整目标能否容纳及横移成本，成本差≤0.25格才用seed打平；锁侧后只处理原侧。两个同站程圆 across=5/14、radius=3.636、modelRadius=.75 的实际 avoidanceTarget 正文数值适配检查先复现9.836>9.164，再验证已锁+侧提前限至9.164、1000步不越界、初选改为左侧零横移；这1项定向检查按后续明确要求运行并通过，未扩成全局路径搜索。其余初选/锁侧新测试未运行。
+- **成本和验证边界**：row tag 分量在圆扫描前返回，另外3分量各自读取同一旧源作控制，64圆×77k单位上界约1478万次外层circle visit/事件更新，未锁侧的双候选数学分支最坏约2956万次，圆数据在候选间共享；Motion8不再扫圆，heading只采XZ/flow、不取Y/height，needsPoint最多5个分量计算位置。此为源码成本估计，不是实机性能结果。镜头完全离开且无 prepared 批次时事件不提交更新；再见时用实际dt和旧窗迁移，不是隐藏时的逐帧轨迹重放。
+- **检查与交付**：本轮禁止测试前已执行6项直接读取生产标量函数的数值回归（退出0），新增 HordeAvoidanceStateTest 的3项生产窗口方法检查留给父代理运行；此前静态草稿10项不作为新状态验收。未构建/Data/游戏/Debug/提交/推送/同步。三份新文件由 IDEA 自动暂存且有后续未暂存修改，保留索引交父代理隔离核验。完整说明见 .agent/reports/20261028-horde-gpu-state.md；原字节备份与增量补丁在 build/agent-backups/20261028-horde-gpu-state/。
+
+2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 .agent/reports/20261028-horde-path-correction.md；最新补丁/清单在 build/agent-backups/20261028-horde-path-correction/。此结果不是游戏或硬件 GLSL 验收。
+
+### 修正后的几何与边界
+
+记 q=choice×across，f=smoothstep(0,0.5,radius)，M=1.5。候选幅度 A=min(16,max(0,radius+M−abs(across)))×f×(1−max(0,sign(q)))；q>0 的圆不产生朝向自己的推力。近侧容量为 mix(16,clamp(q−radius−M,0,16),max(0,sign(q))×f)。成熟圆的容量沿局部直线不依赖 station，不贡献静态斜率。
+
+左右分别取所有圆候选的最大幅度作为整段可容纳性检查，再与该侧所有近侧容量的最小值比较；完整幅度超容量则不选择该侧，不能把完整绕行截成穿核心的半次横移。选定侧仍使用最大包络和获胜解析导数；三次 ramp、提前长度与 0.7 分割速度上界不变。对成熟圆与可容纳的局部直线通道，平台前已完成横移；对面的圆由近侧容量保护，生成候选的圆由完整幅度保护，均含 ±1.5 sway 余量。
+
+能力边界具体为：通道筛选是沿该局部直线的保守横向容量，纵向分离的多个圆也可能互相限制；不做多段换侧通道寻优。两侧均不可用时保留原解析横向运动，因此不能保证原路线本来穿圆时被解出，但不会采用半次横移宣称成功。半径小于 0.5 的 fade 阶段、动态变径/移动导致的通道可容纳性和选侧变化，不保证聚合净空或完整 C0 动态切换；单圆幅度及容量权重归零连续，静态进入/退出仍连续。16 上限与超能力圆仍不保证净空。弯曲路线、地形流、端点裁剪、真实 GLSL float 和游戏视觉继续未验收。
+
+needsPoint = component<3 || component==4 || (component==7 && FrameLod.x>0)。位置3、光照1、按需距离降帧1之外不计算 movingLocation；motionGroundHeight 只在分割非零且 component 为 1/4/7 时调用。每个 component 保持单遍圆槽读取，两个横向候选复用同一圆数据，不新增差分求方向的重扫。
+
+## 2026-10-28 客户端提前绕行路径
+
+- GPU/CPU sway 两组频率分别为 0.036–0.09、0.018–0.048，即原来的 3 倍；幅度仍为 0.9/0.6，总上界 1.5 格。CPU 只同步已有参考函数，没有新增逐单位 CPU 寻路；I49 中低速 drift 缩放和其他位置差异仍保留。
+- 分割在 station + GPU drift 处投影圆，用独立 motionRandom(seed, 7) 稳定选左/右；每圆标量幅度 A 先限制到原 16 格，再乘原 smoothstep(0,0.5,radius) 与横向影响权重。因此新增 1.5 格 sway 安全余量也随半径趋零，零半径没有固定推力。复用 SplitInfo.z 既有 band 作为净空余量，不新增模型体积常量。
+- 单圆沿前进轴设 extent = radius + band × fade 的平台；进入/退出为 A×u²×(3−2u)，u=clamp((extent+L−abs(along))/L,0,1)。L=max(原 lead,1.5A/slope)，slope=0.7/(1+B/max(v,1e-30))（正速度时等价于 0.7v/(v+B)），B 为当前种子的 GPU drift 速度上界，最大 0.102×min(1,v/0.25)。正常正速度下静态分割速度 ≤0.7v；该值是分割分量的基准/上界，不是总速度缩放。
+- 多圆取同侧最大包络，不累加位移或导数；单次圆遍历同时保留获胜包络的解析导数。最大包络仍满足相同静态 Lipschitz 上界，位置 C0 连续，交接可有切线折点，不宣称 C1。朝向用线路切线、分割导数和 sway/drift 导数，不额外通过多次位置采样遍历圆。
+- 分割在原 sway/地形流位置计算后沿线路侧向添加，Y 按最终横移重采样。静态直线、有效高度重叠、成熟圆且所需幅度 ≤16 时，平台在圆前完成横移，1.5 格余量覆盖 sway；不同横向采样的地形流、路线弯曲/端点裁剪、动态圆/高度变化仍需实机。高度和横向影响筛选、fade 中的小圆及超出 16 格的大圆不保证所有净空；不进行复杂多圆通道寻优。
+- 16 格分割上限、MAX_VISUAL_OFFSET=64、实例数量、采样范围、片大小与预烘焙选片架构均不变。动态圆移动/变径与随机 sway 等附加速度不受上述静态分割上界保证。CPU RegionBox.contourDistance 仍是原轮廓提示，未扩成新 GPU 路径的精确 CPU 副本。
+- 新增独立入口：python tools/horde_path_contract_test.py。测试读取并执行生产 GLSL 标量函数及既有 Java sway/random/mix 参考，检查提前绕行、两侧实际 sway 下的核心避让、聚合静态速度/16 上限、解析导数/退出连续、归零 fade 与 3 倍频率。适配器采用双精度，不等同硬件 float/GLSL 验收。
+- 本次不运行测试、构建、Data、游戏或 Debug，不暂存/提交/推送/同步。原字节备份及本次补丁：build/agent-backups/20261028-horde-path/；最终静态诊断与精确文件清单见 .agent/reports/20261028-horde-path.md。上述说明覆盖下文旧 radial push 与两次累加的描述。
+
 2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。
 
 实现记录日期：2026-10-22；导航核对日期：2026-10-23。当前工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`，入口见 [Horde 索引](horde-index.md)。历史恢复工作区名为 horde-recovery；恢复快照为 `6328b11`，BenchMod 接入提交为 `1f30bde`。本文描述本次已写入的实现，构建、运行、视觉和性能状态分别记录，不能以旧版采样代替本版验收。

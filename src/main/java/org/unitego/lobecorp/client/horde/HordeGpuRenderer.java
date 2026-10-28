@@ -59,8 +59,8 @@ import java.util.UUID;
 
 /// 常驻模型、线路和骨骼动画；每批只上传时间与编号区间，不上传逐单位变换。
 public class HordeGpuRenderer {
-	// std140共15个vec4，与horde_motion.glsl的HordeParameters一致。
-	private static final int PARAMETER_BYTES = 240;
+	// std140共16个vec4，与horde_motion.glsl的HordeParameters一致。
+	private static final int PARAMETER_BYTES = 256;
     private static final int VERTEX_BYTES = 28;
     private static final int INSTANCES_PER_DRAW = 65536;
 	// 位置、朝向角、光照、sin/cos和帧顶点基址，与GLSL布局一致。
@@ -87,6 +87,7 @@ public class HordeGpuRenderer {
             .withVertexShader(Lobecorp.id("core/horde_motion")).withFragmentShader(Lobecorp.id("core/horde_motion"))
 		    .withSampler("HordeRoute").withSampler("HordeHeights").withSampler("HordeLight")
 		    .withSampler("HordeLightIndex").withSampler("HordeTerrain").withSampler("HordeSplit")
+			.withSampler("HordeAvoidance")
             .withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
             .withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES).withCull(false)
             .withColorTargetState(ColorTargetState.DEFAULT).build();
@@ -108,10 +109,10 @@ public class HordeGpuRenderer {
 	private static long preparations;
 	private static final long PREPARATION_BUDGET_NS = 3_000_000L;
 	private static final Set<GeometryKey> PENDING_VISUALS = new LinkedHashSet<>();
-	// 0=MOTION，1=Iris顶点烘焙，2=地形，3=Iris动画，4/5=原生模型正反向，6/7=片正反向。
-	private static final int PIPELINE_COUNT = 8;
-	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 1, 0, 4, 5, 6, 7};
-	private static final int[] IRIS_PIPELINE_ORDER = {1, 3, 2, 0, 4, 5, 6, 7};
+	// 0=MOTION，1=Iris顶点烘焙，2=地形，3=Iris动画，4/5=原生模型，6/7=片，8=避让状态。
+	private static final int PIPELINE_COUNT = 9;
+	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 1, 8, 0, 4, 5, 6, 7};
+	private static final int[] IRIS_PIPELINE_ORDER = {1, 3, 2, 8, 0, 4, 5, 6, 7};
 	private static final boolean[] COMPILED_PIPELINES = new boolean[PIPELINE_COUNT];
 	private static final int[] PIPELINE_FAILURES = new int[PIPELINE_COUNT];
 	private static final long[] PIPELINE_RETRY_AT = new long[PIPELINE_COUNT];
@@ -237,6 +238,7 @@ public class HordeGpuRenderer {
 					case 5 -> device.precompilePipeline(REVERSE).isValid();
 					case 6 -> device.precompilePipeline(CARD_NORMAL).isValid();
 					case 7 -> device.precompilePipeline(CARD_REVERSE).isValid();
+					case 8 -> HordeAvoidanceState.precompile();
 					default -> throw new IllegalStateException("群体管线预热步骤无效");
 				};
 				if (!valid) {
@@ -376,6 +378,7 @@ public class HordeGpuRenderer {
 		if (prepared.isEmpty()) {
 			return;
 		}
+		updateAvoidance(prepared);
 		int groupCount = 0;
 		for (int first = 0; first < prepared.size(); ) {
 			int last = first;
@@ -397,6 +400,31 @@ public class HordeGpuRenderer {
 				event.particleSamples.capture(item.batch().event(), item.batch().time(), drawSerial,
 						item.batch().firstRow(), item.batch().block().firstColumn(), item.batch().block().columns());
 			}
+		}
+	}
+
+	// EventData 由 EVENTS 持有；此处借用其 GPU 状态与采样资源。
+	@SuppressWarnings("resource")
+	private static void updateAvoidance(List<Prepared> prepared) {
+		var updated = new HashSet<EventData>();
+		ensureParameters(PARAMETER_BYTES);
+		for (var item : prepared) {
+			if (!updated.add(item.event())) {
+				continue;
+			}
+			upload.clear().limit(PARAMETER_BYTES);
+			writeParameters(item, 0, 0);
+			upload.flip();
+			RenderSystem.getDevice().createCommandEncoder().writeToBuffer(parameters.slice(0, PARAMETER_BYTES), upload);
+			long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.MOTION);
+			try {
+				item.event().avoidance.update(item.batch().time(), parameters.slice(0, PARAMETER_BYTES),
+						item.event().route.texture().getTextureView(), item.event().terrain.view(),
+						item.batch().event().split.view());
+			} finally {
+				HordeRenderMetrics.end(HordeRenderMetrics.Stage.MOTION, started);
+			}
+			uploadedBytes += PARAMETER_BYTES;
 		}
 	}
 
@@ -583,6 +611,7 @@ public class HordeGpuRenderer {
 			data.updateHeights(event);
 			event.split.update(event, batch.time());
 			data.terrain.update(event, data.heights, batch.time());
+			data.avoidance.prepare(event, batch.time());
 			int verticesPerInstance = verticesPerInstance(geometry);
 			for (int offset = 0; offset < batch.count(); ) {
 				int limit = irisPath() ? IRIS.instanceLimit(verticesPerInstance) : INSTANCES_PER_DRAW;
@@ -628,11 +657,14 @@ public class HordeGpuRenderer {
 		upload.putInt(motionOffset).putInt(item.count()).putInt(motionWidth).putInt(IRIS.wordsPerVertex);
 		// 分割让步：数量、纹理宽度（0 表示按实际纹理自适应）、提前带宽、调试标志。
 		put(split.count(), 0, splitBand(event.speed), HordeVisualConfig.STATISTICS.get() ? 1 : 0);
-		put(SPLIT_STRENGTH, SPLIT_LEAD, SPLIT_MAXIMUM_OFFSET, 0);
+		put(SPLIT_STRENGTH, SPLIT_LEAD, SPLIT_MAXIMUM_OFFSET, visualRadius(event.visual));
 		// 光照区段缺失时的回退亮度：露天（方块光0、天空光15），不伪造洞穴亮度也不隐藏单位。
 		put(0, 15, 0, 0);
 		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.SINGLE_CARD_DISTANCE.get(),
 				item.geometry().model.tier() == 3 ? 1f : 0f, item.verticesPerInstance());
+		long firstStateRow = item.event().avoidance.firstRow();
+		upload.putInt(Math.toIntExact(row - firstStateRow)).putInt((int) firstStateRow)
+				.putInt((int) (firstStateRow >>> 32)).putInt(item.event().avoidance.rows());
 	}
 
 	/// 迎潮侧提前分流的带宽（格）：随浪潮速度增大，低速时仍保留基础宽度。
@@ -790,6 +822,7 @@ public class HordeGpuRenderer {
 				pass.bindTexture("HordeHeights", item.event().heights.texture().getTextureView(), nearest);
 				pass.bindTexture("HordeTerrain", item.event().terrain.view(), nearest);
 				pass.bindTexture("HordeSplit", item.batch().event().split.view(), nearest);
+				pass.bindTexture("HordeAvoidance", item.event().avoidance.view(), nearest);
 				int first = Math.multiplyExact(offsets[i], MOTION_VALUES) / motionWidth;
 				int last = Math.toIntExact(Math.ceilDiv((long) (offsets[i] + item.count()) * MOTION_VALUES, motionWidth));
 				pass.enableScissor(0, first, motionWidth, last - first);
@@ -890,6 +923,9 @@ public class HordeGpuRenderer {
 			}
 		}
 		result.addProperty("iris_workset_owned_bytes", bytes);
+		result.addProperty("avoidance_state_texture_bytes", EVENTS.values().stream()
+				.mapToLong(event -> event.avoidance.textureBytes()).sum());
+		result.addProperty("avoidance_state_words", HordeAvoidanceState.WORDS);
 		result.addProperty("iris_active_miwords", IRIS.budgetWords / (1024 * 1024));
 		result.addProperty("iris_requested_miwords", HordeVisualConfig.IRIS_WORKSET_WORDS.get());
 		result.addProperty("iris_double_buffer", HordeVisualConfig.IRIS_DOUBLE_BUFFER.get());
@@ -1278,6 +1314,7 @@ public class HordeGpuRenderer {
 		private final HordeDataTexture route;
 		private final HordeDataTexture heights;
 		private final HordeTerrainState terrain = new HordeTerrainState();
+		private final HordeAvoidanceState avoidance = new HordeAvoidanceState();
 		private HordeParticleSamples particleSamples = new HordeParticleSamples();
 
 		private EventData(HordeClient.ClientEvent event) {
@@ -1303,6 +1340,7 @@ public class HordeGpuRenderer {
 			route.close();
 			heights.close();
 			terrain.close();
+			avoidance.close();
 			particleSamples.close();
 		}
 	}

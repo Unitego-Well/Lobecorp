@@ -1,5 +1,11 @@
 # Horde 当前文档入口
 
+2026-10-28 当前改为每EventData四字双RGBA8避让状态，替代下面静态草稿。整route活动行窗按半开边界迁移，拆组前每事件更新一次；锁侧不随移动圆穿中线翻转，活动/退场的sway+avoidance总横向状态限速0.7。Motion8保留，CPU不做逐单位更新，3倍sway保留。禁止测试前6项标量数值回归已通过；Java窗口测试、GPU/游戏/性能均待父代理。三份新文件有IDEA自动暂存，未提交。详见[渲染实现](horde-rendering-implementation.md)及 .agent/reports/20261028-horde-gpu-state.md。
+
+2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 .agent/reports/20261028-horde-path-correction.md；最新补丁/清单在 build/agent-backups/20261028-horde-path-correction/。此结果不是游戏或硬件 GLSL 验收。
+
+2026-10-28 路径实现：sway 频率 3 倍、幅度不变；GPU 同侧最大包络提前绕圆，静态局部直线分割速度基准/上界为常规速度×0.7，保留 16 格上限。多圆交接仅保证 C0，动态圆、复杂通道、fade 与超范围净空不作绝对保证；I49 保留。新增 tools/horde_path_contract_test.py，待父代理统一运行和验收；本次仅静态检查。详见[渲染实现](horde-rendering-implementation.md)。
+
 2026-10-28 实机：普通 `client-1793183928425` 与 Iris `client-1793184984851` 的七段低频采集均 PASSED，各23图、GPU错误0。普通测量均值/P99为6.660/20.877ms、>100ms为0；Iris为16.924/41.900ms、>100ms为11。实际碰撞资格分支已检查，连续视觉、六方向/64格边界及真实member仍未完整验收；本轮具体边界见[问题汇总](horde-issues.md)。
 
 2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。

@@ -76,8 +76,8 @@ public final class HordeTide {
         double b = random(seed, 2.0);
         double c = random(seed, 3.0);
         double phase = a * Math.PI * 2.0;
-        return (0.9 * Math.sin(time * mix(0.012, 0.03, c) + phase)
-                + 0.6 * Math.sin(time * mix(0.006, 0.016, a) + b * Math.PI * 2.0)) * mix(0.5, 1.0, b);
+        return (0.9 * Math.sin(time * mix(0.036, 0.09, c) + phase)
+                + 0.6 * Math.sin(time * mix(0.018, 0.048, a) + b * Math.PI * 2.0)) * mix(0.5, 1.0, b);
     }
 
     private static double mix(double from, double to, double weight) {

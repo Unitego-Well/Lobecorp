@@ -4,8 +4,8 @@
 
 out vec4 fragColor;
 
-// 按进度的潮：每个实例的运动缓存只由波头站程、行列和事件时钟决定。
-// 这里不再读取任何单位历史，所以不存在“历史失效后回落到解析锚点”的重填路径。
+// 前进站程保持纯函数；总横向位移、速度读取每事件独立 GPU 行窗。
+// Motion8 是批次输出缓存，不承担稳定身份或运动历史。
 void main() {
     int pixel = int(gl_FragCoord.y) * MotionInfo.z + int(gl_FragCoord.x);
     int local = pixel / HORDE_MOTION_VALUES - MotionInfo.x;
@@ -19,19 +19,30 @@ void main() {
     float station = RowColumns.x - float(row) * SpacingLength.x;
     float lateral = (float(column) - (SpacingLength.z - 1.0) * 0.5) * SpacingLength.y;
     float seed = mod(WorldSection.w + float(row), 1024.0) * 17.0 + float(column) * 31.0;
-    float delay;
-    float lateralOffset;
-    hordeSplitOffset(station, lateral, seed, delay, lateralOffset);
-    float finalStation = station + delay;
-    float finalLateral = lateral + lateralOffset;
+    int stateRow = AvoidanceInfo.x + row;
+    int stateAt = (stateRow * int(SpacingLength.z) + column) * HORDE_AVOID_WORDS;
+    float finalStation = station;
+    // 总侧移已经包含自然摆动；这里不能再调用 movingLocation 叠加第二次 sway。
+    vec3 point = vec3(0.0);
+    bool needsPoint = component < 3 || component == 4 || (component == 7 && FrameLod.x > 0.0);
+    if (needsPoint) {
+        float totalLateral = scalar(HordeAvoidance, stateAt) + motionSway(OriginTime.w, seed);
+        vec2 horizontal = motionXZ(finalStation + motionDrift(OriginTime.w, seed), lateral, totalLateral);
+        point = vec3(horizontal.x, 0.0, horizontal.y);
+        if (component == 1 || component == 4 || component == 7) {
+            point.y = motionGroundHeight(finalStation, lateral, totalLateral, seed);
+        }
+    }
     float value;
     if (component < 3) {
-        value = movingLocation(finalStation, finalLateral, OriginTime.w, seed)[component];
+        value = point[component];
     } else if (component == 3 || component == 5 || component == 6) {
-        vec2 direction = routeForward(finalStation + motionDrift(OriginTime.w, seed));
+        float lateralSpeed = scalar(HordeAvoidance, stateAt + 1);
+        vec2 velocity = motionVelocityXZ(finalStation, lateral, seed, scalar(HordeAvoidance, stateAt), lateralSpeed);
+        vec2 direction = hordeSafeNormalize(velocity,
+                routeForward(finalStation + motionDrift(OriginTime.w, seed)));
         value = component == 3 ? atan(direction.x, direction.y) : component == 5 ? direction.x : direction.y;
     } else if (component == 4) {
-        vec3 point = movingLocation(finalStation, finalLateral, OriginTime.w, seed);
         vec2 light = lightAt(point);
         // 光照区段缺失时回退到事件级亮度：宁可亮度不准，也不把单位整批隐藏。
         value = light.x < 0.0 ? DebugInfo.x + DebugInfo.y * 16.0 : light.x + light.y * 16.0;
@@ -46,8 +57,7 @@ void main() {
         if (base == 0.0) {
             effective = 1;
         } else if (base > 0.0) {
-            vec3 point = movingLocation(finalStation, finalLateral, OriginTime.w, seed) + OriginTime.xyz;
-            float distance = length(point);
+            float distance = length(point + OriginTime.xyz);
             effective = distance < base ? frames
                     : distance < base * 2.0 ? max(1, frames / 2)
                     : distance < base * 3.0 ? max(1, frames / 4) : 1;

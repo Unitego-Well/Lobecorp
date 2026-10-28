@@ -26,22 +26,10 @@ import java.util.stream.Collectors;
 
 /// 从已有定义或项目子树制作独占实例；只过滤未复制目标的贡献，不修改原库和原文件。
 public class PhotonSpawnTemplateUtil {
-	/// 来源定义可跨实例共享；每个实例仍从它复制独立的 runtime 和可变对象树。
-	public record Template(FXData source, Set<String> path) {
+	/// 一次准备的独占 runtime；消费后所有权转移给实例，未消费则由生成器销毁。
+	public record Template(FXRuntime runtime, IScene scope, Set<String> path) {
 		public Template {
 			path = Set.copyOf(path);
-		}
-
-		public FXRuntime createRuntime() {
-			var runtime = new FXRuntime(source.copy(true));
-
-			for (var object : runtime.objects.values()) {
-				if (object instanceof PhotonChildSpawner child) {
-					child.source(runtime, path);
-				}
-			}
-
-			return runtime;
 		}
 	}
 
@@ -60,7 +48,12 @@ public class PhotonSpawnTemplateUtil {
 				throw new IllegalArgumentException("子发射FX缺失或超出对象预算：" + location);
 			}
 
-			return new Template(fx.getFxData(), path);
+			var runtime = fx.createRuntime(true);
+			runtime.objects.values().stream()
+					.filter(PhotonChildSpawner.class::isInstance)
+					.map(PhotonChildSpawner.class::cast)
+					.forEach(child -> child.source(runtime, path));
+			return new Template(runtime, runtime, path);
 		}
 
 		var scope = owner.sourceScope();
@@ -104,7 +97,12 @@ public class PhotonSpawnTemplateUtil {
 		copies.getFirst().transform()._setInternalParentID(FXRuntime.ROOT_UUID);
 		copies.getFirst().transform().localPosition(new Vector3f());
 		includeController(scope, copies);
-		return new Template(new FXData(copies, new Timeline()), path);
+		var runtime = new FXRuntime(new FXData(copies, new Timeline()));
+		runtime.objects.values().stream()
+				.filter(PhotonChildSpawner.class::isInstance)
+				.map(PhotonChildSpawner.class::cast)
+				.forEach(child -> child.source(scope, path));
+		return new Template(runtime, scope, path);
 	}
 
 	private static Set<String> descend(PhotonChildSpawner owner, String identity) {

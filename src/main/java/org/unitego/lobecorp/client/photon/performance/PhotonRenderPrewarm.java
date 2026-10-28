@@ -1,7 +1,6 @@
 package org.unitego.lobecorp.client.photon.performance;
 
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.client.gameobject.emitter.aratrail.AraTrailEmitter;
@@ -203,7 +202,6 @@ public final class PhotonRenderPrewarm {
 		private final int[] jobCounts = DIAGNOSTICS ? new int[JobType.values().length] : null;
 		private long drains;
 		private final Deque<Runnable> jobs = new ArrayDeque<>();
-		private final List<FXRuntime> borrowed = new ArrayList<>();
 		private int built;
 		private int spawners;
 		private int failed;
@@ -244,17 +242,6 @@ public final class PhotonRenderPrewarm {
 			addObjects(runtime, List.copyOf(runtime.objects.values()), depth);
 		}
 
-		/// 以共享来源数据建立一次临时 runtime，仅用于安排该层的材质与更深子模板任务。
-		private void add(FXData source, int depth) {
-			if (!ENABLED) {
-				return;
-			}
-
-			var runtime = new FXRuntime(source.copy(true));
-			borrowed.add(runtime);
-			addObjects(runtime, List.copyOf(runtime.objects.values()), depth);
-		}
-
 		private void addObjects(FXRuntime runtime, List<IFXObject> objects, int depth) {
 			for (var object : objects) {
 				jobs.addLast(measured(JobType.RENDER, () -> {
@@ -278,16 +265,16 @@ public final class PhotonRenderPrewarm {
 
 			try {
 				spawner.prepareNext();
+				var template = spawner.preparedTemplate();
+
+				if (template == null) {
+					return;
+				}
+
+				add(template.runtime(), depth - 1);
 			} catch (RuntimeException invalid) {
 				failed++;
 				Lobecorp.LOGGER.warn("子模板预热失败：{}", spawner.getName(), invalid);
-				return;
-			}
-
-			var template = spawner.preparedTemplate();
-
-			if (template != null) {
-				add(template.source(), depth - 1);
 			}
 		}
 
@@ -349,10 +336,6 @@ public final class PhotonRenderPrewarm {
 				logDrain(tick, started, ran);
 			}
 
-			if (jobs.isEmpty()) {
-				releaseBorrowed();
-			}
-
 			return ran;
 		}
 
@@ -373,12 +356,6 @@ public final class PhotonRenderPrewarm {
 
 		public void clear() {
 			jobs.clear();
-			releaseBorrowed();
-		}
-
-		private void releaseBorrowed() {
-			borrowed.forEach(runtime -> runtime.destroy(true));
-			borrowed.clear();
 		}
 
 		public int built() {

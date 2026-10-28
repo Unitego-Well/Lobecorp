@@ -88,16 +88,23 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					createNs = System.nanoTime() - createStarted;
 				}
 			}
-			reason = "prepared";
-			prepared = candidate;
-			preparedDefinition = definition;
-			completed = true;
-			return true;
+			try {
+				reason = "prepare_named";
+				((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
+				prepared = candidate;
+				preparedDefinition = definition;
+				reason = "prepared";
+				completed = true;
+				return true;
+			} catch (RuntimeException invalid) {
+				candidate.runtime().destroy(true);
+				throw invalid;
+			}
 		} finally {
 			if (diagnostic) {
 				long ended = System.nanoTime();
 				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} runtime={} startNs={} endNs={} elapsedNs={} createNs={} reason={} completed={}",
-						System.identityHashCode(this), prepared == null ? 0 : System.identityHashCode(prepared.source()),
+						System.identityHashCode(this), prepared == null ? 0 : System.identityHashCode(prepared.runtime()),
 						started, ended, ended - started, createNs, reason, completed);
 			}
 		}
@@ -110,8 +117,8 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		String reason = "no_prepared";
 		var candidate = prepared;
 		try {
-			prepared = null;
 			var definition = preparedDefinition;
+			prepared = null;
 			preparedDefinition = null;
 			if (candidate != null) {
 				if (config.source != PhotonSpawnConfig.Source.FX) {
@@ -133,7 +140,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					completed = true;
 					return candidate;
 				}
-				// 定义数据可复用，模板不再拥有待销毁的 runtime。
+				candidate.runtime().destroy(true);
 			}
 			candidate = PhotonSpawnTemplateUtil.create(this);
 			completed = true;
@@ -142,7 +149,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 			if (diagnostic) {
 				long ended = System.nanoTime();
 				Lobecorp.LOGGER.info("CASTPROF nextTemplate spawner={} runtime={} startNs={} endNs={} elapsedNs={} reason={} completed={}",
-						System.identityHashCode(this), candidate == null ? 0 : System.identityHashCode(candidate.source()),
+						System.identityHashCode(this), candidate == null ? 0 : System.identityHashCode(candidate.runtime()),
 						started, ended, ended - started, reason, completed);
 			}
 		}
@@ -155,7 +162,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	private void discardPrepared() {
 		if (prepared != null) {
-			// 定义数据可复用，模板不再拥有待销毁的 runtime。
+			prepared.runtime().destroy(true);
 			prepared = null;
 			preparedDefinition = null;
 		}
@@ -349,7 +356,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 						}
 					}
 				} catch (RuntimeException invalid) {
-					// 定义数据可复用，模板不再拥有待销毁的 runtime。
+					template.runtime().destroy(true);
 					throw invalid;
 				}
 

@@ -25,7 +25,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	private final PhotonChildSpawner owner;
 	private final FXRuntime runtime;
 	private final IEffectExecutor delegate;
-	private final RandomSource random;
+	private RandomSource random;
 	private final PhotonSpawnOverrides overrides;
 	private final Vector3f offset;
 	private final Vector3f origin;
@@ -45,50 +45,55 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 	public PhotonSpawnInstance(PhotonChildSpawner owner, PhotonSpawnTemplateUtil.Template template) {
 		this.owner = owner;
-		runtime = template.createRuntime();
-		delegate = owner.getEffectExecutor();
+		runtime = template.runtime();
+		RandomSource createdRandom;
+		try {
+			delegate = owner.getEffectExecutor();
 
-		if (delegate == null) {
-			throw new IllegalStateException("子发射缺少执行宿主。");
+			if (delegate == null) {
+				throw new IllegalStateException("子发射缺少执行宿主。");
+			}
+
+			overrides = new PhotonSpawnOverrides(owner);
+			offset = sampleShape();
+			origin = owner.transform().localToWorldMatrix().transformPosition(new Vector3f(offset));
+			inheritRotation = owner.config.inheritRotation;
+			inheritScale = owner.config.inheritScale;
+			rotation = inheritRotation ? new Quaternionf(owner.transform().rotation()) : new Quaternionf();
+			scale = inheritScale ? new Vector3f(owner.transform().scale()) : new Vector3f(1);
+			follow = owner.config.follow;
+			speed = Math.clamp(((Number) owner.slot("parameters.playbackSpeed").get()).floatValue(), 0, PhotonSpawnConfig.MAX_PLAYBACK_SPEED);
+			lifetime = Math.max(0, owner.config.instanceLifetime);
+			velocity = new Vector3f(offset).sub(owner.config.shape.offset);
+
+			if (velocity.lengthSquared() == 0) {
+				velocity.set(0, 0, 1);
+			}
+
+			velocity.normalize();
+
+			if (inheritRotation) {
+				owner.transform().rotation().transform(velocity);
+			}
+
+			float launch = owner.function("launchSpeed").get(owner.getRandomSource(), owner.getT()).floatValue();
+
+			if (!Float.isFinite(launch) || !Float.isFinite(speed)) {
+				throw new IllegalArgumentException("子实例播放或发射速度无效。");
+			}
+
+			velocity.mul(launch);
+
+			if (owner.config.inheritVelocity) {
+				velocity.add(owner.getVelocity());
+			}
+
+			createdRandom = RandomSource.create(owner.getRandomSource().nextLong());
+		} catch (RuntimeException invalid) {
+			runtime.destroy(true);
+			throw invalid;
 		}
-
-		overrides = new PhotonSpawnOverrides(owner);
-		offset = sampleShape();
-		origin = owner.transform().localToWorldMatrix().transformPosition(new Vector3f(offset));
-		inheritRotation = owner.config.inheritRotation;
-		inheritScale = owner.config.inheritScale;
-		rotation = inheritRotation ? new Quaternionf(owner.transform().rotation()) : new Quaternionf();
-		scale = inheritScale ? new Vector3f(owner.transform().scale()) : new Vector3f(1);
-		follow = owner.config.follow;
-		speed = Math.clamp(((Number) owner.slot("parameters.playbackSpeed").get()).floatValue(), 0, PhotonSpawnConfig.MAX_PLAYBACK_SPEED);
-		lifetime = Math.max(0, owner.config.instanceLifetime);
-		velocity = new Vector3f(offset).sub(owner.config.shape.offset);
-
-		if (velocity.lengthSquared() == 0) {
-			velocity.set(0, 0, 1);
-		}
-
-		velocity.normalize();
-
-		if (inheritRotation) {
-			owner.transform().rotation().transform(velocity);
-		}
-
-		float launch = owner.function("launchSpeed").get(owner.getRandomSource(), owner.getT()).floatValue();
-
-		if (!Float.isFinite(launch) || !Float.isFinite(speed)) {
-			throw new IllegalArgumentException("子实例播放或发射速度无效。");
-		}
-
-		velocity.mul(launch);
-
-		if (owner.config.inheritVelocity) {
-			velocity.add(owner.getVelocity());
-		}
-
-		random = RandomSource.create(owner.getRandomSource().nextLong());
-
-		// 子生成器来源已由模板在实例 runtime 上绑定，共享定义保持只读。
+		random = createdRandom;
 	}
 
 	private Vector3f sampleShape() {

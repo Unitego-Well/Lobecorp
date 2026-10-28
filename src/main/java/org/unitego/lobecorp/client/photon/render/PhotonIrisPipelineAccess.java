@@ -1,11 +1,10 @@
 package org.unitego.lobecorp.client.photon.render;
 
-import net.irisshaders.iris.vertices.ImmediateState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderPass;
+import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
+import javax.annotation.Nullable;
 
 /// Photon 自有管线在光影下的绘制边界：不让 Iris 把它们当作原版管线查找 override。
 ///
@@ -17,22 +16,89 @@ public final class PhotonIrisPipelineAccess {
 	}
 
 	public static void useNativePipeline(Runnable draw) {
-		withBypass(() -> ImmediateState.bypass, value -> ImmediateState.bypass = value, draw);
+		if (!IrisCompat.isModInstalled()) {
+			draw.run();
+			return;
+		}
+
+		var bridge = IrisPipelineBridge.current();
+		withBypass(bridge, draw);
 	}
 
-	/// 正常或异常结束都恢复调用前状态。
-	static void withBypass(BooleanSupplier current, Consumer<Boolean> setter, Runnable draw) {
-		boolean previous = current.getAsBoolean();
-		setter.accept(true);
-		try {
-			draw.run();
-		} finally {
-			setter.accept(previous);
+	/// 只有 Photon 自己注册的管线才不参与 Iris 的原版管线覆盖表。
+	public static boolean isPhotonPipeline(RenderPipeline pipeline) {
+		var location = pipeline.getLocation();
+		return location.getNamespace().equals("photon")
+				|| location.getNamespace().equals("lobecorp");
+	}
+
+	/// 只对 Photon 自有管线切换边界；原版或光影包管线保持 Iris 原有路由。
+	public static void setPhotonPipeline(RenderPass pass, RenderPipeline pipeline) {
+		if (isPhotonPipeline(pipeline)) {
+			useNativePipeline(() -> pass.setPipeline(pipeline));
+		} else {
+			pass.setPipeline(pipeline);
 		}
 	}
 
-	/// 仅包住一次 `setPipeline`，不覆盖后续 uniform、纹理和 draw 调用。
-	public static void setPipeline(RenderPass pass, RenderPipeline pipeline) {
-		useNativePipeline(() -> pass.setPipeline(pipeline));
+	/// 正常或异常结束都恢复调用前状态。
+	static void withBypass(Bypass bridge, Runnable draw) {
+		boolean previous = bridge.bypass();
+		bridge.bypass(true);
+		try {
+			draw.run();
+		} finally {
+			bridge.bypass(previous);
+		}
+	}
+
+	/// 全屏后期通道由 Photon 自己建立并绑定，同样不进入原版管线覆盖表。
+	public static void drawFullscreen(Runnable draw) {
+		useNativePipeline(draw);
+	}
+
+	/// Iris 引用隔离在独立类中，未安装 Iris 时不会加载该类。
+	private static final class IrisPipelineBridge {
+		private static @Nullable Bypass instance;
+
+		private static Bypass current() {
+			if (instance == null) {
+				instance = Impl.create();
+			}
+			return instance;
+		}
+	}
+
+	interface Bypass {
+		boolean bypass();
+		void bypass(boolean value);
+	}
+
+	private static final class Impl implements Bypass {
+		private static Bypass create() {
+			if (!com.lowdragmc.photon.client.compat.iris.IrisCompat.isModInstalled()) {
+				return new Bypass() {
+					@Override
+					public boolean bypass() {
+						return false;
+					}
+
+					@Override
+					public void bypass(boolean value) {
+					}
+				};
+			}
+			return new Impl();
+		}
+
+		@Override
+		public boolean bypass() {
+			return net.irisshaders.iris.vertices.ImmediateState.bypass;
+		}
+
+		@Override
+		public void bypass(boolean value) {
+			net.irisshaders.iris.vertices.ImmediateState.bypass = value;
+		}
 	}
 }

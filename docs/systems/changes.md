@@ -2,10 +2,10 @@
 
 ## 2026-10-28：长帧准备与 Iris 边界最小修复
 
-- 六轮延迟十秒证据确认：SHELL 内子模板创建不是首轮唯一大头，命名运行态因施放时改写控制器定义而与预热库不一致；持续生成器的现场模板路径累计明显。修复把最终播放定义抽为纯 NBT 变换，预热与施放共用；子模板改为共享定义数据、每实例复制独立 runtime，来源绑定只写实例对象。
-- 预热队列为共享模板建立临时 runtime 仅用于安排任务，在完成或清理时销毁；不减少粒子、随机调用、时序或绘制内容。Iris 兼容只在 Photon 自有管线 `setPipeline` 与 Bloom `fullscreenPass` 边界切换 `ImmediateState.bypass` 并恢复，不关闭日志或光影。
-- IDEA 编译通过；定向测试 `PhotonNamedPlaybackDefinitionUtilTest`、`PhotonIrisPipelineAccessTest`、既有 `PhotonSpawnScheduleTest` 全部通过；Data 退出码 0，生成目录 29 文件 SHA256 全部不变。未运行游戏或性能 A/B，P22／P23 保持开放，不宣称帧时间收益。
-- 过程报告：`.agent/reports/20261028-ds-photon-stall-repair.md`；备份：`build/agent-backups/20261028-ds-stall-repair/`。原 WIP、暂存测试与 logs 未纳入本次提交。
+- 六轮延迟十秒证据确认：SHELL 内子模板创建不是首轮唯一大头，命名运行态因施放时改写控制器定义而与预热库不一致；持续生成器的现场模板路径累计明显。修复把最终播放定义抽为纯 NBT 变换，预热与施放共用；子模板改为一次准备的独占 runtime、消费时转移所有权，FX／PROJECT scope 分开保留。
+- 预热队列为子模板建立命名运行时并登记递归任务；不减少粒子、随机调用、时序或绘制内容。Iris 兼容只对 `photon`／`lobecorp` 自有管线局部切换 `ImmediateState.bypass` 并恢复，原版 ENTITY 等管线保持原路由；软桥隔离 Iris 引用，不关闭日志或光影。
+- IDEA 编译通过；定向测试 `PhotonNamedPlaybackDefinitionUtilTest`、`PhotonIrisPipelineAccessTest`、既有 `PhotonSpawnScheduleTest` 全部通过；Data 退出码 0，生成目录 29 文件 SHA256 全部不变。未运行游戏或性能 A/B，P22／P23 保持开放，不宣称帧时间收益。持续播放未准备实例、首个 SHELL 冷初始化、嵌套 PROJECT scope、Iris 实际路由与视觉仍未验证。
+- 过程报告：`.agent/reports/20261028-ds-photon-stall-repair.md`；备份：`build/agent-backups/20261028-ds-stall-repair/`。原 WIP 与 logs 未纳入本次提交。上一提交 `d91363a6` 因原有索引带入了用户暂存 `PhotonModelStagedResourcesTest`，blob 未改变；不 reset、amend 或删除。
 
 ## 2026-10-28：无截图性能诊断、世界稳定等待与六次实测
 

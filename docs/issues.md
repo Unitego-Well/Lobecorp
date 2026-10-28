@@ -2,9 +2,9 @@
 
 ## 2026-10-28 长帧准备与 Iris 边界修复待复测
 
-已完成最小修复：预热与施放共用最终命名定义，子模板共享定义数据并为每个实例创建独立 runtime，Photon 自有管线在 Iris override 查询前使用局部 bypass 并恢复。IDEA 编译、三项定向测试和无窗口 Data 已通过，生成资源 29 文件不变。
+已完成最小修复：预热与施放共用最终命名定义；子模板保留一次准备的独占 runtime 并在消费时转移所有权，FX／PROJECT scope 分开保留；Photon 自有管线在 Iris override 查询前使用局部 bypass 并恢复。IDEA 编译、三项定向测试和无窗口 Data 已通过，生成资源 29 文件不变。
 
-P22／P23 仍未关闭：未进行游戏性能、光影日志数量、视觉等价或 GPU 验证。需要主会话用同一延迟十秒负载复测 SHELL／CHILD／正式长帧及 Iris 缺失日志，不能把本轮静态／非游戏验证当作性能收益或视觉通过。详见 `.agent/reports/20261028-ds-photon-stall-repair.md`。
+未解决／未验证：每生成器只准备下一份模板，持续播放仍会现场创建未准备实例；首个 SHELL 的类转换与冷初始化未消除；PROJECT 嵌套 scope 只有源码核对，纯 JUnit 无法初始化 Photon 客户端注册表；Iris 实际缺失日志数量、视觉路由、GPU 与游戏性能均未验证。P22／P23 保持开放，不能把本轮静态／非游戏验证当作性能收益或视觉通过。详见 `.agent/reports/20261028-ds-photon-stall-repair.md`。
 
 ## 2026-10-28 延迟十秒后的三轮性能诊断
 

@@ -177,7 +177,7 @@ public class PhotonOcclusionDrawUtil {
 	/// 实例化几何数据仅借用；原生 endFrame 在颜色及遮罩绘制结束后释放它。
 	@SuppressWarnings("resource")
 	private static void draw(RenderPass pass, PreparedDraw draw, GpuTextureView lightmap, GpuSampler sampler) {
-		PhotonIrisPipelineAccess.setPipeline(pass, draw.pipeline());
+		PhotonIrisPipelineAccess.setPhotonPipeline(pass, draw.pipeline());
 		RenderSystem.bindDefaultUniforms(pass);
 		pass.setUniform(TRANSFORM_UNIFORM, draw.transforms());
 		pass.setUniform(MATERIAL_UNIFORM, draw.material());

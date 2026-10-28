@@ -36,8 +36,9 @@ public class PhotonBloomMixin {
 
 	@WrapMethod(method = "fullscreenPass")
 	private static void lobecorp$captureBloomPass(RenderPipeline pipeline, GpuTextureView target,
-	                                              GpuTextureView input, GpuBufferSlice params, Operation<Void> original) {
-		PhotonIrisPipelineAccess.useNativePipeline(() -> {
+	                                              GpuTextureView input, GpuBufferSlice params,
+	                                              Operation<Void> original) {
+		Runnable draw = () -> {
 			if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
 				original.call(pipeline, target, input, params);
 				return;
@@ -55,6 +56,11 @@ public class PhotonBloomMixin {
 				PhotonPerformanceGpu.end(gpu, completed);
 				PhotonPerformanceTraceUtil.end(scope, completed);
 			}
-		});
+		};
+		if (PhotonIrisPipelineAccess.isPhotonPipeline(pipeline)) {
+			PhotonIrisPipelineAccess.drawFullscreen(draw);
+		} else {
+			draw.run();
+		}
 	}
 }

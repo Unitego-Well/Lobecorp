@@ -277,20 +277,25 @@ public class HordeClient {
 			if (!event.ready || event.failed) {
 				continue;
 			}
-			for (var circle : event.split.circles()) {
-				if (circle.bounds(event.origin).contains(point)) {
-					return false;
-				}
+			if (!HordeParticleFlow.clear(event.split.circles(), event.origin, point, 0)) {
+				return false;
 			}
 		}
 		return true;
 	}
 
-	/// 平滑圆的胶囊引导轮廓有符号距离；仅用于 CPU 候选。
+	/// 最终圆并集边界的有符号距离；引导带允许粒子，不作为硬空洞。
 	public static double ambientGapBoundaryDistance(ClientEvent event, Vec3 point, Vec3 forward) {
 		double distance = Double.POSITIVE_INFINITY;
 		for (var circle : event.split.circles()) {
-			distance = Math.min(distance, circle.bounds(event.origin).contourDistance(point, forward, event.speed));
+			double y = point.y - event.origin.y;
+			if (circle.radius() <= 0 || y >= circle.maximumY() || y + event.entityHeight <= circle.minimumY()) {
+				continue;
+			}
+
+			double x = point.x - event.origin.x - circle.centerX();
+			double z = point.z - event.origin.z - circle.centerZ();
+			distance = Math.min(distance, Math.hypot(x, z) - circle.radius());
 		}
 		return distance;
 	}

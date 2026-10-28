@@ -6,6 +6,8 @@ import org.unitego.lobecorp.generator.lang.HordeLang;
 
 /// 主体数量只由显式上限决定，不进行自动降级。
 public class HordeVisualConfig {
+	/// 扩大粒子覆盖但不提高生成组数或候选预算，单位为格。
+	public static final int MAXIMUM_PARTICLE_RANGE = 64;
 	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE, FRAGMENT_GROUPS;
 	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
 	public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES, LOD_ENABLED, CORPSE_BATCH;
@@ -35,8 +37,8 @@ public class HordeVisualConfig {
 			SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
 			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("仅在浪潮边界、分割接合和多潮接合生成碎屑与灰尘；刀光独立每1至4刻成批生成。").defineInRange("particleIntervalTicks", 1, 1, 1200);
-			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Boundary particle groups per tick", "每刻边界粒子组数")).comment("每组在同一点生成方块碎屑和灰尘；0关闭，最多100组。受原版粒子设置与粒子生成范围配置限制（最大32格）。").defineInRange("fragmentGroups", 20, 0, 100);
-			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", 24, 1, 32);
+			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Boundary particle groups per tick", "每刻边界粒子组数")).comment("每组在同一点生成方块碎屑和灰尘；0关闭，最多100组。受原版粒子设置与粒子生成范围配置限制（最大64格）。").defineInRange("fragmentGroups", 20, 0, 100);
+			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", MAXIMUM_PARTICLE_RANGE, 1, MAXIMUM_PARTICLE_RANGE);
 			b.pop();
 			STATISTICS = b.translation(HordeLang.config("visual.statistics", "Debug overlay", "性能调试叠层")).define("statistics", false);
 			b.pop();

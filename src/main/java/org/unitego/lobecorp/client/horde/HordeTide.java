@@ -119,6 +119,49 @@ public final class HordeTide {
         return new Vec3(centerX + sideX * lateral, y, centerZ + sideZ * lateral);
     }
 
+
+	/// 粒子近似使用的世界坐标入口，不改变原始单位位置公式。
+	public Vec3 world(double station, double lateral) {
+		return origin.add(local(station, lateral));
+	}
+
+	/// 当前站程的插值方向，与线路位置使用相同的节点方向。
+	public Vec3 forward(double station) {
+		double s = clamp(station, 0, length);
+		int node = nodeAt(s);
+		int next = Math.min(node + 1, nodes - 1);
+		double weight = clamp((s - route[node * NODE_WORDS + 3])
+				/ Math.max(route[next * NODE_WORDS + 3] - route[node * NODE_WORDS + 3], 0.0001), 0, 1);
+		double x = mix(route[node * NODE_WORDS + 4], route[next * NODE_WORDS + 4], weight);
+		double z = mix(route[node * NODE_WORDS + 5], route[next * NODE_WORDS + 5], weight);
+		double magnitude = Math.hypot(x, z);
+		return magnitude > 0.0001 ? new Vec3(x / magnitude, 0, z / magnitude) : new Vec3(0, 0, 1);
+	}
+
+	/// 每次粒子采样仅做一次线段投影，避免相机落在长路段中间时错过附近行。
+	public double particleStation(Vec3 world) {
+		var point = world.subtract(origin);
+		double best = Double.POSITIVE_INFINITY;
+		double station = 0;
+		for (int node = 0; node + 1 < nodes; node++) {
+			int a = node * NODE_WORDS;
+			int b = a + NODE_WORDS;
+			double dx = route[b] - route[a];
+			double dz = route[b + 2] - route[a + 2];
+			double weight = clamp(((point.x - route[a]) * dx + (point.z - route[a + 2]) * dz)
+					/ Math.max(dx * dx + dz * dz, 0.0001), 0, 1);
+			double x = point.x - mix(route[a], route[b], weight);
+			double z = point.z - mix(route[a + 2], route[b + 2], weight);
+			double distance = x * x + z * z;
+			if (distance < best) {
+				best = distance;
+				station = mix(route[a + 3], route[b + 3], weight);
+			}
+		}
+
+		return station;
+	}
+
     /// 指定站程的地面高度（事件局部 Y）。
     public double groundHeight(double station, double lateral) {
         double s = clamp(station, 0.0, length);

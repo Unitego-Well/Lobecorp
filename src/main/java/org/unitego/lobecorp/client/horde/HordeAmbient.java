@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.UUID;
 
-/// 聚合声源，以及由短时 GPU 实际脚点快照驱动的边界扬尘和潮内刀光。
+/// 聚合声源，以及由短时 CPU 粗略流场快照驱动的边界扬尘和潮内刀光。
 public class HordeAmbient {
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static long tick;
@@ -47,9 +47,8 @@ public class HordeAmbient {
 				.filter(batch -> batch.block().bounds().distanceToSqr(minecraft.player.position()) < 32 * 32).toList();
 		if (nearest.isEmpty()) {
 			SOURCES.clear();
-			return;
 		}
-		if (HordeVisualConfig.SOUND.get() && tick % 6 == 0) {
+		if (!nearest.isEmpty() && HordeVisualConfig.SOUND.get() && tick % 6 == 0) {
 			int count = Math.min(HordeVisualConfig.SOUND_VOICES.get(), nearest.size());
 			while (SOURCES.size() < count) {
 				SOURCES.add(new Source());
@@ -68,7 +67,10 @@ public class HordeAmbient {
 			}
 		}
 		if (HordeVisualConfig.DUST.get()) {
-			emitVisibleAreas(nearest);
+			double range = HordeVisualConfig.PARTICLE_RANGE.get();
+			var particleAreas = HordeClient.batches().stream()
+					.filter(batch -> batch.block().bounds().distanceToSqr(minecraft.player.position()) < range * range).toList();
+			emitVisibleAreas(particleAreas);
 		}
 	}
 
@@ -112,8 +114,13 @@ public class HordeAmbient {
 
 			var snapshot = HordeParticleSamples.latest(batch.event(), batch.time());
 			if (snapshot != null) {
+				var event = batch.event();
+				var circles = event.split.circles();
 				for (var sample : snapshot.samples()) {
-					if (HordeClient.ambientGapClear(sample.ground()) && inView(sample.ground())) {
+					if (activeRow(event, batch.time(), sample.row()) && sample.inWave(Math.max(0, (batch.time() - event.stop) * event.speed),
+							Math.min(event.length, batch.time() * event.speed))
+							&& HordeParticleFlow.clear(circles, event.origin, sample.ground(), event.entityHeight)
+							&& inView(sample.ground())) {
 						samples.add(new LocatedSample(batch.event(), batch.time(), sample));
 					}
 				}
@@ -149,8 +156,9 @@ public class HordeAmbient {
 		int limit = Math.clamp(groups, 0, 100);
 		int start = level.getRandom().nextInt(candidates.size());
 		for (int i = 0; i < candidates.size() && selected.size() < limit; i++) {
-			var point = candidates.get((start + i) % candidates.size()).sample().ground().add(0, 0.05, 0);
-			if (!selected.add(BlockPos.containing(point.scale(4))) || !unobstructed(point)) {
+			var located = candidates.get((start + i) % candidates.size());
+			var point = located.sample().ground().add(0, 0.05, 0);
+			if (!selected.add(BlockPos.containing(point.scale(4))) || !visibleSpawn(located, point)) {
 				continue;
 			}
 
@@ -162,13 +170,13 @@ public class HordeAmbient {
 						(level.getRandom().nextDouble() - 0.5) * 0.16, 1);
 			}
 
-			if (allowed(point)) {
-				// 直接复用清道夫飞扑起跳的短烟粒子：同纹理、同无重力短烟行为，不额外缩放。
-				var random = level.getRandom();
-				double speed = 0.04;
-				particle(LcParticleTypes.SHORT_SMOKE.get(),
-						point.add((random.nextDouble() * 2 - 1) * 0.6, (random.nextDouble() * 2 - 1) * 0.1,
-								(random.nextDouble() * 2 - 1) * 0.6),
+			// 随机出生点独立检查一次，不能复用碎屑原点的空洞或射线结果。
+			var random = level.getRandom();
+			double speed = 0.04;
+			var smoke = point.add((random.nextDouble() * 2 - 1) * 0.6, (random.nextDouble() * 2 - 1) * 0.1,
+					(random.nextDouble() * 2 - 1) * 0.6);
+			if (visibleSpawn(located, smoke)) {
+				particle(LcParticleTypes.SHORT_SMOKE.get(), smoke,
 						(random.nextDouble() * 2 - 1) * speed, (random.nextDouble() * 2 - 1) * speed,
 						(random.nextDouble() * 2 - 1) * speed);
 			}
@@ -180,23 +188,12 @@ public class HordeAmbient {
 		var sample = located.sample();
 		var point = sample.ground();
 		double spacing = Math.max(event.rules.rowSpacing(), event.rules.columnSpacing());
-		double station = sample.station();
-		double headStation = Math.min(event.length, located.time() * event.speed);
-		double tailStation = Math.max(0, (located.time() - event.rules.duration()) * event.speed);
-		// 缺邻可能来自视锥截断；必须再由真实外行/外列或当前缺口轮廓确认。
-		if (sample.boundary() && (sample.column() == 0 || sample.column() == event.columns - 1
-				|| Math.abs(headStation - station) <= spacing
-				|| Math.abs(station - tailStation) <= spacing)) {
+		// 探针在变形后坐标上判内；稀疏样本缺邻不会制造边缘。
+		if (sample.boundary()) {
 			return true;
 		}
 
-		var forward = forward(event, station);
-		double gapDistance = HordeClient.ambientGapBoundaryDistance(event, point, forward);
-		if (sample.boundary() && Math.abs(gapDistance) <= spacing) {
-			return true;
-		}
-
-		// 跨事件接合按两潮真实脚点的同层距离判定，不复用单潮邻格 mask 的身份邻接语义。
+		// 跨事件接合按代表点的同层距离粗判，不复用单潮身份邻接。
 		for (var other : samples) {
 			double contactDistance = Math.max(spacing, Math.max(other.event().rules.rowSpacing(), other.event().rules.columnSpacing()));
 			if (!other.event().id.equals(event.id) && Math.abs(other.sample().ground().y - point.y) <= 1.5
@@ -208,14 +205,23 @@ public class HordeAmbient {
 		return false;
 	}
 
-	private static Vec3 forward(HordeClient.ClientEvent event, double station) {
-		for (int i = 1; i < event.nodes.length; i++) {
-			if (station <= event.nodes[i].distance() || i == event.nodes.length - 1) {
-				return event.nodes[i].at().subtract(event.nodes[i - 1].at()).multiply(1, 0, 1).normalize();
+	private static boolean currentInterior(LocatedSample located) {
+		var event = located.event();
+		var point = located.sample().ground();
+		var circles = event.split.circles();
+		var forward = event.tide.forward(located.sample().station());
+		for (int row = -1; row <= 1; row++) {
+			for (int column = -1; column <= 1; column++) {
+				var probe = point.add(
+						forward.x * row * event.rules.rowSpacing() - forward.z * column * event.rules.columnSpacing(),
+						0, forward.z * row * event.rules.rowSpacing() + forward.x * column * event.rules.columnSpacing());
+				if (!HordeParticleFlow.clear(circles, event.origin, probe, event.entityHeight)) {
+					return false;
+				}
 			}
 		}
 
-		return new Vec3(0, 0, 1);
+		return true;
 	}
 
 	private static void emitSlashes(List<LocatedSample> samples) {
@@ -233,8 +239,9 @@ public class HordeAmbient {
 		int count = 4 + random.nextInt(7);
 		int start = random.nextInt(interior.size());
 		for (int i = 0; i < Math.min(count, interior.size()); i++) {
-			var point = interior.get((start + i) % interior.size()).sample().ground().add(0, 1.7, 0);
-			if (!HordeClient.ambientGapClear(point) || !unobstructed(point)) {
+			var located = interior.get((start + i) % interior.size());
+			var point = located.sample().ground().add(0, 1.7, 0);
+			if (!currentInterior(located) || !visibleSpawn(located, point)) {
 				continue;
 			}
 
@@ -251,15 +258,37 @@ public class HordeAmbient {
 		}
 	}
 
-	private static boolean allowed(Vec3 point) {
-		var minecraft = Minecraft.getInstance();
-		var level = minecraft.level;
-		// unobstructed 已同时执行可配置范围（1至32格）与最终坐标可见性检查。
-		if (level == null || !unobstructed(point)) {
+	private static boolean activeRow(HordeClient.ClientEvent event, double time, long row) {
+		long first = Math.max(0, (long) Math.floor((time * event.speed - event.length) / event.rules.rowSpacing()) + 1);
+		long last = (long) Math.floor(Math.min(event.stop, time) * event.speed / event.rules.rowSpacing());
+		return row >= first && row <= last;
+	}
+
+	private static boolean visibleSpawn(LocatedSample located, Vec3 point) {
+		var sample = located.sample();
+		var envelope = sample.envelope();
+		var event = located.event();
+		if (envelope == null || !activeRow(event, located.time(), sample.row()) || !sample.contains(point)) {
 			return false;
 		}
 
-		// 等价于原版 alwaysShow=false、overrideLimiter=false，避免篝火类型绕过设置。
+		double station = envelope.stationAt(point);
+		double tail = Math.max(0, (located.time() - event.stop) * event.speed);
+		double head = Math.min(event.length, located.time() * event.speed);
+		return station >= tail && station <= head
+				&& HordeParticleFlow.clear(event.split.circles(), event.origin, point,
+				Math.max(0, event.entityHeight - (point.y - sample.ground().y)))
+				&& HordeClient.ambientGapClear(point) && unobstructed(point);
+	}
+
+	private static boolean allowed() {
+		var minecraft = Minecraft.getInstance();
+		var level = minecraft.level;
+		if (level == null) {
+			return false;
+		}
+
+		// 坐标和射线由 visibleSpawn 每出生位置检查一次，设置仍逐粒筛选。
 		var setting = minecraft.options.particles().get();
 		return setting != ParticleStatus.MINIMAL
 				&& (setting != ParticleStatus.DECREASED || level.getRandom().nextInt(3) != 0);
@@ -267,7 +296,7 @@ public class HordeAmbient {
 
 	/// 不改变粒子自身缩放；仅用于复用其它系统已有的粒子外观与行为。
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz) {
-		if (!allowed(point)) {
+		if (!allowed()) {
 			return;
 		}
 
@@ -277,7 +306,7 @@ public class HordeAmbient {
 	}
 
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz, float scale) {
-		if (!allowed(point)) {
+		if (!allowed()) {
 			return;
 		}
 

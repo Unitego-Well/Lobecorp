@@ -23,8 +23,18 @@ public class HordeSplitState implements AutoCloseable {
     private static final double SMOOTHING = 6.0;
     // 与 horde_split.glsl 同步；最小成员圆达到全强度，零半径时引导带也失去作用。
     private static final double FADE_RADIUS = 0.5;
+    /// 两个源圆表面相距不足 2 格时逐渐建立局部软连接。
+    private static final double MERGE_GAP = 2.0;
+    /// 连接圆半径最多 1.5 格，不用包围巨圆填平链式区域之间的空地。
+    private static final double MAXIMUM_BRIDGE_RADIUS = 1.5;
+    /// Y 重叠不足半格时收细连接，接触或分离时连续归零。
+    private static final double BRIDGE_HEIGHT_FADE = 0.5;
     private static final int INITIAL_CAPACITY = 8;
     private final Map<String, Shape> shapes = new LinkedHashMap<>();
+    /// 与上传共用的不可修改快照；连接圆只消耗源圆之后的剩余槽位。
+    private List<Circle> circleSnapshot = List.of();
+    /// 保留仍有效的连接槽位；新获槽位的连接从零强度渐入，避免预算竞争时跳出整圆。
+    private final Map<BridgePair, Double> bridgeWeights = new LinkedHashMap<>();
     private HordeDataTexture texture;
     private int[] words = new int[INITIAL_CAPACITY * WORDS];
     private int capacity = INITIAL_CAPACITY;
@@ -101,20 +111,101 @@ public class HordeSplitState implements AutoCloseable {
                 iterator.remove();
             }
         }
+        refreshCircleSnapshot(alpha);
+    }
+
+    private void refreshCircleSnapshot(double alpha) {
+        var sources = new ArrayList<>(shapes.values());
+        if (sources.size() > MAXIMUM_CIRCLES) {
+            sources.sort((first, second) -> Double.compare(second.current.radius(), first.current.radius()));
+            sources.subList(MAXIMUM_CIRCLES, sources.size()).clear();
+        }
+
+        var result = new ArrayList<Circle>(MAXIMUM_CIRCLES);
+        for (var source : sources) {
+            result.add(source.current);
+        }
+
+        // 先保留仍有效的连接；配对身份使用源 Shape，不受每帧新 Circle 实例影响。
+        var iterator = bridgeWeights.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            var pair = entry.getKey();
+            var circle = sources.contains(pair.first()) && sources.contains(pair.second())
+                    ? bridge(pair.first().current, pair.second().current) : null;
+            if (circle == null || result.size() >= MAXIMUM_CIRCLES) {
+                iterator.remove();
+                continue;
+            }
+
+            double weight = approach(entry.getValue(), 1, alpha);
+            entry.setValue(weight);
+            result.add(weightedBridge(circle, weight));
+        }
+
+        // 只配对源圆；最多检查 64×63/2 对，已有连接的复查也不超过 64 对。
+        for (int first = 0; first < sources.size() && result.size() < MAXIMUM_CIRCLES; first++) {
+            for (int second = first + 1; second < sources.size() && result.size() < MAXIMUM_CIRCLES; second++) {
+                var circle = bridge(sources.get(first).current, sources.get(second).current);
+                if (circle == null) {
+                    continue;
+                }
+
+                var pair = new BridgePair(sources.get(first), sources.get(second));
+                if (!bridgeWeights.containsKey(pair)) {
+                    bridgeWeights.put(pair, alpha);
+                    result.add(weightedBridge(circle, alpha));
+                }
+            }
+        }
+
+        circleSnapshot = List.copyOf(result);
+    }
+
+    private static Circle weightedBridge(Circle circle, double weight) {
+        return new Circle(circle.centerX(), circle.centerZ(), circle.radius() * weight,
+                circle.minimumY(), circle.maximumY());
+    }
+
+    private static Circle bridge(Circle first, Circle second) {
+        double minimumY = Math.max(first.minimumY(), second.minimumY());
+        double maximumY = Math.min(first.maximumY(), second.maximumY());
+        double smallerRadius = Math.min(first.radius(), second.radius());
+        if (maximumY <= minimumY || smallerRadius <= 0) {
+            return null;
+        }
+
+        double dx = second.centerX() - first.centerX();
+        double dz = second.centerZ() - first.centerZ();
+        double distance = Math.hypot(dx, dz);
+        double gap = distance - first.radius() - second.radius();
+        if (gap >= MERGE_GAP || gap <= -smallerRadius) {
+            return null;
+        }
+
+        // 已深度重叠时连接也归零，避免重合小圆产生多余的软并集压力。
+        double proximity = influence(FADE_RADIUS * (1 - Math.max(0, gap) / MERGE_GAP));
+        double overlap = influence(FADE_RADIUS * (1 + Math.min(0, gap) / smallerRadius));
+        double height = influence(FADE_RADIUS * (maximumY - minimumY) / BRIDGE_HEIGHT_FADE);
+        double radius = Math.min(smallerRadius, MAXIMUM_BRIDGE_RADIUS)
+                * influence(smallerRadius) * proximity * overlap * height;
+        if (radius <= 0) {
+            return null;
+        }
+
+        // 连接中心取两侧相向表面的中点，不受大圆中心偏置，也不扩大 Y 区间。
+        double along = (distance + first.radius() - second.radius()) * 0.5 / distance;
+        return new Circle(first.centerX() + dx * along, first.centerZ() + dz * along,
+                radius, minimumY, maximumY);
     }
 
     private static double approach(double from, double to, double alpha) {
         return from + (to - from) * alpha;
     }
 
-    /// 按稳定顺序写成圆表；顺序就是容器插入顺序，不按半径重排，避免每帧换槽位。
+    /// 上传与 circles() 相同的快照；源圆在前，局部连接在后。
     private void publish() {
-        var active = new ArrayList<Shape>(shapes.values());
-        active.sort((first, second) -> Double.compare(second.current.radius, first.current.radius));
-        if (active.size() > MAXIMUM_CIRCLES) {
-            active = new ArrayList<>(active.subList(0, MAXIMUM_CIRCLES));
-        }
-        count = active.size();
+        count = circleSnapshot.size();
         maximumRadius = 0;
         if (count == 0) {
             uploaded = 0;
@@ -125,7 +216,7 @@ public class HordeSplitState implements AutoCloseable {
             resize(Math.max(INITIAL_CAPACITY, Integer.highestOneBit(Math.max(1, count - 1)) * 2));
         }
         for (int index = 0; index < count; index++) {
-            var circle = active.get(index).current;
+            var circle = circleSnapshot.get(index);
             int at = index * WORDS;
             words[at] = Float.floatToRawIntBits((float) circle.centerX());
             words[at + 1] = Float.floatToRawIntBits((float) circle.centerZ());
@@ -173,13 +264,9 @@ public class HordeSplitState implements AutoCloseable {
         return maximumRadius;
     }
 
-    /// 当前平滑后的圆，供调试叠层与基准报告读取。
+    /// 与最终上传共用的只读几何快照，包含平滑源圆及其局部连接；后续更新不改变旧快照。
     public List<Circle> circles() {
-        var result = new ArrayList<Circle>(shapes.size());
-        for (var shape : shapes.values()) {
-            result.add(shape.current);
-        }
-        return result;
+        return circleSnapshot;
     }
 
     /// 距上次上传的圆表字数，调试叠层用它区分“圆在变”与“只是重传”。
@@ -194,11 +281,16 @@ public class HordeSplitState implements AutoCloseable {
             texture = null;
         }
         shapes.clear();
+        circleSnapshot = List.of();
+        bridgeWeights.clear();
         count = 0;
         uploaded = 0;
         capacity = INITIAL_CAPACITY;
         words = new int[capacity * WORDS];
         lastTime = Double.NaN;
+    }
+
+    private record BridgePair(Shape first, Shape second) {
     }
 
     private static class Shape {

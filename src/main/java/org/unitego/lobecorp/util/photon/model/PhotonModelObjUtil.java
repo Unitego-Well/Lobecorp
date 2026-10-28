@@ -72,6 +72,16 @@ public class PhotonModelObjUtil {
 						if (!faceUV.isEmpty() && faceUV.size() != indices.size() || !faceNormals.isEmpty() && faceNormals.size() != indices.size()) {
 							throw new IllegalArgumentException("同一面混用了缺失的UV或法线。");
 						}
+
+						if (faceUV.isEmpty()) {
+							for (int index = 0; index < indices.size(); index++) {
+								var point = new JsonArray();
+								point.add(0);
+								point.add(flipV ? 1 : 0);
+								faceUV.add(point);
+							}
+						}
+
 						face.add("vertices", indices);
 						face.add("uv", faceUV);
 						face.add("normals", faceNormals);

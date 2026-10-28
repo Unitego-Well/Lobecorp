@@ -1,11 +1,11 @@
 package org.unitego.lobecorp.util.photon.model;
 
-import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceProvider;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/// 使用内存资源与显式代次验证资产共享，不依赖游戏注册或配置类的未提交构造入口。
+/// 使用内存资源与重载回调验证资产共享，不依赖游戏注册或配置类的未提交构造入口。
 public class PhotonModelResourcePreparationTest {
 	private static final PackResources PACK = (PackResources) Proxy.newProxyInstance(
 			PackResources.class.getClassLoader(), new Class<?>[]{PackResources.class}, (_, method, _) -> {
@@ -48,11 +48,11 @@ public class PhotonModelResourcePreparationTest {
 
 	@Test
 	public void repeatedPreparationReadsEachSourceOnce() throws Exception {
-		var cache = cache(4);
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
 		resources.put(COMPANION, nbt(data(2)));
-		var first = cache.prepare(resources, MODEL, false, 0);
-		var second = cache.prepare(resources, MODEL, false, 0);
+		var first = cache.prepare(resources, MODEL, false);
+		var second = cache.prepare(resources, MODEL, false);
 
 		assertSame(first, second);
 		assertSame(first.sampler(), second.sampler());
@@ -64,16 +64,16 @@ public class PhotonModelResourcePreparationTest {
 
 	@Test
 	public void isolatesProviderIdentityPathAndFlipOption() throws Exception {
-		var cache = cache(8);
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var firstProvider = resources();
 		var secondProvider = resources();
 		assertEquals(firstProvider, secondProvider);
-		var first = cache.prepare(firstProvider, MODEL, false, 0);
-		var second = cache.prepare(secondProvider, MODEL, false, 0);
-		var flipped = cache.prepare(firstProvider, MODEL, true, 0);
-		var other = id("other.obj");
+		var first = cache.prepare(firstProvider, MODEL, false);
+		var second = cache.prepare(secondProvider, MODEL, false);
+		var flipped = cache.prepare(firstProvider, MODEL, true);
+		var other = Identifier.fromNamespaceAndPath("external", "runtime/custom.obj");
 		firstProvider.put(other, OBJ.getBytes(StandardCharsets.UTF_8));
-		var otherPath = cache.prepare(firstProvider, other, false, 0);
+		var otherPath = cache.prepare(firstProvider, other, false);
 
 		assertNotSame(first.sampler(), second.sampler());
 		assertNotSame(first.sampler(), otherPath.sampler());
@@ -88,24 +88,28 @@ public class PhotonModelResourcePreparationTest {
 
 	@Test
 	public void reloadObservesCompanionAdditionChangeAndRemoval() throws Exception {
-		var cache = cache(4);
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
-		var absent = cache.prepare(resources, MODEL, false, 0);
+		var absent = cache.prepare(resources, MODEL, false);
 		resources.put(COMPANION, nbt(new CompoundTag()));
-		assertSame(absent, cache.prepare(resources, MODEL, false, 0));
-		var empty = cache.prepare(resources, MODEL, false, 1);
+		assertSame(absent, cache.prepare(resources, MODEL, false));
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		var empty = cache.prepare(resources, MODEL, false);
 		assertNotEquals(absent.sha256(), empty.sha256());
 		resources.put(COMPANION, nbt(data(3)));
-		var added = cache.prepare(resources, MODEL, false, 2);
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		var added = cache.prepare(resources, MODEL, false);
 		resources.put(COMPANION, nbt(data(5)));
-		var changed = cache.prepare(resources, MODEL, false, 3);
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		var changed = cache.prepare(resources, MODEL, false);
 
 		assertNotEquals(empty.sha256(), added.sha256());
 		assertNotEquals(added.sha256(), changed.sha256());
 		assertEquals(3, added.sampler().prepared().definition().referenceLength());
 		assertEquals(5, changed.sampler().prepared().definition().referenceLength());
 		resources.contents.remove(COMPANION);
-		var removed = cache.prepare(resources, MODEL, false, 4);
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		var removed = cache.prepare(resources, MODEL, false);
 		assertEquals(absent.sha256(), removed.sha256());
 		assertNotSame(absent.sampler(), removed.sampler());
 		assertEquals(5, resources.requests(MODEL));
@@ -113,89 +117,99 @@ public class PhotonModelResourcePreparationTest {
 	}
 
 	@Test
-	public void reloadObservesMainContentAndClearReleasesCachedEntry() throws Exception {
-		var cache = cache(4);
+	public void reloadObservesMainContentAndClearsAllProvidersAndVariants() throws Exception {
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
-		var first = cache.prepare(resources, MODEL, false, 7);
+		var first = cache.prepare(resources, MODEL, false);
+		var otherProvider = resources();
+		var other = cache.prepare(otherProvider, MODEL, false);
+		var flipped = cache.prepare(resources, MODEL, true);
 		resources.put(MODEL, OBJ.replace("v 1 0 0", "v 2 0 0").getBytes(StandardCharsets.UTF_8));
-		assertSame(first, cache.prepare(resources, MODEL, false, 7));
-		var changed = cache.prepare(resources, MODEL, false, 8);
+		assertSame(first, cache.prepare(resources, MODEL, false));
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		assertEquals(2, resources.requests(MODEL));
+		assertEquals(1, otherProvider.requests(MODEL));
+		var changed = cache.prepare(resources, MODEL, false);
 
 		assertNotEquals(first.sha256(), changed.sha256());
 		assertEquals(2, changed.sampler().prepared().definition().vertices().get(1).x());
-		cache.clear();
-		assertNotSame(changed.sampler(), cache.prepare(resources, MODEL, false, 8).sampler());
-		assertEquals(3, resources.requests(MODEL));
+		assertEquals(2, cache.prepare(resources, MODEL, true).sampler().prepared().definition().vertices().get(1).x());
+		assertNotSame(flipped.sampler(), cache.prepare(resources, MODEL, true).sampler());
+		assertNotSame(other.sampler(), cache.prepare(otherProvider, MODEL, false).sampler());
+		assertEquals(4, resources.requests(MODEL));
+		assertEquals(2, otherProvider.requests(MODEL));
 	}
 
 	@Test
-	public void damagedAndMissingSourcesAreRetriedWithinSameGeneration() throws Exception {
-		var cache = cache(4);
+	public void damagedAndMissingSourcesAreRetriedWithoutReload() throws Exception {
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
 		resources.put(COMPANION, new byte[]{10, 0});
-		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false, 0));
+		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false));
 		resources.put(COMPANION, nbt(data(4)));
-		assertEquals(4, cache.prepare(resources, MODEL, false, 0).sampler().prepared().definition().referenceLength());
+		assertEquals(4, cache.prepare(resources, MODEL, false).sampler().prepared().definition().referenceLength());
 		assertEquals(2, resources.requests(MODEL));
 		assertEquals(2, resources.requests(COMPANION));
 
 		var invalid = new CompoundTag();
 		invalid.putString("raw_clips", "{");
 		resources.put(COMPANION, nbt(invalid));
-		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false, 1));
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false));
 		resources.put(COMPANION, nbt(data(6)));
-		assertEquals(6, cache.prepare(resources, MODEL, false, 1).sampler().prepared().definition().referenceLength());
+		assertEquals(6, cache.prepare(resources, MODEL, false).sampler().prepared().definition().referenceLength());
 
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
 		resources.put(MODEL, "f 1 2 3".getBytes(StandardCharsets.UTF_8));
-		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false, 2));
+		assertThrows(IOException.class, () -> cache.prepare(resources, MODEL, false));
 		resources.put(MODEL, OBJ.getBytes(StandardCharsets.UTF_8));
-		assertNotNull(cache.prepare(resources, MODEL, false, 2));
+		assertNotNull(cache.prepare(resources, MODEL, false));
 		var missing = id("missing.obj");
-		assertThrows(IOException.class, () -> cache.prepare(resources, missing, false, 2));
+		assertThrows(IOException.class, () -> cache.prepare(resources, missing, false));
 		resources.put(missing, OBJ.getBytes(StandardCharsets.UTF_8));
-		assertNotNull(cache.prepare(resources, missing, false, 2));
+		assertNotNull(cache.prepare(resources, missing, false));
 	}
 
 	@Test
-	public void evictsLeastRecentlyUsedEntriesAndHonorsByteBudget() throws Exception {
-		var cache = cache(2);
+	public void retainsMoreThanSixteenEntriesUntilReload() throws Exception {
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
-		var other = id("other.obj");
-		var third = id("third.obj");
-		resources.put(other, OBJ.getBytes(StandardCharsets.UTF_8));
-		resources.put(third, OBJ.getBytes(StandardCharsets.UTF_8));
-		var first = cache.prepare(resources, MODEL, false, 0);
-		var second = cache.prepare(resources, other, false, 0);
-		assertSame(first, cache.prepare(resources, MODEL, false, 0));
-		cache.prepare(resources, third, false, 0);
-		assertSame(first, cache.prepare(resources, MODEL, false, 0));
-		assertNotSame(second.sampler(), cache.prepare(resources, other, false, 0).sampler());
-		assertEquals(2, resources.requests(other));
+		var prepared = new HashMap<Identifier, PhotonModelSourceUtil.ResourcePreparation>();
 
-		long bytes = new ByteArrayTag(PhotonModelSplitUtil.merge(OBJ, null, false).toString()
-				.getBytes(StandardCharsets.UTF_8)).sizeInBytes();
-		var bounded = new PhotonModelSourceUtil.ResourcePreparationCache(4, bytes);
-		var budgetFirst = bounded.prepare(resources, MODEL, false, 0);
-		bounded.prepare(resources, other, false, 0);
-		assertNotSame(budgetFirst.sampler(), bounded.prepare(resources, MODEL, false, 0).sampler());
-		var tooSmall = new PhotonModelSourceUtil.ResourcePreparationCache(4, 1);
-		assertNotSame(tooSmall.prepare(resources, MODEL, false, 0).sampler(),
-				tooSmall.prepare(resources, MODEL, false, 0).sampler());
-		assertThrows(IllegalArgumentException.class, () -> new PhotonModelSourceUtil.ResourcePreparationCache(0, 1));
-		assertThrows(IllegalArgumentException.class, () -> new PhotonModelSourceUtil.ResourcePreparationCache(1, 0));
+		for (int index = 0; index < 24; index++) {
+			var resource = id("model_" + index + ".obj");
+			resources.put(resource, OBJ.getBytes(StandardCharsets.UTF_8));
+			prepared.put(resource, cache.prepare(resources, resource, false));
+		}
+
+		for (var entry : prepared.entrySet()) {
+			assertSame(entry.getValue(), cache.prepare(resources, entry.getKey(), false));
+			assertEquals(1, resources.requests(entry.getKey()));
+		}
+
+		assertEquals(24, resources.opens);
+		cache.onResourceManagerReload(ResourceManager.Empty.INSTANCE);
+		assertEquals(24, resources.opens);
+
+		for (var entry : prepared.entrySet()) {
+			assertNotSame(entry.getValue().sampler(), cache.prepare(resources, entry.getKey(), false).sampler());
+			assertEquals(2, resources.requests(entry.getKey()));
+		}
+
+		assertEquals(48, resources.opens);
 	}
 
 	@Test
 	public void alternatingConsumersKeepFramesAndDefinitionIndependent() throws Exception {
-		var cache = cache(4);
+		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
 		var resources = resources();
 		var data = data(1);
 		data.putString("raw_morphs", """
 				[{"id":"shift","weight":0,"deltas":{"1":[0,0,1]}}]
 				""");
 		resources.put(COMPANION, nbt(data));
-		var first = cache.prepare(resources, MODEL, false, 0).sampler();
-		var second = cache.prepare(resources, MODEL, false, 0).sampler();
+		var first = cache.prepare(resources, MODEL, false).sampler();
+		var second = cache.prepare(resources, MODEL, false).sampler();
 		assertSame(first, second);
 		var reference = new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(
 				PhotonModelCodec.read(PhotonModelSplitUtil.merge(OBJ, data, false))));
@@ -219,10 +233,6 @@ public class PhotonModelResourcePreparationTest {
 
 	private static PhotonModelPoseSampler.Input input(float morph, float length, float width, float opacity) {
 		return new PhotonModelPoseSampler.Input(0, "", true, length, width, Anchor.NONE, opacity, Map.of("shift", morph));
-	}
-
-	private static PhotonModelSourceUtil.ResourcePreparationCache cache(int entries) {
-		return new PhotonModelSourceUtil.ResourcePreparationCache(entries, 1024 * 1024);
 	}
 
 	private static Identifier id(String name) {

@@ -1,13 +1,15 @@
 package org.unitego.lobecorp.util.photon.model;
 
-import com.lowdragmc.photon.client.render.PhotonRenderTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.server.packs.resources.ResourceProvider;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
@@ -30,10 +32,8 @@ public class PhotonModelSourceUtil {
 	/// 仅限制缓存键的保留量；求值器使用弱引用，不延长活实例以外的大模型寿命。
 	private static final PreparationCache PREPARED_EMBEDDED = new PreparationCache(16, 16L * 1024 * 1024);
 
-	/// 启动时选择实验路径；未指定时保留逐实例读取，运行中不切换。
-	private static final boolean RESOURCE_PREPARATION_CACHE = Boolean.getBoolean("lobecorp.photon.resourcePreparationCache");
-	/// 强引用准备结果，按条目数及合并快照字节估算限制保留量；不代表精确堆内存上限。
-	private static final ResourcePreparationCache PREPARED_RESOURCES = new ResourcePreparationCache(16, 16L * 1024 * 1024);
+	/// 当前资源包生命周期内共享准备结果，资源重载统一释放，不按容量淘汰。
+	private static final ResourcePreparationCache PREPARED_RESOURCES = new ResourcePreparationCache();
 
 	public static PhotonModelPoseSampler prepare(PhotonModelOutputConfig config) throws IOException {
 		var snapshot = config.assetSnapshot();
@@ -42,17 +42,16 @@ public class PhotonModelSourceUtil {
 			return PREPARED_EMBEDDED.prepare(snapshot, config.assetMaterialDependencies);
 		}
 
-		if (RESOURCE_PREPARATION_CACHE && config.source == PhotonModelOutputConfig.Source.RESOURCE) {
+		if (config.source == PhotonModelOutputConfig.Source.RESOURCE) {
 			return PREPARED_RESOURCES.prepare(Minecraft.getInstance().getResourceManager(), config.resource,
-					config.flipObjV, PhotonRenderTypes.reloadGeneration()).sampler();
+					config.flipObjV).sampler();
 		}
 
 		return new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(load(config).definition()));
 	}
 
-	/// 重载 HEAD 先释放旧资产；代次由随后执行的 Photon 原方法推进，不维护平行版本。
-	public static void clearResourcePreparationCache() {
-		PREPARED_RESOURCES.clear();
+	public static ResourceManagerReloadListener resourceReloadListener() {
+		return PREPARED_RESOURCES;
 	}
 
 	/// 求值器只共享准备数据；采样 scratch 按线程隔离，返回帧不引用可写 scratch。
@@ -60,25 +59,23 @@ public class PhotonModelSourceUtil {
 	}
 
 	/// 只缓存实时 RESOURCE；弱身份键不反向持有资源管理器，值不持有世界或实例。
-	public static class ResourcePreparationCache {
+	public static class ResourcePreparationCache implements ResourceManagerReloadListener {
 		private static class Key {
 			private final WeakReference<ResourceProvider> provider;
 			private final int identity;
-			private final int generation;
 			private final Identifier resource;
 			private final boolean flipV;
 
-			private Key(ResourceProvider provider, int generation, Identifier resource, boolean flipV) {
+			private Key(ResourceProvider provider, Identifier resource, boolean flipV) {
 				this.provider = new WeakReference<>(provider);
 				identity = System.identityHashCode(provider);
-				this.generation = generation;
 				this.resource = resource;
 				this.flipV = flipV;
 			}
 
 			@Override
 			public int hashCode() {
-				return Objects.hash(identity, generation, resource, flipV);
+				return Objects.hash(identity, resource, flipV);
 			}
 
 			@Override
@@ -88,75 +85,41 @@ public class PhotonModelSourceUtil {
 				}
 
 				return other instanceof Key key && provider.get() != null && provider.get() == key.provider.get()
-						&& generation == key.generation && resource.equals(key.resource) && flipV == key.flipV;
+						&& resource.equals(key.resource) && flipV == key.flipV;
 			}
 		}
 
-		private record Entry(ResourcePreparation prepared, long bytes) {
-		}
+		private final LinkedHashMap<Key, ResourcePreparation> entries = new LinkedHashMap<>();
 
-		private final int maxEntries;
-		private final long maxSourceBytes;
-		private final LinkedHashMap<Key, Entry> entries = new LinkedHashMap<>(16, 0.75f, true);
-		private long sourceBytes;
-
-		public ResourcePreparationCache(int maxEntries, long maxSourceBytes) {
-			if (maxEntries < 1 || maxSourceBytes < 1) {
-				throw new IllegalArgumentException("模型准备缓存预算必须为正。");
-			}
-
-			this.maxEntries = maxEntries;
-			this.maxSourceBytes = maxSourceBytes;
-		}
-
-		/// generation 必须来自当前资源视图的权威代次；同代次内容稳定，重载后才重新读取。
-		public synchronized ResourcePreparation prepare(ResourceProvider provider, Identifier resource, boolean flipV,
-		                                                int generation) throws IOException {
+		public synchronized ResourcePreparation prepare(ResourceProvider provider, Identifier resource, boolean flipV) throws IOException {
 			Objects.requireNonNull(provider);
 
 			if (resource == null) {
 				throw new IOException("模型资源ID为空。");
 			}
 
-			var iterator = entries.entrySet().iterator();
-
-			while (iterator.hasNext()) {
-				var entry = iterator.next();
-				var owner = entry.getKey().provider.get();
-
-				if (owner == null || owner == provider && entry.getKey().generation != generation) {
-					sourceBytes -= entry.getValue().bytes();
-					iterator.remove();
-				}
-			}
-
-			var key = new Key(provider, generation, resource, flipV);
+			var key = new Key(provider, resource, flipV);
 			var cached = entries.get(key);
 
 			if (cached != null) {
-				return cached.prepared();
+				return cached;
 			}
 
+			entries.keySet().removeIf(stale -> stale.provider.get() == null);
 			var loaded = loadResource(provider, resource, flipV);
 			var prepared = new ResourcePreparation(
 					new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(loaded.definition())), loaded.sha256());
-			long bytes = loaded.snapshot().sizeInBytes();
-
-			if (bytes <= maxSourceBytes) {
-				while (!entries.isEmpty() && (entries.size() >= maxEntries || sourceBytes > maxSourceBytes - bytes)) {
-					sourceBytes -= entries.pollFirstEntry().getValue().bytes();
-				}
-
-				entries.put(key, new Entry(prepared, bytes));
-				sourceBytes += bytes;
-			}
-
+			entries.put(key, prepared);
 			return prepared;
+		}
+
+		@Override
+		public void onResourceManagerReload(@NotNull ResourceManager resourceManager) {
+			clear();
 		}
 
 		public synchronized void clear() {
 			entries.clear();
-			sourceBytes = 0;
 		}
 	}
 

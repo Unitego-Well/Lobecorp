@@ -4,7 +4,7 @@
 
 ## 当前任务进度
 
-2026-10-28 架构优化恢复：用户明确恢复本工作区架构优化，并同意推进 RESOURCE 模型准备共享。已补齐 R2 的 CPU 模型资产准备缓存：弱 provider 身份键＋Photon 权威代次＋路径／UV 选项，强值 LRU 最多 16 项／合并快照估算 16 MiB，资源重载清除，OBJ 与伴生组合指纹区分缺失／存在。保留混合 WIP，启动开关 `lobecorp.photon.resourcePreparationCache` 默认关闭；不恢复 R1 池化、R3 子模板或 R4 几何路径。IDEA 编译、benchClasses／jar、26 项 Gradle 回归及 4 项 IDEA 快照回归通过（新增缓存 7 项），Data 成功，written=2／removed=0，生成语言文件与对应缓存更新，其他 25 文件指纹不变。备份与验证证据位于 `build/agent-backups/20261028-resource-preparation/`。新测试不依赖配置构造器 WIP；当前验证仍基于保留 WIP 的工作副本。W1 全量失败基线、P22/P23/P24 实机验收和插件正式宿主验收未关闭，游戏仍需当前串行时段及对应放行。
+2026-10-28 架构优化恢复：用户已将 RESOURCE 模型准备共享确定为固定资源能力。已移除启动开关、16 项／16 MiB 淘汰及 Photon 渲染代次依赖，按当前 NeoForge `ObjLoader` 的资源生命周期方式保留已准备模型，由唯一客户端入口注册 `ResourceManagerReloadListener` 并在重载清空。先实际比较现有／NeoForge／Photon OBJ：四个真实原件证实 Neo 需要不同 MTL 输入契约、Photon 能输出几何但丢失原部件／材质名，故保留本项目解析器；修复无 UV OBJ 的默认面角 UV，混合缺失仍明确失败。首轮 48 项有 6 失败并保留原证据，修复后 50/50 通过（比较20、资源生命周期7），`benchClasses jar test` 退出码0，Data通过且29文件不变；IDEA修复后一次编译等待超时由后续实际Gradle编译结果补足。详见[模型特效](photon-model-effects.md#resource-模型准备共享2026-10-28)，备份 `build/agent-backups/20261028-model-resource-lifecycle/`。原WIP保留；未运行游戏或性能A/B，W1全量基线、P22/P23/P24实机及插件正式宿主验收仍开放。
 
 2026-10-27 停工：用户要求重新梳理并收拢所有相关任务。本对话实现代理已停止，协调与Horde均已给出最终清理／停工确认；Horde释放不再自动放行Photon。当前没有自有构建、游戏、Debug或GPU负载，不重启／关闭IDEA、Codex及可能共享服务，等待用户明确恢复。现有两提交和WIP保留；Java／游戏验收、审计脚本焦点逻辑修正、文档布局纠偏、IDEA MCP二进制接口均未完成，不据静态检查宣称验收通过。
 

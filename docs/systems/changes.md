@@ -1,5 +1,15 @@
 # 系统修改记录
 
+## 2026-10-28：模型资源固定复用、NeoForge 生命周期与 OBJ 实测补齐
+
+- 用户明确移除 RESOURCE 准备缓存开关，并要求容量按原版／NeoForge 模型资源处理。经当前依赖源码核对，NeoForge `ObjLoader` 按资源／选项保存几何及材质映射，在 `ResourceManagerReloadListener` 回调清空，无 16 项／16 MiB 淘汰。
+- `PhotonModelSourceUtil` 改为 RESOURCE 始终共享，删除开关、容量预算与 Photon 渲染代次依赖；弱 provider 身份＋资源 ID＋UV 选项隔离，失败不缓存，命中先返回，避免无上限集合在每次命中时全表清理。通过 `PhotonModelResourceRegistration` 登记重载监听，唯一 `LobecorpClientEvents` 入口委托；移除 `PhotonRenderTypesMixin` 中上轮的缓存清理，原 QueenBeam 等清理保持。
+- 先查看并通过真实 API 测试 NeoForge 26.1.2.100 `ObjGeometry`／`ObjTokenizer`、Photon 26.1.2.3 `ObjMeshParser` 和本项目 `PhotonModelObjUtil`。四个生产 OBJ 原文不删指令：Neo 对无 MTL 的 usemtl 真实失败，Photon 几何通过但扁平化部件／材质名；当前原顶点／面索引与伴生数据要求决定保留现有读取器，未切换或重写加载器。比较边界与具体格式差异见[模型特效](photon-model-effects.md#resource-模型准备共享2026-10-28)。
+- 首轮 48 tests／6 failed，失败均是本项目无 UV OBJ 生成空面角 UV 数组，与 Codec 角数校验冲突；原失败 XML 已保留。仅在 `PhotonModelObjUtil` 整面缺 UV 时补每角默认值，flipV 关闭为(0,0)、开启为(0,1)；混合缺失继续报错，Codec／法线及原文件数据不改。
+- 新比较测试20项，含LF／CRLF基础几何强断言、正负索引、UV／法线／翻转、凹面面积、分组／材质、科学计数／齐次坐标、注释／续行、错误输入及四个生产模型原面／角映射。生命周期7项含24资源全部保留至重载并重新读取。最终8类50/50通过，无失败／错误；`benchClasses jar test`退出码0。首次IDEA定向编译通过，修复后IDEA等待一次超时，未将超时算通过，后续Gradle实际重新编译成功补足。
+- 无窗口Data退出码0（24秒），23输出written=0／removed=0；含缓存29文件SHA256全部不变。未运行游戏、完整bake／atlas／GPU或性能A/B，不据CPU格式测试宣称运行／视觉收益，不关闭P22/P23/P24和W1全量基线。
+- 备份／证据：`build/agent-backups/20261028-model-resource-lifecycle/`，`first-run/`保存失败XML，`passed-run/`保存最终XML。验证在原混合WIP保留状态下执行；本轮不提交原暂存StagedResourcesTest等已有内容，不推送、不跨区同步。
+
 ## 2026-10-28：RESOURCE 模型准备共享与资源代次失效
 
 - `PhotonModelSourceUtil` 在内嵌快照优先之后增加默认关闭的 `lobecorp.photon.resourcePreparationCache` 路径；同 provider 对象身份、Photon 资源代次、资源 ID 与 UV 翻转选项共享读取／解析／拓扑／CPU 求值器。缓存不保存世界、运行实例、时钟、动态绑定、材质运行态或输出帧；键弱持有 provider，强值 LRU 最多 16 项、合并快照估算 16 MiB，超预算不缓存，预算不等于精确堆上限。

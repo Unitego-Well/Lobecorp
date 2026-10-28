@@ -6,9 +6,19 @@
 
 内嵌快照继续优先；FILE 来源继续读取当前文件。OBJ 与同名 `.mfx.nbt` 共同确定模型内容，伴生缺失仍为纯 OBJ，存在但损坏则明确失败且不缓存失败。资源重载后新准备必须重新读取，伴生新增、删除和仅伴生内容变化均须生效。
 
-启动开关为 `-Dlobecorp.photon.resourcePreparationCache=true`，默认关闭，关闭时使用原准备路径；本轮不修改现有运行配置。LRU 最多 16 项、合并快照字节估算预算 16 MiB，超限单份资产不缓存；该预算不是精确堆内存上限。缓存值强持有准备结果，键弱持有资源提供者并按对象身份隔离；使用 Photon 的 `reloadGeneration()`，现有重载 HEAD 释放缓存，不维护平行代次。
+RESOURCE 共享是固定加载机制，没有启动开关，也不使用 16 项／16 MiB 等自设容量淘汰。管理方式依据当前 NeoForge `ObjLoader`：按需读取并强持有已准备模型，直到资源重载统一清空。通过唯一客户端事件入口注册 `ResourceManagerReloadListener`，由 NeoForge 的资源重载流程管理；移除 Photon 渲染代次依赖。键仍按 provider 对象身份、资源 ID 和 UV 选项隔离，不反向强持有 provider；失败不缓存，读取器既有的单文件／格式校验保持。
 
-新增 `PhotonModelResourcePreparationTest` 7/7 通过，覆盖重复读取次数、provider 身份／路径／UV 选项、主资源与伴生增删改后的代次失效、损坏重试、LRU／字节预算及多消费者帧隔离。Gradle 相关回归 26/26 与 IDEA 输出快照 4/4 均通过，合计 30；IDEA 编译、基准源集编译及 jar 成功。Data 正常结束（23 个输出，written=2、removed=0）：两份语言文件及对应两份 `.cache` 更新，另 25 个文件 SHA256 未变，生成输出未手改或纳入提交。当前检查在保留原 WIP 的工作副本上执行，不代替 W1 全量失败基线或游戏验收；未进行视觉、性能 A/B，不据减少重复准备宣称帧时间收益。
+当前加载器选择基于 NeoForge 26.1.2.100、Photon 26.1.2.3 的实际 API 对照：
+
+| 路线                        | 本轮实际检查                                                                                                           | 适用边界                                                                                                                                  |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| 本项目 `PhotonModelObjUtil` | 原面／原顶点索引、负索引、UV／法线、凹多边形、部件／材质名及四个真实 OBJ 均有数值断言；整面缺 UV 补默认值并应用 V 翻转 | 保留伴生骨骼／形变索引和材质槽；混合缺 UV、续行和非单位齐次坐标仍明确拒绝                                                                 |
+| NeoForge `ObjGeometry`      | 公开分组、续行解析等通过；四个生产原件的 `usemtl` 因无 MTL 均真实抛出材质查找异常                                      | 输出面向模型烘焙，不能直接替换当前原始几何＋伴生链；未做完整 bake／atlas 验收，不据此将整个 Neo OBJ 定性为不可用                          |
+| Photon `ObjMeshParser`      | 普通 LF／CRLF、负索引、UV／法线、凹多边形及四个真实模型几何均通过                                                      | 输出扁平三角 mesh，忽略部件／材质名；非法面角可被丢弃后继续成面，非单位齐次坐标直接当原坐标，退化面仍保留，不满足本模型链的原面／索引契约 |
+
+本轮保留现有解析器，仅补齐实测缺省 UV 缺口；不切换外部解析器、不重写另一套加载器。资源管理复用 NeoForge 的重载机制，解析表示保持本项目现有模型契约。
+
+验证：首轮 48 项中 6 项失败均定位为本项目无 UV 输入未填满面角数组，已最小修复，没有放宽 Codec 校验；新增两个缺省／混合缺失回归后，8 类共 50/50 通过（加载器比较 20、资源生命周期 7、其余 23）。24 个资源全部保持复用，重载回调后全部重新读取；四个真实生产 OBJ 原文未删指令，实际检查顶点／面／三角数、部件／材质名和面角映射。IDEA 首次编译通过，修复后一次编译等待超时未作成功证据；随后统一 `benchClasses jar test` 退出码 0，重新编译、打包和测试成功。Data 退出码 0、written=0／removed=0，含缓存的 29 文件 SHA256 全部不变。备份与首轮失败／最终通过 XML 在 `build/agent-backups/20261028-model-resource-lifecycle/`。检查在保留 WIP 的工作副本上执行，未覆盖游戏视觉、性能 A/B 或 W1 全量失败基线。
 
 > 2026-10-23：当前模型由 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)、[PhotonModelProject](../../src/main/java/org/unitego/lobecorp/client/photon/model/project/PhotonModelProject.java) 与原生工作区接线，高级网格／材质／骨骼采样为未完整验收的 WIP，见 [当前能力](photon-workspace.md#当前能力与源码入口)。下文旧后端、测试路径、模型 LOD 与性能数字属于历史；不能据此调用已删除类。当前测试源码在 src/test/java 的 util/photon/model、util/photon/model/editor 和 client/photon/model，历史通过数不沿用。G1 未通过。
 

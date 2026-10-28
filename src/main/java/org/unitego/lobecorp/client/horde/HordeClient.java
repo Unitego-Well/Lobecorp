@@ -118,7 +118,7 @@ public class HordeClient {
 		}
 		var player = minecraft.player;
 		var area = simulationBounds();
-		var nearby = minecraft.level.getEntitiesOfClass(LivingEntity.class, area, entity -> entity.isAlive() && !entity.isSpectator());
+		var nearby = minecraft.level.getEntitiesOfClass(LivingEntity.class, area, HordeClient::hasVisualCollision);
 		var targets = nearby.stream().filter(entity -> entity != player && ClientEvent.isGapTarget(entity)).toList();
 		var members = nearby.stream().filter(Mob.class::isInstance).map(Mob.class::cast).filter(HordeParticipant::isEvent).toList();
 		for (var event : EVENTS.values()) {
@@ -128,6 +128,18 @@ public class HordeClient {
 		}
 	}
 
+
+	/// 视觉分割只读客户端实际碰撞状态；实体间硬碰撞资格不能代表普通生物的物理体积。
+	private static boolean hasVisualCollision(LivingEntity entity) {
+		if (!entity.isAlive() || entity.isSpectator() || entity.noPhysics) {
+			return false;
+		}
+
+		var bounds = entity.getBoundingBox();
+		return bounds.getXsize() > 0 && bounds.getYsize() > 0 && bounds.getZsize() > 0
+				&& Double.isFinite(bounds.getXsize()) && Double.isFinite(bounds.getYsize())
+				&& Double.isFinite(bounds.getZsize());
+	}
 
 	private static AABB simulationBounds() {
 		var minecraft = Minecraft.getInstance();
@@ -259,14 +271,14 @@ public class HordeClient {
 				&& ambientFrustum.isVisible(new AABB(point, point).inflate(0.5));
 	}
 
-	/// 含玩家自身核心的目标圆查询；仅供粒子候选筛选，不代表GPU平滑状态或实际单位占据。
+	/// 读取与 GPU 同源的平滑圆，供粒子候选筛选；不代表实际单位占据。
 	public static boolean ambientGapClear(Vec3 point) {
 		for (var event : EVENTS.values()) {
 			if (!event.ready || event.failed) {
 				continue;
 			}
-			for (var box : event.regions.values()) {
-				if (box.contains(point)) {
+			for (var circle : event.split.circles()) {
+				if (circle.bounds(event.origin).contains(point)) {
 					return false;
 				}
 			}
@@ -274,11 +286,11 @@ public class HordeClient {
 		return true;
 	}
 
-	/// 含玩家自身核心的胶囊引导轮廓有符号距离；仅用于CPU候选，实际单位占据须查询GPU。
+	/// 平滑圆的胶囊引导轮廓有符号距离；仅用于 CPU 候选。
 	public static double ambientGapBoundaryDistance(ClientEvent event, Vec3 point, Vec3 forward) {
 		double distance = Double.POSITIVE_INFINITY;
-		for (var box : event.regions.values()) {
-			distance = Math.min(distance, box.contourDistance(point, forward, event.speed));
+		for (var circle : event.split.circles()) {
+			distance = Math.min(distance, circle.bounds(event.origin).contourDistance(point, forward, event.speed));
 		}
 		return distance;
 	}
@@ -346,8 +358,10 @@ public class HordeClient {
 		public List<Block> blocks = List.of();
 		public final Map<String, RegionBox> regions = new TreeMap<>();
 		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
-		private final Map<String, RegionBox> lingeringTargets = new TreeMap<>();
-		private final Map<String, Double> lingeringTargetUntil = new TreeMap<>();
+		private final Map<String, LingeringGap> lingeringTargets = new TreeMap<>();
+
+		private record LingeringGap(RegionBox box, LivingEntity entity, double until) {
+		}
 		private static final double REGION_LINGER_TICKS = 30;
 		public double regionsChanged;
 		public float entityHeight;
@@ -581,7 +595,9 @@ public class HordeClient {
 		private void updateGaps(List<LivingEntity> targets, List<Mob> members, Player player) {
 			double now = time(0);
 			var updated = new TreeMap<String, RegionBox>();
-			updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
+			if (hasVisualCollision(player)) {
+				updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
+			}
 			for (var entity : targets) {
 				// 只对浪潮可视范围内的目标开缺口：远处的生物（含其他无关事件/动物）不应在空地上制造分割。
 				if (!isRelevantTarget(entity, player)) {
@@ -590,20 +606,19 @@ public class HordeClient {
 				var key = "target:" + entity.getUUID();
 				var box = RegionBox.forEntity(entity.getBoundingBox());
 				updated.put(key, box);
-				lingeringTargets.put(key, box);
-				lingeringTargetUntil.put(key, now + REGION_LINGER_TICKS);
+				lingeringTargets.put(key, new LingeringGap(box, entity, now + REGION_LINGER_TICKS));
 			}
-			// target:与member:共享滞留表；生物消失或成员淡出后都保留30tick，再交GPU收缩退场。
-			var iterator = lingeringTargetUntil.entrySet().iterator();
+			// 自然离开仍保留30 tick；碰撞资格或成员目标失效则直接交给平滑退场。
+			var iterator = lingeringTargets.entrySet().iterator();
 			while (iterator.hasNext()) {
 				var entry = iterator.next();
-				var lingering = lingeringTargets.get(entry.getKey());
-				if (lingering == null || now >= entry.getValue()) {
+				var lingering = entry.getValue();
+				if (now >= lingering.until() || !canRetainGap(entry.getKey(), lingering.entity(), player, now)) {
 					iterator.remove();
-					lingeringTargets.remove(entry.getKey());
 					continue;
 				}
-				updated.putIfAbsent(entry.getKey(), lingering);
+
+				updated.putIfAbsent(entry.getKey(), lingering.box());
 			}
 
 			// 每个参战生物保留自己的圆核心，不把多个核心合并成矩形禁区。
@@ -612,7 +627,7 @@ public class HordeClient {
 				var source = HordeParticipant.get(member);
 				var key = "target:" + source.targetId();
 				var target = source.targetId().equals(player.getUUID().toString()) ? seeds.get("local") : seeds.get(key);
-				if (target == null || source.fading() || !source.eventId().equals(id.toString())) {
+				if (!hasVisualCollision(member) || target == null || source.fading() || !source.eventId().equals(id.toString())) {
 					continue;
 				}
 				var bounds = member.getBoundingBox();
@@ -623,8 +638,7 @@ public class HordeClient {
 				var memberKey = "member:" + member.getUUID();
 				var box = RegionBox.forMember(bounds);
 				updated.put(memberKey, box);
-				lingeringTargets.put(memberKey, box);
-				lingeringTargetUntil.put(memberKey, now + REGION_LINGER_TICKS);
+				lingeringTargets.put(memberKey, new LingeringGap(box, member, now + REGION_LINGER_TICKS));
 			}
 
 			if (!regions.equals(updated) || !previousRegions.equals(regions)) {
@@ -638,6 +652,22 @@ public class HordeClient {
 			}
 		}
 
+		private boolean canRetainGap(String key, LivingEntity entity, Player player, double now) {
+			if (key.startsWith("target:")) {
+				return isGapTarget(entity);
+			}
+
+			if (!hasVisualCollision(entity) || !HordeParticipant.isEvent(entity)) {
+				return false;
+			}
+
+			var source = HordeParticipant.get(entity);
+			var target = lingeringTargets.get("target:" + source.targetId());
+			return !source.fading() && source.eventId().equals(id.toString())
+					&& (source.targetId().equals(player.getUUID().toString())
+					? hasVisualCollision(player) : target != null && now < target.until() && isGapTarget(target.entity()));
+		}
+
 		private boolean isRelevantTarget(LivingEntity entity, Player player) {
 			double range = HordeVisualConfig.rangeBlocks();
 			if (player.distanceToSqr(entity) > range * range) {
@@ -646,12 +676,12 @@ public class HordeClient {
 			if (routeBounds != null && !routeBounds.inflate(48).contains(entity.position())) {
 				return false;
 			}
-			return entity.isAlive() && !entity.isSpectator() && !HordeParticipant.isEvent(entity);
+			return isGapTarget(entity);
 		}
 
 
 		private static boolean isGapTarget(LivingEntity entity) {
-            return entity.isAlive() && !entity.isSpectator() && !HordeParticipant.isEvent(entity);
+			return hasVisualCollision(entity) && !HordeParticipant.isEvent(entity);
         }
     }
 
@@ -686,7 +716,7 @@ public class HordeClient {
 
 		/// 引导外轮廓沿潮方向延长，但不扩大圆核心禁区。
 		public double contourDistance(Vec3 point, Vec3 forward, double speed) {
-			if (point.y < y || point.y >= y + sizeY) {
+			if (radius() <= 0 || point.y < y || point.y >= y + sizeY) {
 				return Double.POSITIVE_INFINITY;
 			}
 			var direction = forward.multiply(1, 0, 1).normalize();
@@ -694,8 +724,9 @@ public class HordeClient {
 			double dz = point.z - z - sizeZ * 0.5;
 			double along = dx * direction.x + dz * direction.z;
 			double across = -dx * direction.z + dz * direction.x;
-			double radius = radius() + 0.45;
-			double band = 3.2 + speed * 8;
+			double influence = HordeSplitState.influence(radius());
+			double radius = radius() + 0.45 * influence;
+			double band = (3.2 + speed * 8) * influence;
 			double nearest = Math.clamp(along, -band - radius * 0.6, band * 0.6 + radius * 0.5);
 			return Math.hypot(along - nearest, across) - radius;
 		}

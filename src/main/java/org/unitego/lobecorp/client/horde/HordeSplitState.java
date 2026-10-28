@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.client.horde;
 
 import com.mojang.blaze3d.textures.GpuTextureView;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,10 +17,12 @@ public class HordeSplitState implements AutoCloseable {
     public static final int WORDS = 5;
     /// 单事件上限；超出时按半径从大到小保留，避免无界增长。
     public static final int MAXIMUM_CIRCLES = 64;
-    /// 目标消失后仍保留的 tick 数，让割圆收缩而不是突然消失。
+    /// 退场在40 tick内连续收至精确零，再移除圆。
     private static final double RETIRE_TICKS = 40;
     /// 中心与半径的连续逼近速率（1/秒）。
     private static final double SMOOTHING = 6.0;
+    // 与 horde_split.glsl 同步；最小成员圆达到全强度，零半径时引导带也失去作用。
+    private static final double FADE_RADIUS = 0.5;
     private static final int INITIAL_CAPACITY = 8;
     private final Map<String, Shape> shapes = new LinkedHashMap<>();
     private HordeDataTexture texture;
@@ -32,18 +35,33 @@ public class HordeSplitState implements AutoCloseable {
 
     /// 一个已经平滑过的割圆；坐标为事件局部坐标，世界几何在 CPU 侧完成换算。
     public record Circle(double centerX, double centerZ, double radius, double minimumY, double maximumY) {
+        public HordeClient.RegionBox bounds(Vec3 origin) {
+            return new HordeClient.RegionBox(origin.x + centerX - radius, origin.y + minimumY,
+                    origin.z + centerZ - radius, radius * 2, maximumY - minimumY, radius * 2);
+        }
+    }
+
+    /// 引导带和固定外扩随小圆一起退场，与 GPU 的 smoothstep 保持一致。
+    public static double influence(double radius) {
+        double weight = Math.clamp(radius / FADE_RADIUS, 0, 1);
+        return weight * weight * (3 - 2 * weight);
     }
 
     /// 每帧刷新：把本帧目标集合平滑成圆表并按需上传。
     public void update(HordeClient.ClientEvent event, double time) {
+        updateCircles(event.regions, event.origin, time);
+        publish();
+    }
+
+    /// 只更新 CPU 几何，不分配或上传 GPU 资源，供无游戏回归复用。
+    public void updateCircles(Map<String, HordeClient.RegionBox> regions, Vec3 origin, double time) {
         double delta = Double.isNaN(lastTime) ? 0 : Math.max(0, time - lastTime);
         lastTime = time;
         double alpha = 1.0 - Math.exp(-SMOOTHING * delta / 20.0);
-        var origin = event.origin;
         for (var entry : shapes.entrySet()) {
             entry.getValue().seen = false;
         }
-        for (var entry : event.regions.entrySet()) {
+        for (var entry : regions.entrySet()) {
             var box = entry.getValue();
             double radius = Math.max(box.sizeX(), box.sizeZ()) * 0.5;
             double centerX = box.x() + box.sizeX() * 0.5 - origin.x;
@@ -52,7 +70,7 @@ public class HordeSplitState implements AutoCloseable {
             double maximumY = box.y() + box.sizeY() - origin.y;
             var shape = shapes.get(entry.getKey());
             if (shape == null) {
-                shape = new Shape(new Circle(centerX, centerZ, radius, minimumY, maximumY));
+                shape = new Shape(new Circle(centerX, centerZ, 0, minimumY, maximumY));
                 shapes.put(entry.getKey(), shape);
             } else {
                 shape.current = new Circle(
@@ -73,15 +91,16 @@ public class HordeSplitState implements AutoCloseable {
             }
             if (shape.retireAt == Double.POSITIVE_INFINITY) {
                 shape.retireAt = time + RETIRE_TICKS;
+                shape.retireRadius = shape.current.radius;
             }
-            // 目标消失后半径连续收缩，避免整片浪潮在下一帧直接穿过原本的禁区。
+            double remaining = Math.clamp((shape.retireAt - time) / RETIRE_TICKS, 0, 1);
+            double radius = shape.retireRadius * remaining * remaining * (3 - 2 * remaining);
             shape.current = new Circle(shape.current.centerX, shape.current.centerZ,
-                    approach(shape.current.radius, 0, alpha), shape.current.minimumY, shape.current.maximumY);
-            if (time >= shape.retireAt || shape.current.radius <= 0.01) {
+                    radius, shape.current.minimumY, shape.current.maximumY);
+            if (time >= shape.retireAt) {
                 iterator.remove();
             }
         }
-        publish();
     }
 
     private static double approach(double from, double to, double alpha) {
@@ -186,6 +205,7 @@ public class HordeSplitState implements AutoCloseable {
         private Circle current;
         private boolean seen;
         private double retireAt = Double.POSITIVE_INFINITY;
+	    private double retireRadius;
 
         private Shape(Circle current) {
             this.current = current;

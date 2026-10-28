@@ -9,7 +9,7 @@ public class HordeVisualConfig {
 	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE, FRAGMENT_GROUPS;
 	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
 	public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES, LOD_ENABLED, CORPSE_BATCH;
-	public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, LOD_NEAR, LOD_FAR, CARD_DISTANCE, FRAME_DISTANCE;
+	public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, LOD_NEAR, LOD_FAR, CARD_DISTANCE, SINGLE_CARD_DISTANCE, FRAME_DISTANCE;
 
 	static {
 		synchronized (ClientConfig.class) {
@@ -28,6 +28,7 @@ public class HordeVisualConfig {
 			LOD_NEAR = b.translation(HordeLang.config("visual.lod_near", "Full quality distance (blocks)", "全精度距离（格）")).defineInRange("lodNear", 48, 1, 4096);
 			LOD_FAR = b.translation(HordeLang.config("visual.lod_far", "Medium quality distance (blocks)", "中精度距离（格）")).defineInRange("lodFar", 96, 2, 8192);
 		CARD_DISTANCE = b.translation(HordeLang.config("visual.card_distance", "Card distance (blocks, -1 off)", "使用片的距离（格，-1：不使用）")).defineInRange("cardDistance", 32, -1, 4096);
+			SINGLE_CARD_DISTANCE = b.translation(HordeLang.config("visual.single_card_distance", "Single card distance (blocks, -1 off)", "单方向片距离（格，-1：关闭）")).defineInRange("singleCardDistance", 64, -1, 4096);
 		FRAME_DISTANCE = b.translation(HordeLang.config("visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）")).defineInRange("frameDistance", 10, -1, 4096);
 			b.pop().translation(ClientConfig.translation("horde.ambient", "Ambient effects", "环境效果")).push("ambient");
 			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate footsteps", "聚合脚步声")).define("sound", true);

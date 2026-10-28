@@ -79,7 +79,7 @@ public class HordeGpuRenderer {
             .add("Color", VertexFormatElement.COLOR).add("Normal", VertexFormatElement.NORMAL).padding(1).build();
     private static final RenderPipeline NORMAL = pipeline(false, false);
     private static final RenderPipeline REVERSE = pipeline(true, false);
-    // 片档是封闭的6面盒：走透明裁剪（cutout，非半透明混合）并开启背面剔除，不渲染盒子内侧。
+    // 片档是共中心的六向投影片：只提交朝观察者的方向片，透明裁剪并保持背面剔除。
     private static final RenderPipeline CARD_NORMAL = cardPipeline(false);
     private static final RenderPipeline CARD_REVERSE = cardPipeline(true);
 	private static final RenderPipeline MOTION = RenderPipeline.builder()
@@ -435,7 +435,7 @@ public class HordeGpuRenderer {
 		HordeVertexLayout layout = null;
 		if (iris) {
 			int[] vertices = prepared.stream().mapToInt(item -> Math.multiplyExact(
-					item.count(), item.geometry().model.vertexCount())).toArray();
+					item.count(), item.verticesPerInstance())).toArray();
 			while (iris) {
 				try {
 					int words = HordeIrisShadows.entityVertexWords();
@@ -468,7 +468,7 @@ public class HordeGpuRenderer {
 		uploadedBytes += required;
 		var transforms = RenderSystem.getDynamicUniforms().writeTransform(modelView, new Vector4f(1), new Vector3f(), new Matrix4f());
 		var indices = RenderSystem.getSequentialBuffer(VertexFormat.Mode.QUADS);
-		int maximum = prepared.stream().mapToInt(item -> item.geometry().indices).max().orElse(0);
+		int maximum = prepared.stream().mapToInt(item -> item.verticesPerInstance() / 4 * 6).max().orElse(0);
 		var indexBuffer = indices.getBuffer(maximum);
 		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		var linear = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
@@ -486,7 +486,7 @@ public class HordeGpuRenderer {
 
 		long baseStarted = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.BASE, total);
 		try {
-			// 片档是封闭盒：单独用开启背面剔除的管线，不渲染盒子内侧（也减少背面填充）。
+			// 方向片单独使用透明裁剪与背面剔除管线。
 			drawNativePass(prepared, reverse ? CARD_REVERSE : CARD_NORMAL, true,
 					transforms, indexBuffer, indices.type(), colorTarget, depthTarget, linear, nearest, stride);
 			drawNativePass(prepared, reverse ? REVERSE : NORMAL, false,
@@ -530,7 +530,7 @@ public class HordeGpuRenderer {
 				pass.bindTexture("Glowmask", item.geometry().glow.getTextureView(), item.geometry().glow.getSampler());
 				pass.bindTexture("HordeAnimation", item.geometry().animation.texture().getTextureView(), nearest);
 				pass.setVertexBuffer(0, item.geometry().vertices);
-				pass.drawIndexed(0, 0, item.geometry().indices, item.count());
+				pass.drawIndexed(0, 0, item.verticesPerInstance() / 4 * 6, item.count());
 				drawn += item.count();
 				batches++;
 				HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
@@ -583,14 +583,20 @@ public class HordeGpuRenderer {
 			data.updateHeights(event);
 			event.split.update(event, batch.time());
 			data.terrain.update(event, data.heights, batch.time());
+			int verticesPerInstance = verticesPerInstance(geometry);
 			for (int offset = 0; offset < batch.count(); ) {
-				int limit = irisPath() ? IRIS.instanceLimit(geometry.model.vertexCount()) : INSTANCES_PER_DRAW;
+				int limit = irisPath() ? IRIS.instanceLimit(verticesPerInstance) : INSTANCES_PER_DRAW;
 				int count = Math.min(limit, batch.count() - offset);
-				prepared.add(new Prepared(batch, geometry, data, offset, count));
+				prepared.add(new Prepared(batch, geometry, data, offset, count, verticesPerInstance));
 				offset += count;
 			}
 		}
 		return prepared;
+	}
+
+	/// 方向片固定十二个输出槽，方向与单片阈值完全由 GPU 判定；源帧仍缓存全部六向顶点。
+	private static int verticesPerInstance(Geometry geometry) {
+		return geometry.model.tier() == 3 ? 12 : geometry.model.vertexCount();
 	}
 
 	@SuppressWarnings("resource")
@@ -625,8 +631,8 @@ public class HordeGpuRenderer {
 		put(SPLIT_STRENGTH, SPLIT_LEAD, SPLIT_MAXIMUM_OFFSET, 0);
 		// 光照区段缺失时的回退亮度：露天（方块光0、天空光15），不伪造洞穴亮度也不隐藏单位。
 		put(0, 15, 0, 0);
-		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.CARD_DISTANCE.get(),
-				item.geometry().model.tier() == 3 ? 1f : 0f, 0f);
+		put((float) HordeVisualConfig.FRAME_DISTANCE.get(), (float) HordeVisualConfig.SINGLE_CARD_DISTANCE.get(),
+				item.geometry().model.tier() == 3 ? 1f : 0f, item.verticesPerInstance());
 	}
 
 	/// 迎潮侧提前分流的带宽（格）：随浪潮速度增大，低速时仍保留基础宽度。
@@ -934,7 +940,8 @@ public class HordeGpuRenderer {
 	                        @Nullable DynamicTexture cardAtlas, @Nullable DynamicTexture cardGlowAtlas) {
 	}
 
-	private record Prepared(HordeClient.Batch batch, Geometry geometry, EventData event, int offset, int count) {
+	private record Prepared(HordeClient.Batch batch, Geometry geometry, EventData event, int offset, int count,
+	                        int verticesPerInstance) {
 	}
 
 	/// GPU展开原版实体顶点，再交给Iris已有材质管线；不映射或读取回CPU。
@@ -1068,7 +1075,7 @@ public class HordeGpuRenderer {
 			var encoder = RenderSystem.getDevice().createCommandEncoder();
 			var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 			var tail = items.get(last - 1);
-			int vertices = offsets[last - 1] + Math.multiplyExact(tail.count(), tail.geometry().model.vertexCount());
+			int vertices = offsets[last - 1] + Math.multiplyExact(tail.count(), tail.verticesPerInstance());
 			int rows = Math.ceilDiv(Math.multiplyExact(vertices, wordsPerVertex), slot.width);
 			long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.EXPAND, vertices);
 			try (var pass = encoder.createRenderPass(() -> "Horde Iris GPU vertex expansion", slot.view, OptionalInt.empty())) {
@@ -1083,7 +1090,7 @@ public class HordeGpuRenderer {
 					pass.bindTexture("HordeUVs", item.geometry().uvs.texture().getTextureView(), nearest);
 					int low = Math.multiplyExact(offsets[i], wordsPerVertex) / slot.width;
 					int high = Math.ceilDiv(Math.multiplyExact(offsets[i]
-							+ Math.multiplyExact(item.count(), item.geometry().model.vertexCount()), wordsPerVertex), slot.width);
+							+ Math.multiplyExact(item.count(), item.verticesPerInstance()), wordsPerVertex), slot.width);
 					pass.enableScissor(0, low, slot.width, high - low);
 					pass.draw(0, 3);
 					HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
@@ -1166,7 +1173,7 @@ public class HordeGpuRenderer {
 						}
 						var material = glowLayer ? item.geometry().glow : item.geometry().base;
 						int begin = offsets[i];
-						int count = item.count() * item.geometry().model.vertexCount();
+						int count = item.count() * item.verticesPerInstance();
 						i++;
 						while (i < chunk.last()) {
 							var next = items.get(i);
@@ -1179,7 +1186,7 @@ public class HordeGpuRenderer {
 							if ((glowLayer ? next.geometry().glow : next.geometry().base) != material) {
 								break;
 							}
-							count += next.count() * next.geometry().model.vertexCount();
+							count += next.count() * next.verticesPerInstance();
 							i++;
 						}
 						pass.bindTexture("Sampler0", material.getTextureView(), material.getSampler());

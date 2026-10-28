@@ -1,6 +1,28 @@
 # 深夜清扫：固定线路 GPU 三维浪潮
 
+2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。
+
 实现记录日期：2026-10-22；导航核对日期：2026-10-23。当前工作区为 `.workspace/lobecorp_horde`、分支 `codex/horde`，入口见 [Horde 索引](horde-index.md)。历史恢复工作区名为 horde-recovery；恢复快照为 `6328b11`，BenchMod 接入提交为 `1f30bde`。本文描述本次已写入的实现，构建、运行、视觉和性能状态分别记录，不能以旧版采样代替本版验收。
+
+## 2026-10-28 客户端碰撞资格与连续分割
+
+- local、target、member 统一读取客户端实体的存活、旁观、`noPhysics` 与实际 AABB 三轴有效尺寸；不使用普通生物默认返回 false 的 `canBeCollidedWith` 作为筛选。依据为 IDEA 当前解析的 Minecraft 26.1.2 / NeoForge 26.1.2.100 依赖源码。
+- 滞留项保存实体引用并逐 tick 复核资格；旁观、无物理或无体积立即停止提交目标圆，相关成员也复核当前目标。自然离开仍沿用 30 tick 滞留，不允许失效实体由滞留表重新引入。
+- 新圆从零半径开始指数展开；退场从当前半径用 40 tick 平滑曲线收至精确零后删除，途中复入沿用当前圆。GPU 的固定引导带乘以 `smoothstep(0, 0.5, radius)`，避免极小半径仍保留固定幅度的位移。
+- CPU 粒子核心与轮廓查询改读平滑圆，轮廓的固定外扩和引导长度随半径归零。仅共享平滑圆与 fade 权重；GPU 保留固定 reach 并缩放 push，CPU 缩小轮廓引导带，不代表完整几何一致。`HordeTide` / `HordeParticleSamples` 本身不读取 regions 或平滑圆，仍生成解析候选；本次只修复后续核心/轮廓筛选，没有补齐 I49 的 GPU 分割位移等既有位置差异。
+- 修改文件：`HordeClient`、`HordeSplitState`、`horde_split.glsl`；新增 `HordeSplitTransitionTest` 的 4 项无 GPU 回归，覆盖三类键零起步、精确退场、复入/反转及 CPU 小圆轮廓。测试待父代理统一运行。
+- 已完成 IDEA 本次行格式化与统一静态诊断：生产 Java/GLSL 和新测试均 0 错误；两份生产 Java 合计 5 项既有警告，无新增警告。未执行构建、Data、测试、游戏或 Debug；未暂存、提交或推送。服务端代码与方向片文件不在本次修改内。
+- 修改前原字节备份：`build/agent-backups/20261028-horde-client-split/`；已有空圆纹理初始化 3 行 WIP 保留，父代理提交时须排除该旧 hunk。
+
+## 2026-10-28 方向片剔除与超远单片
+
+- 方向片固定提交 12 顶点 / 18 索引；普通片由 GPU 每轴只取朝观察者的一面，保留 cutout 与背面剔除。超远实例仍处理 12 个输出槽，但只光栅化一个主方向 quad，另外两个 quad 退化为零面积；不宣称超远只输出 4 顶点或减少到单 quad 的 Iris 展开字数。
+- 新配置 `display.singleCardDistance` 默认 64 格，`-1` 关闭单片；独立于 `lodFar`，原 `cardDistance=32` 不变。翻译键 `lobecorp.configuration.horde.visual.single_card_distance` 通过现有 `HordeLang.config` 注册，由父代理统一 Data。
+- `horde_cards.glsl` 共用真实方向序 `-X,+X,-Y,+Y,-Z,+Z`；用运动纹理中每实例最终 point、yaw 与投影片中心反算观察方向。单片取局部观察向量绝对值最大的轴，足够高的俯视取顶部；原版和 Iris 使用同一映射。
+- 六方向片、动画帧与图集继续在资源准备阶段预烘焙、上传并常驻缓存；保留源模型六向 24 顶点帧，不改投影尺度或图集比例。`Prepared.verticesPerInstance` 仅按 geometry tier 返回片档 12 或完整模型顶点数，统一原版索引数、Iris 实例上限、工作集布局、展开范围与合批绘制数量。`AnimationInfo.x` 保留源模型 24 顶点帧跨度，输出跨度通过闲置的 `FrameLod.w` 传递；Iris 的 UV、法线、切线和 mid-texcoord 跟随被选中的原始面。
+- **新增方向与单片选择全部在 GPU**：`FrameLod.y` 传独立单片距离，GPU 按每实例最终 `point + OriginTime.xyz` 的三维距离严格 `>64` 判定；`-1` 关闭，恰好 64 格保留普通片。超远实例保留一个主方向 quad，另两个 quad 的四角均映射为同一顶点而成为零面积，不进入片段着色。CPU 沿用区域批量提交，保留相机相对原点 `OriginTime.xyz=event.origin-camera`、区域行列、时钟及既有必要参数，不新增按批次距离选顶点数、逐实例距离/方向计算或逐帧 CPU 几何构造；原完整模型/片批次 LOD 与数量范围不变。
+- 已完成 IDEA 本次 Java 行格式化和五份 Java/GLSL 静态诊断：0 错误；渲染器 11 项既有警告，其余无警告。未执行 Compile、Data、测试、游戏、Debug、同步、暂存、提交或推送；硬件 GLSL、视觉与性能未验证。
+- 保留 `HordeMeshReduction`、`HordeCardBake` 和分割实现的全部既有 WIP，不修改投影比例、图集烘焙、发光材质或阴影阶段跳过。原字节备份：`build/agent-backups/20261028-horde-card-culling/`；文档基线另存 `post-split-docs/`，包含此前分割记录。
 
 ## 2026-10-27 按进度的潮与确定性分割（当前实现）
 

@@ -1,8 +1,14 @@
 # Horde 当前文档入口
 
+2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。
+
 核对日期：2026-10-27。本工作区只负责 Horde；其他系统保留为[共同基线](README.md)。本文依据工作区当前源码与已有报告整理，包含未提交实现；源码存在、历史运行通过与本轮验收分别判断。
 
 ## 本轮任务进度
+
+2026-10-28 客户端分割已实现并完成静态诊断：local/target/member 统一排除旁观、`noPhysics` 与无有效碰撞体积，滞留复核资格；新圆从零、退场精确至零、复入沿用当前状态，GPU 引导幅度与 CPU 粒子轮廓同步消退。新增 4 项无游戏回归待父代理运行；本次不构建、不运行、不提交，原空纹理 3 行 WIP 保留。详见[渲染实现](horde-rendering-implementation.md#2026-10-28-客户端碰撞资格与连续分割)与[修改记录](changes.md#2026-10-28-客户端碰撞资格与连续分割)。
+
+2026-10-28 方向片固定提交 12 顶点 / 18 索引，原版/Iris 共用 GPU 选面；新增独立 `singleCardDistance=64`（`-1` 关闭），保留 `cardDistance=32`。六方向源帧（24 顶点）和图集在资源阶段预烘焙上传并缓存；CPU 沿用区域批量提交和现有批次参数，不新增逐实例工作或 CPU 距离/方向选择。GPU 复用 `OriginTime.xyz=event.origin-camera`，按每实例最终位置、heading 和相机高度选面；严格超过阈值只光栅化一片，其余两片退化为零面积，仍处理 12 个输出槽。原有完整模型/片批次 LOD 与数量范围不变。五份源码静态诊断 0 错误，11 项既有警告；未构建、Data、测试或运行，由父代理统一验证。详见[片实现与限制](horde-rendering-implementation.md#2026-10-28-方向片剔除与超远单片)。
 
 2026-10-27 当前阶段：用户确认后已完成一次低频截图视觉复测（`client-1793109801528`），七段各3张，加warmup共23张，间隔至少100 tick，运行中不读图/比图。控制与完整性PASSED、环境有效、失焦0、GPU绘制失败0；测量P99 17.800ms、最长92.287ms、>100ms为0帧，较旧重型取证的周期尖峰明显减少，但启动/暖机仍有尖峰，全部CPU/GPU问题未据此宣告解决。Spark已保存，自有游戏/Debug/GPU及探针已释放。结束后仅目视已保存代表图；稀疏截图不能证明逐帧连续性或I49精确位置。片比例修复和原WIP保留；不重跑、不重启I41优化。
 

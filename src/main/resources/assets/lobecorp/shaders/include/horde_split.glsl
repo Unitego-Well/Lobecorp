@@ -24,7 +24,7 @@ void hordeSplitOffset(float station, float lateral, float seed, out float delay,
             float radius = scalar(HordeSplit, at + 2);
             float yMin = scalar(HordeSplit, at + 3);
             float yMax = scalar(HordeSplit, at + 4);
-            if (radius <= 0.0001 || center.y >= yMax || center.y + probeHeight <= yMin) {
+            if (radius <= 0.0 || center.y >= yMax || center.y + probeHeight <= yMin) {
                 continue;
             }
             vec2 relative = circle - center.xz;
@@ -38,7 +38,9 @@ void hordeSplitOffset(float station, float lateral, float seed, out float delay,
             // 核心内压力满值，核心外到 reach 之间连续衰减，因此迎潮侧提前分流、背潮侧逐渐合流。
             float pressure = 1.0 - smoothstep(radius, reach, distance);
             vec2 away = hordeSafeNormalize(vec2(-along, -across), vec2(0.0, seed >= 0.0 ? -1.0 : 1.0));
-            float push = pressure * strength * (reach - radius);
+            // 固定引导带也必须在半径归零时归零；0.5格与 HordeSplitState 的最小成员圆一致。
+            float influence = smoothstep(0.0, 0.5, radius);
+            float push = pressure * strength * (reach - radius) * influence;
             lateralOffset += away.y * push;
             delay += away.x * push;
         }

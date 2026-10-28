@@ -1,6 +1,7 @@
 #version 330
 
 #moj_import <lobecorp:horde_motion.glsl>
+#moj_import <lobecorp:horde_cards.glsl>
 
 uniform sampler2D HordeUVs;
 uniform sampler2D HordeIrisAnimation;
@@ -15,15 +16,24 @@ uint packedDirection(vec4 direction) {
 void main() {
     int words = MotionInfo.w;
     int pixel = int(gl_FragCoord.y) * int(ProbeInfo.z) + int(gl_FragCoord.x);
-    int totalVertices = int(AnimationInfo.x) * MotionInfo.y;
+    int verticesPerInstance = int(FrameLod.w);
+    int totalVertices = verticesPerInstance * MotionInfo.y;
     int ordinalVertex = pixel / words - int(SegmentRegions.z);
     if (ordinalVertex < 0 || ordinalVertex >= totalVertices) {
         discard;
     }
-    int vertex = ordinalVertex % int(AnimationInfo.x);
-    int instance = ordinalVertex / int(AnimationInfo.x);
+    int vertex = ordinalVertex % verticesPerInstance;
+    int instance = ordinalVertex / verticesPerInstance;
     int word = pixel % words;
     int cached = (MotionInfo.x + instance) * HORDE_MOTION_VALUES;
+    vec2 heading = vec2(scalar(HordeMotion, cached + 5), scalar(HordeMotion, cached + 6));
+    mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
+    if (FrameLod.z > 0.5) {
+        int frameStart = int(scalar(HordeMotion, cached + 7));
+        vec3 center = (vector3(HordeIrisAnimation, frameStart * 10)
+        + vector3(HordeIrisAnimation, (frameStart + 2) * 10)) * 0.5;
+        vertex = hordeCardVertex(vertex, vector3(HordeMotion, cached), yaw, center);
+    }
     uint bits;
     if (word == 4 || word == 5) {
         if (FrameLod.z > 0.5) {
@@ -48,14 +58,19 @@ void main() {
         // 虚拟单位没有真实Entity，使用中性实体/方块实体/物品标识。
         bits = 0u;
     } else if (word == 11 || word == 12) {
-        bits = floatBitsToUint(scalar(HordeUVs, vertex * 4 + word - 9));
+        if (FrameLod.z > 0.5) {
+            int frame = int(scalar(HordeMotion, cached + 7)) / int(AnimationInfo.x);
+            float mid = word == 11 ? (float(vertex / 4) + 0.5) / 6.0
+            : (float(frame) + 0.5) / AnimationInfo.y;
+            bits = floatBitsToUint(mid);
+        } else {
+            bits = floatBitsToUint(scalar(HordeUVs, vertex * 4 + word - 9));
+        }
     } else {
         if (word == 3) {
             bits = scalar(HordeMotion, cached + 4) >= 0.0 ? 0xffffffffu : 0u;
         } else {
             int offset = (int(scalar(HordeMotion, cached + 7)) + vertex) * 10;
-            vec2 heading = vec2(scalar(HordeMotion, cached + 5), scalar(HordeMotion, cached + 6));
-            mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
             if (word < 3) {
                 float position;
                 if (word == 1) {

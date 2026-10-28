@@ -11,6 +11,7 @@ in vec4 Color;
 in vec3 Normal;
 
 #moj_import <lobecorp:horde_motion.glsl>
+#moj_import <lobecorp:horde_cards.glsl>
 
 out vec2 texCoord;
 out vec4 lighting;
@@ -47,7 +48,14 @@ void main() {
     mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
     vec3 position = Position;
     vec3 normal = Normal;
-    animate(gl_VertexID, int(scalar(HordeMotion, cached + 7)), position, normal);
+    int frameStart = int(scalar(HordeMotion, cached + 7));
+    int vertex = gl_VertexID;
+    if (FrameLod.z > 0.5) {
+        vec3 center = (vector3(HordeAnimation, frameStart * 6)
+        + vector3(HordeAnimation, (frameStart + 2) * 6)) * 0.5;
+        vertex = hordeCardVertex(vertex, point, yaw, center);
+    }
+    animate(vertex, frameStart, position, normal);
     position.xz = yaw * position.xz;
     normal.xz = yaw * normal.xz;
     normal = length(normal) > 0.0001 ? normalize(normal) : vec3(0.0, 1.0, 0.0);
@@ -66,10 +74,10 @@ void main() {
     texCoord = UV0;
     if (FrameLod.z > 0.5) {
         // 片图集：UV编码(方向*2+角点)/12，动画帧从运动缓冲的帧基址取。
-        float index = floor(UV0.x * 12.0);
-        float face = floor(index * 0.5);
-        float cornerU = index - face * 2.0;
+        int corner = vertex % 4;
+        float face = float(vertex / 4);
+        float cornerU = corner == 1 || corner == 2 ? 1.0 : 0.0;
         int frame = int(scalar(HordeMotion, cached + 7)) / int(AnimationInfo.x);
-        texCoord = vec2((face + cornerU) / 6.0, (float(frame) + UV0.y) / AnimationInfo.y);
+        texCoord = vec2((face + cornerU) / 6.0, (float(frame) + (corner >= 2 ? 1.0 : 0.0)) / AnimationInfo.y);
     }
 }

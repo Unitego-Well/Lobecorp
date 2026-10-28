@@ -1,5 +1,7 @@
 # 系统修改记录
 
+2026-10-28 软度调整：用户允许短暂穿入核心和越出路线边缘；当前以渐变压力、稳定个体强度/相位及带自由先验的饱和混合替代圈界投影/hard capacity/hard max。保留0.7积分、锁侧、3倍sway和四字状态，测试改为柔和密度相关不变量。本轮仅静态检查、未运行测试/构建/游戏；普通05/Iris06采集PASSED不代表软度通过。详见[渲染实现](horde-rendering-implementation.md)及 .agent/reports/20261028-horde-soft-pressure.md。
+
 2026-10-28 当前改为每EventData四字双RGBA8避让状态，替代下面静态草稿。整route活动行窗按半开边界迁移，拆组前每事件更新一次；锁侧不随移动圆穿中线翻转，活动/退场的sway+avoidance总横向状态限速0.7。Motion8保留，CPU不做逐单位更新，3倍sway保留。禁止测试前6项标量数值回归已通过；Java窗口测试、GPU/游戏/性能均待父代理。三份新文件有IDEA自动暂存，未提交。详见[渲染实现](horde-rendering-implementation.md)及 .agent/reports/20261028-horde-gpu-state.md。
 
 2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 .agent/reports/20261028-horde-path-correction.md；最新补丁/清单在 build/agent-backups/20261028-horde-path-correction/。此结果不是游戏或硬件 GLSL 验收。

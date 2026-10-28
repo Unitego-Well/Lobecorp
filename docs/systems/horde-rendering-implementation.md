@@ -1,5 +1,18 @@
 # 深夜清扫：固定线路 GPU 三维浪潮
 
+## 2026-10-28 软分割压力（当前行为，替代严格净空目标）
+
+用户视觉拒收37f0b3f：原图三头牛周围形成长胶囊空场，边沿虚拟单位挤成平直密墙；少量穿入并没有带来渐变密度。普通05/Iris06的GPU错误0、各23图采集PASSED只能作为该版采集事实，不能作软度验收。本轮未运行程序或测试，由父代理比较新实机图。
+
+- 核心从不可穿越禁区改为软影响区。radius及模型余量不缩小，单位可以短暂进入核心、越出route侧边，并经原GPU积分自然返回；移除绝对圈界goal、Boolean范围内全强度平台、hard capacity与多圆hard-max包络，不用隐藏、位置投影、清零或瞬间换侧制造完美空洞。
+- 空间压力为紧支撑椭圆bell：q=((along−shift)/reach)²+(across/(clearance+1.5))²，pressure=max(0,1−q)²；迎潮reach=clearance+lead，背潮reach=clearance+band。只在中心达到峰值，沿向与侧缘渐变归零，没有一段constant满强度平台。lead仍用横移需求和4tick加速时间计算；半径fade继续缩放压力至零。
+- 同侧累积 M=Σw、D=Σ(w×softDelta)，w=4×pressure×fade；目标为 natural+side×individual×D/(1+M/0.8)。自由先验1始终存在，混合比例不超过0.8，重叠再多也保留至少20%的原路线权重，不把不同base列抵消到同一绝对圈界。softDelta用0.6格宽度的平滑正部处理单圆需求，不在圆之间取hard max。
+- individual由独立seed盐11/13给稳定0.55–1强度、0.85–1缓慢呼吸因子和±0.2clearance的固定相位偏移；个体强度放在混合之后，不被重叠归一化抹平。natural sway独立相加、3倍频率不变，控制目标不把sway抵消；最终仍受原0.7总横向速度积分及16格数值范围约束，16不是route宽度裁剪。
+- 初选仍比较左右目标成本、近似平手用seed，已有锁侧只算原侧。control.y严格0/1、锁侧/phase仍0或±1，不能把pressure写成分数锁侧。零压力返回natural，已有位移/速度按原积分平滑退场。
+- 四字状态布局、身份迁移、窗口、dt、heading、Java生命周期、CPU区域提交、服务端判断、数量/范围、方向片和原WIP均不改。仅本轮两份GLSL、Python验证入口及四份系统文档/.agent索引报告调整。
+- 测试改为直接读取生产helper及avoidanceTarget正文，检查柔和压力/渐入渐出、seed多样、natural加法、单圆及64重叠圆下不同base列仍分散、平滑重叠、严格flag和不跳边；移除绝对不穿透/9.164近侧门禁，保留长dt/速度预算/heading等验证，原Java身份测试保持。当前只做IDEA静态检查，所有测试留父代理运行。
+- 本轮报告：.agent/reports/20261028-horde-soft-pressure.md；37f0b3f增量及原字节备份清单：build/agent-backups/20261028-horde-soft-pressure/。辅助图片识别接口401已由父代理说明，采用原生视觉，不改任何/.env/API配置。
+
 ## 2026-10-28 每事件 GPU 状态避让（当前实现）
 
 本节替代下方无历史静态草稿；3倍 sway 保留。新增 HordeAvoidanceState 与 core/horde_avoidance.fsh，CPU 只按事件/批次准备整窗和 uniform，不枚举虚拟单位。活动绕行与退场的 sway+avoidance 总横向状态按 0.7×常规速度积分，侧向历史不放入会被各 drawGroup 覆盖的 Motion8。源码与数值检查不等于 GPU、游戏或性能验收。

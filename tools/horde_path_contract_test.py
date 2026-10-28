@@ -152,15 +152,16 @@ class HordePathContractTest(unittest.TestCase):
     def test_dynamic_circle_crossing_midline_keeps_locked_side_and_continuity(self):
         for preferred in (-1.0, 1.0):
             locked = self.control["hordeAvoidanceSide"](0.0, preferred, 1.0, 0.0)
-            position, velocity = preferred * 4.086, 0.0
-            for step in range(1001):
-                across = -0.1 + step * 0.0002
-                clearance = self.control["hordeAvoidanceClearance"](3.636, 0.0, 1.0)
-                signed_target = self.control["hordeAvoidanceGoal"](across, clearance, locked, 0.0, 1.0)
-                target = locked * signed_target
-                next_position, velocity = self.integrate(position, velocity, target, 0.75, 0.05)
+            position, velocity = 1.0 * preferred, 0.0
+            for step in range(101):
+                across = -0.1 + step * 0.002
+                target = self.target_kernel(((0.0, across, 3.636),))
+                control = target(-5.0, 0.0, position, -preferred, 0.0, 31.0, locked)
+                next_position, velocity = self.integrate(position, velocity, control.x, 0.75, 0.05)
                 self.assertLessEqual(abs(next_position - position), 0.525 * 0.05 + 1e-12)
-                self.assertEqual(self.control["hordeAvoidanceSide"](locked, -preferred, 1.0, 0.0), preferred)
+                self.assertEqual(control.z, preferred)
+                self.assertEqual(control.y, 1.0)
+                locked = self.control["hordeAvoidanceSide"](locked, control.z, control.y, 0.0)
                 self.assertEqual(locked, preferred)
                 position = next_position
 
@@ -186,33 +187,34 @@ class HordePathContractTest(unittest.TestCase):
         self.assertEqual(locked, 0.0)
         self.assertAlmostEqual(offset, 0.0, delta=1e-12)
 
-    def test_required_lead_allows_acceleration_before_static_circle_core(self):
-        position, velocity, station = 0.0, 0.0, -60.0
-        speed, dt, clearance = 0.75, 0.1, 4.086
-        locked = 0.0
-        for step in range(1000):
-            required = max(abs(clearance - position), clearance) + 1.5
-            lead = self.control["hordeAvoidanceLead"](required, speed, 0.102, 9.2)
-            lead += 9.2 if locked else 0.0
-            encounter = float(-clearance - 9.2 <= -station <= clearance + lead)
-            target = clearance if encounter else 0.0
-            position, velocity = self.integrate(position, velocity, target, speed, dt)
-            locked = self.control["hordeAvoidanceSide"](locked, 1.0, encounter, float(position == 0.0))
-            if abs(station) <= 3.636:
-                self.assertGreaterEqual(math.hypot(station, position), 3.636 - 1e-9)
-            station += speed * dt
+    def test_pressure_is_gradual_and_has_no_full_strength_platform(self):
+        pressure = self.control["hordeAvoidancePressure"]
+        centre = pressure(0.0, 0.0, 5.0, 20.0, 9.2, 0.0)
+        self.assertEqual(centre, 1.0)
+        samples = [pressure(along, 0.0, 5.0, 20.0, 9.2, 0.0)
+                   for along in (1.0, 5.0, 10.0, 15.0, 20.0, 25.0)]
+        self.assertEqual(samples, sorted(samples, reverse=True))
+        self.assertTrue(all(value < centre for value in samples))
+        self.assertGreater(samples[2], 0.0)
+        self.assertEqual(samples[-1], 0.0)
+        for edge in (-14.2, 25.0):
+            self.assertLess(abs(pressure(edge - 1e-5, 0.0, 5.0, 20.0, 9.2, 0.0)
+                                - pressure(edge + 1e-5, 0.0, 5.0, 20.0, 9.2, 0.0)), 1e-8)
+        self.assertEqual(pressure(0.0, 20.0, 5.0, 20.0, 9.2, 0.0), 0.0)
 
     def test_radius_fade_changes_target_without_teleporting_state(self):
-        position, velocity, locked = 5.0, 0.0, 1.0
+        target = self.target_kernel(((0.0, 0.0, 3.636),))
+        data = target.__globals__["HordeSplit"]
+        position, velocity, locked = 3.0, 0.0, 1.0
         for step in range(401):
-            radius = max(0.0, 3.636 * (1.0 - step / 400.0))
-            fade = smoothstep(0.0, 0.5, radius)
-            clearance = self.control["hordeAvoidanceClearance"](radius, 0.0, fade)
-            target = self.control["hordeAvoidanceGoal"](0.0, clearance, locked, 0.0, fade)
-            new_position, velocity = self.integrate(position, velocity, target, 0.75, 0.1)
+            data[2] = max(0.0, 3.636 * (1.0 - step / 400.0))
+            control = target(0.0, 0.0, position, 1.0, 0.0, 31.0, locked)
+            new_position, velocity = self.integrate(position, velocity, control.x, 0.75, 0.1)
             self.assertLessEqual(abs(new_position - position), 0.0525 + 1e-12)
             position = new_position
-        self.assertEqual(self.control["hordeAvoidanceClearance"](0.0, 1.0, 0.0), 0.0)
+        self.assertEqual(control.x, 0.0)
+        self.assertEqual(control.y, 0.0)
+        self.assertEqual(control.z, 1.0)
 
     def target_kernel(self, circles):
         scope = dict(self.motion)
@@ -230,23 +232,56 @@ class HordePathContractTest(unittest.TestCase):
                      LightRoute=SimpleNamespace(w=2.0))
         return actual_target_function(scope)
 
-    def test_capacity_precedes_current_position_intersection(self):
-        target = self.target_kernel(((0.0, 5.0, 3.636), (0.0, 14.0, 3.636)))
-        near = 14.0 - (3.636 + 0.45 + 0.75)
-        control = target(-10.0, 0.0, 0.0, 1.0, 0.0, 17.0, 1.0)
-        self.assertLessEqual(control.x, near + 1e-12)
-        self.assertEqual(control.z, 1.0)
-        initial = target(-10.0, 0.0, 0.0, 1.0, 0.0, 17.0, 0.0)
-        self.assertEqual(initial.z, -1.0)
-        self.assertEqual(initial.x, 0.0)
-        position, velocity = 0.0, 0.0
-        for frame in range(1000):
-            station = -60.0 + frame * 0.075
-            control = target(station, 0.0, position, 1.0, 0.0, 17.0, 1.0)
-            position, velocity = self.integrate(position, velocity, control.x, 0.75, 0.1)
-            self.assertLessEqual(position, near + 1e-10)
-        single = self.target_kernel(((0.0, 14.0, 3.636),))
-        self.assertEqual(single(-10.0, 0.0, 0.0, 1.0, 0.0, 17.0, 0.0).x, 0.0)
+    def test_soft_targets_keep_base_columns_distinct_even_with_overlapping_circles(self):
+        for count in (1, 4, 16, 64):
+            target = self.target_kernel(((0.0, 0.0, 3.636),) * count)
+            world = [base + target(0.0, base, 0.0, 1.0, 0.0, 31.0, 1.0).x
+                     for base in (-1.0, -0.5, 0.0, 0.5, 1.0)]
+            self.assertGreater(world[-1] - world[0], 0.39)
+            self.assertGreater(max(world) - min(world), 0.39)
+        blend = self.control["hordeAvoidanceBlend"]
+        maximum = self.control["HORDE_AVOID_MAX_BLEND"]
+        for mass in (0.01, 1.0, 10.0, 100.0, 10000.0):
+            self.assertLess(blend(mass, mass, 1.0), maximum)
+            self.assertGreaterEqual(1.0 - blend(mass, mass, 1.0), 1.0 - maximum)
+
+    def test_soft_pressure_allows_core_entry_and_individual_target_variation(self):
+        target = self.target_kernel(((0.0, 0.0, 3.636),))
+        values = [target(0.0, 0.0, 0.0, 1.0, 0.0, float(column * 31), 1.0).x
+                  for column in range(64)]
+        self.assertGreater(max(values) - min(values), 0.15)
+        self.assertTrue(any(0.0 < value < 3.636 for value in values))
+        for column, value in enumerate(values):
+            self.assertEqual(value, target(0.0, 0.0, 0.0, 1.0, 0.0, float(column * 31), 1.0).x)
+
+    def test_active_target_preserves_natural_sway_additively(self):
+        target = self.target_kernel(((0.0, 0.0, 3.636),))
+        low = target(-3.0, 0.0, 0.0, 1.0, -0.75, 31.0, 1.0)
+        high = target(-3.0, 0.0, 0.0, 1.0, 0.75, 31.0, 1.0)
+        self.assertEqual(low.y, 1.0)
+        self.assertEqual(high.y, 1.0)
+        self.assertAlmostEqual(high.x - low.x, 1.5, delta=1e-12)
+
+    def test_overlap_is_smooth_and_encounter_flag_stays_binary(self):
+        previous = None
+        for across in (-0.02, -0.01, 0.0, 0.01, 0.02):
+            target = self.target_kernel(((0.0, 0.0, 3.636), (0.0, across, 3.636)))
+            value = target(-3.0, 0.0, 0.0, 1.0, 0.0, 31.0, 1.0)
+            self.assertIn(value.y, (0.0, 1.0))
+            self.assertIn(value.z, (-1.0, 1.0))
+            if previous is not None:
+                self.assertLess(abs(value.x - previous), 0.05)
+            previous = value.x
+        target = self.target_kernel(((0.0, 0.0, 3.636),))
+        for station in (-200.0, -30.0, -5.0, 0.0, 10.0, 200.0):
+            control = target(station, 0.0, 0.0, -1.0, 0.3, 31.0, 1.0)
+            self.assertIn(control.y, (0.0, 1.0))
+            self.assertEqual(control.z, 1.0)
+            for locked in (-1.0, 0.0, 1.0):
+                side = self.control["hordeAvoidanceSide"](locked, control.z, control.y, 0.0)
+                self.assertIn(side, (-1.0, 0.0, 1.0))
+            if control.y == 0.0:
+                self.assertEqual(control.x, 0.3)
 
     def test_initial_side_uses_seed_only_for_similar_costs(self):
         target = self.target_kernel(((0.0, 0.0, 3.636),))

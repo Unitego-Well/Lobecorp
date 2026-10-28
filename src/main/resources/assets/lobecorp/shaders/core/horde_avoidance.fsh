@@ -23,17 +23,18 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
     vec2 forward = routeForward(station);
     vec2 side = vec2(-forward.y, forward.x);
     vec3 base = location(station, lateral);
-    vec2 desired = vec2(-natural, natural);
-    vec2 capacities = vec2(SplitShape.z);
-    vec2 encounters = vec2(0.0);
+    vec2 weighted = vec2(0.0);
+    vec2 mass = vec2(0.0);
     float driftBound = motionDriftSpeedBound(seed);
+    float phase = motionRandom(seed, HORDE_AVOID_PHASE_SALT) * HORDE_AVOID_TAU;
+    float individual = hordeAvoidanceIndividual(motionRandom(seed, HORDE_AVOID_STRENGTH_SALT), phase, OriginTime.w);
     int firstChannel = int(step(0.0, heldSide));
     int lastChannel = firstChannel + 1;
     if (locked == 0.0) {
         firstChannel = 0;
         lastChannel = 2;
     }
-    // 圆数据只读一遍；初选共享左右候选，已锁定身份只处理原侧。
+    // 单次圆扫描；柔和影响不要求核心净空，也不向圈界投影单位。
     for (int slot = 0; slot < int(SplitInfo.x); slot++) {
         int at = slot * 5;
         float radius = scalar(HordeSplit, at + 2);
@@ -47,47 +48,35 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
         float across = dot(relative, side);
         float fade = smoothstep(0.0, HORDE_AVOID_FADE_RADIUS, radius);
         float clearance = hordeAvoidanceClearance(radius, SplitShape.w, fade);
-        bool intersects = abs(across) <= clearance + HORDE_AVOID_SWAY_MARGIN
-        || abs(across - position) <= clearance;
+        float band = SplitInfo.z * fade;
+        float shift = sin(phase) * clearance * HORDE_AVOID_PHASE_SHIFT;
         for (int channel = firstChannel; channel < lastChannel; channel++) {
             float candidateSide = float(channel * 2 - 1);
-            float goal = candidateSide * across + clearance;
-            float target = candidateSide * min(goal, SplitShape.z);
-            float required = max(abs(target - position), abs(target - natural)) + HORDE_AVOID_SWAY_MARGIN;
-            float lead = hordeAvoidanceLead(required, CameraSpeed.w, driftBound, SplitInfo.z * fade);
-            lead += locked != 0.0 ? SplitInfo.z * fade : 0.0;
-            if (along < -clearance - SplitInfo.z * fade || along > clearance + lead) {
-                continue;
-            }
-            bool blocked = goal > SplitShape.z && candidateSide * across > clearance;
-            // 先施加前方不可穿越圆的近侧容量，不能等单位贴圆后才刹车。
-            if (blocked) {
-                capacities[channel] = min(capacities[channel],
-                        mix(SplitShape.z, max(0.0, candidateSide * across - clearance), fade));
-            }
-            if (!intersects) {
-                continue;
-            }
-            encounters[channel] = 1.0;
-            if (!blocked) {
-                desired[channel] = max(desired[channel],
-                        hordeAvoidanceGoal(across, clearance, candidateSide, natural, fade));
-            }
+            float delta = hordeAvoidanceSoftDelta(across, clearance, candidateSide);
+            float required = min(delta, SplitShape.z) + HORDE_AVOID_SWAY_MARGIN;
+            float lead = hordeAvoidanceLead(required, CameraSpeed.w, driftBound, band);
+            float pressure = hordeAvoidancePressure(along, across, clearance, lead, band, shift);
+            float weight = HORDE_AVOID_SOFT_GAIN * pressure * fade;
+            weighted[channel] += weight * delta;
+            mass[channel] += weight;
         }
     }
+    vec2 displacements = vec2(hordeAvoidanceBlend(weighted.x, mass.x, individual),
+            hordeAvoidanceBlend(weighted.y, mass.y, individual));
     int selected = int(step(0.0, heldSide));
     if (locked == 0.0) {
-        float leftTarget = -clamp(desired.x, -SplitShape.z, capacities.x);
-        float rightTarget = clamp(desired.y, -SplitShape.z, capacities.y);
-        float selectedSide = hordeAvoidanceChoose(preferred, abs(leftTarget - position), abs(rightTarget - position),
-                hordeAvoidanceFits(desired.x, capacities.x), hordeAvoidanceFits(desired.y, capacities.y));
+        float leftTarget = clamp(natural - displacements.x, -SplitShape.z, SplitShape.z);
+        float rightTarget = clamp(natural + displacements.y, -SplitShape.z, SplitShape.z);
+        float selectedSide = hordeAvoidanceChoose(preferred, abs(leftTarget - position), abs(rightTarget - position));
         selected = int(step(0.0, selectedSide));
     }
     float selectedSide = float(selected * 2 - 1);
-    if (encounters[selected] <= 0.0) {
+    if (mass[selected] <= 0.0) {
         return vec3(natural, 0.0, selectedSide);
     }
-    return vec3(selectedSide * clamp(desired[selected], -SplitShape.z, capacities[selected]), 1.0, selectedSide);
+    // 遭遇标志只取0/1，不能把连续pressure写成分数锁侧。
+    float target = natural + selectedSide * displacements[selected];
+    return vec3(clamp(target, -SplitShape.z, SplitShape.z), 1.0, selectedSide);
 }
 
 void main() {

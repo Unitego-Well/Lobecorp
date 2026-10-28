@@ -25,6 +25,7 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
     vec3 base = location(station, lateral);
     vec2 weighted = vec2(0.0);
     vec2 mass = vec2(0.0);
+    vec2 demands = vec2(0.0);
     float driftBound = motionDriftSpeedBound(seed);
     float phase = motionRandom(seed, HORDE_AVOID_PHASE_SALT) * HORDE_AVOID_TAU;
     float individual = hordeAvoidanceIndividual(motionRandom(seed, HORDE_AVOID_STRENGTH_SALT), phase, OriginTime.w);
@@ -34,7 +35,7 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
         firstChannel = 0;
         lastChannel = 2;
     }
-    // 单次圆扫描；柔和影响不要求核心净空，也不向圈界投影单位。
+    // 单次圆扫描；中心明确分流，个体有效半径与渐变压力保留外缘散度。
     for (int slot = 0; slot < int(SplitInfo.x); slot++) {
         int at = slot * 5;
         float radius = scalar(HordeSplit, at + 2);
@@ -48,25 +49,30 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
         float across = dot(relative, side);
         float fade = smoothstep(0.0, HORDE_AVOID_FADE_RADIUS, radius);
         float clearance = hordeAvoidanceClearance(radius, SplitShape.w, fade);
+        clearance = hordeAvoidanceRadius(clearance, motionRandom(seed, HORDE_AVOID_RADIUS_SALT));
         float band = SplitInfo.z * fade;
         float shift = sin(phase) * clearance * HORDE_AVOID_PHASE_SHIFT;
         for (int channel = firstChannel; channel < lastChannel; channel++) {
             float candidateSide = float(channel * 2 - 1);
             float delta = hordeAvoidanceSoftDelta(across, clearance, candidateSide);
-            float required = min(delta, SplitShape.z) + HORDE_AVOID_SWAY_MARGIN;
+            float farDelta = hordeAvoidanceSoftDelta(abs(across), clearance, 1.0);
+            float required = min(farDelta * HORDE_AVOID_MAX_STRENGTH, SplitShape.z) + HORDE_AVOID_SWAY_MARGIN;
             float lead = hordeAvoidanceLead(required, CameraSpeed.w, driftBound, band);
             float pressure = hordeAvoidancePressure(along, across, clearance, lead, band, shift);
-            float weight = HORDE_AVOID_SOFT_GAIN * pressure * fade;
-            weighted[channel] += weight * delta;
-            mass[channel] += weight;
+            float weight = pressure * fade;
+            weighted[channel] = hordeAvoidanceUnion(weighted[channel], pressure * fade * delta);
+            mass[channel] = max(mass[channel], weight);
+            if (pressure > 0.0) {
+                demands[channel] = hordeAvoidanceUnion(demands[channel], fade * delta);
+            }
         }
     }
-    vec2 displacements = vec2(hordeAvoidanceBlend(weighted.x, mass.x, individual),
-            hordeAvoidanceBlend(weighted.y, mass.y, individual));
+    vec2 displacements = vec2(individual * weighted.x, individual * weighted.y);
     int selected = int(step(0.0, heldSide));
     if (locked == 0.0) {
-        float leftTarget = clamp(natural - displacements.x, -SplitShape.z, SplitShape.z);
-        float rightTarget = clamp(natural + displacements.y, -SplitShape.z, SplitShape.z);
+        // 渐入端压力接近零，不能用被缩小的代价把远侧误判成平手并过早锁侧。
+        float leftTarget = clamp(natural - individual * demands.x, -SplitShape.z, SplitShape.z);
+        float rightTarget = clamp(natural + individual * demands.y, -SplitShape.z, SplitShape.z);
         float selectedSide = hordeAvoidanceChoose(preferred, abs(leftTarget - position), abs(rightTarget - position));
         selected = int(step(0.0, selectedSide));
     }

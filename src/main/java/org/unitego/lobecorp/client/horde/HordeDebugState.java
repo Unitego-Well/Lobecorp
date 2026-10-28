@@ -33,8 +33,14 @@ public final class HordeDebugState {
         batches = 0;
         instances = 0;
         groups = 0;
+    }
+
+    /// GUI 在世界绘制前提取，因此保留上次绘制摘要到本次真正开始绘制。
+    public static void beginDraw() {
         splitCircles = 0;
+        splitMaximumRadius = 0;
         splitWords = 0;
+        splitCapacity = 0;
     }
 
     public static void setEvents(int count) {
@@ -63,7 +69,7 @@ public final class HordeDebugState {
         }
         splitCircles = Math.max(splitCircles, split.count());
         splitMaximumRadius = Math.max(splitMaximumRadius, split.maximumRadius());
-        splitWords += split.uploadedWords();
+	    splitWords = Math.max(splitWords, split.uploadedWords());
         splitCapacity = Math.max(splitCapacity, split.capacityCircles());
     }
 
@@ -87,7 +93,7 @@ public final class HordeDebugState {
                 + " 累计=" + drawnTotal);
         result.add("潮头站程=" + format(head) + " 潮尾站程=" + format(tail)
                 + " 可见行=" + firstRow + ".." + lastRow);
-        result.add("分割圆=" + splitCircles + "/" + splitCapacity + " 最大半径=" + format(splitMaximumRadius)
+        result.add("上次绘制分割圆(单事件峰值)=" + splitCircles + "/" + splitCapacity + " 最大半径=" + format(splitMaximumRadius)
                 + " 圆表字数=" + splitWords + " 目标变化=" + gapChanges);
         result.add(HordeClient.statistics());
         result.add(HordeGpuRenderer.statistics());

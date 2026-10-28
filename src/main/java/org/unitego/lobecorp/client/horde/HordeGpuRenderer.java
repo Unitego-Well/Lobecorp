@@ -352,6 +352,7 @@ public class HordeGpuRenderer {
 	}
 
 	private static void drawPrepared(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
+		HordeDebugState.beginDraw();
 		drawn = 0;
 		batches = 0;
 		HordeDebugState.setGroups(0);

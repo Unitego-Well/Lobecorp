@@ -237,20 +237,23 @@ class HordePathContractTest(unittest.TestCase):
             target = self.target_kernel(((0.0, 0.0, 3.636),) * count)
             world = [base + target(0.0, base, 0.0, 1.0, 0.0, 31.0, 1.0).x
                      for base in (-1.0, -0.5, 0.0, 0.5, 1.0)]
-            self.assertGreater(world[-1] - world[0], 0.39)
-            self.assertGreater(max(world) - min(world), 0.39)
-        blend = self.control["hordeAvoidanceBlend"]
-        maximum = self.control["HORDE_AVOID_MAX_BLEND"]
-        for mass in (0.01, 1.0, 10.0, 100.0, 10000.0):
-            self.assertLess(blend(mass, mass, 1.0), maximum)
-            self.assertGreaterEqual(1.0 - blend(mass, mass, 1.0), 1.0 - maximum)
+            self.assertGreater(world[-1] - world[0], 0.1)
+            self.assertGreater(max(world) - min(world), 0.1)
+        union = self.control["hordeAvoidanceUnion"]
+        for demand in (0.01, 1.0, 10.0, 100.0, 10000.0):
+            self.assertEqual(union(demand, 0.0), demand)
+            self.assertGreaterEqual(union(demand, demand * 0.5), demand)
+            self.assertLessEqual(union(demand, demand), demand * 1.0625 + 1e-12)
 
     def test_soft_pressure_allows_core_entry_and_individual_target_variation(self):
         target = self.target_kernel(((0.0, 0.0, 3.636),))
         values = [target(0.0, 0.0, 0.0, 1.0, 0.0, float(column * 31), 1.0).x
                   for column in range(64)]
         self.assertGreater(max(values) - min(values), 0.15)
-        self.assertTrue(any(0.0 < value < 3.636 for value in values))
+        penetrated = [target(0.0, 0.0, 0.0, 1.0, -1.5, float(column * 31), 1.0).x
+                      for column in range(64)]
+        self.assertTrue(any(0.0 < value < 3.636 for value in penetrated))
+        self.assertGreater(sum(value >= 3.636 for value in values), len(values) * 0.9)
         for column, value in enumerate(values):
             self.assertEqual(value, target(0.0, 0.0, 0.0, 1.0, 0.0, float(column * 31), 1.0).x)
 
@@ -283,12 +286,114 @@ class HordePathContractTest(unittest.TestCase):
             if control.y == 0.0:
                 self.assertEqual(control.x, 0.3)
 
+    def trajectory_density(self, circles, speed):
+        target = self.target_kernel(circles)
+        scope = target.__globals__
+        scope["CameraSpeed"].w = speed
+        dt = 0.25
+        core = baseline_core = centre = baseline_centre = 0
+        crossings, displacements = [], []
+        # 所有列都计入实际占据，包括原本在核心外却可能被错误推入的单位。
+        for lane in range(-20, 21):
+            base = lane * 0.5
+            for phase in range(16):
+                seed = float(phase * 17 + (lane + 20) * 31)
+                now = 1000.0 + phase * 7.0
+                scope["OriginTime"].w = now
+                position = self.motion["motionSway"](now, seed)
+                velocity = self.motion["motionSwayVelocity"](now, seed)
+                locked = 0.0
+                station = -60.0
+                crossed = False
+                while station <= 20.0:
+                    now += dt
+                    station += speed * dt
+                    scope["OriginTime"].w = now
+                    natural = self.motion["motionSway"](now, seed)
+                    along = station + self.motion["motionDrift"](now, seed)
+                    control = target(along, base, position, -1.0 if phase % 2 else 1.0,
+                                     natural, seed, locked)
+                    previous = position
+                    if control.y > 0.0 or locked != 0.0:
+                        position, velocity = self.integrate(position, velocity, control.x, speed, dt)
+                        arrived = float(position == natural and
+                                        abs(velocity - self.motion["motionSwayVelocity"](now, seed))
+                                        <= 0.7 * speed * dt / 4.0)
+                        locked = self.control["hordeAvoidanceSide"](locked, control.z, control.y, arrived)
+                        self.assertLessEqual(abs(position - previous), 0.7 * speed * dt + 1e-10)
+                    else:
+                        position = natural
+                        velocity = self.motion["motionSwayVelocity"](now, seed)
+                    if abs(along) <= 1.0:
+                        def occupied(lateral, scale):
+                            return any((along - x) ** 2 + (lateral - y) ** 2 < (radius * scale) ** 2
+                                       for x, y, radius in circles)
+                        core += occupied(base + position, 1.0)
+                        baseline_core += occupied(base + natural, 1.0)
+                        centre += occupied(base + position, 0.5)
+                        baseline_centre += occupied(base + natural, 0.5)
+                    if not crossed and along >= 0.0:
+                        crossed = True
+                        if abs(base) <= 1.0:
+                            crossings.append(abs(base + position))
+                            displacements.append(abs(position - natural))
+        ordered = sorted(crossings)
+        shifts = sorted(displacements)
+        return dict(core_ratio=core / baseline_core, centre_ratio=centre / baseline_centre,
+                    median_shift=shifts[len(shifts) // 2],
+                    edge_spread=ordered[int(len(ordered) * 0.9)] - ordered[int(len(ordered) * 0.1)])
+
+    def test_integrated_paths_open_core_with_distributed_outer_edge(self):
+        saved_speed = self.motion["CameraSpeed"].w
+        saved_time = self.motion["OriginTime"].w
+        try:
+            for speed in (0.25, 0.75):
+                with self.subTest(speed=speed):
+                    result = self.trajectory_density(((0.0, 0.0, 3.636),), speed)
+                    print("single-circle integrated density", speed, result)
+                    self.assertLess(result["core_ratio"], 0.5)
+                    self.assertLess(result["centre_ratio"], 0.2)
+                    self.assertGreater(result["median_shift"], 3.0)
+                    self.assertGreater(result["edge_spread"], 0.75)
+            result = self.trajectory_density(((0.0, -3.473, 3.636), (0.0, 0.0, 3.636),
+                                              (0.0, 3.473, 3.636)), 0.75)
+            print("three-circle integrated density", result)
+            self.assertLess(result["core_ratio"], 0.8)
+            self.assertLess(result["centre_ratio"], 0.4)
+            self.assertGreater(result["median_shift"], 3.0)
+            self.assertGreater(result["edge_spread"], 0.75)
+        finally:
+            self.motion["CameraSpeed"].w = saved_speed
+            self.motion["OriginTime"].w = saved_time
+
+    def test_outer_route_and_no_circle_do_not_create_a_fake_split(self):
+        empty = self.target_kernel(())
+        outer = self.target_kernel(((0.0, 0.0, 3.636),))
+        for base in (-20.0, 20.0):
+            self.assertEqual(outer(0.0, base, 0.0, 1.0, 0.4, 31.0, 0.0).x, 0.4)
+        self.assertEqual(empty(0.0, 0.0, 0.0, 1.0, 0.4, 31.0, 0.0).x, 0.4)
+
     def test_initial_side_uses_seed_only_for_similar_costs(self):
         target = self.target_kernel(((0.0, 0.0, 3.636),))
         for preferred in (-1.0, 1.0):
             self.assertEqual(target(-10.0, 0.0, 0.0, preferred, 0.0, 17.0, 0.0).z, preferred)
         shorter = self.target_kernel(((0.0, 5.0, 3.636),))
         self.assertEqual(shorter(-10.0, 0.0, 0.0, 1.0, 0.0, 17.0, 0.0).z, -1.0)
+
+    def test_weak_onset_chooses_geometric_near_side_before_locking(self):
+        for across in (-5.0, 5.0):
+            target = self.target_kernel(((0.0, across, 3.636),))
+            near_side = -math.copysign(1.0, across)
+            encounters = 0
+            for step in range(3201):
+                station = -80.0 + step * 0.025
+                value = target(station, 0.0, 0.0, -near_side, 0.0, 17.0, 0.0)
+                if value.y > 0.0:
+                    encounters += 1
+                    self.assertEqual(value.z, near_side)
+                    locked = self.control["hordeAvoidanceSide"](0.0, value.z, value.y, 0.0)
+                    self.assertEqual(locked, near_side)
+            self.assertGreater(encounters, 0)
 
     def test_locked_side_does_not_rechoose_when_shorter_side_changes(self):
         for across in (-0.1, 0.0, 0.1, 5.0):

@@ -1,6 +1,85 @@
 # 深夜清扫：固定线路 GPU 三维浪潮
 
-## 2026-10-28 软分割压力（当前行为，替代严格净空目标）
+## 2026-10-28 实际路径失败后的几何合成修正（当前，17项数值回归通过）
+
+2026-10-28 路径实测修正（当前）：原16项测试3失败已保留；弱压力渐入端把完整左右需求缩成≤.25格的“平手”，加上两侧前导范围不同，导致远侧误锁，原核心外单位也被推入核心。现改左右共用farDelta提前量、按未乘pressure的几何并集需求选侧；已锁侧保持。运动目标改用连续需求并集U，较小需求不会平均削弱外侧需求；个体有效半径.8–1.35、跨列补偿.45保留分散外缘。Python -B最终17项全部通过（55.862秒，退出0）：单圆speed.25/.75中心占据比均0、全核心.004989/0；三圆中心0、全核心.015272，中位横移6.644/6.664/8.591格，外缘跨度2.822/3.040/3.499格；原门槛不放宽。新增弱渐入选侧回归。仅本轮GLSL/路径测试与文档修改，Java不变；数值通过不等于普通/Iris实机验收。报告见.agent/reports/20261028-horde-soft-pressure.md，累计源码补丁同目录20261028-horde-core-distribution.patch。
+
+### 实测根因与修复
+
+父代理运行上一交付的16项测试，3个子场景未达到原centre门槛：单圆speed=.25/.75的centre为.2187/.3907，三圆为.7145。原“峰值目标足够”的分析不足以证明实际路径排开，本轮撤回其已满足数值验收的任何推断。
+
+本轮先将加权平均换成连续需求并集并加强中心压力，第一轮实际16项仍3失败：三圆centre=.483146，另有原列顺序反转和无短暂穿入样本；调整个体有效半径分布/跨列补偿后，第二轮只剩三圆centre=.530683。按原始列统计发现，原来距中心很远的±6至±9格列也进入半径一半的核心，不能仅用更大目标解释。
+
+已确认控制分支原因：在渐入端，两候选压力都很弱，实际横移成本差≤HORDE_AVOID_SIDE_TIE=.25；旧代码由preferred随机打平，且两侧按自己的delta算lead，远侧先激活时可能立即锁向远侧。之后locked保护这个错误初选，单位横穿核心。当前：
+1. 同一圆左右候选使用共同farDelta=softDelta(abs(across),Cᵢ,+1)计算提前量，避免只有远侧先激活。
+2. 初选代价由完整、未乘渐入pressure的几何需求并集计算；pressure只决定是否构成当前遭遇及运动目标的渐入。这样近侧几何差异不会被缩成假平手。
+3. 旧locked保持规则、0/±1侧值、退场、0.7总侧速与4tick加速积分保持不变。
+
+### 几何合成与外缘散布的数学
+
+C=radius+(.45+modelRadius)×fade；每单位Cᵢ=C×mix(.8,1.35,独立salt17种子)。δ=0.5×(d+sqrt(d²+.6²))，d=Cᵢ+.45×side×across。individual仍是独立seed的1.2–1.45强度乘.97–1缓慢呼吸；natural sway独立相加，3倍频率与幅度不改。
+
+u=(along−shift)/reach，v=across/(Cᵢ+1.5)；pressure=max(0,1−u²)²×[1−smoothstep(.5,1,abs(v))]²。纵向没有全强度平台；横向核心保留强分流区，外缘以smoothstep渐变为零。并集输入q=pressure×fade×δ；依次合成：
+w=.25×min(a,b)，h=max(0,w−abs(a−b))，
+U(a,b)=max(a,b)+h²/max(4w,1e−6)。
+目标=natural+side×individual×fold(U,q)，原16格控制范围仍保留。U不做位置投影，没有共同绝对圈界；U≥max(a,b)，所以较小圆不会平均削弱外侧需求。零输入不增量；相同重复需求的累积被1.25倍原需求所界定，不会随64圆线性相加。U的数值连续，分支处不声明全局C1或全局路径最优。
+
+在单圆/固定满pressure、同seed下，残余列导数为1−.45×individual；重复同圆的最坏额外1.25放大下，下界为1−.45×1.45×1.25=.184375。跨2格原列仍约.36875格，保留原散度门槛>.1；不恢复公共圈界硬墙。不同seed的有效半径、强度、phase和sway进一步分散外缘。该局部导数界不推广为所有变化压力、多圆与地形映射下的全局单调保证。
+
+共同lead=(speed+driftBound)×([min(farDelta×1.45,16)+1.5]/(.7speed)+4)×1.8+band。1.8的渐入时间余量也大于并集最多1.25的重复需求放大；真正位置仍由原速度/加速度积分推进，不要求瞬时到达目标。两个速度下每个积分步都检查abs(delta)≤.7speed×dt，离散长dt、动态目标、退场、朝向等原测试保持。
+
+### 最终实际路径证据
+
+工作目录E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde，唯一执行命令为：
+`python -B tools/horde_path_contract_test.py`
+最终输出：`Ran 17 tests in 55.862s / OK / exit 0`。其前一版16项也已通过（32.123秒），随后追加弱渐入选侧回归并清除临时按列诊断打印，重新完整运行17项。新增用station−80至0、步长.025、circle across=±5、故意选择远侧preferred，验证每个正pressure遭遇都按几何近侧初选并锁侧。没有放宽任何密度/散度/速度/短暂穿入断言；旧Blend精确公式断言改为U的零输入、外侧不被削弱和相同需求单步放大上界属性，因为生产已移除Blend。
+
+仍使用原41列×16种子、dt=.25、station−60至20、同sway无分割基线，原核心外被错误推入的单位照样计数。原门槛：单圆core<.5、centre<.2；三圆core<.8、centre<.4；各场景median_shift>3、edge_spread>.75。
+
+| 场景 | core_ratio | centre_ratio | median_shift 格 | edge_spread 格 |
+|---|---:|---:|---:|---:|
+| 单圆 speed=.25 | 0.004988597491448118 | 0 | 6.644397700245396 | 2.821630352794414 |
+| 单圆 speed=.75 | 0 | 0 | 6.66417959292141 | 3.039652385875094 |
+| 三圆 speed=.75、横向0/±3.473 | 0.015271966527196652 | 0 | 8.590571155560411 | 3.4985544464797336 |
+
+core/centre是同一横截面时间窗的占据样本数相对无分割基线比值，不是全画面百分比；median_shift是中间原列过中线的实际积分偏移，edge_spread是这些实例横向绝对位置P90−P10。中心比值0只是有限平面样本中没有落入半半径核心，不声称任意动态圆都绝对不可穿透。原短暂穿入/个体差异断言继续通过。
+
+### 本轮边界与审查
+
+本轮Java三份磁盘SHA256保持：HordeDebugState c2051b2d101d8b87a8e7e40983ecf9d813a09e405edaae49233daa789c4a3a26，HordeGpuRenderer c884e8d237f3a5cfc3af9c89f2451f54f916c917fd414d73da36339a6a37283b，受保护HordeSplitState bae9c66a5fda4de45e5ceff7eba819574c4be2ddf03c8790261b99bda9b26e48。本轮未构建、Data、游戏、配置、Git暂存/提交/推送；父代理正在进行的编译不计本轮测试证据。代码局部编辑及补丁生成均使用IDEA快照哈希；core shader CRLF、include和Python LF保留。Python新增回归范围IDE格式化后内容哈希未变，17项结果仍对应当前源码。
+
+累计[源码补丁](20261028-horde-core-distribution.patch)已更新到本轮最终代码；包含前轮两份HUD Java差异，但本轮不再改Java。07仍为视觉失败，下一次普通/Iris实机由父代理执行，需验证强中心、宽而连续的外缘、无同圈硬墙、移动/退出与性能；平面双精度测试不代替GPU float/硬件GLSL或视觉验收。
+
+以下为前轮历史记录，旧版“当前/未运行”的说法由上文覆盖。
+
+## 2026-10-28 中心明确排开与外缘散布（当前实现，未运行验收）
+
+2026-10-28 中心分流修正（覆盖此前软压力版）：07被用户判为视觉失败；HUD圆数/字数为0已定位为提取时清零、GUI先于世界绘制读取的统计时序，不能据此判漏上传。主路线origin=center+(250,0,0)，三牛局部(-250,0/±3.473)、minimumY0与夹具一致，NoAI/NoGravity不设置noPhysics；不改筛选。当前中心改用独立个体有效半径0.9–1.25、强度1.2–1.45及0.97–1缓慢呼吸，重叠混合D/(1+M)，跨列补偿0.65保留散度，纵横压力独立渐变。提前量按增强需求、0.7横速及1.8倍渐入时间计算。仅HordeDebugState/HordeGpuRenderer修正HUD统计；GPU四字状态、0.7积分、3倍sway、CPU区域职责与服务端不变。新增实际积分路径密度/核心占据/位移分位数检查，未执行。详见 .agent/reports/20261028-horde-soft-pressure.md 的当前交付节；补丁同目录20261028-horde-core-distribution.patch。
+
+### 公式与可预期位移
+
+旧版单圆中心w=4，混合比4/(1+4/0.8)=2/3；再乘0.55–1与0.85–1后，最低仅为横移需求的31.2%。radius=3.636、modelRadius=.75、全fade时C=4.836，中心softDelta≈4.855，最低目标仅≈1.51格，典型约2.32格，低于核心半径。这是公式衰减事实，不单独证明07全部视觉现象的唯一根因。
+
+现版每单位Cᵢ=C×mix(.9,1.25,独立salt17种子)，softDelta=0.5×(d+sqrt(d²+.6²))，d=Cᵢ+.65×side×across。压力为(1−u²)正部平方×(1−v²)正部平方，u=(along−phaseShift)/reach、v=across/(Cᵢ+1.5)。迎潮reach=Cᵢ+lead，背潮reach=Cᵢ+band。D=Σ4×pressure×fade×softDelta，M=Σ4×pressure×fade；目标natural+side×individual×D/(1+M)。没有共同绝对圈界投影，也不按route半宽裁剪；保留原16格控制范围。跨列补偿从1降为.65，在固定满压力/固定seed时留下约0.25–0.40的原列导数；半径差、phase及原sway继续扩大外缘分布，不能解释为所有位置的全局单调保证。
+
+单圆无phase偏移的峰值、natural=0、across=0下，目标量约4.07–7.03格，典型≈5.45格；natural仍独立加上±1.5以内的原sway，因此弱个体可以短暂进入半径3.636的核心。该区间为解析目标量，**不是实际积分轨迹测量值**。外缘压力连续归零，零圆/远离圆返回natural。多圆不取hard-max，归一化仅合成圆需求；实际密度仍由父代理测试和实机确认。
+
+required=min(softDelta×1.45,16)+1.5，lead=(speed+driftBound)×(required/(.7speed)+4)×1.8+band。speed=.75时横速上限=.525格/tick，加速度=.13125格/tick²；约5.45格横移需至少10.4 tick，另留4 tick加速预算。典型Cᵢ≈5.20、required≈9.06、最大driftBound=.102、band=9.2时，lead≈41.8格；压力平滑渐入而非在前导端瞬时全强。实际位移仍由原hordeAvoidanceVelocity/Step积分限制，不直接写目标位置。新圆直接包围、低速sway及突然移动目标仍可能短时穿入，不承诺当帧清空。
+
+### HUD与上传路径定位
+
+本项目26.1.2依赖源码GameRenderer.extract先extractLevel再extractGui，render中的世界绘制在其后。HordeClient.extract先beginFrame；旧beginFrame清空splitCircles/splitWords，GUI的RenderGuiEvent.Post立刻读取；真正addSplit位于HordeGpuRenderer.writeParameters，晚于GUI提取。maximumRadius/capacity还保留旧值，因而出现0/32、3.64、0字。当前把圆摘要重置移到drawPrepared入口beginDraw；HUD明确展示上次绘制单事件峰值，字数用max避免跨批重复相加。不是GPU回读，也不证明实际shader采样值。
+
+上传源码链：ClientEvent.updateGaps→regions；prepare中的split.update→updateCircles→publish（局部坐标五字/圆、texture.update）→writeParameters的SplitInfo.x；updateAvoidance绑定同一event.split.view与参数块。主线路origin=center+(250,0,0)，三牛聚散坐标(-250,0/±separation)合理；不将其误当自然动物，不把minimumY局部0误当世界Y0。夹具NoAI与NoGravity不设置noPhysics，未修改生产筛选或夹具。HordeSplitState零纹理三行WIP原字节哈希保持。
+
+### 待父代理执行的数值与实机验收
+
+tools/horde_path_contract_test.py仍直接转译生产avoidanceTarget和helper；新增41列×16种子、dt=.25，从station−60走到20的实际积分密度。单圆速度.25/.75和三圆聚散距离±3.473分别比较与同sway无分割基线的全核心/半径一半中心占据比、过中线中位横移与P90−P10外缘跨度；把原核心外被错误推入的单位也计入。单圆门槛为core<.5、inner<.2、中位横移>3格、边缘跨度>.75格；三圆分别<.8、<.4、>3、>.75。每步检查总横向位移≤.7speed×dt，并覆盖无圆/外围不产生假分割。阈值是待验证验收条件，不是本轮测试结果；保留原dt/锁侧/退场/heading/sway检查。
+
+07采集由父代理报告GPU错误0、23图、valid/cleanup，mean8.283/P99 23.232/max60.687ms、>100ms=0，Spark CFsMQur2jS；仍为视觉失败，未把采集完整等同中心排开。父代理负责编译、数值测试与新普通/Iris实机，需同时观察核心实际密度、长墙/胶囊外缘、移动与退出连续性。当前分支/HEAD由用户指定为codex/horde、2c7fd1083109bdd55d3a5917631ceb8bf065010a；本任务未运行Git命令。
+
+
+## 2026-10-28 软分割压力（历史实现，2c7fd10已被用户拒收）
 
 用户视觉拒收37f0b3f：原图三头牛周围形成长胶囊空场，边沿虚拟单位挤成平直密墙；少量穿入并没有带来渐变密度。普通05/Iris06的GPU错误0、各23图采集PASSED只能作为该版采集事实，不能作软度验收。本轮未运行程序或测试，由父代理比较新实机图。
 

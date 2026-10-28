@@ -9,53 +9,68 @@ const float HORDE_AVOID_SIDE_TIE = 0.25;
 const float HORDE_AVOID_SWAY_MARGIN = 1.5;
 const float HORDE_AVOID_CLEARANCE = 0.45;
 const float HORDE_AVOID_FADE_RADIUS = 0.5;
-const float HORDE_AVOID_SOFT_GAIN = 4.0;
-const float HORDE_AVOID_FREE_PRIOR = 1.0;
-const float HORDE_AVOID_MAX_BLEND = 0.8;
-const float HORDE_AVOID_MIN_STRENGTH = 0.55;
-const float HORDE_AVOID_MIN_PULSE = 0.85;
+const float HORDE_AVOID_MIN_STRENGTH = 1.2;
+const float HORDE_AVOID_MAX_STRENGTH = 1.45;
+const float HORDE_AVOID_MIN_PULSE = 0.97;
+// 个体半径和剩余列间距共同形成分散外缘，不收敛到同一绝对圈界。
+const float HORDE_AVOID_MIN_RADIUS = 0.8;
+const float HORDE_AVOID_MAX_RADIUS = 1.35;
+const float HORDE_AVOID_ACROSS_COMPENSATION = 0.45;
+const float HORDE_AVOID_UNION_WIDTH = 0.25;
+const float HORDE_AVOID_LATERAL_CORE = 0.5;
+// 渐进压力在前导段尚未满强度，预留额外时间而不提高横向速度。
+const float HORDE_AVOID_LEAD_TIME_SCALE = 1.8;
 const float HORDE_AVOID_PULSE_RATE = 0.07;
 const float HORDE_AVOID_PHASE_SHIFT = 0.2;
 const float HORDE_AVOID_DELTA_WIDTH = 0.6;
 const float HORDE_AVOID_STRENGTH_SALT = 11.0;
 const float HORDE_AVOID_PHASE_SALT = 13.0;
+const float HORDE_AVOID_RADIUS_SALT = 17.0;
 const float HORDE_AVOID_TAU = 6.2831853;
 const int HORDE_AVOID_WORDS = 4;
 
 float hordeAvoidanceLead(float distance, float speed, float driftBound, float band) {
     float limit = HORDE_AVOID_SPEED_RATIO * speed;
-    return (speed + driftBound) * (distance / max(limit, 0.000001) + HORDE_AVOID_ACCEL_TICKS) + band;
+    return (speed + driftBound) * (distance / max(limit, 0.000001) + HORDE_AVOID_ACCEL_TICKS)
+    * HORDE_AVOID_LEAD_TIME_SCALE + band;
 }
 
 float hordeAvoidanceClearance(float radius, float modelRadius, float fade) {
     return radius + (HORDE_AVOID_CLEARANCE + modelRadius) * fade;
 }
 
-// 椭圆紧支撑压力：只有中心点达到峰值，进入、离开和侧缘均连续归零。
+float hordeAvoidanceRadius(float clearance, float radiusSeed) {
+    return clearance * mix(HORDE_AVOID_MIN_RADIUS, HORDE_AVOID_MAX_RADIUS, radiusSeed);
+}
+
+// 纵横独立衰减，避免靠近核心的列又被沿向距离交叉扣减；边缘仍连续归零。
 float hordeAvoidancePressure(float along, float across, float clearance, float lead, float band, float shift) {
     float axis = along - shift;
     float reach = clearance + mix(band, lead, max(0.0, sign(axis)));
     float longitudinal = axis / max(reach, 0.001);
     float lateral = across / max(clearance + HORDE_AVOID_SWAY_MARGIN, 0.001);
-    float remaining = max(0.0, 1.0 - longitudinal * longitudinal - lateral * lateral);
-    return remaining * remaining;
+    float longitudinalWeight = max(0.0, 1.0 - longitudinal * longitudinal);
+    float lateralWeight = 1.0 - smoothstep(HORDE_AVOID_LATERAL_CORE, 1.0, abs(lateral));
+    return longitudinalWeight * longitudinalWeight * lateralWeight * lateralWeight;
 }
 
 float hordeAvoidanceSoftDelta(float across, float clearance, float choice) {
-    float demand = clearance + choice * across;
+    float demand = clearance + HORDE_AVOID_ACROSS_COMPENSATION * choice * across;
     return 0.5 * (demand + sqrt(demand * demand + HORDE_AVOID_DELTA_WIDTH * HORDE_AVOID_DELTA_WIDTH));
 }
 
 // 稳定个体强度放在混合之后，重叠时也不会被权重归一化抹平。
 float hordeAvoidanceIndividual(float strengthSeed, float phase, float time) {
-    float strength = mix(HORDE_AVOID_MIN_STRENGTH, 1.0, strengthSeed);
+    float strength = mix(HORDE_AVOID_MIN_STRENGTH, HORDE_AVOID_MAX_STRENGTH, strengthSeed);
     float pulse = mix(HORDE_AVOID_MIN_PULSE, 1.0, 0.5 + 0.5 * sin(time * HORDE_AVOID_PULSE_RATE + phase));
     return strength * pulse;
 }
 
-// 自由先验始终保留；再多圆也不达到100%圈界投影，natural在调用方独立相加。
-float hordeAvoidanceBlend(float weightedDelta, float mass, float individual) {
-    return individual * weightedDelta / (HORDE_AVOID_FREE_PRIOR + mass / HORDE_AVOID_MAX_BLEND);
+// 平滑几何并集：小需求不能平均削弱外侧需求；零输入保持零，不引入自由先验。
+float hordeAvoidanceUnion(float first, float second) {
+    float width = HORDE_AVOID_UNION_WIDTH * min(first, second);
+    float overlap = max(0.0, width - abs(first - second));
+    return max(first, second) + overlap * overlap / max(4.0 * width, 0.000001);
 }
 
 float hordeAvoidanceVelocity(float velocity, float error, float limit, float dt) {

@@ -22,6 +22,11 @@ public class HordeMeshReduction {
 			{2, 6, 7, 3}, {0, 2, 3, 1}, {4, 5, 7, 6}};
 	private static final int BOX_VERTICES = 24;
 
+	/// 片档使用六个方向的正交面片：±x、±y、±z 各一张完整投影图，互不共用平面。
+	/// 每张按包围盒正方边长铺满 UV，因此任何视角下都不会出现被压扁的拉伸片。
+	private static final int[] CARD_FACES = {0, 1, 2, 3, 4, 5};
+	private static final int CARD_VERTICES = 24;
+
 	/// 片图集方向与盒面顺序一致，供CPU方向烘焙与GPU取tile共用。
 	static int[][] boxFaces() {
 		return BOX;
@@ -34,6 +39,60 @@ public class HordeMeshReduction {
 	private static final int PART_LEFT_ARM = 4;
 	private static final int PART_CAN = 5;
 	private static final int MID_BOXES = 5;
+
+
+	/// 图集与几何共享全帧尺度；正方形包含透明留边，贴回时不会再次缩小模型。
+	public record CardProjection(double centerX, double centerY, double centerZ, double side) {
+		public static final int TILE = 64;
+		private static final int PADDING = 3;
+
+		public double[] center() {
+			return new double[]{centerX, centerY, centerZ};
+		}
+
+		public double[] corner(int face, int corner) {
+			var axes = cardAxes(face);
+			double u = (corner == 1 || corner == 2 ? 0.5 : -0.5) * side;
+			double v = (corner >= 2 ? 0.5 : -0.5) * side;
+			var point = center();
+			for (int axis = 0; axis < 3; axis++) {
+				point[axis] += axes[0][axis] * u + axes[1][axis] * v;
+			}
+			return point;
+		}
+	}
+
+	public static CardProjection cardProjection(HordeMeshCache.Model model) {
+		var box = new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY,
+				Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
+		var frames = model.frameVertices();
+		for (int at = 0; at + 2 < frames.length; at += FRAME_STRIDE) {
+			for (int axis = 0; axis < 3; axis++) {
+				box[axis] = Math.min(box[axis], frames[at + axis]);
+				box[axis + 3] = Math.max(box[axis + 3], frames[at + axis]);
+			}
+		}
+		double extent = Math.max(0.0001, Math.max(box[3] - box[0],
+				Math.max(box[4] - box[1], box[5] - box[2])));
+		double side = extent * CardProjection.TILE / (CardProjection.TILE - 2.0 * CardProjection.PADDING);
+		return new CardProjection((box[0] + box[3]) * 0.5, (box[1] + box[4]) * 0.5,
+				(box[2] + box[5]) * 0.5, side);
+	}
+
+	/// 单位盒导出方向，避免薄模型的零边长导致轴退化；绕序与 UV 角点共同使用此坐标系。
+	public static double[][] cardAxes(int face) {
+		var unit = new double[]{0, 0, 0, 1, 1, 1};
+		var indices = BOX[face];
+		var origin = corner(unit, indices[0]);
+		var right = corner(unit, indices[1]);
+		var down = corner(unit, indices[3]);
+		for (int axis = 0; axis < 3; axis++) {
+			right[axis] -= origin[axis];
+			down[axis] -= origin[axis];
+		}
+		var normal = cross(new double[3], right, down);
+		return new double[][]{right, down, normal};
+	}
 
 	public record Cube(int first, int count, int bone) {
 	}
@@ -248,6 +307,9 @@ public class HordeMeshReduction {
 	/// 更远片档用整体1盒（6方向面片组成盒子）并由GPU按距离降低动作帧；近景完整几何不受影响。
     private static HordeMeshCache.Model proxy(HordeMeshCache.Model source, HordeMeshCache.Model full,
                                               List<Cube> cubes, List<String> names, int[] rigidGroups, boolean[] visible, int tier) {
+		if (tier == 3) {
+			return projectedCards(full);
+		}
 		int boxes = tier == 1 ? MID_BOXES : tier == 2 ? 2 : 1;
         var clusters = new IntArrayList[boxes];
         var bones = new int[boxes];
@@ -302,7 +364,8 @@ public class HordeMeshReduction {
             }
             pieces.add(new Piece(kept, false, bones[index] < 0 ? cubes.getFirst().bone() : bones[index]));
         }
-        int count = pieces.stream().mapToInt(piece -> piece.direct() ? piece.indices().length : BOX_VERTICES).sum();
+        int perPiece = tier == 3 ? CARD_VERTICES : BOX_VERTICES;
+        int count = pieces.stream().mapToInt(piece -> piece.direct() ? piece.indices().length : perPiece).sum();
         if (count >= full.vertexCount() || count == 0) {
             return new HordeMeshCache.Model(full.vertices(), full.frameVertices(), full.vertexCount(),
                     full.frames(), full.duration(), full.sourceVertexCount(), tier);
@@ -324,6 +387,72 @@ public class HordeMeshReduction {
             }
             double[] box = bounds(source.vertices(), piece.indices(), STRIDE, 0);
             boolean redOnBack = containsBiomass(piece.indices(), owner, names);
+            if (tier == 3) {
+                // 片档：六个方向的正交面片，互不共用平面，每张按正方边长铺满 UV。
+                double side = Math.max(box[3] - box[0], box[5] - box[2]);
+                if (side <= EPSILON) {
+                    side = Math.max(EPSILON, box[4] - box[1]);
+                }
+                double centerX = (box[0] + box[3]) * 0.5;
+                double centerY = (box[1] + box[4]) * 0.5;
+                double centerZ = (box[2] + box[5]) * 0.5;
+                double half = side * 0.5;
+                for (int card = 0; card < CARD_FACES.length; card++) {
+                    int faceIndex = CARD_FACES[card];
+                    double[] normal = switch (faceIndex) {
+                        case 0 -> new double[]{-1, 0, 0};
+                        case 1 -> new double[]{1, 0, 0};
+                        case 2 -> new double[]{0, 0, -1};
+                        case 3 -> new double[]{0, 0, 1};
+                        case 4 -> new double[]{0, -1, 0};
+                        default -> new double[]{0, 1, 0};
+                    };
+                    // 水平面片横跨 x 与 z，竖直面片跨一组水平轴与 y，六张互相正交。
+                    double[][] corners = switch (faceIndex) {
+                        case 0 -> new double[][]{{centerX, centerY - half, centerZ - half},
+                                {centerX, centerY - half, centerZ + half}, {centerX, centerY + half, centerZ + half},
+                                {centerX, centerY + half, centerZ - half}};
+                        case 1 -> new double[][]{{centerX, centerY - half, centerZ + half},
+                                {centerX, centerY - half, centerZ - half}, {centerX, centerY + half, centerZ - half},
+                                {centerX, centerY + half, centerZ + half}};
+                        case 2 -> new double[][]{{centerX + half, centerY - half, centerZ},
+                                {centerX - half, centerY - half, centerZ}, {centerX - half, centerY + half, centerZ},
+                                {centerX + half, centerY + half, centerZ}};
+                        case 3 -> new double[][]{{centerX - half, centerY - half, centerZ},
+                                {centerX + half, centerY - half, centerZ}, {centerX + half, centerY + half, centerZ},
+                                {centerX - half, centerY + half, centerZ}};
+                        case 4 -> new double[][]{{centerX - half, centerY, centerZ - half},
+                                {centerX + half, centerY, centerZ - half}, {centerX + half, centerY, centerZ + half},
+                                {centerX - half, centerY, centerZ + half}};
+                        default -> new double[][]{{centerX - half, centerY, centerZ + half},
+                                {centerX + half, centerY, centerZ + half}, {centerX + half, centerY, centerZ - half},
+                                {centerX - half, centerY, centerZ - half}};
+                    };
+                    for (int corner = 0; corner < 4; corner++) {
+                        int target = (at + corner) * STRIDE;
+                        for (int axis = 0; axis < 3; axis++) {
+                            vertices[target + axis] = (float) corners[corner][axis];
+                            vertices[target + 5 + axis] = (float) normal[axis];
+                        }
+                        // 图集坐标由GPU按帧计算：方向槽位*2+角点，横向0..1、纵向0..1完整取tile。
+                        vertices[target + 3] = (faceIndex * 2 + (corner == 1 || corner == 2 ? 1 : 0)) / 12f;
+                        vertices[target + 4] = corner >= 2 ? 1f : 0f;
+                        vertices[target + 8] = piece.bone();
+                    }
+                    for (int frame = 0; frame < source.frames(); frame++) {
+                        int base = (frame * count + at) * FRAME_STRIDE;
+                        for (int vertex = 0; vertex < 4; vertex++) {
+                            int target = base + vertex * FRAME_STRIDE;
+                            for (int axis = 0; axis < 3; axis++) {
+                                frames[target + axis] = (float) corners[vertex][axis];
+                                frames[target + 3 + axis] = (float) normal[axis];
+                            }
+                        }
+                    }
+                    at += 4;
+                }
+                continue;
+            }
             for (int faceIndex = 0; faceIndex < BOX.length; faceIndex++) {
                 int[] face = BOX[faceIndex];
                 double[] normal = faceNormal(box, face);
@@ -364,6 +493,37 @@ public class HordeMeshReduction {
         return new HordeMeshCache.Model(vertices, frames, count, source.frames(), source.duration(),
                 source.sourceVertexCount(), tier);
     }
+
+	/// 方向片直接复用完整模型的全帧投影，避免依赖旧距离网格分支的静态包围盒。
+	private static HordeMeshCache.Model projectedCards(HordeMeshCache.Model full) {
+		var projection = cardProjection(full);
+		int count = BOX.length * 4;
+		var vertices = new float[count * STRIDE];
+		var frames = new float[full.frames() * count * FRAME_STRIDE];
+		for (int face = 0; face < BOX.length; face++) {
+			var normal = cardAxes(face)[2];
+			for (int corner = 0; corner < 4; corner++) {
+				int vertex = face * 4 + corner;
+				int target = vertex * STRIDE;
+				var point = projection.corner(face, corner);
+				for (int axis = 0; axis < 3; axis++) {
+					vertices[target + axis] = (float) point[axis];
+					vertices[target + 5 + axis] = (float) normal[axis];
+				}
+				vertices[target + 3] = (face * 2 + (corner == 1 || corner == 2 ? 1 : 0)) / 12f;
+				vertices[target + 4] = corner >= 2 ? 1f : 0f;
+				for (int frame = 0; frame < full.frames(); frame++) {
+					int posed = (frame * count + vertex) * FRAME_STRIDE;
+					for (int axis = 0; axis < 3; axis++) {
+						frames[posed + axis] = (float) point[axis];
+						frames[posed + 3 + axis] = (float) normal[axis];
+					}
+				}
+			}
+		}
+		return new HordeMeshCache.Model(vertices, frames, count, full.frames(), full.duration(),
+				full.sourceVertexCount(), 3);
+	}
 
 	private static int[] visible(int[] indices, boolean[] visible) {
 		return Arrays.stream(indices).filter(index -> visible[index / 4]).toArray();

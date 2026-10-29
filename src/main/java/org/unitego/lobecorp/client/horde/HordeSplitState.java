@@ -208,6 +208,9 @@ public class HordeSplitState implements AutoCloseable {
         count = circleSnapshot.size();
         maximumRadius = 0;
         if (count == 0) {
+            if (texture == null) {
+                resize(INITIAL_CAPACITY);
+            }
             uploaded = 0;
             return;
         }

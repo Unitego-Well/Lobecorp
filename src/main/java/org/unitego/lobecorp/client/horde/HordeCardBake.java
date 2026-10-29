@@ -7,8 +7,7 @@ import org.unitego.lobecorp.Lobecorp;
 /// 在CPU把完整模型的20个跑步帧从盒子的6个面方向各渲染一张小图，拼成“6方向×帧数”的片图集。
 /// 图集只烘焙一次并随模型缓存；GPU端按方向/帧取tile，避免逐实例CPU处理。
 final class HordeCardBake {
-	static final int TILE = 64;
-	private static final int PADDING = 3;
+    static final int TILE = HordeMeshReduction.CardProjection.TILE;
 	private static final double[] LIGHT = normalize(-0.35, 1.0, 0.45);
 
 	private HordeCardBake() {
@@ -31,8 +30,7 @@ final class HordeCardBake {
 			var image = new NativeImage(width, height, true);
 			for (int face = 0; face < 6; face++) {
 				bakeFace(model, texture, image, face, shaded);
-			}
-			return image;
+			}			return image;
 		} catch (RuntimeException failure) {
 			Lobecorp.LOGGER.warn("群体方向片烘焙失败，回退6面盒贴图", failure);
 			return null;
@@ -40,17 +38,13 @@ final class HordeCardBake {
 	}
 
 	private static void bakeFace(HordeMeshCache.Model model, NativeImage texture, NativeImage atlas, int face, boolean shaded) {
-		double[] box = bounds(model);
-		int[] corners = HordeMeshReduction.boxFaces()[face];
-		double[] p0 = HordeMeshReduction.corner(box, corners[0]);
-		double[] p1 = HordeMeshReduction.corner(box, corners[1]);
-		double[] p3 = HordeMeshReduction.corner(box, corners[3]);
-		double[] right = normalize(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]);
-		double[] down = normalize(p3[0] - p0[0], p3[1] - p0[1], p3[2] - p0[2]);
-		double[] forward = cross(right, down);
-		double[] center = {(box[0] + box[3]) * 0.5, (box[1] + box[4]) * 0.5, (box[2] + box[5]) * 0.5};
-		double extent = Math.max(box[3] - box[0], Math.max(box[4] - box[1], box[5] - box[2]));
-		double scale = (TILE - PADDING * 2) / Math.max(0.0001, extent);
+		var projection = HordeMeshReduction.cardProjection(model);
+		var axes = HordeMeshReduction.cardAxes(face);
+		double[] right = axes[0];
+		double[] down = axes[1];
+		double[] forward = axes[2];
+		double[] center = projection.center();
+		double scale = TILE / projection.side();
 		float[] projected = new float[model.vertexCount() * 3];
 		float[] zbuffer = new float[TILE * TILE];
 		java.util.Arrays.fill(zbuffer, -Float.MAX_VALUE);
@@ -69,7 +63,7 @@ final class HordeCardBake {
 				double z = frameVertices[at + 2] - center[2];
 				projected[vertex * 3] = (float) ((x * right[0] + y * right[1] + z * right[2]) * scale + TILE * 0.5);
 				projected[vertex * 3 + 1] = (float) ((x * down[0] + y * down[1] + z * down[2]) * scale + TILE * 0.5);
-				projected[vertex * 3 + 2] = (float) (-(x * forward[0] + y * forward[1] + z * forward[2]));
+				projected[vertex * 3 + 2] = (float) (x * forward[0] + y * forward[1] + z * forward[2]);
 			}
 			for (int at = 0; at + 3 < model.vertexCount(); at += 4) {
 				int a = at;
@@ -192,31 +186,9 @@ final class HordeCardBake {
 		}
 	}
 
-	private static double[] bounds(HordeMeshCache.Model model) {
-		double minX = Double.MAX_VALUE;
-		double minY = Double.MAX_VALUE;
-		double minZ = Double.MAX_VALUE;
-		double maxX = -Double.MAX_VALUE;
-		double maxY = -Double.MAX_VALUE;
-		double maxZ = -Double.MAX_VALUE;
-		float[] frames = model.frameVertices();
-		for (int at = 0; at + 2 < frames.length; at += 6) {
-			minX = Math.min(minX, frames[at]);
-			minY = Math.min(minY, frames[at + 1]);
-			minZ = Math.min(minZ, frames[at + 2]);
-			maxX = Math.max(maxX, frames[at]);
-			maxY = Math.max(maxY, frames[at + 1]);
-			maxZ = Math.max(maxZ, frames[at + 2]);
-		}
-		return new double[]{minX, minY, minZ, maxX, maxY, maxZ};
-	}
-
 	private static double[] normalize(double x, double y, double z) {
 		double length = Math.sqrt(x * x + y * y + z * z);
 		return length < 0.0001 ? new double[]{0, 0, 0} : new double[]{x / length, y / length, z / length};
 	}
 
-	private static double[] cross(double[] a, double[] b) {
-		return new double[]{a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
-	}
 }

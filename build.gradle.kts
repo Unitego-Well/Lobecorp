@@ -59,13 +59,16 @@ val reserveBuildIdentity = tasks.register("reserveBuildIdentity") {
     description = "Reserves the next local daily artifact build number"
     notCompatibleWithConfigurationCache("The daily build number is reserved in local persistent state")
     outputs.upToDateWhen { false }
+    val reservedFile = buildCounterFile
+    val reservedDate = buildDate
+    val reservedCount = buildCount.toString()
     doLast {
-        buildCounterFile.parentFile.mkdirs()
+        reservedFile.parentFile.mkdirs()
         val currentBuildCounter = Properties().apply {
-            setProperty("date", buildDate)
-            setProperty("count", buildCount.toString())
+            setProperty("date", reservedDate)
+            setProperty("count", reservedCount)
         }
-        buildCounterFile.outputStream().use { currentBuildCounter.store(it, null) }
+        reservedFile.outputStream().use { currentBuildCounter.store(it, null) }
     }
 }
 val internalTestMods = configurations.create("internalTestMods") {

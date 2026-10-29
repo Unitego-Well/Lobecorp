@@ -1,5 +1,6 @@
-### Local worktrees ###
+### Local worktrees and retained drafts ###
 /.workspace/
+/.local/
 
 ### Gradle ###
 .gradle
@@ -52,5 +53,17 @@ repo/
 /.backups/
 /.cherry-assistant/
 /backups/
-/logs/latest.log
+/logs/
 **.java~
+
+### Local dependencies, credentials and JVM diagnostics ###
+node_modules/
+/.env
+/.env.*
+!/.env.example
+!/.env.*.example
+*.hprof
+hs_err_pid*.log
+replay_pid*.log
+
+/.agent/

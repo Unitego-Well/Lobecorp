@@ -33,4 +33,4 @@ approval_mode = "approve"
 [mcp_servers.lobecorp_normify]
 command = "C:/Program Files/nodejs/node.exe"
 args = ["E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js", "serve", "--workspace-root", "E:/xm/mc/mod/Unitego-Well/Lobecorp"]
-cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify"
+cwd = "E:/xm/mc/mod/Unitego-Well/Lobecorp"

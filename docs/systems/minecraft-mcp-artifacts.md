@@ -1,6 +1,6 @@
 # Minecraft MCP 外部制品消费
 
-更新：2026-10-23。
+更新：2026-10-25（合并迁移资料；未升级制品）。
 
 源码只在独立 Git 仓库 `E:/xm/mc/mod/Unitego-Well/minecraft-mcp` 维护。原始 dev 和任务工作区不再保留 `modules/minecraft-mcp`、Gradle 子项目或源码锁文件。
 
@@ -13,5 +13,13 @@
 消费者 `Minecraft MCP Bridge` 只检查已发布 CLI 和 stdio 工具发现；Effect Runtime/Authoring/Reference 使用随制品发布的脚本，显式操作游戏仍需相应授权。图标导入和桥接构建只属于外部仓库。
 
 2026-10-23：外部 IDEA 构建成功；消费方导入、编译及 Data 结果在本次修改记录另行记录，不能用历史结果替代。尚未启动游戏或验证四类操控和鼠标运行表现。
+
+## 独立仓库迁移记录（历史）
+
+2026-10-22 拆分阶段固定独立仓库提交 `aa8289a485cfaf2b90eca073f2ce1eb719328b6c`，当时分支为 `codex/standalone-minecraft-mcp`；完整来源与许可证以独立仓库 `SOURCE_PROVENANCE.md` 为准。旧方案通过各工作区源码快照消费，并保留 `modules/minecraft-mcp` 和 Gradle 子项目；该方式已被2026-10-23的制品模式替代，不能按历史说明恢复模块或共享 build、dist、node_modules 与 run。
+
+旧工作区接入提交 `2403dea`、`2ad1e1e` 及112个文件一致性、10／11个文件静态检查等只作为当时证据，详细阶段见[修改记录](changes.md)，不代表各工作区当前业务或运行验收。原始拆分前引用为 `refs/backups/before-minecraft-mcp-extraction-20261022`；旧7903的快照与接入前备份分别为 `refs/backups/before-mcp-snapshot-7903-20261022`、`refs/backups/before-mcp-integration-7903-20261022`，旧90be为 `refs/backups/before-mcp-integration-90be-20261022`，均仅作追溯。
+
+拆分阶段的鼠标修复及真人／模拟输入隔离统一见[后台控制与鼠标契约](minecraft-mcp-background-control.md#当前鼠标契约2026-10-22)，四类 direct／simulate 接口见[结构化操控](minecraft-mcp-controls.md)。源码一致、静态检查或制品提交都不能证明旧客户端进程已加载修复；运行验收仍须逐实例核对并具有对应授权。旧独立仓库过程页原文已备份至 `.git/docs-arrange-20261025-3c524a79/`。
 
 备份：原始 Git common-dir 下 `mcp-externalization/20261023` 保留删除前源码与生成缓存；工作区迁移记录在 `workspace-relocations`。用户已有改动须先保存并比较，差异不能因删除源码而丢弃。冲突按内容合并，禁止直接选 ours/theirs。

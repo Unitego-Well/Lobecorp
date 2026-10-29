@@ -34,7 +34,7 @@
 
 ## 备份与回退点
 
-本地目录：[photon-removal-20261019-180102](../../backups/photon-removal-20261019-180102/)。result.json 保存最终删除清单；manifest.json 原分类保留，首行状态已更正。
+本地目录：photon-removal-20261019-180102（历史路径：`../../backups/photon-removal-20261019-180102/`；当前 dev 未保留）。result.json 保存最终删除清单；manifest.json 原分类保留，首行状态已更正。
 
 | 内容 | 本地 Git 引用 | 提交 |
 |---|---|---|

@@ -1,0 +1,222 @@
+# 原始项目总索引
+
+维护范围：原始 Lobecorp 的 `dev` 工作；整理日期：2026-10-27。本页是原始项目唯一的整体索引，管理目录职责、专题入口、Git 提交边界与本地保留位置。根 README 只介绍项目和基本信息。Photon 与 Horde 各自维护总览和问题，由[独立工作入口](#独立工作入口)跳转。
+
+## 本轮文档整理进度
+
+2026-10-28 工作区对话轮换：两个工作区各自保存交接后已创建新对话，两个旧工作对话与前协调按用户最新要求归档，名称与[有效路由](systems/workspace-layout.md#对话路由)同步。复用既有目录与分支，停止要求保留；原始只维护路由，不复制业务进度、不跨区写入或同步。
+
+2026-10-28 协调交接与导航核对：当前协调及旧对话排除边界见[对话路由](systems/workspace-layout.md#对话路由)。每日检查自动任务已原地迁移；系统索引补工作区入口，修改记录修复一处相对链接。已核对 IDEA Document、后台 Git 与导航差异，未执行构建、Data、测试或游戏；后续仅按确证漂移维护原始文档，不代管其他工作的进度。
+
+2026-10-28 代理文档整理与工作区级规范（最新补充）：`.agent/` 统一为五类子目录加索引，备份与证据迁入 `build/agent-backups/20261028-agent-doc-cleanup/`（49 文件 SHA256 逐项一致）；[统一文档管理](standards/agent-docs.md)补五个文档中心、历史正文只追加、备份落 `build/agent-backups` 并出清单三条；工作区根新增 `standards/` 补充规范（不提交）与 `AGENTS.md` 第 8 条。本轮只动文档与目录，不构建、不测试、不启动游戏。
+
+2026-10-27 测试输入边界（补充）：去除失焦硬门禁，不因失焦自动判失败或丢弃整轮；测试仍应最大化并保持焦点，允许专用API或夹具对本轮被测游戏最大化与维持／恢复焦点。模拟输入和GUI坐标点击仍可使用，但不得移动、捕获或居中实体鼠标，不操作其它用户窗口或系统显示设置。真实焦点时间线保留，规则唯一正文见[后台输入与测试边界](standards/workflow.md#后台输入与测试边界)；已同步两个有效对话，原始不代改其他工作区。
+
+2026-10-27 对话轮换：按用户明确选择，为两个现有工作区各创建全新对话继续当前任务，原始协调对话保留。当前有效ID与游戏测试串行约束见[工作区对话路由](systems/workspace-layout.md#对话路由)；旧记录保留并排除后续调度。本轮原始项目只更新路由、总索引与修改记录，不代管其他工作的业务进度；三份原字节备份位于 `build/agent-backups/20261027-chat-rotation-b186/`。
+
+2026-10-27 DS 规则与统一文档管理：新增[DS 执行规则](standards/ds-execution-rules.md)、[统一文档管理](standards/agent-docs.md)与工作区根 `AGENTS.md`；建立工作区根、Lobecorp、minecraft-mcp 三处 `.agent/`（不提交），把报告、交接、计划、记忆分开存放并建立索引。FAQ 记忆迁入 `Lobecorp/.agent/memory/faq.md` 并取消 Git 跟踪；根 `agent-backups/photon-r3-20261027/PROGRESS-20261027.md` 迁入工作区根 `.agent/handoffs/20261027-photon-r3-progress.md`。本次纯文档与本地目录调整，只做 IDEA 回读、诊断、引用与差异检查，不执行构建、Data、测试或游戏操作。原字节备份位于 `build/agent-backups/ds-rules-20261027/`。
+
+2026-10-26 项目规则分层：根 AGENTS 收敛为共享入口，重复工具、编辑、并行和验证条款统一维护在工作流程；保留独立工作树、IDEA 编辑、外部 MCP 制品、基准与中文提交约束。GPT/Codex 的模型委派仅适用其全局入口，不施加给 DS。纯文档任务只检查引用、规则与差异。修改前四份原字节备份在 `.git/doc-cleanup-20261026/`；编辑与统一检查分别记录，不执行构建、Data、游戏、安装或同步。
+
+2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。
+
+上次整理：2026-10-25。已完成78份自有 Markdown 的盘点和备份，将四份重复规则／过程页迁入长期专题与唯一问题清单后通过 IDEA 安全删除，当时保留74份并建立完整分类索引。当时74份文档的IDEA批量诊断已全部覆盖、无截断、0错误；1130处本地引用盘点没有失效文件目标或锚点，完整索引无漏项。源码直读说明已按当前源码补回；两项专项Skill仍缺失，已明确标注并保留问题记录，不冒充恢复能力。此次结果以批量诊断为主，不等于完整编辑器弱提示或运行验收；本轮只按授权范围提交文档增量。测试方法、规则、技能、FAQ 与记忆保留；依赖、缓存、运行输出和既有备份只记录边界。本轮不改业务或执行构建、测试、游戏操作。
+
+## 仓库目录与 Git 管理
+
+| 范围 | 职责与入口 | 管理方式 |
+|---|---|---|
+| `src/main/java/` | 模组源码；[Java 架构](java-architecture.md)、[系统索引](systems/README.md) | 跟踪已完成、可审查的源码；未完成草稿保留本地 |
+| `src/main/resources/` | 手写游戏资源及元数据；[资源规范](systems/resources-datagen.md) | 跟踪，保留资源原始排版 |
+| `src/test/`、`src/bench/` | 测试源码与基准场景；[BenchMod](systems/benchmod.md) | 跟踪源码和固定夹具；运行结果不入库 |
+| `src/generated/` | Data 生成输出 | 忽略、只读，不放手写资料 |
+| `resources/`、`lang/` | 仓库内资产与手写语言输入；按资源规范确认运行定义 | 跟踪源文件，不把目录存在当作已被运行加载 |
+| `build.gradle.kts`、`settings.gradle.kts`、`gradle.properties` | 项目构建与模组元数据 | 跟踪共享配置，不提交本机凭据 |
+| `gradle/`、`gradlew`、`gradlew.bat` | 版本目录、Gradle Wrapper | 跟踪，Wrapper JAR 属于必要构建入口 |
+| `lib/` | 受控依赖与 [Minecraft MCP 发布制品](systems/minecraft-mcp-artifacts.md) | 按既有约定跟踪；JAR、桥接 dist、许可证和哈希清单不能按普通输出忽略 |
+| `tools/lobecorp-normify/` | [架构 MCP](../tools/lobecorp-normify/README.md)、源码、锁文件及上游来源说明 | 跟踪源码与锁文件；本目录 dist、node_modules 忽略 |
+| `tools/workspaces/` | 工作区迁移与占用识别；[布局说明](systems/workspace-layout.md) | 跟踪工具源码；报告、备份和运行状态本地保留 |
+| `.agents/skills/` | 当前可用项目技能和已提交同步工具 | 跟踪适用当前仓库的内容；旧隔离与 reviewed-merge 草稿已移出有效入口 |
+| `.github/`、`.editorconfig`、`.gitattributes`、`.gitignore` | CI、格式与 Git 管理规则 | 跟踪共享规则 |
+| `.codex/config.toml` | 现有工作区 MCP 接入；[同步规则](systems/workspace-sync.md) | 已跟踪的明确例外，保持端口和路径隔离；不新增个人令牌和凭据 |
+| `.agent/` | 代理报告、交接、计划与记忆；本地保留 | 不提交；结构与命名见[统一文档管理](standards/agent-docs.md) |
+| `AGENTS.md`、`docs/` | 开发规则、当前契约、问题和历史证据 | 跟踪；专题页由下方职责入口管理，不再新建并列的整体索引 |
+| `.workspace/` | Photon、Horde 等独立 Git worktree | 原始仓库忽略；各自分支管理，不在原始提交中递归纳入 |
+| `.idea/`、`.run/`、`.vscode/`、`run/` | 本机 IDE、运行配置、存档、端口与测试环境 | 忽略，保留在原位置 |
+| `.gradle/`、`build/`、`out/`、`node_modules/`、`logs/` | 缓存、编译输出、依赖安装、日志及报告 | 忽略，保留本地 |
+| `.local/`、`backups/`、`.backups/`、`.git/` | 本地草稿、备份、Git 索引及运行审计 | 不提交；需要恢复时按下方本地保留记录操作 |
+| `.env`、`.env.*`、JVM 崩溃与堆转储 | 本机环境和诊断输出 | 忽略；无凭据的 `.env.example`／`.env.*.example` 可按需跟踪 |
+
+## 按职责阅读
+
+| 内容 | 入口 |
+|---|---|
+| 当前规则 | [AGENTS](../AGENTS.md)、[DS 执行规则](standards/ds-execution-rules.md)、[统一文档管理](standards/agent-docs.md)、[工作流程](standards/workflow.md)、[Java 与包](standards/java-and-packages.md)、[实体契约](standards/entity-contracts.md) |
+| 当前问题 | [本工作问题汇总](issues.md) |
+| 系统与功能 | [系统索引](systems/README.md) |
+| Java 架构和语言 | [架构](java-architecture.md)、[Java 25](java-25-language-and-comments.md) |
+| 资料与外部参考 | [历史资料索引](project-reference/README.md) |
+| 工作区管理 | [目录约定](systems/workspace-layout.md)、[同步规则](systems/workspace-sync.md) |
+| Minecraft MCP | [外部制品](systems/minecraft-mcp-artifacts.md)、[使用](systems/minecraft-mcp.md)、[操控](systems/minecraft-mcp-controls.md)、[后台与鼠标](systems/minecraft-mcp-background-control.md) |
+| 实际修改证据 | [修改记录](systems/changes.md) |
+
+## Markdown 分类索引（完整清单）
+
+原始仓库整理后保留75份项目自有 Markdown（2026-10-27 新增 DS 执行规则与统一文档管理，FAQ 记忆迁出并取消跟踪），完整清单如下；四份合并来源的恢复位置见本节末尾。每份文档只列入一个分类，专题索引负责下钻，本页仍是唯一整体索引。`.workspace/` 由各工作独立维护；`.git/`、`.local/`、`backups/`、依赖、缓存及运行输出不作为活动文档，原位保留，不按 Markdown 后缀清空。
+
+### 介绍、导航与问题入口（4份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [Lobecorp](../README.md) | 入口与唯一问题清单 |
+| [原始项目总索引](README.md) | 入口与唯一问题清单 |
+| [原始项目问题汇总](issues.md) | 入口与唯一问题清单 |
+| [系统文档索引](systems/README.md) | 入口与唯一问题清单 |
+
+### 规则、规范与 Skill（10份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [MCP 后台控制](../.agents/skills/lobecorp-mcp-background-control/SKILL.md) | 有效规则／能力入口，保留 |
+| [Lobecorp Normify](../.agents/skills/lobecorp-normify/SKILL.md) | 有效规则／能力入口，保留 |
+| [工作区共同地基同步](../.agents/skills/lobecorp-workspace-sync/SKILL.md) | 有效规则／能力入口，保留 |
+| [Lobecorp 项目开发规范](../AGENTS.md) | 有效规则／能力入口，保留 |
+| [Java 25 语法与注释规范](java-25-language-and-comments.md) | 有效规则／能力入口，保留 |
+| [Lobecorp 实体、技能与表现契约](standards/entity-contracts.md) | 有效规则／能力入口，保留 |
+| [Lobecorp Java、接口与包规范](standards/java-and-packages.md) | 有效规则／能力入口，保留 |
+| [Lobecorp 工作流程与收尾规则](standards/workflow.md) | 有效规则／能力入口，保留 |
+| [DS 执行规则](standards/ds-execution-rules.md) | 有效规则／能力入口，保留 |
+| [统一文档管理（DS 与 GPT 共用）](standards/agent-docs.md) | 有效规则／能力入口，保留 |
+
+
+### 工具、工作区与受控制品（9份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [BenchMod 基准工具链](systems/benchmod.md) | 技术接入；不等于当前运行已验证 |
+| [Minecraft MCP 外部制品消费](systems/minecraft-mcp-artifacts.md) | 技术接入；不等于当前运行已验证 |
+| [Minecraft MCP 后台接管、鼠标释放与帧率](systems/minecraft-mcp-background-control.md) | 技术接入；不等于当前运行已验证 |
+| [Minecraft MCP 结构化操控](systems/minecraft-mcp-controls.md) | 技术接入；不等于当前运行已验证 |
+| [Minecraft MCP](systems/minecraft-mcp.md) | 技术接入；不等于当前运行已验证 |
+| [工作区目录与迁移](systems/workspace-layout.md) | 技术接入；不等于当前运行已验证 |
+| [原始 dev 与独立工作区同步](systems/workspace-sync.md) | 技术接入；不等于当前运行已验证 |
+| [Minecraft MCP release artifacts](../lib/minecraft-mcp/README.md) | 技术接入；不等于当前运行已验证 |
+| [Lobecorp Normify](../tools/lobecorp-normify/README.md) | 技术接入；不等于当前运行已验证 |
+
+### 历史方案、精确清单与阶段证据（6份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [Java 包迁移清单与已批准边界](java-package-organization-plan.md) | 保留独有技术清单、未完成项或阶段证据 |
+| [系统修改记录](systems/changes.md) | 保留独有技术清单、未完成项或阶段证据 |
+| [G1 全部代码优先实施记录](systems/photon-g1-code-stage-20261021.md) | 保留独有技术清单、未完成项或阶段证据 |
+| [Photon 重设计实施进度](systems/photon-redesign-progress.md) | 保留独有技术清单、未完成项或阶段证据 |
+| [自建 Photon 特效、渲染与模型系统移除计划](systems/photon-removal-plan.md) | 保留独有技术清单、未完成项或阶段证据 |
+| [Photon 自建系统移除实施记录](systems/photon-removal-result.md) | 保留独有技术清单、未完成项或阶段证据 |
+
+### 资料快照、研究与外部来源（11份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [项目基线与系统边界](project-reference/01-project-baseline.md) | 历史／研究参考，使用前核对当前版本 |
+| [开发规则与工作流程](project-reference/02-rules-and-workflow.md) | 历史／研究参考，使用前核对当前版本 |
+| [源码架构与数据流](project-reference/03-architecture-and-data.md) | 历史／研究参考，使用前核对当前版本 |
+| [内部 API、注册表、资源与依赖](project-reference/04-api-registries-resources.md) | 历史／研究参考，使用前核对当前版本 |
+| [IDE、MCP 与本地 Skill](project-reference/05-ide-mcp-skills.md) | 历史／研究参考，使用前核对当前版本 |
+| [仓库内本地 MCP 资料](project-reference/06-local-mcp-reference.md) | 历史／研究参考，使用前核对当前版本 |
+| [证据、验证结果与维护清单](project-reference/07-evidence-and-gaps.md) | 历史／研究参考，使用前核对当前版本 |
+| [外部通用开发文档、MCP、Skill 与 API 参考](project-reference/08-external-development-reference.md) | 历史／研究参考，使用前核对当前版本 |
+| [Photon、GeckoLib 与 ParticleStorm 粒子接入研究](project-reference/09-particle-effects-research.md) | 历史／研究参考，使用前核对当前版本 |
+| [Lobecorp 历史资料与研究索引](project-reference/README.md) | 历史／研究参考，使用前核对当前版本 |
+| [Photon MCP 部分能力移植](third-party/photon2mcp.md) | 历史／研究参考，使用前核对当前版本 |
+
+### 架构与系统技术契约（35份）
+
+| 文档 | 维护定位 |
+|---|---|
+| [Lobecorp Java 架构说明](java-architecture.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [服务端动画、根运动与空间附着](systems/animation-runtime.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [实体动画与视觉同步](systems/animation.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [通用空间附着](systems/attachments.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [客户端表现与 UI](systems/client-ui.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [仇恨、群体与阵营](systems/combat.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [指挥家系统](systems/conductor.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [实体与 AI](systems/entities-ai.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [实体抓取](systems/entity-grab.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [实体技能](systems/entity-skills.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [事件入口与分发](systems/events.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [四色伤害与生物资源](systems/four-color-damage.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [命中框](systems/hitbox.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [系统导航补充与历史证据](systems/navigation-notes.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [网络协议与同步](systems/network.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [粒子效果与渲染](systems/particle-rendering.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon、LDLib2 与 KilaGraph 依赖升级](systems/photon-dependency-upgrade.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 粒子编辑器](systems/photon-editor.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 特效 MCP](systems/photon-effect-mcp.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 发射器发射器](systems/photon-emitter-spawner.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon／LDLib2 修复与兼容对照](systems/photon-ldlib2-fixes.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 模型特效](systems/photon-model-effects.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [模型特效与高级特性重设计方案](systems/photon-model-redesign.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 命名动画与参数控制](systems/photon-named-animations.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [当前性能静态审查与优化计划](systems/photon-performance-audit.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [Photon 性能检测工具](systems/photon-performance-tool.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [特效系统重写需求与现有文件兼容契约](systems/photon-rewrite-requirements.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [玩家动画](systems/player-animation.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [玩家 HUD、屏幕滤镜与四色护盾](systems/player-hud-shields.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [女皇激光与瞬时星束的技能特效](systems/queen-beam-skill-effects.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [注册、附件与数据契约](systems/registration-data.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [资源、翻译与数据生成](systems/resources-datagen.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [屏幕伤害粒子](systems/screen-damage-particles.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [世界文本粒子](systems/text-particles.md) | 原始分支的技术说明，修改前仍核对源码 |
+| [动态视觉精细度与自动 LOD](systems/visual-quality.md) | 原始分支的技术说明，修改前仍核对源码 |
+
+### 合并与旧入口去向
+
+| 合并来源（原文件名去扩展名） | 现入口 | 保留范围 |
+|---|---|---|
+| 事件规范旧页（`event-registration`） | [事件订阅规则](systems/events.md#订阅规则) | 唯一入口、顺序、生命周期与检查约束 |
+| 类整理旧页（`java-class-organization`） | [架构与整理历史](java-architecture.md#整理历史与维护边界)、[精确迁移清单](java-package-organization-plan.md) | 包职责、批准边界与历史检查 |
+| 格式化审计旧页（`java-formatting-audit`） | [架构历史](java-architecture.md#整理历史与维护边界)、[唯一问题汇总](issues.md)、[编辑器维护](systems/photon-editor.md#控件与文本输入维护历史) | 未解决候选、必要技术说明与历史验收边界 |
+| 独立仓库过程旧页（`minecraft-mcp-standalone`） | [外部制品与迁移](systems/minecraft-mcp-artifacts.md#独立仓库迁移记录历史)、[鼠标契约](systems/minecraft-mcp-background-control.md#当前鼠标契约2026-10-22) | 现消费方式、恢复引用、输入隔离与运行限制 |
+
+原始78份 Markdown、Git 索引和逐文件 SHA256 清单位于 `.git/docs-arrange-20261025-3c524a79/`；四份拟移除页另有 IDEA 原文快照，均与磁盘备份的正文一致。恢复前先比较差异，不整批覆盖当前工作。
+
+## 本次提交与本地保留
+
+2026-10-23：本轮适合入库的是原始项目索引、Git 忽略规则、已保存的历史停止记录和当前管理说明。不提交旧工具草稿，不运行或分发它们。
+
+本地草稿保留目录：`.local/git-wip/git-arrange-20261023-598bed71/`。其 `manifest.json` 记录原文件路径和 SHA256，`tool-wip.patch` 保存两份已跟踪脚本相对提交 `39a85d47` 的修改。目录内按原 `.agents/skills/` 层级保存以下六份原文，已逐份核对字节相同：
+
+- `lobecorp-isolated-workspace/SKILL.md` 与 `scripts/New-IsolatedWorkspace.ps1`：仍依赖旧外置目录默认值和已移除的 MCP 源码模块，不能作为当前创建入口。
+- `lobecorp-workspace-sync/scripts/Sync-Workspaces.ps1` 与 `Test-WorkspaceSync.ps1`：保存 reviewed-merge 增强及回归草稿；实际使用位置恢复到整理前已提交基线，外部制品路径识别得到保留。
+- `lobecorp-workspace-sync/scripts/Resolve-ReviewedMerge.mjs` 与 `reviewed-merge.attributes`：旧受限合并范围仍包含已移除模块路径，只在本地保存，不接入当前提交。
+
+完整修改前备份位于 `.git/git-arrange-20261023-598bed71/`，包含原索引、原文件与恢复计划。旧合并备份和历史引用不删除。后续恢复草稿时，先基于当前 HEAD 审查差异并适配当前布局、外部制品和端口边界，再逐项通过 IDEA 合并；不整批覆盖当前脚本，不把封存副本直接投入同步。
+
+新增文件按用途判断，不使用全量 `git add .`，不借 `assume-unchanged` 或 `skip-worktree` 隐藏已跟踪改动。`.gitignore` 不会停止跟踪已有文件；上述配置和受控制品例外保持显式管理。本轮提交禁用同步钩子，不推送、不合并到其他工作区。
+
+## 中文提交与后台 Git 插件
+
+所有新增提交的标题和正文使用中文。2026-10-23 经远端引用核对，已处理 `dev`、`codex/photon`、`codex/horde` 的 89 条未推送提交：81 条说明翻译为中文，8 条纯中文说明保留；每条提交的文件树、作者、时间与合并父子关系均保留，三个工作区暂存条目与当次采样文件哈希一致。`main`、远端分支与已发布历史保持不变，未推送。旧引用、原对象、索引备份、新旧编号映射与核对结果位于 `.git/chinese-commit-messages-20261023-cd90dabe/`；旧文档提交编号仍可通过备份追溯。
+
+IDEA 扩展已独立迁移并最终命名为 `idea-mcp-expand`，工程为 `E:/xm/idea/idea-mcp-expand`，依赖现有 IDEA MCP Server（`com.intellij.mcpServer`）。其源码、接口、构建、安装状态和未完成项由自身 `docs/README.md` 维护，本索引只管理入口，不代管该工作。另一个插件工程位于 `E:/xm/idea/idea-gradle-defaults-plugin`，沿用自身资料。两工程迁移均保留完整备份和旧路径兼容 junction，逐文件哈希清单位于 `.git/idea-plugin-relocation-20261023-dba43b3f/`。
+
+原始卡死证据保存在 `.git/idea-git-freeze-20261023-583c10cd/`。现象、已确认位置与未验证边界统一见[问题汇总](issues.md)，不另建并列问题文档。用户已授权通过外部后台方式构建、验证和安装新扩展，并完成本轮中文提交；不自动重启 IDEA、不推送，也不触发其他工作区同步。当前仍停止使用会激活终端的 MCP Git 入口，静态编辑继续通过 IDEA 文档 API。
+
+## 独立工作入口
+
+| 工作 | 本地总览 | 分支 |
+|---|---|---|
+| 原始项目 | 本页、[原始问题汇总](issues.md) | `dev` |
+| Photon | [Photon 工作区总览](../.workspace/lobecorp_photon/README.md) | `codex/photon` |
+| Horde | [Horde 工作区总览](../.workspace/lobecorp_horde/README.md) | `codex/horde` |
+
+这些工作区入口用于本机协调；新克隆未准备对应工作区时不会存在。本页只管理入口，不复制或代管其他工作的任务、问题与验收。2026-10-27已为两个现有工作区创建新对话接续当前任务；当前有效ID统一见[工作区对话路由](systems/workspace-layout.md#对话路由)，保留的旧对话排除后续检索、跟踪与投递。
+
+## 维护边界
+
+不同工作各自维护自己的总览；每个工作内只保留一个问题汇总，专题页保留契约和处理经验并链接问题汇总。原始项目不汇总其他工作的开放问题。
+
+每天至少整理一次：核对导航、重复内容、问题状态与证据。长期规则和独特契约保留；同一工作内重复说明合并到职责最明确的页面。完成且无遗留问题的过程文档，须先迁移必要结论、备份并修复引用后移除。历史成功只代表当时的检查，不代表本轮验收；不能仅凭旧报告标记问题已解决。
+
+静态文档整理不执行构建、Data、测试或游戏操作。源码、锁定版本与 IDEA 解析优先于旧资料；生成输出只读。

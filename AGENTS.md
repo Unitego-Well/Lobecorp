@@ -3,30 +3,27 @@
 > 除用户当前明确指令外，本文件是 Lobecorp 项目的最高优先级开发规范。  
 > 嵌套仓库（例如 `run/client/*`）内部的 `AGENTS.md` 只对其自身仓库生效。
 
+本入口与所链接的项目正文供读取它们的客户端共享。GPT/Codex 的模型委派按其全局规则执行，不作为 DS/DeepSeek Harness 的模型要求；DS/DeepSeek-Harness 必须同时执行[DS 执行规则](docs/standards/ds-execution-rules.md)；工具能力以各客户端实际提供的接口为准。
+
 ## 开始任务前
 
-- 先读取相关 Skill、[系统索引](docs/systems/README.md)中匹配当前任务的入口和下表适用规范，再制定简要计划；只读相关章节，不默认加载全部参考、修改历史或案例。
-- 文档可能不完整或过时，类型、引用、依赖和已有能力须通过 IDEA 核对；文档未记载不代表不存在。需求、范围或关键选择有歧义时，一次只问一个互斥选项问题，推荐项在前，默认直接用文本询问；未回答不视为确认。
-- 用户提供中文名称时，先确认英文形态，再创建或重命名。游戏与开发文件名使用英文；普通文档可用中文名，被游戏读取的文档也须使用英文名。特效内部自定义名称仅用小写字母与 `_`，不因此顺带改名已有用户文件；资源命名与定义调用见[资源规范](docs/systems/resources-datagen.md#文件命名与运行定义)。
+先读取相关 Skill、[系统索引](docs/systems/README.md)中匹配当前任务的入口及下表适用规范，再制定简要计划。澄清、命名与兼容规则唯一正文见[开始任务前](docs/standards/workflow.md#开始任务前)。
+
+## DS 执行规则
+
+DS 会话除本文件外必须执行[DS 执行规则](docs/standards/ds-execution-rules.md)：开工门禁、提问与异议、中文与输出格式、每步记录、每约 5 分钟可见进度、IDEA/MCP 优先与收尾验证。GPT/Codex 不套用其中 DS 专属的节奏与输出格式条款。
+
+## 文档管理（DS 与 GPT 共用）
+
+报告、会话交接、计划与记忆统一放在根目录 `.agent/`，不提交 Git；结构与命名见[统一文档管理规则](docs/standards/agent-docs.md)。工作区根 `.agent/` 放跨项目内容，各仓库根 `.agent/` 放本仓库内容；新增、迁移、归档时同步各自 `README.md` 索引。
 
 ## 系统文档与修改记录
 
-- 修改后同步相关系统文档、入口与链接，在 [changes.md](docs/systems/changes.md)记录日期、范围、关键文件、实际检查与备份。仅查相关日期或系统，不默认通读历史。
-- 问题记录区分现象、已确认根因、修复和维护要点；计划、已实现、历史证据、推测、未验证和受阻分别标明。文档补充不构成额外代码修改授权。
+文档、修改记录、所属工作总览与唯一问题清单的维护规则见[系统文档与修改记录](docs/standards/workflow.md#系统文档与修改记录)。原始项目仅链接各工作入口，不复制其他工作的进度与问题。
 
 ## 工具、编辑与并行
 
-- 项目文件只能通过 IDEA 编辑，包含代码、资源、Gradle 和 Markdown。IDEA/MCP 不可用时先说明并等待兜底授权；不得自动改用命令行或 apply_patch。修改前后读取相关编辑器信息。
-- 协作仅使用未归档的 AI 聊天，不检索、恢复或唤醒已归档聊天。
-- 工作区统一位于原始仓库 `.workspace/lobecorp_<content>`，由 Git worktree 管理并由原始仓库忽略；现有聊天完成后再为后续任务开新聊天，旧路径兼容链接不得提前移除。详见[工作区目录](docs/systems/workspace-layout.md)。
-- Minecraft MCP 只消费外部仓库构建并提交到 `lib` 的 JAR 和桥接制品；不恢复 `modules/minecraft-mcp` 或源码子项目。升级和隔离见[制品规范](docs/systems/minecraft-mcp-artifacts.md)。
-- 默认使用不抢焦点的 MCP/API；固定连续步骤合批，在开始、结束、分支或失败时读取必要状态。只修改本次授权范围；不顺带重构、清理、改名、格式化或修复。
-- 保留未修改区域的原文件排版及用户已有暂存、未暂存、未跟踪和未保存内容；先对比再局部合并，不擅自覆盖、重置、暂存、提交或删除。并行任务明确文件归属，不同时修改同一物理文件。
-- 代码格式纳入编辑规则：新增代码文件与本次修改行的格式调整属于本次编辑范围，完成代码修改后必须通过 IDEA
-  按项目格式处理，不另行询问格式化授权。关闭额外导入优化和成员重排；未修改区域、用户提供的资源、生成输出、第三方及二进制文件不纳入自动格式化，整文件或全项目整理须有对应授权。
-- 每次任务修改完成后都必须创建 Git 提交，包含本次修改及同步文档；仅暂存和提交本次授权内容，保留用户其他修改及暂存状态。提交受阻时如实报告原因，不得将未提交报告为已完成提交。
-- runData 输出只读，不直接修改或放入手写文档。默认不主动编译、Data、测试、同步、重载或运行游戏；大型修改和新增翻译键按下表读取明确例外，用户已授权的检查直接执行。
-- 只报告实际执行的操作、编辑器信息、结果、未解决项与备份；静态诊断、编译、保存、运行和视觉验收分别说明。
+IDEA 专属编辑、后台 Git、工作树隔离、外部 Minecraft MCP 制品、基准测试与已有修改保护统一见[工具、编辑与并行](docs/standards/workflow.md#工具编辑与并行)。验证与每任务中文提交规则见[修改规模与收尾](docs/standards/workflow.md#修改规模与收尾)及[版本与验证边界](docs/standards/workflow.md#版本与验证边界)。
 
 ## 按任务读取
 
@@ -40,5 +37,5 @@
 | 兼容、迁移、旧格式读取 | [开始任务前](docs/standards/workflow.md#开始任务前)：先确认是否兼容；模型文件仅用 .mfxproj／.mfx／.mfxpack，不兼容此前格式 |
 | Java、注释、常量、可见性、接口、系统边界或包整理 | [Java 与包规范](docs/standards/java-and-packages.md)；Java 任务还须读 [Java 25 专项](docs/java-25-language-and-comments.md) |
 | 实体、AI、技能、动画、同步或星束命中 | [实体契约](docs/standards/entity-contracts.md)适用章节，再读对应项目 Skill |
-| 进入游戏、截图、控制、连接或 Debug | [Minecraft MCP Skill](.codex/skills/lobecorp-minecraft-mcp/SKILL.md)：真实主窗先最大化，编辑器嵌入游戏，快速测试世界流程合批 |
-| 制作、修改或对照验收特效 | [特效制作 Skill](.codex/skills/lobecorp-effect-authoring/SKILL.md)：按问题读取制作参考，使用透视 |
+| 进入游戏、截图、控制、连接或 Debug | Minecraft MCP Skill（路径 `.codex/skills/lobecorp-minecraft-mcp/SKILL.md` 当前缺失，须先核对入口并读取，缺失状态见[问题汇总](docs/issues.md)）：按[后台输入与测试边界](docs/standards/workflow.md#后台输入与测试边界)核对窗口状态，编辑器嵌入游戏，快速测试世界流程合批 |
+| 制作、修改或对照验收特效 | 特效制作 Skill（路径 `.codex/skills/lobecorp-effect-authoring/SKILL.md` 当前缺失，须先核对入口并读取，缺失状态见[问题汇总](docs/issues.md)）：按问题读取制作参考，使用透视 |

@@ -145,7 +145,7 @@ Payload 具有不同覆盖范围，不能用重复网络载荷代替既有同步
 
 ## 修改前检查点
 
-- 先读取 [项目规则](../../AGENTS.md) 和 [指挥家 Skill](../../.codex/skills/lobecorp-conductor/SKILL.md)，再通过 IDEA
+- 先读取 [项目规则](../../AGENTS.md) 和 指挥家 Skill（历史路径：`../../.codex/skills/lobecorp-conductor/SKILL.md`；当前 dev 未保留），再通过 IDEA
   核对最新路径、类型和引用；专项参考保留业务边界与迁移历史，当前实现以本页、相关系统文档和源码为准。
 - 确认改动属于目录、持久化附件、非持久化运行态、能力操作或客户端显示，避免复制权威来源。
 - 核对 `join/update/commit/attach/detach/remove`、待交付修订号、释放记录及同步基线；读取查询不能隐式创建成员。

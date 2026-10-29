@@ -41,7 +41,7 @@
 ## 本地备份与空目录
 
 - 本地备份统一放入根 backups/，按任务名称与日期分目录，保留原项目相对路径和文件内容；目录已由 .gitignore 排除。
-- 已有备份目录及归并进度见 [本地备份索引](../../backups/README.md)。迁移不覆盖同名文件，不手动改变已有 Git 暂存内容。
+- 已有备份目录及归并进度见 本地备份索引（历史路径：`../../backups/README.md`；当前 dev 未保留）。迁移不覆盖同名文件，不手动改变已有 Git 暂存内容。
 - 包迁移后的空目录只在再次确认没有文件时清理；清单记录原路径，禁止扩展到运行目录、生成输出和嵌套仓库。
 
 ## 验证边界
@@ -61,7 +61,7 @@
 
 ## 事件订阅规则
 
-来自 `../event-registration.md` 和 `lobecorp-event-architecture`：
+来自当时的事件监听规范（现已并入[事件订阅规则](../systems/events.md#订阅规则)）和 `lobecorp-event-architecture`：
 
 - 自动订阅类只能位于 `org.unitego.lobecorp.events` 或子包；客户端入口位于 `events.client` 并保持客户端边界。
 - 按功能域拆分订阅类，避免一个总入口承载全部业务。

@@ -1,9 +1,9 @@
-# Java 包整理审批计划
+# Java 包迁移清单与已批准边界
 
 状态：2026-10-05 用户批准第二版方案 1，源码迁移完成。原清单 269 类中实际迁移 266 类；按保留强关联小组的执行边界，ConductorHud、ConductorControls、ConductorLdlibScreen 保留在 client.conductor。检查结果见系统修改记录。工具统一归根 util，世界内实体及机制归 world，下级按“作用 → 类型”分类。以下包名均省略
 `org.unitego.lobecorp.` 前缀。
 
-IDEA 当前盘点为 416 个手写 Java 文件。本方案拟移动 269 类、保留 147 类，替代第一版 121 类方案；扩大部分包含 world
+2026-10-05 的 IDEA 盘点为 416 个手写 Java 文件。以下保留当时拟移动 269 类、保留 147 类的精确批准清单，替代第一版 121 类方案；扩大部分包含 world
 归类及与“作用 → 类型”相关的客户端、注册和 Mixin 目录调整。精确清单见文末，不把计划当成已实施结构。
 
 已通过当前项目的 MixinMCP 查询确认：原版 Entity、Brain 位于 `world.entity`、`world.entity.ai`，Item 位于 `world.item`

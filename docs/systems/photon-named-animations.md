@@ -21,7 +21,7 @@
 
 ## 第六版实现范围与迁移边界
 
-2026-10-16 调度优化在每次所有权扫描内复用当次有序播放列表，并直接遍历实时轨道树；回调后重新读取当前顺序，不跨帧缓存定义、参数或优先级。HOLD、实时静音、子轨道变更与同 tick 替换的语义回归及实际检查见[性能记录](photon-performance.md)。
+2026-10-16 调度优化在每次所有权扫描内复用当次有序播放列表，并直接遍历实时轨道树；回调后重新读取当前顺序，不跨帧缓存定义、参数或优先级。HOLD、实时静音、子轨道变更与同 tick 替换的语义回归及实际检查见性能记录（历史路径：`photon-performance.md`；当前 dev 未保留）。
 
 当前定义版本为 6。每个命名动画声明独立形参，形参使用稳定 UUID；名称仅用于显示与代码查找。不再提供整库共享参数或复杂动作链运行层。原生 TL 继续是唯一制作视图，组合调用改为绑定发射器发射器的原生子动画片段。
 
@@ -62,23 +62,23 @@
 
 职责入口：
 
-- [配置模型](../../src/main/java/org/unitego/lobecorp/config/photon/animation)：NBT 格式、动画、参数、绑定及规则。
-- [控制器](../../src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java)：Photon 扩展对象与运行态挂接。
-- [注册](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonAnimationTypes.java)：原生 FXObjectType 注册。
-- [播放运行态](../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java)：实例时钟、触发队列、参数和公开操作。
-- [子片段桥](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonChildAnimationPlayer.java)：原生播放器驱动已有子实例的受控／独立播放及片段归属清理。
-- [子动画轨道](../../src/main/java/org/unitego/lobecorp/client/photon/animation/timeline)：原生 Track／Clip 的配置、复制和 NBT。
-- [旧定义迁移](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java)：保留支持内容、丢弃不支持旧调用并报告；版本或动画结构损坏时保留原件并阻止覆盖。
-- [适配层](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter)：原生 RuntimeBinding、NumberFunction、属性贡献合成。
-- [原生轨道播放](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationNativePlayer.java)：复用 TimelinePlayer 执行激活、控制、速度、信号、音频和后处理；普通动画属性继续进入贡献混合。
-- [编辑工作区](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationWorkspace.java)：共用场景、动画录制、TL 交互与历史。
-- [监视会话](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationInspectorSession.java)：轨道、片段等配置器变更保存到动画定义与历史；对象检视直接使用原 Inspector 和基础参数历史。
-- [编辑快照](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationEditSnapshot.java)：保存定义及工作区模型引用，恢复编辑状态时保留有效轨道和属性身份。
-- [项目测试存储](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProjectAccess.java)：FXProject 独立持有测试定义，关闭工作区不删除；[存储工具](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationProjectPreviewUtil.java)复用原定义格式，仅写工程字段。
-- [组合测试控件](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTestControls.java)：右侧独立选择测试动画与临时实参，不改变制作选择或动画默认值。
-- [动画标签](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTab.java)：场景旁的原生标签、首次打开初始化与关闭清理；拖动、停靠和浮动沿用原 View。
-- [外侧面板](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPanels.java)：放置左侧动画列表、原层级、动画检视和共享时间轴，模式切换保留用户当前标签。
-- [表单状态](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationFormState.java)：临时折叠与滚动快照，沿用原生控件，不写入资源。
+- 配置模型（历史路径：`../../src/main/java/org/unitego/lobecorp/config/photon/animation`；当前 dev 未保留）：NBT 格式、动画、参数、绑定及规则。
+- 控制器（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java`；当前 dev 未保留）：Photon 扩展对象与运行态挂接。
+- 注册（历史路径：`../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonAnimationTypes.java`；当前 dev 未保留）：原生 FXObjectType 注册。
+- 播放运行态（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java`；当前 dev 未保留）：实例时钟、触发队列、参数和公开操作。
+- 子片段桥（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonChildAnimationPlayer.java`；当前 dev 未保留）：原生播放器驱动已有子实例的受控／独立播放及片段归属清理。
+- 子动画轨道（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/timeline`；当前 dev 未保留）：原生 Track／Clip 的配置、复制和 NBT。
+- 旧定义迁移（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java`；当前 dev 未保留）：保留支持内容、丢弃不支持旧调用并报告；版本或动画结构损坏时保留原件并阻止覆盖。
+- 适配层（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter`；当前 dev 未保留）：原生 RuntimeBinding、NumberFunction、属性贡献合成。
+- 原生轨道播放（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationNativePlayer.java`；当前 dev 未保留）：复用 TimelinePlayer 执行激活、控制、速度、信号、音频和后处理；普通动画属性继续进入贡献混合。
+- 编辑工作区（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationWorkspace.java`；当前 dev 未保留）：共用场景、动画录制、TL 交互与历史。
+- 监视会话（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationInspectorSession.java`；当前 dev 未保留）：轨道、片段等配置器变更保存到动画定义与历史；对象检视直接使用原 Inspector 和基础参数历史。
+- 编辑快照（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationEditSnapshot.java`；当前 dev 未保留）：保存定义及工作区模型引用，恢复编辑状态时保留有效轨道和属性身份。
+- 项目测试存储（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProjectAccess.java`；当前 dev 未保留）：FXProject 独立持有测试定义，关闭工作区不删除；存储工具（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationProjectPreviewUtil.java`；当前 dev 未保留）复用原定义格式，仅写工程字段。
+- 组合测试控件（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTestControls.java`；当前 dev 未保留）：右侧独立选择测试动画与临时实参，不改变制作选择或动画默认值。
+- 动画标签（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTab.java`；当前 dev 未保留）：场景旁的原生标签、首次打开初始化与关闭清理；拖动、停靠和浮动沿用原 View。
+- 外侧面板（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPanels.java`；当前 dev 未保留）：放置左侧动画列表、原层级、动画检视和共享时间轴，模式切换保留用户当前标签。
+- 表单状态（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationFormState.java`；当前 dev 未保留）：临时折叠与滚动快照，沿用原生控件，不写入资源。
 - [工具](../../src/main/java/org/unitego/lobecorp/util/photon/animation)：翻译、UI、复制映射、生命周期和实例查询。
 
 ## 制作与预览
@@ -91,8 +91,8 @@
 
 中央“场景／命名动画”继续使用同一个 SceneView、相机、渲染器和粒子管理器；底部始终是原来的 `owner.timelineView`。
 不创建第二个 TL 页面或 UI 实例。原时间轴与各命名动画由独立的
-[TimelineContext](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineContext.java)
-和 [TimelineModel](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineModel.java) 切换数据与历史。
+TimelineContext（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineContext.java`；当前 dev 未保留）
+和 TimelineModel（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationTimelineModel.java`；当前 dev 未保留） 切换数据与历史。
 动画、激活、控制、信号、分组、速度、音频、后处理八类轨道，片段、曲线、标记、录制、复制/粘贴、EndMode/Wrap 和工具均沿用原 TL。
 
 左侧“动画列表”铺满面板，使用“发射 → 爆发”的原生数组行、拖动条、边框和加减按钮。
@@ -453,7 +453,7 @@ trigger(name, data, inputs) 排队简化入口，宿主不推进时等待实际 
 
 原生 Timeline.readTrack 遇到未知 type 会返回 null，组轨道也会跳过未知子项；仅在读完后检查会丢失原始数据。迁移必须在读取 Definition 前递归检查 tracks／children 的列表、条目、已注册 type 和 data 结构；未知或畸形项阻止迁移并保留完整原件，不把静默跳过当作兼容成功。
 
-[保存保护](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationGuardUtil.java)先审查同一 FXData 的全部控制器，只有没有阻断问题才提交；弃用警告不阻止保存支持内容。Editor 保存／另存、FX 导出和 FXPack 导出共用保护，真正受阻时显示原因，不误报保存成功。只读工程扫描器按 .fxproj 的未压缩 NBT 和 .fx 的 GZIP NBT 读取，不加载工作区、不写资源。
+保存保护（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationGuardUtil.java`；当前 dev 未保留）先审查同一 FXData 的全部控制器，只有没有阻断问题才提交；弃用警告不阻止保存支持内容。Editor 保存／另存、FX 导出和 FXPack 导出共用保护，真正受阻时显示原因，不误报保存成功。只读工程扫描器按 .fxproj 的未压缩 NBT 和 .fx 的 GZIP NBT 读取，不加载工作区、不写资源。
 “资源与剪切板 → 保存与导出通知”（notifications）默认开启。开启时 `.fx` 导出在实际写入及清缓存成功后显示 2 秒原生定时提示，FXPack 成功也使用定时提示并保留详情；当前 Photon 编辑器的定时通知最多同时三条、竖向排列，保存成功也沿同一入口。关闭后恢复原 `.fx` 无成功提示、FXPack 成功确认弹窗与保存独立定时通知，错误及其他确认弹窗保持原行为。归属、关闭清理与未验收边界见[导出成功与定时通知](photon-editor.md#导出成功与定时通知)，不以提示出现替代资源内容验收。
 本轮通知设置补全后最终 13 个 Java 的 IDEA 编译成功，Data exitCode=0、BUILD SUCCESSFUL in 21s、written=0；先前 12 个 Java 与 Data 32s、written=2 仅作初阶段证据保留。相对通知起始 25 个生成文件中仅两份语言资源及对应两个缓存变化，两语言各共新增 export_success／export_success_detail 与 feature.notifications／feature.notifications.tooltip，原有文本保持。通知初阶段 Git 为 dev、241 条变更（124 暂存、200 未暂存、0 未跟踪、0 冲突）；原有条目索引状态码保持，3 个新 Java 由 IDEA 自动加入索引，没有人为暂存或取消暂存。真实通知设置、布局与导出交互仍待验收。
 
@@ -501,38 +501,38 @@ destroy、重新 emit、控制器删除、粒子管理器清理、世界退出�
 
 以下问题记录来自先前版本；旧共享参数／动作链的描述保留根因证据，第六版的当前入口以前文为准。
 
-2026-10-08 本轮弃用旧规则时确认的维护问题：convertRule 处理固定输入会通过 localParameter 向目标动画追加形参；若之后某项输入无效而整条规则被丢弃，先前追加的形参可能残留，并错误占用共享参数归属。现每条规则转换前记录各动画形参数量和已有引用，仅在规则整体成功后合并引用；失败时回退该条规则新增的形参，保留绑定及先前成功调用的形参身份。防回归同时检查“先有效后非法”的输入、原有绑定、先前成功规则和未引用参数弃用，不能只验证失败规则未进入 rules 列表。见 [迁移实现](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java)。
+2026-10-08 本轮弃用旧规则时确认的维护问题：convertRule 处理固定输入会通过 localParameter 向目标动画追加形参；若之后某项输入无效而整条规则被丢弃，先前追加的形参可能残留，并错误占用共享参数归属。现每条规则转换前记录各动画形参数量和已有引用，仅在规则整体成功后合并引用；失败时回退该条规则新增的形参，保留绑定及先前成功调用的形参身份。防回归同时检查“先有效后非法”的输入、原有绑定、先前成功规则和未引用参数弃用，不能只验证失败规则未进入 rules 列表。见 迁移实现（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationMigrationUtil.java`；当前 dev 未保留）。
 
 2026-10-06 本轮六项修复已落入源码，客户端实际表现仍待验收：
 
 - **无效默认动画 UUID**：根因是首次 tick 直接 play 缺失动画，异常不在构造保护范围内。
   现先查找默认动画；引用不存在时记录问题并安全跳过，START 规则仍执行，不删除或改写原 defaultAnimation 和已保存数据。
   防回归时同时检查首次启动、START 只执行一次和损坏引用原样保留，不能在运行时静默修补资源。
-  见 [运行态](../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java)。
+  见 运行态（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java`；当前 dev 未保留）。
 - **CurveClip 跨周期旋转累计**：普通采样已有角度周期偏移，CurveClip 函数贡献却漏掉了偏移。
   现保留粒子生命周期时间和随机 supplier，在函数按生命周期采样后添加跨周期角度偏移，再应用绑定的 scale 和 offset。
   防回归检查普通关键帧与 CurveClip、多个循环、各分量正负偏移及停止后的运行槽恢复；不要把函数采样时间替换成命名动画进度。
-  见 [混合器](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java)
-  与 [函数贡献](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationContribution.java)。
+  见 混合器（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java`；当前 dev 未保留）
+  与 函数贡献（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationContribution.java`；当前 dev 未保留）。
 - **参数类型迁移**：此前只重建 defaults，已有 SET_PARAMETER 动作仍保存旧维度。
   现保留共享分量，为新增分量使用新类型默认值；对默认值和同参数动作值分别执行新类型、范围及有限值校验，
   并同步迁移全部对应 SET_PARAMETER 动作。动作新增分量继承迁移后的参数默认值，数组按值隔离；
   校验失败时不提交半套迁移，同类型修改保持原值。不要仅更新参数定义而遗漏规则动作，或让动作与 defaults 共用数组。
-  见 [参数编辑](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java)。
+  见 参数编辑（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java`；当前 dev 未保留）。
 - **退出预览恢复播放状态**：此前只保存面板与资源状态，未保存进入前粒子管理器是否播放。
   现进入时保存该状态，恢复场景和常规控制器后按原状态 play 或 pause；不销毁共用粒子管理器。
   防回归分别检查原场景播放与暂停时进入、切回标签和关闭工作区；不要拿动画预览退出时的状态替代进入前状态。
-  见 [预览](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPreview.java)。
+  见 预览（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationPreview.java`；当前 dev 未保留）。
 - **规则动作折叠归属**：动作曾加入页面 container，成为规则分组的兄弟节点。
   现通过原生 addConfigurator 加入对应规则的子组，规则折叠同时隐藏动作；各动作保留自己的折叠状态与顺序。
   防回归核对真实父节点及 configurators 列表，不只隐藏页面上的某段控件。
-  见 [规则编辑](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationRuleEditor.java)。
+  见 规则编辑（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationRuleEditor.java`；当前 dev 未保留）。
 - **绑定标题及分量标签**：此前拼接 displayNameKey 字符串可能显示翻译键，各轴标签也无法区分。
   现标题使用翻译 Component，向量显示 XYZ、颜色显示 RGBA、标量显示值；颜色候选分量包含 Alpha。
   非法旧分量保留为带提示的候选项，构建界面不自动改写数据，用户可选择有效分量修复。
   防回归核对标题翻译参数类型、颜色真实值分量数及旧非法值可显示/可修复，不能用属性内部通道数遗漏 Alpha。
-  见 [绑定编辑](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationBindingEditor.java)
-  与 [参数编辑](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java)。
+  见 绑定编辑（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationBindingEditor.java`；当前 dev 未保留）
+  与 参数编辑（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java`；当前 dev 未保留）。
 
 2026-10-06 经用户确认继续修复重复合成问题：
 
@@ -542,9 +542,9 @@ destroy、重新 emit、控制器删除、粒子管理器清理、世界退出�
   仅在 Property.apply 释放不足以覆盖第二轮已移除动画的属性。保留原生执行前的 tick/frame 释放及外部覆盖身份检查。
   防回归检查连续 ADD、MULTIPLY、混合、停止部分/全部贡献、基础/合成值查询，以及外部函数覆盖、启用覆盖和原配置不变。
   CurveClip 检查也不再手动释放后才断言恢复，确保实际测试连续 apply。多实例检查和完整加载回归现已通过。
-  见 [运行态](../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java)、
-  [混合器](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java)
-  与 [属性贡献](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java)。
+  见 运行态（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java`；当前 dev 未保留）、
+  混合器（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationMixer.java`；当前 dev 未保留）
+  与 属性贡献（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java`；当前 dev 未保留）。
   所有权保护沿用原判断：函数槽的新对象覆盖可保留；直接变换使用值相等判断，缓存装箱槽使用对象身份，无法精确辨别部分同值的新写入。
   本次未扩展所有权协议，不能将回归结论推广为任意同值外部覆盖均可辨别。
 
@@ -553,21 +553,21 @@ destroy、重新 emit、控制器删除、粒子管理器清理、世界退出�
 - **P2，临时参数界面不跟随规则或外部更新**：临时字段使用 forceUpdate=false 的 NumberConfigurator，
   当前 LDLib2 .39 只在 forceUpdate 开启时每个 screenTick 重新读取 supplier。规则/API 修改运行时参数不会重建页面，
   因此效果参数已变，字段仍显示旧值，直到页面重建。需要仅对临时字段恢复被动刷新，并核对输入焦点期间行为。
-  见 [参数编辑](../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java)
-  与 [UI 工具](../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationUiUtil.java)。
+  见 参数编辑（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/editor/PhotonAnimationParameterEditor.java`；当前 dev 未保留）
+  与 UI 工具（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/animation/PhotonAnimationUiUtil.java`；当前 dev 未保留）。
 - **P2，项目模板复制固化动画变换**：copySubtree 直接调用对象 copy(true)，经对象 Codec 复制当前 Transform，
   绕过 FXData.serializeNBT 的基础值保护。根位置归零后，根旋转/缩放及子级变换仍可成为复制实例的 base；
   例如基础缩放 1、ADD 动画贡献 1 时复制得到基础缩放 2，子实例重复贡献后可能为 3。
   这是复制实例基础值的差异，不表示源资源已永久改写；config.* 运行槽覆盖不会一概复制进配置。
   现有 serializeBase 只保护编辑器预览，直接套用它不足以覆盖普通运行实例。
-  见 [模板复制](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java)、
-  [序列化保护](../../src/main/java/org/unitego/lobecorp/mixin/photon/animation/client/PhotonAnimationDataMixin.java)
-  与 [属性贡献](../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java)。
+  见 模板复制（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java`；当前 dev 未保留）、
+  序列化保护（历史路径：`../../src/main/java/org/unitego/lobecorp/mixin/photon/animation/client/PhotonAnimationDataMixin.java`；当前 dev 未保留）
+  与 属性贡献（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/adapter/PhotonAnimationProperty.java`；当前 dev 未保留）。
 - **P2，多个循环的 MARKER 未按发生时间派发**：markers 以标记为外循环、周期为内循环，事件队列按 FIFO 执行。
   时长 1、A 在 0.25、B 在 0.75，单次推进 2.5 时应为 A0、B0、A1、B1、A2，当前为 A0、A1、A2、B0、B1；
   A/B 分别设置参数 1/2 时，最终值会从应有的 1 变成 2。未排序标记列表还可使同一周期内逆序。
   需要按本次跨越的发生时刻稳定排序入队，同时保留同刻顺序及事件预算。
-  见 [运行态](../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java)。
+  见 运行态（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/runtime/PhotonAnimationRuntime.java`；当前 dev 未保留）。
 
 2026-10-07 另发现既有标记编辑限制：RuleEditor.markers 仍把输入时间限制在 animation.duration，自动时长模式下该字段不等于完整制作范围。较晚的合法标记可能被拉回固定字段上限；本轮只记录，未扩展为编辑范围修复，客户端表现待核实。
 历史问题：直接 Runtime.play(existing, duration, false, inputs) 曾在 NaN／负无穷时继续修改已有播放输入。2026-10-08 改为 Playback.setParameters(inputs, duration) 完整校验后一次提交，非有限时长、循环零时长或受控播放的显式改时长均在改参前拒绝；失败不提交部分输入。该行为已核对当前源码，执行结果见本轮实际检查。
@@ -602,25 +602,25 @@ IDEA 编译 isSuccess=true、problems=[]，正常 Data 退出码 0；19 个输�
 2026-10-06 去重整理的实际结果：IDEA 编译成功，独立 PhotonAnimationRegression main 74 项通过；Data 已加载阶段通过 IDEA 调试表达式执行完整 runLoaded，最终 4640 项通过（共享原生一致性由 412 增至 452，其他目录不变）。新增 40 项检查常规单次求值、SIGNAL 参数再次合成/前缀顺序、自然及静默 RELEASE、START/TRIGGER FINISH、部分刻重定时和制作预览 N−1 协议。
 正常 Data 退出码 0；中英文各 729 个键、动画键各 182 个，相对本轮开始各新增 8 个状态/控件及提示键，更新 8 个播放按钮文本/提示，无删除，其余条目一致。生成文件只由 Data 写入，未手改或格式化。
 19 个相关 Java 最终 IDEA 分析全部完成，无新增错误/警告；仅保留 Regression.main 原有 System.out 日志点建议。最近构建诊断错误/警告均为 0，Mixin JSON 诊断无问题；修改 Java 通过 IDEA 类/行格式化，关闭导入优化和成员重排。三个旧代理和 commitRecording 的源码引用检索为 0，实际录制及 InspectorSession 保留。
-三个代理删除前已备份并逐份 IDEA 文本严格核对，.java~ 移动前后文本一致；见 [备份清单](../../backups/2026-10-06-photon-dedup/cleanup-manifest.md)。未运行 Client 或点击游戏内菜单，场景控件首次切换、折叠布局、输入焦点及真实音频/GPU 仍需验收。六个可能被二进制 UI NBT/动态引用的翻译键暂保留；三项独立遗留问题未扩展处理。
+三个代理删除前已备份并逐份 IDEA 文本严格核对，.java~ 移动前后文本一致；见 备份清单（历史路径：`../../backups/2026-10-06-photon-dedup/cleanup-manifest.md`；当前 dev 未保留）。未运行 Client 或点击游戏内菜单，场景控件首次切换、折叠布局、输入焦点及真实音频/GPU 仍需验收。六个可能被二进制 UI NBT/动态引用的翻译键暂保留；三项独立遗留问题未扩展处理。
 
 独立检查统一移入“工具 → 测试”，不再放在命名动画表单中；原“运行槽检查”和“魔法阵动画示例”按钮均已移除，示例构造代码与测试入口保留。
 设置路径为“Lobecorp → 预览 → 独立测试入口”（tests），默认开启，关闭后隐藏测试菜单。
 菜单包含全部测试、时钟与参数、运行槽检查（原入口）、多实例与触发、动画运行回归、共享时间轴与原生一致性以及编辑器配置：
 
-- [原有回归入口](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRegression.java)
+- 原有回归入口（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRegression.java`；当前 dev 未保留）
   分别提供时钟/参数、实际运行槽和多实例/触发检查。
-- [动画运行回归](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRuntimeRegression.java)
+- 动画运行回归（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationRuntimeRegression.java`；当前 dev 未保留）
   检查无效默认动画启动容错、函数贡献、CurveClip 跨周期偏移，以及重复合成、停止恢复和外部运行槽覆盖。
-- [编辑器配置检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationGuiRegression.java)
+- 编辑器配置检查（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationGuiRegression.java`；当前 dev 未保留）
   检查形参改型／删除归属、输入数组折叠、原生选择身份、翻译和分量候选；控件不加入当前工作区。
-- [共享时间轴与原生一致性](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationTimelineRegression.java)
+- 共享时间轴与原生一致性（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationTimelineRegression.java`；当前 dev 未保留）
   使用隔离模型和播放器检查原生八类轨道、分组静音、函数片段、整数／小数制作时间、原生属性多态、控制／信号顺序、后处理次数、时长及旧版本迁移；另检查录制冻结与真实 SerializableRecordAction 基础快照。真实窗口状态与音频另行验收。
 - [测试菜单](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTestMenu.java)
   使用各检查自己的模型、FX 和控件，不修改当前特效、播放或游标；失败详情与堆栈写入日志。
   原生对象和控件检查需模组加载完成，独立 IDEA main 只运行不依赖已加载环境的时钟、参数和 GUI 模型部分。
-- [第六版迁移检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java)纳入共享时间轴检查：形参 UUID、单 SELF PLAY 转换、不支持旧调用与未引用共享参数的弃用警告、失败调用形参回退，以及未知版本／损坏轨道阻断与原件副本；scanProjects(Path) 只读列出真实工程版本与迁移报告，执行结果按本轮记录确认。
-- [子动画片段检查](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java)纳入动画运行回归：受控／独立时钟、延迟实例、跟随、父清理、owner 替换及零长度窗口。
+- 第六版迁移检查（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationMigrationRegression.java`；当前 dev 未保留）纳入共享时间轴检查：形参 UUID、单 SELF PLAY 转换、不支持旧调用与未引用共享参数的弃用警告、失败调用形参回退，以及未知版本／损坏轨道阻断与原件副本；scanProjects(Path) 只读列出真实工程版本与迁移报告，执行结果按本轮记录确认。
+- 子动画片段检查（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChildRegression.java`；当前 dev 未保留）纳入动画运行回归：受控／独立时钟、延迟实例、跟随、父清理、owner 替换及零长度窗口。
   Photon NumberFunction 的静态注册需要 ModList，函数贡献检查也属于加载后入口；“独立”指夹具与当前特效隔离，不等于可脱离模组启动。
   未挂接 ModularUI 的配置器或同帧样式修改后，isDisplayed 读取的是计算缓存；隔离折叠断言使用原生 getValueImmediate(DISPLAY)，不改生产折叠处理。
   已有多实例及新增 FX 夹具只关闭各自 timelinePlayer 的音频派发，并在 finally 销毁；Data 没有 Minecraft 客户端音频管理器，不覆盖真实音频播放。

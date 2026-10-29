@@ -8,7 +8,7 @@
 
 包迁移方案 1 已执行，Java 链接按当前源码核对。本文只记录源码确认的机制，不把静态检查等同于游戏视觉验收。
 
-光影兼容方案的版本、现有 Photon Iris 路由与 EXIT 的复用边界，见 [EXIT 光影兼容评估](shader-compatibility-exit.md)。该文档为静态研究，尚未接入代码，也不替代光影运行验收。
+光影兼容方案的版本、现有 Photon Iris 路由与 EXIT 的复用边界，见 EXIT 光影兼容评估（历史路径：`shader-compatibility-exit.md`；当前 dev 未保留）。该文档为静态研究，尚未接入代码，也不替代光影运行验收。
 
 ## 三套粒子能力与职责
 
@@ -87,7 +87,7 @@ Bloom。普通纹理片的拼接量随长度和片距增加，不能仅按“一
 
 ## Photon 播放与实例参数
 
-[PhotonGeoEffects](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java)负责查找资源、创建绑定和
+PhotonGeoEffects（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`；当前 dev 未保留）负责查找资源、创建绑定和
 locator 更新；[PhotonGeoEffect](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffect.java)持有独立
 FXRuntime、来源实体、时限和停止状态。
 
@@ -106,7 +106,7 @@ setSimulationSpeed 调整对象模拟，0 冻结模拟但不自动暂停主时�
 16，桥接不修改上限。对象层级倍率继承和时间轴播放变速不能混为一项。游戏代码入口返回 Optional<PhotonGeoEffect>
 ，调用方要处理资源缺失，而不是每帧重新尝试加载。
 
-[PhotonAnimationTarget](../../src/main/java/org/unitego/lobecorp/client/attachment/PhotonAnimationTarget.java) 为既有 PhotonGeoEffect 提供显式外部锚点接收。`updateExternalAnchor` 更新同一个 FXRuntime 的根位置、旋转与缩放，并阻止旧实体位移和 GeckoLib locator 回写；不会重建粒子、重置播放或延长寿命，原来源失效、控制器切换和停止规则仍生效。解除空间绑定不会自动恢复旧跟随，需要显式调用 `useSourceAnchor()`。该适配器仅在客户端接收变换，不把客户端对象跨 Level 传入服务端绑定；完整接口见[服务端动画、根运动与空间附着](animation-runtime.md)。
+PhotonAnimationTarget（历史路径：`../../src/main/java/org/unitego/lobecorp/client/attachment/PhotonAnimationTarget.java`；当前 dev 未保留） 为既有 PhotonGeoEffect 提供显式外部锚点接收。`updateExternalAnchor` 更新同一个 FXRuntime 的根位置、旋转与缩放，并阻止旧实体位移和 GeckoLib locator 回写；不会重建粒子、重置播放或延长寿命，原来源失效、控制器切换和停止规则仍生效。解除空间绑定不会自动恢复旧跟随，需要显式调用 `useSourceAnchor()`。该适配器仅在客户端接收变换，不把客户端对象跨 Level 传入服务端绑定；完整接口见[服务端动画、根运动与空间附着](animation-runtime.md)。
 
 ## 命名动画控制
 
@@ -124,7 +124,7 @@ FX。
 ## GeckoLib locator 桥接
 
 ParticleStorm 1.4.4 已接入 GeckoLib
-粒子关键帧。项目的[GeckoLibHelperMixin](../../src/main/java/org/unitego/lobecorp/mixin/particlestorm/client/GeckoLibHelperMixin.java)
+粒子关键帧。项目的GeckoLibHelperMixin（历史路径：`../../src/main/java/org/unitego/lobecorp/mixin/particlestorm/client/GeckoLibHelperMixin.java`；当前 dev 未保留）
 包装 processParticleEffect，仅消费 photon: 前缀，其他标记调用原入口。例：关键帧 effect 为 photon:lobecorp:laser_charge 时，实际
 Photon ID 为 lobecorp:laser_charge。没有第二套动画区间遍历器。
 
@@ -134,7 +134,7 @@ renderer 需显式传入一致的 instanceId。相同 controller、效果 ID、l
 
 [RenderPassInfoMixin](../../src/main/java/org/unitego/lobecorp/mixin/geckolib/client/RenderPassInfoMixin.java)在
 renderPosed
-已应用动画和骨骼调整后建立监听；[GeoLocatorMixin](../../src/main/java/org/unitego/lobecorp/mixin/geckolib/client/GeoLocatorMixin.java)
+已应用动画和骨骼调整后建立监听；GeoLocatorMixin（历史路径：`../../src/main/java/org/unitego/lobecorp/mixin/geckolib/client/GeoLocatorMixin.java`；当前 dev 未保留）
 在 locator 位移和旋转已经应用后捕获变换。RenderUtil.extractPoseFromRoot 剥离渲染根矩阵，DataTickets.POSITION 提供世界基准，再构造
 PhotonAnchorTransform。
 
@@ -158,7 +158,7 @@ stop 策略。
 更新桥接，在退出和客户端世界卸载时 clear。ParticleStorm afterReload 经客户端线程执行 clear，所有绑定强制清理；新状态不得继承旧世界、旧模型或旧
 generation 的句柄。
 
-当前 [PhotonParticleRuntimeTrial](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonParticleRuntimeTrial.java)
+当前 PhotonParticleRuntimeTrial（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonParticleRuntimeTrial.java`；当前 dev 未保留）
 由客户端 LoggingIn 入口调用，程序构建一个非循环球形发射器并在玩家方块位置启动。它是现有登录演示入口，不应写成技能系统或“已关闭”的试验；是否保留/增加开关需单独确认。
 
 ## 排序、深度与混合

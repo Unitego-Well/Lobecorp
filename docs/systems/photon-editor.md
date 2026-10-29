@@ -47,6 +47,12 @@ EditorMixin 仅在扩展编辑器打开设置面板时替换树节点的显示�
 
 本轮 IDEA 静态诊断无代码错误，编译成功；Data exitCode=0、BUILD SUCCESSFUL in 24s，19 文件写入 2/删除 0。已回读生成中英文各 73 条、31 项名称/说明完整且无换行控制符；生成目录被 Git 忽略，按文件内容核对，未手改生成输出。未重新打开游戏设置页做外观验收，新增 Mixin 显示补丁需重启 Debug 客户端后生效。备份位于 backups/editor-settings-text-20261018。
 
+## 控件与文本输入维护（历史）
+
+2026-10-05 的修复记录：扩展控件通过原生 ADDED／REMOVED 事件登记和注销，保留构造时一次扫描；tick 只遍历弱键控件登记表，显示状态改变时才调用 setDisplay，功能开关仍逐 tick 生效，不降低动画或交互刷新频率。当时按 LDLib2 .39 核对嵌套加入、移除及跨编辑器移动的时序；不能把该记录直接当作新版上游行为保证。
+
+TextField／TextArea 的系统文本入口保留原生过滤、选择和撤销；对象／资源剪贴板仅接管匹配类型，工具快捷键跳过 TextArea，避免编辑文本触发对象操作。后续版本的上游修复、项目开关与真实交互边界统一见[Photon／LDLib2 修复对照](photon-ldlib2-fixes.md)。原格式化审计的检查数字并入[架构历史](../java-architecture.md#整理历史与维护边界)，未验证项目只在[原始问题汇总](../issues.md)维护。
+
 ## 菜单、设置和开关
 
 “视图大小”在独立窗口中沿原生 GUI 倍率流程调整，不再重新应用当前标签的窗口宿主偏好；再次选择已保存的倍率也会按当前实际窗口应用。普通设置面板 Apply 仍保留显式宿主选择。标签偏好与共享窗口不一致的根因、补丁范围及升级复核见[LD-05](photon-ldlib2-fixes.md#ld-05-独立窗口修改视图大小退回游戏窗口)，实际交互尚未客户端验收。
@@ -133,7 +139,7 @@ Photon 的特效项目窗口标签默认保留原项目类型，只显示文件�
 原命名动画表单中的运行槽检查和魔法阵示例按钮均已移除；测试入口不要求创建动画工作区或修改当前特效。
 [PhotonEditorTestMenu](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTestMenu.java)
 调用各检查自己的模型、FX 和控件，不借用当前编辑实例，不改变当前播放或游标；结果通过原生通知显示，失败堆栈写入日志。
-菜单与完整加载回归统一使用 [PhotonAnimationChecks](../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChecks.java) 目录；菜单逐项报告，调试入口保持失败即中断。
+菜单与完整加载回归统一使用 PhotonAnimationChecks（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/validation/PhotonAnimationChecks.java`；当前 dev 未保留） 目录；菜单逐项报告，调试入口保持失败即中断。
 部分检查需要模组已加载；独立的 PhotonAnimationRegressionTest 位于 src/test/java，通过 JUnit 执行不依赖该环境的时钟、参数和迁移检查，原 main 已移除。
 Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回归中；独立夹具不等于可脱离模组启动。配置器折叠测试读取原生即时样式，避免未挂 UI 时误读计算缓存。
 此前重复合成修复后，加载后的完整回归 4188 项通过，包含运行槽 4011、多实例 22、动画运行 56、编辑器配置 61 和时钟/参数 38；该轮编译/Data 与旧 main 74 项属于历史结果。
@@ -250,7 +256,7 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 扩展目标是 ActivatorTrack（激活轨道）。选项接入轨道监视面板；既有 ControlTrack 仍保留控制时间与 ticking 的原行为。历史命名
 control 是内部控件分类标识，不代表把这套扩展移到 ControlTrack。
 
-[PhotonActivatorOptions](../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonActivatorOptions.java)
+PhotonActivatorOptions（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonActivatorOptions.java`；当前 dev 未保留）
 默认：控制开始、开始时重启、控制结束、原结束行为、重启时清理；单帧触发默认关闭。开始控制和结束控制可独立关闭。
 
 | 选项             | 结果                                                         |
@@ -267,7 +273,7 @@ control 是内部控件分类标识，不代表把这套扩展移到 ControlTrac
 
 仅停止生成不会给无限寿命粒子自动补上淡出或消失时间；需要之后显式清理或另行安排结束表现。循环模块也不自带独立淡出包络。
 
-[PhotonActivatorTimelineUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java)
+PhotonActivatorTimelineUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java`；当前 dev 未保留）
 合并同对象的多条未静音激活轨道，按边界执行行为。具有自身激活轨道的子对象可覆盖父对象的激活和继承停止发射状态。父级手动隐藏仍遮住子对象；显式重启/清理子树也不能被理解为“子对象对父级一切操作免疫”。ControlTrack
 若存在，仍参与最终 ticking 判定。
 
@@ -276,17 +282,17 @@ startControl、startBehavior、endControl、endBehavior、clearOnRestart；缺�
 
 单边控制就是时间点命令，不再提供独立单帧开关；零长度片段也可作点。停止循环发射时关闭开始控制、开启结束控制并选择“仅停止生成粒子”，在片段终点生效，已有粒子继续更新。相同对象的普通双端区间保留 OR；最新单边命令覆盖仍持续的区间，后来的单边开始或真实区间入口才能恢复生成。同刻按叶轨道顺序处理，后者优先。发射器自身循环不解除停止状态；显式重启仍按开始行为恢复发射。
 
-时间轴复用原 SignalTrackEditor 的竖线和方块：仅开始显示起点、仅结束显示终点、双端显示区间及两端点、两端关闭时淡化。新增 [PhotonActivatorClipUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonActivatorClipUtil.java) 与 [ActivatorClipLayoutMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/ActivatorClipLayoutMixin.java) 同步初次布局、原生回调、滚动缩放和拖动引导线，命中与框选使用点的实际几何。单点只允许原生移动和组移动，禁用边缘拉伸；保留原 clip.duration 与冲突约束，移动平移整个片段，普通片段时长检视仍能调整仅结束点。选项变更及撤销只 refreshLaneLayout，不重建选择和展开状态。
+时间轴复用原 SignalTrackEditor 的竖线和方块：仅开始显示起点、仅结束显示终点、双端显示区间及两端点、两端关闭时淡化。新增 PhotonActivatorClipUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonActivatorClipUtil.java`；当前 dev 未保留） 与 ActivatorClipLayoutMixin（历史路径：`../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/ActivatorClipLayoutMixin.java`；当前 dev 未保留） 同步初次布局、原生回调、滚动缩放和拖动引导线，命中与框选使用点的实际几何。单点只允许原生移动和组移动，禁用边缘拉伸；保留原 clip.duration 与冲突约束，移动平移整个片段，普通片段时长检视仍能调整仅结束点。选项变更及撤销只 refreshLaneLayout，不重建选择和展开状态。
 
 2026-10-08 根因与维护：原生 evaluate 把所有 Activator 当区间并提前写活动／显示；扩展多轨道 OR 又可能把仅结束的停止生成抵消。现在原生区间阶段只接收双端 Activator，单边由原边界扩展求值；命名 TimelineState 按每个播放器的制作时间认领已生效的点，未到点不写继承激活和发射。无命名控制器时只保存已接管点的活动／显示／发射基础值，拖回点前、静音或移除点时恢复，仍存在的原生 Control／双端轨道值优先。维护时覆盖点前外部停止、停止与持续区间并存、后来区间恢复及清理，不能用每帧活跃 OR 重新开启已停止的循环。
 
 ### 高速播放经过事件与零时刻预览
 
-原生播放器按当前制作时间求值，较大的时间步长可能直接跨过短激活、控制或音频片段。新增 [PhotonTimelineTraversalUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonTimelineTraversalUtil.java) 收集前后制作时间之间的离散边界，按顺序补调用原生 evaluate，再执行当前时间的原求值；动画曲线仍由原生阶段采样，不另建播放器。信号继续使用原区间派发和去重；单边只补对应起点或终点，双端重叠片段按合并区间的真实入口和退出处理，不在区间重叠内部重复触发。
+原生播放器按当前制作时间求值，较大的时间步长可能直接跨过短激活、控制或音频片段。新增 PhotonTimelineTraversalUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonTimelineTraversalUtil.java`；当前 dev 未保留） 收集前后制作时间之间的离散边界，按顺序补调用原生 evaluate，再执行当前时间的原求值；动画曲线仍由原生阶段采样，不另建播放器。信号继续使用原区间派发和去重；单边只补对应起点或终点，双端重叠片段按合并区间的真实入口和退出处理，不在区间重叠内部重复触发。
 
 补求值需要暂时设置精确 localTime，并在正常求值前及 finally 中恢复原值；begin 重置经过时间，内部边界求值由重入标识保护。tick 补处理不调用 frame，避免音频、后处理或渲染贡献重复提交。维护时同时覆盖整段跨越、共享起止点、分组静音、回拖／重启与信号顺序，不能只增加最终时刻的 clipAt 查询。经过事件补处理在扩展编辑器固定使用；原生入口保留原采样，普通世界继续既有运行处理，不再有 timeline_event_traversal 启用设置。
 
-原编辑预览在首次模拟更新后才把爆发粒子接入渲染，时间轴 0 时看不到初始粒子。本轮 [PhotonEmissionPrimeUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonEmissionPrimeUtil.java) 只在使用 DummyWorld 和独立 PhotonParticleManager 的编辑器场景中初始化 Burst.time=0，并将待加入粒子接入已有渲染队列；不调用 advance／tick，不推进粒子年龄、特效时钟或管理器计数，也不提前发射 rateOverTime 粒子。正常世界的 FX 不自动调用此初始化。
+原编辑预览在首次模拟更新后才把爆发粒子接入渲染，时间轴 0 时看不到初始粒子。本轮 PhotonEmissionPrimeUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonEmissionPrimeUtil.java`；当前 dev 未保留） 只在使用 DummyWorld 和独立 PhotonParticleManager 的编辑器场景中初始化 Burst.time=0，并将待加入粒子接入已有渲染队列；不调用 advance／tick，不推进粒子年龄、特效时钟或管理器计数，也不提前发射 rateOverTime 粒子。正常世界的 FX 不自动调用此初始化。
 
 初始化复用原 burstTriggers 的数量、概率和周期判断；保存已经抽样的零时刻数量，首次正常发射窗口复用并排除已消费的零触发，clear 时清理记录。已有预热结果沿原规则保留，正开始延迟、已推进年龄、停止生成或非活动对象跳过初始化；非循环且寿命不超过一刻时，原预热不会执行，仍允许零时刻初始化。待加入队列只接入一次，首次正常更新仍处理出生事件和寿命。
 
@@ -401,4 +407,4 @@ tick 仍检查已登记控件的设置和父级模块，显示状态有变化才
 
 开发模式下，资源浏览、工程保存和材质／着色器图使用 src/main/resources/assets，Photon 包使用 src/main/resources/fxpacks；发行环境保留原加载流程。五类本机布局／最近项目存储不迁移到源码，文件路径及配置属性见 [开发环境源码资源直读](resources-datagen.md#开发环境源码资源直读2026-10-15)。
 
-教程 V3 已正式命名为 queen_star_beam，当前工程、运行 ID、材质目录和迁移边界见 [女皇星束资源](queen-star-beam.md)。历史记录中的 tutorial_shockwave／refined／v3 路径只作为当时证据，不能再作为当前打开或保存入口。
+教程 V3 已正式命名为 queen_star_beam，当前工程、运行 ID、材质目录和迁移边界见 女皇星束资源（历史路径：`queen-star-beam.md`；当前 dev 未保留）。历史记录中的 tutorial_shockwave／refined／v3 路径只作为当时证据，不能再作为当前打开或保存入口。

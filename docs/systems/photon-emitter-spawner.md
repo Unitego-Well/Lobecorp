@@ -150,7 +150,7 @@
 
 ### 发射控制
 
-[PhotonEmitterSpawnerUtil](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnerUtil.java)
+PhotonEmitterSpawnerUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnerUtil.java`；当前 dev 未保留）
 作用于指定 FXRuntime 内按名称找到的发射器。调用须在客户端线程，FXRuntime 需已经 emit 且仍有效。
 
 ```java
@@ -205,26 +205,26 @@ public class EmitterSpawnerExample {
 序列化枚举保存稳定翻译键标识；切换语言不改变保存值。
 未为旧 ParticleEmitter、BeamEmitter 或 TrailEmitter 增加必填保存字段。
 
-- [类型注册与动画槽](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonEmitterTypes.java)
-- [发射器实现](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/PhotonEmitterSpawner.java)
-- [配置](../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnConfig.java)
-- [模板复制与来源链](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java)
-- [项目模板命名动画复制](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterAnimationUtil.java)
-- [实例生命周期](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonSpawnedEffect.java)
-- [参数覆盖](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnParameterUtil.java)
+- 类型注册与动画槽（历史路径：`../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonEmitterTypes.java`；当前 dev 未保留）
+- 发射器实现（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/PhotonEmitterSpawner.java`；当前 dev 未保留）
+- 配置（历史路径：`../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnConfig.java`；当前 dev 未保留）
+- 模板复制与来源链（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java`；当前 dev 未保留）
+- 项目模板命名动画复制（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterAnimationUtil.java`；当前 dev 未保留）
+- 实例生命周期（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonSpawnedEffect.java`；当前 dev 未保留）
+- 参数覆盖（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnParameterUtil.java`；当前 dev 未保留）
 - [编辑器与激活规则](photon-editor.md)、[粒子与渲染](particle-rendering.md)、[实际修改记录](changes.md)
 
 本轮还增加以下配套文件：
 
-- 参数与形状配置：[PhotonEmitterSpawnParameters](../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnParameters.java)、[PhotonEmitterSpawnShape](../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnShape.java)。
-- 调度和动画槽：[PhotonEmitterSpawnSchedule](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonEmitterSpawnSchedule.java)、[PhotonEmitterSpawnRuntime](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonEmitterSpawnRuntime.java)。
-- 参数快照与实例集合：[PhotonSpawnOverrides](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonSpawnOverrides.java)、[PhotonSpawnedEffects](../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonSpawnedEffects.java)。
-- 形状采样与翻译：[PhotonEmitterSpawnShapeUtil](../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnShapeUtil.java)、[PhotonEmitterSpawnerTextUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEmitterSpawnerTextUtil.java)。
+- 参数与形状配置：PhotonEmitterSpawnParameters（历史路径：`../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnParameters.java`；当前 dev 未保留）、PhotonEmitterSpawnShape（历史路径：`../../src/main/java/org/unitego/lobecorp/config/photon/emitter/PhotonEmitterSpawnShape.java`；当前 dev 未保留）。
+- 调度和动画槽：PhotonEmitterSpawnSchedule（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonEmitterSpawnSchedule.java`；当前 dev 未保留）、PhotonEmitterSpawnRuntime（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonEmitterSpawnRuntime.java`；当前 dev 未保留）。
+- 参数快照与实例集合：[PhotonSpawnOverrides](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonSpawnOverrides.java)、PhotonSpawnedEffects（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/emitter/runtime/PhotonSpawnedEffects.java`；当前 dev 未保留）。
+- 形状采样与翻译：PhotonEmitterSpawnShapeUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterSpawnShapeUtil.java`；当前 dev 未保留）、[PhotonEmitterSpawnerTextUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEmitterSpawnerTextUtil.java)。
 
 既有 Java 仅接入：[PhotonEditorSettings](../../src/main/java/org/unitego/lobecorp/config/photon/PhotonEditorSettings.java)、
 [PhotonEditorTools](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTools.java)、
 [TranslationKeys](../../src/main/java/org/unitego/lobecorp/util/TranslationKeys.java)、
-[PhotonActivatorTimelineUtil](../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java)。
+PhotonActivatorTimelineUtil（历史路径：`../../src/main/java/org/unitego/lobecorp/util/photon/runtime/PhotonActivatorTimelineUtil.java`；当前 dev 未保留）。
 
 2026-10-07 形状预览两文件已执行 IDEA 修改范围格式化与静态诊断，无错误/警告；整合编译成功，正常 Data 退出码 0。具体参数编辑及生成检查见 [修改记录](changes.md)。本轮未运行 Client 或独立测试，各方向形状显示、父级缩放与零尺寸仍待游戏验收。
 

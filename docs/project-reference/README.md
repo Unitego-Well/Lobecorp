@@ -1,6 +1,6 @@
-# Lobecorp 项目资料总索引
+# Lobecorp 历史资料与研究索引
 
-盘点时间：2026-09-30
+盘点时间：2026-09-30（历史快照）。当前原始工作入口见[文档总览](../README.md)，开放问题见[问题汇总](../issues.md)。本目录保留当时证据，旧版本、目录、工具和验收结论不能视为当前状态。
 
 2026-10-05 系统说明补充：日常修改优先查看 [系统文档索引](../systems/README.md)，再通过 IDEA 核对源码；修改后维护对应系统页和 [修改记录](../systems/changes.md)。历史资料仍用于参考，不代表当前实现完整覆盖。
 
@@ -37,7 +37,13 @@
 - 不包含：社区文章、外部仓库的最新状态、构建目录的反编译结果、`node_modules` 依赖说明、运行存档内容、日志中的凭据和任何 `.env` 内容；外部资料只核对官方/一手页面。
 - 本轮已通过 IDEA 修改当前任务涉及的源码包路径、网络接口、注册入口、可见性和本参考文档，并通过官方网页核对外部参考；未手工修改构建产物、`runData` 输出目录或运行数据，也未改动 `.codex`/`.claude` 规则。
 
-## 维护约定
+## 当前使用边界
+
+本目录的01至07为历史快照及页内补录，08保留一手外部资料入口，09保留版本敏感的粒子接入研究；它们都不能替代当前规范、版本目录、系统契约或运行状态。旧 `.codex`／`.claude` Skill、内嵌 MCP 路径与工具清单仅用于溯源，不代表当前已安装能力。
+
+日常变更维护[原始总索引](../README.md)、[系统契约](../systems/README.md)、[工作流程](../standards/workflow.md)和[唯一问题汇总](../issues.md)，不再将旧快照同步成第二套现状台账。完整 Markdown 分类由原始总索引管理；本目录仅是历史与研究专题入口。
+
+## 历史维护约定（保留溯源）
 
 - Minecraft、NeoForge、Java、Gradle 或主要依赖版本变化时，先更新 [01-project-baseline.md](01-project-baseline.md) 和 [04-api-registries-resources.md](04-api-registries-resources.md)。
 - 包职责、事件入口、数据附件或 Payload 变化时，更新 [03-architecture-and-data.md](03-architecture-and-data.md)。

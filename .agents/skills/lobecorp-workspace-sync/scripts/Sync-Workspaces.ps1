@@ -11,6 +11,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ConfigPath = '.codex/config.toml'
+$MergeMessage = [regex]::Unescape('\u5408\u5e76\u539f\u59cb\u5f00\u53d1\u5206\u652f\u7684\u5df2\u63d0\u4ea4\u53d8\u66f4')
 $RuntimePattern = '^(\.idea/|\.run/|\.gradle/|run/|build/|.*?/node_modules/)'
 $Utf8 = [Text.UTF8Encoding]::new($false)
 $GitExecutable = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
@@ -469,7 +470,7 @@ try
                     Git $target @('update-ref', "refs/backups/workspace-sync/$runId/$key/restore", $restore) | Out-Null
                 }
                 Save-Json (Join-Path $directory 'before-merge.json') $record
-                $merge = Git $target @('merge', '--no-edit', '--no-ff', $source) -AllowFailure
+                $merge = Git $target @('merge', '--no-edit', '--no-ff', '-m', $MergeMessage, $source) -AllowFailure
                 if ($merge.Code -ne 0)
                 {
                     $record.Detail = $merge.Lines; throw 'Merge stopped; local changes remain in backup stash.'

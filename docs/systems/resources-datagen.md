@@ -1,6 +1,6 @@
 # 资源、翻译与数据生成
 
-核对日期：2026-10-05。本文记录生成源与资源边界；具体运行结果见 [修改记录](changes.md)。
+核对日期：2026-10-24（本次仅静态复核命名规则、导航、构建资源目录与手动翻译路径公式）。本文记录生成源与资源边界；其他阶段的运行结果见 [修改记录](changes.md)。
 
 ## 输入与输出
 
@@ -18,6 +18,21 @@
 TranslationKeys.init 在生成入口初始化集中翻译定义；LangHandler.creates 在数据生成环境登记名称，Supplier 保留注册对象延迟访问。粒子生成源覆盖
 Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，不假定均由该 Provider 生成。
 
+## 文件命名与运行定义
+
+文件命名遵循[项目规则](../../AGENTS.md#开始任务前)：游戏与开发文件名使用英文，普通说明文档可用中文，被游戏读取的文档仍使用英文。用户提供中文名称时，先确认英文形态；特效内部自定义名称仅使用小写字母与 `_`，不因此顺带重命名已有用户文件。
+
+文件名、显示名称与运行定义分别核对。参考资源、手动语言输入和编辑器导出是否进入游戏，以实际构建资源目录、注册或读取入口及资源 ID 为准，不能只凭文件存在判断。修改前核对已有引用与生成源，生成输出保持只读。
+
+## 开发环境源码资源直读（2026-10-15）
+
+本节补回旧编辑器与MCP文档已引用的开发约定；2026-10-25仅通过当前[DevelopmentResourceUtil](../../src/main/java/org/unitego/lobecorp/util/resource/DevelopmentResourceUtil.java)、对应Mixin与构建配置静态复核，没有执行游戏或打包验收。
+
+- 仅 `Platform.isDevEnv()` 为真时尝试源码目录；默认从游戏目录解析 `../../src/main/resources`。自定义运行目录可通过 `lobecorp.developmentResources` 指定包含 assets 的资源根。默认候选不存在时保留原目录；显式配置但缺少 assets 时抛出配置错误，不悄悄选取其他工作区。
+- LDLib2资产目录与资源包根分别转到源码的 assets 和资源根，Photon包目录转到 fxpacks。发行环境不启用上述源码覆盖；旧 run/ldlib2 内容作为单独客户端资源包保留，不因此搬迁或覆盖旧文件。
+- EditorLayoutStore、EditorProjectStore、ResourceTabLayoutStore、DialogSizeStore 和 UIDebuggerWindowState 的本机状态仍使用游戏目录下 ldlib2/assets，不保存到手写源码资源。路径转换与MCP工作区沿现有资源入口处理，旧run资产和包根仅追加为兼容读取根并去重，不另建一套MCP路径来源。
+- 源码直读不等于工程源或FXPack已被排除在发行包外。是否进入产物以当前构建规则和实际JAR为准，本轮没有相应产物验证；不据旧开发说明宣称打包边界已通过，也不在文档整理中调整构建配置。
+
 ## 服务端模型与动画内容
 
 新的服务端动画内容仓库读取 `data/<namespace>/animation/models/<path>.geo.json` 与 `data/<namespace>/animation/animations/<path>.animation.json`，对应 ID 为 `<namespace>:<path>`。模组内置默认内容位于相同 data 路径，外部数据包按标准优先级覆盖；完整 GeoJSON 与动画 JSON 按内容版本同步，运行中实例保留开始时的版本，只有显式 `editContent` 修改本实例。
@@ -30,7 +45,7 @@ Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，
 - [服务端动画](../../src/main/resources/data/lobecorp/animation/animations/example/attachment_draw.animation.json)：`data/lobecorp/animation/animations/example/attachment_draw.animation.json`。
 - [客户端动画覆盖](../../src/main/resources/assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json)：`assets/lobecorp/geckolib/animations/example/attachment_draw.animation.json`。
 
-示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；命令、代码包装、刀的客户端物品显示与清理见[独立拔刀接入示例](animation-runtime.md#独立拔刀接入示例)。
+示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；示例资源契约见 [LcAnimationDemo](../../src/main/java/org/unitego/lobecorp/animation/demo/LcAnimationDemo.java)，命令与代码包装见[动画接口](animation-runtime.md)，物品显示与清理见[显式登记独立模型与物品显示](animation-runtime.md#显式登记独立模型与物品显示)。
 
 ## 手动语言合并的实际路径
 

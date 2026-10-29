@@ -8,10 +8,10 @@
 
 | 效果 | 运行 ID | 可编辑工程 | 对象数 |
 |---|---|---|---|
-| 激光法术 | lobecorp:the_queen_of_hatred/laser_spell | [laser_spell.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fxproj) | 9 |
-| 瞬时星束法术 | lobecorp:the_queen_of_hatred/star_beam_spell | [star_beam_spell.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fxproj) | 5 |
-| 星束光球 | lobecorp:the_queen_of_hatred/star_beam_spell_ball | [star_beam_spell_ball.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fxproj) | 7 |
-| 星束光束 | lobecorp:the_queen_of_hatred/star_beam_spell_beam | [star_beam_spell_beam.fxproj](../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fxproj) | 6 |
+| 激光法术 | lobecorp:the_queen_of_hatred/laser_spell | laser_spell.fxproj（历史路径：`../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/laser_spell.fxproj`；当前 dev 未保留） | 9 |
+| 瞬时星束法术 | lobecorp:the_queen_of_hatred/star_beam_spell | star_beam_spell.fxproj（历史路径：`../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell.fxproj`；当前 dev 未保留） | 5 |
+| 星束光球 | lobecorp:the_queen_of_hatred/star_beam_spell_ball | star_beam_spell_ball.fxproj（历史路径：`../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_ball.fxproj`；当前 dev 未保留） | 7 |
+| 星束光束 | lobecorp:the_queen_of_hatred/star_beam_spell_beam | star_beam_spell_beam.fxproj（历史路径：`../../src/main/resources/assets/lobecorp/fx/the_queen_of_hatred/star_beam_spell_beam.fxproj`；当前 dev 未保留） | 6 |
 
 三个新工程分别有同目录 .fx 与 src/main/resources/fxpacks 下的同名 .fxpack。组合包含 46 个文件、4 份定义；两个子包分别 7/9 个文件，均不包含 fxproj。原 laser_spell、laser、light_ball 的工程、定义和包逐份与本轮备份字节一致，没有修改原模型、ShaderGraph 或纹理。
 
@@ -59,7 +59,7 @@
 - FX 发射入口将已经校验的动画库交给运行态，避免每次发射解码两次。库归单一运行实例，编辑器可变库和正在播放的运行态不进入共享池。
 - 持续阶段的锚点与长度共用一次射线结果，减少重复方块截断查询。
 
-这些是源码确认的工作转移和重复计算消除，不是帧时间成绩。GPU 首次编译/上传、首爆与后期的成本仍须在游戏中采样，详见[性能说明](photon-performance.md#代码动画接入与释放前准备2026-10-18)。
+这些是源码确认的工作转移和重复计算消除，不是帧时间成绩。GPU 首次编译/上传、首爆与后期的成本仍须在游戏中采样，详见性能说明（历史路径：`photon-performance.md#代码动画接入与释放前准备2026-10-18`；当前 dev 未保留）。
 
 ## 逐帧显示、结束衔接与本地性能采样（2026-10-19）
 
@@ -67,13 +67,13 @@
 
 加载准备包括本地视觉曲线、模型 CPU 资产、图管线和纹理，以及限量未发射实例。实例只独占移交一次，已播放对象不回收；资源重载、退出和世界卸载清理。控制模式切换直接移交独占动画库，不再为此重新编码完整 NBT。世界当前尺寸的 Bloom 链保持到世界退出或配置/尺寸变化，避免原生 120 帧闲置驱逐导致重复分配。
 
-真实技能的 Debug/Spark、首次/预热最长帧、P99、最低一秒、逐帧样本及未解决问题见[释放瞬间实测](laser-release-profile.md)。项目原 FX、模型、纹理、ShaderGraph 未改动；不能用源码改动或平均帧率代替稳定验收。
+真实技能的 Debug/Spark、首次/预热最长帧、P99、最低一秒、逐帧样本及未解决问题见释放瞬间实测（历史路径：`laser-release-profile.md`；当前 dev 未保留）。项目原 FX、模型、纹理、ShaderGraph 未改动；不能用源码改动或平均帧率代替稳定验收。
 
 ## 代码检查（2026-10-18，历史）
 
 17 个 Java 文件已通过 IDEA 诊断与修改范围格式化，保留既有未使用 API、借用 Level 和原渲染器注解等警告；新增类及本次主要特效/模型预备路径无错误或警告。最终 IDEA 编译成功，Data exitCode=0。data/资产 JSON 正文一致且可解析；旧技能特效事件与这两个技能的原 AIM 调用已检查。没有启动游戏、重载资源、修改特效工程或执行性能/视觉验收；停止到 locomotion 的衔接、首帧、俯仰方向和 P99/最低帧率均待实机确认。
 
-本轮需重启开发客户端加载新定义和类变化；没有自动重启用户游戏。[源码与文档备份](../../backups/queen-code-animation-20261018/README.md)。
+本轮需重启开发客户端加载新定义和类变化；没有自动重启用户游戏。源码与文档备份（历史路径：`../../backups/queen-code-animation-20261018/README.md`；当前 dev 未保留）。
 
 ## 上一轮技能事件绑定检查（历史）
 
@@ -84,4 +84,4 @@
 
 上一轮新增事件订阅要求重启客户端；该事件入口现已被本轮代码动画绑定替换。重启后可通过既有技能/指挥家入口分别施放激光与星束，验证起点、朝向、时长、墙体截断和取消；本轮没有自动重启或关闭用户游戏。
 
-修改前资产与源码/文档快照见[本轮备份](../../backups/queen-beam-skill-binding-20261018)。
+修改前资产与源码/文档快照见本轮备份（历史路径：`../../backups/queen-beam-skill-binding-20261018`；当前 dev 未保留）。

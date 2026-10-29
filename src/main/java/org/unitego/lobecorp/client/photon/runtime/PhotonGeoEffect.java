@@ -45,6 +45,7 @@ public class PhotonGeoEffect implements IEffectExecutor, AutoCloseable {
 		}
 	}
 
+	// 停止或换世界即失效；启动后还检查运行是否结束、有效性与宿主代次。
 	public boolean isAlive() {
 		return !stopped && Minecraft.getInstance().level == level
 				&& (!started || !runtime.isFinished() && runtime.isValid()

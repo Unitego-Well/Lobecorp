@@ -109,6 +109,14 @@ public class ConductorUtil {
 		return control == null ? null : control.ability(id);
 	}
 
+	/// 解析资源标识；格式非法时返回 `null`，不抛出标识符格式异常。
+	///
+	/// 能力查询等后续操作不在此处理，避免把实现异常误判为输入错误。
+	@Nullable
+	public static Identifier parseIdentifier(String value) {
+		return Identifier.tryParse(value);
+	}
+
 	public static boolean cast(Mob mob, Identifier skill, @Nullable Entity target, @Nullable Vec3 position) {
 		if (!CombatUtil.acceptsControl(mob)) {
 			return false;

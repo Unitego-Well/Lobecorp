@@ -52,6 +52,7 @@ public class PhotonPerformancePanel {
 	private static final int PAGE_SIZE = 32;
 	private static final int ROW_HEIGHT = 18;
 	private static final double NS_PER_MS = 1_000_000d;
+	// 分页顺序同时决定两行标签的位置；第 5 项起换行。
 	private static final List<String> PAGES = List.of("overview", "objects", "models", "animations", "operations", "gpu", "resources", "export");
 	private @Nullable FXEditor editor;
 	private UIElement root = new UIElement();
@@ -62,6 +63,7 @@ public class PhotonPerformancePanel {
 	private final Button selfOrder = button("sort_self", () -> order(0));
 	private final Button allocationOrder = button("sort_alloc", () -> order(2));
 	private @Nullable Result window;
+	// 帧窗口使用 1-based 帧号；0 表示未选择。
 	private int firstFrame;
 	private int lastFrame;
 	private long submittedSession;

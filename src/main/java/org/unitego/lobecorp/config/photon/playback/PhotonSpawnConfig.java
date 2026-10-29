@@ -9,6 +9,8 @@ import net.minecraft.util.StringRepresentable;
 
 import javax.annotation.Nullable;
 
+import org.jetbrains.annotations.NotNull;
+
 /// 沿用当前文件字段与枚举编码；运行副本不会把调度结果写进配置。
 public class PhotonSpawnConfig implements IPersistedSerializable {
 	public static final String ENUM_PREFIX = "photon.lobecorp.emitter_spawner.enum.";
@@ -24,7 +26,7 @@ public class PhotonSpawnConfig implements IPersistedSerializable {
 		PROJECT, FX;
 
 		@Override
-		public String getSerializedName() {
+		public @NotNull String getSerializedName() {
 			return ENUM_PREFIX + name();
 		}
 	}
@@ -33,7 +35,7 @@ public class PhotonSpawnConfig implements IPersistedSerializable {
 		ONCE, INTERVAL, RATE, ONE_SHOT;
 
 		@Override
-		public String getSerializedName() {
+		public @NotNull String getSerializedName() {
 			return ENUM_PREFIX + name();
 		}
 	}
@@ -42,7 +44,7 @@ public class PhotonSpawnConfig implements IPersistedSerializable {
 		WAIT, STOP_EMISSION, CLEAR;
 
 		@Override
-		public String getSerializedName() {
+		public @NotNull String getSerializedName() {
 			return ENUM_PREFIX + name();
 		}
 	}

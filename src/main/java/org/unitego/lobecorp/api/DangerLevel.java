@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.api;
 
+/// 危险等级；`id` 为显式数字标识，`levelValue` 为递增等级值，`colour` 为界面十六进制颜色。
 public enum DangerLevel {
 	ZAYIN(0, 1, "zayin", "#00ff00"),
 	TETH(1, 2, "teth", "#1e90ff"),

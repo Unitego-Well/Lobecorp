@@ -30,6 +30,7 @@ public class PhotonPerformanceCapture {
 	public static final String WORLD_LABEL = "manual";
 	public static final String EDITOR_LABEL = "editor";
 	private static long ownedSessionId;
+	// 面板视图刷新间隔，避免每帧重建统计。
 	public static final long VIEW_REFRESH_NS = 250_000_000L;
 	private static long lastViewNs;
 	private static final String OUTPUT_DIRECTORY = "performance";

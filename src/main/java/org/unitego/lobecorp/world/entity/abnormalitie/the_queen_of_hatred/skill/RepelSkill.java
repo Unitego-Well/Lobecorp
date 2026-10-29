@@ -174,12 +174,13 @@ public class RepelSkill extends EntitySkill<TheQueenOfHatred> {
 					? Vec3.directionFromRotation(0.0F, queen.getYRot())
 					: new Vec3(offset.x, 0.0, offset.z).normalize();
 			Vec3 currentMovement = target.getDeltaMovement();
-			double v = 10.0; // 水平冲击倍率
-			double v1 = 0.5; // 垂直击飞倍率
+			// 命中时叠加按距离衰减的水平冲量和抬升分量。
+			double horizontalImpulse = 10.0;
+			double verticalImpulse = 0.5;
 			target.setDeltaMovement(currentMovement.add(
-					horizontalDirection.x * v * attenuation,
-					v1 * attenuation,
-					horizontalDirection.z * v * attenuation));
+					horizontalDirection.x * horizontalImpulse * attenuation,
+					verticalImpulse * attenuation,
+					horizontalDirection.z * horizontalImpulse * attenuation));
 			target.hurtMarked = true;
 		}
 	}

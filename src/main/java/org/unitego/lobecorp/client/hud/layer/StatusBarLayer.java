@@ -12,6 +12,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.math.RoundingMode;
 
+/// 状态条共用数值读取、格式化、文本绘制与位置同步，子类只补充数据源和外观。
 @NullMarked
 public abstract class StatusBarLayer extends HudLayer {
 	private final DecimalFormat number = new DecimalFormat("0.00", DecimalFormatSymbols.getInstance(Locale.ROOT));

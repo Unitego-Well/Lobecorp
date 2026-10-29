@@ -16,10 +16,10 @@ public class EntityDataSyncEvents {
 	public static void onStartTracking(PlayerEvent.StartTracking event) {
 		if (event.getEntity() instanceof ServerPlayer player) {
 			LcAnimationSync.track(player, event.getTarget());
-		}
 
-		if (event.getEntity() instanceof ServerPlayer player && event.getTarget() instanceof LivingEntity entity) {
-			sendInitial(player, entity);
+			if (event.getTarget() instanceof LivingEntity entity) {
+				sendInitial(player, entity);
+			}
 		}
 	}
 

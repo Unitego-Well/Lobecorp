@@ -2,6 +2,7 @@ package org.unitego.lobecorp.config.client;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+/// 客户端 HUD 显示开关；不改变服务端伤害、护盾或玩家状态。
 public class PlayerHudConfig {
 	public static final String FILE_NAME = "lobecorp-hud-client.toml";
 	public static final ModConfigSpec SPEC;

@@ -67,5 +67,4 @@ public abstract class AnimationControllerMixin<T extends GeoAnimatable> implemen
 		((LcAnimationLodStateAccess) (Object) result).lobecorp$setLodRequest(new LcAnimationLodCache.Request(lobecorp$poseCache, fps, revision));
 		return result;
 	}
-
 }

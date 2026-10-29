@@ -29,8 +29,10 @@ public class PhotonPerformanceFrameChart {
 	private final TextField firstField = new TextField().setText("1").setTextRegexValidator("[0-9]{0,6}");
 	private final TextField lastField = new TextField().setText("1").setTextRegexValidator("[0-9]{0,6}");
 	private @Nullable Frames frames;
+	// 有界时间桶中各桶的代表帧索引。
 	private int[] points = new int[0];
 	private long maximumNs = 1;
+	// 选区使用 1-based 帧号；0 表示未选择。
 	private int first;
 	private int last;
 	private int anchor;

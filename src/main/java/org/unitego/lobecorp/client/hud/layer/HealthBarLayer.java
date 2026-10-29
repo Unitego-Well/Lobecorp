@@ -20,6 +20,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.math.RoundingMode;
 
+/// 生命条按原版生命类型切换纹理，并叠加吸收生命及其短暂高亮。
 @NullMarked
 public class HealthBarLayer extends StatusBarLayer {
 	private static final Identifier LIGHT = texture("light");

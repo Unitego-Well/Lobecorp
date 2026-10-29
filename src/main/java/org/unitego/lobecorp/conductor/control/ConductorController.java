@@ -64,6 +64,7 @@ public class ConductorController {
 		ConductorUtil.tick(mob);
 	}
 
+	/// 受控单位的服务端主 tick；挂起施放优先于指令与常规 AI 状态处理。
 	public static void tickControlled(Mob mob) {
 		if (!CombatUtil.acceptsControl(mob)) {
 			return;
@@ -90,6 +91,7 @@ public class ConductorController {
 
 		PendingSkillCast pending = ConductorUnitRuntime.get(mob).pendingSkill;
 		if (pending != null) {
+			// 每 tick 重试挂起施放；目标失效时丢弃，本 tick 不再处理后续指令。
 			clearWalkAndLookTargets(mob);
 			stopMovement(mob);
 			if (pending.target() != null && (!pending.target().isAlive() || pending.target().isRemoved())) {
@@ -168,12 +170,8 @@ public class ConductorController {
 		}
 
 		if (!unit.commandedSkill().isEmpty()) {
-			IConductorAbility ability;
-			try {
-				ability = ConductorUtil.ability(mob, Identifier.parse(unit.commandedSkill()));
-			} catch (IllegalArgumentException exception) {
-				ability = null;
-			}
+			Identifier identifier = ConductorUtil.parseIdentifier(unit.commandedSkill());
+			IConductorAbility ability = identifier == null ? null : ConductorUtil.ability(mob, identifier);
 
 			if (ability != null) {
 				if ((ability.targetKind() == IConductorTargeting.TargetKind.ENTITY
@@ -502,6 +500,7 @@ public class ConductorController {
 		});
 	}
 
+	/// 到达后清理移动状态；仅 MOVE 把到达点写为新的活动原点，RETURN 保留原原点。
 	private static void executeMoveOrder(Mob mob, ConductorData data, ConductorData.Unit unit) {
 		clearTarget(mob);
 		clearWalkAndLookTargets(mob);
@@ -586,6 +585,7 @@ public class ConductorController {
 				? ConductorMovement.navigationDestination(dragon, new Vec3(unit.x(), unit.y(), unit.z())) : null;
 	}
 
+	/// 只对 UUID 不大于自身的邻居计算横向避让，接近终点时按距离衰减。
 	private static void avoidCollidableEntities(ServerLevel level, Mob mob, LivingEntity target) {
 		if (mob.getNavigation().isDone() && !mob.getMoveControl().hasWanted()) {
 			return;
@@ -738,6 +738,7 @@ public class ConductorController {
 				&& (!(mob instanceof Warden warden) || warden.canTargetEntity(target));
 	}
 
+	/// 过期或不在服务端世界时清除声波请求；目标不匹配时仅返回无效。
 	private static boolean hasManualSonicBoomRequest(Warden warden) {
 		ManualSonicBoomRequest request = ConductorUnitRuntime.get(warden).manualSonic;
 		if (request == null) {
@@ -757,10 +758,34 @@ public class ConductorController {
 		return warden.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_COOLING_DOWN);
 	}
 
+	/// 能力是否通过控制资格、可用性与冷却检查；不包含实体技能的接招阶段判断。
+	public static boolean canCast(Mob mob, IConductorAbility ability) {
+		return CombatUtil.acceptsControl(mob)
+				&& ability.isAvailable(mob)
+				&& ability.cooldownTicks(mob) == 0;
+	}
+
+	/// 指挥施放是否允许开始，额外要求实体技能当前处于可接招阶段。
+	public static boolean canBeginCast(Mob mob, IConductorAbility ability) {
+		return canCast(mob, ability)
+				&& (!(ability instanceof EntitySkillConductorAbility skill) || skill.canBeginCast(mob));
+	}
+
+	/// 指挥施放的提交入口：清理移动与指令后提交能力施放。
+	///
+	/// 资格由调用方在解析目标前统一校验；本方法不重复查询，保持能力回调顺序。
+	public static void beginCommandedCast(Mob mob, ConductorData data, IConductorAbility ability,
+	                                      @Nullable Entity target, @Nullable Vec3 position) {
+		prepareForSkillCast(mob);
+		data.update(mob.getUUID(), state -> state.command(ConductorData.OrderType.NONE, null, mob.position()));
+		ConductorUtil.cast(mob, ability.id(), target, position);
+	}
+
 	public static boolean cast(Mob mob, IEntitySkill<?> skill) {
 		return cast(mob, skill, null, null);
 	}
 
+	/// 以显式施放栈标记本次手动施放；AIMING 结果保存为挂起请求供后续 tick 重试。
 	public static boolean cast(Mob mob, IEntitySkill<?> skill, Entity target, Vec3 targetPosition) {
 		if (!CombatUtil.acceptsControl(mob)) {
 			return false;

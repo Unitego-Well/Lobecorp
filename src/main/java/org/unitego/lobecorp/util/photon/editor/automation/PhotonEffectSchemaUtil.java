@@ -79,7 +79,6 @@ public class PhotonEffectSchemaUtil {
 			}
 		}
 
-
 		result.add("properties", fields);
 		return result;
 	}
@@ -208,8 +207,6 @@ public class PhotonEffectSchemaUtil {
 			}
 		}
 	}
-
-
 
 	public static void validate(Class<?> type, Tag data) {
 		validateMetadata(describe(type, data));

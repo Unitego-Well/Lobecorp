@@ -1,5 +1,15 @@
 # 指挥家系统
 
+## 2026-10-29 非法能力 ID 的解析契约修正
+
+ConductorUtil.parseIdentifier 使用 Identifier.tryParse，非法路径/命名空间返回 null，合法 ID 与默认 minecraft 命名空间解析不变。当前版本 Identifier.parse 抛出的 IdentifierException 不继承 IllegalArgumentException，不能继续使用此前错误 catch 来宣称非法输入已处理；该缺陷原本已存在。能力查询与业务回调不包入解析 catch，避免吞掉实现异常。定向测试3项通过，不等于实际网络/游戏施放已验收。
+
+## 2026-10-28 控制领域与请求边界
+
+队形移动由 [ConductorFormation](../../src/main/java/org/unitego/lobecorp/conductor/control/ConductorFormation.java) 承载，载荷只分派请求；原有维度分组、UUID 决胜、统一速度、未加载位置回退及 UNREACHABLE 命令结果保留。字符串能力 ID 由 ConductorUtil.parseIdentifier 解析，仅捕获格式异常，不把自定义能力实现异常当作非法 ID 吞掉。
+
+指挥施放的资格查询和清理/提交职责集中在 ConductorController；保留前置资格与目标回调顺序、清理移动和重置命令后再提交的原语义。失败时保留旧命令的替代交互未实施。ConductorCapabilities 的公开转发因外部使用承诺未确认而保留，不以内部零引用删除公共扩展。
+
 > 源码核对日期：2026-10-05。核对范围包括目录、附件、控制能力、命令与快照载荷、区块管理、事件、HUD 和输入入口；通过 IDEA
 > 读取当前实现，未进行游戏、多人服务器、重启恢复或性能实测。
 > 包整理方案 1 已执行，源码链接按实际路径核对；保留三个指挥家客户端关联类的原包，详情见修改记录。

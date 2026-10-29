@@ -25,6 +25,7 @@ import java.util.UUID;
 public class QueenBeamAllocationCapture {
 	public static final String REQUEST_ENV = "LOBECORP_LASER_PROFILE_JFR";
 	private static final long MAX_RECORDING_BYTES = 64L * 1024 * 1024;
+	// 分组阈值：蓄力前 200 ms 归入蓄力，释放后 2 s 内归入释放。
 	private static final long CHARGE_LEAD_NS = 200_000_000;
 	private static final long RELEASE_NS = 2_000_000_000L;
 	private static final Gson GSON = new Gson();

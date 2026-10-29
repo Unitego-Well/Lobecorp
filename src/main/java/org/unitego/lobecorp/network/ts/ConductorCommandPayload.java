@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
@@ -19,9 +18,8 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
-import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.control.ConductorController;
-import org.unitego.lobecorp.conductor.control.ConductorMovement;
+import org.unitego.lobecorp.conductor.control.ConductorFormation;
 import org.unitego.lobecorp.conductor.control.ConductorPointAttack;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
@@ -138,17 +136,9 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		apply(player);
 	}
 
-	private static void prepareSkill(Mob mob, ConductorData data) {
-		ConductorController.prepareForSkillCast(mob);
-		data.update(mob.getUUID(), state -> state.command(ConductorData.OrderType.NONE, null, mob.position()));
-	}
-
 	private static IConductorAbility conductorAbility(Mob mob, String id) {
-		try {
-			return ConductorUtil.ability(mob, Identifier.parse(id));
-		} catch (IllegalArgumentException exception) {
-			return null;
-		}
+		Identifier identifier = ConductorUtil.parseIdentifier(id);
+		return identifier == null ? null : ConductorUtil.ability(mob, identifier);
 	}
 
 	public ConductorCommandPayload withFormationMode(ConductorData.FormationMode nextMode) {
@@ -198,7 +188,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 			case SET_COMBAT_BEHAVIOR -> updateCombatBehavior(player, data);
 			case SET_MODE -> updateBehaviorState(player, data);
 			case SET_ATTACK_MODE -> updateAttackMode(data);
-			case MOVE -> issueFormation(player, data);
+			case MOVE -> ConductorFormation.issue(player, data, units, x, y, z, formationMode);
 			case ATTACK, ATTACK_POINT, STOP -> issueAttackCommand(player, data);
 			case HOSTILITY -> {
 				ConductorData.Team first = data.team(team);
@@ -418,55 +408,57 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 			}
 			IConductorAbility ability = conductorAbility(mob, skill);
 
-			if (ability != null) {
-				if (!ability.isAvailable(mob)
-						|| ability.cooldownTicks(mob) > 0
-						|| ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob)) {
+			if (ability == null) {
+				continue;
+			}
+
+			if (!ConductorController.canBeginCast(mob, ability)) {
+				continue;
+			}
+
+			Vec3 castTarget = null;
+			Entity castEntity = null;
+
+			if ((ability.targetKind() == IConductorTargeting.TargetKind.ENTITY
+					|| ability.targetKind() == IConductorTargeting.TargetKind.EITHER)
+					&& targetSelection == TargetSelection.ENTITY) {
+				if (!(selectedTarget instanceof LivingEntity living) || !living.isAlive()
+						|| !data.canTarget(uuid, living)) {
 					continue;
 				}
 
-				if ((ability.targetKind() == IConductorTargeting.TargetKind.ENTITY
-						|| ability.targetKind() == IConductorTargeting.TargetKind.EITHER)
-						&& targetSelection == TargetSelection.ENTITY) {
-					if (!(selectedTarget instanceof LivingEntity living) || !living.isAlive()
-							|| !data.canTarget(uuid, living)) {
+				Vec3 position = ability.targetPosition(mob, living, new Vec3(x, y, z));
+
+				if (!ability.canTarget(mob, living) || !ability.isWithinRange(mob, position)) {
+					if (ability.targetKind() != IConductorTargeting.TargetKind.EITHER) {
 						continue;
 					}
+					Vec3 corrected = ability.correctPosition(mob, position);
 
-					Vec3 position = ability.targetPosition(mob, living, new Vec3(x, y, z));
-
-					if (!ability.canTarget(mob, living) || !ability.isWithinRange(mob, position)) {
-						if (ability.targetKind() != IConductorTargeting.TargetKind.EITHER) {
-							continue;
-						}
-						Vec3 corrected = ability.correctPosition(mob, position);
-
-						if (ability.canTargetPosition(mob, corrected)) {
-							prepareSkill(mob, data);
-							ConductorUtil.cast(mob, ability.id(), null, corrected);
-						}
-					} else {
-						prepareSkill(mob, data);
-						ConductorUtil.cast(mob, ability.id(), living, position);
+					if (!ability.canTargetPosition(mob, corrected)) {
+						continue;
 					}
-				} else if ((ability.targetKind() == IConductorTargeting.TargetKind.POSITION
-						|| ability.targetKind() == IConductorTargeting.TargetKind.EITHER)
-						&& targetSelection == TargetSelection.POSITION) {
-					Vec3 requested = flag && ability.directional() ? ability.facingPosition(mob) : new Vec3(x, y, z);
-					Vec3 position = ability.correctPosition(mob, requested);
-
-					if (ability.canTargetPosition(mob, position)) {
-						prepareSkill(mob, data);
-						ConductorUtil.cast(mob, ability.id(), null, position);
-					}
-				} else if (ability.targetKind() == IConductorTargeting.TargetKind.SELF
-						&& targetSelection == TargetSelection.NONE) {
-					prepareSkill(mob, data);
-					ConductorUtil.cast(mob, ability.id(), null, null);
+					castTarget = corrected;
+				} else {
+					castEntity = living;
+					castTarget = position;
 				}
+			} else if ((ability.targetKind() == IConductorTargeting.TargetKind.POSITION
+					|| ability.targetKind() == IConductorTargeting.TargetKind.EITHER)
+					&& targetSelection == TargetSelection.POSITION) {
+				Vec3 requested = flag && ability.directional() ? ability.facingPosition(mob) : new Vec3(x, y, z);
+				Vec3 position = ability.correctPosition(mob, requested);
 
+				if (!ability.canTargetPosition(mob, position)) {
+					continue;
+				}
+				castTarget = position;
+			} else if (ability.targetKind() != IConductorTargeting.TargetKind.SELF
+					|| targetSelection != TargetSelection.NONE) {
 				continue;
 			}
+
+			ConductorController.beginCommandedCast(mob, data, ability, castEntity, castTarget);
 		}
 	}
 
@@ -502,120 +494,6 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		}
 	}
 
-	private void issueFormation(ServerPlayer player, ConductorData data) {
-		var byDimension = formationUnits(player, data);
-		var destination = new Vec3(x, y, z);
-
-		for (List<FormationUnit> group : byDimension.values()) {
-			if (group.isEmpty()) {
-				continue;
-			}
-
-			double startX = group.stream().filter(entry -> entry.mob() != null)
-					.mapToDouble(entry -> entry.mob().getX()).average().orElse(x);
-			double startZ = group.stream().filter(entry -> entry.mob() != null)
-					.mapToDouble(entry -> entry.mob().getZ()).average().orElse(z);
-			var forward = new Vec3(x - startX, 0.0D, z - startZ);
-
-			if (forward.lengthSqr() < ConductorRules.FORMATION_DIRECTION_EPSILON) {
-				forward = new Vec3(0.0D, 0.0D, 1.0D);
-			} else {
-				forward = forward.normalize();
-			}
-
-			var right = new Vec3(forward.z, 0.0D, -forward.x);
-			Vec3 direction = forward;
-			group.sort(Comparator.comparingDouble((FormationUnit entry) -> entry.position().dot(direction)).reversed()
-					.thenComparing(FormationUnit::uuid));
-			double movementSpeed = formationMode == ConductorData.FormationMode.UNIFORM
-					? group.stream().filter(entry -> entry.mob() != null).mapToDouble(entry -> ConductorMovement.baseSpeed(entry.mob()))
-					.min().orElse(ConductorRules.NATURAL_MOVEMENT_SPEED) : ConductorRules.NATURAL_MOVEMENT_SPEED;
-			int columns = (int) Math.ceil(Math.sqrt(group.size()));
-			int rows = (int) Math.ceil(group.size() / (double) columns);
-			double maxWidth = group.stream().filter(entry -> entry.mob() != null)
-					.mapToDouble(entry -> entry.mob().getBbWidth()).max().orElse(ConductorRules.FORMATION_DEFAULT_WIDTH);
-			double spacing = maxWidth + ConductorRules.FORMATION_GAP;
-
-			for (int rowStart = 0; rowStart < group.size(); rowStart += columns) {
-				group.subList(rowStart, Math.min(group.size(), rowStart + columns)).sort(
-						Comparator.comparingDouble((FormationUnit entry) -> entry.position().dot(right)).thenComparing(FormationUnit::uuid));
-			}
-
-			List<Vec3> slots = new ArrayList<>();
-
-			for (int index = 0; index < group.size(); index++) {
-				int row = index / columns;
-				int column = index % columns;
-				int rowSize = Math.min(columns, group.size() - row * columns);
-				double sideOffset = (column - (rowSize - 1) / 2.0D) * spacing;
-				double forwardOffset = (row - (rows - 1) / 2.0D) * spacing;
-				Vec3 slot = destination.add(right.scale(sideOffset)).subtract(forward.scale(forwardOffset));
-				slots.add(formationMode == ConductorData.FormationMode.SCATTERED ? destination : slot);
-			}
-
-			List<AABB> occupied = new ArrayList<>();
-
-			for (int index = 0; index < group.size(); index++) {
-				FormationUnit nearest = group.get(index);
-				Vec3 nearestSlot = Objects.requireNonNull(slots.get(index));
-				Vec3 resolved = nearestSlot;
-
-				if (nearest.mob() != null) {
-					ConductorController.stop(nearest.mob());
-					resolved = ConductorMovement.resolve(nearest.mob(), nearestSlot,
-							formationMode == ConductorData.FormationMode.SCATTERED ? List.of() : occupied);
-				}
-
-				if (resolved == null) {
-					data.update(nearest.uuid(), state -> {
-						state.command(ConductorData.OrderType.NONE, null, nearestSlot);
-						state.moveResult = ConductorData.MoveResult.UNREACHABLE;
-					});
-					continue;
-				}
-
-				if (nearest.mob() != null) {
-					occupied.add(nearest.mob().getBoundingBox()
-							.move(resolved.subtract(nearest.mob().position())).inflate(ConductorRules.ENTITY_AVOIDANCE_MARGIN));
-				}
-				Vec3 slot = resolved;
-				data.update(nearest.uuid(), state -> {
-					state.command(ConductorData.OrderType.MOVE, null, slot);
-					state.movementSpeed = movementSpeed;
-				});
-			}
-		}
-	}
-
-	/// 保留单位遍历顺序，按维度收集可参加队形移动的单位。
-	private Map<String, List<FormationUnit>> formationUnits(ServerPlayer player, ConductorData data) {
-		Map<String, List<FormationUnit>> byDimension = new LinkedHashMap<>();
-
-		for (UUID uuid : units) {
-			if (!data.acceptsControl(uuid)) {
-				continue;
-			}
-			ConductorData.Unit unit = data.unit(uuid);
-
-			if (unit == null) {
-				continue;
-			}
-
-			ServerLevel level = player.level().getServer().getLevel(
-					ResourceKey.create(Registries.DIMENSION, Identifier.parse(unit.dimension())));
-			Entity entity = level == null ? null : level.getEntity(uuid);
-			Mob mob = entity instanceof Mob value ? value : null;
-
-			if (mob != null && !mob.isAlive()) {
-				continue;
-			}
-			byDimension.computeIfAbsent(unit.dimension(), _ -> new ArrayList<>())
-					.add(new FormationUnit(uuid, unit, mob));
-		}
-
-		return byDimension;
-	}
-
 	public enum TargetSelection {
 		NONE,
 		ENTITY,
@@ -641,11 +519,5 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 		/// 更新当前手动持续技能的瞄准，不重新发起施放。
 		AIM,
 		END_MANUAL_CONTROL
-	}
-
-	private record FormationUnit(UUID uuid, ConductorData.Unit unit, Mob mob) {
-		private Vec3 position() {
-			return mob == null ? new Vec3(unit.x(), unit.y(), unit.z()) : mob.position();
-		}
 	}
 }

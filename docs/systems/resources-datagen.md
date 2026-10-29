@@ -1,5 +1,11 @@
 # 资源、翻译与数据生成
 
+## 2026-10-28 动态模型翻译核对
+
+PhotonModelOutputConfig 的 14 个 Configurable 标签由 TranslationKeys.PHOTON_MODEL_TEXT 触发 PhotonModelTextUtil.register，再由 registerEmitter 拼接 PREFIX 登记中英文。本批 Data 的 src/generated/resources/assets/lobecorp/lang/en_us.json 与 zh_cn.json 已逐键确认全部存在；IDEA 静态缺键提示不等于运行时缺译。
+
+没有向根 lang/ 重复写条目，没有直接修改生成文件或关闭翻译检查。手动语言输入与实际生成路径仍按本页原有边界区分。
+
 核对日期：2026-10-24（本次仅静态复核命名规则、导航、构建资源目录与手动翻译路径公式）。本文记录生成源与资源边界；其他阶段的运行结果见 [修改记录](changes.md)。
 
 ## 输入与输出

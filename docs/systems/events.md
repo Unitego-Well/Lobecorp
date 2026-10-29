@@ -1,5 +1,11 @@
 # 事件入口与分发
 
+## 2026-10-28 追踪与事件载荷整理
+
+EntityDataSyncEvents.onStartTracking 将重复 ServerPlayer 判断合并，仍先发送动画追踪，再为 LivingEntity 发送初始状态。LivingResourceChangeEvent 仍通过构造器赋值并保留公开 getter；2026-10-29 复核恢复了原字段声明，不为消除风格警告额外加入 final。
+
+LivingEntityEvents.onLivingDeath 虽名为死亡处理，实际参数仍是 EntityLeaveLevelEvent；本批保留公开方法名，仅注释说明离开世界清理不限于死亡，不以无内部引用改变公开入口。总线、优先级、取消语义和模块清理顺序未改。
+
 核对日期：2026-10-13。以当前订阅代码为准；不代表事件运行时次数验证。
 
 ## 订阅规则

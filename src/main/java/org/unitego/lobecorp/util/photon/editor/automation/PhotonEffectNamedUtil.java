@@ -50,13 +50,21 @@ public class PhotonEffectNamedUtil {
 				""").getAsJsonObject();
 	}
 
+	/// 已完成准备阶段验证的命名制作草稿。
+	///
+	/// `commit` 的 dry-run 只验证草案并返回拟议内容；实际提交复用会话提交内的跨阶段校验，有变化时写入一条历史，无变化不新增历史。
 	public record Prepared(Handle handle, UUID controller, PhotonNamedAuthoringSession session,
 	                       Document before, boolean dryRun) implements AutoCloseable {
+		/// 提交或预览本次草稿。
+		///
+		/// dry-run 不写历史；实际提交由 [PhotonNamedAuthoringSession#commit(long)] 再次核对工程 revision、控制器身份和原树。
+		/// 会话失效或跨阶段变化转为 `REVISION_CONFLICT`，参数与定义校验异常原样传播。
 		public JsonObject commit() {
 			var proposed = session.document();
 			try {
-				session.validate(session.revision());
-				if (!dryRun) {
+				if (dryRun) {
+					session.validate(session.revision());
+				} else {
 					session.commit(session.revision());
 				}
 			} catch (IllegalStateException conflict) {

@@ -1,5 +1,61 @@
 # 系统修改记录
 
+## 2026-10-29 受限注释小批合并
+
+- 本次严格限定24个指定文件，19源码文件实际变更：33行中文注释、删除5行冗余空行；未改方法/字段/API/修饰符/业务值/分支/异常/回调/协议/资源/视觉或日志策略，未优化导入或重排成员。5文件无必要变更而保留。
+- 主审对照真实实现纠正注释：护盾零值仅跳过条形、保留基类文字；挂起分支只跳过本tick后续指令；清理排除清道夫来源尸体；目标只在工作分支按UUID解析；GPU“8帧”是槽池容量；运行态/宿主检查在启动后执行；避让跳过较大UUID邻居；声波目标不匹配只返回无效、不清请求。
+- 19文件与HEAD独立比较去注释/空白后的简化Java词法序列均一致，完整diff另经人工审查。IDE错误级复检19文件均完成且无错误；初次并发复检有超时，缩小为3并发重查后超时项均完成，未把超时空结果当通过。
+- 本批未新增测试或重复全量单元测试。Data运行包含compileJava并成功，23文件written0/removed0；最后几处仅文字更正后复用其结果并复核词法一致，不声称已做游戏/视觉/性能验收。上批166项测试的17个资源前置失败与1跳过仍保留，不能当作本批重跑结果。
+- Photon导出状态等报告建议仅为待核候选，未在本批变更。用户6份snake资源暂存、本地忽略配置保留；文档备份build/agent-backups/20261029-small-batch-integration/backups/，各组源码备份在各自small目录。不推送或跨区同步；全库未读缺口不因本24文件完成而关闭。
+
+## 2026-10-29 DS 代码复核与收敛修正
+
+- 撤回 LcDamageType 三个、LivingResourceChangeEvent 四个既有字段上仅为消警告新增的 final，恢复原声明；保留必要注释及公开 API。不整套回退原有领域提取、技能共同判定或模型工程拆分，也不新增玩法/UI/协议。
+- PhotonModelOutput 的检视详情 supplier 不再捕获建面板时的 Snapshot，改为每次读取 failures.current，错误变更与清除后不会仍返回旧详情；初始无错误不创建详情行的基线行为保留。源码与上游更新契约已核对，实际客户端同一面板 A→B→清除尚未运行验收。
+- ConductorUtil.parseIdentifier 改用当前 Minecraft 26.1.2 的 Identifier.tryParse；旧 catch IllegalArgumentException 捕不到 IdentifierException（直接继承 RuntimeException），是基线已有缺陷。仅解析返回 null，不扩大能力查询 catch；新增3个针对性测试验证非法ID、合法完整ID及默认命名空间。
+- 新测试3/3通过；全量166测试148通过、17既有fxpacks根前置断言失败、1跳过，无新失败位置。编译/打包完成；全量build仍失败，reserveBuildIdentity缓存问题保留。Data成功，23文件written0/removed0；未做游戏/视觉/联机验收。
+- 接受 PhotonEditorSaveUtil 已核的一行if缩进，不夹带用户六份snake暂存。备份位于build/agent-backups/20261029-ds-scope-corrections/backups/；仅提交本轮明确文件，不推送或跨区同步。重新指派使用新上下文、小范围文件清单与负责人审核，不让DS继续大范围自由设计。
+
+## 2026-10-28 DS 异常与多轮上下文必须交接
+
+- 用户要求有问题时交接并归档旧 DS，多轮对话后强制轮换。规范覆盖此前“异常反复发送继续”的处理：每个新批次换新对话，同一任务累计三次实质续聊也须交接；异常则提前交接，不等待门槛。
+- 交接落 .agent/handoffs 并磁盘回读，失败会话可由协调按真实证据代写；新对话只接必要状态，不导入旧思考/伪工具历史。确认接续后归档旧对话，保留本地文件/工作树，更新有效路由与巡检。
+- 本轮仅规范及交接/对话管理，原字节备份 build/agent-backups/20261028-ds-context-rotation-rules/backups/；不构建、Data、测试、推送或同步，不提交其它组代码/用户资源。
+
+## 2026-10-28 Mixin 与 world 整理第三批
+
+- 本批覆盖 Photon Mixin 82、其他 Mixin 44、实体/技能 103、命中框/物品/效果 29，共 258 文件；实际修改 7 个代码文件。处理器 wild_wind$ 前缀统一为 lobecorp$，仅涉及 SpawnEggItemMixin 三个 private 处理方法；@Mixin/@WrapMethod 的目标、描述符、注入点及短路逻辑不变。
+- ViewMenuMixin 仅缩进、AnimationControllerMixin 仅类尾空行、HitboxSnapshot 仅显式导入；IOrdeal 注释区分玩家与其他实体过滤，RepelSkill 仅局部变量命名/命中时冲量说明，不改数值或公式。LcItemAnimationSession 创建失败后的 close 若再次失败，将其附加为 suppressed，首个异常继续传播，成功路径与释放顺序不变。
+- 通用 Mixin 的伪工具报告和实体组提前停止均已按停止规则具体续接；报告真实落盘并回读，实体长文件补读已取得真实分块工具记录，不把过程文字或截断当覆盖完成。
+- 本批编译、jar/assemble 完成；全量 build 因测试失败而失败。JUnit 163 项中 145 通过、17 失败、1 跳过，17 项逐一仍停于既有 fxpacks 根目录前置断言；reserveBuildIdentity 配置缓存问题保留。Data 成功，23 文件、written0/removed0。没有游戏/视觉、客户端 Mixin 应用、物品创建失败清理的运行验收。
+- 系统文档备份：build/agent-backups/20261028-round3-integration/backups/，各组源码备份见第三批报告。保留用户六份 snake 资源暂存；不推送或同步其它工作区。其余 332 个当前主源码文件仍待后续批次。
+
+## 2026-10-28 基础域整理第二批
+
+- 本批覆盖 174 个主源码文件，协调读取实际差异并接受 21 个代码文件：补充 API/配置/附着生命周期说明，固定构造后不变字段，合并追踪事件重复类型判断，删除真正 private 且无引用的记忆模块/物品模型辅助方法；未改注册项、ID、顺序、配置默认或持久化/同步策略。
+- 审查恢复 LcDataTickets 的公开 createFloatBoolean 名称与泛型声明，保留 LivingEntityEvents.onLivingDeath 的公开名称并说明实际处理离开世界；删除仅重复返回类型的临时注释。动画/粒子 48 文件本批无源码修改。第三方序列化来源保留。
+- PhotonModelOutputConfig 的 14 条翻译键警告属于静态检查未识别已有翻译；PhotonModelTextUtil.registerEmitter 与本次 Data 的中英文产物均含全部键，不重复新增翻译，不关闭全局检查。
+- 本批源码与测试编译、jar/assemble 完成；全量 build 仍因测试失败而失败。JUnit 163 项中 145 通过、17 失败、1 跳过，17 项均停于既有 fxpacks 根目录前置断言；reserveBuildIdentity 配置缓存问题仍在。Data 成功（23 文件，written0/removed0）。未执行游戏、视觉、多人、重载或性能验收。
+- 系统文档原字节备份：build/agent-backups/20261028-round2-integration/backups/；各组源码备份见各自第二批报告。仅提交本批代码及文档，保留用户六份 snake 资源暂存；不推送或跨工作区同步。剩余目录仍按计划继续，不能以局部阅读宣称全库完成。
+
+## 2026-10-28 DS 简单任务委派与停止巡检规范
+
+- 按用户要求将非 DS 的简单任务委派、完成回报与负责人验收写入[工作流程](../standards/workflow.md#ds-简单任务委派与停止检查)，根入口与总览增加导航；不自动切换其他对话模型、不擅自创建聊天或工作树。
+- DS 停止先核对输出，协议残片/仅思考/未完成而提前结束才发送继续；正常完成、运行中或等待用户/审批不盲目续接。当前四个原始工作 DS 由协调静默巡检，任务轮换按有效路由更新。
+- 本轮仅规范文档和对话通知；IDEA 局部编辑、回读与差异检查，备份在 build/agent-backups/20261028-ds-delegation-rules/backups/，不构建、Data 或游戏，不提交其它组代码/用户资源，不推送同步。
+
+## 2026-10-28 取消跟踪本机 Codex 配置
+
+- 按用户要求将 `.codex/config.toml` 移出 Git 跟踪，保留当前本地文件及未提交内容；现有 `/.codex/` 忽略规则已覆盖，不新增重复条目，不改端口、路径或其他配置。
+- 原字节备份位于 `build/agent-backups/20261028-untrack-codex-config/backups/`；核对配置 SHA256 和其他暂存项，提交使用独立索引隔离用户资源。本轮仅配置跟踪与文档维护，不构建、Data、测试或推送。
+
+## 2026-10-28 原始代码整理首轮集成
+
+- 范围为原始 dev 的 C01–C10 首轮，实作涵盖制作事务、指挥队形与 ID 解析、技能资格、模型失败状态和工程职责；未执行其余 762 文件的全库逐项整改。C03 公开转发因外部承诺未确认保留，不冒充已删。
+- 审查已要求并落实：保留可覆盖 supports、修正目标预检误导注释；保留命令清理/施放与工程关闭的既有顺序；保留模型准备阶段真实资源异常防护。目标参与预检、失败保留旧命令的新策略未实施。
+- 统一验证结果：增量源码已编译，Gradle build 的 compileJava/compileTestJava 为 UP-TO-DATE，jar/assemble 已完成；整体 build 因测试失败而失败，不能称构建通过。JUnit 共 163 项，145 通过、17 失败、1 跳过；逐项核对 17 项均停于缺失 src/main/resources/fxpacks 的根目录前置断言，该目录在基线 HEAD 中也不存在。新增 PhotonModelFailureStateTest 3/3、PhotonG1AuthoringOperationsTest 10/10 通过；PhotonNamedAuthoringTest 4/5，通过的部分不能代替真实工程事务验收。另有 reserveBuildIdentity 的既有配置缓存序列化问题。Data 成功，23 文件、written0/removed0；本轮未进行游戏、视觉、性能或工程往返验收。
+- 文档原字节备份：build/agent-backups/20261028-ds-integration/backups/；源码恢复基线为 2ac7e079。仅提交本轮代码与同步文档，保留用户六份 snake 资源暂存，禁提交钩子，不推送或跨工作区同步。
+
 ## 2026-10-28 工作区交接、归档与对话名称
 
 - 按用户最新选择，Photon、Horde 在各自工作区保存交接并更新索引后，分别创建同名新对话；两份旧工作对话及前协调改名并归档。本协调命名为“Lobecorp 协调”，当前ID见[对话路由](workspace-layout.md#对话路由)。较早不归档安排作为历史保留，由本次明确要求覆盖。

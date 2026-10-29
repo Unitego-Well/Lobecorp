@@ -1,5 +1,11 @@
 # 注册、附件与数据契约
 
+## 2026-10-28 私有辅助与公开契约整理
+
+LcMemoryModuleTypes 仅删除无引用的 private 编解码注册辅助，现有注册声明、ID、顺序及持久化设置不变；ItemModelProvider 删除未调用的 private a3d，Data 产物未变。LcDataTickets 的 interface static 方法是公开入口，即使名字不够准确，也不能用“内部无引用”作为改名依据；createFloatBoolean 和原泛型声明保留。
+
+COMBAT_MEMORY 明确为运行期、不持久化且不随附件同步；公共注册项和外部 API 的 unused 提示不作为删除依据。验证边界见本批修改记录。
+
 核对日期：2026-10-13。以当前注册源码为准；包迁移已完成，链接按当前源码核对。本文是导航与边界说明，不代表游戏运行验收。
 
 ## 入口与职责

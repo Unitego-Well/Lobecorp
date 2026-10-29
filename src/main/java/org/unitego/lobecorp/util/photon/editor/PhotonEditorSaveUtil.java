@@ -79,7 +79,7 @@ public class PhotonEditorSaveUtil {
 	}
 
 	private static @Nullable Editor supportedEditor(@Nullable Editor editor) {
-if (!(editor instanceof PhotonEffectEditor)) {
+		if (!(editor instanceof PhotonEffectEditor)) {
 			return null;
 		}
 

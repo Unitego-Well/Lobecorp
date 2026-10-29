@@ -27,6 +27,7 @@ public final class ConductorWork {
 	private ConductorWork() {
 	}
 
+	/// 仅 CLEANUP 与 REASSEMBLE 两种持续指令视为工作激活。
 	public static boolean active(Mob mob) {
 		if (!(mob instanceof Sweeper) || !(mob.level() instanceof ServerLevel level)) {
 			return false;
@@ -36,6 +37,7 @@ public final class ConductorWork {
 				|| unit.order() == ConductorData.OrderType.REASSEMBLE);
 	}
 
+	/// 开始工作前停止控制器与原版 Brain，避免旧指令继续驱动单位。
 	public static boolean start(Sweeper mob, boolean reassemble) {
 		if (!(mob.level() instanceof ServerLevel level)) {
 			return false;
@@ -62,6 +64,7 @@ public final class ConductorWork {
 		EntitySkillUtil.forceCancelSkills(sweeper, SweeperSkills.SWEEP.get(), SweeperSkills.REASSEMBLE.get());
 	}
 
+	/// 工作 tick 先让位于活动技能，再维护目标、接近与施放重试。
 	public static void tick(Sweeper mob, ServerLevel level, ConductorData data, ConductorData.Unit unit) {
 		if (ConductorUnitRuntime.get(mob).work == null) {
 			ConductorUnitRuntime.get(mob).work = new Work(unit.order() == ConductorData.OrderType.REASSEMBLE);
@@ -113,6 +116,7 @@ public final class ConductorWork {
 		}
 	}
 
+	/// 重组只接受可重组尸体；清理接受非清道夫来源尸体或非空掉落物。
 	private static boolean valid(Sweeper mob, Entity target, Work work) {
 		if (target == null || !target.isAlive() || work.skipped.contains(target.getUUID())) {
 			return false;
@@ -126,9 +130,12 @@ public final class ConductorWork {
 
 	protected static final class Work {
 		private final boolean reassemble;
+		// 本次工作中不再尝试的目标，目标刷新时保留。
 		private final Set<UUID> skipped = new HashSet<>();
+		// 当前目标 UUID，工作时按 UUID 从世界解析实体。
 		private UUID target;
 		private final SweeperWorkUtil.Approach approach = new SweeperWorkUtil.Approach();
+		// 下一次允许尝试施放的游戏时间。
 		private long retryAt;
 
 		private Work(boolean reassemble) {

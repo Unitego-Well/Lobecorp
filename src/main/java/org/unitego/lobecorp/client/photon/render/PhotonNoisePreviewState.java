@@ -12,6 +12,7 @@ import org.joml.Matrix3x2fc;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+/// 无纹理的网格预览渲染状态；每格颜色与 tint 相乘后按行列顺序提交顶点。
 @NullMarked
 public record PhotonNoisePreviewState(Matrix3x2fc pose, float x, float y, float cellHeight,
                                       int columns, int rows, int[] colors, int tint,

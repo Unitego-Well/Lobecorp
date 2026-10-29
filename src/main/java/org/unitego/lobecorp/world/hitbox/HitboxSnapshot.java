@@ -6,7 +6,16 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
-import org.unitego.lobecorp.world.hitbox.geometry.*;
+import org.unitego.lobecorp.world.hitbox.geometry.BoxRingCylinderSize;
+import org.unitego.lobecorp.world.hitbox.geometry.BoxSize;
+import org.unitego.lobecorp.world.hitbox.geometry.ConeSize;
+import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
+import org.unitego.lobecorp.world.hitbox.geometry.EllipsoidSize;
+import org.unitego.lobecorp.world.hitbox.geometry.HitboxShapeType;
+import org.unitego.lobecorp.world.hitbox.geometry.IHitboxSize;
+import org.unitego.lobecorp.world.hitbox.geometry.RingCylinderSize;
+import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
+import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
 
 /// 客户端调试渲染需要的完整判断框实例快照。
 ///

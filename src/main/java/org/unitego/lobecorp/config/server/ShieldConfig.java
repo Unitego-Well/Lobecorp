@@ -2,6 +2,7 @@ package org.unitego.lobecorp.config.server;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+/// 服务端护盾规则；控制四色共存、破盾免伤和每级护盾值。
 public class ShieldConfig {
 	public static final String FILE_NAME = "lobecorp-shield-server.toml";
 	public static final ModConfigSpec SPEC;

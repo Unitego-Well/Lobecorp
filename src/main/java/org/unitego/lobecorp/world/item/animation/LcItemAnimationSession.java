@@ -85,7 +85,12 @@ public class LcItemAnimationSession implements ILcTransformTarget {
 					session.animation.id(), ANIMATION_BONE, options.transitions(), startedTick);
 			return session;
 		} catch (RuntimeException | Error failure) {
-			session.close();
+			try {
+				session.close();
+			} catch (RuntimeException | Error cleanup) {
+				failure.addSuppressed(cleanup);
+			}
+
 			throw failure;
 		}
 	}

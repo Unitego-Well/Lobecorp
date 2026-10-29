@@ -299,25 +299,58 @@ public class EntitySkillUtil {
 		return Map.copyOf(entity.getData(LcAttachmentTypes.ENTITY_SKILL_COOLDOWNS));
 	}
 
-	/// 检查技能此刻是否可以施放，但不创建运行实例，也不取消可覆盖的旧技能。
-	/// 检查内容包括技能所有权、冷却、持有者钩子、同技能互斥、分组所有权、技能业务条件，
-	/// 以及组满时是否存在足够的可覆盖运行实例。
+	/// 检查技能此刻是否可以施放。
+	///
+	/// 与 [#cast(LivingEntity, EntitySkillCastRequest)] 共用同一套所有权、冷却、同技能互斥和分组资格判定；
+	/// 不注册运行实例，也不取消可覆盖的旧技能或写入冷却。但资格查询本身会确保技能附件已初始化，
+	/// 并按冷却速度推进既有冷却（可能同步冷却变化）；候选实例不携带请求目标（本入口没有目标参数），
+	/// 因此 [IEntitySkill#canUse] 在无目标状态下评估。当前所有入口（含能力入口）都不把目标传入资格查询，
+	/// 尚不支持带目标预检；目标仅在 [#cast(LivingEntity, EntitySkillCastRequest)] 真正提交时参与。
 	///
 	/// @param entity 尝试施放技能的实体
 	/// @param skill  要检查的技能，实体类型必须与技能泛型一致
 	/// @return 所有施放条件均满足时返回 {@code true}
 	public static <T extends LivingEntity> boolean canCast(T entity, IEntitySkill<T> skill) {
-		EntitySkillRuntime<T> runtime = prepareCast(entity, skill);
-
-		if (runtime == null) {
+		// 眩晕检查先于附件初始化，保持与 cast 一致的拒绝顺序。
+		if (StunMobEffect.preventsActions(entity)) {
 			return false;
 		}
 
-		if (!runtime.canUse()) {
+		if (inspectCastEligibility(entity, skill) != null) {
 			return false;
 		}
 
-		return replacementsFor(entity, skill) != null;
+		EntitySkillRuntime<T> candidate = new EntitySkillRuntime<>(entity, skill,
+				EntitySkillRuntime.SkillState.WINDUP, skill.windupTicks());
+		return candidate.canUse() && replacementsFor(entity, skill) != null;
+	}
+
+	/// 检查与运行实例无关的通用施放资格：所有权、冷却、同技能互斥和分组可用性。
+	/// 调用方必须先完成眩晕检查；各检查按既有顺序短路，全部通过时返回 `null`。
+	private static EntitySkillCastResult.Status inspectCastEligibility(LivingEntity entity, IEntitySkill<?> skill) {
+		if (!getSkills(entity).contains(skill)) {
+			return EntitySkillCastResult.Status.SKILL_NOT_OWNED;
+		}
+
+		if (isOnCooldown(entity, skill)) {
+			return EntitySkillCastResult.Status.ON_COOLDOWN;
+		}
+
+		if (isBlockedByMutualExclusion(entity, skill)) {
+			return EntitySkillCastResult.Status.MUTUALLY_EXCLUSIVE;
+		}
+
+		if (!getGroups(entity).containsKey(skill.group())) {
+			return EntitySkillCastResult.Status.GROUP_NOT_AVAILABLE;
+		}
+
+		return null;
+	}
+
+	/// 判断已运行的同一技能是否因互斥且不可被覆盖而阻塞新施放。
+	private static boolean isBlockedByMutualExclusion(LivingEntity entity, IEntitySkill<?> skill) {
+		return skill.mutuallyExclusive()
+				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill));
 	}
 
 	/// 尝试施放技能并进入前摇阶段。
@@ -355,21 +388,10 @@ public class EntitySkillUtil {
 		initialize(entity);
 		expireMultiStageSequences(entity);
 
-		if (!getSkills(entity).contains(skill)) {
-			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.SKILL_NOT_OWNED, null);
-		}
+		EntitySkillCastResult.Status rejection = inspectCastEligibility(entity, skill);
 
-		if (isOnCooldown(entity, skill)) {
-			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.ON_COOLDOWN, null);
-		}
-
-		if (skill.mutuallyExclusive()
-				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
-			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.MUTUALLY_EXCLUSIVE, null);
-		}
-
-		if (!getGroups(entity).containsKey(skill.group())) {
-			return new EntitySkillCastResult<>(EntitySkillCastResult.Status.GROUP_NOT_AVAILABLE, null);
+		if (rejection != null) {
+			return new EntitySkillCastResult<>(rejection, null);
 		}
 
 		long runtimeId = entity.getData(LcAttachmentTypes.ACTIVE_ENTITY_SKILLS).allocateRuntimeId();
@@ -460,33 +482,6 @@ public class EntitySkillUtil {
 		}
 
 		return successfulCasts;
-	}
-
-	private static <T extends LivingEntity> EntitySkillRuntime<T> prepareCast(T entity, IEntitySkill<T> skill) {
-		if (StunMobEffect.preventsActions(entity)) {
-			return null;
-		}
-
-		initialize(entity);
-
-		if (!getSkills(entity).contains(skill)) {
-			return null;
-		}
-
-		if (isOnCooldown(entity, skill)) {
-			return null;
-		}
-
-		if (skill.mutuallyExclusive()
-				&& activeSkills(entity).stream().anyMatch(runtime -> runtime.skill() == skill && !canOverride(runtime, skill))) {
-			return null;
-		}
-
-		if (!getGroups(entity).containsKey(skill.group())) {
-			return null;
-		}
-
-		return new EntitySkillRuntime<>(entity, skill, EntitySkillRuntime.SkillState.WINDUP, skill.windupTicks());
 	}
 
 	/// 当前技能阶段是否允许开始新施放；与真正施放复用同一互斥和覆盖判定。

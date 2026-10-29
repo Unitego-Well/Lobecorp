@@ -11,13 +11,7 @@ public final class ConductorTargetingResolver {
 	}
 
 	public static @Nullable IConductorTargeting find(Mob mob, String id) {
-		Identifier identifier;
-		try {
-			identifier = Identifier.parse(id);
-		} catch (IllegalArgumentException exception) {
-			return null;
-		}
-
-		return ConductorUtil.ability(mob, identifier);
+		Identifier identifier = ConductorUtil.parseIdentifier(id);
+		return identifier == null ? null : ConductorUtil.ability(mob, identifier);
 	}
 }

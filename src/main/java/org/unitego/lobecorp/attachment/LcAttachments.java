@@ -17,10 +17,12 @@ public class LcAttachments {
 	private static final String ALREADY_DRIVEN = "Attachment target already has an active spatial driver";
 	private static final Map<Level, State> LEVELS = new IdentityHashMap<>();
 
+	/// 创建并注册绑定；目标已有其他空间写入者时抛出 [IllegalArgumentException]。
 	public static synchronized LcAttachmentBinding bind(ILcTransformTarget target, ILcAttachmentAnchor anchor) {
 		return new LcAttachmentBinding(target, anchor);
 	}
 
+	/// 查询指定世界与绑定 ID 的绑定；不存在或已清理时返回 `null`。
 	public static synchronized @Nullable LcAttachmentBinding get(Level level, UUID id) {
 		var state = LEVELS.get(level);
 		return state == null ? null : state.bindings.get(id);
@@ -70,6 +72,8 @@ public class LcAttachments {
 		releaseWriter(binding.target().level(), binding.target().identity(), binding);
 	}
 
+	/// 每次调用依次更新绑定。单个绑定抛出的异常会先释放该绑定，全部处理后重抛首个异常，
+	/// 其余异常作为 suppressed 保留，避免一个失败绑定中断同帧其他绑定。
 	public static synchronized void tick(Level level) {
 		Throwable failure = null;
 		for (var binding : bindings(level)) {
@@ -94,6 +98,7 @@ public class LcAttachments {
 		}
 	}
 
+	/// 释放指定世界的全部绑定与写入权；世界对象由游戏持有，不在此关闭。
 	public static synchronized void clear(Level level) {
 		var state = LEVELS.remove(level);
 		if (state == null) {
@@ -104,6 +109,7 @@ public class LcAttachments {
 		state.writers.clear();
 	}
 
+	/// 清理该服务器已不在 `getAllLevels` 中的世界状态，返回被清理的 Level。
 	public static synchronized List<ServerLevel> prune(MinecraftServer server) {
 		var active = new ArrayList<ServerLevel>();
 		server.getAllLevels().forEach(active::add);
@@ -114,11 +120,13 @@ public class LcAttachments {
 		return unloaded;
 	}
 
+	/// 清理该服务器当前持有的全部世界状态。
 	public static synchronized void clear(MinecraftServer server) {
 		LEVELS.keySet().stream().filter(level -> level instanceof ServerLevel serverLevel
 				&& serverLevel.getServer() == server).toList().forEach(LcAttachments::clear);
 	}
 
+	/// 清理客户端世界状态，不影响服务端分区。
 	public static synchronized void clearClientWorlds() {
 		LEVELS.keySet().stream().filter(Level::isClientSide).toList().forEach(LcAttachments::clear);
 	}

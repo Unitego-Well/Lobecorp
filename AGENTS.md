@@ -23,6 +23,8 @@ DS 会话除本文件外必须执行[DS 执行规则](docs/standards/ds-executio
 
 ## 工具、编辑与并行
 
+非 DS 负责人可将简单、边界明确的任务交给 DS，完成后由负责人检查；DS 出现异常问题或达到多轮上下文门槛时，必须交接到新对话，确认接续后归档旧对话，不在旧上下文反复催继续。具体委派、回报与巡检边界见[DS 简单任务委派与停止检查](docs/standards/workflow.md#ds-简单任务委派与停止检查)。
+
 IDEA 专属编辑、后台 Git、工作树隔离、外部 Minecraft MCP 制品、基准测试与已有修改保护统一见[工具、编辑与并行](docs/standards/workflow.md#工具编辑与并行)。验证与每任务中文提交规则见[修改规模与收尾](docs/standards/workflow.md#修改规模与收尾)及[版本与验证边界](docs/standards/workflow.md#版本与验证边界)。
 
 ## 按任务读取

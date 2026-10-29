@@ -1,5 +1,11 @@
 # Photon 特效 MCP
 
+## 2026-10-28 命名与文件事务维护
+
+PhotonEffectNamedUtil.Prepared.commit 在 dry-run 时验证草稿，实际提交直接复用 PhotonNamedAuthoringSession.commit 的内部校验；准备到提交之间的版本、控制器与原树保护继续存在。有变化才新增一条历史，无变化不新增历史，不增加跨阶段缓存。
+
+PhotonEffectFileUtil 四条 prepare 失败路径共用临时文件清理；删除失败附加为 suppressed，首个编码/重读/校验异常继续向调用方传播。发布、目标覆盖、文件锁、重读和取消边界保留，不把错误隐藏成成功结果。
+
 核对日期：2026-10-18。当前接口依赖 Photon 26.1.2.3、LDLib2 26.1.2.42 与本仓库 Minecraft MCP 子项目；版本与构建入口见 [Minecraft MCP](minecraft-mcp.md)。
 
 2026-10-20新增命名制作/运行通道：effect_animation_state、effect_animation_edit、effect_animation_control。API/MCP与功能实现同步推进，界面交由人工审查；当前开放范围、句柄/版本、保护及验证入口见命名API（历史路径：`photon-effect-mcp-api.md#命名制作与运行-api2026-10-20`；当前 dev 未保留）。G1与全部资源兼容仍未通过。

@@ -85,6 +85,7 @@ public class LivingEntityEvents {
 		CombatEvents.onIncomingDamage(event);
 	}
 
+	/// 实体离开世界时清理运行态，不限于死亡场景。
 	@SubscribeEvent
 	public static void onLivingDeath(EntityLeaveLevelEvent event) {
 		Entity entity = event.getEntity();

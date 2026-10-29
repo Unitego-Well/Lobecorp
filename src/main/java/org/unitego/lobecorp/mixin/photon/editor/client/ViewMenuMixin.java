@@ -15,7 +15,7 @@ public abstract class ViewMenuMixin {
 	@WrapOperation(method = "lambda$createDefaultMenu$2", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/editor/settings/EditorSettings;isDirty()Z"))
 	private boolean lobecorp$applySelectedViewScale(EditorSettings settings, Operation<Boolean> original) {
-return settings.editor instanceof PhotonEffectEditor || original.call(settings);
+		return settings.editor instanceof PhotonEffectEditor || original.call(settings);
 	}
 
 	@WrapOperation(method = "lambda$createDefaultMenu$2", at = @At(value = "INVOKE",

@@ -103,6 +103,7 @@ public interface LcAttachmentTypes {
 	DeferredHolder<AttachmentType<?>, AttachmentType<ConductorUnitData>> CONDUCTOR_UNIT = REGISTER.register(
 			"conductor_control_unit", () -> AttachmentType.serializable(ConductorUnitData::new).build());
 
+	/// 运行期战斗记忆，不持久化也不随附件同步。
 	DeferredHolder<AttachmentType<?>, AttachmentType<CombatMemory>> COMBAT_MEMORY = REGISTER.register(
 			"combat_memory", () -> AttachmentType.builder(CombatMemory::new).build());
 	/// 实体指挥控制的运行期上下文，不作为持久化状态保存。

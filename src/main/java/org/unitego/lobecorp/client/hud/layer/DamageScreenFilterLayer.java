@@ -29,6 +29,7 @@ public class DamageScreenFilterLayer extends ScreenFilterLayer {
 	}
 
 	public void hit(int channels) {
+		// 位掩码按 physics、spirit、erosion、the_soul 的顺序对应服务端通道。
 		for (int index = 0; index < damageFilters.length; index++) {
 			if ((channels & 1 << index) != 0) {
 				var filter = damageFilters[index];

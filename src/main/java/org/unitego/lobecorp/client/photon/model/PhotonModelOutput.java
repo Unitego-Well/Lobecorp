@@ -67,6 +67,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private final Map<Object, PhotonModelClip.Sample> playback = new LinkedHashMap<>();
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
 			.thenComparingLong(PhotonModelClip.Sample::order);
+	private static final String SAMPLE_FAILURE_OPERATION = "采样";
 	private CompoundTag original = new CompoundTag();
 	private @Nullable PhotonModelPoseSampler sampler;
 	private @Nullable PhotonModelMaterials materials;
@@ -74,7 +75,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private @Nullable PhotonModelPoseSampler.Input sampledInput;
 	private @Nullable PhotonModelPoseSampler.Frame frame;
 	private List<Integer> groupOrder = List.of();
-	private @Nullable String failure;
+	private final PhotonModelFailureState failures = new PhotonModelFailureState();
 	private boolean preparedOverride;
 	private boolean measure;
 	private boolean preserveParticles;
@@ -202,7 +203,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			preparedOverride = config.overrideRenderer;
 		}
 
-		failure = null;
+		failures.clear();
 	}
 
 	private PhotonModelDefinition loadDefinition() throws IOException {
@@ -241,9 +242,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			prepare();
 			clock.reset(settings(), preserveParticles);
 		} catch (IOException | RuntimeException error) {
-			failure = error.getMessage();
-			clock.clear();
-			Photon.LOGGER.error("模型输出准备失败：{}", getName(), error);
+			failPreparation("重置", error);
 		}
 	}
 
@@ -253,8 +252,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			try {
 				prepare();
 			} catch (IOException error) {
-				failure = error.getMessage();
-				clock.clear();
+				failPreparation("更新", error);
 			}
 		}
 
@@ -328,7 +326,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public @Nullable String failure() {
-		return failure;
+		return failures.message();
 	}
 
 	public void measure(boolean enabled) {
@@ -361,12 +359,12 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			var sampled = sampleLocalFrame(partialTicks);
 
 			if (sampled != null) {
-				failure = null;
+				failures.clear(SAMPLE_FAILURE_OPERATION);
 			}
 			completed = true;
 			return sampled;
 		} catch (IllegalArgumentException invalid) {
-			failure = invalid.getMessage();
+			failSampling(invalid);
 			return null;
 		} finally {
 			PhotonPerformanceTraceUtil.end(scope, completed);
@@ -515,11 +513,30 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		container.addChild(view.fxObjectInfoView.createInformation(
 				Component.translatable("photon.lobecorp.model.model_status"),
 				() -> Component.translatable("photon.lobecorp.model.status." +
-						(failure != null ? "invalid" : sampler == null ? "missing" : "ok"))));
+						(failures.current() != null ? "invalid" : sampler == null ? "missing" : "ok"))));
+		var failure = failures.current();
 
 		if (failure != null) {
 			container.addChild(view.fxObjectInfoView.createInformation(Component.literal(getName()),
-					() -> Component.literal(Objects.toString(failure, ""))));
+					() -> {
+						var current = failures.current();
+						return Component.literal(current == null ? "" : current.detail());
+					}));
+		}
+	}
+
+	private void failPreparation(String operation, Exception error) {
+		reportFailure(operation, error);
+		clock.clear();
+	}
+
+	private void failSampling(IllegalArgumentException error) {
+		reportFailure(SAMPLE_FAILURE_OPERATION, error);
+	}
+
+	private void reportFailure(String operation, Throwable error) {
+		if (failures.record(operation, error)) {
+			Photon.LOGGER.error("模型输出{}失败：{}", operation, getName(), error);
 		}
 	}
 
@@ -534,8 +551,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		try {
 			prepare();
 		} catch (IOException | RuntimeException error) {
-			failure = error.getMessage();
-			clock.clear();
+			failPreparation("配置变更", error);
 		}
 	}
 

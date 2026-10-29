@@ -5,6 +5,7 @@ import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 
+/// 发射器实例参数覆盖；对应 override 关闭时沿用模板原值。
 public class PhotonSpawnParameters implements IPersistedSerializable {
 	@Persisted
 	public String targetName = "";

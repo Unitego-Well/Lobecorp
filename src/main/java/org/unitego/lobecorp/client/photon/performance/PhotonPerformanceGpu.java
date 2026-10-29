@@ -17,6 +17,7 @@ import java.util.List;
 public class PhotonPerformanceGpu {
 	private static final int TIMESTAMPS_PER_FRAME = 64;
 	private static final int PENDING_FRAMES = 8;
+	// 每个采样占一对 timestamp，槽池按 8 帧、每帧最多 32 个采样配置。
 	private static final int SLOTS = TIMESTAMPS_PER_FRAME * PENDING_FRAMES / 2;
 	private static final int MAX_SAMPLES = 8192;
 	private static @Nullable Queries active;
@@ -104,6 +105,7 @@ public class PhotonPerformanceGpu {
 				GL33.glQueryCounter(queries.ids[slot * 2], GL33.GL_TIMESTAMP);
 				queries.used++;
 				queries.started++;
+				// 高 48 位保存序号，低 16 位保存槽位加一，用于拒绝过期 token。
 				long token = queries.serials[slot] << 16 | slot + 1;
 				queries.currentToken = token;
 				return token;

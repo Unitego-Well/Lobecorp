@@ -4,6 +4,7 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.editor.project.ProjectType;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
@@ -11,6 +12,7 @@ import com.lowdragmc.lowdraglib2.syncdata.ISubscription;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -74,50 +76,91 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 	}
 
 	public CompoundTag document() {
+		requireSingleModel();
+		var result = source.copy();
+		assemblePlayback(result);
+		assembleAsset(result);
+		assembleRenderer(result);
+		var emitter = requireWrapper(model).getCompoundOrEmpty("data");
+		assembleEmitter(result, emitter);
+		assembleTimeline(result, emitter);
+		return result;
+	}
+
+	private void requireSingleModel() {
 		if (getFx().getFxData().objects().size() != 1 || getFx().getFxData().objects().getFirst() != model) {
 			throw new IllegalStateException("模型工程只管理一个模型资产，组合对象请使用FX工程。");
 		}
-		var result = source.copy();
+	}
+
+	private void assemblePlayback(CompoundTag result) {
 		var serialized = PersistedParser.serializeNBT(model.config, Platform.getFrozenRegistry());
 		var playback = result.getCompoundOrEmpty("playback");
+
 		for (var key : List.of("enabled", "duration", "startDelay", "looping", "paused", "clip", "playbackSpeed", "animationOffset")) {
-			if (!Objects.equals(serialized.get(key), baseline.get(key)) && serialized.get(key) != null) {
-				playback.put(key, Objects.requireNonNull(serialized.get(key)).copy());
+			var value = serialized.get(key);
+
+			if (!Objects.equals(value, baseline.get(key)) && value != null) {
+				playback.put(key, value.copy());
 			}
 		}
+
 		if (source.contains("playback") || !playback.isEmpty()) {
 			result.put("playback", playback);
 		}
+	}
+
+	private void assembleAsset(CompoundTag result) {
 		if (!Objects.equals(model.config.assetSnapshot(), source.get("asset"))) {
 			result.put("asset", model.config.assetSnapshot());
 		}
+	}
+
+	private void assembleRenderer(CompoundTag result) {
 		var renderer = PersistedParser.serializeNBT(model.config.modelRenderer, Platform.getFrozenRegistry());
+
 		if (!renderer.equals(rendererBaseline)) {
 			result.put("renderer", PhotonNamedTrackAuthoringUtil.merge(result.getCompoundOrEmpty("renderer"), renderer));
 		}
-		var wrapper = model.serializeWrapper();
-		if (wrapper == null) {
-			throw new IllegalStateException("模型对象无法序列化。");
-		}
-		var emitter = wrapper.getCompoundOrEmpty("data");
+	}
+
+	private void assembleEmitter(CompoundTag result, CompoundTag emitter) {
 		if (!source.contains("emitterData")) {
 			result.put("emitterData", emitter.copy());
 		} else if (!emitter.equals(emitterBaseline)) {
 			result.put("emitterData", PhotonLosslessNbtUtil.changed(source.getCompoundOrEmpty("emitterData"), emitterBaseline, emitter));
 		}
+	}
+
+	private void assembleTimeline(CompoundTag result, CompoundTag emitter) {
 		var timeline = getFx().getFxData().timeline().serializeNBT(Platform.getFrozenRegistry());
-		if (!timeline.equals(timelineBaseline)) {
-			var definition = result.getCompoundOrEmpty("definitionSource");
-			if (definition.isEmpty()) {
-				definition = getFx().serializeNBT(Platform.getFrozenRegistry());
-			}
-			definition.getCompoundOrEmpty("fxData").put("timeline", PhotonLosslessNbtUtil.changed(rawTimeline, timelineBaseline, timeline));
-			result.put("definitionSource", definition);
-			if (!result.contains("emitterData")) {
-				result.put("emitterData", emitter.copy());
-			}
+
+		if (timeline.equals(timelineBaseline)) {
+			return;
 		}
-		return result;
+
+		var definition = result.getCompoundOrEmpty("definitionSource");
+
+		if (definition.isEmpty()) {
+			definition = getFx().serializeNBT(Platform.getFrozenRegistry());
+		}
+
+		definition.getCompoundOrEmpty("fxData").put("timeline", PhotonLosslessNbtUtil.changed(rawTimeline, timelineBaseline, timeline));
+		result.put("definitionSource", definition);
+
+		if (!result.contains("emitterData")) {
+			result.put("emitterData", emitter.copy());
+		}
+	}
+
+	private static CompoundTag requireWrapper(PhotonModelOutput output) {
+		var wrapper = output.serializeWrapper();
+
+		if (wrapper == null) {
+			throw new IllegalStateException("模型对象无法序列化。");
+		}
+
+		return wrapper;
 	}
 
 	public PhotonModelOutput model() {
@@ -148,28 +191,25 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 
 	/// 先准备模型与原生配置的独立候选，失败不替换现有工程或预览数据。
 	public void restore(CompoundTag candidate) {
+		applyRestore(prepareRestore(candidate));
+	}
+
+	private RestoredProject prepareRestore(CompoundTag candidate) {
 		var data = candidate.copy();
+
 		if (data.contains("emitterData") && !(data.get("emitterData") instanceof CompoundTag)
 				|| data.contains("definitionSource") && !(data.get("definitionSource") instanceof CompoundTag)) {
 			throw new IllegalArgumentException("模型工程的扩展制作数据类型不受支持。");
 		}
+
 		var asset = Objects.requireNonNull(data.get("asset"), "模型工程缺少asset。");
-		try {
-			var tree = switch (asset) {
-				case ByteArrayTag bytes ->
-						PhotonResourceJsonUtil.read(bytes.getAsByteArray(), PhotonResourceLimits.DEFAULT);
-				case StringTag(var text) -> PhotonResourceJsonUtil.read(text, PhotonResourceLimits.DEFAULT);
-				default -> throw new IOException("模型工程asset必须为字节或字符串。");
-			};
-			PhotonModelTopologyUtil.prepare(PhotonModelCodec.read(tree.getAsJsonObject()));
-		} catch (IOException invalid) {
-			throw new IllegalArgumentException("模型工程资产无效。", invalid);
-		}
+		validateAsset(asset);
 
 		if (data.contains("playback") && !(data.get("playback") instanceof CompoundTag)
 				|| data.contains("renderer") && !(data.get("renderer") instanceof CompoundTag)) {
 			throw new IllegalArgumentException("模型工程播放或渲染配置类型无效。");
 		}
+
 		var playback = data.getCompoundOrEmpty("playback");
 		var renderer = data.getCompoundOrEmpty("renderer");
 		var next = data.get("emitterData") instanceof CompoundTag originalEmitter
@@ -182,35 +222,68 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 		next.config.source = PhotonModelOutputConfig.Source.EMBEDDED;
 		next.config.resource = null;
 		next.config.file = "";
-		if (next.config.duration < 1 || next.config.startDelay < 0 || !Float.isFinite(next.config.playbackSpeed)
-				|| next.config.playbackSpeed < 0 || !Float.isFinite(next.config.animationOffset)) {
-			throw new IllegalArgumentException("模型工程播放设置无效。");
-		}
+		validatePlayback(next);
+
 		if (!data.contains("emitterData")) {
 			next.transform()._setInternalParentID(FXRuntime.ROOT_UUID);
 		}
+
 		if (model != null && !data.contains("emitterData")) {
 			next.transform()._setInternalID(model.id());
 		}
+
 		var timelineSource = data.getCompoundOrEmpty("definitionSource").getCompoundOrEmpty("fxData").getCompoundOrEmpty("timeline").copy();
 		var timeline = PhotonTimelineDecodeUtil.read(Platform.getFrozenRegistry(), timelineSource);
-		var wrapper = next.serializeWrapper();
-		if (wrapper == null) {
-			throw new IllegalStateException("模型对象无法序列化。");
+		var timelineBaseline = timeline.serializeNBT(Platform.getFrozenRegistry());
+		var wrapper = requireWrapper(next);
+		var baseline = PersistedParser.serializeNBT(next.config, Platform.getFrozenRegistry());
+		var rendererBaseline = PersistedParser.serializeNBT(next.config.modelRenderer, Platform.getFrozenRegistry());
+		var emitterBaseline = wrapper.getCompoundOrEmpty("data").copy();
+		return new RestoredProject(data, next, baseline, rendererBaseline, emitterBaseline,
+				timelineBaseline, timelineSource, timeline);
+	}
+
+	private static void validateAsset(Tag asset) {
+		try {
+			var tree = switch (asset) {
+				case ByteArrayTag bytes ->
+						PhotonResourceJsonUtil.read(bytes.getAsByteArray(), PhotonResourceLimits.DEFAULT);
+				case StringTag(var text) -> PhotonResourceJsonUtil.read(text, PhotonResourceLimits.DEFAULT);
+				default -> throw new IOException("模型工程asset必须为字节或字符串。");
+			};
+			PhotonModelTopologyUtil.prepare(PhotonModelCodec.read(tree.getAsJsonObject()));
+		} catch (IOException invalid) {
+			throw new IllegalArgumentException("模型工程资产无效。", invalid);
 		}
-		source = data;
+	}
+
+	private static void validatePlayback(PhotonModelOutput output) {
+		if (output.config.duration < 1 || output.config.startDelay < 0 || !Float.isFinite(output.config.playbackSpeed)
+				|| output.config.playbackSpeed < 0 || !Float.isFinite(output.config.animationOffset)) {
+			throw new IllegalArgumentException("模型工程播放设置无效。");
+		}
+	}
+
+	private void applyRestore(RestoredProject restored) {
+		var next = restored.model();
+		source = restored.source();
 		model = next;
-		baseline = PersistedParser.serializeNBT(next.config, Platform.getFrozenRegistry());
-		rendererBaseline = PersistedParser.serializeNBT(next.config.modelRenderer, Platform.getFrozenRegistry());
+		baseline = restored.baseline();
+		rendererBaseline = restored.rendererBaseline();
+		emitterBaseline = restored.emitterBaseline();
+		timelineBaseline = restored.timelineBaseline();
+		rawTimeline = restored.rawTimeline();
 		getFx().getFxData().objects().clear();
 		getFx().getFxData().objects().add(next);
-		rawTimeline = timelineSource;
 		getFx().getFxData().timeline().tracks().clear();
-		getFx().getFxData().timeline().tracks().addAll(timeline.tracks());
+		getFx().getFxData().timeline().tracks().addAll(restored.timeline().tracks());
 		getFx().getFxData().timeline().markers().clear();
-		getFx().getFxData().timeline().markers().addAll(timeline.markers());
-		timelineBaseline = getFx().getFxData().timeline().serializeNBT(Platform.getFrozenRegistry());
-		emitterBaseline = wrapper.getCompoundOrEmpty("data").copy();
+		getFx().getFxData().timeline().markers().addAll(restored.timeline().markers());
+	}
+
+	private record RestoredProject(CompoundTag source, PhotonModelOutput model, CompoundTag baseline,
+	                               CompoundTag rendererBaseline, CompoundTag emitterBaseline,
+	                               CompoundTag timelineBaseline, CompoundTag rawTimeline, Timeline timeline) {
 	}
 
 	@Override
@@ -221,20 +294,29 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 	@Override
 	public void onLoad(Editor editor) {
 		super.onLoad(editor);
-		if (modelExports != null) {
-			modelExports.unsubscribe();
-		}
+		unsubscribeExports();
+
 		if (editor instanceof FXEditor fx) {
-			modelExports = PhotonModelAuthoringPanel.exports(fx);
+			subscribeExports(fx);
+		}
+	}
+
+	private void subscribeExports(FXEditor editor) {
+		modelExports = PhotonModelAuthoringPanel.exports(editor);
+	}
+
+	private void unsubscribeExports() {
+		var current = modelExports;
+		modelExports = null;
+
+		if (current != null) {
+			current.unsubscribe();
 		}
 	}
 
 	@Override
 	public void onClosed(Editor editor) {
-		if (modelExports != null) {
-			modelExports.unsubscribe();
-			modelExports = null;
-		}
+		unsubscribeExports();
 		super.onClosed(editor);
 	}
 

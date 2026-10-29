@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.EnumSet;
 import java.util.Objects;
 
+/// 通过 Interface Injection 暴露伤害类型标签读写；默认实现由 `DamageSourceMixin` 覆盖。
 public interface IDamageSourceExpand {
 	/// 单色设置只清理四色标签，其他原版及动态标签保留。
 	default void lobecorp$setLcDamageType(LcDamageType type) {

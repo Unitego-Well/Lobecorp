@@ -8,6 +8,7 @@ import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar.TextureLayer;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
+/// 四色护盾条按伤害类型选择纹理；当前值为零时跳过条形绘制，数值文本沿用基类。
 @NullMarked
 public class ShieldBarLayer extends StatusBarLayer {
 	private final LcDamageType type;

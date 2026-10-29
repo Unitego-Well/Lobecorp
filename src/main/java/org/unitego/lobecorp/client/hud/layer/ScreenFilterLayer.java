@@ -7,6 +7,7 @@ import org.unitego.lobecorp.client.hud.widget.ScreenFilter;
 
 import java.util.List;
 
+/// 顺序绘制一组全屏滤镜，并以屏幕尺寸作为该层的占位大小。
 @NullMarked
 public class ScreenFilterLayer extends BasicHudLayer {
 	protected final List<ScreenFilter> filters;

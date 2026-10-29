@@ -52,6 +52,7 @@ public class QueenBeamPerformanceTrial {
 	private static final double CAPTURE_SECONDS = 90;
 	private static final double SETTLE_SECONDS = 20;
 	private static final double LOAD_TIMEOUT_SECONDS = 120;
+	// 三次施法在 90 秒采样内的开始时刻（秒）。
 	private static final double[] CAST_SECONDS = {4, 31, 58};
 	private static final int FRAME_LIMIT = 260;
 	private static final double TARGET_DISTANCE = 16;
@@ -494,6 +495,7 @@ public class QueenBeamPerformanceTrial {
 		return result;
 	}
 
+	// 采样期间固定窗口与帧率设置，结束后由 restoreOptions 恢复保存值。
 	private static void saveOptions() {
 		var mc = Minecraft.getInstance();
 		originalInactivity = mc.options.inactivityFpsLimit().get();
@@ -502,6 +504,7 @@ public class QueenBeamPerformanceTrial {
 		originalPause = mc.options.pauseOnLostFocus;
 		originalGui = mc.options.hideGui;
 		originalEntityDistance = mc.options.entityDistanceScaling().get();
+		// 放大相机距离时同步提高实体距离下限，避免目标提前消失。
 		if (cameraScale > 1) {
 			mc.options.entityDistanceScaling().set(Math.max(2, originalEntityDistance));
 		}

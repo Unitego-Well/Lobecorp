@@ -18,7 +18,7 @@ import java.util.Optional;
 @Mixin(SpawnEggItem.class)
 public abstract class SpawnEggItemMixin {
 	@WrapMethod(method = "getType")
-	private static @Nullable EntityType<?> wild_wind$getType(ItemStack itemStack, Operation<EntityType<?>> original) {
+	private static @Nullable EntityType<?> lobecorp$getType(ItemStack itemStack, Operation<EntityType<?>> original) {
 		EntityType<?> call = original.call(itemStack);
 		if (call != null) {
 			return call;
@@ -32,7 +32,7 @@ public abstract class SpawnEggItemMixin {
 	}
 
 	@WrapMethod(method = "byId")
-	private static Optional<Holder<Item>> wild_wind$byId(EntityType<?> type, Operation<Optional<Holder<Item>>> original) {
+	private static Optional<Holder<Item>> lobecorp$byId(EntityType<?> type, Operation<Optional<Holder<Item>>> original) {
 		Optional<Holder<Item>> call = original.call(type);
 		if (call.isPresent()) {
 			return call;
@@ -47,7 +47,7 @@ public abstract class SpawnEggItemMixin {
 	}
 
 	@WrapMethod(method = "spawnsEntity")
-	private static boolean wild_wind$spawnsEntity(ItemStack itemStack, EntityType<?> type, Operation<Boolean> original) {
+	private static boolean lobecorp$spawnsEntity(ItemStack itemStack, EntityType<?> type, Operation<Boolean> original) {
 		boolean call = original.call(itemStack, type);
 		if (call) {
 			return true;

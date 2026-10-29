@@ -23,6 +23,7 @@ public interface IEntitySkillAccess {
 		return entity.getCapability(LcCapabilities.ENTITY_SKILL);
 	}
 
+	/// 便捷入口：以无目标请求检查施放资格，语义见 [#canCast(EntitySkillCastRequest)]。
 	static <T extends LivingEntity> boolean canCast(T entity, IEntitySkill<T> skill) {
 		return EntitySkillUtil.require(entity).canCast(EntitySkillCastRequest.of(skill));
 	}
@@ -70,7 +71,11 @@ public interface IEntitySkillAccess {
 
 	Map<IEntitySkill<?>, Long> cooldowns();
 
-	/// 无副作用检查一次施放请求。
+	/// 检查一次施放请求是否满足施放资格；不注册运行实例，不取消可覆盖技能，也不启动冷却或事件。
+	///
+	/// 查询会确保技能附件已初始化，并按冷却速度推进既有冷却（可能同步变化）。实现当前不把请求中的
+	/// 实体目标或坐标目标传入候选运行实例，[IEntitySkill#canUse] 因而在无目标状态下评估；
+	/// 这与 [EntitySkillUtil#cast] 使用的带目标实例存在差异。
 	boolean canCast(EntitySkillCastRequest<?> request);
 
 	/// 提交一次技能施放请求。

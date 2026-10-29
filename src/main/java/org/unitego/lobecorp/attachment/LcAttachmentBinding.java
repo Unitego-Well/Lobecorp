@@ -119,6 +119,7 @@ public class LcAttachmentBinding {
 			return;
 		}
 
+		// 轨迹采样器可能释放绑定或改变来源/目标可用性，采样后重新校验。
 		var sampled = trajectory.get();
 		if (released || !target.isAvailable() || !anchor.isAvailable()
 				|| target.level() != level || anchor.level() != level) {

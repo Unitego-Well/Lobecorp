@@ -9,17 +9,17 @@ import net.minecraft.world.level.Level;
 
 /// 异常实体的共同标记契约，提供目标与营地归属判定。
 public interface IOrdeal {
-	/// 目标选择
+	/// 按世界上下文判断是否可作为攻击目标；默认忽略世界信息。
 	default boolean canTarget(Entity entity, Level level) {
 		return canTarget(entity);
 	}
 
-	/// 目标选择
+	/// 判断是否可作为攻击目标；默认复用 [#isValidTarget(Entity)]。
 	default boolean canTarget(Entity entity) {
 		return isValidTarget(entity);
 	}
 
-	/// 判断是否是可以攻击目标
+	/// 排除自身与无效攻击目标；玩家检查创造/旁观模式，其他实体检查同阵营。
 	default boolean isValidTarget(Entity entity) {
 		if (entity == this) {
 			return false;
@@ -42,7 +42,7 @@ public interface IOrdeal {
 		return !isCamp(entity);
 	}
 
-	/// 判断是否是同阵营
+	/// 默认按实体类型是否相同判定同阵营；子类型可扩展。
 	default boolean isCamp(Entity entity) {
 		return getMob().getType() == entity.getType();
 	}

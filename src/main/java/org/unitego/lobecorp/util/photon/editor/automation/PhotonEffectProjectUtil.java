@@ -421,7 +421,6 @@ public class PhotonEffectProjectUtil {
 					parameters.getCompoundOrEmpty("config").remove(PhotonModelOutputConfig.ASSET_KEY);
 				}
 
-
 				entry.add("parameters", PhotonEffectJsonUtil.json(parameters));
 				entry.add("parameterSchema", PhotonEffectJsonUtil.schema(parameters));
 				objects.add(entry);
@@ -459,7 +458,6 @@ public class PhotonEffectProjectUtil {
 
 	private static void refresh(Handle handle) {
 		var editor = handle.editor();
-
 
 		if (!(handle.project() instanceof FXProject project)) {
 			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION);

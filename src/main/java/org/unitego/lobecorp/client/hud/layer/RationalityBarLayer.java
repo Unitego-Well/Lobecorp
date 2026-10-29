@@ -9,6 +9,7 @@ import org.unitego.lobecorp.client.hud.widget.HorizontalStatusBar.TextureLayer;
 import org.unitego.lobecorp.util.client.gui.GuiUtil;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
+/// 理智条按比例切换高低纹理，归零时改用独立动态纹理。
 @NullMarked
 public class RationalityBarLayer extends StatusBarLayer {
 	private static final float HIGH_RATIO = 0.7F;

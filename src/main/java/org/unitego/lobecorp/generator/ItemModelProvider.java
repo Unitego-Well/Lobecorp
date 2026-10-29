@@ -5,14 +5,11 @@ import net.minecraft.client.data.models.ItemModelGenerators;
 import net.minecraft.client.data.models.ItemModelOutput;
 import net.minecraft.client.data.models.ModelProvider;
 import net.minecraft.client.data.models.model.*;
-import net.minecraft.client.renderer.item.ItemModel;
-import net.minecraft.client.renderer.item.properties.select.DisplayContext;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemDisplayContext;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.item.SpawnEggItems;
@@ -45,14 +42,6 @@ public class ItemModelProvider extends ModelProvider {
 	private void generateFlatItem(ItemModelOutput itemModelOutput, Item item, BiConsumer<Identifier, ModelInstance> modelOutput,
 	                              String prefix, String suffix, String texturePrefix, String textureSuffix, ModelTemplate template) {
 		itemModelOutput.accept(item, ItemModelUtils.plainModel(createFlatItemModel(modelOutput, item, prefix, suffix, texturePrefix, textureSuffix, template)));
-	}
-
-	// 手持3d
-	private void a3d(BiConsumer<Identifier, ModelInstance> modelOutput, Item item, String prefix, String suffix, String texturePrefix, String textureSuffix,
-	                 ModelTemplate template, ItemModelOutput itemModelOutput) {
-		ItemModel.Unbaked model = ItemModelUtils.plainModel(createFlatItemModel(modelOutput, item, prefix, suffix, texturePrefix, textureSuffix, template));
-		ItemModel.Unbaked model3d = ItemModelUtils.plainModel(getModelLocation(item, prefix, suffix));
-		itemModelOutput.accept(item, ItemModelUtils.select(new DisplayContext(), model3d, ItemModelUtils.when(ItemDisplayContext.GUI, model)));
 	}
 
 	public Identifier createFlatItemModel(BiConsumer<Identifier, ModelInstance> modelOutput, Item item,

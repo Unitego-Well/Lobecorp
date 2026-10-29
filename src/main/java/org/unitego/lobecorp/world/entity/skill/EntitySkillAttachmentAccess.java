@@ -95,6 +95,11 @@ public class EntitySkillAttachmentAccess implements IEntitySkillAccess {
 		return EntitySkillUtil.getCooldowns(entity);
 	}
 
+	/// 检查请求是否可施放。先经可覆盖的 [IEntitySkillAccess#supports(IEntitySkill)] 短路，
+	/// 再委托附件状态机做资格检查；这样保持子类支持判定及附件初始化的既有触发时机。
+	///
+	/// 当前不把请求目标传入资格检查，[IEntitySkill#canUse] 在无目标状态下评估；
+	/// 目标只在真正提交的 [EntitySkillUtil#cast] 中参与。
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	public boolean canCast(EntitySkillCastRequest<?> request) {

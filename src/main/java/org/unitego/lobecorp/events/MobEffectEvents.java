@@ -40,7 +40,6 @@ public class MobEffectEvents {
 			LcShieldUtil.removed(event.getEntity(), effect.getEffect());
 		}
 
-
 		if (!event.isCanceled() && effect != null && effect.getEffect().equals(LcMobEffects.STUN)) {
 			LcMobEffects.STUN.get().restoreAi(event.getEntity());
 		}

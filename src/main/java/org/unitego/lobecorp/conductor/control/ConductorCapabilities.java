@@ -93,8 +93,7 @@ public class ConductorCapabilities {
 		@Override
 		public boolean cast(Identifier skill, Entity target, Vec3 position) {
 			IConductorAbility ability = RegisterConductorAbilitiesEvent.get(mob, skill);
-			return CombatUtil.acceptsControl(mob) && ability != null && ability.isAvailable(mob) && ability.cooldownTicks(mob) == 0
-					&& ability.cast(mob, target, position);
+			return ability != null && ConductorController.canCast(mob, ability) && ability.cast(mob, target, position);
 		}
 	}
 

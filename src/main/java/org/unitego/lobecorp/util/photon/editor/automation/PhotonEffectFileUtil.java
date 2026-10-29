@@ -43,6 +43,9 @@ public class PhotonEffectFileUtil {
 				FXPacks.getFxPacksDir().toPath().toAbsolutePath().normalize()));
 	}
 
+	/// 已写入临时文件、尚未发布的输出。
+	///
+	/// `commit` 将临时文件发布到目标；未发布时 `close` 删除临时文件。准备阶段的清理不会覆盖首个失败。
 	public record Prepared(Handle handle, Path target, Path temporary, boolean overwrite,
 	                       boolean projectSave, JsonObject exported) implements AutoCloseable {
 		public JsonObject commit() throws Exception {
@@ -69,6 +72,7 @@ public class PhotonEffectFileUtil {
 	}
 
 	/// 耗时编码只写本次临时文件，进入提交阶段后才发布到正式路径。
+	/// 编码、重读或验证失败时清理本次临时文件，清理异常作为首个失败的 suppressed 保留。
 	public static Prepared prepareSave(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
 		var target = destination(request, handle.project().getSuffix());
@@ -86,11 +90,12 @@ public class PhotonEffectFileUtil {
 
 			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), true, new JsonObject());
 		} catch (Exception | Error failure) {
-			Files.deleteIfExists(temporary);
+			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
 	}
 
+	/// 导出发布定义或 FXPack；准备失败清理临时文件，提交阶段才替换目标。
 	public static Prepared prepareExport(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
 		var kind = PhotonEffectJsonUtil.string(request, "kind");
@@ -147,7 +152,7 @@ public class PhotonEffectFileUtil {
 			PhotonResourceReader.read(temporary);
 			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
 		} catch (Exception | Error failure) {
-			Files.deleteIfExists(temporary);
+			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
 	}
@@ -199,7 +204,7 @@ public class PhotonEffectFileUtil {
 			result.addProperty("completeProjectBackup", false);
 			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
 		} catch (Exception | Error failure) {
-			Files.deleteIfExists(temporary);
+			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
 	}
@@ -247,6 +252,7 @@ public class PhotonEffectFileUtil {
 		}
 	}
 
+	/// 资源字节先写临时文件；提交阶段重新校验目标并发布，准备失败清理临时文件。
 	public static ResourcePrepared prepareResource(Path target, byte[] bytes, boolean overwrite) throws IOException {
 		var destination = workspacePath(target.toString());
 		checkResourceTarget(destination, overwrite);
@@ -257,7 +263,7 @@ public class PhotonEffectFileUtil {
 			Files.write(temporary, bytes, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			return new ResourcePrepared(destination, temporary, overwrite);
 		} catch (IOException | RuntimeException | Error failure) {
-			Files.deleteIfExists(temporary);
+			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
 	}
@@ -267,6 +273,16 @@ public class PhotonEffectFileUtil {
 		if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)
 				&& (!overwrite || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS))) {
 			throw new PhotonEffectCommandException(Code.FILE_EXISTS, target.toString());
+		}
+	}
+
+	/// 清理准备失败留下的临时文件。
+	/// 删除失败时附加到首个失败上，保持调用方看到原始异常；发布、覆盖和重读逻辑不在此处理。
+	private static void cleanupTemporary(Path temporary, Throwable failure) {
+		try {
+			Files.deleteIfExists(temporary);
+		} catch (IOException | RuntimeException cleanupFailure) {
+			failure.addSuppressed(cleanupFailure);
 		}
 	}
 

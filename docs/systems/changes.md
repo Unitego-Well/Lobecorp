@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-29：补齐 FX 冷加载与校验诊断，不实施优化
+
+- 新增显式cast诊断才装载的FXHelper Mixin和线程隔离账本；按已核对字节码计时getFX、loadFX、资源open、readCompressed、版本处理与反序列化。缓存分类不额外探测CACHE，返回null与异常分别记录。
+- prepareNext直接记录definitionNs绝对边界及namedNs；模板复制与整份FX／逐对象／时间轴／轨道guard分组计时计数。原调用次数、顺序、返回、异常及流关闭保持；不新增缓存、跳过校验、改资源或重排队列。
+- 四项嵌套排他、异常恢复、查询分离账本测试全部通过；IDEA编译／benchClasses／生产包隔离成功。普通组三轮总体／场景PASSED，真实负载和FXLOAD关联检查通过、测试PNG为零；新探针开销存在，不当优化A/B，未运行光影。
+- 首个慢资源star_beam_spell_beam.fx直接查询1.521–4.521秒，主要在反序列化包含区间；FX打开／NBT读取毫秒级，guard127–310ms，剩余内部成本未细分。P22／P23不关闭。
+- Data成功written=0／removed=0，含缓存29文件哈希不变；隔离options／Iris／Spark恢复原字节，原三断点保留并解除mute，游戏／helper／桥接／分析已结束。四项用户WIP哈希未变；不改写旧DS误纳暂存测试的历史。完整证据和测试源码指纹见 `build/agent-backups/20261029-fxload-diagnostics/`。
+
 ## 2026-10-29：DS 补正后的普通组独立验证
 
 - 独立审查d91363a6发现重复复制、scope、命名预热、Iris覆盖／可选依赖和异常释放缺口后交回补正；060e9080恢复相关边界，主会话未改业务代码、模型资源或bench负载。

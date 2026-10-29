@@ -23,6 +23,8 @@ import com.lowdragmc.photon.client.fx.FXHelper;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil.Stage;
 
 import javax.annotation.Nullable;
 import java.util.LinkedHashMap;
@@ -58,6 +60,10 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
 		long createNs = 0;
+		long definitionStartNs = 0;
+		long definitionEndNs = 0;
+		long namedNs = 0;
+		var diagnosticScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_PREPARE, config.fxLocation, false) : null;
 		boolean completed = false;
 		String reason = "check_prepared";
 		try {
@@ -72,7 +78,15 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				return false;
 			}
 			reason = "definition_lookup";
-			var definition = FXHelper.getFX(config.fxLocation);
+			FX definition;
+			definitionStartNs = diagnostic ? System.nanoTime() : 0;
+			try {
+				definition = FXHelper.getFX(config.fxLocation);
+			} finally {
+				if (diagnostic) {
+					definitionEndNs = System.nanoTime();
+				}
+			}
 			if (definition == null) {
 				reason = "definition_missing";
 				completed = true;
@@ -81,16 +95,28 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 			reason = "create";
 			long createStarted = diagnostic ? System.nanoTime() : 0;
 			PhotonSpawnTemplateUtil.Template candidate;
+			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
 			try {
 				candidate = PhotonSpawnTemplateUtil.create(this);
+				if (diagnostic) {
+					createScope.returned(candidate);
+				}
 			} finally {
+				PhotonFXLoadDiagnosticsUtil.finish(createScope);
 				if (diagnostic) {
 					createNs = System.nanoTime() - createStarted;
 				}
 			}
 			try {
 				reason = "prepare_named";
-				((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
+				long namedStarted = diagnostic ? System.nanoTime() : 0;
+				try {
+					((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
+				} finally {
+					if (diagnostic) {
+						namedNs = System.nanoTime() - namedStarted;
+					}
+				}
 				prepared = candidate;
 				preparedDefinition = definition;
 				reason = "prepared";
@@ -101,11 +127,16 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				throw invalid;
 			}
 		} finally {
-			if (diagnostic) {
+			if (diagnosticScope != null) {
 				long ended = System.nanoTime();
-				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} runtime={} startNs={} endNs={} elapsedNs={} createNs={} reason={} completed={}",
+				if (completed) {
+					diagnosticScope.succeeded();
+				}
+				PhotonFXLoadDiagnosticsUtil.finish(diagnosticScope);
+				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} runtime={} startNs={} endNs={} elapsedNs={} createNs={} definitionNs={} definitionStartNs={} definitionEndNs={} namedNs={} diagnosticId={} reason={} completed={}",
 						System.identityHashCode(this), prepared == null ? 0 : System.identityHashCode(prepared.runtime()),
-						started, ended, ended - started, createNs, reason, completed);
+						started, ended, ended - started, createNs, definitionEndNs - definitionStartNs,
+						definitionStartNs, definitionEndNs, namedNs, diagnosticScope.id(), reason, completed);
 			}
 		}
 	}
@@ -115,6 +146,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		long started = diagnostic ? System.nanoTime() : 0;
 		boolean completed = false;
 		String reason = "no_prepared";
+		var diagnosticScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_NEXT, config.fxLocation, false) : null;
 		var candidate = prepared;
 		try {
 			var definition = preparedDefinition;
@@ -142,12 +174,24 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				}
 				candidate.runtime().destroy(true);
 			}
-			candidate = PhotonSpawnTemplateUtil.create(this);
+			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
+			try {
+				candidate = PhotonSpawnTemplateUtil.create(this);
+				if (diagnostic) {
+					createScope.returned(candidate);
+				}
+			} finally {
+				PhotonFXLoadDiagnosticsUtil.finish(createScope);
+			}
 			completed = true;
 			return candidate;
 		} finally {
-			if (diagnostic) {
+			if (diagnosticScope != null) {
 				long ended = System.nanoTime();
+				if (completed) {
+					diagnosticScope.returned(candidate);
+				}
+				PhotonFXLoadDiagnosticsUtil.finish(diagnosticScope);
 				Lobecorp.LOGGER.info("CASTPROF nextTemplate spawner={} runtime={} startNs={} endNs={} elapsedNs={} reason={} completed={}",
 						System.identityHashCode(this), candidate == null ? 0 : System.identityHashCode(candidate.runtime()),
 						started, ended, ended - started, reason, completed);

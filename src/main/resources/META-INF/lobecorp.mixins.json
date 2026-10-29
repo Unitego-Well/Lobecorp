@@ -113,6 +113,7 @@
 		"photon.runtime.client.PhotonParticleEmissionMixin",
 		"photon.runtime.client.PhotonEmissionLifetimeMixin",
 		"photon.runtime.client.PhotonActivationHierarchyMixin",
+		"photon.performance.client.PhotonFXLoadDiagnosticsMixin",
 		"photon.performance.client.FXMixin",
 		"photon.performance.client.FXObjectMixin",
 		"photon.performance.client.EmitterMixin",

@@ -1,5 +1,17 @@
 # BenchMod 基准工具链
 
+## 2026-10-29 FX 冷加载与校验分段诊断
+
+现有 `lobecorp.photon.diag.cast=true` 同时开启新增 `PhotonFXLoadDiagnosticsMixin`；插件只在该属性为true时装载此Mixin。关闭时新增代码不生成计时对象、读时钟或写FXLOAD日志，原校验保持。没有新增缓存、跳过校验、重排预热或改变负载。
+
+`FXLOAD` 汇总边界分query／load／template_prepare／template_next，带id、parentId、parentBoundaryId、parentStage、rootId、FX及打开资源、线程与单调起止ns。阶段包含OPEN、READ_COMPRESSED、VERSION_FIXES、DESERIALIZE、GUARD_FX、GUARD_OBJECT、GUARD_TIMELINE、GUARD_TRACK及模板创建。每阶段记录count／inclusive／exclusive／max／failedCount；exclusive只扣已计时子调用，仍含等待、GC、对象内部检查及诊断开销。子边界明细不重复汇入父账本，需按父边界关联，不相加包含时间。
+
+query的 `reuse_possible_wait` 仅表示没有在本查询线程进入loadFX，不保证无等待；通过实际loadFX进入标记分类，不额外探测CACHE。`failed` 表示异常逃逸该计时scope，原加载器捕获异常并返回null时仍须结合returned=null及子阶段失败数判断。useCache仅在query行有查询含义，load行的false不是更改原缓存策略。
+
+prepareNext增加直接definitionNs／definitionStartNs／definitionEndNs、namedNs，并以diagnosticId关联内部query。三轮普通实测均通过真实负载与计时关联检查，十秒门禁保留、测试PNG为零、光影未跑；每轮30次query、10个不同FX各冷加载一次、20次无本地加载复用。首个慢资源均为star_beam_spell_beam.fx，直接查询4520.764／1795.049／1520.958ms，其中DESERIALIZE为4507.145／1789.790／1515.126ms，打开和压缩NBT读取合计仅3.700–8.735ms。已单独计时guard为310.437／157.746／127.073ms，剩余反序列化区间仍未分解为内部校验／反射／类加载等，不宣称优化或独占CPU归因。
+
+代码／4项纯账本测试、IDEA编译／生产包隔离、Data及三次普通采集均完成；Data生成29文件哈希不变。测试源码指纹、完整原始日志、分段与JFR分析位于 `build/agent-backups/20261029-fxload-diagnostics/`，原生结果为 `photon-fxload-diag-20261029-plain-0{1,2,3}`。新增观察者开销没有开关对照，帧时间不作优化A/B。
+
 ## 2026-10-28 无截图性能采集与进入世界后延迟
 
 显式场景 `lobecorp.photon-02-first-cast-performance` 只运行一次真实光束，不混入合成模型。PERFORMANCE 模式跳过暖场／OUTPUT 截图与图片读取；精确 profile 的 bench-only 桥阻止框架失败截图，不伪造成功图片。验收改为真实模型 CPU jobs、顶点、索引及 drain draw calls 非零，且提交／drain／协议错误为零；采集通过不等于首施放性能达标。

@@ -31,6 +31,11 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+		if (mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFXLoadDiagnosticsMixin")) {
+			// 插件阶段只读属性，不提前加载客户端诊断类。
+			return Boolean.getBoolean("lobecorp.photon.diag.cast");
+		}
+
 		if (mixinClassName.equals("org.unitego.lobecorp.mixin.minecraft.client.BufferBuilderMixin")) {
 			return Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY);
 		}

@@ -1,7 +1,7 @@
 # 网络协议与同步
 
 核对日期：2026-10-13。协议登记由 [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java) 决定，当前
-NETWORK_VERSION 为 21；本文不代表联机测试通过。
+NETWORK_VERSION 为 23；本文不代表联机测试通过。
 
 2026-10-18 女皇整数阶段与战斗关系重写同步更新协议版本，指挥家继续复用既有目录／实体附件快照，没有新增战斗关系 Payload；存档边界见[战斗关系](combat.md)。
 
@@ -33,9 +33,13 @@ ServerPlayer；network.tc 的 [IToClientPayload](../../src/main/java/org/unitego
 | S → C | [DamageParticlePayload](../../src/main/java/org/unitego/lobecorp/network/tc/damage/DamageParticlePayload.java) | 一次已结算伤害的维度、来源／目标 UUID、类型、固定位置、数值及近战语义 |
 | S → C | [PlayerDamageFilterPayload](../../src/main/java/org/unitego/lobecorp/network/tc/damage/PlayerDamageFilterPayload.java) | 仅受击玩家接收的一次性四色通道滤镜通知，包含纯资源伤害 |
 
-当前登记为 2 项 C2S、15 项 S2C，不能把存在 tsc 接口解释为已登记双向业务包。
+当前登记为 3 项 C2S、16 项 S2C，不能把存在 tsc 接口解释为已登记双向业务包。
+
+协议22新增群体事件的 `HordeStatePayload`（S2C）和 `HordeSnapshotRequestPayload`（C2S）。仅同步附近事件概要、分段路线和让行区域，客户端按种子计算虚拟位置；不逐个同步虚拟Entity。版本缺口请求当前订阅范围快照，服务端校验维度、距离并限制请求频率。详见[群体事件](horde-events.md)。
 
 ## 状态权威与复用
+
+协议23在群体事件概要中同步独立奔跑速度，并按空间范围覆盖闭环接缝两侧路段；不再按生成时长计算移动速度，载荷种类及方向数量不变。
 
 服务端决定控制、技能和伤害；客户端提交请求与表现缓存。协议层负责 Codec 与派发，不能信任客户端参数替代服务器资格验证。
 

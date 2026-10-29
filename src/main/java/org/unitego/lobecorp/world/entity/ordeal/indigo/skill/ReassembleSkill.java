@@ -15,6 +15,7 @@ import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
 import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.registry.entity.state.SweeperStates;
 import org.unitego.lobecorp.util.entity.skill.ReassemblyProgressUtil;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 
 /// 清道夫重组技能：持续消耗清道夫尸体生命并复活原清道夫。
 public class ReassembleSkill extends EntitySkill<Sweeper> {
@@ -30,7 +31,8 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	}
 
 	public static boolean canReassemble(Sweeper entity, EntityCorpse<?> corpse) {
-		return corpse.isAlive() && corpse.getOwnerEntity() instanceof Sweeper corpseSweeper
+		return !HordeParticipant.isEvent(entity) && !HordeParticipant.isEvent(corpse)
+				&& corpse.isAlive() && corpse.getOwnerEntity() instanceof Sweeper corpseSweeper
 				&& entity.getBiomass() >= corpseSweeper.getMaxHealth() * REVIVE_HEALTH_RATIO;
 	}
 

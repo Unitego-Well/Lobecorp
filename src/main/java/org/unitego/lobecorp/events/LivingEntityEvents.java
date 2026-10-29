@@ -28,12 +28,17 @@ import org.unitego.lobecorp.util.entity.EntityGrabUtil;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
 import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.world.horde.HordeRuntime;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LivingEntityEvents {
 	@SubscribeEvent
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {
+			if (HordeParticipant.isEvent(livingEntity) && HordeParticipant.get(livingEntity).fading()) {
+				return;
+			}
 			LcDamageUtil.refreshResources(livingEntity);
 			LcShieldUtil.tick(livingEntity);
 			IEntitySkillAccess access = IEntitySkillAccess.get(livingEntity);
@@ -71,6 +76,12 @@ public class LivingEntityEvents {
 	@SubscribeEvent
 	public static void onLivingDamagePost(LivingDamageEvent.Post event) {
 		CombatEvents.onDamagePost(event);
+		if (event.getHealthDamage() > 0 && event.getEntity().level() instanceof ServerLevel level) {
+			HordeRuntime.get(level.getServer()).engage(event.getEntity(), event.getSource().getEntity());
+			if (event.getSource().getEntity() instanceof LivingEntity attacker) {
+				HordeRuntime.get(level.getServer()).engage(attacker, event.getEntity());
+			}
+		}
 		DamageParticles.onDamage(event);
 		if (event.getEntity().lobecorp$getDamageContext() == null && event.getHealthDamage() > 0) {
 			PlayerDamageFilterPayload.send(event.getEntity(), 1);
@@ -80,6 +91,10 @@ public class LivingEntityEvents {
 	@SubscribeEvent
 	public static void onLivingIncomingDamage(LivingIncomingDamageEvent event) {
 		LivingEntity entity = event.getEntity();
+		if (HordeParticipant.isEvent(entity) && HordeParticipant.get(entity).fading()) {
+			event.setCanceled(true);
+			return;
+		}
 		float multiplier = (float) entity.getAttributeValue(LcAttributes.DAMAGE_TAKEN_MULTIPLIER);
 		event.setAmount(event.getAmount() * multiplier);
 		CombatEvents.onIncomingDamage(event);
@@ -94,6 +109,8 @@ public class LivingEntityEvents {
 		if (!(level instanceof ServerLevel serverLevel)) {
 			return;
 		}
+
+		HordeRuntime.get(serverLevel.getServer()).leave(entity);
 
 		if (entity instanceof LivingEntity living) {
 			CombatUtil.clearRuntime(living);

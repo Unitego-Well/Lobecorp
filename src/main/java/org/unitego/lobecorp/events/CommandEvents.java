@@ -5,11 +5,13 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.command.LcAnimationCommand;
+import org.unitego.lobecorp.registry.command.HordeCommand;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class CommandEvents {
 	@SubscribeEvent
 	public static void onRegisterCommands(RegisterCommandsEvent event) {
 		LcAnimationCommand.register(event.getDispatcher(), event.getBuildContext());
+		HordeCommand.register(event.getDispatcher());
 	}
 }

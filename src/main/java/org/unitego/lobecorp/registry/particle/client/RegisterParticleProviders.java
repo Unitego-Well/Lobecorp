@@ -2,6 +2,7 @@ package org.unitego.lobecorp.registry.particle.client;
 
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import org.unitego.lobecorp.client.particle.BloodParticle;
+import org.unitego.lobecorp.client.horde.HordeAmbient;
 import org.unitego.lobecorp.client.particle.ShortSmokeParticle;
 import org.unitego.lobecorp.client.particle.SweeperStrikeParticle;
 import org.unitego.lobecorp.client.particle.QueenRepelWaveParticle;
@@ -13,6 +14,10 @@ import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
 public class RegisterParticleProviders {
 	public static void registry(RegisterParticleProvidersEvent event) {
+		event.registerSpecial(LcParticleTypes.HORDE_CLEANUP.get(), (_, _, x, y, z, _, _, _, _) -> {
+			HordeAmbient.queueCleanup(x, y, z);
+			return null;
+		});
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_DOUBLE_SLASH.get(), SweeperStrikeParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_LONG_SLASH.get(), SweeperStrikeParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_SHORT_SLASH.get(), SweeperStrikeParticle.Provider::new);

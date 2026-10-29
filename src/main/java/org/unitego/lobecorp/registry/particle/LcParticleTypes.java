@@ -24,6 +24,7 @@ public interface LcParticleTypes {
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_SHORT_SLASH = register("simple_short_slash", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_LONG_SLASH = register("simple_long_slash", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SIMPLE_DOUBLE_SLASH = register("simple_double_slash", true);
+	DeferredHolder<ParticleType<?>, SimpleParticleType> HORDE_CLEANUP = register("horde_cleanup", false);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> BLOOD = register("blood", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SHORT_SMOKE = register("short_smoke", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_REPEL_WAVE = register("queen_repel_wave", true);

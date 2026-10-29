@@ -291,7 +291,7 @@ TRS 和父级，没有独立头尾或长度，根骨骼显示为点；重合父�
 
 同日按用户要求重新打开复核：上次 Client 正常退出后重新启动 IDEA Client Debug，通过新的原生 `FXEditor.fileMenu.openProject` 打开已保存的 `mfx-acceptance-20261012-12686476-7d09-4953-9b4a-b152f3812b47.mfxproj`，自动创建 `PhotonModelProjectEditor`。新编辑器标题、工程路径与 `.mfxproj` 后缀正确，工程为非脏状态，完整资产 JSON 与磁盘一致。重启后的独立 `.mfx` 和模型包内 `probe_a` 均被 `FXHelper` 发现并加载，资产 JSON 与工程一致；Minecraft MCP 在 9876 重新 ping 连接成功，当前 Client 日志未见 ERROR／FATAL，仍有 Iris 更新网络 WARN。
 
-本轮 MCP 截图仅返回 854×480 局部；改用原生 `Screenshot.grab`，传入非空 `System.out::println` 回调后保存并实际查看 [2560×1494 完整帧截图](../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png)。画面确认整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。此项补充的是静态画面证据，物理双击间隔、快捷键实际按键、贴图依赖／GC、模组 JAR 内包、多人及其他未验收边界不变。
+本轮 MCP 截图仅返回 854×480 局部；改用原生 `Screenshot.grab`，传入非空 `System.out::println` 回调后保存并实际查看 2560×1494 完整帧截图（历史引用，当前工作区缺失：`../../run/client/screenshots/model-project-reopen-20261012-1791737497580.png`）。画面确认整个模型工程、白模、阴影未选／双面已选及负尺寸普通按钮。此项补充的是静态画面证据，物理双击间隔、快捷键实际按键、贴图依赖／GC、模组 JAR 内包、多人及其他未验收边界不变。
 
 2026-10-11 模型层级的单击切 UV 源于选择回调直接调用 `showPickedUV`；现将选择与打开分离，使用原生 TreeList 双击回调，不自定义计时或改变展开逻辑。部件阴影、双面与负尺寸进入资产及深复制，检视和右键共用按目标 ID 修改的会话入口；不得再引入仅预览生效的通用开关。负尺寸在采样及 OBJ 输出时翻转绕序，不能通过负缩放实现，否则会改变位置或尺寸。用户重新测试确认翻面效果正常后，仅将检视 Toggle 和右键复选项改为一次执行的操作，保留已有采样、UV、几何和序列化实现；内部朝向记录用于保存结果与历史，不作为 UI 开关。
 
@@ -305,7 +305,7 @@ TRS 和父级，没有独立头尾或长度，根骨骼显示为点；重合父�
 
 保存重开后再次拖动轴心，原生 Screen 右键取消精确恢复保存 JSON，undoStack 数量不变，drag=false、liveBefore=null、cameraMoving=false；轴心编辑中切换 ROTATE 并执行 Preview.updateFrame 后退出轴心模式，Gizmo 目标恢复为 PhotonModelPartTransform，dirty=false。
 
-保存弹窗、重开与[最终截图](../../run/client/screenshots/pivot-acceptance-final-20261010.png)均已写盘并实际查看（1600×1000）；最终画面显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于新的轴心。收尾清理 40 个临时调试对象引用及两个代理断点，原两个禁用用户异常断点保留；Debug 已恢复 running，Minecraft MCP 连接、游戏进程及玩家只读查询正常，日志错误过滤再次为空。重开验收标签与唯一临时工程保留供回查。
+保存弹窗、重开与最终截图（历史引用，当前工作区缺失：`../../run/client/screenshots/pivot-acceptance-final-20261010.png`）均已写盘并实际查看（1600×1000）；最终画面显示 Y=−30°、X 缩放约 1.5、轴心约 `(0.4232, -0.15, -0.05)`，旋转环位于新的轴心。收尾清理 40 个临时调试对象引用及两个代理断点，原两个禁用用户异常断点保留；Debug 已恢复 running，Minecraft MCP 连接、游戏进程及玩家只读查询正常，日志错误过滤再次为空。重开验收标签与唯一临时工程保留供回查。
 
 本轮使用调试求值、受控射线与原生 Screen 事件链，不是桌面控制或物理鼠标，不能据此声明全部真实输入已验收；参数输入字段只确认外观，未验收字段输入修改。此次只补两份文档，无生产代码修复、运行配置或 JDK 修改，未重新编译、运行 Data 或执行 JUnit；下方实现阶段的静态检查及当时未启动 Client 的记录保持历史含义。
 

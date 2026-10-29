@@ -3,6 +3,7 @@
 	"package": "org.unitego.lobecorp.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
+		"world.LevelMixin",
 		"conductor.ChunkMapConductorMixin",
 		"conductor.TrackedEntityConductorMixin",
 		"conductor.ServerLevelConductorMixin",

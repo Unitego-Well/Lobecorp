@@ -232,18 +232,18 @@ public class ConductorPortraitCache {
 
 		@Override
 		protected void renderToTexture(State state, PoseStack pose) {
-			Minecraft minecraft = Minecraft.getInstance();
-			minecraft.gameRenderer.getLighting().setupFor(Lighting.Entry.ENTITY_IN_UI);
-			pose.translate(0, state.entity().boundingBoxHeight / 2 + PORTRAIT_Y_OFFSET, 0);
-			pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
-			var features = minecraft.gameRenderer.getFeatureRenderDispatcher();
-			var camera = new CameraRenderState();
-			camera.orientation = new Quaternionf().rotateY((float) Math.PI);
-			minecraft.getEntityRenderDispatcher().submit(state.entity(), camera, 0, 0, 0, pose, features.getSubmitNodeStorage());
-			features.renderAllFeatures();
-			renderedPortrait = state.portrait();
-			renderedRevision = state.revision();
-			renderedScale = state.scale();
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.gameRenderer.getLighting().setupFor(Lighting.Entry.ENTITY_IN_UI);
+            pose.translate(0, state.entity().boundingBoxHeight / 2 + PORTRAIT_Y_OFFSET, 0);
+            pose.mulPose(new Quaternionf().rotateZ((float) Math.PI));
+            var features = minecraft.gameRenderer.getFeatureRenderDispatcher();
+            var camera = new CameraRenderState();
+            camera.orientation = new Quaternionf().rotateY((float) Math.PI);
+            minecraft.getEntityRenderDispatcher().submit(state.entity(), camera, 0, 0, 0, pose, features.getSubmitNodeStorage());
+            features.renderAllFeatures();
+            renderedPortrait = state.portrait();
+            renderedRevision = state.revision();
+            renderedScale = state.scale();
 		}
 
 		@Override

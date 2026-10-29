@@ -559,14 +559,14 @@ public class ConductorControls {
 			return;
 		}
 
-		if (event.getButton() == MOUSE_MIDDLE) {
-			handleMiddleMouse(event, minecraft);
-		} else if (event.getButton() == MOUSE_LEFT) {
-			handleLeftMouse(event, minecraft);
-		} else if (event.getButton() == MOUSE_RIGHT) {
-			handleRightMouse(event, minecraft);
-		} else {
-			event.setCanceled(true);
+        if (event.getButton() == MOUSE_MIDDLE) {
+            handleMiddleMouse(event, minecraft);
+        } else if (event.getButton() == MOUSE_LEFT) {
+            handleLeftMouse(event, minecraft);
+        } else if (event.getButton() == MOUSE_RIGHT) {
+            handleRightMouse(event, minecraft);
+        } else {
+            event.setCanceled(true);
 		}
 	}
 

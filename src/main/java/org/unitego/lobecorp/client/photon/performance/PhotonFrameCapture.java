@@ -24,6 +24,9 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Pattern;
 
 /// 显式启动的有界渲染线程采样；不擅自改变配置、窗口焦点或相机，阶段回调由调用方提供。
@@ -63,6 +66,8 @@ public class PhotonFrameCapture {
 			.withZone(ZoneOffset.UTC);
 	private static @Nullable Capture active;
 	private static @Nullable JsonObject lastSnapshot;
+	private static long renderFrameId;
+	private static int renderDepth;
 
 	private enum State {
 		IDLE, RUNNING, DURATION, CAPACITY, STOPPED, CANCELLED, ERROR
@@ -77,7 +82,13 @@ public class PhotonFrameCapture {
 	}
 
 	public static void start(String label, double seconds) {
+		start(label, seconds, () -> true);
+	}
+
+	/// 调用方可让出整帧查询窗口，避免与独立阶段 elapsed 查询嵌套。
+	public static UUID start(String label, double seconds, BooleanSupplier gpuFrameFilter) {
 		RenderSystem.assertOnRenderThread();
+		Objects.requireNonNull(gpuFrameFilter);
 
 		if (label == null || !LABEL.matcher(label).matches()) {
 			throw new IllegalArgumentException(INVALID_LABEL);
@@ -88,7 +99,8 @@ public class PhotonFrameCapture {
 		}
 
 		cancel();
-		active = new Capture(label, seconds);
+		active = new Capture(label, seconds, gpuFrameFilter);
+		return active.id;
 	}
 
 	/// 按累计时间与登记顺序在渲染线程执行一次；回调不由采样器决定特效生命周期。
@@ -134,6 +146,7 @@ public class PhotonFrameCapture {
 		}
 		var value = new JsonObject();
 		value.addProperty("state", capture.state.name());
+		value.addProperty("capture_id", capture.id.toString());
 		value.addProperty("frames", capture.frames);
 		value.addProperty("started_ns", capture.startedNs);
 		value.addProperty("elapsed_seconds", capture.startedNs == 0 ? 0
@@ -180,6 +193,19 @@ public class PhotonFrameCapture {
 		}
 	}
 
+	public static boolean active() {
+		return active != null;
+	}
+
+	/// 结束调用方持有的捕获，不干扰之后由其他调用方替换的实例。
+	public static void cancel(UUID token) {
+		RenderSystem.assertOnRenderThread();
+		var capture = active;
+		if (capture != null && capture.id.equals(token)) {
+			completeSafely(capture, State.CANCELLED, false);
+		}
+	}
+
 	public static void cancel() {
 		RenderSystem.assertOnRenderThread();
 		var capture = active;
@@ -191,6 +217,9 @@ public class PhotonFrameCapture {
 
 	/// 未采样时只读取空状态；帧间隔取相邻入口，不能用 render 方法耗时代替。
 	public static void beginFrame() {
+		if (renderDepth++ == 0) {
+			renderFrameId++;
+		}
 		var capture = active;
 
 		if (capture != null) {
@@ -203,20 +232,33 @@ public class PhotonFrameCapture {
 	}
 
 	public static void endFrame(boolean rendered) {
-		var capture = active;
-
-		if (capture != null) {
-			try {
-				capture.endFrame();
-
-				if (!rendered) {
-					capture.problem = RENDER_FAILED;
-					completeSafely(capture, State.ERROR, false);
+		try {
+			var capture = active;
+			if (capture != null) {
+				try {
+					capture.endFrame();
+					if (!rendered) {
+						capture.problem = RENDER_FAILED;
+						completeSafely(capture, State.ERROR, false);
+					}
+				} catch (Throwable failure) {
+					failSafely(capture, failure);
 				}
-			} catch (Throwable failure) {
-				failSafely(capture, failure);
+			}
+		} finally {
+			if (renderDepth > 0) {
+				renderDepth--;
 			}
 		}
+	}
+
+	/// 世界和子系统查询共享外层render标识；嵌套render不创建另一个编号。
+	public static long renderFrameId() {
+		return renderFrameId;
+	}
+
+	public static boolean renderFrameOpen() {
+		return renderDepth > 0;
 	}
 
 	private static void completeSafely(Capture capture, State state, boolean save) {
@@ -348,6 +390,8 @@ public class PhotonFrameCapture {
 	private static class Capture {
 		private final String label;
 		private final double requestedSeconds;
+		private final BooleanSupplier gpuFrameFilter;
+		private final UUID id = UUID.randomUUID();
 		private long startedNs;
 		private Instant startedAt = Instant.now();
 		private long deadlineNs;
@@ -357,6 +401,7 @@ public class PhotonFrameCapture {
 		private final boolean vsync = Minecraft.getInstance().options.enableVsync().get();
 		private final int configuredLimit = Minecraft.getInstance().options.framerateLimit().get();
 		private final long[] frameHeadNs = new long[MAX_FRAMES];
+		private final long[] renderFrameIds = new long[MAX_FRAMES];
 		private final long[] intervalsNs = new long[MAX_FRAMES];
 		private final long[] minecraftNs = new long[MAX_FRAMES];
 		private final long[] renderCpuNs = new long[MAX_FRAMES];
@@ -393,13 +438,15 @@ public class PhotonFrameCapture {
 		private int gpuStarted;
 		private int gpuCompleted;
 		private int gpuSkippedBusy;
+		private int gpuSkippedFiltered;
 		private int gpuSkippedPending;
 		private int gpuCancelled;
 		private int gpuErrors;
 		private boolean gpuRecording;
 
-		private Capture(String label, double seconds) {
+		private Capture(String label, double seconds, BooleanSupplier gpuFrameFilter) {
 			this.label = label;
+			this.gpuFrameFilter = gpuFrameFilter;
 			requestedSeconds = seconds;
 			Arrays.fill(intervalsNs, UNAVAILABLE);
 			Arrays.fill(renderCpuNs, UNAVAILABLE);
@@ -458,6 +505,7 @@ public class PhotonFrameCapture {
 				return;
 			}
 			frameHeadNs[index] = now - startedNs;
+			renderFrameIds[index] = renderFrameId;
 			phaseIds[index] = currentPhase;
 			intervalPhaseIds[index] = previousPhase;
 			previousPhase = currentPhase;
@@ -586,6 +634,11 @@ public class PhotonFrameCapture {
 		}
 
 		private void beginGpu() {
+			if (!gpuFrameFilter.getAsBoolean()) {
+				gpuSkippedFiltered++;
+				return;
+			}
+
 			if (gpuProblem != null) {
 				return;
 			}
@@ -686,12 +739,15 @@ public class PhotonFrameCapture {
 			result.addProperty("schema_version", 1);
 			result.addProperty("state", state.name());
 			result.addProperty("label", label);
+			result.addProperty("capture_id", id.toString());
 			result.addProperty("started_at", startedAt.toString());
 			result.addProperty("started_ns", startedNs);
 			result.addProperty("requested_seconds", requestedSeconds);
 			result.addProperty("elapsed_seconds", startedNs == 0 ? 0
 					: ((finishedNs == 0 ? System.nanoTime() : finishedNs) - startedNs) / (double) NANOSECONDS_PER_SECOND);
 			result.addProperty("frame_count", frames);
+			result.addProperty("first_render_frame_id", frames == 0 ? null : renderFrameIds[0]);
+			result.addProperty("last_render_frame_id", frames == 0 ? null : renderFrameIds[frames - 1]);
 			result.addProperty("frame_capacity", MAX_FRAMES);
 			result.addProperty("vsync", vsync);
 			result.addProperty("configured_framerate_limit", configuredLimit);
@@ -722,6 +778,8 @@ public class PhotonFrameCapture {
 			result.addProperty("gpu_started", gpuStarted);
 			result.addProperty("gpu_completed", gpuCompleted);
 			result.addProperty("gpu_skipped_busy", gpuSkippedBusy);
+			result.addProperty("gpu_skipped_filtered", gpuSkippedFiltered);
+			result.addProperty("gpu_filter_scope", "Caller-selected frames; skipped frames remain unavailable");
 			result.addProperty("gpu_skipped_pending", gpuSkippedPending);
 			result.addProperty("gpu_cancelled", gpuCancelled);
 			result.addProperty("gpu_errors", gpuErrors);
@@ -766,6 +824,7 @@ public class PhotonFrameCapture {
 				writer.endObject();
 				writer.name("frames").beginObject();
 				write(writer, "head_offset_ns", frameHeadNs);
+				write(writer, "render_frame_id", renderFrameIds);
 				write(writer, "interval_ns", intervalsNs);
 				write(writer, "previous_minecraft_ns", minecraftNs);
 				write(writer, "render_cpu_ns", renderCpuNs);

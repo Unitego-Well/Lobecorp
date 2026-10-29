@@ -51,6 +51,7 @@ repo/
 /memory/
 /.codex/
 /.backups/
+/.agent/
 /.cherry-assistant/
 /backups/
 /logs/

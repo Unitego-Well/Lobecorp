@@ -19,13 +19,23 @@ import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 import java.util.List;
 import java.util.Map;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
+import com.geckolib.constant.DataTickets;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 
 public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRenderState> {
 
 	public SweeperRenderer(EntityRendererProvider.Context context) {
 		super(context, new SweeperModel());
 		AutoGlowingRenderLayer<Sweeper, Void, LivingEntityRenderState> glowingLayer =
-				new AutoGlowingRenderLayer<>(this, LcDataTickets.SWEEPER_GLOW_STRENGTH);
+				new AutoGlowingRenderLayer<>(this, LcDataTickets.SWEEPER_GLOW_STRENGTH) {
+					@Override
+					protected @Nullable RenderType getRenderType(@NonNull LivingEntityRenderState state) {
+						return super.getRenderType(state) == null ? null : RenderTypes.eyes(getTextureResource(state));
+					}
+				};
 		withRenderLayer(new DynamicCubeGeoLayer<>(this, "biomass", Map.of(
 				Direction.UP, LcDataTickets.SWEEPER_BIOMASS_RATIO), List.of(glowingLayer)));
 		withRenderLayer(glowingLayer);
@@ -38,12 +48,34 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 	}
 
 	@Override
+	public int getRenderColor(Sweeper entity, @Nullable Void relatedObject, float partialTick) {
+		int color = super.getRenderColor(entity, relatedObject, partialTick);
+		if (!entity.isAlive() || !HordeParticipant.isEvent(entity)) {
+			return color;
+		}
+		int alpha = (int) (HordeParticipant.get(entity).alpha(entity.level().getGameTime() + partialTick) * 255);
+		return (color & 0xFFFFFF) | alpha << 24;
+	}
+
+	@Override
+	public RenderType getRenderType(LivingEntityRenderState state, Identifier texture) {
+		int color = state.getOrDefaultGeckolibData(DataTickets.RENDER_COLOR, -1);
+		return (color >>> 24) < 255 ? RenderTypes.entityTranslucent(texture) : super.getRenderType(state, texture);
+	}
+
+	@Override
+	protected float getShadowStrength(LivingEntityRenderState state) {
+		int color = state.getOrDefaultGeckolibData(DataTickets.RENDER_COLOR, -1);
+		return super.getShadowStrength(state) * (color >>> 24) / 255f;
+	}
+
+	@Override
 	public void addRenderData(Sweeper animatable, @Nullable Void relatedObject, LivingEntityRenderState renderState, float partialTick) {
 		LcModelLodUtil.capture(animatable, renderState);
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_VARIANT, animatable.getVariant());
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_BIOMASS_RATIO,
 				animatable.getBiomass() / animatable.getBiomassCapacity());
-		renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 0.5f);
+        renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 1f);
 	}
 
 	@Override

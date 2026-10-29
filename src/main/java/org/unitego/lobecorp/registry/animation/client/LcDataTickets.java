@@ -20,6 +20,7 @@ public interface LcDataTickets {
 	DataTicket<Integer> MODEL_LOD_BAND = create("model_lod_band", Integer.class);
 	/// 女皇当前阶段的渲染数据票据，由同步实体状态提供值。
 	DataTicket<Integer> QUEEN_PHASE = create("queen_phase", Integer.class);
+	DataTicket<Boolean> QUEEN_BEAM_ANIMATION = createFloatBoolean("queen_beam_animation");
 
 	static <T> DataTicket<T> create(String id, Class<? extends T> objectType) {
 		return DataTicket.create(Lobecorp.name(id), objectType);

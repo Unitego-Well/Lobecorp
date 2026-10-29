@@ -167,9 +167,9 @@ public class ConductorClient {
 	                              List<UUID> units, UUID target, double x, double y, double z,
 	                              ConductorData.ControlMode mode, boolean flag, String skill,
 	                              ConductorCommandPayload.TargetSelection targetSelection) {
-		ClientPacketDistributor.sendToServer(ConductorCommandPayload.of(action, team, otherTeam,
-						units, target == null ? NO_TARGET : target, x, y, z, mode, flag, skill, targetSelection)
-				.withFormationMode(ConductorHud.INSTANCE.formationMode()));
+        ClientPacketDistributor.sendToServer(ConductorCommandPayload.of(action, team, otherTeam,
+                        units, target == null ? NO_TARGET : target, x, y, z, mode, flag, skill, targetSelection)
+                .withFormationMode(ConductorHud.INSTANCE.formationMode()));
 	}
 
 	public static void setCombatBehavior(String team, List<UUID> units, ConductorData.CombatBehavior behavior) {

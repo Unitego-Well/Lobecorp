@@ -23,3 +23,5 @@
 拆分阶段的鼠标修复及真人／模拟输入隔离统一见[后台控制与鼠标契约](minecraft-mcp-background-control.md#当前鼠标契约2026-10-22)，四类 direct／simulate 接口见[结构化操控](minecraft-mcp-controls.md)。源码一致、静态检查或制品提交都不能证明旧客户端进程已加载修复；运行验收仍须逐实例核对并具有对应授权。旧独立仓库过程页原文已备份至 `.git/docs-arrange-20261025-3c524a79/`。
 
 备份：原始 Git common-dir 下 `mcp-externalization/20261023` 保留删除前源码与生成缓存；工作区迁移记录在 `workspace-relocations`。用户已有改动须先保存并比较，差异不能因删除源码而丢弃。冲突按内容合并，禁止直接选 ours/theirs。
+
+Horde 旧90be接入时默认端口19876及既有运行配置、存档、MCP配置和 consts.ts 修改保持；wrapper JAR 直接复制并核对SHA256一致。接入前备份为 `refs/backups/before-mcp-integration-90be-20261022/{head,wip,index}`，通过独立Git索引保留业务暂存；当时仅做IDEA静态诊断与源码／配置差异核对，未构建、运行、安装或重连，不能证明旧客户端与bridge已加载修复。

@@ -36,6 +36,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.*;
 import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
 import org.unitego.lobecorp.world.entity.combat.ICombatant;
 import org.unitego.lobecorp.conductor.control.ConductorWork;
@@ -266,6 +267,9 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 	/// 尝试把造成伤害的有效实体设为攻击目标；完全由生物质吸收的伤害也可调用。
 	public void trySetAttackTargetFromDamage(LivingEntity attacker) {
 		CombatUtil.recordAttack(this, attacker);
+		if (HordeParticipant.isEvent(this)) {
+			return;
+		}
 		if (!isValidTarget(attacker) || !ai.onHurt()) {
 			return;
 		}
@@ -329,7 +333,14 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 
 	@Override
 	public boolean isValidTarget(Entity entity) {
-		return CombatUtil.wantsTarget(this, entity);
+		return (!HordeParticipant.isEvent(this) || !HordeParticipant.get(this).fading()
+				&& HordeParticipant.get(this).targetId().equals(entity.getUUID().toString()))
+				&& CombatUtil.wantsTarget(this, entity);
+	}
+
+	@Override
+	public boolean isPickable() {
+		return (!HordeParticipant.isEvent(this) || !HordeParticipant.get(this).fading()) && super.isPickable();
 	}
 
 	protected SweeperAi ai() {

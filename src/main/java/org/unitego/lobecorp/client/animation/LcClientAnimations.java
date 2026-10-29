@@ -1,16 +1,27 @@
 package org.unitego.lobecorp.client.animation;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import com.geckolib.cache.GeckoLibResources;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.config.client.VisualQualityConfig;
+import org.unitego.lobecorp.util.animation.LcVisualQualityUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.unitego.lobecorp.animation.behavior.LcRootMotion;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
+import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 import org.unitego.lobecorp.animation.player.LcAnimationTermination;
 import org.unitego.lobecorp.animation.player.LcPlayerAnimationPolicy;
 import org.unitego.lobecorp.animation.pose.ILcAnimationQueries;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
+import org.unitego.lobecorp.animation.runtime.LcAnimationInstance;
 import org.unitego.lobecorp.network.tc.animation.LcAnimationStatePayload;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil.Event;
@@ -24,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /// 客户端安装权威结果并进行视觉插值，不执行服务端行为或历史时间线回调。
 public class LcClientAnimations {
@@ -56,7 +68,17 @@ public class LcClientAnimations {
 				LcAnimationDebugUtil.state(Event.CLIENT_STATE, snapshot);
 			}
 
-			return new Frame(previous == null ? snapshot : previous.current, snapshot, gameTime());
+			long now = gameTime();
+			boolean resetClock = previous == null || previous.current.playbackRevision() != snapshot.playbackRevision()
+					|| previous.current.paused() != snapshot.paused()
+					|| Double.compare(previous.current.speed(), snapshot.speed()) != 0;
+			return new Frame(previous == null ? snapshot : previous.current, snapshot, now,
+					resetClock ? snapshot.timeSeconds() : previous.clockSeconds,
+					resetClock ? now : previous.clockTick,
+					previous == null ? snapshot.parameters().getOrDefault("q.life_time", 0.0)
+							* LcAnimationInstance.TICKS_PER_SECOND - now : previous.ageOffset,
+					previous == null ? TheQueenOfHatredAnimationDefinitions.isBeam(snapshot.definitionId())
+							? new CodePoseCache() : null : previous.codePose);
 		});
 	}
 
@@ -160,6 +182,44 @@ public class LcClientAnimations {
 		return FRAMES.values().stream().anyMatch(frame -> frame.current.ownerEntityId() == entityId);
 	}
 
+	public static boolean hasEntityAnimation(int entityId, Predicate<LcAnimationSnapshot> predicate) {
+		for (var frame : FRAMES.values()) {
+			if (frame.current.ownerEntityId() == entityId && predicate.test(frame.current)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/// 女皇代码动作与仍在推进的基础控制器混合；过渡时钟不依赖网络包间隔或已保持的片段时间。
+	public static double beamPoseWeight(int entityId, float partialTick) {
+		for (var frame : FRAMES.values()) {
+			var snapshot = frame.current;
+			if (snapshot.ownerEntityId() != entityId || !TheQueenOfHatredAnimationDefinitions.isBeam(snapshot.definitionId())) {
+				continue;
+			}
+			var values = snapshot.parameters();
+			var phase = values.getOrDefault(TheQueenOfHatredBeamAnimation.PHASE, 0.0).intValue();
+			if (phase == Phase.OUTPUT.ordinal()) {
+				return 1;
+			}
+			double tick = gameTime() + (double) partialTick;
+			var fps = codeSampleFps(frame);
+			if (fps > 0) {
+				tick = Math.floor(tick * fps / LcAnimationInstance.TICKS_PER_SECOND) * LcAnimationInstance.TICKS_PER_SECOND / fps;
+			}
+			var age = frame.ageOffset + tick;
+			var elapsed = age - values.getOrDefault(TheQueenOfHatredBeamAnimation.PHASE_STARTED_AGE, age);
+			var ticks = values.getOrDefault(phase == Phase.RECOVERY.ordinal()
+					? TheQueenOfHatredBeamAnimation.RECOVERY_TICKS : TheQueenOfHatredBeamAnimation.WINDUP_TICKS, 0.0);
+			var progress = ticks <= 0 ? 1 : Math.clamp(elapsed / ticks, 0, 1);
+			var eased = progress * progress * (3 - 2 * progress);
+			return phase == Phase.RECOVERY.ordinal() ? 1 - eased : eased;
+		}
+		return 1;
+	}
+
 	public static @Nullable LcSkeletalPose visualPoseForEntity(int entityId, float partialTick) {
 		LcSkeletalPose result = null;
 		for (var entry : FRAMES.entrySet()) {
@@ -182,6 +242,59 @@ public class LcClientAnimations {
 			return null;
 		}
 
+		var fps = codeSampleFps(frame);
+		var cache = frame.codePose;
+		double tick = gameTime() + (double) partialTick;
+		long bucket = fps > 0 ? (long) Math.floor(tick * fps / LcAnimationInstance.TICKS_PER_SECOND) : 0;
+		var generation = GeckoLibResources.getBakedModels();
+		var phase = frame.current.parameters().getOrDefault(TheQueenOfHatredBeamAnimation.PHASE, 0.0);
+		if (fps > 0 && cache != null && cache.pose != null && cache.fps == fps && cache.bucket == bucket
+				&& cache.revision == frame.current.playbackRevision() && Double.compare(cache.phase, phase) == 0
+				&& cache.generation == generation) {
+			return cache.pose;
+		}
+		var pose = sampleVisualPose(frame, partialTick);
+		if (cache != null) {
+			cache.pose = fps > 0 ? pose : null;
+			cache.fps = fps;
+			cache.bucket = bucket;
+			cache.revision = frame.current.playbackRevision();
+			cache.phase = phase;
+			cache.generation = generation;
+		}
+		return pose;
+	}
+
+	/// 只为已替代 action 控制器的本模组女皇代码动作沿用其距离设置与豁免。
+	private static int codeSampleFps(Frame frame) {
+		var cache = frame.codePose;
+		var level = Minecraft.getInstance().level;
+		if (cache == null || level == null || !VisualQualityConfig.ANIMATIONS.get()
+				|| !(level.getEntity(frame.current.ownerEntityId()) instanceof TheQueenOfHatred queen)) {
+			return 0;
+		}
+		var id = BuiltInRegistries.ENTITY_TYPE.getKey(queen.getType());
+		var excluded = VisualQualityConfig.ANIMATION_EXEMPT.get();
+		if (!id.getNamespace().equals(Lobecorp.NAMESPACE) || !excluded.isEmpty() && excluded.contains(id.toString())
+				|| VisualQualityConfig.CONTROLLER_EXEMPT.get().contains("action")) {
+			cache.band = 0;
+			return 0;
+		}
+		var distance = Minecraft.getInstance().gameRenderer.getMainCamera().position().distanceTo(queen.position());
+		cache.band = LcVisualQualityUtil.band(distance, cache.band, VisualQualityConfig.ANIMATION_NEAR.get(),
+				VisualQualityConfig.ANIMATION_FAR.get(), VisualQualityConfig.HYSTERESIS.get());
+		return cache.band == 0 ? 0 : cache.band == 1 ? VisualQualityConfig.MEDIUM_FPS.get() : VisualQualityConfig.FAR_FPS.get();
+	}
+
+	private static class CodePoseCache {
+		private @Nullable LcSkeletalPose pose;
+		private @Nullable Object generation;
+		private long bucket, revision;
+		private int band, fps;
+		private double phase;
+	}
+
+	private static LcSkeletalPose sampleVisualPose(Frame frame, float partialTick) {
 		boolean revised = frame.previous.playbackRevision() != frame.current.playbackRevision();
 		var weight = revised ? 1 : weight(frame, partialTick);
 		var clip = LcClientAnimationResources.visualClip(frame.current.content(), frame.current.animationName());
@@ -191,11 +304,33 @@ public class LcClientAnimations {
 
 		var time = revised ? frame.current.timeSeconds()
 				: frame.previous.timeSeconds() + (frame.current.timeSeconds() - frame.previous.timeSeconds()) * weight;
+		if (!frame.current.paused() && !frame.current.stopped()) {
+			time = frame.clockSeconds + Math.max(0, gameTime() - frame.clockTick + partialTick)
+					* frame.current.speed() / LcAnimationInstance.TICKS_PER_SECOND;
+		}
 		var duration = clip.durationSeconds();
 		var sampleTime = duration <= 0 ? 0 : clip.looping()
 				? time - Math.floor(time / duration) * duration : Math.clamp(time, 0, duration);
-		var pose = clip.sample(sampleTime, new VisualQueries(frame.current.parameters()));
-		return removeRootChannels(pose, frame.current);
+		var queries = new VisualQueries(frame.current.parameters());
+		queries.useVisualTime(sampleTime, (frame.ageOffset + gameTime() + partialTick) / LcAnimationInstance.TICKS_PER_SECOND);
+		var pose = clip.sample(sampleTime, queries);
+		if (frame.current.poseOverrides().bones().isEmpty() && frame.previous.poseOverrides().bones().isEmpty()) {
+			return removeRootChannels(pose, frame.current);
+		}
+
+		var overrides = revised ? frame.current.poseOverrides()
+				: interpolate(frame.previous.poseOverrides(), frame.current.poseOverrides(), weight);
+		if (TheQueenOfHatredAnimationDefinitions.isBeam(frame.current.definitionId())) {
+			var previousPitch = frame.previous.parameters().getOrDefault("q.head_x_rotation", 0.0);
+			var currentPitch = frame.current.parameters().getOrDefault("q.head_x_rotation", previousPitch);
+			var pitch = (float) (previousPitch + (currentPitch - previousPitch) * weight);
+			var visualAim = TheQueenOfHatredAnimationDefinitions.aimPose(pose, pitch);
+			QueenBeamPerformanceTrial.renderedPose(frame.current, sampleTime,
+					beamPoseWeight(frame.current.ownerEntityId(), partialTick), gameTime() + (double) partialTick);
+			overrides = overrides.withBone(TheQueenOfHatredAnimationDefinitions.UPPER_BODY,
+					visualAim.get(TheQueenOfHatredAnimationDefinitions.UPPER_BODY));
+		}
+		return removeRootChannels(merge(pose, overrides), frame.current);
 	}
 
 	private static LcSkeletalPose interpolateLoopPose(Frame frame, double weight) {
@@ -322,7 +457,8 @@ public class LcClientAnimations {
 		LcClientAnimationResources.clear();
 	}
 
-	private record Frame(LcAnimationSnapshot previous, LcAnimationSnapshot current, long receivedTick) {
+	private record Frame(LcAnimationSnapshot previous, LcAnimationSnapshot current, long receivedTick,
+	                     double clockSeconds, long clockTick, double ageOffset, @Nullable CodePoseCache codePose) {
 	}
 
 	/// 每次视觉采样从权威参数副本开始，变量赋值不随帧率或附着数量累积。
@@ -331,6 +467,11 @@ public class LcClientAnimations {
 
 		private VisualQueries(Map<String, Double> parameters) {
 			parameters.forEach((name, value) -> variables.put(normalize(name), value));
+		}
+
+		private void useVisualTime(double time, double age) {
+			variables.put("q.anim_time", time);
+			variables.put("q.life_time", age);
 		}
 
 		@Override

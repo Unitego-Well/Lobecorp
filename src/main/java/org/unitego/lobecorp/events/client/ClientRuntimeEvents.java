@@ -22,13 +22,19 @@ import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
 import org.unitego.lobecorp.client.hud.PlayerStatusHud;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
+import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.horde.HordeAmbient;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+		HordeClient.clear();
 		PlayerStatusHud.INSTANCE.clear();
 		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
@@ -43,6 +49,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+		HordeClient.clear();
 		PlayerStatusHud.INSTANCE.clear();
 		PlayerScreenFilters.INSTANCE.clear();
 		ScreenParticles.clear();
@@ -60,6 +67,9 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLevelUnload(LevelEvent.Unload event) {
+		if (event.getLevel() instanceof ClientLevel) {
+			HordeClient.clear();
+		}
 		if (event.getLevel().isClientSide()) {
 			ConductorControls.clearSession();
 		}
@@ -76,6 +86,13 @@ public class ClientRuntimeEvents {
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();
 			LcPlayerAnimationRuntime.clear();
+		}
+	}
+
+	@SubscribeEvent
+	public static void onCorpseLeaveLevel(EntityLeaveLevelEvent event) {
+		if (event.getLevel().isClientSide() && event.getEntity() instanceof EntityCorpse<?> corpse) {
+			EntityCorpseRenderer.forget(corpse);
 		}
 	}
 
@@ -98,6 +115,8 @@ public class ClientRuntimeEvents {
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 		QueenBeamEffects.tick();
+		HordeClient.tick();
+		HordeAmbient.tick();
 	}
 
 	@SubscribeEvent

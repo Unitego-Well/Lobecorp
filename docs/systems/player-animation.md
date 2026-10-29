@@ -136,7 +136,7 @@ IDEA 诊断、编译、Data 与用户要求的 MCP + Debug 验证结果须以本
 
 ### 显式第一人称门控修复验收（2026-10-12）
 
-本轮单人 Client Debug 实测无动画时 `frames=0`、`open=null`，并实际查看[原版第一人称回退](../../run/client/screenshots/player-first-person-gated-vanilla-20261012.png)。同一暂停玩家实例 `cf73d0d1-2ed2-491f-abb9-62f7b2e77918` 在 `firstPersonArms=false` 时 `open=null`，改为 true 后取得 scope，作用域内 `active=true`、关闭后为 false；已实际查看[显式动画双臂](../../run/client/screenshots/player-first-person-gated-active-20261012.png)。
+本轮单人 Client Debug 实测无动画时 `frames=0`、`open=null`，并实际查看原版第一人称回退（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-gated-vanilla-20261012.png`）。同一暂停玩家实例 `cf73d0d1-2ed2-491f-abb9-62f7b2e77918` 在 `firstPersonArms=false` 时 `open=null`，改为 true 后取得 scope，作用域内 `active=true`、关闭后为 false；已实际查看显式动画双臂（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-gated-active-20261012.png`）。
 
 随后使用新代码的 Client Debug 会话，从服务端直接停止玩家实例 `519f03d8-dd39-4afe-8ea4-51d121fa36b9` 与物品实例，等待淡出到期后客户端实测 `frames=0`、`pending=0`、`openNull=true`、`active=false`。该检查确认结束后恢复原版路径；本轮未取得淡出中间权重，不把这次到期检查记作完整淡出过程证据。物品循环旋转的修复后数值见[动画运行时](animation-runtime.md#循环边界修复后验证2026-10-12)。
 
@@ -148,19 +148,19 @@ IDEA 诊断、编译、Data 与用户要求的 MCP + Debug 验证结果须以本
 
 2026-10-12 前轮在单人 Client Debug 中确认覆盖姿态、同实例切换 vanilla_idle、淡入／软停止淡出及尾部清理；当时仅有原生采样、同步策略和最终模型数值证据。前轮截图调用问题与 Sodium 注入方法的 NoSuchMethodError 见[系统修改记录](changes.md)，未据此修改第三方模组。
 
-同日补充开发日志后，新的 Client Debug 会话确认默认关闭及再次关闭均静默，开启后记录播放、1.5 秒策略修订、完成／主动停止与尾部清理。MCP 成功保存并实际查看[玩家覆盖姿态](../../run/client/screenshots/player-animation-override-20261012.png)与[胸甲同步姿态](../../run/client/screenshots/player-animation-chest-20261012.png)；冻结 1 秒、淡入完成时，主模型与独立胸甲模型右臂均为 X=1.7453293、Z=-0.2617994 弧度（100°／-15°）。胸甲临时替换此前为空的胸部槽，结束后已确认恢复为空；停止后客户端帧及模型历史均为 0，日志开关关闭。该会话未复现前轮崩溃，仍不能推定其根因已解决。
+同日补充开发日志后，新的 Client Debug 会话确认默认关闭及再次关闭均静默，开启后记录播放、1.5 秒策略修订、完成／主动停止与尾部清理。MCP 成功保存并实际查看玩家覆盖姿态（历史引用，当前工作区缺失：`../../run/client/screenshots/player-animation-override-20261012.png`）与胸甲同步姿态（历史引用，当前工作区缺失：`../../run/client/screenshots/player-animation-chest-20261012.png`）；冻结 1 秒、淡入完成时，主模型与独立胸甲模型右臂均为 X=1.7453293、Z=-0.2617994 弧度（100°／-15°）。胸甲临时替换此前为空的胸部槽，结束后已确认恢复为空；停止后客户端帧及模型历史均为 0，日志开关关闭。该会话未复现前轮崩溃，仍不能推定其根因已解决。
 
 截至开发日志轮，仅补验默认皮肤、当前持物和原版胸甲；当时头盔／护腿／靴子各槽、多人与晚加入、第三方模型、组合压力场景及第一人称未验收。暂停 Debug 产生了服务端追帧与 spark 统计超时警告，不将其作为正常帧率或性能证据。
 
-第一人称接入轮的 5 个 Java 文件 IDEA 诊断为 0，项目编译成功，Data 退出码为 0；25 个生成文件逐文件内容保持不变。新的 Client Debug 与 MCP 实际查看[无自定义策略的双臂、袖子与当前刷怪蛋](../../run/client/screenshots/player-first-person-idle-20261012.png)，画面没有身体或盔甲。
+第一人称接入轮的 5 个 Java 文件 IDEA 诊断为 0，项目编译成功，Data 退出码为 0；25 个生成文件逐文件内容保持不变。新的 Client Debug 与 MCP 实际查看无自定义策略的双臂、袖子与当前刷怪蛋（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-idle-20261012.png`），画面没有身体或盔甲。
 
-冻结 override 在 1 秒且淡入完成时，第一人称模型右臂 X=1.7453293、Z=-0.2617994 弧度，左臂 Z=0.17453292 弧度。原示例右臂正向旋转 100° 后位于相机后方，平视时离开视野；[俯视覆盖姿态](../../run/client/screenshots/player-first-person-override-down-20261012.png)只见左臂，不能作为该动作右臂在第一人称可见的证据。
+冻结 override 在 1 秒且淡入完成时，第一人称模型右臂 X=1.7453293、Z=-0.2617994 弧度，左臂 Z=0.17453292 弧度。原示例右臂正向旋转 100° 后位于相机后方，平视时离开视野；俯视覆盖姿态（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-override-down-20261012.png`）只见左臂，不能作为该动作右臂在第一人称可见的证据。
 
 正常 dynamic 播放期间未中途暂停，日志确认 1.5 秒切换 idle 策略、3 秒 FINISHED 及随后客户端帧／模型历史均清零；模型首次进入、策略修订和完成时分别观察到 fadeIn=0.8125、fadeIn=0.125、fadeOut=0.15625。另一次暂停后的 stop 因包到达时已超过 8 tick，只确认恢复原版姿态，不作为淡出过程证据。
 
-临时副手地图没有 map_id；[第一人称地图](../../run/client/screenshots/player-first-person-map-20261012.png)只确认原版背景与边框可绘制，未验证已有地图数据、装饰或标记内容。当前会话日志未出现 ERROR／FATAL；暂停仍产生服务端追帧与 spark 统计超时警告，不能作为性能证据。本轮使用 SLIM 皮肤；第一人称望远镜、睡眠／旁观／F1、其他使用物品、WIDE 皮肤、多人与第三方接入等场景尚未完成运行验收。
+临时副手地图没有 map_id；第一人称地图（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-map-20261012.png`）只确认原版背景与边框可绘制，未验证已有地图数据、装饰或标记内容。当前会话日志未出现 ERROR／FATAL；暂停仍产生服务端追帧与 spark 统计超时警告，不能作为性能证据。本轮使用 SLIM 皮肤；第一人称望远镜、睡眠／旁观／F1、其他使用物品、WIDE 皮肤、多人与第三方接入等场景尚未完成运行验收。
 
-[第三人称正面回归](../../run/client/screenshots/player-first-person-third-person-20261012.png)确认完整头部、身体、双腿与当前持物仍可绘制。结束后实测副手恢复为 0 个 minecraft:air，主手仍为 1 个 lobecorp:sweeper_spawn_egg；日志开关关闭，模型历史为 0，第一人称 scope 非活动。相机恢复 FIRST_PERSON、yaw=-71.60007、pitch=-33.6，MCP 确认位置与旋转。临时断点全部移除，仅保留原有两条禁用的用户异常断点，Client Debug 保持运行。完整检查见本轮[修改记录](changes.md)。
+第三人称正面回归（历史引用，当前工作区缺失：`../../run/client/screenshots/player-first-person-third-person-20261012.png`）确认完整头部、身体、双腿与当前持物仍可绘制。结束后实测副手恢复为 0 个 minecraft:air，主手仍为 1 个 lobecorp:sweeper_spawn_egg；日志开关关闭，模型历史为 0，第一人称 scope 非活动。相机恢复 FIRST_PERSON、yaw=-71.60007、pitch=-33.6，MCP 确认位置与旋转。临时断点全部移除，仅保留原有两条禁用的用户异常断点，Client Debug 保持运行。完整检查见本轮[修改记录](changes.md)。
 
 ### 综合复验（同日追加）
 
@@ -168,14 +168,14 @@ IDEA 诊断、编译、Data 与用户要求的 MCP + Debug 验证结果须以本
 
 新 Client Debug 会话中，dynamic 实例 6e154f55… 全程未中途暂停；日志确认 1.5 秒来源切为 vanilla_idle、3 秒 FINISHED，模型完成淡出先后观察到 fadeOut=0.125 与 0.96875，随后实际检查客户端帧与模型历史均为 0。首次模型日志的 fadeIn=1，本轮该次播放不能作为淡入中间帧证据。
 
-[综合复验基线](../../run/client/screenshots/player-comprehensive-baseline-20261012.png)实际显示 SLIM 双臂、袖层、主手屏障和副手砂岩。当前新基线为创造模式、主手 1 个 barrier、副手 1 个 sandstone、全部盔甲槽为空，位置为 (62.20273619533319, 56, 182.02224929062757)。副手临时换为 glass 后，实测稳定时绘制左手与原版副手缓存均为 glass；换装不一致条件断点未命中，没有运行复现上述静态风险，也不能据此排除切换瞬间的问题。副手随后已实测恢复为 1 个 sandstone。
+综合复验基线（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-baseline-20261012.png`）实际显示 SLIM 双臂、袖层、主手屏障和副手砂岩。当前新基线为创造模式、主手 1 个 barrier、副手 1 个 sandstone、全部盔甲槽为空，位置为 (62.20273619533319, 56, 182.02224929062757)。副手临时换为 glass 后，实测稳定时绘制左手与原版副手缓存均为 glass；换装不一致条件断点未命中，没有运行复现上述静态风险，也不能据此排除切换瞬间的问题。副手随后已实测恢复为 1 个 sandstone。
 
 本轮起初移除暂停断点，改用 `suspendPolicy=NONE` 的日志点；实际命中的 FP_VERIFY 样本为 mainArm=RIGHT、actualOff=1 sandstone、eventOff=1 sandstone、camera=FIRST_PERSON、invisible=false、scopesBefore=0，无 breakpointErrors，该采样阶段 Debug 始终保持 RUNNING。本次 temporary 日志点未自动移除，已显式清理；该阶段结束时仅保留原有两条禁用的用户异常断点。
 
-随后用户确认已手动设置 IDEA 不抢占窗口焦点，并授权继续使用暂停断点，才恢复暂停调试。MCP 未修改对应全局设置。override 实例 5663f715-dd33-4742-9918-52206bd07aad 在服务端 seek 至 1 秒并暂停播放；第一人称入口实际检查为模型历史 1、客户端帧 1，右臂 X=1.7453293、Z=-0.2617994 弧度，左臂 Z=0.17453292 弧度，并实际查看[综合复验覆盖姿态](../../run/client/screenshots/player-comprehensive-override-20261012.png)。本阶段没有修改 Java 代码。
+随后用户确认已手动设置 IDEA 不抢占窗口焦点，并授权继续使用暂停断点，才恢复暂停调试。MCP 未修改对应全局设置。override 实例 5663f715-dd33-4742-9918-52206bd07aad 在服务端 seek 至 1 秒并暂停播放；第一人称入口实际检查为模型历史 1、客户端帧 1，右臂 X=1.7453293、Z=-0.2617994 弧度，左臂 Z=0.17453292 弧度，并实际查看综合复验覆盖姿态（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-override-20261012.png`）。本阶段没有修改 Java 代码。
 
-接着设置 hideGui=true、发送 stop，移除临时断点并恢复运行；[F1 画面](../../run/client/screenshots/player-comprehensive-f1-20261012.png)确认 UI、手臂与持物均不显示。运行时实际原始字段为 hideGui=true、HISTORIES=1、FRAMES=0、PENDING=0，说明该时刻 F1 停止后的有界模型历史仍留存 1 份，不能记作模型历史已清零。
+接着设置 hideGui=true、发送 stop，移除临时断点并恢复运行；F1 画面（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-f1-20261012.png`）确认 UI、手臂与持物均不显示。运行时实际原始字段为 hideGui=true、HISTORIES=1、FRAMES=0、PENDING=0，说明该时刻 F1 停止后的有界模型历史仍留存 1 份，不能记作模型历史已清零。
 
-随后恢复 hideGui=false，并切换至 THIRD_PERSON_FRONT、pitch=0；[综合复验第三人称](../../run/client/screenshots/player-comprehensive-third-person-20261012.png)实际显示完整头部、身体、双腿及双手持物。恢复渲染后实际检查 HISTORIES=0、FRAMES=0、PENDING=0、scopes=0，确认 F1 期间留存的模型历史已释放；主手仍为 1 个 barrier、副手为 1 个 sandstone，四个盔甲槽均为 0 个 air。
+随后恢复 hideGui=false，并切换至 THIRD_PERSON_FRONT、pitch=0；综合复验第三人称（历史引用，当前工作区缺失：`../../run/client/screenshots/player-comprehensive-third-person-20261012.png`）实际显示完整头部、身体、双腿及双手持物。恢复渲染后实际检查 HISTORIES=0、FRAMES=0、PENDING=0、scopes=0，确认 F1 期间留存的模型历史已释放；主手仍为 1 个 barrier、副手为 1 个 sandstone，四个盔甲槽均为 0 个 air。
 
 结束前实际恢复 FIRST_PERSON、yaw=-24.650059、pitch=3.150028，并关闭日志开关，返回值确认 ENABLED=false。移除全部代理临时断点后继续运行；MCP 确认位置约为 (62.2, 56, 182)、旋转约为 (-24.7, 3.2)、创造模式、生命值 20、饥饿值 20。IDEA 状态为 running，断点列表仅保留两条原有且禁用的用户异常断点。WIDE 皮肤、其他物品使用动作、多人及着色器等场景仍未完成运行验收。

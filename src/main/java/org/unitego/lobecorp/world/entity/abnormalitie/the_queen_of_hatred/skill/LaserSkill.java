@@ -26,7 +26,7 @@ import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import org.unitego.lobecorp.util.TypedDataKey;
 
-/// 绑定女皇法杖的持续激光；强化只改变转速，接触敌人的累计 tick 与实际伤害成功分开记录。
+/// 从女皇身体中心发射的持续激光；强化只改变转速，接触敌人的累计 tick 与实际伤害成功分开记录。
 public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	/// 开始施放时所选目标的最小距离，单位为格；不限制光束沿途伤害。
 	public static final double MINIMUM_RANGE = 7.0;
@@ -65,11 +65,11 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	}
 
 	public static Vec3 origin(Mob mob) {
-		return QueenSkillUtil.staffOrigin(mob);
+		return mob.getBoundingBox().getCenter();
 	}
 
 	public static Vec3 endpoint(Mob mob, Vec3 position) {
-		return QueenSkillUtil.beamEndpoint(mob, position, RANGE);
+		return QueenSkillUtil.beamEndpoint(mob, origin(mob), position, RANGE);
 	}
 
 	/// 位置目标和同地面高度的实体默认平射；高低处实体目标限制为上下 45 度。

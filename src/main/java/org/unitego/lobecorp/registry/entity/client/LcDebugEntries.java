@@ -11,10 +11,13 @@ import org.unitego.lobecorp.client.entity.skill.debug.EntitySkillDebugRenderer;
 import org.unitego.lobecorp.client.entity.skill.effect.debug.EntitySkillEffectDebugRenderer;
 import org.unitego.lobecorp.client.entity.state.debug.EntityStateDebugRenderer;
 import org.unitego.lobecorp.client.hitbox.HitboxDebugRenderer;
+import org.unitego.lobecorp.client.horde.HordeDebugRenderer;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
 public class LcDebugEntries {
+	/// 清道夫浪潮区域框，复用原版调试条目。
+	public static final Identifier HORDE_RANGES = id("horde_ranges");
 	/// 实体状态调试项标识符。
 	public static final Identifier ENTITY_STATES = id("entity_states");
 	/// 实体技能调试项标识符。
@@ -37,6 +40,7 @@ public class LcDebugEntries {
 	public static final Identifier DEBUG_MONITOR_TICK_TIMES = id("mc_debug_monitor_tick_times");
 
 	public static void onRegisterDebugEntries(RegisterDebugEntriesEvent event) {
+		event.register(HORDE_RANGES, new DebugEntryNoop());
 		event.register(ENTITY_STATES, new DebugEntryNoop());
 		event.register(ENTITY_SKILLS, new DebugEntryNoop());
 		event.register(SKILL_EFFECT_ENTITIES, new DebugEntryNoop());
@@ -50,6 +54,7 @@ public class LcDebugEntries {
 	}
 
 	public static void onRegisterDebugRenderers(RegisterDebugRenderersEvent event) {
+        event.register(new HordeDebugRenderer());
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_STATES)) {
 			event.register(EntityStateDebugRenderer::new);
 		}

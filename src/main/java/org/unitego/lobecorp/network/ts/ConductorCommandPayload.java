@@ -133,7 +133,7 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 
 	@Override
 	public void work(IPayloadContext context, ServerPlayer player) {
-		apply(player);
+        apply(player);
 	}
 
 	private static IConductorAbility conductorAbility(Mob mob, String id) {

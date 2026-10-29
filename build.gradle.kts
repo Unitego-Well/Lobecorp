@@ -59,13 +59,16 @@ val reserveBuildIdentity = tasks.register("reserveBuildIdentity") {
     description = "Reserves the next local daily artifact build number"
     notCompatibleWithConfigurationCache("The daily build number is reserved in local persistent state")
     outputs.upToDateWhen { false }
+    val reservedFile = buildCounterFile
+    val reservedDate = buildDate
+    val reservedCount = buildCount.toString()
     doLast {
-        buildCounterFile.parentFile.mkdirs()
+        reservedFile.parentFile.mkdirs()
         val currentBuildCounter = Properties().apply {
-            setProperty("date", buildDate)
-            setProperty("count", buildCount.toString())
+            setProperty("date", reservedDate)
+            setProperty("count", reservedCount)
         }
-        buildCounterFile.outputStream().use { currentBuildCounter.store(it, null) }
+        reservedFile.outputStream().use { currentBuildCounter.store(it, null) }
     }
 }
 val internalTestMods = configurations.create("internalTestMods") {
@@ -79,6 +82,7 @@ sourceSets.main {
     resources {
         srcDir("src/generated/resources")
         exclude("src/generated/**/.cache")
+        exclude("**/*.fxproj", "**/*.mfxproj", "**/*.zip", "**/*.bbmodel")
     }
 }
 
@@ -245,12 +249,18 @@ neoForge {
 
 modBench {
     targetMod = modId
+    // 测试矩阵按需只跑指定场景，避免每次重启都带跑其它场景。
+    scenarioFilter.set(providers.gradleProperty("benchScenarios").orElse(""))
+    // 2分钟浪潮需要2400测量tick，放大阶段超时以免被默认1200截断。
+    phaseTimeoutTicks.set(3600L)
     expectedProviderCount = 1
     seed = 7
     jfrEnabled = true
     serverLevelType = "minecraft:flat"
     clientWorldPreset = "flat"
     clientWorldId = "lobecorp-bench"
+    clientWindowWidth = providers.gradleProperty("benchWindowWidth").map(String::toInt).getOrElse(2560)
+    clientWindowHeight = providers.gradleProperty("benchWindowHeight").map(String::toInt).getOrElse(1494)
 }
 
 tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
@@ -266,14 +276,17 @@ tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
 }
 
 tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
-    expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
-    expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
+    expectedScenarioIds.set(listOf("lobecorp.sweeper-render", "lobecorp.horde-render"))
+    expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities", "lobecorp.horde_render.instances"))
     expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
     expectedArtifactPaths.set(
         listOf(
             "artifacts/samples/lobecorp.sweeper-render.jsonl",
             "artifacts/jfr/lobecorp.sweeper-render.jfr",
-            "artifacts/screenshots/sweeper-render.png"
+            "artifacts/screenshots/sweeper-render.png",
+            "artifacts/samples/lobecorp.horde-render.jsonl",
+            "artifacts/jfr/lobecorp.horde-render.jfr",
+            "artifacts/screenshots/horde-render.png"
         )
     )
 }

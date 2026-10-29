@@ -37,7 +37,7 @@ JSON-RPC/Streamable HTTP endpoint。
 
 进入客户端后先最大化 Minecraft 游戏主窗口；用户已明确要求 Photon 编辑器嵌入游戏内，不创建独立 OS 编辑器窗口。已有独立宿主通过 `dockIntoGameWindow()` 切回游戏内，内部布局可再调用 `EditorWindow.maximizeWindow()`。实际最大化状态按游戏主窗验证，不能用内部布局标志代替。固定连续步骤合并为一次 MCP/API 或批处理，仅在边界、分支和失败时读取必要状态。新测试世界优先使用开发环境的 Create Test World 快速入口，已有目标世界则直接继续。当前入口为 `CreateWorldScreen.testWorld`，它预设测试规则并打开创建界面，还需执行创建动作。这些是用户明确要求的固定操作规则。
 
-IntelliJ Debugger 的 `project_path` 原样使用 `available_projects` 返回的 `D:/xm/mod/Unitego-Well/Lobecorp`；本轮传入 `D:\xm\mod\Unitego-Well\Lobecorp` 得到 `project_not_found`，改用正斜杠形式后会话可用，不据此判定项目未打开。
+IntelliJ Debugger 的 `project_path` 原样使用 `available_projects` 返回的 `E:/xm/mc/mod/Unitego-Well/Lobecorp`；本轮传入 `E:\xm\mc\mod\Unitego-Well\Lobecorp` 得到 `project_not_found`，改用正斜杠形式后会话可用，不据此判定项目未打开。
 
 `get_minecraft_status` 只查看已有连接。当前 bridge 将它放入 `MANAGEMENT_TOOLS`，处理时只调用 `checkAlive()`
 ；如果还没有缓存端口，会直接返回未连接，不触发 `discover()`。后台初次发现超时后反复调用它，可能一直得到 `connected=false`。

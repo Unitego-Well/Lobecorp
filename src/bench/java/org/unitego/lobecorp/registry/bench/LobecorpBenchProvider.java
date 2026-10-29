@@ -10,6 +10,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelRenderScenario;
+import org.unitego.lobecorp.client.bench.PhotonNativeControlScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelResourceReloadScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
@@ -42,8 +43,10 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO,
 							"首次释放性能采集：20秒单次真实施放，无截图验收",
 							Set.of("client", "photon", "first-cast", "performance"), Duration.ofSeconds(120)),
-					_ -> new PhotonModelRenderScenario("photon-02-first-cast-performance", 0, 0, 16, 1, true, true,
-							PhotonModelRenderScenario.EvidenceMode.PERFORMANCE));
+					_ -> System.getProperty(LobecorpBenchConfig.PHOTON_CONTROL_FX_PROPERTY, "").isBlank()
+							? new PhotonModelRenderScenario("photon-02-first-cast-performance", 0, 0, 16, 1, true, true,
+							PhotonModelRenderScenario.EvidenceMode.PERFORMANCE)
+							: new PhotonNativeControlScenario());
 		}
 
 		if (System.getProperty("modBench.scenarios", "").contains(PhotonModelResourceReloadScenario.ID)) {

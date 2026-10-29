@@ -92,6 +92,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	private CompletableFuture<List<QueenBeamPerformanceFixture.CastResult>> pendingCast;
 	private PhotonBenchCapture capture;
 	private PhotonBenchSpark spark;
+	private PhotonBenchDiagnostics deserializeDiagnostics;
 	private Runnable prepareFixture;
 	private boolean worldSetupQueued;
 	private boolean sparkStopping;
@@ -305,6 +306,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			return false;
 		}
 		worldSettledNs = now;
+		deserializeDiagnostics = new PhotonBenchDiagnostics(label, "laser");
+		deserializeDiagnostics.start();
 		Lobecorp.LOGGER.info("PHOTONSTAGE stage=world_settled ns={} epochMs={} elapsedNs={} captureStarted=false fixtureQueued=false",
 				now, System.currentTimeMillis(), now - worldAvailableNs);
 		sparkRequestedNs = System.nanoTime();
@@ -636,6 +639,11 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		if (!failureCaptureClosed) {
 			failureCaptureClosed = true;
 			try {
+				finishDeserializeDiagnostics(context);
+			} catch (RuntimeException cleanup) {
+				deferredFailure.addSuppressed(cleanup);
+			}
+			try {
 				if (capture != null) {
 					capture.close(context);
 				}
@@ -722,6 +730,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 
 	@Override
 	public void verify(BenchClientContext context) throws Exception {
+		finishDeserializeDiagnostics(context);
 		if (models.size() != count || context.frames().sampleCount() <= firstFrame
 				|| effects.stream().anyMatch(effect -> !effect.isAlive())) {
 			throw new AssertionError("模型基准负载或帧样本不完整。");
@@ -842,6 +851,10 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	}
 
 	private void annotateEvidence(JsonObject report) {
+		if (deserializeDiagnostics != null) {
+			report.addProperty("comparison_group", "laser");
+			report.add("deserialize_diagnostics", deserializeDiagnostics.snapshot());
+		}
 		report.addProperty("setup_observed_ns", setupObservedNs);
 		report.addProperty("world_available_ns", worldAvailableNs);
 		report.addProperty("world_settled_ns", worldSettledNs);
@@ -890,9 +903,19 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 	@Override
 	public void teardown(BenchClientContext context) {
 		try {
-			finishSynchronousSpark(context);
+			try {
+				finishDeserializeDiagnostics(context);
+			} finally {
+				finishSynchronousSpark(context);
+			}
 		} finally {
 			teardownFixture(context);
+		}
+	}
+
+	private void finishDeserializeDiagnostics(BenchClientContext context) {
+		if (deserializeDiagnostics != null) {
+			deserializeDiagnostics.finish(context);
 		}
 	}
 

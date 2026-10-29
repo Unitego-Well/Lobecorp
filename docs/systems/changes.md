@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-10-29：细分对象反序列化并完成激光与原生各三轮
+
+- 仅诊断，无优化。新增对象/codec/fixData/标准工厂/递归持久化Mixin，按对象身份、类、字段、路径记录耗时/计数/异常，详细capture归档清空；保留coverage缺口及attributionComplete=false。
+- 新增PhotonBenchDiagnostics增强自有JFR事件并回读设置/PID；原性能场景可选已有first_effect2原生粒子对照，正常FXHelper/ldlib2资源包加载，FX/材质/纹理哈希和真实粒子/jobs/draw断言齐全。原件不改；临时实例三份副本结束删除。
+- 六个新游戏进程，世界等待十秒，两组各三轮总体/场景PASSED，详细数据完整、PNG0。激光冷查询1.925–4.401秒：laser_body的PhotonModelOutput主工厂1.497–3.916秒，内部NormalCache ClassLoad1.465–3.879秒。普通FX冷查询424–450ms、主粒子工厂129–164ms；共同反序列化链路确认，具体类加载内部仍待细分。
+- 正式最长激光347–648ms、普通130–181ms；负载/时长不等、详细探针约66MB/激光轮且有自身开销，不能当功能差异净成本或优化收益。P22/P23不关闭，光影未跑，无视觉结论。见[BenchMod](benchmod.md#2026-10-29-对象内部诊断与原生数据对照)。
+- IDEA编译/benchClasses/生产包隔离及诊断测试9/9通过；Data written=0/removed=0、29文件SHA不变。隔离配置原字节恢复，断点保持解除mute，游戏/helper/桥接/分析均已结束，四项用户WIP哈希不变，保留历史误纳暂存测试问题。报告.agent/reports/20261029-deserialize-detail-comparison.md；证据build/agent-backups/20261029-deserialize-detail-comparison/。
+
+
 ## 2026-10-29：补齐 FX 冷加载与校验诊断，不实施优化
 
 - 新增显式cast诊断才装载的FXHelper Mixin和线程隔离账本；按已核对字节码计时getFX、loadFX、资源open、readCompressed、版本处理与反序列化。缓存分类不额外探测CACHE，返回null与异常分别记录。

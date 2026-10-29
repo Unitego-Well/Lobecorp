@@ -1,5 +1,27 @@
 # BenchMod 基准工具链
 
+## 2026-10-29 对象内部诊断与原生数据对照
+
+只补信息，不优化。四个新增诊断Mixin在显式cast诊断时安装：IFXObject对象分派、FXObjectType基类fixData、PersistedParser标准工厂、反射与持久化。PhotonFXLoadDiagnosticsUtil提供startDetailedCapture(label)/finishDetailedCapture，导出对象身份/资源/父边界/返回或异常，以及按对象、阶段、声明类、字段、配置路径、root与结果类型分组的count/inclusive/exclusive/max/failed。对象summary写FXLOAD，字段不逐项写日志；结束清空，不保留世界/NBT/业务对象。coverage/missing与attributionComplete=false明确未计时工作，自定义codec绕过处不作零成本结论。
+
+PhotonBenchDiagnostics只增强本场景唯一RUNNING的BenchMod录制，ClassLoad/ClassDefine阈值0、FileRead/FileWrite/JavaMonitorEnter阈值1ms，均开栈并回读实际settings；记录game_pid。两组都在世界稳定十秒后开始，正常/异常/teardown归档一次详细JSON。
+
+沿用精确场景lobecorp.photon-02-first-cast-performance，缺省仍为真实激光；临时-Dlobecorp.photon.bench.controlFx=photon:first_effect2选择PhotonNativeControlScenario。原生对照为已有编辑器包FX，单particle_emitter、无生效扩展、20tick非循环。保留12个禁用扩展字段，所以no_active_extensions=true但strict_zero_extension_keys=false；Lobecorp guard/Mixin仍安装，不能称为纯净Photon。材质和纹理按原SHA临时布置在隔离ldlib2/assets，先真实FXHelper.getFX再哈希审计，防止预读；原件不改，结束清理实例三份副本。原生必须有活跃粒子/发射器、other jobs、Photon drain draw调用与材质解析，不能用model jobs为0误判空负载。
+
+六次新进程按laser01/native01/laser02/native02/laser03/native03串行，PID41540/48080/65512/75432/72908/20876，等待10.009–10.044秒，全为总体/场景PASSED、完整未截断、PNG0。激光每轮10FX/79源对象，30次查询中20次无本地load；普通每轮1FX/1原生对象，峰值400粒子、1发射器、40次活跃tick。
+
+| 组别 | 首次最慢FX查询ms（3轮） | 预热最长ms | 正式均值ms | 正式最长ms |
+|---|---|---|---|---|
+| 激光 | 4401.500 / 2018.250 / 1925.351 | 5978.090 / 3748.744 / 2788.455 | 8.445 / 8.868 / 7.387 | 346.897 / 399.444 / 648.169 |
+| 原生数据 | 450.411 / 433.713 / 423.831 | 570.639 / 553.490 / 555.110 | 3.355 / 3.296 / 4.121 | 148.150 / 130.250 / 180.581 |
+
+激光主要冷阻塞进一步定位：star_beam_spell_beam中的laser_body，PhotonModelOutput主工厂3915.945/1533.647/1497.198ms，其构造调用点内NormalCache的JFR ClassLoad为3879.273/1509.355/1464.751ms。该类加载包含区间覆盖工厂绝大部分，不能称为秒级法线算法、纯类转换CPU或精确排除Debug/JVMTI等待；原用户条件断点在该嵌套类内，采集mute无暂停，但没有无Debug配对。普通ParticleEmitter主工厂128.545–163.880ms；对象内部141次父类/子配置CLASS、205次KEY/REF/WRITE，字段引用57–83ms，也有真实首次反射/加载开销。
+
+两组对象数、持续时长与材质不同，普通活跃仅约1.8秒、20秒含长空尾；总均值差不能当扩展功能净成本。正式最长帧另外有模拟/绘制/Codec/NBT复制/类加载及诊断聚合样本，不能都归到NormalCache。激光详细JSON约66MB/轮、13万聚合行，探针与输出成本明确存在，不能作无探针性能A/B。P22/P23继续开放，光影暂缓。
+
+IDEA编译/benchClasses/生产包隔离通过，诊断单测9/9；Data成功written=0/removed=0、含缓存29文件哈希不变。三份隔离配置原字节恢复、三断点保持并解除mute、游戏/helper/桥接/JFR读取均结束。四份用户WIP哈希不变，不改写历史DS误纳暂存测试。方法与逐阶段全文见本地.agent/reports/20261029-deserialize-detail-comparison.md，完整证据及脚本在build/agent-backups/20261029-deserialize-detail-comparison/，原始报告在build/modBench/raw-results/photon-deser-compare-20261029-{laser,native}-0{1,2,3}/client。普通artifact前缀photon-02-native-data-control，激光photon-02-first-cast-performance，分析按workload推导前缀。
+
+
 ## 2026-10-29 FX 冷加载与校验分段诊断
 
 现有 `lobecorp.photon.diag.cast=true` 同时开启新增 `PhotonFXLoadDiagnosticsMixin`；插件只在该属性为true时装载此Mixin。关闭时新增代码不生成计时对象、读时钟或写FXLOAD日志，原校验保持。没有新增缓存、跳过校验、重排预热或改变负载。

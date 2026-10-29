@@ -31,7 +31,11 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-		if (mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFXLoadDiagnosticsMixin")) {
+		if (mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFXLoadDiagnosticsMixin")
+				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonObjectDeserializeDiagnosticsMixin")
+				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFactoryDeserializeDiagnosticsMixin")
+				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonVersionDeserializeDiagnosticsMixin")
+				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonPersistedDeserializeDiagnosticsMixin")) {
 			// 插件阶段只读属性，不提前加载客户端诊断类。
 			return Boolean.getBoolean("lobecorp.photon.diag.cast");
 		}

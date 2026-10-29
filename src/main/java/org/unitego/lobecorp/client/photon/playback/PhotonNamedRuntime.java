@@ -83,6 +83,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	private final PhotonNamedNativeTracks.Speeds speeds;
 	private final Map<String, PhotonNamedPlan> plans = new LinkedHashMap<>();
 	private final Map<UUID, Entry> playing = new LinkedHashMap<>();
+	private @Nullable List<Entry> orderedEntries = List.of();
 	private final Map<FXObject, BooleanSupplier> retention = new LinkedHashMap<>();
 	private final ArrayDeque<Notification> events = new ArrayDeque<>();
 	private final FXObject root;
@@ -286,6 +287,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 
 		playing.put(plan.definition.id(), new Entry(handle, plan, runtime, null));
+		orderedEntries = null;
 		revision++;
 		queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
 		drainEvents();
@@ -316,6 +318,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		entry.notifiedPosition = handle.position(0);
 		preview = entry;
 		playing.put(definition.id(), entry);
+		orderedEntries = null;
 		revision++;
 		refresh();
 		return handle;
@@ -340,6 +343,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			entry.completion = Completion.HOLD;
 			entry.notifiedPosition = handle.position(0);
 			playing.put(isolated.id(), entry);
+			orderedEntries = null;
 			revision++;
 			refresh();
 			return handle;
@@ -377,6 +381,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			var handle = new PhotonNamedHandle(definition, original.definition.id(), plan.authoredDuration, sequence++, duration,
 					definition.loop(), controlled, inputs);
 			playing.put(definition.id(), new Entry(handle, plan, runtime, null));
+			orderedEntries = null;
 			revision++;
 			queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
 			drainEvents();
@@ -419,6 +424,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 		if (entry != null) {
 			playing.remove(entry.handle.definition().id(), entry);
+			orderedEntries = null;
 			release(entry);
 			revision++;
 			refresh();
@@ -464,6 +470,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			preview = null;
 		}
 		playing.remove(handle.definition().id());
+		orderedEntries = null;
 		release(entry);
 		revision++;
 		refresh();
@@ -550,8 +557,13 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	}
 
 	private List<Entry> ordered() {
-		return playing.values().stream().sorted(Comparator
-				.comparingInt((Entry entry) -> entry.plan.definition.priority()).thenComparingLong(entry -> entry.handle.order())).toList();
+		// 排序键在 Entry 生命周期内固定；成员变更只丢弃缓存，当前采样继续持有原快照。
+		if (orderedEntries == null) {
+			orderedEntries = playing.values().stream().sorted(Comparator
+					.comparingInt((Entry entry) -> entry.plan.definition.priority()).thenComparingLong(entry -> entry.handle.order())).toList();
+		}
+
+		return orderedEntries;
 	}
 
 	private void sample(double partial, boolean simulation) {
@@ -666,6 +678,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 					if (entry.completion == Completion.RELEASE && playing.get(entry.handle.definition().id()) == entry) {
 						playing.remove(entry.handle.definition().id());
+						orderedEntries = null;
 						release(entry);
 						revision++;
 					}
@@ -899,6 +912,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 
 		closed = true;
+		orderedEntries = List.of();
 		preview = null;
 		mixer.clear();
 		gates.clear();

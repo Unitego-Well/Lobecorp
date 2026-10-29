@@ -53,6 +53,13 @@ public class PhotonModelPoseSampler {
 		private final Vector3f authored = new Vector3f();
 		private final Matrix4f combined = new Matrix4f();
 		private final Matrix3f normalTransform = new Matrix3f();
+		private final Vector3f pivot = new Vector3f();
+		private final Matrix4f local = new Matrix4f();
+		private final Matrix4f pivoted = new Matrix4f();
+		private Matrix4f[] parts = new Matrix4f[0];
+		private Matrix4f[] boneWorld = new Matrix4f[0];
+		private Matrix4f[] boneSkin = new Matrix4f[0];
+		private float[] morphWeights = new float[0];
 		private Vector3[] positionValues = new Vector3[0];
 		private int[] positionEpochs = new int[0];
 		private int positionStride;
@@ -217,7 +224,7 @@ public class PhotonModelPoseSampler {
 		var morphed = morph(definition, weights);
 		computePositions(definition, input, matrices, morphed, skin);
 		long deformationEnd = measure ? System.nanoTime() : 0;
-		var groups = new ArrayList<Group>();
+		var groups = new ArrayList<Group>(prepared.groups().size());
 		var min = new Vector3f(Float.POSITIVE_INFINITY);
 		var max = new Vector3f(Float.NEGATIVE_INFINITY);
 
@@ -225,7 +232,7 @@ public class PhotonModelPoseSampler {
 			checkCancelled();
 			int partIndex = group.part();
 			var part = definition.parts().get(partIndex);
-			var vertices = new ArrayList<Vertex>();
+			var vertices = new ArrayList<Vertex>(group.corners().size());
 			var normalMatrix = normalMatrix(matrices[partIndex]);
 			boolean morphedGeometry = !definition.morphs().isEmpty();
 			int lastFace = -1;
@@ -313,12 +320,18 @@ public class PhotonModelPoseSampler {
 	}
 
 	private Matrix4f[] partMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides, @Nullable Clip clip, float time) {
-		var result = new Matrix4f[parents.length];
+		var scratch = this.scratch.get();
+
+		if (scratch.parts.length != parents.length) {
+			scratch.parts = matrices(parents.length);
+		}
+
+		var result = scratch.parts;
 
 		for (int index : parentOrder) {
 			checkCancelled();
 			var part = definition.parts().get(index);
-			var pivot = vector(part.pivot());
+			var pivot = scratch.pivot.set(part.pivot().x(), part.pivot().y(), part.pivot().z());
 			var sampled = sampleTransform(clip == null ? List.of() : clip.partTracks().getOrDefault(part.id(), List.of()), time, part.transform());
 			var override = overrides.get(part.id());
 
@@ -328,19 +341,27 @@ public class PhotonModelPoseSampler {
 						override.scale() == null ? sampled.scale() : override.scale());
 			}
 
-			var matrix = matrix(sampled);
-			result[index] = new Matrix4f().translation(pivot).mul(matrix).translate(pivot.negate());
+			var matrix = matrix(sampled, scratch.local);
+			var pivoted = scratch.pivoted.translation(pivot).mul(matrix).translate(pivot.negate());
 
 			if (parents[index] >= 0) {
-				result[index] = new Matrix4f(result[parents[index]]).mul(result[index]);
+				result[index].set(result[parents[index]]).mul(pivoted);
+			} else {
+				result[index].set(pivoted);
 			}
 		}
 
 		return result;
 	}
 
-	private static float[] morphWeights(PhotonModelDefinition definition, Input input, @Nullable Clip clip, float time) {
-		var weights = new float[definition.morphs().size()];
+	private float[] morphWeights(PhotonModelDefinition definition, Input input, @Nullable Clip clip, float time) {
+		var scratch = this.scratch.get();
+
+		if (scratch.morphWeights.length != definition.morphs().size()) {
+			scratch.morphWeights = new float[definition.morphs().size()];
+		}
+
+		var weights = scratch.morphWeights;
 
 		for (int index = 0; index < weights.length; index++) {
 			var morph = definition.morphs().get(index);
@@ -480,8 +501,15 @@ public class PhotonModelPoseSampler {
 		if (definition.weights().isEmpty()) {
 			return Map.of();
 		}
-		var world = new Matrix4f[skeleton.parents().length];
-		var skin = new Matrix4f[world.length];
+		var scratch = this.scratch.get();
+
+		if (scratch.boneWorld.length != skeleton.parents().length) {
+			scratch.boneWorld = matrices(skeleton.parents().length);
+			scratch.boneSkin = matrices(skeleton.parents().length);
+		}
+
+		var world = scratch.boneWorld;
+		var skin = scratch.boneSkin;
 		for (int index : skeleton.order()) {
 			checkCancelled();
 			var bone = definition.bones().get(index);
@@ -492,13 +520,18 @@ public class PhotonModelPoseSampler {
 						override.rotation() == null ? sampled.rotation() : override.rotation(),
 						override.scale() == null ? sampled.scale() : override.scale());
 			}
-			var local = matrix(sampled);
+			var local = matrix(sampled, scratch.local);
 			int parent = skeleton.parents()[index];
-			world[index] = parent < 0 ? local : new Matrix4f(world[parent]).mul(local);
-			skin[index] = new Matrix4f(world[index]).mul(skeleton.inverseBind()[index]);
+
+			if (parent < 0) {
+				world[index].set(local);
+			} else {
+				world[index].set(world[parent]).mul(local);
+			}
+
+			skin[index].set(world[index]).mul(skeleton.inverseBind()[index]);
 		}
 		// 结果只在本次采样内被 positions 读取；复用线程私有存储，避免每顶点数组/矩阵/流对象。
-		var scratch = this.scratch.get();
 		scratch.skin.clear();
 		int poolIndex = 0;
 
@@ -719,8 +752,22 @@ public class PhotonModelPoseSampler {
 		return low;
 	}
 
+	private static Matrix4f[] matrices(int count) {
+		var result = new Matrix4f[count];
+
+		for (int index = 0; index < count; index++) {
+			result[index] = new Matrix4f();
+		}
+
+		return result;
+	}
+
 	private static Matrix4f matrix(Transform value) {
-		return new Matrix4f().translationRotateScale(vector(value.translation()), rotation(value), vector(value.scale()));
+		return matrix(value, new Matrix4f());
+	}
+
+	private static Matrix4f matrix(Transform value, Matrix4f target) {
+		return target.translationRotateScale(vector(value.translation()), rotation(value), vector(value.scale()));
 	}
 
 	private static Quaternionf rotation(Transform value) {

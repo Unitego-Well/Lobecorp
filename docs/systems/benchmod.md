@@ -1,5 +1,16 @@
 # BenchMod 基准工具链
 
+## 2026-10-29 第一批采样分配优化与研究复核
+
+PhotonModelPoseSampler在原线程私有SamplingScratch内复用part/bone矩阵、pivot和morph数组，并按组/角点数预分配输出列表；对外帧/顶点仍独立不可变。PhotonNamedRuntime稳定成员集复用排序快照，所有成员put/remove与close失效，不改优先级、事件与释放顺序。没有新资源池/容量限制/用户开关，不改NormalCache或技能负载。
+
+离线bench入口PhotonSamplingAllocationBenchmark用旧JAR与新class的独立child-first加载器，在同JVM/Prepared/输入比较完整raw float属性、帧不变性、线程分配及新增直接工作区。三次新JVM四fixture472组输入全等价，分配降幅中位数dust_column34.71%、laser_body36.07%、reverse_muzzle12.72%、source_dust14.27%；增加368–616 bytes/采样器/线程直接工作区（非总堆/资源/GPU）。旧JAR指纹与输入/CSV/等价hash均保留在本批build证据目录，未用重写的旧算法。
+
+普通模式单次激光三轮总体/场景PASSED，正式均值7.305/8.213/7.044ms，最长308.581/283.902/262.119ms；no_prepared197/196/196，长帧未解决。观察到原行断点外部移除，保留最新两异常断点并解除mute；不能把调试条件变化、跨时段游戏数字当完整优化A/B。P22/P23不关闭，光影未跑。新scratch7项+Geometry5项通过；IDEA编译/生产包隔离及Data通过，29生成文件与三配置/四WIP原SHA核对不变。
+
+DS的S/H/P三个独立研究包已交付停止；原生持久化尚未改，不能直接以IManaged字段容器代替Configurable解析，也不缓存实例IRef或急切构造全部key。用户新的“三次触发/间隔五秒/全面与无测试参数Run对照”矩阵另起批次，本段三轮每局只有一次不能冒充新矩阵。完整本地报告.agent/reports/20261029-first-performance-optimization.md；证据build/agent-backups/20261029-first-optimization/。
+
+
 ## 2026-10-29 对象内部诊断与原生数据对照
 
 只补信息，不优化。四个新增诊断Mixin在显式cast诊断时安装：IFXObject对象分派、FXObjectType基类fixData、PersistedParser标准工厂、反射与持久化。PhotonFXLoadDiagnosticsUtil提供startDetailedCapture(label)/finishDetailedCapture，导出对象身份/资源/父边界/返回或异常，以及按对象、阶段、声明类、字段、配置路径、root与结果类型分组的count/inclusive/exclusive/max/failed。对象summary写FXLOAD，字段不逐项写日志；结束清空，不保留世界/NBT/业务对象。coverage/missing与attributionComplete=false明确未计时工作，自定义codec绕过处不作零成本结论。

@@ -18,6 +18,7 @@
 
 - 项目文件只能通过 IDEA 编辑，包含代码、资源、Gradle 和 Markdown。IDEA/MCP 不可用时先说明并等待兜底授权；不得自动改用命令行或 apply_patch。修改前后读取相关编辑器信息。
 - 协作仅使用未归档的 AI 聊天，不检索、恢复或唤醒已归档聊天。
+- DS 辅助的模型选择与路由遵循[DS 辅助模型与路由](docs/standards/workflow.md#ds-辅助模型与路由)。
 - 工作区统一位于原始仓库 `.workspace/lobecorp_<content>`，由 Git worktree 管理并由原始仓库忽略；现有聊天完成后再为后续任务开新聊天，旧路径兼容链接不得提前移除。详见[工作区目录](docs/systems/workspace-layout.md)。
 - Minecraft MCP 只消费外部仓库构建并提交到 `lib` 的 JAR 和桥接制品；不恢复 `modules/minecraft-mcp` 或源码子项目。升级和隔离见[制品规范](docs/systems/minecraft-mcp-artifacts.md)。
 - 默认使用不抢焦点的 MCP/API；固定连续步骤合批，在开始、结束、分支或失败时读取必要状态。只修改本次授权范围；不顺带重构、清理、改名、格式化或修复。

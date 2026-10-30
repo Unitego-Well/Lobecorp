@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-31：分析核心长帧并减少规范恢复的冗余克隆
+
+- 四份既有JFR按owned完整帧分main/prewarm归因，核对pid/时钟敏感性/GC/截断；74慢间隔7.179s中Render段2.150s，子派生/持久化和首用绘制均有证据，非单一独占根因。DS的8份CSV核对完成，原始回报两处解读已勘误。
+- AssetUtil抽取共享校验并新增canonical借读；RuntimeCopy省整份adapt副本，保留公开adapt独占、旧适配/错误顺序及renderer/资产/依赖/source私有副本。新增7项定向测试、真实输入/双copy隔离用例与guard探针。
+- 全部代码完成后编译/生产包隔离、7JUnit、Data通过（0写删、29生成SHA不变）；新普通FULL三触发/44原生用例通过，15模型等次数分配比native少20.093%。主窗最长405.416ms，P22/P23不关闭。
+- 六配置字节恢复，代码验证后未变，原WIP/暂存保护；Sol关闭、DS归档，自有游戏/Debug/observer/日志点回收。报告.agent/reports/20261031-core-problem-and-secondary.md，证据及备份build/agent-backups/20261031-core-secondary/；未推送。
+
 ## 2026-10-31：落地模型标量复制与默认图准备优化
 
 - PhotonModelOutput接入有界typed恢复，保留完整未改公共Codec编码/guard/source/适配和renderer原生parser、可变状态独占；未消除大NBT编码/拷贝。

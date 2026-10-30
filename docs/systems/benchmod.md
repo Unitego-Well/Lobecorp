@@ -1,5 +1,17 @@
 # BenchMod 基准工具链
 
+## 2026-10-31 核心长帧归因与次要克隆优化
+
+本批离线重读最新A/B/B/A四局JFR，main/prewarm分别用owned完整CSV对齐并核对pid。74个>50ms间隔合计7.179s，GameRenderer段墙钟2.150s、直接GC重叠160.459ms；185个慢帧Render Java样本中76条栈截断。重叠分类为子派生46、持久化52、NBT copy20、几何21、诊断46，不是独占CPU比例。±2ms是假设敏感性检查，非校准误差上限，raw trace仍有界。
+
+源码确认nextTemplate消费prepared后置空，后续无候选即同步create；FX来源创建完整runtime，PROJECT来源逐对象copy并建runtime/timeline。首批慢帧另有类加载/调用点/几何/绘制；不能把所有停顿归为反射、材质或GC，也没有重开Debug影响隔离。DS累计表8份objects SHA通过，resource列全空，不能伪造资源归因；shared/inclusive/嵌套分配不相加。原DS回报中的两处趋势/对象口径已在主报告纠正。
+
+次要优化仅省canonical typed恢复的一份adapt整树克隆：共享校验+borrowCanonicalConfig，公开adapt仍独占，renderer小子树/asset/依赖/source继续独占，旧适配与错误顺序不变，公共类型Codec未改。
+
+全部代码完成后编译/包隔离、7定向JUnit、Data通过（0写删、29生成SHA不变）。一个全新普通FULL三触发、44原生用例通过；15模型每方案240copy相对原生分配少20.093%，只是单JVM局部对照，不与旧10.8%相加或称FPS收益。主窗最长405.416ms、>50ms19帧，P22/P23保持开放，无光影/截图。
+
+六配置字节恢复、5代码验证后未变、原WIP/暂存保留；Sol关闭、DS对照归档，客户端/Debug/observer结束、日志点移除。报告.agent/reports/20261031-core-problem-and-secondary.md，DS原始回报另存并注明勘误；证据build/agent-backups/20261031-core-secondary/，业务提交仅本轮文件，未推送。
+
 ## 2026-10-31 模型复制与默认材质准备优化
 
 PhotonModelOutput接入有界typed标量恢复，保留完整公共Codec编码、guard、adaptObject和source，复杂renderer继续原生parser，未消除大NBT拷贝。两个photon.material.client Mixin正常client注册，仅延迟确切ShaderGraphResource未用default_particle的原生生成，保留provider/global/meta/LoadBuiltin/真实Map/缓存，不改GL线程或负载。

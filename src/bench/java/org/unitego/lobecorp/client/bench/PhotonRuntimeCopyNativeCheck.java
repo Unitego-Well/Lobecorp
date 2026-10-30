@@ -27,6 +27,7 @@ import net.minecraft.nbt.ByteArrayTag;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -115,6 +116,7 @@ public class PhotonRuntimeCopyNativeCheck {
 		runCase("model_fresh_runtime_renderers_hierarchy_and_callbacks", this::modelRuntimeAndHierarchy);
 		runCase("model_null_normalization_extensions_and_exceptions", this::modelFallbacks);
 		runCase("model_encoded_version_resource_and_legacy_guards", this::modelEncodedGuards);
+		runCase("model_canonical_borrow_and_encoded_mutable_ownership", this::modelCanonicalBorrowOwnership);
 		// 真实资源在主窗口之后读取；不把配置 fixture 的成本伪装成真实 FX 成本。
 		for (var id : List.of(PhotonRepeatedEffectConfig.NATIVE_FX, "lobecorp:the_queen_of_hatred/laser",
 				"lobecorp:the_queen_of_hatred/light_ball")) {
@@ -698,6 +700,65 @@ public class PhotonRuntimeCopyNativeCheck {
 		compareEncodedModel(source, legacy);
 		legacy.getCompoundOrEmpty("data").getCompoundOrEmpty("config").remove("assetJson");
 		compareEncodedModel(source, legacy);
+	}
+
+	private void modelCanonicalBorrowOwnership() throws IOException {
+		var source = modelFixture();
+		source.config.setAssetSnapshot(new ByteArrayTag(new byte[]{1, 2, 3}));
+		source.config.assetDependencies.add(Identifier.parse("lobecorp:borrow_copy_dependency"));
+		var wrapper = encode(source);
+		var data = wrapper.getCompoundOrEmpty("data");
+		var config = data.getCompoundOrEmpty("config");
+		var unknown = new CompoundTag();
+		unknown.put("bytes", new ByteArrayTag(new byte[]{4, 5, 6}));
+		data.put("copy_unknown_mutable_root", unknown);
+		config.put("copy_unknown_mutable_config", unknown.copy());
+		config.getCompoundOrEmpty("assetMaterialDependencies").put("copy_mutable_dependency", unknown.copy());
+		config.getCompoundOrEmpty("modelRenderer").put("copy_unknown_renderer", unknown.copy());
+		assertTyped(source);
+		equal(true, PhotonModelRuntimeCopyUtil.supportsEncoded(source, wrapper));
+		var before = wrapper.copy();
+		var borrowed = PhotonModelAssetUtil.borrowCanonicalConfig(data);
+		// 返回原 config 及其原始可变子树，证明 guard 不借助整份适配副本。
+		equal(true, borrowed == config);
+		equal(true, borrowed.get("assetJson") == config.get("assetJson"));
+		equal(true, borrowed.get("assetMaterialDependencies") == config.get("assetMaterialDependencies"));
+		equal(before, wrapper);
+		var adapted = PhotonModelAssetUtil.adaptObject(data);
+		different(data, adapted);
+		different(config, adapted.getCompoundOrEmpty("config"));
+		var first = (PhotonModelOutput) Objects.requireNonNull(PhotonModelRuntimeCopyUtil.copyEncoded(source, wrapper));
+		var second = (PhotonModelOutput) Objects.requireNonNull(PhotonModelRuntimeCopyUtil.copyEncoded(source, wrapper));
+		var nativeCopy = Objects.requireNonNull(IFXObject.CODEC.parse(NbtOps.INSTANCE, wrapper).getOrThrow());
+		equal(encode(nativeCopy), encode(first));
+		equal(encode(nativeCopy), encode(second));
+		var firstBefore = encode(first);
+		var secondBefore = encode(second);
+		var sourceBefore = encode(source);
+		// 输入和公开适配结果均可变；修改后不得污染已恢复的配置或记忆。
+		((ByteArrayTag) Objects.requireNonNull(config.get("assetJson"))).getAsByteArray()[0] = 99;
+		config.getCompoundOrEmpty("assetMaterialDependencies").getCompoundOrEmpty("copy_mutable_dependency").putInt("changed", 1);
+		config.getCompoundOrEmpty("modelRenderer").putInt("orderInLayer", 901);
+		config.getCompoundOrEmpty("renderer").putInt("orderInLayer", 902);
+		((ListTag) Objects.requireNonNull(config.get("assetDependencies"))).clear();
+		unknown.putInt("changed", 2);
+		config.getCompoundOrEmpty("copy_unknown_mutable_config").putInt("changed", 3);
+		adapted.getCompoundOrEmpty("config").getCompoundOrEmpty("modelRenderer").putInt("changed", 4);
+		equal(firstBefore, encode(first));
+		equal(secondBefore, encode(second));
+		equal(sourceBefore, encode(source));
+		var inputAfter = wrapper.copy();
+		first.config.setAssetSnapshot(new ByteArrayTag(new byte[]{7}));
+		first.config.assetMaterialDependencies.getCompoundOrEmpty("copy_mutable_dependency").putInt("changed", 5);
+		first.config.assetDependencies.clear();
+		first.config.modelRenderer.setOrderInLayer(903);
+		first.config.renderer.setOrderInLayer(904);
+		var returned = first.source();
+		returned.getCompoundOrEmpty("copy_unknown_mutable_root").putInt("changed", 6);
+		equal(false, first.source().getCompoundOrEmpty("copy_unknown_mutable_root").contains("changed"));
+		equal(secondBefore, encode(second));
+		equal(sourceBefore, encode(source));
+		equal(inputAfter, wrapper);
 	}
 
 	private static void compareEncodedModel(PhotonModelOutput source, CompoundTag wrapper) {

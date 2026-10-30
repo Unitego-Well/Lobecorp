@@ -21,6 +21,38 @@ import java.io.IOException;
 public class PhotonModelAssetUtil {
 	/// 只在内存工作副本中补齐当前mfx包已保存的渲染设置，不迁移或覆盖原件。
 	public static CompoundTag adaptObject(CompoundTag source) throws IOException {
+		var config = validateObjectConfig(source);
+		var result = source.copy();
+
+		if (hasModelRenderer(config)) {
+			return result;
+		}
+
+		var renderer = config.getCompoundOrEmpty("renderer");
+		var asset = config.get("assetJson");
+
+		if (asset == null) {
+			throw new IOException("不能为缺少当前模型快照的对象推导默认渲染设置。");
+		}
+
+		read(asset, config.getCompoundOrEmpty("assetMaterialDependencies"));
+		result.getCompoundOrEmpty("config").put("modelRenderer", renderer.copy());
+		return result;
+	}
+
+	/// 仅借读已有 modelRenderer 的配置，不复制或修改输入；调用方不得写入、保留或转交其中的可变 Tag。
+	/// 缺少 modelRenderer 的对象仍须使用 adaptObject 完成快照校验及适配。
+	public static CompoundTag borrowCanonicalConfig(CompoundTag source) throws IOException {
+		var config = validateObjectConfig(source);
+
+		if (!hasModelRenderer(config)) {
+			throw new IOException("模型对象没有规范的渲染设置。");
+		}
+
+		return config;
+	}
+
+	private static CompoundTag validateObjectConfig(CompoundTag source) throws IOException {
 		if (source.contains("version") && (!(source.get("version") instanceof IntTag version) || version.intValue() != 0)) {
 			throw new IOException("模型对象版本不支持。");
 		}
@@ -34,25 +66,19 @@ public class PhotonModelAssetUtil {
 			throw new IOException("模型资源标识无效。");
 		}
 
-		var result = source.copy();
+		return config;
+	}
 
+	private static boolean hasModelRenderer(CompoundTag config) throws IOException {
 		if (config.get("modelRenderer") instanceof CompoundTag) {
-			return result;
+			return true;
 		}
 
-		if (config.contains("modelRenderer") || !(config.get("renderer") instanceof CompoundTag renderer)) {
+		if (config.contains("modelRenderer") || !(config.get("renderer") instanceof CompoundTag)) {
 			throw new IOException("模型对象没有有效的渲染设置。");
 		}
 
-		var asset = config.get("assetJson");
-
-		if (asset == null) {
-			throw new IOException("不能为缺少当前模型快照的对象推导默认渲染设置。");
-		}
-
-		read(asset, config.getCompoundOrEmpty("assetMaterialDependencies"));
-		result.getCompoundOrEmpty("config").put("modelRenderer", renderer.copy());
-		return result;
+		return false;
 	}
 
 	public static PhotonModelDefinition read(Tag asset, CompoundTag materialDependencies) throws IOException {

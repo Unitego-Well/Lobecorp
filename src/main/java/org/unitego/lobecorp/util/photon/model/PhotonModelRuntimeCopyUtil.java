@@ -55,26 +55,26 @@ public class PhotonModelRuntimeCopyUtil {
 	}
 
 	/// encoded 必须是 source 当前编码；独立测量恢复阶段，不保留其可变引用。
-	public static @Nullable IFXObject copyEncoded(PhotonModelOutput source, Tag encoded) {
-		if (!supportsEncoded(source, encoded)) {
-			return IFXObject.CODEC.parse(NbtOps.INSTANCE, encoded).result().orElse(null);
-		}
+    public static @Nullable IFXObject copyEncoded(PhotonModelOutput source, Tag encoded) {
+        if (!supportsEncoded(source, encoded)) {
+            return IFXObject.CODEC.parse(NbtOps.INSTANCE, encoded).result().orElse(null);
+        }
 
-		var data = ((CompoundTag) encoded).getCompoundOrEmpty("data");
-		CompoundTag adapted;
+        var data = ((CompoundTag) encoded).getCompoundOrEmpty("data");
+        CompoundTag config;
 
-		try {
-			adapted = PhotonModelAssetUtil.adaptObject(data);
-		} catch (IOException invalid) {
-			return null;
-		}
+        try {
+            config = PhotonModelAssetUtil.borrowCanonicalConfig(data);
+        } catch (IOException invalid) {
+            return null;
+        }
 
-		var copy = new PhotonModelOutput();
-		copyConfig(adapted.getCompoundOrEmpty("config"), copy.config);
-		PhotonRuntimeCopyUtil.copyBase(source, copy);
-		copy.rememberSource(data);
-		return copy;
-	}
+        var copy = new PhotonModelOutput();
+        copyConfig(config, copy.config);
+        PhotonRuntimeCopyUtil.copyBase(source, copy);
+        copy.rememberSource(data);
+        return copy;
+    }
 
 	/// 只接受当前编码器产出的规范形态；null、扩展类和存在原生规范化差异的值走完整原生路径。
 	public static boolean supportsEncoded(PhotonModelOutput source, Tag encoded) {
@@ -181,11 +181,12 @@ public class PhotonModelRuntimeCopyUtil {
 		target.opacity = data.getFloatOr("opacity", 1);
 		target.color = data.getIntOr("color", PhotonModelOutputConfig.DEFAULT_COLOR);
 		target.overrideRenderer = data.getBooleanOr("overrideRenderer", false);
-		var provider = Platform.getFrozenRegistry();
-		PersistedParser.deserializeNBT(data.getCompoundOrEmpty("modelRenderer"), target.modelRenderer, provider);
-		PersistedParser.deserializeNBT(data.getCompoundOrEmpty("renderer"), target.renderer, provider);
-		// unknown 合并可能保留旧依赖项，必须从合并后的 payload 恢复，不能照搬 source.config。
-		target.assetMaterialDependencies = data.getCompoundOrEmpty("assetMaterialDependencies").copy();
+        var provider = Platform.getFrozenRegistry();
+        // 复杂访问器仍接收独占子树，不把借读的可变 Tag 交给恢复结果。
+        PersistedParser.deserializeNBT(data.getCompoundOrEmpty("modelRenderer").copy(), target.modelRenderer, provider);
+        PersistedParser.deserializeNBT(data.getCompoundOrEmpty("renderer").copy(), target.renderer, provider);
+        // unknown 合并可能保留旧依赖项，必须从合并后的 payload 恢复，不能照搬 source.config。
+        target.assetMaterialDependencies = data.getCompoundOrEmpty("assetMaterialDependencies").copy();
 		target.assetDependencies.clear();
 
 		for (var entry : (ListTag) Objects.requireNonNull(data.get("assetDependencies"))) {

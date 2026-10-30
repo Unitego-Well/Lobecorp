@@ -186,7 +186,10 @@ public class PhotonRuntimeCopyLedger {
 				row.addProperty("model_actual_deep_copy_path", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled()
 						? "native_forced" : eligible ? "typed_restore" : "native_fallback");
 				row.addProperty("model_encode_eliminated", false);
-				row.addProperty("model_restore_scope", "same encoded wrapper; typed scalar/base restore; two native renderer subtrees; full adaptObject retained");
+				row.addProperty("model_restore_scope", "same encoded wrapper; canonical guard borrows config without whole-payload clone; two native renderer subtrees; owned snapshot, dependencies and remembered source retained");
+				if (eligible) {
+					phase(source, blocks, "model_canonical_borrow_guard_only", () -> borrowCanonicalConfig(payload));
+				}
 				phase(source, blocks, "model_typed_candidate_restore_without_encode", () -> PhotonModelRuntimeCopyUtil.copyEncoded(model, encoded));
 				var typed = Objects.requireNonNull(PhotonModelRuntimeCopyUtil.typedCopy(model));
 				if (!IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, expected).getOrThrow()
@@ -340,6 +343,14 @@ public class PhotonRuntimeCopyLedger {
 	private static IFXObject nativeCopy(IFXObject source) {
 		return IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, source).result()
 				.flatMap(tag -> IFXObject.CODEC.parse(NbtOps.INSTANCE, tag).result()).orElse(null);
+	}
+
+	private static CompoundTag borrowCanonicalConfig(CompoundTag payload) {
+		try {
+			return PhotonModelAssetUtil.borrowCanonicalConfig(payload);
+		} catch (IOException failure) {
+			throw new IllegalArgumentException(failure);
+		}
 	}
 
 	private static CompoundTag adapt(CompoundTag payload) {

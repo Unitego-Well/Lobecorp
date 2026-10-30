@@ -1,5 +1,11 @@
 # Photon 模型特效
 
+## 规范恢复避免整树适配副本（2026-10-31）
+
+PhotonModelAssetUtil.borrowCanonicalConfig复用版本/config/resource/renderer校验，只在已有modelRenderer时借读；PhotonModelRuntimeCopyUtil的规范路径不再先adapt整份data。公开adaptObject仍返回独占深副本，既有缺renderer推导、快照失败及错误顺序保留。复杂renderer各自复制子树供native parser，snapshot/依赖/rememberSource仍独占，不保留输入可变Tag，不共享活运行态，公共类型Codec未改。
+
+7项定向JUnit与客户端新增所有权用例通过；一次新FULL共44原生用例通过，15模型等次数copy相对native分配少20.093%，不是相对上批再少20.1%，亦非整体内存/FPS收益。完整编码及其他必要副本仍存在，主窗仍405ms长帧。核心同步派生/首用成本与剩余边界见[本批分析](benchmod.md#2026-10-31-核心长帧归因与次要克隆优化)。
+
 ## 模型复制的有界标量恢复（2026-10-31）
 
 PhotonModelOutput.deepCopy接入PhotonModelRuntimeCopyUtil，每次仍通过未改公共IFXObject.CODEC编码当前完整wrapper，保留unknown/source、资源/版本检查及asset适配。确切模型的规范标量/枚举/基础变换直接恢复，两个renderer仍原生PersistedParser解码；snapshot、依赖Tag/列表、变换、renderer、槽与运行态独占，不复制活场景、回调或几何缓存。null规范化、扩展类型和不支持值保留native回退。

@@ -8,9 +8,6 @@ import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
@@ -22,12 +19,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+
 import java.util.stream.Collectors;
 
 /// 从已有定义或项目子树制作独占实例；只过滤未复制目标的贡献，不修改原库和原文件。
 public class PhotonSpawnTemplateUtil {
 	/// 一次准备的独占 runtime；消费后所有权转移给实例，未消费则由生成器销毁。
-	public record Template(FXRuntime runtime, IScene scope, Set<String> path) {
+	public record Template(FXRuntime runtime, IScene scope, Set<String> path,
+						   @Nullable PhotonRuntimeFactory.Lease lease) {
+		public Template(FXRuntime runtime, IScene scope, Set<String> path) {
+			this(runtime, scope, path, null);
+		}
+
+		public void close(boolean force) {
+			if (lease == null) {
+				runtime.destroy(force);
+			} else {
+				lease.close(force);
+			}
+		}
+
 		public Template {
 			path = Set.copyOf(path);
 		}
@@ -48,12 +62,13 @@ public class PhotonSpawnTemplateUtil {
 				throw new IllegalArgumentException("子发射FX缺失或超出对象预算：" + location);
 			}
 
-			var runtime = fx.createRuntime(true);
+			var lease = PhotonRuntimeFactory.acquire(fx, owner.getLevel());
+			var runtime = lease.runtime();
 			runtime.objects.values().stream()
 					.filter(PhotonChildSpawner.class::isInstance)
 					.map(PhotonChildSpawner.class::cast)
 					.forEach(child -> child.source(runtime, path));
-			return new Template(runtime, runtime, path);
+			return new Template(runtime, runtime, path, lease);
 		}
 
 		var scope = owner.sourceScope();
@@ -66,32 +81,39 @@ public class PhotonSpawnTemplateUtil {
 		var path = descend(owner, "project:" + target.id());
 		var pending = new ArrayDeque<Transform>();
 		var seen = new HashSet<Transform>();
-		var copies = new ArrayList<IFXObject>();
+		var selected = new ArrayList<IFXObject>();
 		pending.add(target.transform());
 
 		while (!pending.isEmpty()) {
 			var next = pending.removeFirst();
-
-			if (!seen.add(next) || copies.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS || next.sceneObject() == owner
+			if (!seen.add(next) || selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS || next.sceneObject() == owner
 					|| !(next.sceneObject() instanceof IFXObject object)) {
 				throw new IllegalArgumentException("项目子模板循环、无效或超出对象预算。");
 			}
-
-			var copied = object.copy(true);
-
-			if (copied == null) {
-				throw new IllegalArgumentException("项目子模板复制失败：" + object.id());
-			}
-
-			if (!owner.config.includeChildren) {
-				copied.transform()._setInternalChildID(new ArrayList<>());
-			}
-
-			copies.add(copied);
-
+			selected.add(object);
 			if (owner.config.includeChildren) {
 				pending.addAll(next.children());
 			}
+		}
+
+		var lease = PhotonRuntimeFactory.project(scope, selected, target.id(), owner.config.includeChildren, owner.getLevel());
+		if (lease != null) {
+			var runtime = lease.runtime();
+			runtime.objects.values().stream().filter(PhotonChildSpawner.class::isInstance)
+					.map(PhotonChildSpawner.class::cast).forEach(child -> child.source(scope, path));
+			return new Template(runtime, scope, path, lease);
+		}
+
+		var copies = new ArrayList<IFXObject>();
+		for (var object : selected) {
+			var copied = object.copy(true);
+			if (copied == null) {
+				throw new IllegalArgumentException("项目子模板复制失败：" + object.id());
+			}
+			if (!owner.config.includeChildren) {
+				copied.transform()._setInternalChildID(new ArrayList<>());
+			}
+			copies.add(copied);
 		}
 
 		copies.getFirst().transform()._setInternalParentID(FXRuntime.ROOT_UUID);
@@ -132,17 +154,7 @@ public class PhotonSpawnTemplateUtil {
 		var source = controllers.getFirst();
 		var targets = copies.stream().filter(object -> !(object instanceof PhotonNamedController))
 				.map(IFXObject::id).collect(Collectors.toSet());
-		var definition = source.definition();
-
-		for (var value : definition.getListOrEmpty("animations")) {
-			if (!(value instanceof CompoundTag animation)) {
-				throw new IllegalArgumentException("项目命名库含无效动画。");
-			}
-
-			animation.getListOrEmpty("tracks").removeIf(track -> !retainTrack((CompoundTag) track, targets));
-			animation.getListOrEmpty("bindings").removeIf(binding ->
-					!targets.contains(UUID.fromString(((CompoundTag) binding).getStringOr("target", ""))));
-		}
+		var definition = PhotonProjectDefinitionUtil.filterOwned(source.definition(), targets);
 
 		var existing = copies.stream().filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
 
@@ -164,35 +176,5 @@ public class PhotonSpawnTemplateUtil {
 		controller.definition(definition);
 	}
 
-	private static boolean retainTrack(CompoundTag source, Set<UUID> targets) {
-		var data = source.getCompoundOrEmpty("data");
-		String type = source.getStringOr("type", "");
 
-		if (type.equals("group")) {
-			var children = data.getListOrEmpty("children");
-			children.removeIf(value -> !retainTrack((CompoundTag) value, targets));
-			return !children.isEmpty();
-		}
-
-		if (type.equals("control")) {
-			var clips = data.getListOrEmpty("clips");
-			clips.removeIf(value -> ((CompoundTag) value).read("clipTarget", UUIDUtil.CODEC).filter(targets::contains).isEmpty());
-			return !clips.isEmpty();
-		}
-
-		var target = data.read("target", UUIDUtil.CODEC);
-
-		if (target.isPresent() && !targets.contains(target.get())) {
-			return false;
-		}
-
-		if (data.get("clips") instanceof ListTag clips) {
-			clips.removeIf(value -> {
-				var clipTarget = ((CompoundTag) value).read("clipTarget", UUIDUtil.CODEC);
-				return clipTarget.isPresent() && !targets.contains(clipTarget.get());
-			});
-		}
-
-		return true;
-	}
 }

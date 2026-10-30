@@ -40,6 +40,7 @@
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |
 | Photon／LDLib2 修复 | [修复对照](photon-ldlib2-fixes.md) |
 | Photon 依赖升级 | [发布与适配](photon-dependency-upgrade.md) |
+| 实例创建架构 | [定义编译、受管租约、索引布局与原生默认](photon-runtime-creation.md) |
 | 发射器发射器 | [Photon 发射器发射器](photon-emitter-spawner.md) |
 | 命名粒子动画 | [Photon 命名动画](photon-named-animations.md) |
 | 模型特效 | [Photon 模型特效](photon-model-effects.md) |

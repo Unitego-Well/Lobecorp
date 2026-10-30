@@ -16,6 +16,8 @@ import net.neoforged.fml.ModList;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
+
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import java.util.concurrent.TimeUnit;
 import java.nio.file.StandardOpenOption;
 
@@ -32,6 +34,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 	private boolean started;
 	private Exception failure;
 	private long failureNs;
+	private JsonObject creationStatistics;
 
 	@Override
 	public void setup(BenchClientContext context) throws Exception {
@@ -112,12 +115,24 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 
 	private BenchClientStepResult measureStep(BenchClientContext context) throws Exception {
 		// ClientRuntimeEvents 是唯一 tick 驱动，Bench 不重复推进调度。
+		if (archived) {
+			return PhotonCreationNativeCheck.step(context, label)
+					? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+		}
+
 		var status = PhotonRepeatedEffectTrial.status(label);
+		var state = status.get("state").getAsString();
+		if ("MAIN_EXPORT".equals(state) || "CLEANUP".equals(state) || status.get("terminal").getAsBoolean()) {
+			captureCreationStatistics();
+		}
+
 		if (!status.get("terminal").getAsBoolean()) {
 			return BenchClientStepResult.CONTINUE;
 		}
 
+		captureCreationStatistics();
 		diagnostics.finish(context);
+		archiveCreationStatistics(context);
 		if (spark != null) {
 			if (!sparkStopping) {
 				if (!spark.poll()) {
@@ -140,7 +155,44 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 			throw new IllegalStateException("repeat_failed:" + status);
 		}
 
-		return BenchClientStepResult.COMPLETE;
+		return PhotonCreationNativeCheck.step(context, label)
+				? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
+	}
+
+	private void captureCreationStatistics() {
+		if (creationStatistics != null) {
+			return;
+		}
+
+		creationStatistics = new JsonObject();
+		creationStatistics.addProperty("phase", "first_observed_post_main_before_native_checks");
+		creationStatistics.addProperty("mode", PhotonRuntimeFactory.mode().name());
+		creationStatistics.addProperty("captured_ns", System.nanoTime());
+		creationStatistics.addProperty("tick", PhotonRuntimeFactory.ticks());
+		creationStatistics.addProperty("completed_frame", PhotonRuntimeFactory.frames());
+		creationStatistics.addProperty("scope", "cumulative through first observed post-main callback; includes warmup and possible export/cleanup; not isolated main-window delta");
+		creationStatistics.addProperty("post_check_included", false);
+		var counters = new JsonObject();
+		PhotonRuntimeFactory.statistics().forEach(counters::addProperty);
+		creationStatistics.add("factory_statistics", counters);
+	}
+
+	private void archiveCreationStatistics(BenchClientContext context) throws Exception {
+		if (creationStatistics.has("deserialize")) {
+			return;
+		}
+
+		var snapshot = creationStatistics.deepCopy();
+		if (diagnosticsStarted) {
+			snapshot.add("deserialize", diagnostics.details());
+		} else {
+			snapshot.addProperty("deserialize_unavailable", "detailed capture was not started");
+		}
+
+		snapshot.addProperty("decode_counter_scope", "observed diagnostic stage counts; absent stages are unobserved, not zero");
+		context.artifacts().write(label + "-creation-statistics.json", "application/json", snapshot.toString());
+		creationStatistics.add("deserialize", snapshot.get("deserialize") == null
+				? new JsonObject() : snapshot.get("deserialize").deepCopy());
 	}
 
 	private void archive(BenchClientContext context, JsonObject status) throws Exception {
@@ -218,6 +270,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 			throw new IllegalStateException("repeat_verification_incomplete");
 		}
 
+		PhotonCreationNativeCheck.verify(context, label);
 		PhotonPersistedMetadataNativeCheck.verify(context, label);
 		PhotonRuntimeCopyNativeCheck.verify(context, label);
 		PhotonRuntimeLifetimeNativeCheck.verify(context, label);
@@ -226,6 +279,14 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 
 	@Override
 	public void teardown(BenchClientContext context) throws Exception {
+		try {
+			PhotonCreationNativeCheck.cancel(context, label);
+		} finally {
+			teardownTrial(context);
+		}
+	}
+
+	private void teardownTrial(BenchClientContext context) throws Exception {
 		try {
 			if (started) {
 				PhotonRepeatedEffectTrial.cancel(label);

@@ -32,14 +32,27 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSourc
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nullable;
+
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTimelineProgram;
 
 /// 每个运行实例准备一次原生轨道与属性；未知轨道/被SDK跳过的属性必须失败，不能空播。
 public class PhotonNamedPlan {
-	record Property(FXObject target, AnimatedProperty value, Binding binding) {
+	private static final AtomicLong TRACK_DECODES = new AtomicLong();
+
+	public static long trackDecodeCount() {
+		return TRACK_DECODES.get();
+	}
+
+	public record Property(FXObject target, AnimatedProperty value, Binding binding) {
 	}
 
 	final Definition definition;
-	final Timeline timeline = new Timeline();
+	final Timeline timeline;
 	final List<Track> leaves;
 	final List<Property> properties;
 	final double authoredDuration;
@@ -50,15 +63,16 @@ public class PhotonNamedPlan {
 	}
 
 	public PhotonNamedPlan(HolderLookup.Provider provider, FXRuntime runtime, Definition definition, boolean projectPreview) {
+		this(runtime, definition, readTimeline(provider, definition), projectPreview, null);
+	}
+
+	public PhotonNamedPlan(FXRuntime runtime, Template template) {
+		this(runtime, template.definition, template.program.instantiate(), false, template);
+	}
+
+	private PhotonNamedPlan(FXRuntime runtime, Definition definition, Timeline timeline, boolean projectPreview, @Nullable Template template) {
 		this.definition = definition;
-		var sourceTracks = new ListTag();
-		sourceTracks.addAll(definition.tracks());
-		PhotonTimelineDecodeUtil.checkTracks(sourceTracks);
-
-		for (var source : definition.tracks()) {
-			timeline.tracks().add(read(provider, source));
-		}
-
+		this.timeline = timeline;
 		leaves = List.copyOf(timeline.leafTracks(false));
 		var prepared = new ArrayList<Property>();
 
@@ -73,8 +87,9 @@ public class PhotonNamedPlan {
 				}
 
 				for (var property : animation.properties()) {
-					var bindings = definition.bindings().stream().filter(value -> value.target().equals(track.targetId())
-							&& value.property().equals(property.type().key())).toList();
+					var bindings = template == null ? definition.bindings().stream().filter(value -> value.target().equals(track.targetId())
+							&& value.property().equals(property.type().key())).toList()
+							: template.bindings.getOrDefault(new BindingKey(track.targetId(), property.type().key()), List.of());
 
 					if (bindings.isEmpty()) {
 						bindings = List.of(new Binding(track.targetId(), property.type().key(), Blend.OVERRIDE, ValueSource.CURVE, "",
@@ -136,6 +151,65 @@ public class PhotonNamedPlan {
 		authoredDuration = duration == 0 ? PhotonNamedLibrary.DEFAULT_DURATION : duration;
 	}
 
+	private record BindingKey(UUID target, String property) {
+	}
+
+	/// 共享未绑定的定义和轨道初始化计划；Property 始终在实例构造时生成。
+	public static final class Template {
+		private final Definition definition;
+		private final PhotonTimelineProgram program;
+		private final Map<BindingKey, List<Binding>> bindings;
+
+		private Template(Definition definition, PhotonTimelineProgram program) {
+			this.definition = definition;
+			this.program = program;
+			var indexed = new LinkedHashMap<BindingKey, List<Binding>>();
+
+			for (var binding : definition.bindings()) {
+				indexed.computeIfAbsent(new BindingKey(binding.target(), binding.property()), _ -> new ArrayList<>()).add(binding);
+			}
+
+			indexed.replaceAll((_, values) -> List.copyOf(values));
+			bindings = Map.copyOf(indexed);
+		}
+
+		public int decodedTracks() {
+			return program.trackCount();
+		}
+
+		public List<String> fallbackReasons() {
+			return program.fallbackReasons();
+		}
+	}
+
+	public static Template compile(HolderLookup.Provider provider, Definition definition) {
+		var timeline = readTimeline(provider, definition);
+
+		for (var track : timeline.leafTracks(false)) {
+			if (!track.mute() && (track instanceof PhotonCallTrack || !(track instanceof AnimationTrack || track instanceof ActivatorTrack
+					|| track instanceof ControlTrack || track instanceof SpeedTrack || track instanceof PhotonModelClipTrack || track instanceof PhotonChildTrack
+					|| track instanceof SignalTrack || track instanceof AudioTrack || track instanceof PostProcessTrack))) {
+				throw new IllegalArgumentException("命名播放尚未支持该轨道：" + track.name());
+			}
+		}
+
+		return new Template(definition, PhotonTimelineProgram.compilePrepared(timeline, provider));
+	}
+
+	private static Timeline readTimeline(HolderLookup.Provider provider, Definition definition) {
+		var tracks = definition.tracks();
+		var sourceTracks = new ListTag();
+		sourceTracks.addAll(tracks);
+		PhotonTimelineDecodeUtil.checkTracks(sourceTracks);
+		var result = new Timeline();
+
+		for (var source : tracks) {
+			result.tracks().add(read(provider, source));
+		}
+
+		return result;
+	}
+
 	private static Track read(HolderLookup.Provider provider, CompoundTag source) {
 		var type = PhotonRegistries.TIMELINE_TRACKS.get(source.getStringOr("type", ""));
 
@@ -152,6 +226,7 @@ public class PhotonNamedPlan {
 		}
 
 		// 内存计划直接进入已登记类型；文件入口及保存保护仍由独立门禁负责。
+		TRACK_DECODES.incrementAndGet();
 		track.readData(provider, known);
 
 		if (track instanceof ActivatorTrack && !data.contains(PhotonActivationOptions.TAG)) {

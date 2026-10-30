@@ -40,6 +40,8 @@ import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
+import org.unitego.lobecorp.util.photon.creation.PhotonFrozenTag;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
@@ -48,6 +50,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.M
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -61,12 +64,15 @@ import java.util.function.Supplier;
 /// 独立模型输出复用Photon生命周期与原生材质批次；绘制回调只消费准备后的数据。
 @ParametersAreNonnullByDefault
 public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
+	public interface PreparedSource extends Supplier<PhotonModelTopologyUtil.Prepared> {
+		boolean matches(PhotonModelOutputConfig current);
+	}
+
 	@Persisted(subPersisted = true)
-	public final PhotonModelOutputConfig config = new PhotonModelOutputConfig();
-	private final RendererSetting.Runtime modelRenderer = new RendererSetting.Runtime(config.modelRenderer) {
-	};
-	private final RendererSetting.Runtime overrideRenderer = new RendererSetting.Runtime(config.renderer) {
-	};
+	public final PhotonModelOutputConfig config;
+	private final RendererSetting.Runtime modelRenderer;
+	private final RendererSetting.Runtime overrideRenderer;
+	private @Nullable Supplier<PhotonModelTopologyUtil.Prepared> compiledSupplier;
 	private final PhotonModelClock clock = new PhotonModelClock();
 	private final NormalCache normalCache = new NormalCache();
 	private static final int MAX_SNAPSHOT_VERTICES = PhotonPackedVertexUtil.MAX_VERTICES;
@@ -79,6 +85,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
 			.thenComparingLong(PhotonModelClip.Sample::order);
 	private CompoundTag original = new CompoundTag();
+	private @Nullable PhotonFrozenTag compiledOriginal;
 	private @Nullable PhotonModelPoseSampler sampler;
 	private @Nullable PhotonModelMaterials materials;
 	private @Nullable PhotonModelBindings dynamic;
@@ -91,6 +98,16 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private boolean preserveParticles;
 
 	public PhotonModelOutput() {
+		this(new PhotonModelOutputConfig(), null);
+	}
+
+	public PhotonModelOutput(PhotonModelOutputConfig config, @Nullable Supplier<PhotonModelTopologyUtil.Prepared> prepared) {
+		this.config = Objects.requireNonNull(config);
+		compiledSupplier = prepared;
+		modelRenderer = new RendererSetting.Runtime(config.modelRenderer) {
+		};
+		overrideRenderer = new RendererSetting.Runtime(config.renderer) {
+		};
 		bind("enabled", () -> config.enabled);
 		bind("duration", () -> config.duration);
 		bind("startDelay", () -> config.startDelay);
@@ -178,16 +195,53 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public void rememberSource(CompoundTag tag) {
+		compiledOriginal = null;
 		original = tag.copy();
 	}
 
+	/// 冻结来源由定义持有，实例保存时才复制；编辑来源时通过 rememberSource 脱离共享。
+	public void compiledSource(PhotonFrozenTag source) {
+		compiledOriginal = Objects.requireNonNull(source);
+		original = new CompoundTag();
+	}
+
 	public CompoundTag source() {
-		return original.copy();
+		return compiledOriginal == null ? original.copy() : compiledOriginal.compoundCopy();
+	}
+
+	public PhotonFrozenTag compileSource() {
+		if (compiledOriginal == null) {
+			compiledOriginal = new PhotonFrozenTag(original);
+			original = new CompoundTag();
+		}
+
+		return compiledOriginal;
+	}
+
+	/// 只替换未接线节点的准备来源，不加载资源或推进播放。
+	public void compiledPreparation(@Nullable Supplier<PhotonModelTopologyUtil.Prepared> prepared) {
+		compiledSupplier = prepared;
+		materials = null;
+		sampler = null;
+		dynamic = null;
+		sampledInput = null;
+		frame = null;
+		snapshotFrame = null;
+		discardPackedSnapshots();
+		geometrySnapshots.clear();
 	}
 
 	public void prepare() throws IOException {
+		if (compiledSupplier instanceof PreparedSource source && !source.matches(config)) {
+			compiledPreparation(null);
+		}
 		if (sampler == null) {
-			sampler = PhotonModelSourceUtil.prepare(config);
+			try {
+				sampler = compiledSupplier == null ? PhotonModelSourceUtil.prepare(config)
+						: new PhotonModelPoseSampler(compiledSupplier.get());
+			} catch (UncheckedIOException invalid) {
+				throw invalid.getCause();
+			}
 			var topology = sampler.prepared();
 			var definition = topology.definition();
 			var order = new ArrayList<Integer>();
@@ -632,6 +686,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private void invalidate() {
+		compiledSupplier = null;
 		materials = null;
 		sampler = null;
 		dynamic = null;

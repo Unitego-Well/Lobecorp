@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-31：完成实例创建重设计三方案对照
+
+- 先读Niagara/Effekseer/Unity/libGDX/Godot/Flecs/Qt/SQLite官方机制，再实现编译定义/fresh、显式Lease复用和保持原生次序的索引布局；覆盖根、FX及PROJECT，不冒称完整ECS/GPU。
+- 保留私有冻结来源、当前配置投影、无目标命名/时间轴程序和显式回退；修正primitive holder、force待加入队列、Transform激活重接及注册表fixture问题。首个13fail样本保留。
+- 全部代码完成后38纯测试、编译/包隔离/Data通过（23份生成JSON重复SHA一致）；12独立JVM/新世界、36次触发及每局74项契约通过。C频次/分配有改善，但候选最坏峰值均高于原生，默认NATIVE，P22/P23不关闭。
+- 四套完整版本、覆盖版本、参数/原件及参照表已保存；分析器修正-flat实际名称与首帧空interval，独立12行可比较检查通过。六配置、原WIP/暂存SHA保持，代理/游戏/Debug/observer/日志点回收；未推送。见[创建契约](photon-runtime-creation.md)及[基准比较](benchmod.md#2026-10-31-实例创建架构三方案对照)。
+
+
 ## 2026-10-31：分析核心长帧并减少规范恢复的冗余克隆
 
 - 四份既有JFR按owned完整帧分main/prewarm归因，核对pid/时钟敏感性/GC/截断；74慢间隔7.179s中Render段2.150s，子派生/持久化和首用绘制均有证据，非单一独占根因。DS的8份CSV核对完成，原始回报两处解读已勘误。

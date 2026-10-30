@@ -17,7 +17,6 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Event;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Input;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
@@ -77,6 +76,10 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	private final FXRuntime runtime;
 	private final PhotonNamedController controller;
 	private PhotonNamedLibrary library;
+	private @Nullable CompoundTag librarySource;
+	private @Nullable PhotonNamedController.CompiledDefinition compiledDefinition;
+	private long controllerRevision;
+	private boolean controllerMatches = true;
 	private final UUID id = UUID.randomUUID();
 	private final PhotonNamedMixer mixer = new PhotonNamedMixer();
 	private final PhotonNamedGates gates;
@@ -106,7 +109,11 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	public PhotonNamedRuntime(FXRuntime runtime, PhotonNamedController controller) throws IOException {
 		this.runtime = runtime;
 		this.controller = controller;
-		library = PhotonNamedCodecUtil.read(controller.definition());
+		var compiled = controller.compiledDefinition();
+		compiledDefinition = compiled;
+		library = compiled == null ? PhotonNamedController.readLibrary(controller.definition()) : compiled.library();
+		librarySource = compiled == null ? library.source() : null;
+		controllerRevision = controller.definitionRevision();
 		gates = new PhotonNamedGates(runtime);
 		speeds = new PhotonNamedNativeTracks.Speeds(runtime);
 		root = (FXObject) runtime.root;
@@ -117,7 +124,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			}
 		}
 
-		plans.putAll(preparePlans(runtime, library));
+		plans.putAll(preparePlans(runtime, library, compiled));
 		previousTick = root.getOnUpdateTick();
 		previousFrame = root.getOnUpdateFrame();
 		root.setOnUpdateTick(tickCallback);
@@ -143,7 +150,17 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	}
 
 	public boolean matchesController() {
-		return !closed && library.source().equals(controller.definition());
+		if (closed) {
+			return false;
+		}
+
+		if (controllerRevision != controller.definitionRevision()) {
+			controllerMatches = compiledDefinition == null ? controller.matchesDefinition(librarySource)
+					: compiledDefinition.matches(controller);
+			controllerRevision = controller.definitionRevision();
+		}
+
+		return controllerMatches;
 	}
 
 	public List<PhotonNamedHandle> playbacks() {
@@ -218,30 +235,39 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	/// 仅更新后续播放和事件使用的库；现有句柄继续使用其准备时的定义和计划。
 	public void redefine(CompoundTag source) throws IOException {
 		requireOpen();
-		if (library.source().equals(source)) {
+		if (compiledDefinition == null ? librarySource != null && librarySource.equals(source) : compiledDefinition.matchesDefinition(source)) {
 			return;
 		}
 
-		var candidate = PhotonNamedCodecUtil.read(source);
-		var prepared = preparePlans(runtime, candidate);
+		var compiled = compiledDefinition == null ? null
+				: PhotonNamedController.compileDefinition(source, controller.source());
+		var candidate = compiled == null ? PhotonNamedController.readLibrary(source) : compiled.library();
+		var prepared = preparePlans(runtime, candidate, compiled);
 		if (preview != null && prepared.containsKey(preview.handle.definition().id().toString())) {
 			throw new IllegalArgumentException("命名动画身份与工程测试身份冲突。");
 		}
 
 		library = candidate;
+		compiledDefinition = compiled;
+		librarySource = compiled == null ? candidate.source() : null;
+		controllerMatches = compiledDefinition == null ? controller.matchesDefinition(librarySource)
+				: compiledDefinition.matches(controller);
+		controllerRevision = controller.definitionRevision();
 		plans.clear();
 		plans.putAll(prepared);
 		revision++;
 	}
 
 	public static void validateLibrary(FXRuntime runtime, CompoundTag source) throws IOException {
-		preparePlans(runtime, PhotonNamedCodecUtil.read(source));
+		preparePlans(runtime, PhotonNamedController.readLibrary(source), null);
 	}
 
-	private static Map<String, PhotonNamedPlan> preparePlans(FXRuntime runtime, PhotonNamedLibrary library) {
+	private static Map<String, PhotonNamedPlan> preparePlans(FXRuntime runtime, PhotonNamedLibrary library,
+	                                                         @Nullable PhotonNamedController.CompiledDefinition compiled) {
 		var prepared = new LinkedHashMap<String, PhotonNamedPlan>();
 		for (var definition : library.animations()) {
-			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition);
+			var plan = compiled == null ? new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition)
+					: new PhotonNamedPlan(runtime, compiled.template(definition.id()));
 			prepared.put(definition.name(), plan);
 			prepared.put(definition.id().toString(), plan);
 		}

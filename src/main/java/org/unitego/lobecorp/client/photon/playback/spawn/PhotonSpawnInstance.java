@@ -19,11 +19,15 @@ import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 import javax.annotation.Nullable;
 import java.util.UUID;
 
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+
 /// 独占子FX及随机数；模拟和渲染仍由原生粒子宿主驱动，没有第二次手动tick。
 public class PhotonSpawnInstance implements IEffectExecutor {
 	private final UUID id = UUID.randomUUID();
 	private final PhotonChildSpawner owner;
 	private final FXRuntime runtime;
+	private final @Nullable PhotonRuntimeFactory.Lease lease;
+	private boolean disposed;
 	private final IEffectExecutor delegate;
 	private RandomSource random;
 	private final PhotonSpawnOverrides overrides;
@@ -46,6 +50,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	public PhotonSpawnInstance(PhotonChildSpawner owner, PhotonSpawnTemplateUtil.Template template) {
 		this.owner = owner;
 		runtime = template.runtime();
+		lease = template.lease();
 		RandomSource createdRandom;
 		try {
 			delegate = owner.getEffectExecutor();
@@ -90,7 +95,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 			createdRandom = RandomSource.create(owner.getRandomSource().nextLong());
 		} catch (RuntimeException invalid) {
-			runtime.destroy(true);
+			template.close(true);
 			throw invalid;
 		}
 		random = createdRandom;
@@ -109,7 +114,8 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 		switch (shape.type) {
 			case POINT -> {
 			}
-			case BOX -> value.set(source.nextFloat() - 0.5f, source.nextFloat() - 0.5f, source.nextFloat() - 0.5f).mul(shape.size);
+			case BOX ->
+					value.set(source.nextFloat() - 0.5f, source.nextFloat() - 0.5f, source.nextFloat() - 0.5f).mul(shape.size);
 			case SPHERE -> {
 				double theta = source.nextDouble() * Math.TAU;
 				double z = source.nextDouble() * 2 - 1;
@@ -133,6 +139,9 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	}
 
 	public void start() {
+		if (disposed || lease != null && !lease.current()) {
+			throw new IllegalStateException("子实例租约已失效。");
+		}
 		var root = (FXObject) runtime.root;
 		transform(0);
 		runtime.emit(this);
@@ -164,7 +173,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 			transform(owner.paused() ? 1 : partial);
 
 			if (frame != null) {
-                frame.accept(partial);
+				frame.accept(partial);
 			}
 		});
 		runtime.objects.values().forEach(overrides::apply);
@@ -181,7 +190,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	}
 
 	public void sync() {
-		if (runtime.isDestroyed()) {
+		if (disposed || runtime.isDestroyed()) {
 			return;
 		}
 
@@ -205,14 +214,22 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	}
 
 	public @Nullable PhotonNamedRuntime animations() {
-		return runtime.isDestroyed() ? null : ((PhotonNamedAccess) runtime).lobecorp$namedRuntime();
+		return disposed || runtime.isDestroyed() ? null : ((PhotonNamedAccess) runtime).lobecorp$namedRuntime();
 	}
 
 	public void stop(boolean force) {
-		runtime.destroy(force);
+		if (!disposed && (lease == null || lease.current())) {
+			runtime.destroy(force);
+			if (force) {
+				release(true);
+			}
+		}
 	}
 
 	public boolean finished() {
+		if (disposed) {
+			return true;
+		}
 		if (!started) {
 			return false;
 		}
@@ -221,10 +238,22 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 		if (root.getTickHost() != null && root.getTickHost().generation() != generation) {
 			stop(true);
+			release(true);
 			return true;
 		}
 
-		return runtime.isFinished() || !runtime.isDestroyed() && !runtime.isValid();
+		boolean complete = runtime.isFinished() || !runtime.isDestroyed() && !runtime.isValid();
+		if (complete) {
+			release(false);
+		}
+		return complete;
+	}
+
+	private void release(boolean force) {
+		disposed = true;
+		if (lease != null) {
+			lease.close(force);
+		}
 	}
 
 	@Override
@@ -239,14 +268,18 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 
 	@Override
 	public void updateFXObjectTick(IFXObject object) {
-		delegate.updateFXObjectTick(object);
-		overrides.apply(object);
+		if (object.getEffectExecutor() == this) {
+			delegate.updateFXObjectTick(object);
+			overrides.apply(object);
+		}
 	}
 
 	@Override
 	public void updateFXObjectFrame(IFXObject object, float partialTicks) {
-		delegate.updateFXObjectFrame(object, partialTicks);
-		overrides.apply(object);
+		if (object.getEffectExecutor() == this) {
+			delegate.updateFXObjectFrame(object, partialTicks);
+			overrides.apply(object);
+		}
 	}
 
 	@Override

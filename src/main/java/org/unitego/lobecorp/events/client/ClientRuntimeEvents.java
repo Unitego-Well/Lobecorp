@@ -18,6 +18,7 @@ import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
@@ -40,6 +41,7 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		QueenBeamEffects.clear();
+		PhotonRuntimeFactory.invalidateAll();
 	}
 
 	@SubscribeEvent
@@ -55,6 +57,7 @@ public class ClientRuntimeEvents {
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
 		QueenBeamEffects.clear();
+		PhotonRuntimeFactory.invalidateAll();
 		PhotonFrameCapture.cancel();
 		LcModelLodUtil.clear();
 	}
@@ -73,6 +76,7 @@ public class ClientRuntimeEvents {
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
 			QueenBeamEffects.clear();
+			PhotonRuntimeFactory.invalidateAll();
 			LcAttachments.clear(level);
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();
@@ -83,10 +87,12 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onVisualFrameEnd(RenderFrameEvent.Post event) {
 		LcModelLodUtil.endFrame();
+		PhotonRuntimeFactory.onFrameEnd();
 	}
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
+		PhotonRuntimeFactory.onTick();
 		PhotonRepeatedEffectTrial.tick();
 		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;

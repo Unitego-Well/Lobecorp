@@ -22,6 +22,7 @@ import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
@@ -475,6 +476,10 @@ public class PhotonRepeatedEffectTrial {
 
 	private void beginCapture(boolean prewarm) {
 		requireIdle();
+		if (!prewarm) {
+			report.add("creation_statistics_scope", GSON.toJsonTree("host_callbacks_enclosing_main_capture"));
+			report.add("creation_statistics_before_main", GSON.toJsonTree(PhotonRuntimeFactory.beginMeasurementWindow()));
+		}
 		captureLabel = label + (prewarm ? "_prewarm" : "_main");
 		if (mode == Mode.FULL) {
 			PhotonPerformanceCapture.start(captureLabel, prewarm ? PhotonRepeatedEffectConfig.PREWARM_LIMIT_SECONDS
@@ -668,6 +673,9 @@ public class PhotonRepeatedEffectTrial {
 	}
 
 	private void finishCapture(boolean main) {
+		if (main) {
+			report.add("creation_statistics_after_main", GSON.toJsonTree(PhotonRuntimeFactory.endMeasurementWindow()));
+		}
 		var frame = PhotonFrameCapture.snapshot();
 		if (!captureLabel.equals(frame.get("label").getAsString())) {
 			throw new IllegalStateException("repeat_frame_owner_changed");

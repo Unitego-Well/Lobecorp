@@ -34,7 +34,6 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQue
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedPlaybackDefinitionUtil;
 
 import javax.annotation.Nullable;
 
@@ -251,7 +250,7 @@ public class QueenBeamEffects {
 	private static void finalizeControllers(FXRuntime runtime) {
 		for (var object : runtime.objects.values()) {
 			if (object instanceof PhotonNamedController controller) {
-				controller.definition(PhotonNamedPlaybackDefinitionUtil.prepare(controller.definition()));
+				controller.preparePlaybackDefinition();
 			}
 		}
 	}
@@ -436,7 +435,7 @@ public class QueenBeamEffects {
 						((PhotonFixedRenderAccess) value.config.modelRenderer).lobecorp$useFixedRendering();
 					}
 					if (object instanceof PhotonNamedController controller) {
-						controller.definition(PhotonNamedPlaybackDefinitionUtil.prepare(controller.definition()));
+						controller.preparePlaybackDefinition();
 					}
 				}
 				PhotonCastProfiler.mark("controllerSetup");

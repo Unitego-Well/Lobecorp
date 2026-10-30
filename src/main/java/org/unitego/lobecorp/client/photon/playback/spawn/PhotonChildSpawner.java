@@ -125,7 +125,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				completed = true;
 				return true;
 			} catch (RuntimeException invalid) {
-				candidate.runtime().destroy(true);
+				candidate.close(true);
 				throw invalid;
 			}
 		} finally {
@@ -174,7 +174,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					completed = true;
 					return candidate;
 				}
-				candidate.runtime().destroy(true);
+				candidate.close(true);
 			}
 			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
 			try {
@@ -208,7 +208,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	private void discardPrepared() {
 		if (prepared != null) {
-			prepared.runtime().destroy(true);
+			prepared.close(true);
 			prepared = null;
 			preparedDefinition = null;
 		}
@@ -407,7 +407,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 						}
 					}
 				} catch (RuntimeException invalid) {
-					template.runtime().destroy(true);
+					template.close(true);
 					throw invalid;
 				}
 

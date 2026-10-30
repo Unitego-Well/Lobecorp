@@ -11,6 +11,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonNativeControlScenario;
+import org.unitego.lobecorp.client.bench.PhotonRepeatedEffectScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelResourceReloadScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
@@ -39,6 +40,13 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
+		if (LobecorpBenchConfig.PHOTON_REPEAT_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
+			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_REPEAT_PERFORMANCE_SCENARIO,
+							"三次特效，开始间隔五秒，共用四十秒窗口，无截图",
+							Set.of("client", "photon", "repeat", "performance"), Duration.ofSeconds(300)),
+					_ -> new PhotonRepeatedEffectScenario());
+		}
+
 		if (LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
 			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO,
 							"首次释放性能采集：20秒单次真实施放，无截图验收",

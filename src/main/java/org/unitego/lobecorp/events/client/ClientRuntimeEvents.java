@@ -15,6 +15,7 @@ import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
@@ -86,6 +87,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
+		PhotonRepeatedEffectTrial.tick();
 		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;
 		if (level != null) {

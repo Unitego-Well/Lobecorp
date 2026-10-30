@@ -192,4 +192,3 @@ public class PhotonModelSamplingScratchTest {
         return frame.groups().getFirst().vertices().get(corner).position();
     }
 }
-

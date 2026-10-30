@@ -1,5 +1,20 @@
 # BenchMod 基准工具链
 
+## 2026-10-30 三连发 FULL 与无测试参数 Run 矩阵
+
+四组各三局、每局三次触发，12局/36次已完成；每局独立JVM与新世界，主窗口40秒自然DURATION。Run使用真实VM无测试参数入口；FULL使用Sodium、BenchMod、MCP、IDEA Debug、JFR、Spark、CAST、提交及逐对象GPU诊断。六局FULL总体/场景均PASSED，测试截图0。不能将运行通过解释为长帧修复或视觉验收。
+
+共用核心 PhotonRepeatedEffectTrial 由唯一客户端tick驱动，2/7/12秒调度独占实例、保持五秒开始间隔，记录真实派发/服务端开始/首次活跃、重叠、内存、窗口、资产与加载类哈希，异步导出及自有对象清理。MCP扩展 photon_repeat_status/start/cancel/close/prepare；BASE前端拒绝真实测试VM参数，FULL通过03场景启动。prepare只最大化自有游戏，不调用focus。原生资源为原字节first_effect2，保留禁用扩展字段，不改变生产技能冷却、数量或生命周期。
+
+先后观察到AGGREGATES、NODES、COUNTERS容量停止，失败原件保留且不计有效局。三个独立诊断属性的默认预算仍4096；maxNodes和maxCountersPerThread钳制4096..16384，maxAggregatesPerThread钳制4096..65536。保留所有失败与质量guard，raw环不扩大。有效FULL为v4普通三局+激光01，v5激光02/03；v5额外扩counter预算。有效采集中所有容量拒绝为0，aggregate完整，raw仍是有限尾环，不能声称全程原始事件完整。
+
+主窗口间隔P99/最长(ms)：Run激光17.327–18.868 / 104.136–129.843；FULL激光70.562–160.500 / 477.709–771.786；Run普通8.643–9.868 / 29.980–67.201；FULL普通10.974–11.168 / 133.564–171.806。native三次之间无重叠，laser触发前活跃数0/1/2。不同负载、探针组合、容量和跨时段不是单一变量A/B，不据差额宣称优化收益。P22/P23保持开放。
+
+可复用入口在tools/photon/performance/及IDEA Photon Run Control No Test Parameters / Photon Repeat Full。build_repeat_manifest支持显式v4+v5重试选择并保留来源；FULL CSV规范化为带原路径/哈希的帧JSON。审计按重复-D最后值、DURATION实测窗口和世界初始快照分类；静态FX/材质/纹理仍严格校验。分析区分矩阵执行完整性与配置可比性，保留straddle、前一render归属、连续慢帧和unknown。原始机器数据不因审计修正而改变。
+
+Java目标回归29项、Python合成74项通过，IDEA main/bench编译及生产包隔离通过；Data written=0/removed=0。六份用户options/Iris/Spark恢复原字节SHA，原四WIP与既有暂存run-control参数保护；游戏/Debug与任务子代理收尾，未推送。证据build/agent-backups/20261030-repeat-matrix-final/；矩阵已完成但进程环境快照等缺失仍unknown，后续研究优先子实例Codec复制和原生持久化元数据，光影未测试。
+
+
 ## 2026-10-29 第一批采样分配优化与研究复核
 
 PhotonModelPoseSampler在原线程私有SamplingScratch内复用part/bone矩阵、pivot和morph数组，并按组/角点数预分配输出列表；对外帧/顶点仍独立不可变。PhotonNamedRuntime稳定成员集复用排序快照，所有成员put/remove与close失效，不改优先级、事件与释放顺序。没有新资源池/容量限制/用户开关，不改NormalCache或技能负载。

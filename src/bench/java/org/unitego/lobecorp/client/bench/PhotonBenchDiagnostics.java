@@ -14,6 +14,7 @@ import java.time.Duration;
 public class PhotonBenchDiagnostics {
 	private final String label;
 	private final String group;
+	private final String scenario;
 	private final JsonObject jfr = new JsonObject();
 	private boolean started;
 	private boolean finished;
@@ -21,8 +22,13 @@ public class PhotonBenchDiagnostics {
 	private JsonObject details;
 
 	public PhotonBenchDiagnostics(String label, String group) {
+		this(label, group, LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO);
+	}
+
+	public PhotonBenchDiagnostics(String label, String group, String scenario) {
 		this.label = label;
 		this.group = group;
+		this.scenario = scenario;
 	}
 
 	public void start() {
@@ -30,7 +36,7 @@ public class PhotonBenchDiagnostics {
 			throw new IllegalStateException("详细采集不能重复启动。");
 		}
 
-		var name = "modbench:" + LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO;
+		var name = "modbench:" + scenario;
 		var matches = FlightRecorder.getFlightRecorder().getRecordings().stream()
 				.filter(recording -> name.equals(recording.getName()) && recording.getState() == RecordingState.RUNNING).toList();
 		if (matches.size() != 1) {
@@ -90,6 +96,14 @@ public class PhotonBenchDiagnostics {
 				throw new IllegalStateException("详细反序列化采集归档失败。", failure);
 			}
 		}
+	}
+
+	public JsonObject details() {
+		if (!finished || details == null) {
+			throw new IllegalStateException("详细采集尚未结束。");
+		}
+
+		return details.deepCopy();
 	}
 
 	public JsonObject snapshot() {

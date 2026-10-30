@@ -61,7 +61,8 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	public @Nullable List<String> getMixins() {
 		var scenario = System.getProperty("modBench.scenarios", "");
 		// 与 Bench 注册项对应；Mixin 插件不能提前加载 Bench 类。
-		boolean performanceOnly = scenario.equals("lobecorp.photon-02-first-cast-performance");
+		boolean performanceOnly = scenario.equals("lobecorp.photon-02-first-cast-performance")
+				|| scenario.equals("lobecorp.photon-03-repeat-performance");
 
 		if (!scenario.equals("lobecorp.photon-00-first-cast")
 				&& !scenario.equals("lobecorp.photon-01-resource-reload") && !performanceOnly) {

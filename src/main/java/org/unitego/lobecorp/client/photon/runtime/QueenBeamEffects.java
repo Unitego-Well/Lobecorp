@@ -70,6 +70,11 @@ public class QueenBeamEffects {
 	/// 历史法阵起点相对身体中心前移一格，服务端命中原点保持原值。
 	private static final double VISUAL_FORWARD = 1;
 
+	/// 只读当前世界的既有预热队列状态，不触发或改变预热。
+	public static boolean prewarmComplete(Level level) {
+		return !PREWARM || prewarmedLevel == level && prewarmed && prewarmQueue == null;
+	}
+
 	public static void tick() {
 		var level = Minecraft.getInstance().level;
 		if (level == null) {

@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-31：落地模型标量复制与默认图准备优化
+
+- PhotonModelOutput接入有界typed恢复，保留完整未改公共Codec编码/guard/source/适配和renderer原生parser、可变状态独占；未消除大NBT编码/拷贝。
+- 新lazy Builtin provider与两个正常client Mixin仅延迟确切ShaderGraphResource未用默认图，保留资源/事件/Map/cache和失败重试，修正null addResource原生false语义。新增归档前计数、归档后checker和双启动控制。
+- 全部代码完成后编译/生产包隔离、4机制JUnit/Data通过（0写删、29生成SHA不变）；四新FULL共12触发/172原生用例通过，15模型等次数分配少10.793%～10.884%，B默认图0生成。两组主窗>50ms同为37帧，P22/P23不关闭。
+- 六配置原字节恢复、源码验证后未变、WIP/原暂存保持；四游戏/Debug/observer和接续Sol结束，自有日志点删除、用户断点保留。新中转站deepseek-v4.1-flash low对照完成并归档，旧404保留历史。
+- 文档/完整报告已同步，证据及备份build/agent-backups/20261031-copy-material-optimization/；无光影/截图/推送，旧pyc未再清理。见[统一结果](benchmod.md#2026-10-31-模型复制与默认材质准备优化)。
+
 ## 2026-10-31：更新 DS 中转站辅助模型
 
 - 根据用户恢复 DS 并指定新模型的指令，将工作流程中的现行选型更新为 `deepseek-v4.1-flash（DeepSeek 中转站）`；只读核对当前软件模型目录，实际 ID 为 `ccs-deepseek-2/deepseek-v4.1-flash`，最低推理档为 `low`。

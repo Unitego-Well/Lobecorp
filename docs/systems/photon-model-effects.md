@@ -1,5 +1,13 @@
 # Photon 模型特效
 
+## 模型复制的有界标量恢复（2026-10-31）
+
+PhotonModelOutput.deepCopy接入PhotonModelRuntimeCopyUtil，每次仍通过未改公共IFXObject.CODEC编码当前完整wrapper，保留unknown/source、资源/版本检查及asset适配。确切模型的规范标量/枚举/基础变换直接恢复，两个renderer仍原生PersistedParser解码；snapshot、依赖Tag/列表、变换、renderer、槽与运行态独占，不复制活场景、回调或几何缓存。null规范化、扩展类型和不支持值保留native回退。
+
+未消除完整编码、adaptObject、snapshot setter和rememberSource的大NBT复制，未新引入生产反射。lobecorp.photon.bench.nativeModelCopy=true仅作启动时整模型原生encode/parse控制，默认false；公共类型Codec保持原样作独立基线。配置或parser升级时同步typed字段与穷举原生对照。
+
+全部代码完成后四新FULL各18项复制原生用例通过，覆盖Persisted/Configurable、Source/null、未知字段、变换/renderer/Tag独占、回调及guard。15模型等次数微对照总分配少10.793%～10.884%，不按真实频率加权，墙钟不稳定，不能写成整FX/FPS收益。P22/P23开放，见[统一证据](benchmod.md#2026-10-31-模型复制与默认材质准备优化)。
+
 ## 准备缓存账本与死键回收（2026-10-31）
 
 PhotonModelSourceUtil.preparationStatistics仅返回资源/内嵌entries、liveValues与内嵌keyBytes，不暴露实例/世界；RESOURCE键字节为-1表示未计量。keyBytes只指独立NBT键，不含拓扑、求值器、native或GPU内存。

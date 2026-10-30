@@ -20,6 +20,16 @@
 - 本轮文档工作只做源码对照和文档检查；PH-01 的代码修改与实际检查由本轮修复负责人执行，结果单独记录。未运行测试或游戏。
 - 补丁位于 Lobecorp 的 Mixin、适配类与工具类，没有直接改写第三方 JAR。LDLib2 补丁默认限于当前 Photon 编辑器及相应设置；升级时重新确认限定条件。
 
+## ShaderGraph未用默认图的延迟生成（2026-10-31）
+
+这是准备阶段性能优化，非上游功能缺陷。当前LDLib2 26.1.2.42的Resource.buildBuiltin(ResourceInstance)会先填充内置provider，再建global/发布LoadBuiltin；Photon 26.1.2.3的ShaderGraphResource会createGraph/serializeGraph，即使只请求文件图。
+
+ResourceMixin仅为确切ShaderGraphResource延迟默认builder，ResourceInstanceMixin只计成功文件请求。两者正常client生效，不受diag.material开关控制；保留注册/meta/事件/优先级/cache。Builtin实际has/get/add/remove及iterator/getContents按需生成，loaded peek不加载，返回真实可变Map和原生Tag。null addResource在生成前直接false；暂存provider隔离失败，可重试，不注册临时ResourceInstance或移动GL线程。
+
+升级时重新核对NEW/INVOKE描述符、LoadBuiltin订阅者和直接contents访问。已读当前订阅者未见ShaderGraph绕过公开API读取，公开枚举会触发生成；PackResourceManager钩子只清pack层，builtin沿原生命周期保留。
+
+lobecorp.photon.bench.eagerShaderBuiltin=true仅作启动时原生控制，默认false。四新FULL各10项provider/NBT用例通过；B文件请求39080/40464期间默认图生成0，热命中不等于I/O。完整资源重载、视觉、光影和FPS未据此验收；见[统一证据](benchmod.md#2026-10-31-模型复制与默认材质准备优化)。
+
 ## LDLib2：兼容适配与性能优化
 
 ### LD-01 系统文本剪贴板入口

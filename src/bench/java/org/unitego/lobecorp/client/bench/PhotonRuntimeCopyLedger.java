@@ -14,6 +14,7 @@ import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -44,6 +45,9 @@ public class PhotonRuntimeCopyLedger {
 		var report = new JsonObject();
 		report.addProperty("phase", "verify_after_main_window_archive");
 		report.addProperty("main_window_sample", false);
+		report.addProperty("native_model_copy_property", PhotonModelRuntimeCopyUtil.NATIVE_MODEL_COPY_PROPERTY);
+		report.addProperty("native_model_copy_enabled", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled());
+		report.addProperty("native_baseline", "unchanged public IFXObject.CODEC encode/parse; never model.deepCopy");
 		report.addProperty("start_nano_time", started);
 		report.addProperty("repetitions_per_block", REPETITIONS);
 		report.addProperty("soft_budget_ns", BUDGET_NS);
@@ -174,9 +178,36 @@ public class PhotonRuntimeCopyLedger {
 				PhotonEditorProjectGuardUtil.requireSupported(encoded);
 				return Boolean.TRUE;
 			});
-			if (source instanceof PhotonModelOutput && encoded instanceof CompoundTag wrapper) {
+			if (source instanceof PhotonModelOutput model && encoded instanceof CompoundTag wrapper) {
 				var payload = wrapper.getCompoundOrEmpty("data");
 				phase(source, blocks, "model_adapt_only", () -> adapt(payload));
+				boolean eligible = PhotonModelRuntimeCopyUtil.supportsEncoded(model, encoded);
+				row.addProperty("model_typed_restore_eligible", eligible);
+				row.addProperty("model_actual_deep_copy_path", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled()
+						? "native_forced" : eligible ? "typed_restore" : "native_fallback");
+				row.addProperty("model_encode_eliminated", false);
+				row.addProperty("model_restore_scope", "same encoded wrapper; typed scalar/base restore; two native renderer subtrees; full adaptObject retained");
+				phase(source, blocks, "model_typed_candidate_restore_without_encode", () -> PhotonModelRuntimeCopyUtil.copyEncoded(model, encoded));
+				var typed = Objects.requireNonNull(PhotonModelRuntimeCopyUtil.typedCopy(model));
+				if (!IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, expected).getOrThrow()
+						.equals(IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, typed).getOrThrow())) {
+					throw new AssertionError("native versus typed candidate equivalence failed");
+				}
+				for (int i = 0; i < 2 && withinBudget(); i++) {
+					sink = nativeCopy(model);
+					sink = PhotonModelRuntimeCopyUtil.typedCopy(model);
+				}
+
+				for (var mode : List.of("A", "B", "B", "A")) {
+					var block = measure(mode.equals("A") ? () -> nativeCopy(model) : () -> PhotonModelRuntimeCopyUtil.typedCopy(model));
+					block.addProperty("phase", "model_native_vs_typed_full_copy");
+					block.addProperty("mode", mode);
+					block.addProperty("typed_candidate_path", eligible ? "typed_restore" : "native_fallback");
+					blocks.add(block);
+					aggregate(source, "model_native_vs_typed_full_copy_" + mode, block);
+				}
+				row.add("full_copy_comparison", comparison(blocks, "full_copy"));
+				row.add("native_vs_typed_comparison", comparison(blocks, "model_native_vs_typed_full_copy"));
 			}
 
 			row.addProperty("status", exhausted ? "partial_budget" : "complete");
@@ -184,6 +215,48 @@ public class PhotonRuntimeCopyLedger {
 			row.addProperty("status", "failed");
 			row.addProperty("failure", failure.toString());
 		}
+	}
+
+	private static JsonObject comparison(JsonArray blocks, String phase) {
+		long nativeNs = 0;
+		long currentNs = 0;
+		long nativeBytes = 0;
+		long currentBytes = 0;
+		long nativeCount = 0;
+		long currentCount = 0;
+		boolean allocationAvailable = true;
+		int completeBlocks = 0;
+		for (var element : blocks) {
+			var block = element.getAsJsonObject();
+			if (!block.get("phase").getAsString().equals(phase) || !block.get("complete").getAsBoolean()) {
+				continue;
+			}
+			completeBlocks++;
+			allocationAvailable &= block.get("allocation_available").getAsBoolean();
+			if (block.get("mode").getAsString().equals("A")) {
+				nativeNs += block.get("elapsed_ns").getAsLong();
+				nativeBytes += block.get("allocated_bytes").getAsLong();
+				nativeCount += block.get("copies").getAsLong();
+			} else {
+				currentNs += block.get("elapsed_ns").getAsLong();
+				currentBytes += block.get("allocated_bytes").getAsLong();
+				currentCount += block.get("copies").getAsLong();
+			}
+		}
+		var result = new JsonObject();
+		boolean comparable = completeBlocks == 4 && nativeCount > 0 && nativeCount == currentCount;
+		result.addProperty("phase", phase);
+		result.addProperty("mode_A", "unchanged_public_codec_encode_parse");
+		result.addProperty("mode_B", phase.equals("full_copy") ? "actual_deepCopy" : "typed_candidate_independent_of_native_control");
+		result.addProperty("equal_complete_operation_counts", comparable);
+		result.addProperty("native_operations", nativeCount);
+		result.addProperty("current_operations", currentCount);
+		result.addProperty("native_minus_current_ns", comparable ? nativeNs - currentNs : 0);
+		result.addProperty("allocation_available", comparable && allocationAvailable);
+		result.addProperty("native_minus_current_allocated_bytes", comparable && allocationAvailable ? nativeBytes - currentBytes : 0);
+		result.addProperty("positive_delta_means_reduction", true);
+		result.addProperty("scope", "measured full copy ABBA; encode remains; no FPS or retained-memory claim");
+		return result;
 	}
 
 	private void phase(IFXObject source, JsonArray blocks, String phase, Supplier<?> operation) {

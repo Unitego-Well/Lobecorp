@@ -35,6 +35,7 @@ import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
@@ -264,6 +265,11 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		return sampler.prepared().definition();
+	}
+
+	@Override
+	public IFXObject deepCopy() {
+		return PhotonModelRuntimeCopyUtil.deepCopy(this);
 	}
 
 	@Override

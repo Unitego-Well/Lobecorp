@@ -207,6 +207,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 		context.artifacts().write(label + "-trial.json", "application/json", Files.readString(directory.resolve("trial.json")));
 		context.artifacts().write(label + "-status.json", "application/json", PhotonRepeatedEffectTrial.status(label).toString());
 		archived = true;
+		NativeMaterialPreparationCheck.captureMainWindowCounters(context, label);
 	}
 
 	@Override
@@ -220,6 +221,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 		PhotonPersistedMetadataNativeCheck.verify(context, label);
 		PhotonRuntimeCopyNativeCheck.verify(context, label);
 		PhotonRuntimeLifetimeNativeCheck.verify(context, label);
+		NativeMaterialPreparationCheck.verify(context, label);
 	}
 
 	@Override

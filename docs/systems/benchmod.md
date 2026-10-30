@@ -1,5 +1,24 @@
 # BenchMod 基准工具链
 
+## 2026-10-31 模型复制与默认材质准备优化
+
+PhotonModelOutput接入有界typed标量恢复，保留完整公共Codec编码、guard、adaptObject和source，复杂renderer继续原生parser，未消除大NBT拷贝。两个photon.material.client Mixin正常client注册，仅延迟确切ShaderGraphResource未用default_particle的原生生成，保留provider/global/meta/LoadBuiltin/真实Map/缓存，不改GL线程或负载。
+
+全部代码和控制配置完成后，编译/生产包隔离、4项机制JUnit、Data通过（0写删，29生成SHA不变）。同源A/B/B/A四新JVM/世界各40秒，共12触发/172原生用例通过；A为nativeModelCopy=true和eagerShaderBuiltin=true，B均false，默认false。归档前材质计数与归档后checker分账；pack钩子用例不是完整Minecraft重载。
+
+| 局次 | 主间隔均值ms | P99 ms | 最长ms | >50ms |
+|---|---|---|---|---|
+| A1 | 8.333 | 34.468 | 351.570 | 19 |
+| B1 | 8.082 | 32.096 | 241.920 | 17 |
+| B2 | 7.998 | 31.103 | 298.247 | 20 |
+| A2 | 8.068 | 33.821 | 287.429 | 18 |
+
+两组>50ms各37帧，不宣布FPS/长帧修复。每JVM11资源/80对象、15模型每方案240copy微对照，配对分配少10.793%～10.884%，有一轮耗时反向22.35%。B文件请求39080/40464期间1个lazy provider/0默认图生成；计数含热命中，非磁盘I/O次数，A原生provider不计新计数器。
+
+四局各50材质任务全在main前，最慢A280.537/250.142ms、B228.795/194.555ms，预热最长仍0.87～1.59秒。JFR/Spark、19877桥接及完整CSV SHA有效，raw trace有界覆盖；非旧12局矩阵重跑，不与旧探针批次作FPS因果比较。无光影/截图，PNG0，P22/P23开放。
+
+六配置SHA恢复，验证后源码哈希不变，WIP/原暂存保留；四游戏/Debug/observer结束，自有日志点移除。接续Sol关闭，deepseek-v4.1-flash中转站low对照完成并归档。完整报告.agent/reports/20261031-copy-material-optimization-final.md，证据build/agent-backups/20261031-copy-material-optimization/。本地控制配置已消费world/result，重跑须新建标识。
+
 ## 2026-10-31 四线并行批次收尾
 
 10-30启动的复制/材质/长帧/释放四线已统一集成。新PhotonRuntimeCopyLedger以lobecorp.photon.copyLedger.enabled显式开启（8次/块、60秒软预算），八个材质Mixin仅lobecorp.photon.diag.material=true时应用，真实mapping执行计miss、实际GL调用单独计数；默认均关闭，插件不提前加载客户端诊断类。PhotonRuntimeLifetimeNativeCheck只在lobecorp.photon.bench.retentionProbe=true且main/复制账本归档后请求GC、检查缓存/弱引用/整堆差，不污染40秒窗口。

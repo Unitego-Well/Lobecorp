@@ -126,6 +126,8 @@
 		"photon.performance.client.PhotonPipelinesMixin",
 		"photon.performance.client.GlDeviceMixin",
 		"photon.performance.client.GlProgramMixin",
+		"photon.material.client.ResourceMixin",
+		"photon.material.client.ResourceInstanceMixin",
 		"photon.performance.client.PhotonPersistedMetadataMixin",
 		"photon.performance.client.FXMixin",
 		"photon.performance.client.FXObjectMixin",

@@ -3,6 +3,12 @@ package org.unitego.lobecorp.client.bench;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
+import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
+import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
+import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
+import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Anchor;
+import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXHelper;
@@ -60,6 +66,9 @@ public class PhotonRuntimeCopyNativeCheck {
 		var report = new JsonObject();
 		report.addProperty("phase", "verify_after_main_window_archive");
 		report.addProperty("main_window_sample", false);
+		report.addProperty("native_model_copy_property", PhotonModelRuntimeCopyUtil.NATIVE_MODEL_COPY_PROPERTY);
+		report.addProperty("native_model_copy_enabled", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled());
+		report.addProperty("model_candidate_checks", "typed candidate checked independently even when deepCopy is forced native");
 		report.addProperty("start_epoch_millis", System.currentTimeMillis());
 		report.addProperty("start_nano_time", System.nanoTime());
 		report.addProperty("scope", "registered IFXObject.CODEC equivalence; borrowed real FX definitions remain unmodified");
@@ -102,8 +111,13 @@ public class PhotonRuntimeCopyNativeCheck {
 		runCase("raw_codec_enum_version_resource_guards", this::rawGuards);
 		runCase("subclass_callbacks_use_native_parse", this::subclasses);
 		runCase("real_model_config_wrapper_transform_independence", this::modelConfigAndOwnership);
+		runCase("model_typed_all_persisted_and_configurable_fields", this::modelTypedFields);
+		runCase("model_fresh_runtime_renderers_hierarchy_and_callbacks", this::modelRuntimeAndHierarchy);
+		runCase("model_null_normalization_extensions_and_exceptions", this::modelFallbacks);
+		runCase("model_encoded_version_resource_and_legacy_guards", this::modelEncodedGuards);
 		// 真实资源在主窗口之后读取；不把配置 fixture 的成本伪装成真实 FX 成本。
-		for (var id : List.of(PhotonRepeatedEffectConfig.NATIVE_FX, "lobecorp:the_queen_of_hatred/laser")) {
+		for (var id : List.of(PhotonRepeatedEffectConfig.NATIVE_FX, "lobecorp:the_queen_of_hatred/laser",
+				"lobecorp:the_queen_of_hatred/light_ball")) {
 			runCase("real_fx:" + id, () -> realFx(Identifier.parse(id)));
 		}
 	}
@@ -454,6 +468,251 @@ public class PhotonRuntimeCopyNativeCheck {
         equal(before, encode(borrowed));
     }
 
+
+	private PhotonModelOutput modelFixture() {
+		var fx = Objects.requireNonNull(FXHelper.getFX(Identifier.parse("lobecorp:the_queen_of_hatred/laser")));
+		var borrowed = fx.getFxData().objects().stream().filter(PhotonModelOutput.class::isInstance).findFirst().orElseThrow();
+		return (PhotonModelOutput) Objects.requireNonNull(nativeCopy(borrowed));
+	}
+
+	private void modelTypedFields() throws ReflectiveOperationException {
+		var source = modelFixture();
+		for (var field : PhotonModelOutputConfig.class.getDeclaredFields()) {
+			if (Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())
+					|| (!field.isAnnotationPresent(Persisted.class) && !field.isAnnotationPresent(Configurable.class))) {
+				continue;
+			}
+
+			if (field.getType() == boolean.class) {
+				field.setBoolean(source.config, !field.getBoolean(source.config));
+			} else if (field.getType() == int.class) {
+				field.setInt(source.config, 37);
+			} else if (field.getType() == float.class) {
+				field.setFloat(source.config, 0.37f);
+			} else if (field.getType() == String.class) {
+				field.set(source.config, "typed_model_copy");
+			} else if (field.getType().isEnum()) {
+				field.set(source.config, field.getType().getEnumConstants()[1]);
+			}
+		}
+
+		source.config.resource = Identifier.parse("lobecorp:copy_resource");
+		source.config.assetDependencies.add(Identifier.parse("lobecorp:copy_dependency"));
+		source.config.assetMaterialDependencies.putString("copy_material_dependency", "retained");
+		source.config.renderer.setOrderInLayer(37);
+		source.config.modelRenderer.setOrderInLayer(-23);
+		source.config.renderer.getCustomMask().setMaskGroup("copy_override");
+		source.config.modelRenderer.getCustomMask().setMaskGroup("copy_model");
+		source.config.setAssetSnapshot(new ByteArrayTag(new byte[]{1, 2, 3}));
+		assertTyped(source);
+		var copy = (PhotonModelOutput) compare(source);
+		for (var field : PhotonModelOutputConfig.class.getDeclaredFields()) {
+			if (!Modifier.isStatic(field.getModifiers()) && !Modifier.isFinal(field.getModifiers())
+					&& (field.isAnnotationPresent(Persisted.class) || field.isAnnotationPresent(Configurable.class))) {
+				equal(field.get(source.config), field.get(copy.config));
+			}
+		}
+		equal(source.config.assetSnapshot(), copy.config.assetSnapshot());
+		equal(ByteArrayTag.class, copy.config.assetSnapshot().getClass());
+		for (var value : PhotonModelOutputConfig.Source.values()) {
+			source.config.source = value;
+			assertTyped(source);
+			compare(source);
+		}
+		for (var value : Anchor.values()) {
+			source.config.anchor = value;
+			assertTyped(source);
+			compare(source);
+		}
+		source.config.setAssetSnapshot(StringTag.valueOf("snapshot_original_representation"));
+		assertTyped(source);
+		equal(StringTag.class, ((PhotonModelOutput) compare(source)).config.assetSnapshot().getClass());
+
+		// 合并后的依赖包含旧 source 独有项；typed 恢复必须读取合并结果。
+		var original = source.source();
+		original.getCompoundOrEmpty("config").getCompoundOrEmpty("assetMaterialDependencies").putString("unknown_dependency", "retained");
+		source.rememberSource(original);
+		var merged = (PhotonModelOutput) compare(source);
+		equal("retained", merged.config.assetMaterialDependencies.getStringOr("unknown_dependency", ""));
+	}
+
+	private static void assertTyped(PhotonModelOutput source) {
+		equal(true, PhotonModelRuntimeCopyUtil.supportsEncoded(source, encode(source)));
+	}
+
+	private void modelRuntimeAndHierarchy() throws ReflectiveOperationException {
+		var source = modelFixture();
+		var parent = new PhotonNamedController();
+		var child = new PhotonNamedController();
+		source.transform().parent(parent.transform(), false);
+		child.transform().parent(source.transform(), false);
+		source.transform().localPosition(new Vector3f(2, -3, 5));
+		source.transform().localRotation(new Quaternionf(1, 2, 3, 4));
+		source.transform().localScale(new Vector3f(-2, 0.5f, 4));
+		source.slot("duration").setRaw(999);
+		source.rendererRuntime().orderInLayer.setRaw(777);
+		source.setDelay(19);
+		source.setSelfTimelineVisible(false);
+		source.setKeepAlive(() -> {
+			throw new AssertionError("keepAlive copied");
+		});
+		source.setSelfActive(false);
+		source.setSelfVisible(false);
+		source.setSelfTimeScale(7);
+		source.setOnUpdateTick(() -> {
+			throw new AssertionError("callback copied");
+		});
+		source.setOnUpdateFrame(_ -> {
+			throw new AssertionError("callback copied");
+		});
+		var parentChildren = List.copyOf(parent.transform().children());
+		var sourceChildren = List.copyOf(source.transform().children());
+		assertTyped(source);
+		var first = (PhotonModelOutput) compare(source);
+		var second = (PhotonModelOutput) compare(source);
+		equal(null, first.getScene());
+		equal(null, first.transform().parent());
+		equal(List.of(), first.transform().children());
+		equal(source.transform().id(), first.transform().id());
+		equal(source.transform()._getInternalParentID(), first.transform()._getInternalParentID());
+		equal(source.transform()._getInternalChildID(), first.transform()._getInternalChildID());
+		equal(parentChildren, parent.transform().children());
+		equal(sourceChildren, source.transform().children());
+		equal(false, first.slot("duration").isOverridden());
+		equal(false, first.rendererRuntime().orderInLayer.isOverridden());
+		equal(0, first.getDelay());
+		equal(true, first.isSelfTimelineVisible());
+		equal(null, first.getKeepAlive());
+		equal(null, first.getTickHost());
+		equal(0L, first.getLastTick());
+		equal(true, first.isSelfActive());
+		equal(true, first.isSelfVisible());
+		equal(1f, first.getSelfTimeScale());
+		equal(null, first.getOnUpdateTick());
+		equal(null, first.getOnUpdateFrame());
+		equal(null, first.getEffectExecutor());
+		for (var name : List.of("clock", "modelRenderer", "overrideRenderer", "normalCache", "geometrySnapshots", "slots", "playback")) {
+			var field = PhotonModelOutput.class.getDeclaredField(name);
+			field.setAccessible(true);
+			different(field.get(source), field.get(first));
+			different(field.get(first), field.get(second));
+		}
+		for (var name : List.of("sampler", "materials", "dynamic", "frame", "sampledInput", "snapshotFrame")) {
+			var field = PhotonModelOutput.class.getDeclaredField(name);
+			field.setAccessible(true);
+			equal(null, field.get(first));
+		}
+		for (var pair : List.of(new Object[]{first.config.renderer, second.config.renderer},
+				new Object[]{first.config.modelRenderer, second.config.modelRenderer},
+				new Object[]{first.config.renderer, first.config.modelRenderer})) {
+			var a = (RendererSetting) pair[0];
+			var b = (RendererSetting) pair[1];
+			different(a, b);
+			different(a.getCull(), b.getCull());
+			different(a.getCustomMask(), b.getCustomMask());
+			different(a.getMaterials(), b.getMaterials());
+			for (int i = 0; i < Math.min(a.getMaterials().size(), b.getMaterials().size()); i++) {
+				different(a.getMaterials().get(i), b.getMaterials().get(i));
+				different(a.getMaterials().get(i).getBlendMode(), b.getMaterials().get(i).getBlendMode());
+				different(a.getMaterials().get(i).getMaterial(), b.getMaterials().get(i).getMaterial());
+			}
+		}
+	}
+
+	private void modelFallbacks() {
+		var source = modelFixture();
+		source.config.file = LDLibExtraCodecs.NULL_STRING;
+		equal(false, PhotonModelRuntimeCopyUtil.supportsEncoded(source, encode(source)));
+		equivalentOutcome(source);
+		source.config.file = null;
+		equivalentOutcome(source);
+		source.config.file = "";
+		source.config.snapshotSource = null;
+		equivalentOutcome(source);
+		source.config.snapshotSource = "";
+		source.config.clip = null;
+		equivalentOutcome(source);
+		source.config.clip = "";
+		source.config.resource = null;
+		compare(source);
+		source.config.source = null;
+		equivalentOutcome(source);
+		source.config.source = PhotonModelOutputConfig.Source.RESOURCE;
+		source.config.anchor = null;
+		equivalentOutcome(source);
+		source.config.anchor = Anchor.START;
+		for (float value : new float[]{Float.NaN, Float.POSITIVE_INFINITY, -1}) {
+			source.config.playbackSpeed = value;
+			equivalentOutcome(source);
+		}
+		source.config.playbackSpeed = 1;
+		source.config.assetDependencies.add(null);
+		equivalentOutcome(source);
+		source.config.assetDependencies.clear();
+		var dependencies = source.config.assetDependencies;
+		source.config.assetDependencies = null;
+		equivalentOutcome(source);
+		source.config.assetDependencies = dependencies;
+		var materialDependencies = source.config.assetMaterialDependencies;
+		source.config.assetMaterialDependencies = null;
+		equivalentOutcome(source);
+		source.config.assetMaterialDependencies = materialDependencies;
+		source.transform().localRotation(new Quaternionf(0, 0, 0, 0));
+		equal(false, PhotonModelRuntimeCopyUtil.supportsEncoded(source, encode(source)));
+		equivalentOutcome(source);
+		var extension = new ExtendedModel();
+		extension.extra = 73;
+		equal(false, PhotonModelRuntimeCopyUtil.supportsEncoded(extension, encode(extension)));
+		equal(73, ((PhotonModelOutput) compare(extension)).source().getIntOr("extra", -1));
+		equivalentOutcome(new PhotonModelOutput() {
+			@Override
+			public void beforeSerialize() {
+				throw new IllegalStateException("model_encoder_callback_failure");
+			}
+		});
+		compare(new PhotonModelOutput() {
+			@Override
+			public String getName() {
+				throw new IllegalStateException("model_getter_must_not_be_called");
+			}
+		});
+	}
+
+	private void modelEncodedGuards() {
+		var source = modelFixture();
+		var unknownType = encode(source);
+		unknownType.putString("type", "unregistered_copy_type");
+		compareEncodedModel(source, unknownType);
+		for (var invalid : List.<Tag>of(IntTag.valueOf(-1), IntTag.valueOf(1), StringTag.valueOf("future"))) {
+			var wrapper = encode(source);
+			wrapper.getCompoundOrEmpty("data").put("version", invalid);
+			compareEncodedModel(source, wrapper);
+		}
+		for (var field : List.of("source", "anchor", "resource", "assetJson", "renderer", "modelRenderer")) {
+			var wrapper = encode(source);
+			wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config").putString(field, "INVALID VALUE");
+			compareEncodedModel(source, wrapper);
+		}
+		var legacy = encode(source);
+		legacy.getCompoundOrEmpty("data").getCompoundOrEmpty("config").remove("modelRenderer");
+		compareEncodedModel(source, legacy);
+		legacy.getCompoundOrEmpty("data").getCompoundOrEmpty("config").remove("assetJson");
+		compareEncodedModel(source, legacy);
+	}
+
+	private static void compareEncodedModel(PhotonModelOutput source, CompoundTag wrapper) {
+		var expected = outcome(() -> IFXObject.CODEC.parse(NbtOps.INSTANCE, wrapper).result().orElse(null));
+		var actual = outcome(() -> PhotonModelRuntimeCopyUtil.copyEncoded(source, wrapper));
+		equal(expected.failureType(), actual.failureType());
+		equal(expected.message(), actual.message());
+		equal(expected.object() == null, actual.object() == null);
+		if (expected.object() != null) {
+			var copied = Objects.requireNonNull(actual.object());
+			equal(encode(expected.object()), encode(copied));
+			equal(sourceTag(expected.object()), sourceTag(copied));
+		}
+	}
+
 	private void realFx(Identifier id) {
 		var fx = Objects.requireNonNull(FXHelper.getFX(id), "real FX missing:" + id);
 		var data = fx.getFxData();
@@ -466,6 +725,10 @@ public class PhotonRuntimeCopyNativeCheck {
 		int spawners = 0;
 		int controllers = 0;
 		for (var object : data.objects()) {
+			if (object instanceof PhotonModelOutput model
+					&& (object.getName().equals("reverse_muzzle") || object.getName().equals("flow_model_template"))) {
+				assertTyped(model);
+			}
 			compare(object);
 			if (object instanceof PhotonChildSpawner) {
 				spawners++;
@@ -545,6 +808,13 @@ public class PhotonRuntimeCopyNativeCheck {
 		var before = encode(source);
 		var expected = Objects.requireNonNull(nativeCopy(source), "native copy returned null");
 		var actual = Objects.requireNonNull(source.deepCopy(), "current deepCopy returned null");
+		if (source instanceof PhotonModelOutput model) {
+			var typed = Objects.requireNonNull(PhotonModelRuntimeCopyUtil.typedCopy(model), "typed candidate returned null");
+			different(source, typed);
+			equal(encode(expected), encode(typed));
+			equal(sourceTag(expected), sourceTag(typed));
+			actual = typed;
+		}
 		different(source, actual);
 		equal(expected.getClass(), actual.getClass());
 		equal(encode(expected), encode(actual));
@@ -590,6 +860,15 @@ public class PhotonRuntimeCopyNativeCheck {
 	private static void equivalentOutcome(IFXObject source) {
 		var old = outcome(() -> nativeCopy(source));
 		var current = outcome(source::deepCopy);
+		if (source instanceof PhotonModelOutput model) {
+			var typed = outcome(() -> PhotonModelRuntimeCopyUtil.typedCopy(model));
+			equal(old.failureType(), typed.failureType());
+			equal(old.message(), typed.message());
+			equal(old.object() == null, typed.object() == null);
+			if (old.object() != null) {
+				equal(encode(old.object()), encode(typed.object()));
+			}
+		}
 		equal(old.failureType(), current.failureType());
 		equal(old.message(), current.message());
 		equal(old.object() == null, current.object() == null);
@@ -638,6 +917,11 @@ public class PhotonRuntimeCopyNativeCheck {
 	}
 
 	private record Outcome(IFXObject object, String failureType, String message) {
+	}
+
+	private static class ExtendedModel extends PhotonModelOutput {
+		@Persisted
+		public int extra;
 	}
 
 	private static class ExtendedController extends PhotonNamedController {

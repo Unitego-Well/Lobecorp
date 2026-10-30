@@ -84,7 +84,7 @@ public class PhotonRuntimeCopyUtil {
 		return IFXObject.CODEC.parse(NbtOps.INSTANCE, encoded).result().orElse(null);
 	}
 
-	private static boolean eligibleBase(IFXObject source) {
+	public static boolean eligibleBase(IFXObject source) {
 		var transform = source.transform();
 		return source.getName() != null && !source.getName().equals(LDLibExtraCodecs.NULL_STRING)
 				&& transform.id() != null && transform.localPosition().isFinite()
@@ -98,7 +98,7 @@ public class PhotonRuntimeCopyUtil {
 		return id == null ? !template.contains("uuid") : Objects.equals(id.toString(), template.getString("uuid").orElse(null));
 	}
 
-	private static void copyBase(IFXObject source, IFXObject target) {
+	public static void copyBase(IFXObject source, IFXObject target) {
 		target.setName(source.getName());
 		var from = source.transform();
 		var to = target.transform();

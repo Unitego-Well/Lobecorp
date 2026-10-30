@@ -1,5 +1,9 @@
 # Photon 命名动画与参数控制
 
+## 控制器复制契约（2026-10-30）
+
+确切PhotonNamedController的deepCopy使用有界类型复制：保留完整wrapper编码和PhotonNamedCodecUtil.read校验、旧definition替换与unknown/source语义，定义深拷贝而播放状态保持新建。子类继续原生工厂解析；不缓存可变定义快照，不跨实例共享playback、变换或覆盖槽。新旧复制、定义变更可见、返回Tag独立与真实FXData对照已在两个普通FULL的测量后通过；不据此宣称整体FPS、光影或完整视觉通过，参见[复制与预热检查](benchmod.md#2026-10-30-类型复制和材质粒度预热)。
+
 > 2026-10-23：当前实现为 [PhotonNamedRuntime](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java) 与 [PhotonNamedAuthoringSession](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonNamedAuthoringSession.java)，制作、运行、子轨道及句柄边界见 [API 索引](photon-effect-mcp-api.md) 和 [当前能力](photon-workspace.md)。下文 animation 包、旧迁移工具、旧测试和旧界面说明属于历史；当前测试位于 client/photon/playback、util/photon/playback，未在本轮执行。预览隔离补丁未完成 F11／F12 原生复现，G1 未通过。
 
 > 2026-10-19 当前状态：本文描述的自建命名动画实现与专用界面已移除，原生时间轴与实体动画保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。

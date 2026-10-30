@@ -54,6 +54,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /// 独立模型输出复用Photon生命周期与原生材质批次；绘制回调只消费准备后的数据。
@@ -234,6 +235,27 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		return built;
+	}
+
+	/// 队列的模型准备任务：只准备并逐组登记材质，实际获取留给后续独立任务。
+	public void queuePrewarmRenderTypes(PhotonRenderPrewarm.Queue queue, BooleanSupplier alive) {
+		try {
+			prepare();
+		} catch (IOException invalid) {
+			throw new IllegalStateException("模型渲染预热准备失败：" + getName(), invalid);
+		}
+
+		if (materials == null) {
+			return;
+		}
+
+		for (int group : groupOrder) {
+			try {
+				queue.addMaterials(alive, materials.group(group), geometryMode());
+			} catch (RuntimeException invalid) {
+				Photon.LOGGER.warn("模型材质组预热登记失败：{} / {}", getName(), group, invalid);
+			}
+		}
 	}
 
 	private PhotonModelDefinition definition() {

@@ -218,6 +218,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 		}
 
 		PhotonPersistedMetadataNativeCheck.verify(context, label);
+		PhotonRuntimeCopyNativeCheck.verify(context, label);
 	}
 
 	@Override

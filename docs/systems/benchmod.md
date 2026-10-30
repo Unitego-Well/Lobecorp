@@ -1,5 +1,15 @@
 # BenchMod 基准工具链
 
+## 2026-10-30 类型复制和材质粒度预热
+
+PhotonChildSpawner/PhotonNamedController接入有界typed copy：每次保留完整wrapper编码、guard、unknown/source与当前定义，只直接恢复已核对的独占字段。Curve.copy会丢lockControlPoint，曲线/扩展类型/实际规范化差异继续原生parse；不共享config/transform/槽/随机/播放状态。PhotonRenderPrewarm按准备、单材料、单变体任务排队，保留材料优先、渲染线程和既有重载清理；WorkQueue的代次防止clear后的旧continuation回填。builtIncludingHits包含命中，10ms仅限制开始任务。
+
+所有代码完成后，编译/包隔离、7项fake-clock队列测试和Data通过（0写删、29生成SHA不变）。4项复制JUnit因缺FML未执行断言，已备份并迁入原生入口，不计纯测通过。两个新普通FULL进程各3触发/40秒完成、总体及03场景PASSED，20项元数据（含encode-first真实缓存命中）+24项复制原生检查通过；不替换旧12局矩阵，光影/截图未执行。用户配置六份SHA恢复，WIP/原暂存保持，游戏/Debug/observer和两Sol代理均结束；中转DS Flash实际404无产出，失败对话归档。
+
+真实激光根FXData为13对象（1spawner/1controller），两JVM ABBA分配观测约降1.22%～1.25%，墙钟未改善，未触及新类型的control也有JIT/次序差，不宣称FPS收益。40秒native均值7.071ms/P99 20.101ms/最长214.376ms，laser均值13.693ms/P99 151.029ms/最长775.821ms；laser>50ms117帧、>250ms11帧，P22/P23开放。
+
+激光预热32次drain、50个MATERIAL任务、15个CHILD、built50/failed0；SHELL/MATERIAL/CHILD单项最大1143.772/587.177/822.792ms，模型准备也可超预算。VARIANT本次0，仅表明未触达，不是变体全覆盖。退出仍有既有GUI断连异常，native另有RejectedExecutionException，不据PASSED关闭P18。完整报告.agent/reports/20261030-runtime-copy-prewarm-final.md，证据build/agent-backups/20261030-remaining-optimization/及两份独立raw-results。新的本地Remaining运行配置保留已使用world/result，重跑须改成新路径。
+
 ## 2026-10-30 编码端元数据缓存与离线往返对照
 
 生产 MetadataMixin 现在同时包装 PersistedParser.serializeInternal / deserializeInternal 各两个声明数组调用，复用同一 ClassValue helper，order900 和正常 client 安装不变。默认 deepCopy 先编码再解码，上轮仅解码缓存未覆盖编码端；不共享 ManagedKey/IRef、实例、provider 或可变 FX/NBT，不改原生算法和负载。

@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-30：实现有界类型复制与材质预热任务拆分
+
+- ChildSpawner/NamedController新增deepCopy入口并使用PhotonRuntimeCopyUtil，保留现编码/guard/unknown/source；确切已核对类型独占恢复，Curve和扩展/规范化差异原生回退。
+- RenderPrewarm分准备/材料/变体任务，ModelOutput仅新增排队入口，clear代次拒绝旧continuation；沿用资源与世界清理，不新增池或全量预加载。
+- 新增7项纯队列测试与真实注册Codec/FXData对照checker；4项复制JUnit因FML依赖未执行断言，迁入原生检查。全部代码完成后编译/包隔离/Data通过（29生成SHA不变），两个新普通FULL共6触发/44原生检查通过。实际分配只约降1.22%～1.25%，无时间/FPS收益证明，长帧/P22/P23/退出异常继续开放。
+- 配置六份逐SHA恢复，WIP/原暂存保护，游戏/Debug/observer与两Sol回收；中转站Flash 404无产出，未回退。证据和备份build/agent-backups/20261030-remaining-optimization/；见[本轮结果](benchmod.md#2026-10-30-类型复制和材质粒度预热)。
+
 ## 2026-10-30：补齐 Photon 编码端元数据缓存
 
 - 生产PhotonPersistedMetadataMixin两个目标列表扩至serializeInternal/deserializeInternal，复用既有helper和order900；不改变parser、资源、技能或实例所有权。

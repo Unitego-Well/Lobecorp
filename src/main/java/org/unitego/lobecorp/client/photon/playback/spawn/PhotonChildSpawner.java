@@ -3,6 +3,8 @@ package org.unitego.lobecorp.client.photon.playback.spawn;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import com.lowdragmc.photon.client.gameobject.RuntimeValue;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
@@ -253,6 +255,11 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	public int integer(String path) {
 		return ((Number) slot(path).get()).intValue();
+	}
+
+	@Override
+	public @Nullable IFXObject deepCopy() {
+		return PhotonRuntimeCopyUtil.deepCopy(this);
 	}
 
 	@Override

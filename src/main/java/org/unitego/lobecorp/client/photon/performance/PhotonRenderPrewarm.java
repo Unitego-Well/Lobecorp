@@ -25,6 +25,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 /// 首施法渲染侧预热：把“第一次绘制才会构建”的材质、着色图与管线提前到女皇出现时构建。
 ///
@@ -39,23 +42,6 @@ public final class PhotonRenderPrewarm {
 
 	public static boolean enabled() {
 		return ENABLED;
-	}
-
-	private static int prebuildObject(IFXObject object) {
-		try {
-			if (object instanceof PhotonModelOutput model) {
-				return model.prewarmRenderTypes();
-			}
-
-			if (object instanceof Emitter emitter) {
-				var renderer = emitter.rendererRuntime();
-				return prebuild(renderer, emitter.geometryMode()) + prebuildInstanced(renderer, emitter);
-			}
-		} catch (RuntimeException invalid) {
-			Lobecorp.LOGGER.warn("渲染预热失败：{}", object.getName(), invalid);
-		}
-
-		return 0;
 	}
 
 	/// 与 `Emitter#bakeGroup` 相同的材质入口：每个材质按同一状态构建一次渲染类型，含着色图编译与管线预编译。
@@ -73,51 +59,6 @@ public final class PhotonRenderPrewarm {
 				}
 			} catch (RuntimeException invalid) {
 				Lobecorp.LOGGER.warn("材质渲染类型预热失败", invalid);
-			}
-		}
-
-		return built;
-	}
-
-	/// GPU 实例化是独立管线（`#define` 与顶点格式烘进管线），首次实例绘制才会构建；这里按发射器类型补建。
-	private static int prebuildInstanced(RendererSetting.Runtime renderer, Emitter emitter) {
-		var variants = variants(emitter);
-
-		if (variants.isEmpty()) {
-			return 0;
-		}
-
-		int built = 0;
-
-		for (var setting : renderer.getMaterials()) {
-			var renderType = setting.getRenderType(VertexFormat.Mode.QUADS);
-
-			if (renderType == null) {
-				continue;
-			}
-
-			var info = PhotonRenderTypes.drawInfo(renderType);
-
-			if (info == null || info.instanced() == null) {
-				continue;
-			}
-
-			for (var variant : variants) {
-				try {
-					var pipeline = pipeline(info, variant);
-
-					if (pipeline == null) {
-						continue;
-					}
-
-					if (RenderSystem.getDevice().precompilePipeline(pipeline).isValid()) {
-						built++;
-					} else {
-						Lobecorp.LOGGER.warn("实例化管线预编译失败：{} / {}", emitter.getName(), variant);
-					}
-				} catch (RuntimeException invalid) {
-					Lobecorp.LOGGER.warn("实例化管线预热失败：{} / {}", emitter.getName(), variant, invalid);
-				}
 			}
 		}
 
@@ -186,14 +127,89 @@ public final class PhotonRenderPrewarm {
 		};
 	}
 
-	/// 逐 tick 预算的预热队列：把整棵树拆成“每个对象一次材质预构建 + 每个子发射器一次子模板准备”，
+	/// 生产队列使用的单线程任务调度器；时钟与失败回调可替换，纯 JVM 测试不接触渲染设备。
+	public static class WorkQueue<T> {
+		private final Deque<Work<T>> pending = new ArrayDeque<>();
+		private final LongSupplier clock;
+		private final Consumer<RuntimeException> failure;
+		private long generation;
+		private long executingGeneration = -1;
+
+		public WorkQueue(LongSupplier clock, Consumer<RuntimeException> failure) {
+			this.clock = clock;
+			this.failure = failure;
+		}
+
+		public void addFirst(T type, BooleanSupplier alive, Runnable action) {
+			if (accepting()) {
+				pending.addFirst(new Work<>(type, alive, action, generation));
+			}
+		}
+
+		public void addLast(T type, BooleanSupplier alive, Runnable action) {
+			if (accepting()) {
+				pending.addLast(new Work<>(type, alive, action, generation));
+			}
+		}
+
+		private boolean accepting() {
+			return executingGeneration == -1 || executingGeneration == generation;
+		}
+
+		/// 预算只限制任务开始；准备模型和设备编译均不能中断。
+		public int drain(long budgetNanos) {
+			long started = clock.getAsLong();
+			int ran = 0;
+
+			while (!pending.isEmpty() && clock.getAsLong() - started < budgetNanos) {
+				var work = pending.removeFirst();
+				long previousGeneration = executingGeneration;
+				executingGeneration = work.generation();
+				ran++;
+
+				try {
+					if (work.generation() == generation && work.alive().getAsBoolean()) {
+						work.action().run();
+					}
+				} catch (RuntimeException invalid) {
+					failure.accept(invalid);
+				} finally {
+					executingGeneration = previousGeneration;
+				}
+			}
+
+			return ran;
+		}
+
+		public void clear() {
+			generation++;
+			pending.clear();
+		}
+
+		public boolean isEmpty() {
+			return pending.isEmpty();
+		}
+
+		public int size() {
+			return pending.size();
+		}
+
+		public long remaining(T type) {
+			return pending.stream().filter(work -> work.type().equals(type)).count();
+		}
+
+		private record Work<T>(T type, BooleanSupplier alive, Runnable action, long generation) {
+		}
+	}
+
+	/// 逐 tick 预算的预热队列：模型准备、单材质获取、单实例变体预编译分别排队，
 	/// 每 tick 在预算内开始任务，单个任务不可抢占，可能超过预算；子模板准备完成后把它自己的对象也排进队列。
 	public static final class Queue {
 		private static final long BUDGET_NANOS = 10_000_000L;
 		private static final boolean DIAGNOSTICS = PhotonCastProfiler.enabled();
 
 		private enum JobType {
-			DEFINE, SHELL, RENDER, CHILD
+			DEFINE, SHELL, PREPARE, MATERIAL, VARIANT, CHILD
 		}
 
 		private final long queuedAt = DIAGNOSTICS ? System.nanoTime() : 0;
@@ -201,10 +217,15 @@ public final class PhotonRenderPrewarm {
 		private final long[] jobMaxNanos = DIAGNOSTICS ? new long[JobType.values().length] : null;
 		private final int[] jobCounts = DIAGNOSTICS ? new int[JobType.values().length] : null;
 		private long drains;
-		private final Deque<Runnable> jobs = new ArrayDeque<>();
-		private int built;
+		private long totalWorkNanos;
+		private long totalJobCount;
+		private int builtIncludingHits;
 		private int spawners;
 		private int failed;
+		private final WorkQueue<JobType> jobs = new WorkQueue<>(System::nanoTime, invalid -> {
+			failed++;
+			Lobecorp.LOGGER.warn("渲染预热任务失败", invalid);
+		});
 
 		/// 插到队列最前面执行；用于必须先完成的壳准备，保证首次施放能采用到预备好的运行态。
 		public void prepend(Runnable job) {
@@ -213,7 +234,7 @@ public final class PhotonRenderPrewarm {
 				return;
 			}
 
-			jobs.addFirst(measured(JobType.DEFINE, job));
+			jobs.addFirst(JobType.DEFINE, () -> true, measured(JobType.DEFINE, job));
 		}
 
 		/// 把一次“壳准备”登记为队列首个任务：准备子模板与命名运行时，再按深度递归排队。
@@ -223,11 +244,7 @@ public final class PhotonRenderPrewarm {
 				return;
 			}
 
-			jobs.addFirst(measured(JobType.SHELL, () -> {
-				if (runtime.isDestroyed()) {
-					return;
-				}
-
+			jobs.addFirst(JobType.SHELL, () -> !runtime.isDestroyed(), measured(JobType.SHELL, () -> {
 				prepare.run();
 				add(runtime, depth);
 			}));
@@ -239,42 +256,119 @@ public final class PhotonRenderPrewarm {
 				return;
 			}
 
-			addObjects(runtime, List.copyOf(runtime.objects.values()), depth);
+			add(runtime, depth, () -> true);
 		}
 
-		private void addObjects(FXRuntime runtime, List<IFXObject> objects, int depth) {
+		private void add(FXRuntime runtime, int depth, BooleanSupplier parentAlive) {
+			BooleanSupplier alive = () -> parentAlive.getAsBoolean() && !runtime.isDestroyed();
+			addObjects(List.copyOf(runtime.objects.values()), depth, alive);
+		}
+
+		private void addObjects(List<IFXObject> objects, int depth, BooleanSupplier alive) {
 			for (var object : objects) {
-				jobs.addLast(measured(JobType.RENDER, () -> {
-					if (!runtime.isDestroyed()) {
-						built += prebuildObject(object);
+				enqueue(JobType.PREPARE, alive, () -> {
+					if (object instanceof PhotonModelOutput model) {
+						model.queuePrewarmRenderTypes(this, alive);
+					} else if (object instanceof Emitter emitter) {
+						addMaterials(alive, emitter.rendererRuntime(), emitter.geometryMode(),
+								variants(emitter), emitter.getName());
 					}
-				}));
+				});
 			}
 
 			if (depth > 0) {
-				for (var object : objects) {
-					if (object instanceof PhotonChildSpawner spawner) {
-						jobs.addLast(measured(JobType.CHILD, () -> prepare(spawner, depth)));
+				// 对象准备先登记其材质，再把子模板任务接到末尾，保持原来的材质优先顺序。
+				enqueue(JobType.PREPARE, alive, () -> {
+					for (var object : objects) {
+						if (object instanceof PhotonChildSpawner spawner) {
+							enqueue(JobType.CHILD, alive, () -> prepare(spawner, depth, alive));
+						}
 					}
-				}
+				});
 			}
 		}
 
-		private void prepare(PhotonChildSpawner spawner, int depth) {
-			spawners++;
+		private void enqueue(JobType type, BooleanSupplier alive, Runnable action) {
+			jobs.addLast(type, alive, measured(type, action));
+		}
 
-			try {
-				spawner.prepareNext();
-				var template = spawner.preparedTemplate();
+		/// 模型准备完成后，按组和材质原顺序登记；这里不获取渲染类型。
+		public void addMaterials(BooleanSupplier alive, RendererSetting.Runtime renderer, VertexFormat.Mode mode) {
+			addMaterials(alive, renderer, mode, List.of(), "model");
+		}
 
-				if (template == null) {
-					return;
+		private void addMaterials(BooleanSupplier alive, RendererSetting.Runtime renderer, VertexFormat.Mode mode,
+		                          List<PhotonPipelines.InstancedVariant> variants, String name) {
+			if (!ENABLED || !alive.getAsBoolean()) {
+				return;
+			}
+
+			var variantJobs = new ArrayList<PendingVariant>();
+
+			for (var setting : renderer.getMaterials()) {
+				var info = new PhotonRenderTypes.PhotonDrawInfo[1];
+				enqueue(JobType.MATERIAL, alive, () -> {
+					var renderType = setting.getRenderType(mode);
+
+					if (renderType != null) {
+						builtIncludingHits++;
+
+						if (mode == VertexFormat.Mode.QUADS && !variants.isEmpty()) {
+							info[0] = PhotonRenderTypes.drawInfo(renderType);
+						}
+					}
+				});
+
+				if (variants.isEmpty()) {
+					continue;
 				}
 
-				add(template.runtime(), depth - 1);
-			} catch (RuntimeException invalid) {
-				failed++;
-				Lobecorp.LOGGER.warn("子模板预热失败：{}", spawner.getName(), invalid);
+				// 非 QUADS 基础几何与实例化有不同的材质键，必须各取一次，不能复用错误模式。
+				if (mode != VertexFormat.Mode.QUADS) {
+					variantJobs.add(new PendingVariant(JobType.MATERIAL, () -> {
+						var renderType = setting.getRenderType(VertexFormat.Mode.QUADS);
+						info[0] = renderType == null ? null : PhotonRenderTypes.drawInfo(renderType);
+					}));
+				}
+
+				for (var variant : variants) {
+					variantJobs.add(new PendingVariant(JobType.VARIANT, () -> {
+						if (info[0] == null || info[0].instanced() == null) {
+							return;
+						}
+
+						var pipeline = pipeline(info[0], variant);
+
+						if (pipeline == null) {
+							return;
+						}
+
+						if (RenderSystem.getDevice().precompilePipeline(pipeline).isValid()) {
+							builtIncludingHits++;
+						} else {
+							failed++;
+							Lobecorp.LOGGER.warn("实例化管线预编译失败：{} / {}", name, variant);
+						}
+					}));
+				}
+			}
+
+			// 所有基础材质先排完，再按材质逐个排实例化变体。
+			for (var job : variantJobs) {
+				enqueue(job.type(), alive, job.action());
+			}
+		}
+
+		private record PendingVariant(JobType type, Runnable action) {
+		}
+
+		private void prepare(PhotonChildSpawner spawner, int depth, BooleanSupplier alive) {
+			spawners++;
+			spawner.prepareNext();
+			var template = spawner.preparedTemplate();
+
+			if (template != null) {
+				add(template.runtime(), depth - 1, alive);
 			}
 		}
 
@@ -296,6 +390,8 @@ public final class PhotonRenderPrewarm {
 					int index = type.ordinal();
 					jobCounts[index]++;
 					jobNanos[index] += elapsed;
+					totalWorkNanos += elapsed;
+					totalJobCount++;
 					jobMaxNanos[index] = Math.max(jobMaxNanos[index], elapsed);
 				}
 			};
@@ -314,23 +410,7 @@ public final class PhotonRenderPrewarm {
 			}
 
 			long started = System.nanoTime();
-			int ran = 0;
-
-			while (!jobs.isEmpty() && System.nanoTime() - started < BUDGET_NANOS) {
-				var job = jobs.pollFirst();
-				ran++;
-
-				if (job == null) {
-					break;
-				}
-
-				try {
-					job.run();
-				} catch (RuntimeException invalid) {
-					failed++;
-					Lobecorp.LOGGER.warn("渲染预热任务失败", invalid);
-				}
-			}
+			int ran = jobs.drain(BUDGET_NANOS);
 
 			if (DIAGNOSTICS) {
 				logDrain(tick, started, ran);
@@ -346,20 +426,23 @@ public final class PhotonRenderPrewarm {
 				int index = type.ordinal();
 				breakdown.append(type).append("[count=").append(jobCounts[index])
 						.append(",us=").append(jobNanos[index] / 1_000)
-						.append(",maxUs=").append(jobMaxNanos[index] / 1_000).append("] ");
+						.append(",maxUs=").append(jobMaxNanos[index] / 1_000)
+						.append(",maxNs=").append(jobMaxNanos[index])
+						.append(",remaining=").append(jobs.remaining(type)).append("] ");
 			}
 
-			Lobecorp.LOGGER.info("CASTPREWARM queue tick={}, drain={}, ran={}, remaining={}, drainUs={}, elapsedUs={}, done={}, budgetUs={}, jobs={}, startNs={}, endNs={}",
+			Lobecorp.LOGGER.info("CASTPREWARM queue tick={}, drain={}, ran={}, remaining={}, drainUs={}, elapsedUs={}, done={}, budgetUs={}, builtIncludingHits={}, failed={}, totalWorkNs={}, totalJobs={}, jobs={}, startNs={}, endNs={}",
 					tick, ++drains, ran, jobs.size(), (ended - started) / 1_000, (ended - queuedAt) / 1_000,
-					jobs.isEmpty(), BUDGET_NANOS / 1_000, breakdown, started, ended);
+					jobs.isEmpty(), BUDGET_NANOS / 1_000, builtIncludingHits, failed, totalWorkNanos, totalJobCount, breakdown, started, ended);
 		}
 
 		public void clear() {
 			jobs.clear();
 		}
 
+		/// 成功返回的基础渲染类型与有效实例化管线数，包含缓存命中，不代表新增编译数。
 		public int built() {
-			return built;
+			return builtIncludingHits;
 		}
 
 		public int spawners() {

@@ -137,6 +137,21 @@ public class PhotonPersistedMetadataNativeCheck {
 			equal(List.of(11, 22, 33, 7, 44, 55, 66), values(restored));
 			return values(restored).toString();
 		});
+		runCase("mixin_cache_after_encode_first", "encode populates both metadata slots before any decode of this type", () -> {
+			var first = new EncodeFirst();
+			first.value = 73;
+			var tag = PersistedParser.serialize(NbtOps.INSTANCE, first, Platform.getFrozenRegistry()).getOrThrow();
+			var expected = new CompoundTag();
+			expected.putInt("value", 73);
+			equal(expected, tag);
+			PhotonPersistedMetadataUtil.declaredMethods(EncodeFirst.class, _ -> {
+				throw new AssertionError("native_encode_did_not_cache_methods");
+			});
+			PhotonPersistedMetadataUtil.declaredFields(EncodeFirst.class, _ -> {
+				throw new AssertionError("native_encode_did_not_cache_fields");
+			});
+			return "encode-first metadata slots hit; tag=" + tag;
+		});
 		runCase("original_tag_unchanged", "original input including ignored key remains exactly equal after all native operations", () -> {
 			Objects.requireNonNull(state.original, "input case unavailable");
 			equal(state.original, state.input);
@@ -273,6 +288,11 @@ public class PhotonPersistedMetadataNativeCheck {
 		private void childSetter(int value) {
 			events.add("child_setter:" + value + ":" + ((Parent) this).hidden + ":" + hidden);
 		}
+	}
+
+	private static class EncodeFirst {
+		@Persisted
+		private int value;
 	}
 
 	private static class Nested {

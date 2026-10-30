@@ -40,8 +40,8 @@
 
 ## DS 辅助模型与路由
 
-- DS 辅助使用模型目录中标注为“DeepSeek 中转站”的 Flash，选择模型支持的最低推理档；当前条目为 `ccs-deepseek-2/deepseek-flash`，最低档为 `low`。每次分派前核对显示名称与实际 ID，目录变化时保留用户指定的中转站含义。
-- 不要误选当前标注为“DeepSeek”的 `ccs-deepseek/deepseek-flash`，也不以 Pro 或其他模型代替所指定的中转站 Flash。
+- DS 辅助使用软件现有模型目录中的 `deepseek-v4.1-flash（DeepSeek 中转站）`，选择模型支持的最低推理档；2026-10-31 核对的实际 ID 为 `ccs-deepseek-2/deepseek-v4.1-flash`，最低档为 `low`。每次分派前核对显示名称与实际 ID，不手填固定路由、不创建自定义模型；目录变化时仍须符合用户指定的中转站与模型。
+- 不使用旧的 `deepseek-flash`、标注为“DeepSeek”的其他提供方条目、Pro 或其他模型替代指定的 `deepseek-v4.1-flash（DeepSeek 中转站）`；不可用时如实报告，不自动回退。
 - 子代理列表看不到该 DS 时，使用用户授权的独立 DS 辅助对话；不冒称其他模型为 DS，不自行切换主对话模型或修改全局模型、代理配置。
 - 故障与余额判断必须对应实际提供方和路由，不将另一条路由的报错推断为“DeepSeek 中转站”不可用。
 

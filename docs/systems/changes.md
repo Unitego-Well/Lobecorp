@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-31：更新 DS 中转站辅助模型
+
+- 根据用户恢复 DS 并指定新模型的指令，将工作流程中的现行选型更新为 `deepseek-v4.1-flash（DeepSeek 中转站）`；只读核对当前软件模型目录，实际 ID 为 `ccs-deepseek-2/deepseek-v4.1-flash`，最低推理档为 `low`。
+- 保留现有目录选择、不创建自定义模型、不自动回退、不改主对话模型或全局配置的边界；此前旧路由 404 属历史记录，不据此判断新条目可用性。同步本轮 Photon 计划解除 DS 暂停。
+- 本项仅规范与计划更新，IDEA 局部编辑及回读检查；目录存在不等于实际调用成功，不以此宣称服务恢复验证通过。未运行游戏、构建或 Data；原文件备份位于 `build/agent-backups/20261031-copy-material-optimization/ds-model-update/`。
+
 ## 2026-10-31：完成 Photon 四线并行处理与生命周期修正
 
 - ConductorControls卸载/注销改为纯本地clearSessionState，正常交互exit仍恢复原输入；修正断连期grabMouse导致setScreen(null)异常并阻断后续清理的根因。

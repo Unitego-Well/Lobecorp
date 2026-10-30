@@ -43,6 +43,19 @@ val photonBenchClient = sourceSets.create("photonBenchClient") {
     runtimeClasspath += sourceSets["bench"].runtimeClasspath + minecraftMcpJar
 }
 
+// 普通 JVM 验证不经过游戏的嵌套 JAR 加载器，复用当前编译类路径的同版 MixinExtras。
+val mixinExtrasCheckRuntime = sourceSets.main.get().compileClasspath.filter {
+    it.name.startsWith("mixinextras-")
+}
+sourceSets.test {
+    runtimeClasspath += mixinExtrasCheckRuntime
+}
+sourceSets.named("bench") {
+    runtimeClasspath += mixinExtrasCheckRuntime
+}
+// 游戏仍由原启动器提供此类库，检查专用补充不进入 FULL 游戏类路径。
+photonBenchClient.runtimeClasspath = photonBenchClient.runtimeClasspath - mixinExtrasCheckRuntime
+
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
 val mixinsquaredVersion = libs.versions.mixinsquared.get()

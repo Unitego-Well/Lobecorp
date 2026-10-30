@@ -64,9 +64,9 @@ def normalize_csv(path, summary):
                               "missing": "empty CSV cell becomes null; no zero imputation"}}
 
 
-def cell_for(trial, path, full_version="v3"):
+def cell_for(trial, path, full_version="v3", base_version="v2"):
     if trial.get("mode") == "BASE":
-        match = re.fullmatch(r"photon_repeat_run_(native|laser)_v2_0([123])", path.parent.name)
+        match = re.fullmatch(r"photon_repeat_run_(native|laser)_" + re.escape(base_version) + r"_0([123])", path.parent.name)
         return (match[1], "run", int(match[2])) if match else None
     if trial.get("mode") == "FULL":
         match = re.fullmatch(r"photon_repeat_f([nl])" + full_version[1:] + r"(0[123])-flat",
@@ -149,7 +149,7 @@ def one_file(paths, description, issues):
     return paths[0]
 
 
-def build_run(root, output, trial_path, trial, cell, head, full_version="v3"):
+def build_run(root, output, trial_path, trial, cell, head, full_version="v3", base_version="v2"):
     kind, mode, iteration = cell
     rid = f"{mode}_{kind}_{iteration:02d}"
     issues, sources = [], [evidence(trial_path)]
@@ -182,7 +182,7 @@ def build_run(root, output, trial_path, trial, cell, head, full_version="v3"):
     provenance = {"current_head_at_generation": head, "runtime_assets": trial.get("assets"),
                   "build_identity_scope": "loaded_class_bytes SHA in trial validates loaded byte identity; "
                   "Git metadata alone does not establish executed code"}
-    provenance["trial_version"] = full_version if mode == "full" else "v2"
+    provenance["trial_version"] = full_version if mode == "full" else base_version
     if mode == "full":
         raw = root / f"build/modBench/raw-results/photon-repeat-full-{kind}-{full_version}-{iteration:02d}/client"
         summary_path = raw / "summary.json"
@@ -225,7 +225,9 @@ def build_run(root, output, trial_path, trial, cell, head, full_version="v3"):
     return run
 
 
-def generate(root, output, head, full_version="v3", full_retry_version=None):
+def generate(root, output, head, full_version="v3", full_retry_version=None, base_version="v2"):
+    if not isinstance(base_version, str) or not re.fullmatch(r"v[1-9][0-9]*", base_version):
+        raise ValueError("invalid BASE version")
     for version in (full_version, full_retry_version):
         if version is not None and not re.fullmatch(r"v[1-9][0-9]*", version):
             raise ValueError("invalid FULL version")
@@ -233,17 +235,17 @@ def generate(root, output, head, full_version="v3", full_retry_version=None):
         raise ValueError("FULL retry version must differ from primary version")
     if output.exists():
         raise FileExistsError("output directory already exists: " + str(output))
-    candidates = list((root / "run/client/performance").glob("photon_repeat_run_*_v2_0[123]/trial.json"))
+    candidates = list((root / "run/client/performance").glob(f"photon_repeat_run_*_{base_version}_0[123]/trial.json"))
     candidates += list((root / "build/modBench/runs/default/client/performance").glob("photon_repeat_full_*/trial.json"))
     selected, issues, versions, excluded = {}, [], {}, []
     grouped = {}
     for path in sorted(candidates):
         trial = read_json(path)
-        version = full_version
-        cell = cell_for(trial, path, version)
-        if cell is None and full_retry_version is not None:
+        version = base_version if trial.get("mode") == "BASE" else full_version
+        cell = cell_for(trial, path, full_version, base_version)
+        if cell is None and trial.get("mode") == "FULL" and full_retry_version is not None:
             version = full_retry_version
-            cell = cell_for(trial, path, version)
+            cell = cell_for(trial, path, version, base_version)
         if cell is None:
             excluded.append({"path": str(path.resolve()), "reason": "outside_selected_versions"})
             continue
@@ -252,7 +254,7 @@ def generate(root, output, head, full_version="v3", full_retry_version=None):
             raise ValueError("duplicate matrix cell: " + str(identity))
         grouped[identity] = (path, trial)
     for cell in sorted(EXPECTED):
-        primary = (cell, full_version)
+        primary = (cell, base_version if cell[1] == "run" else full_version)
         retry = (cell, full_retry_version)
         identity = retry if cell[1] == "full" and retry in grouped else primary
         if identity not in grouped:
@@ -287,9 +289,12 @@ def generate(root, output, head, full_version="v3", full_retry_version=None):
     if issues:
         raise ValueError("; ".join(issues))
     output.mkdir(parents=True, exist_ok=False)
-    runs = [build_run(root, output, *selected[cell], cell, head, versions[cell]) for cell in sorted(EXPECTED)]
+    runs = [build_run(root, output, *selected[cell], cell, head, versions[cell], base_version=base_version)
+            if cell[1] == "run" else build_run(root, output, *selected[cell], cell, head, versions[cell])
+            for cell in sorted(EXPECTED)]
     issues = [f"{run['id']}:{issue}" for run in runs for issue in run["input_issues"]]
     manifest = {"schema": SCHEMA, "runs": runs, "expected_runs": 12, "full_version": full_version,
+                "base_version": base_version,
                 "matrix_complete": False, "performance_acceptance": "unknown",
                 "generation_status": "incomplete" if issues else "input_shape_complete",
                 "issues": issues, "scope": "input assembly only; audit and analysis must run separately"}
@@ -307,7 +312,8 @@ def main(argv=None):
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--git-head", required=True, help="HEAD verified through IDEA background Git")
-    parser.add_argument("--full-version", default="v3", help="FULL world/raw-results version; BASE stays v2")
+    parser.add_argument("--base-version", default="v2", help="BASE label/directory version")
+    parser.add_argument("--full-version", default="v3", help="FULL world/raw-results version")
     parser.add_argument("--full-retry-version", help="explicit per-cell FULL retry overrides primary; failed retry refuses generation")
     args = parser.parse_args(argv)
     if not args.matrix_ended:
@@ -318,7 +324,7 @@ def main(argv=None):
         if not re.fullmatch(r"[0-9a-f]{40}", head):
             raise ValueError("invalid verified Git HEAD")
         path, manifest = generate(root, args.output_dir.resolve(), head, args.full_version,
-                                  args.full_retry_version)
+                                  args.full_retry_version, args.base_version)
         print(json.dumps({"manifest": str(path), "status": manifest["generation_status"],
                           "run_count": len(manifest["runs"]), "issues": manifest["issues"]}))
         return 2 if manifest["issues"] else 0

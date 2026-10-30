@@ -30,7 +30,7 @@ class ManifestBuilderTests(unittest.TestCase):
             old.mkdir()
             builder.write_json(old / "trial.json", {"mode": "FULL", "world": "photon_repeat_fl201-flat",
                                                     "state": "FAILED", "error": "CAPACITY"})
-            def tiny_run(_root, _output, path, trial, cell, head, version):
+            def tiny_run(_root, _output, path, trial, cell, head, version, **kwargs):
                 return {"id": str(cell), "input_issues": [], "trial_report": str(path), "version": version}
             with patch.object(builder, "build_run", side_effect=tiny_run):
                 path, manifest = builder.generate(root, root / "result", "synthetic-head")
@@ -49,18 +49,18 @@ class ManifestBuilderTests(unittest.TestCase):
                 builder.generate(root, root / "partial", "synthetic-head")
             self.assertFalse((root / "partial").exists())
 
-    def synthetic_matrix(self, root):
+    def synthetic_matrix(self, root, base_version="v2", full_version="v4"):
         paths = {}
         for index, cell in enumerate(sorted(builder.EXPECTED)):
             kind, mode, iteration = cell
-            label = (f"photon_repeat_run_{kind}_v2_{iteration:02d}" if mode == "run"
-                     else f"photon_repeat_full_{kind}_v4_{iteration:02d}")
+            label = (f"photon_repeat_run_{kind}_{base_version}_{iteration:02d}" if mode == "run"
+                     else f"photon_repeat_full_{kind}_{full_version}_{iteration:02d}")
             parent = root / ("run/client/performance" if mode == "run" else
                              "build/modBench/runs/default/client/performance") / label
             parent.mkdir(parents=True)
             trial = {"label": label, "kind": kind.upper(), "mode": "BASE" if mode == "run" else "FULL",
                      "state": "COMPLETE", "pid": index + 1, "world_path": f"world-{index}",
-                     "world": f"photon_repeat_f{kind[0]}4{iteration:02d}-flat" if mode == "full"
+                     "world": f"photon_repeat_f{kind[0]}{full_version[1:]}{iteration:02d}-flat" if mode == "full"
                      else f"base-{index}", "workload_verified": True,
                      "main_frames": {"state": "DURATION"}, "triggers": [
                          {"index": i, "requested_ns": i + 1, "actual_ns": i + 2, "started": True}
@@ -92,7 +92,7 @@ class ManifestBuilderTests(unittest.TestCase):
             trial.update(state="FAILED", error="COUNTERS")
             failed.write_text(builder.json.dumps(trial), encoding="utf-8")
 
-            def tiny_run(_root, _output, path, trial, cell, head, version):
+            def tiny_run(_root, _output, path, trial, cell, head, version, **kwargs):
                 return {"id": str(cell), "input_issues": [], "trial_report": str(path),
                         "version": version}
 
@@ -101,7 +101,8 @@ class ManifestBuilderTests(unittest.TestCase):
             self.assertEqual(len(manifest["runs"]), 12)
             for run in manifest["runs"]:
                 self.assertEqual(run["version"], "v5" if run["trial_report"] in
-                                 (str(retry2), str(retry3)) else "v4")
+                                 (str(retry2), str(retry3)) else
+                                 "v2" if "photon_repeat_run_" in run["trial_report"] else "v4")
             self.assertEqual(len(manifest["excluded_sources"]), 2)
             self.assertTrue(any(item.get("error") == "COUNTERS" for item in manifest["excluded_sources"]))
             self.assertFalse(manifest["matrix_complete"])
@@ -131,6 +132,80 @@ class ManifestBuilderTests(unittest.TestCase):
             paths[("native", "full", 1)].unlink()
             with self.assertRaisesRegex(ValueError, "expected_12_cells"):
                 builder.generate(root, root / "result", "head", "v4", "v5")
+            self.assertFalse((root / "result").exists())
+
+    def test_base_versions_selection_and_provenance(self):
+        for base_version, full_version in (("v2", "v4"), ("v6", "v6")):
+            with self.subTest(base_version=base_version), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                paths = self.synthetic_matrix(root, base_version, full_version)
+                if base_version == "v6":
+                    self.synthetic_matrix(root)
+                original = builder.build_run
+
+                def synthetic_run(root, output, path, trial, cell, head, version, **kwargs):
+                    if cell[1] == "full":
+                        return {"id": str(cell), "input_issues": [], "trial_report": str(path)}
+                    return original(root, output, path, trial, cell, head, version, **kwargs)
+
+                for cell, path in paths.items():
+                    if cell[1] != "run":
+                        continue
+                    trial = builder.read_json(path)
+                    trial["outputs"] = []
+                    for stage in ("main", "prewarm"):
+                        capture = path.parent / (stage + ".json")
+                        builder.write_json(capture, {})
+                        trial["outputs"].append({"label": trial["label"] + "_" + stage, "files": [
+                            {"owned_copy": str(capture), "sha256": builder.evidence(capture)["sha256"]}]})
+                    path.unlink()
+                    builder.write_json(path, trial)
+                with patch.object(builder, "build_run", side_effect=synthetic_run):
+                    args = (root, root / "result", "head", full_version)
+                    _, manifest = (builder.generate(*args) if base_version == "v2" else
+                                   builder.generate(*args, base_version=base_version))
+                self.assertEqual(manifest["base_version"], base_version)
+                self.assertEqual(manifest["full_version"], full_version)
+                self.assertEqual(len(manifest["runs"]), 12)
+                self.assertFalse(manifest["matrix_complete"])
+                self.assertEqual(manifest["performance_acceptance"], "unknown")
+                for run in manifest["runs"]:
+                    self.assertIn(base_version if run.get("mode") == "run" else full_version,
+                                  run["trial_report"])
+                    if run.get("mode") == "run":
+                        self.assertEqual(run["provenance"]["trial_version"], base_version)
+                        self.assertEqual(run["source_hashes"][0],
+                                         builder.evidence(Path(run["trial_report"])))
+                        self.assertIsNone(builder.read_json(Path(run["metadata"]))[
+                            "runtime_status"]["base_vm_arguments_clean"])
+
+    def test_base_v6_failure_and_missing_refuse_old_base_fallback(self):
+        for state in ("FAILED", "RUNNING", "missing"):
+            with self.subTest(state=state), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self.synthetic_matrix(root)
+                paths = self.synthetic_matrix(root, "v6", "v6")
+                path = paths[("native", "run", 1)]
+                trial = builder.read_json(path)
+                path.unlink()
+                if state != "missing":
+                    trial["state"] = state
+                    builder.write_json(path, trial)
+                with self.assertRaisesRegex(ValueError, "expected_12_cells" if state == "missing"
+                                            else "not_complete"):
+                    builder.generate(root, root / "result", "head", "v6", base_version="v6")
+                self.assertFalse((root / "result").exists())
+
+    def test_base_version_validation_and_mapping(self):
+        path = Path("photon_repeat_run_native_v6_01/trial.json")
+        self.assertIsNone(builder.cell_for({"mode": "BASE"}, path))
+        self.assertEqual(builder.cell_for({"mode": "BASE"}, path, base_version="v6"),
+                         ("native", "run", 1))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for version in ("v0", "6", "v6*", "../v6", None):
+                with self.subTest(version=version), self.assertRaisesRegex(ValueError, "invalid BASE"):
+                    builder.generate(root, root / "result", "head", base_version=version)
             self.assertFalse((root / "result").exists())
 
     def test_measured_settings_and_explicit_phases(self):
@@ -164,7 +239,13 @@ class ManifestBuilderTests(unittest.TestCase):
                 self.assertEqual(builder.main(["--matrix-ended", "--root", str(root), "--output-dir",
                                               str(root / "result"), "--git-head", "a" * 40,
                                               "--full-version", "v4", "--full-retry-version", "v5"]), 0)
-            self.assertEqual(generate.call_args.args[-2:], ("v4", "v5"))
+            self.assertEqual(generate.call_args.args[-3:], ("v4", "v5", "v2"))
+            with patch.object(builder, "generate", return_value=(root / "matrix.json",
+                              {"generation_status": "input_shape_complete", "runs": [], "issues": []})) as generate:
+                self.assertEqual(builder.main(["--matrix-ended", "--root", str(root), "--output-dir",
+                                              str(root / "result"), "--git-head", "a" * 40,
+                                              "--base-version", "v6", "--full-version", "v6"]), 0)
+            self.assertEqual(generate.call_args.args[-3:], ("v6", None, "v6"))
 
     def test_csv_canonical_and_missing(self):
         with tempfile.TemporaryDirectory() as directory:

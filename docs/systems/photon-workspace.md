@@ -1,5 +1,8 @@
 # Photon 当前能力与恢复入口
 
+2026-10-30 新基线v6与优化后v8各12局36触发完成，生产声明类元数据缓存已实现；19项目标测试、三JVM微基准、54项测量后原生集成通过。实际每copy分配约降7.4%，未证明整体FPS改善，P22/P23与进入世界卡顿仍开放。入口见[BenchMod](benchmod.md#2026-10-30-原生持久化元数据首批优化)，本地总报告.agent/reports/20261030-metadata-optimization-final.md。
+
+
 2026-10-30：四组三连发矩阵12局36触发完成，六局FULL总体/场景PASSED，截图0；有界容量与离线审计工具修正、实际配置恢复已完成。长帧和完整性能/视觉边界仍开放，详细入口见[BenchMod](benchmod.md#2026-10-30-三连发-full-与无测试参数-run-矩阵)。本地最终证据build/agent-backups/20261030-repeat-matrix-final/。
 
 

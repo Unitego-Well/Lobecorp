@@ -118,6 +118,7 @@
 		"photon.performance.client.PhotonFactoryDeserializeDiagnosticsMixin",
 		"photon.performance.client.PhotonVersionDeserializeDiagnosticsMixin",
 		"photon.performance.client.PhotonPersistedDeserializeDiagnosticsMixin",
+		"photon.performance.client.PhotonPersistedMetadataMixin",
 		"photon.performance.client.FXMixin",
 		"photon.performance.client.FXObjectMixin",
 		"photon.performance.client.EmitterMixin",

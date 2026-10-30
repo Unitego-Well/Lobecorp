@@ -210,12 +210,14 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 	}
 
 	@Override
-	public void verify(BenchClientContext context) {
+	public void verify(BenchClientContext context) throws Exception {
 		var status = PhotonRepeatedEffectTrial.status(label);
 		if (!archived || !"COMPLETE".equals(status.get("state").getAsString())
 				|| !status.get("workload_verified").getAsBoolean() || spark == null || !spark.complete()) {
 			throw new IllegalStateException("repeat_verification_incomplete");
 		}
+
+		PhotonPersistedMetadataNativeCheck.verify(context, label);
 	}
 
 	@Override

@@ -1,5 +1,18 @@
 # BenchMod 基准工具链
 
+## 2026-10-30 原生持久化元数据首批优化
+
+按新目标先做v6四组12局36触发，再依据新报告实现，代码及必要配置全部完成后统一验证。生产PhotonPersistedMetadataUtil用两个ClassValue惰性cell分别缓存当前声明类Method[]/Field[]；PhotonPersistedMetadataMixin仅包装PersistedParser.deserializeInternal的两个调用，正常client默认安装，miss保留原Operation链，诊断order1000在缓存order900外层观察访问。缓存不持有Operation/Supplier/实例/IRef/ManagedKey，不移动父类、root或setter顺序，不改FX/资源/技能/生命周期。
+
+7缓存单测、3真实原生parser双路径回归、9诊断账本共19项通过；三独立JVM元数据访问微基准数组内容/顺序等价，暖访问原反射38400→0、1475→0 bytes/访问、约287–295→84–88ns/访问，仅局部访问范围，不是全parser零分配或FPS收益。test/bench复用现有MixinExtras普通JVM类路径，检查专用补充不进FULL游戏类路径，不加生产依赖。
+
+优化后v8四组12局36触发完成，六FULL总体/场景PASSED；每局测量及诊断归档后执行9项原生Codec/回调/继承/嵌套flatten/实例隔离/Tag不变与8缓存槽检查，54/54通过，不混进40秒主窗口。v7集成pilot因生成VM丢失mcp.port导致监测不足，排除性能对照；受控FULL参数现显式19877，防止IDEA同步覆盖生成值。
+
+实际FULL复制账本按copy归一化，分配中位数约849335→786475 bytes/copy，观测下降7.401%，含探针和类型组成差异。整局时间没有改善：Run激光合并P99 v6=11.659ms、v8=28.375ms；普通Run P50约1.048→6.198ms。两个当前环境未安装缓存的独立控制仍为约6.1–6.3ms底部节拍，仅支持节拍变化不能单凭缓存存在归因；不证明每个慢帧无关，也不宣称FPS收益。P22/P23继续开放。
+
+六份独立启动JFR把进入世界列为次要：world_open→run_start代理8.124–10.300秒，非精确冻结时间，加载GUI及登录后JEI2.711–3.434秒为后续候选，未改JEI/原生GUI。DS flash低档两份复核完成，第三轮上游402余额不足中断，未假称通过或切Pro。所有游戏/Debug/辅助会话结束，配置原字节恢复，原WIP和原暂存参数保护。证据build/agent-backups/20261030-goal-retest-baseline/及20261030-goal-optimized/；完整本地报告.agent/reports/20261030-metadata-optimization-final.md。编译/生产包隔离、Data0写删通过，原始控制与失败证据保留。
+
+
 ## 2026-10-30 三连发 FULL 与无测试参数 Run 矩阵
 
 四组各三局、每局三次触发，12局/36次已完成；每局独立JVM与新世界，主窗口40秒自然DURATION。Run使用真实VM无测试参数入口；FULL使用Sodium、BenchMod、MCP、IDEA Debug、JFR、Spark、CAST、提交及逐对象GPU诊断。六局FULL总体/场景均PASSED，测试截图0。不能将运行通过解释为长帧修复或视觉验收。

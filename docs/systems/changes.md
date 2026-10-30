@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-10-31：完成 Photon 四线并行处理与生命周期修正
+
+- ConductorControls卸载/注销改为纯本地clearSessionState，正常交互exit仍恢复原输入；修正断连期grabMouse导致setScreen(null)异常并阻断后续清理的根因。
+- PhotonModelSourceUtil新增只读缓存账本，提取既有EMBEDDED死键扫描并由QueenBeamEffects.clear复用；不移除活求值器或RESOURCE准备。opt-in测量后GC/弱引用检查确认各120引用回收，最终3死键630868B清零、RESOURCE4不变。
+- 新增逐对象复制账本、默认关闭的8个材质分段Mixin/开关、现有JFR长帧离线分析器。三局各11资源/80对象完整，尚未新增生产复制快路径/证明材质或FPS提速；保留P22/P23与时钟/探针/采样边界。
+- 全部代码完成后6 Java/7 Python、编译/包隔离/Data通过，相关修正后3 Java重跑；v1两局+v2最终激光复验共9触发/82原生检查通过，非12局矩阵。29生成SHA与六份用户配置恢复核对，原WIP/暂存保持，三代理/游戏/Debug/observer回收；未推送。
+- 一份.pyc生成缓存清理被自动审批拒绝（blocked by policy）且IDEA只读预检未定位，未绕过、不提交。中转DS Flash 404无产出已归档。详见[四线结果](benchmod.md#2026-10-31-四线并行批次收尾)，证据和备份build/agent-backups/20261030-parallel-optimization/。
+
 ## 2026-10-30：实现有界类型复制与材质预热任务拆分
 
 - ChildSpawner/NamedController新增deepCopy入口并使用PhotonRuntimeCopyUtil，保留现编码/guard/unknown/source；确切已核对类型独占恢复，Curve和扩展/规范化差异原生回退。

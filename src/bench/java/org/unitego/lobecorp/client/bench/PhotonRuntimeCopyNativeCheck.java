@@ -17,6 +17,8 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.curve.Curve;
 import com.sun.management.ThreadMXBean;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ByteArrayTag;
+import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.IntTag;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
@@ -35,6 +37,8 @@ import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 
 import java.lang.management.ManagementFactory;
+import java.io.IOException;
+import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,10 +75,15 @@ public class PhotonRuntimeCopyNativeCheck {
 		costReport.addProperty("baseline", "each object uses original encodeStart.result.flatMap(CODEC.parse.result); identical timeline.copy and list collection");
 		costReport.addProperty("order", "ABBA; A=native full-wrapper round-trip, B=current deepCopy; 128 repetitions per block");
 		costReport.add("blocks", check.costs);
-		context.artifacts().write(label + "-runtime-copy-native.json", "application/json", report.toString());
-		context.artifacts().write(label + "-runtime-copy-cost.json", "application/json", costReport.toString());
+        context.artifacts().write(label + "-runtime-copy-native.json", "application/json", report.toString());
+        context.artifacts().write(label + "-runtime-copy-cost.json", "application/json", costReport.toString());
+        // UUID保证接续执行不会覆盖上一次逐对象原件；旧artifact名称和verify签名保持不变。
+        if (Boolean.getBoolean(PhotonRuntimeCopyLedger.ENABLED_PROPERTY)) {
+            var ledger = new PhotonRuntimeCopyLedger().collect();
+            context.artifacts().write(label + "-runtime-copy-ledger-" + UUID.randomUUID() + ".json", "application/json", ledger.toString());
+        }
 
-		if (!check.failures.isEmpty()) {
+        if (!check.failures.isEmpty()) {
 			var failure = new IllegalStateException("runtime_copy_native_check_failed:" + check.failures.size());
 			check.failures.forEach(failure::addSuppressed);
 			throw failure;
@@ -92,6 +101,7 @@ public class PhotonRuntimeCopyNativeCheck {
 		runCase("invalid_current_values_and_exception_boundary", this::invalidValues);
 		runCase("raw_codec_enum_version_resource_guards", this::rawGuards);
 		runCase("subclass_callbacks_use_native_parse", this::subclasses);
+		runCase("real_model_config_wrapper_transform_independence", this::modelConfigAndOwnership);
 		// 真实资源在主窗口之后读取；不把配置 fixture 的成本伪装成真实 FX 成本。
 		for (var id : List.of(PhotonRepeatedEffectConfig.NATIVE_FX, "lobecorp:the_queen_of_hatred/laser")) {
 			runCase("real_fx:" + id, () -> realFx(Identifier.parse(id)));
@@ -374,6 +384,76 @@ public class PhotonRuntimeCopyNativeCheck {
 		});
 	}
 
+    private void modelConfigAndOwnership() {
+        var fx = Objects.requireNonNull(FXHelper.getFX(Identifier.parse("lobecorp:the_queen_of_hatred/laser")));
+        var borrowed = fx.getFxData().objects().stream().filter(PhotonModelOutput.class::isInstance).findFirst().orElseThrow();
+        var before = encode(borrowed);
+        var source = (PhotonModelOutput) Objects.requireNonNull(nativeCopy(borrowed));
+        var preserved = source.source();
+        preserved.putString("copy_unknown_root", "retained");
+        preserved.getCompoundOrEmpty("config").putString("copy_unknown_config", "retained");
+        source.rememberSource(preserved);
+        // Configurable同样持久化，不能仅复制Persisted；只修改独占fixture。
+        source.config.enabled = false;
+        source.config.duration = 73;
+        source.config.opacity = 0.37f;
+        source.config.playbackSpeed = 2.5f;
+        source.config.resource = null;
+        source.transform().localPosition(new Vector3f(2, 3, 4));
+        var first = (PhotonModelOutput) compare(source);
+        var second = (PhotonModelOutput) compare(source);
+        equal(false, first.config.enabled);
+        equal(73, first.config.duration);
+        equal(0.37f, first.config.opacity);
+        equal(2.5f, first.config.playbackSpeed);
+        equal(null, first.config.resource);
+        equal("retained", first.source().getStringOr("copy_unknown_root", ""));
+        equal("retained", first.source().getCompoundOrEmpty("config").getStringOr("copy_unknown_config", ""));
+        different(source.config, first.config);
+        different(first.config, second.config);
+        different(first.config.renderer, second.config.renderer);
+        different(first.config.modelRenderer, second.config.modelRenderer);
+        different(first.config.assetDependencies, second.config.assetDependencies);
+        different(first.config.assetMaterialDependencies, second.config.assetMaterialDependencies);
+        different(first.slot("opacity"), second.slot("opacity"));
+        first.slot("opacity").setRaw(0.25f);
+        equal(0.37f, second.slot("opacity").get());
+        first.config.assetDependencies.clear();
+        equal(source.config.assetDependencies, second.config.assetDependencies);
+        first.config.assetMaterialDependencies.putString("copy_mutation", "exclusive");
+        equal(false, second.config.assetMaterialDependencies.contains("copy_mutation"));
+        first.transform().localPosition().x = 900;
+        equal(2f, second.transform().localPosition().x);
+        var returnedSource = first.source();
+        returnedSource.putString("copy_unknown_root", "external_mutation");
+        equal("retained", first.source().getStringOr("copy_unknown_root", ""));
+        var snapshot = source.config.assetSnapshot();
+        source.config.setAssetSnapshot(snapshot);
+        if (snapshot instanceof ByteArrayTag bytes && bytes.getAsByteArray().length > 0) {
+            var expectedSnapshot = source.config.assetSnapshot();
+            bytes.getAsByteArray()[0] ^= 1;
+            equal(expectedSnapshot, source.config.assetSnapshot());
+        }
+
+        for (var invalid : List.<Tag>of(IntTag.valueOf(1), StringTag.valueOf("future"))) {
+            var wrapper = encode(source);
+            wrapper.getCompoundOrEmpty("data").put("version", invalid);
+            equal(null, IFXObject.CODEC.parse(NbtOps.INSTANCE, wrapper).result().orElse(null));
+        }
+
+        var adapted = encode(source);
+        var config = adapted.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+        config.remove("modelRenderer");
+        // RESOURCE对象可以没有内嵌快照：以真实适配器的接受/拒绝结果为准，不假定删除字段后仍合法。
+        try {
+            PhotonModelAssetUtil.adaptObject(adapted.getCompoundOrEmpty("data"));
+            Objects.requireNonNull(IFXObject.CODEC.parse(NbtOps.INSTANCE, adapted).getOrThrow());
+        } catch (IOException invalid) {
+            equal(null, IFXObject.CODEC.parse(NbtOps.INSTANCE, adapted).result().orElse(null));
+        }
+        equal(before, encode(borrowed));
+    }
+
 	private void realFx(Identifier id) {
 		var fx = Objects.requireNonNull(FXHelper.getFX(id), "real FX missing:" + id);
 		var data = fx.getFxData();
@@ -481,6 +561,7 @@ public class PhotonRuntimeCopyNativeCheck {
 		return switch (object) {
 			case PhotonChildSpawner spawner -> spawner.source();
 			case PhotonNamedController controller -> controller.source();
+			case PhotonModelOutput model -> model.source();
 			default -> new CompoundTag();
 		};
 	}

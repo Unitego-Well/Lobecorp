@@ -18,6 +18,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil;
 
 import javax.annotation.Nullable;
 import java.util.ArrayDeque;
@@ -377,14 +378,15 @@ public final class PhotonRenderPrewarm {
 		}
 
 		private Runnable measured(JobType type, Runnable job) {
+			var action = PhotonMaterialDiagnosticsUtil.wrap(type.name(), job);
 			if (!DIAGNOSTICS) {
-				return job;
+				return action;
 			}
 
 			return () -> {
 				long started = System.nanoTime();
 				try {
-					job.run();
+					action.run();
 				} finally {
 					long elapsed = System.nanoTime() - started;
 					int index = type.ordinal();

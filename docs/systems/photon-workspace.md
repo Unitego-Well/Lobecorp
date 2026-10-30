@@ -1,5 +1,7 @@
 # Photon 当前能力与恢复入口
 
+2026-10-31（10-30并行批次收尾）：退出clearSession纯清理与EMBEDDED失效键生命周期回收已修复/复验；复制/材质细账、旧JFR长帧归因和opt-in内存检查已交付，未冒称新增复制或材质提速。6 Java/7 Python、编译/包隔离/Data通过；v1两局+最终v2复验共9触发/82原生检查，120引用每局回收，最终3死键630868B清零、RESOURCE4保留。退出GUI根因三轮不再出现，P22/P23长帧仍开放。见[四线结果](benchmod.md#2026-10-31-四线并行批次收尾)，本地报告.agent/reports/20261031-photon-parallel-final.md。
+
 2026-10-30 类型复制与细粒度预热：两个明确类型直接恢复独占字段，保留原wrapper/guard及不等价函数原生回退；材料/变体任务拆分和clear代次完成。7队列测试、编译/包隔离/Data通过，两个新普通FULL共6触发/44项测量后原生检查通过，六配置SHA恢复。真实根FXData分配仅约降1.22%～1.25%，无墙钟/FPS收益证明，激光最长仍775.821ms，P22/P23及退出异常开放。详见[本轮边界](benchmod.md#2026-10-30-类型复制和材质粒度预热)，本地完整报告.agent/reports/20261030-runtime-copy-prewarm-final.md。
 
 2026-10-30 编码端补齐：生产元数据缓存扩至serializeInternal与deserializeInternal，8项原生回归、三独立JVM的fixture往返、编译/包隔离/Data完成。相对仅解码缓存，fixture分配观测降19.85%～20.60%，不是实际FX或FPS收益；本轮未游戏测试，P22/P23继续开放。中转站Flash辅助实际404无产出，未切路由，两个实现代理关闭。见[编码端对照](benchmod.md#2026-10-30-编码端元数据缓存与离线往返对照)，本地报告.agent/reports/20261030-encode-metadata-final.md。

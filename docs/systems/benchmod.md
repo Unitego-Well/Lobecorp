@@ -1,5 +1,17 @@
 # BenchMod 基准工具链
 
+## 2026-10-31 四线并行批次收尾
+
+10-30启动的复制/材质/长帧/释放四线已统一集成。新PhotonRuntimeCopyLedger以lobecorp.photon.copyLedger.enabled显式开启（8次/块、60秒软预算），八个材质Mixin仅lobecorp.photon.diag.material=true时应用，真实mapping执行计miss、实际GL调用单独计数；默认均关闭，插件不提前加载客户端诊断类。PhotonRuntimeLifetimeNativeCheck只在lobecorp.photon.bench.retentionProbe=true且main/复制账本归档后请求GC、检查缓存/弱引用/整堆差，不污染40秒窗口。
+
+生产修复：ConductorControls.clearSession分离纯清理，不在卸载/注销grabMouse或向关闭连接syncView，修正既有断连GUI异常并让后续Photon清理继续；prepare已有的EMBEDDED死键扫描提取pruneCleared并接到生命周期clear，只删已回收求值器的键，不淘汰live或RESOURCE准备。
+
+6 Java+7 Python测试通过，回收修正后受影响3 Java重跑通过；编译/生产包隔离/Data通过（0写删、29生成SHA不变）。v1两新FULL+v2最终激光复验共3局9触发、82原生检查通过，不是12局矩阵。三局各11资源/80对象账本完整；各8独占runtime/120引用回收，最终3死键630868B→0、RESOURCE4不变；整堆差不等于模型独占净存活内存。三次退出未见旧GUI/RejectedExecution异常，Native v1 IDE stdout仍有Spark停止采样CancellationException，文件保存和场景通过。
+
+最终预热50材料：GRAPH_LOOKUP35次/18hit17miss/1278.754ms；实际glCompileShader34次/3.119ms、glLinkProgram34次/19.382ms（尝试，不是成功program数，inclusive不相加）。最慢材质436.985ms，记录GL调用段不足以单独解释。旧PID8284主窗JFR慢帧Java330样本中子派生119、ParticleEmitter.update12；不是wall独占。未新增生产复制快路径或声称材质提速。
+
+main native P99/max21.654/240.403ms，laser v1=187.727/680.316ms，v2=180.618/731.667ms；新探针组合不能与旧组直接做FPS收益对比。六配置恢复，WIP/原暂存保持，三代理/游戏/Debug/observer结束。完整报告.agent/reports/20261031-photon-parallel-final.md，证据build/agent-backups/20261030-parallel-optimization/。一份分析器.pyc清理被自动审批blocked by policy拒绝，IDEA只读预检也未定位，保留且不提交；中转DS Flash实际404无产出，失败对话已归档。
+
 ## 2026-10-30 类型复制和材质粒度预热
 
 PhotonChildSpawner/PhotonNamedController接入有界typed copy：每次保留完整wrapper编码、guard、unknown/source与当前定义，只直接恢复已核对的独占字段。Curve.copy会丢lockControlPoint，曲线/扩展类型/实际规范化差异继续原生parse；不共享config/transform/槽/随机/播放状态。PhotonRenderPrewarm按准备、单材料、单变体任务排队，保留材料优先、渲染线程和既有重载清理；WorkQueue的代次防止clear后的旧continuation回填。builtIncludingHits包含命中，10ms仅限制开始任务。

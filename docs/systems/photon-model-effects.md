@@ -1,5 +1,13 @@
 # Photon 模型特效
 
+## 准备缓存账本与死键回收（2026-10-31）
+
+PhotonModelSourceUtil.preparationStatistics仅返回资源/内嵌entries、liveValues与内嵌keyBytes，不暴露实例/世界；RESOURCE键字节为-1表示未计量。keyBytes只指独立NBT键，不含拓扑、求值器、native或GPU内存。
+
+PreparationCache.pruneCleared复用prepare既有逻辑，仅当WeakReference.get()==null时移除键并扣减账本；purgeClearedEmbeddedPreparations由QueenBeamEffects.clear调用。仍存活的EMBEDDED求值器保留，RESOURCE准备继续随资源重载管理，不因一个世界退出任意淘汰。
+
+旧实测GC后曾剩10键/1402357B且无活求值器；最终复验最后3死键630868B→0，RESOURCE4保留，独立缓存clear后求值器回收。每局8个新建/销毁runtime的120个弱引用均回收；整JVM堆差不冒充模型独占净保留，已发射GPU/长时/切维度仍未整体验收。详见[四线释放检查](benchmod.md#2026-10-31-四线并行批次收尾)。
+
 ## RESOURCE 模型准备共享（2026-10-28）
 
 实机补测：普通／光影各完成一轮四模型共享、真实资源重载后的 sampler 替换、完整定义／快照／组合指纹和多消费者帧隔离检查，场景 PASSED；真实光束 OUTPUT 截图已检查，Spark 实件保存验证完成后正常退出。标准 MCP 固定 19877 连接成功，配合 IDEA／Debug；两轮总体 INCONCLUSIVE 是实际重载触发暂停／覆盖层标记，未取消相关门禁，不据此宣称性能达标或修改前同相位视觉等价。原 50 项是编码阶段纯 CPU 证据，本次游戏结果另列，详见[BenchMod 诊断记录](benchmod.md#2026-10-28-模型资源真实重载诊断)。

@@ -25,6 +25,7 @@ import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
 import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
+import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
@@ -285,6 +286,17 @@ public class QueenBeamEffects {
 		}
 	}
 
+	/// 只返回生命周期持有数量，不暴露或延长运行实例和世界的引用。
+	public record RetentionStatistics(int playing, int retired, int prepared, int idle,
+									  boolean queueRetained, boolean levelRetained) {
+	}
+
+	public static RetentionStatistics retentionStatistics() {
+		int idle = IDLE.values().stream().mapToInt(Deque::size).sum();
+		return new RetentionStatistics(PLAYING.size(), RETIRED.size(), PREPARED.size(), idle,
+				prewarmQueue != null, prewarmedLevel != null);
+	}
+
 	public static void clear() {
 		PLAYING.values().forEach(value -> value.effect.close());
 		PLAYING.clear();
@@ -292,6 +304,7 @@ public class QueenBeamEffects {
 		discardPrepared();
 		prewarmed = false;
 		prewarmedLevel = null;
+		PhotonModelSourceUtil.purgeClearedEmbeddedPreparations();
 	}
 
 	/// 释放未使用的预热/复用运行态；已采用的在 Beam 生命周期内由 effect 自己关闭或归还。

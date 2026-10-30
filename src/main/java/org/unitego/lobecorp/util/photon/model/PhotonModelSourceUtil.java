@@ -54,6 +54,22 @@ public class PhotonModelSourceUtil {
 		return PREPARED_RESOURCES;
 	}
 
+	/// 只读保留账本；keyBytes 仅计内嵌缓存键，-1 表示未计量，不含求值器、拓扑或显存。
+	public record CacheStatistics(int entries, int liveValues, long keyBytes) {
+	}
+
+	public record PreparationStatistics(CacheStatistics embedded, CacheStatistics resources) {
+	}
+
+	/// 生命周期清理只回收已失效的内嵌键，RESOURCE 准备结果继续随资源重载管理。
+	public static int purgeClearedEmbeddedPreparations() {
+		return PREPARED_EMBEDDED.pruneCleared();
+	}
+
+	public static PreparationStatistics preparationStatistics() {
+		return new PreparationStatistics(PREPARED_EMBEDDED.statistics(), PREPARED_RESOURCES.statistics());
+	}
+
 	/// 求值器只共享准备数据；采样 scratch 按线程隔离，返回帧不引用可写 scratch。
 	public record ResourcePreparation(PhotonModelPoseSampler sampler, String sha256) {
 	}
@@ -121,6 +137,10 @@ public class PhotonModelSourceUtil {
 		public synchronized void clear() {
 			entries.clear();
 		}
+
+		public synchronized CacheStatistics statistics() {
+			return new CacheStatistics(entries.size(), entries.size(), -1);
+		}
 	}
 
 	private static boolean usesSnapshot(PhotonModelOutputConfig config, Tag snapshot) {
@@ -150,16 +170,7 @@ public class PhotonModelSourceUtil {
 		}
 
 		public synchronized PhotonModelPoseSampler prepare(Tag snapshot, CompoundTag materials) throws IOException {
-			var iterator = entries.entrySet().iterator();
-
-			while (iterator.hasNext()) {
-				var entry = iterator.next();
-
-				if (entry.getValue().get() == null) {
-					keyBytes -= size(entry.getKey());
-					iterator.remove();
-				}
-			}
+			pruneCleared();
 
 			var lookup = new Key(snapshot, materials);
 			var reference = entries.get(lookup);
@@ -189,6 +200,33 @@ public class PhotonModelSourceUtil {
 			}
 
 			return prepared;
+		}
+
+		/// 只移除求值器已回收的内容键，不淘汰仍被实例持有的求值器。
+		public synchronized int pruneCleared() {
+			int removed = 0;
+			var iterator = entries.entrySet().iterator();
+			while (iterator.hasNext()) {
+				var entry = iterator.next();
+				if (entry.getValue().get() == null) {
+					keyBytes -= size(entry.getKey());
+					iterator.remove();
+					removed++;
+				}
+			}
+
+			return removed;
+		}
+
+		public synchronized CacheStatistics statistics() {
+			int live = 0;
+			for (var reference : entries.values()) {
+				if (reference.get() != null) {
+					live++;
+				}
+			}
+
+			return new CacheStatistics(entries.size(), live, keyBytes);
 		}
 
 		private static long size(Key key) {

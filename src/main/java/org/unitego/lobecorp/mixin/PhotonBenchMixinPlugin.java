@@ -14,6 +14,15 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	public static final String PRESERVE_WINDOW_PROPERTY = "lobecorp.photon.bench.preserveWindow";
 	private static final String WINDOW_MIXIN = "org.unitego.lobecorp.mixin.bench.ClientGraphicsControllerMixin";
 	private static boolean preservedWindowApplied;
+	private static final Set<String> MATERIAL_MIXINS = Set.of(
+			"org.unitego.lobecorp.mixin.photon.performance.client.MaterialSettingMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.MaterialRenderTypesMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.ShaderGraphMaterialMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.ShaderGraphRuntimeMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.RenderTypeFactoryMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.PhotonPipelinesMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.GlDeviceMixin",
+			"org.unitego.lobecorp.mixin.photon.performance.client.GlProgramMixin");
 	private static final Set<String> BENCH_MIXINS = Set.of(
 			"org.unitego.lobecorp.mixin.photon.performance.client.FXObjectMixin",
 			"org.unitego.lobecorp.mixin.photon.performance.client.EmitterMixin",
@@ -31,6 +40,11 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+		if (MATERIAL_MIXINS.contains(mixinClassName)) {
+			// 插件阶段不加载客户端材质或诊断类。
+			return Boolean.getBoolean("lobecorp.photon.diag.material");
+		}
+
 		if (mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFXLoadDiagnosticsMixin")
 				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonObjectDeserializeDiagnosticsMixin")
 				|| mixinClassName.equals("org.unitego.lobecorp.mixin.photon.performance.client.PhotonFactoryDeserializeDiagnosticsMixin")

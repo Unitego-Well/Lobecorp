@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-30：补齐 Photon 编码端元数据缓存
+
+- 生产PhotonPersistedMetadataMixin两个目标列表扩至serializeInternal/deserializeInternal，复用既有helper和order900；不改变parser、资源、技能或实例所有权。
+- 原生回归扩为8项并核对生产注解目标；新增仅bench的PhotonPersistedParserBenchmark，对照上轮仅解码缓存和两端缓存，三个独立JVM每方案各1200 fixture往返，分配观测下降19.85%～20.60%，非实际FX/FPS收益。
+- 全部代码完成后编译/生产包隔离、定向回归、独立基准及Data通过，Data0写删/29生成SHA不变。本轮未游戏；P22/P23、真实Mixin及视觉/净保留内存不据离线结果关闭。自建Gradle过滤参数两次启动失败后用IDEA语义测试入口完成，失败配置备份删除。
+- 中转站Flash low请求实际404，无DS产出且未回退；两个Sol代理关闭/三基准JVM退出，原WIP和暂存保持。文档备份及证据build/agent-backups/20261030-encode-metadata/，见[编码端对照](benchmod.md#2026-10-30-编码端元数据缓存与离线往返对照)。
+
 ## 2026-10-30：明确 DS 中转站模型路由规范
 
 - 工作流程新增 DS 辅助模型与路由规则，项目根入口链接正文：使用 DeepSeek 中转站 Flash、最低推理档，当前为 `ccs-deepseek-2/deepseek-flash` / `low`；区分另一提供方条目，禁止自动替换 Pro 或改主模型/全局代理。

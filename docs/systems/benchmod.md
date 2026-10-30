@@ -1,5 +1,13 @@
 # BenchMod 基准工具链
 
+## 2026-10-30 编码端元数据缓存与离线往返对照
+
+生产 MetadataMixin 现在同时包装 PersistedParser.serializeInternal / deserializeInternal 各两个声明数组调用，复用同一 ClassValue helper，order900 和正常 client 安装不变。默认 deepCopy 先编码再解码，上轮仅解码缓存未覆盖编码端；不共享 ManagedKey/IRef、实例、provider 或可变 FX/NBT，不改原生算法和负载。
+
+全部代码完成后，IDEA 定向检查无错误；8 项真实 parser 回归通过，另含生产注解选择器/描述符/order 静态 gate（不等于实际游戏注入）。三个独立 JVM 以 A=上轮仅解码缓存、B=两端缓存对照，每 JVM 每方案 1200 fixture 往返；暖测 A 编码 methods/fields 各4800次、B各0，解码均0。分配约12521～12789→9944～10250 bytes/往返，观测下降19.85%～20.60%。包含dispatch、构造、Tag copy/hash和语义校验；不是实际FX/FPS/净存活内存收益，冷固定A后B也不作首发性能证明。
+
+编译、生产包隔离与无窗口Data通过，Data0写删、29生成文件SHA不变；未启动游戏、Debug、截图或新12局矩阵，P22/P23保持开放。中转站Flash low辅助实际404（组内无账号支持该模型），无DS结论，未回退路由；失败对话归档，两个Sol实现代理关闭，三基准JVM退出，用户WIP/暂存保护。证据build/agent-backups/20261030-encode-metadata/，完整报告.agent/reports/20261030-encode-metadata-final.md。基准入口PhotonPersistedParserBenchmark，使用独立新输出目录。
+
 ## 2026-10-30 原生持久化元数据首批优化
 
 按新目标先做v6四组12局36触发，再依据新报告实现，代码及必要配置全部完成后统一验证。生产PhotonPersistedMetadataUtil用两个ClassValue惰性cell分别缓存当前声明类Method[]/Field[]；PhotonPersistedMetadataMixin仅包装PersistedParser.deserializeInternal的两个调用，正常client默认安装，miss保留原Operation链，诊断order1000在缓存order900外层观察访问。缓存不持有Operation/Supplier/实例/IRef/ManagedKey，不移动父类、root或setter顺序，不改FX/资源/技能/生命周期。

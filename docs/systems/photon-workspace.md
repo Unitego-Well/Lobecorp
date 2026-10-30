@@ -1,5 +1,7 @@
 # Photon 当前能力与恢复入口
 
+2026-10-30 编码端补齐：生产元数据缓存扩至serializeInternal与deserializeInternal，8项原生回归、三独立JVM的fixture往返、编译/包隔离/Data完成。相对仅解码缓存，fixture分配观测降19.85%～20.60%，不是实际FX或FPS收益；本轮未游戏测试，P22/P23继续开放。中转站Flash辅助实际404无产出，未切路由，两个实现代理关闭。见[编码端对照](benchmod.md#2026-10-30-编码端元数据缓存与离线往返对照)，本地报告.agent/reports/20261030-encode-metadata-final.md。
+
 2026-10-30 新基线v6与优化后v8各12局36触发完成，生产声明类元数据缓存已实现；19项目标测试、三JVM微基准、54项测量后原生集成通过。实际每copy分配约降7.4%，未证明整体FPS改善，P22/P23与进入世界卡顿仍开放。入口见[BenchMod](benchmod.md#2026-10-30-原生持久化元数据首批优化)，本地总报告.agent/reports/20261030-metadata-optimization-final.md。
 
 

@@ -59,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 
 /// 主窗口归档后的真实客户端契约探针；不发射、不推进生产时钟、不清理其他实例。
 public class PhotonCreationNativeCheck {
+	// 固定既有四模式探针范围，新增模式使用独立场景验收。
+	private static final List<Mode> ORIGINAL_MODES = List.of(Mode.NATIVE, Mode.COMPILED, Mode.POOLED, Mode.INDEXED);
 	private static final int EXPECTED_OBJECTS = 80;
 	private static final long TIMEOUT_NS = TimeUnit.SECONDS.toNanos(30);
 	private static final List<String> RESOURCES = List.of(
@@ -209,7 +211,7 @@ public class PhotonCreationNativeCheck {
 	/// 由外部已经完成的合法 reload/clear 调用；本探针自身绝不 invalidateAll。
 	@SuppressWarnings("unused")
 	public static void verifyInvalidatedDefinition(Definition previous) {
-		for (var mode : Mode.values()) {
+		for (var mode : ORIGINAL_MODES) {
 			boolean rejected = false;
 			try {
 				var unexpected = PhotonRuntimeFactory.instantiate(previous, mode);
@@ -236,7 +238,7 @@ public class PhotonCreationNativeCheck {
 		var active = PhotonRuntimeFactory.acquire(definition, new Object(), Mode.COMPILED);
 		owned.add(active);
 		verifyInvalidatedDefinition(stale);
-		for (var mode : Mode.values()) {
+		for (var mode : ORIGINAL_MODES) {
 			boolean rejected = false;
 			try {
 				var unexpected = PhotonRuntimeFactory.acquire(stale, new Object(), mode);
@@ -318,7 +320,7 @@ public class PhotonCreationNativeCheck {
 
 		var modes = new JsonArray();
 		row.add("modes", modes);
-		for (var mode : Mode.values()) {
+		for (var mode : ORIGINAL_MODES) {
 			var result = new JsonObject();
 			result.addProperty("mode", mode.name());
 			result.addProperty("passed", false);
@@ -467,7 +469,7 @@ public class PhotonCreationNativeCheck {
 		equal(edited.getCompoundOrEmpty("fxData"), current.snapshot());
 		var expected = PhotonRuntimeFactory.nativeRuntime(author);
 		try {
-			for (var mode : Mode.values()) {
+			for (var mode : ORIGINAL_MODES) {
 				var actual = PhotonRuntimeFactory.instantiate(current, mode);
 				try {
 					compare(expected, actual, mode);
@@ -661,7 +663,7 @@ public class PhotonCreationNativeCheck {
 			report.add("unsupported_fixture", row);
 			var expected = PhotonRuntimeFactory.nativeRuntime(source);
 			try {
-				for (var mode : Mode.values()) {
+				for (var mode : ORIGINAL_MODES) {
 					var actual = PhotonRuntimeFactory.instantiate(definition, mode);
 					try {
 						require(actual.objects.size() == 2, "unsupported node silently dropped");

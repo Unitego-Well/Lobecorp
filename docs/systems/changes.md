@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-10-31：新增独立 HYBRID 实例模式（未运行验收）
+
+- 以COMPILED为底子，同一runtime组合编译定义/初始化、显式租约与有界复用、UUID数组Map；根/FX/PROJECT均接入，池键按模式隔离。NATIVE默认及四种原模式保留。
+- Factory让HYBRID逐项装载索引；PhotonIndexedMap新增仅供独占租约的resetForLease，避免普通putAll/clear永久物化；旧Map API不变。追加五个融合/回退统计键，未知类型和复位失败沿用fresh回退，不改数量、时序或渲染kernel。
+- PhotonCreationNativeCheck五处循环固定原四模式集合，保持旧场景范围；五模式独立场景与实测待用户恢复授权。三个Java文件IDEA静态均analyzed、无截断、0错误，保留3项原位置提示；未构建、Data、JUnit、微基准或游戏。
+- 原字节及分阶段manifest位于build/agent-backups/20261031-photon-hybrid；计划、比较入口和交付报告为.agent下20261031-photon-hybrid-*。原WIP与暂存保护，不修改女皇进入25秒归因原件或主对话索引，不推送。契约与观测边界见[实例创建](photon-runtime-creation.md#hybrid-组合与索引生命周期)。
+
 ## 2026-10-31：新增单女皇25秒与空白对照场景
 
 - 新建两个Scene适配、独立早期renderFrame采集器、observer及12套VM/IDEA配置，Provider/插件仅追加分支；旧场景不改。用户要求的新测试必须新增场景规则保存到workflow。

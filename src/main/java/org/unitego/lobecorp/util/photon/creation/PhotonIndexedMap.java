@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -132,6 +133,15 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		materialize();
 		modifications++;
 		materialized.clear();
+	}
+
+	/// 仅在旧独占租约失效且完成排空屏障后重建数组状态；旧租约的视图和条目不得跨代使用。
+	public void resetForLease() {
+		Arrays.fill(objects, null);
+		Arrays.fill(presence, false);
+		materialized = null;
+		size = 0;
+		modifications++;
 	}
 
 	@Override

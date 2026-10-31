@@ -52,7 +52,7 @@ public class PhotonRuntimeFactory {
 	public static final String MODE_PROPERTY = "lobecorp.photon.creation.mode";
 
 	public enum Mode {
-		NATIVE, COMPILED, POOLED, INDEXED
+		NATIVE, COMPILED, POOLED, INDEXED, HYBRID
 	}
 
 	private static final Mode MODE = Mode.valueOf(System.getProperty(MODE_PROPERTY, "native").toUpperCase(Locale.ROOT));
@@ -73,6 +73,11 @@ public class PhotonRuntimeFactory {
 	private static long projectRequests;
 	private static long projectCompilations;
 	private static long indexedRuntimes;
+	private static long hybridLeaseAcquires;
+	private static long hybridFreshIndexedCreates;
+	private static long hybridIndexedResets;
+	private static long hybridReuseTypeRejections;
+	private static long hybridLayoutFallbacks;
 	private static long unmanagedCreates;
 	private static long nativeCreates;
 	private static long resetFailures;
@@ -94,7 +99,7 @@ public class PhotonRuntimeFactory {
 	private record Construction(FXData data, Definition definition, Mode mode) {
 	}
 
-	private record PoolKey(Definition definition, Object world, long generation) {
+	private record PoolKey(Definition definition, Object world, long generation, Mode mode) {
 	}
 
 	private record ProjectKey(List<UUID> ids, List<String> types, UUID target,
@@ -103,10 +108,12 @@ public class PhotonRuntimeFactory {
 
 	private static class Scope {
 		private final Definition definition;
+		private final Mode mode;
 		private final Map<ProjectKey, Definition> projects = new HashMap<>();
 
-		private Scope(Definition definition) {
+		private Scope(Definition definition, Mode mode) {
 			this.definition = definition;
+			this.mode = mode;
 		}
 	}
 
@@ -178,7 +185,7 @@ public class PhotonRuntimeFactory {
 			return original.get();
 		}
 		unmanagedCreates++;
-		return instantiate(prepare(source), MODE == Mode.INDEXED ? Mode.INDEXED : Mode.COMPILED);
+		return instantiate(prepare(source), MODE == Mode.POOLED ? Mode.COMPILED : MODE);
 	}
 
 	public static FXRuntime nativeRuntime(FX source) {
@@ -200,13 +207,24 @@ public class PhotonRuntimeFactory {
 
 	public static Lease acquire(Definition definition, Object world, Mode mode) {
 		ensureCurrent(definition);
-		if (mode == Mode.POOLED) {
-			var key = new PoolKey(definition, world, generation);
-			var pooled = POOL.acquire(key, () -> instantiate(definition, Mode.COMPILED),
-					value -> resetRuntime(definition, value, null));
-			return new Lease(null, pooled, generation);
+		if (mode == Mode.POOLED || mode == Mode.HYBRID) {
+			return acquirePooled(definition, world, mode, null);
 		}
 		return new Lease(instantiate(definition, mode), null, generation);
+	}
+
+	private static Lease acquirePooled(Definition definition, Object world, Mode mode,
+	                                   @Nullable List<IFXObject> live) {
+		var constructionMode = mode == Mode.HYBRID ? Mode.HYBRID : Mode.COMPILED;
+		var pooled = POOL.acquire(new PoolKey(definition, world, generation, mode),
+				() -> construct(definition, live, constructionMode),
+				value -> resetRuntime(definition, value, live, mode));
+
+		if (mode == Mode.HYBRID) {
+			hybridLeaseAcquires++;
+		}
+
+		return new Lease(null, pooled, generation);
 	}
 
 	public static FXRuntime instantiate(Definition definition, Mode mode) {
@@ -266,8 +284,21 @@ public class PhotonRuntimeFactory {
 					CONSTRUCTION.set(previous);
 				}
 			}
-			SCOPES.put(runtime, new Scope(definition));
+			SCOPES.put(runtime, new Scope(definition, mode));
 			createdRuntimes++;
+
+			if (mode == Mode.HYBRID) {
+				if (runtime.objects instanceof PhotonIndexedObjectMap indexed && !indexed.isMaterialized()) {
+					hybridFreshIndexedCreates++;
+				} else {
+					hybridLayoutFallbacks++;
+				}
+
+				if (!reusable(runtime)) {
+					hybridReuseTypeRejections++;
+				}
+			}
+
 			return runtime;
 		} catch (RuntimeException | Error failure) {
 			objects.forEach(object -> object.remove(true));
@@ -284,11 +315,18 @@ public class PhotonRuntimeFactory {
 
 	public static @Nullable Map<UUID, IFXObject> indexedMap(FXData data, Map<UUID, IFXObject> current) {
 		var construction = CONSTRUCTION.get();
-		if (construction == null || construction.data != data || construction.mode != Mode.INDEXED) {
+		if (construction == null || construction.data != data || construction.mode != Mode.INDEXED && construction.mode != Mode.HYBRID) {
 			return null;
 		}
 		var result = new PhotonIndexedObjectMap(construction.definition.layout);
-		result.putAll(current);
+		if (construction.mode == Mode.HYBRID) {
+			// putAll 会物化，逐项装载才能保留数组布局。
+			//noinspection UseBulkOperation
+			current.forEach(result::put);
+		} else {
+			result.putAll(current);
+		}
+
 		indexedRuntimes++;
 		return result;
 	}
@@ -299,13 +337,19 @@ public class PhotonRuntimeFactory {
 
 	public static @Nullable Lease project(IScene scene, List<IFXObject> selected,
 	                                      UUID target, boolean includeChildren, Object world) {
-		if (MODE == Mode.NATIVE || !(scene instanceof FXRuntime scopeRuntime)) {
+		if (!(scene instanceof FXRuntime scopeRuntime)) {
 			return null;
 		}
 		var scope = SCOPES.get(scopeRuntime);
 		if (scope == null || scope.definition.generation != generation) {
 			return null;
 		}
+		var mode = scope.mode == Mode.HYBRID ? Mode.HYBRID : MODE;
+
+		if (mode == Mode.NATIVE) {
+			return null;
+		}
+
 		projectRequests++;
 		var controllers = scene.getAllSceneObjects().stream()
 				.filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
@@ -329,14 +373,10 @@ public class PhotonRuntimeFactory {
 		if (controller != null && inputs.stream().noneMatch(PhotonNamedController.class::isInstance)) {
 			inputs.add(controller);
 		}
-		if (MODE == Mode.POOLED) {
-			var saved = definition;
-			var pooled = POOL.acquire(new PoolKey(saved, world, generation),
-					() -> construct(saved, inputs, Mode.COMPILED),
-					value -> resetRuntime(saved, value, inputs));
-			return new Lease(null, pooled, generation);
+		if (mode == Mode.POOLED || mode == Mode.HYBRID) {
+			return acquirePooled(definition, world, mode, inputs);
 		}
-		return new Lease(construct(definition, inputs, MODE), null, generation);
+		return new Lease(construct(definition, inputs, mode), null, generation);
 	}
 
 	private static Definition compileProject(Definition parent, List<IFXObject> selected,
@@ -379,10 +419,23 @@ public class PhotonRuntimeFactory {
 	}
 
 	private static void resetRuntime(Definition definition, FXRuntime runtime,
-	                                 @Nullable List<IFXObject> live) {
+	                                 @Nullable List<IFXObject> live, Mode mode) {
 		ensureCurrent(definition);
 		long started = System.nanoTime();
+		var originalMap = runtime.objects;
 		try {
+			if (mode == Mode.HYBRID) {
+				if (!(originalMap instanceof PhotonIndexedObjectMap)) {
+					hybridLayoutFallbacks++;
+					throw new IllegalStateException("HYBRID 租约缺少索引布局。");
+				}
+
+				if (!reusable(runtime)) {
+					hybridReuseTypeRejections++;
+					throw new IllegalStateException("HYBRID 租约包含不支持完整复位的精确类型。");
+				}
+			}
+
 			runtime.destroy(true);
 			var actors = new ArrayList<>(runtime.fxData.objects());
 			if (actors.size() != definition.nodes.size() || runtime.objects.size() != actors.size() + 1) {
@@ -437,7 +490,13 @@ public class PhotonRuntimeFactory {
 			access.lobecorp$resetCreationState(new FXData(actors, definition.timeline.instantiate()));
 			runtime.setRate(1);
 			access.lobecorp$restoreCreationCallbacks();
-			runtime.objects.clear();
+			if (mode == Mode.HYBRID) {
+				// 普通 clear 会永久物化；独占租约复位恢复同一张 Map 的数组布局。
+				((PhotonIndexedObjectMap) originalMap).resetForLease();
+			} else {
+				runtime.objects.clear();
+			}
+
 			runtime.addSceneObjectInternal(runtime.root);
 			for (var actor : actors) {
 				runtime.addSceneObjectInternal(actor);
@@ -451,7 +510,16 @@ public class PhotonRuntimeFactory {
 				}
 				actor.transform().rebuildChildOrder();
 			}
-			SCOPES.put(runtime, new Scope(definition));
+			if (mode == Mode.HYBRID) {
+				if (((PhotonIndexedObjectMap) originalMap).isMaterialized()) {
+					hybridLayoutFallbacks++;
+					throw new IllegalStateException("HYBRID 复位没有保留同实例数组索引布局。");
+				}
+
+				hybridIndexedResets++;
+			}
+
+			SCOPES.put(runtime, new Scope(definition, mode));
 		} catch (RuntimeException | Error failure) {
 			resetFailures++;
 			throw failure;
@@ -606,6 +674,11 @@ public class PhotonRuntimeFactory {
 		result.put("project_requests", projectRequests);
 		result.put("project_compilations", projectCompilations);
 		result.put("indexed_runtimes", indexedRuntimes);
+		result.put("hybrid_lease_acquires", hybridLeaseAcquires);
+		result.put("hybrid_fresh_indexed_creates", hybridFreshIndexedCreates);
+		result.put("hybrid_indexed_resets", hybridIndexedResets);
+		result.put("hybrid_reuse_type_rejections", hybridReuseTypeRejections);
+		result.put("hybrid_layout_fallbacks", hybridLayoutFallbacks);
 		result.put("unmanaged_creates", unmanagedCreates);
 		result.put("native_creates", nativeCreates);
 		result.put("reset_failures", resetFailures);

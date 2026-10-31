@@ -4,7 +4,7 @@
 
 ## 模式与职责
 
-启动属性 `lobecorp.photon.creation.mode` 支持 `native`、`compiled`、`pooled`、`indexed`，大小写不敏感，启动时读取；资源重载不热切换策略。
+启动属性 `lobecorp.photon.creation.mode` 支持 `native`、`compiled`、`pooled`、`indexed`、`hybrid`，大小写不敏感，启动时读取；资源重载不热切换策略。默认仍为 NATIVE，HYBRID 仅显式选择，尚未进行运行或性能验收。
 
 | 模式 | 实际实现 |
 |---|---|
@@ -12,8 +12,31 @@
 | COMPILED（A） | 私有冻结定义、已编译字段指令、无目标命名/时间轴程序；每次创建独占状态 |
 | POOLED（B） | A的初始化程序加显式租约；仅复用已覆盖完整复位的确切类型 |
 | INDEXED（C） | A的fresh实例加UUID索引/数组Map；保留原生LinkedHashMap插入次序和模拟/绘制kernel |
+| HYBRID | A的编译定义/初始化、B的独占租约/完整复位、有界复用与C的UUID数组布局共同作用于同一runtime；根、FX及PROJECT接入同一路径 |
 
 C没有重写集中模拟、SoA或GPU粒子执行器。公开 `createRuntime(false)` 保留原生行为；没有显式租约的deep调用创建fresh状态，不进入池。未注册的可变作者数据按本次内容准备，不跨调用缓存。
+
+## HYBRID 组合与索引生命周期
+
+底子选择 COMPILED：B、C本来共用A的定义与初始化层，融合继续复用该层。六局A/B/C的P99中位26.384/28.303/26.914ms只是历史比较依据；三者最坏长帧均未稳定优于原生，不能据此宣称融合有收益。
+
+受管获取以定义、世界、代次、模式隔离池键，POOLED与HYBRID不互借。HYBRID miss使用编译程序创建独占节点和索引Map；hit对原runtime完整复位，再按root与定义顺序装回同一Map。未持有显式租约的HYBRID deep调用和 `instantiate(..., HYBRID)` 只创建fresh索引实例。
+
+原 `PhotonIndexedMap.putAll()` 与 `clear()` 会物化为LinkedHashMap。因此旧INDEXED虽安装该Map类型，现有构造接线并未保持数组存储；历史C的分配结果不能单独归因为数组查找。本次保留旧API和四模式行为，只让HYBRID逐项装载，并在排空、跨真实tick/完成帧屏障后的独占租约复位中调用 `resetForLease()`。该入口清空引用、占位与计数，撤销物化并使旧迭代器失效；旧租约的引用、视图及条目不可跨代使用。
+
+未知节点类型仍不复用，保持fresh及原native字段回退；动态Map操作仍可物化以保持插入次序和Map语义，不强行维持数组。复位失败由现有池丢弃旧实例并fresh创建，发射数量、时序、自然尾迹与native kernel不变。成功的数组复位与物化回退应分别观测，Map类型本身不是数组路径生效证据。
+
+HYBRID不改女皇生成时的beamDefinitions/prewarm drain、材质准备或调度预算，不能据租约/索引机制宣称秒级生成卡顿已解决。
+
+`statistics()` 追加五个累计指标：`hybrid_lease_acquires` 为成功获取的受管租约；`hybrid_fresh_indexed_creates` 为构造完成时数组未物化的新实例（含无租约fresh）；`hybrid_indexed_resets` 为完整复位结束且数组未物化；`hybrid_reuse_type_rejections` 为创建/复位检查发现的非白名单类型；`hybrid_layout_fallbacks` 为构造或复位检查发现的布局缺失/物化。最后两项是检查事件计数，不是唯一实例数，也不覆盖借出后每次动态编辑；后续仍需现场核对Map状态。原统计键保留。
+
+### 后续五模式比较
+
+当前阶段仅实现与定向IDEA静态检查，不构建、Data、JUnit、微基准或游戏。恢复测试授权后新增独立Scenario实现、ID与配置，在同一新场景比较NATIVE/COMPILED/POOLED/INDEXED/HYBRID，不改旧Scenario或旧矩阵。完整规划在本地 `.agent/plans/20261031-photon-hybrid-comparison.md`。
+
+每模式至少保留三次独立JVM/世界同负载窗口；记录主窗前后创建统计、数组是否物化、同一runtime/Map身份、完整复位成本、逐局分位/最坏长帧/阈值频次、分配与GC。数据缺失记unknown，不能用旧测试或仅计数证明融合验收。
+
+旧 `PhotonCreationNativeCheck` 的五处枚举循环固定为原四模式集合，避免新增枚举值自动扩张旧场景检查范围。HYBRID专属契约尚未运行；2026-10-31本次三个Java文件经IDEA静态分析均完成、无截断、0错误，Factory保留3项原位置提示（未使用managed、setSceneInternal(null)、minecraft空判断）。未构建或执行任何测试。
 
 ## 接口与所有权
 

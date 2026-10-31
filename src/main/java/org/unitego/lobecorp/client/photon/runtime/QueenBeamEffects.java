@@ -100,6 +100,14 @@ public class QueenBeamEffects {
 			}
 			var id = snapshot.instanceId();
 			visible.add(id);
+			try {
+				if (QueenOwnedLaserEffects.handle(owner, snapshot)) {
+					finish(id);
+					continue;
+				}
+			} catch (RuntimeException failure) {
+				Lobecorp.LOGGER.warn("自有激光组合失败，采用旧路径 {}", id, failure);
+			}
 			if (Objects.equals(RETIRED.get(id), snapshot.playbackRevision())) {
 				continue;
 			}
@@ -138,6 +146,7 @@ public class QueenBeamEffects {
 				finish(id);
 			}
 		}
+		QueenOwnedLaserEffects.retain(visible);
 		RETIRED.keySet().retainAll(visible);
 		drainPrewarm();
 	}
@@ -297,6 +306,7 @@ public class QueenBeamEffects {
 	}
 
 	public static void clear() {
+		QueenOwnedLaserEffects.clear();
 		PLAYING.values().forEach(value -> value.effect.close());
 		PLAYING.clear();
 		RETIRED.clear();

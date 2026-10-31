@@ -1,5 +1,8 @@
 # Photon 当前能力与恢复入口
 
+2026-10-31 全方案再测完成：3eb1e0e生产代码不变，12独立JVM/世界、36触发、每局74契约通过。A的P99、B的>100ms频次、C的分配各有优势，跨轮原生帧率明显不同；默认NATIVE、P22/P23保持。[复测结果](benchmod.md#2026-10-31-实例创建全方案再次复测)，本地报告.agent/reports/20261031-runtime-redesign-retest.md。
+
+
 2026-10-31 实例创建重设计：研究后完成A/B/C、四套独立版本及12局36次，每局74宿主检查通过。C的>100ms数量24→15、平均分配约降26.8%，但最坏峰值402ms仍高于原生250ms；默认NATIVE，P22/P23开放。见[创建架构](photon-runtime-creation.md)、[三轮比较](benchmod.md#2026-10-31-实例创建架构三方案对照)，本地完整报告.agent/reports/20261031-runtime-redesign-final.md。
 
 

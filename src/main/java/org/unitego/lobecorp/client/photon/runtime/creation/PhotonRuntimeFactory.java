@@ -4,6 +4,7 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXData;
+import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
@@ -15,6 +16,7 @@ import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 
 import java.util.stream.Collectors;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
@@ -36,6 +39,8 @@ import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,10 +69,75 @@ public class PhotonRuntimeFactory {
 	private static final ThreadLocal<Integer> COMPILING = ThreadLocal.withInitial(() -> 0);
 	private static final ThreadLocal<Construction> CONSTRUCTION = new ThreadLocal<>();
 	private static long generation;
+	private static long definitionGeneration;
+	private static final Map<FX, PreparedSourceKey> PREPARED_SOURCES = new WeakHashMap<>();
+
+	/// 调用方保证发布后 FX 不再原地修改；来源身份不写入 Photon 通用缓存。
+	public record PreparedSourceKey(String source, long revision) {
+		public PreparedSourceKey {
+			Objects.requireNonNull(source);
+			if (source.isBlank()) {
+				throw new IllegalArgumentException("准备来源身份不能为空。");
+			}
+		}
+	}
+
+	public static Definition registerPreparedSource(FX source, PreparedSourceKey key) {
+		Objects.requireNonNull(source);
+		Objects.requireNonNull(key);
+		requireDetachedPreparedSource(source);
+		if (RESOURCE_SOURCES.containsKey(source)) {
+			throw new IllegalArgumentException("公开资源不能登记为私有准备来源。");
+		}
+
+		var cached = DEFINITIONS.get(source);
+		if (key.equals(PREPARED_SOURCES.get(source)) && cached != null
+				&& cached.data.get() == source.getFxData()
+				&& cached.definition.generation == definitionGeneration && cached.definition.valid) {
+			return cached.definition;
+		}
+		unregisterPreparedSource(source);
+		PhotonChildSpawner.bindPreloadDefinition(source.getFxData());
+		var definition = compile(source.getFxData(), key.source() + "@" + key.revision());
+		preparedSourceCompilations++;
+		PREPARED_SOURCES.put(source, key);
+		DEFINITIONS.put(source, new CachedDefinition(new WeakReference<>(source.getFxData()), definition));
+		return definition;
+	}
+
+	/// 只查询显式私有来源的当前编译缓存，不准备定义或触碰世界生命周期。
+	public static boolean preparedSourceCurrent(FX source) {
+		if (!PREPARED_SOURCES.containsKey(source)) {
+			return false;
+		}
+
+		var cached = DEFINITIONS.get(source);
+		return cached != null && cached.data.get() == source.getFxData()
+				&& cached.definition.valid && cached.definition.generation == definitionGeneration;
+	}
+
+	private static void requireDetachedPreparedSource(FX source) {
+		for (var object : source.getFxData().objects()) {
+			if (object.getScene() != null || object.getEffectExecutor() != null) {
+				throw new IllegalArgumentException("私有准备来源必须是未绑定场景或执行器的不可变快照。");
+			}
+		}
+	}
+
+	public static void unregisterPreparedSource(FX source) {
+		if (PREPARED_SOURCES.remove(source) != null) {
+			var previous = DEFINITIONS.remove(source);
+			if (previous != null) {
+				invalidateDefinition(previous.definition);
+			}
+		}
+	}
 	private static long tick;
 	private static long frame;
 	private static long sequence;
 	private static long preparedDefinitions;
+	private static long preparedSourceCacheHits;
+	private static long preparedSourceCompilations;
 	private static long compiledNodes;
 	private static long createdRuntimes;
 	private static long projectRequests;
@@ -130,8 +200,7 @@ public class PhotonRuntimeFactory {
 	}
 
 	public static void registerResource(FX fx, String id) {
-		if (MODE != Mode.NATIVE && COMPILING.get() == 0) {
-			ensureWorld();
+		if (MODE != Mode.NATIVE && COMPILING.get() == 0 && !PREPARED_SOURCES.containsKey(fx)) {
 			RESOURCE_SOURCES.put(fx, id);
 		}
 	}
@@ -140,18 +209,31 @@ public class PhotonRuntimeFactory {
 	public static Definition prepare(FX source) {
 		Objects.requireNonNull(source);
 		ensureWorld();
-		var result = compile(source.getFxData(), RESOURCE_SOURCES.getOrDefault(source, "authoring"));
-		if (RESOURCE_SOURCES.containsKey(source)) {
-			DEFINITIONS.put(source, new CachedDefinition(new WeakReference<>(source.getFxData()), result));
+		var preparedKey = PREPARED_SOURCES.get(source);
+		if (preparedKey != null) {
+			requireDetachedPreparedSource(source);
+		}
+
+		var result = compile(source.getFxData(), preparedKey == null
+				? RESOURCE_SOURCES.getOrDefault(source, "authoring") : preparedKey.source() + "@" + preparedKey.revision());
+		if (RESOURCE_SOURCES.containsKey(source) || PREPARED_SOURCES.containsKey(source)) {
+			var previous = DEFINITIONS.put(source, new CachedDefinition(new WeakReference<>(source.getFxData()), result));
+			if (previous != null) {
+				invalidateDefinition(previous.definition);
+			}
 		}
 		return result;
 	}
 
 	private static Definition preparedResource(FX source) {
-		if (RESOURCE_SOURCES.containsKey(source)) {
+		if (RESOURCE_SOURCES.containsKey(source) || PREPARED_SOURCES.containsKey(source)) {
 			var cached = DEFINITIONS.get(source);
 			if (cached != null && cached.data.get() == source.getFxData()
-					&& cached.definition.generation == generation) {
+					&& cached.definition.generation == definitionGeneration && cached.definition.valid) {
+				if (PREPARED_SOURCES.containsKey(source)) {
+					preparedSourceCacheHits++;
+				}
+
 				return cached.definition;
 			}
 		}
@@ -167,7 +249,7 @@ public class PhotonRuntimeFactory {
 			for (var object : source.objects()) {
 				nodes.add(PhotonCompiledObject.compile(object));
 			}
-			var result = new Definition(key + ":" + ++sequence, generation, nodes,
+			var result = new Definition(key + ":" + ++sequence, definitionGeneration, nodes,
 					PhotonTimelineProgram.compile(source.timeline()), snapshot);
 			preparedDefinitions++;
 			compiledNodes += nodes.size();
@@ -341,7 +423,7 @@ public class PhotonRuntimeFactory {
 			return null;
 		}
 		var scope = SCOPES.get(scopeRuntime);
-		if (scope == null || scope.definition.generation != generation) {
+		if (scope == null || scope.definition.generation != definitionGeneration || !scope.definition.isValid()) {
 			return null;
 		}
 		var mode = scope.mode == Mode.HYBRID ? Mode.HYBRID : MODE;
@@ -401,8 +483,9 @@ public class PhotonRuntimeFactory {
 			var filtered = IFXObject.CODEC.parse(NbtOps.INSTANCE, wrapper).getOrThrow();
 			plans.add(PhotonCompiledObject.compile(filtered));
 		}
-		var definition = new Definition(parent.key + "/project:" + target, generation, plans,
+		var definition = new Definition(parent.key + "/project:" + target, definitionGeneration, plans,
 				PhotonTimelineProgram.compile(new Timeline()), null);
+		definition.parent = parent;
 		definition.addedController = controller != null && selected.stream().noneMatch(PhotonNamedController.class::isInstance);
 		definition.projectTarget = target;
 		definition.includeChildren = includeChildren;
@@ -522,6 +605,7 @@ public class PhotonRuntimeFactory {
 			SCOPES.put(runtime, new Scope(definition, mode));
 		} catch (RuntimeException | Error failure) {
 			resetFailures++;
+			Lobecorp.LOGGER.warn("特效租约复位失败，退役后重新创建：{}", definition.key, failure);
 			throw failure;
 		} finally {
 			long elapsed = System.nanoTime() - started;
@@ -574,12 +658,31 @@ public class PhotonRuntimeFactory {
 	private static void clearEmitterReferences(FXObject object) {
 		if (object instanceof Emitter emitter) {
 			var light = (EmitterLeaseAccessor) emitter;
+			light.lobecorp$setLeaseBlockScene(null);
 			light.lobecorp$getLeaseLightCache().clear();
 			light.lobecorp$getLeaseLightQueryQueue().clear();
 			light.lobecorp$setLeaseParallelLightPhase(false);
 		}
 		if (object instanceof ParticleEmitter particle) {
 			var access = (ParticleEmitterLeaseAccessor) particle;
+			access.lobecorp$registerLeaseLights(null);
+			access.lobecorp$setLeaseCollisionScene(null);
+			access.lobecorp$setLeaseCollisionWorld(null);
+			access.lobecorp$getLeaseCollisionListeners().clear();
+			access.lobecorp$getLeasePendingSubEmitterSpawns().clear();
+			access.lobecorp$getLeasePendingCollisionReports().clear();
+			access.lobecorp$getLeaseDedupeVerdicts().clear();
+			access.lobecorp$setLeaseDeferredFailed(false);
+			access.lobecorp$setLeaseCollisionNanos(0);
+			access.lobecorp$setLeaseCollisionParallel(false);
+			access.lobecorp$setLeaseLastCollisionMillis(0);
+			access.lobecorp$setLeaseLastCollisionParallel(false);
+			Arrays.fill(access.lobecorp$getLeaseLastCollisionStats(), 0);
+			access.lobecorp$setLeaseContactLog(null);
+			access.lobecorp$setLeaseSimMotionX(0);
+			access.lobecorp$setLeaseSimMotionY(0);
+			access.lobecorp$setLeaseSimMotionZ(0);
+			access.lobecorp$setLeaseTargetMotionScale(1);
 			access.lobecorp$setLeaseCachedSpawnFrame(null);
 			access.lobecorp$setLeaseCachedFrameEmitterToWorld(null);
 			access.lobecorp$setLeaseCachedFrameSimToWorld(null);
@@ -598,6 +701,12 @@ public class PhotonRuntimeFactory {
 			timeline.lobecorp$setLeaseEffect(null);
 		}
 		for (var actor : runtime.objects.values()) {
+			if (actor instanceof ParticleEmitter particle) {
+				// 场景尚在时清除同组碰撞记忆，再保持停放对象不可播放。
+				particle.reset();
+				particle.remove(true);
+				particle.waitToAdded.clear();
+			}
 			if (actor instanceof FXObject object) {
 				((FXObjectLeaseAccessor) object).lobecorp$setLeaseExecutor(null);
 				clearEmitterReferences(object);
@@ -632,21 +741,57 @@ public class PhotonRuntimeFactory {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft == null ? null : minecraft.level;
 		if (observedLevel != level) {
-			invalidateAll();
+			invalidateWorld();
 			observedLevel = level;
 		}
 	}
 
-	public static void invalidateAll() {
+	/// 世界边界只撤销租约，不丢弃加载阶段准备的静态定义。
+	public static void invalidateWorld() {
 		generation++;
-		DEFINITIONS.clear();
-		RESOURCE_SOURCES.clear();
+		observedLevel = null;
 		SCOPES.clear();
 		POOL.clear();
 	}
 
+	public static void invalidateAll() {
+		definitionGeneration++;
+		PREPARED_SOURCES.clear();
+		DEFINITIONS.clear();
+		RESOURCE_SOURCES.clear();
+		invalidateWorld();
+	}
+
+	/// 在 Photon 完成 ID 失效后调用；只读取缓存，包含原生递归移除的公开依赖。
+	public static void invalidateResources(Collection<Identifier> locations) {
+		var ids = locations.stream().map(Identifier::toString).collect(Collectors.toSet());
+		var invalidated = new ArrayList<Definition>();
+		var sources = RESOURCE_SOURCES.entrySet().iterator();
+		while (sources.hasNext()) {
+			var entry = sources.next();
+			var source = entry.getKey();
+			if (source == null || !ids.contains(entry.getValue())
+					&& FXHelper.getCachedFX(Identifier.parse(entry.getValue())) == source) {
+				continue;
+			}
+
+			sources.remove();
+			var cached = DEFINITIONS.remove(source);
+			if (cached != null) {
+				invalidated.add(cached.definition);
+			}
+		}
+
+		invalidated.forEach(PhotonRuntimeFactory::invalidateDefinition);
+	}
+
+	private static void invalidateDefinition(Definition definition) {
+		definition.valid = false;
+		POOL.invalidate(key -> key instanceof PoolKey pooled && pooled.definition.dependsOn(definition));
+	}
+
 	private static void ensureCurrent(Definition definition) {
-		if (definition.generation != generation) {
+		if (definition.generation != definitionGeneration || !definition.isValid()) {
 			throw new IllegalStateException("特效定义准备已失效，必须按新代次准备。");
 		}
 	}
@@ -667,6 +812,8 @@ public class PhotonRuntimeFactory {
 		var result = new LinkedHashMap<String, Long>();
 		result.put("generation", generation);
 		result.put("prepared_definitions", preparedDefinitions);
+		result.put("prepared_source_cache_hits", preparedSourceCacheHits);
+		result.put("prepared_source_compilations", preparedSourceCompilations);
 		result.put("compiled_nodes", compiledNodes);
 		result.put("created_runtimes", createdRuntimes);
 		result.put("initialized_nodes", initializedNodes);
@@ -705,6 +852,8 @@ public class PhotonRuntimeFactory {
 
 	public static class Definition {
 		private final String key;
+		private boolean valid = true;
+		private @Nullable Definition parent;
 		private final long generation;
 		private final List<PhotonCompiledObject> nodes;
 		private final Map<UUID, PhotonCompiledObject> byId;
@@ -733,6 +882,14 @@ public class PhotonRuntimeFactory {
 			}
 			byId = Map.copyOf(index);
 			layout = PhotonIndexedObjectMap.compile(ids);
+		}
+
+		private boolean isValid() {
+			return valid && (parent == null || parent.isValid());
+		}
+
+		private boolean dependsOn(Definition definition) {
+			return this == definition || parent != null && parent.dependsOn(definition);
 		}
 
 		public String key() {

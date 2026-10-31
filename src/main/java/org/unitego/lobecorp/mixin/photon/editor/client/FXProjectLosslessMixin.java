@@ -3,6 +3,9 @@ package org.unitego.lobecorp.mixin.photon.editor.client;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import org.unitego.lobecorp.client.photon.editor.PhotonCompositionProjectAccess;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -39,16 +42,9 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 	@Unique
 	private WeakReference<FXEditor> lobecorp$editor = new WeakReference<>(null);
 
-	@Inject(method = "onLoad", at = @At("HEAD"))
-	private void lobecorp$bindAuthoring(Editor editor, CallbackInfo ci) {
-		lobecorp$editor = new WeakReference<>(editor instanceof FXEditor fxEditor ? fxEditor : null);
-	}
-
-	@Inject(method = "onClosed", at = @At("RETURN"))
-	private void lobecorp$releaseAuthoring(Editor editor, CallbackInfo ci) {
-		if (lobecorp$editor.get() == editor) {
-			lobecorp$editor.clear();
-		}
+	@Inject(method = "setEditor", at = @At("RETURN"))
+	private void lobecorp$bindAuthoring(FXEditor editor, CallbackInfo ci) {
+		lobecorp$editor = new WeakReference<>(editor);
 	}
 
 	@Override
@@ -92,9 +88,19 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 	@Unique
 	private CompoundTag lobecorp$currentData() {
 		var result = new CompoundTag();
-        var editor = lobecorp$editor.get();
+		var editor = lobecorp$editor.get();
 		var runtime = editor != null && editor.getCurrentProject() == this ? editor.runtime : null;
-        result.put("fx", PhotonAuthoringSnapshotUtil.serialize(((FXProject) (Object) this).getFx(), runtime));
+		var project = (FXProject) (Object) this;
+		result.put("fx", PhotonAuthoringSnapshotUtil.serialize(project.getFx(), runtime));
+		var knownAs = new ListTag();
+		project.getKnownAs().forEach(id -> knownAs.add(StringTag.valueOf(id.toString())));
+		if (!knownAs.isEmpty()) {
+			result.put("knownAs", knownAs);
+		}
+		var composition = ((PhotonCompositionProjectAccess) this).lobecorp$composition();
+		if (composition != null) {
+			result.put("lobecorp_owned_composition", composition);
+		}
 		var preview = ((PhotonProjectPreviewAccess) this).lobecorp$projectPreview();
 		if (preview != null) {
 			result.put(PhotonProjectPreviewUtil.PROJECT_FIELD, preview);

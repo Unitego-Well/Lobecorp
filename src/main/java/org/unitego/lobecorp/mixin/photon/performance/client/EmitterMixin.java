@@ -8,6 +8,7 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
 import com.lowdragmc.photon.client.render.PhotonPipelines;
 import com.lowdragmc.photon.client.render.PhotonStage;
 import com.lowdragmc.photon.client.render.PhotonViewSettings;
+import com.lowdragmc.photon.client.render.PhotonWorldRenderState.CpuRecords;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.MaskWrite;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -29,11 +30,12 @@ public class EmitterMixin {
     private void lobecorp$observeCpuSubmission(List<DrawJob> out, RenderType renderType, VertexFormat.Mode mode,
                                                Camera camera, float partialTicks, PhotonStage stage, int orderInLayer,
                                                @Nullable Vector3fc sortOrigin, @Coerce Object baker,
-                                               @Nullable MaskWrite mask, Operation<Void> original) {
+                                               @Nullable MaskWrite mask, boolean backFacesFirst,
+                                               @Nullable CpuRecords records, Operation<Void> original) {
         var submission = PhotonSubmissionDiagnostics.beginSubmission((Object) this instanceof PhotonModelOutput);
 
         if (submission == null) {
-            original.call(out, renderType, mode, camera, partialTicks, stage, orderInLayer, sortOrigin, baker, mask);
+            original.call(out, renderType, mode, camera, partialTicks, stage, orderInLayer, sortOrigin, baker, mask, backFacesFirst, records);
             return;
         }
 
@@ -41,7 +43,7 @@ public class EmitterMixin {
         boolean completed = false;
 
         try {
-            original.call(out, renderType, mode, camera, partialTicks, stage, orderInLayer, sortOrigin, baker, mask);
+            original.call(out, renderType, mode, camera, partialTicks, stage, orderInLayer, sortOrigin, baker, mask, backFacesFirst, records);
             completed = true;
         } finally {
             PhotonSubmissionDiagnostics.endSubmission(submission, out, start, completed);

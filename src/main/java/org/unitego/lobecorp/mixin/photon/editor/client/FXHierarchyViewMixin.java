@@ -80,27 +80,4 @@ public abstract class FXHierarchyViewMixin {
 	@Shadow
 	@Final
 	public TreeList<FXObjectTreeNode> treeList;
-	@Unique
-	private int lobecorp$copyDepth;
-
-	@WrapMethod(method = "copySceneObject")
-	private List<IFXObject> lobecorp$copyBranch(IFXObject toCopied, Operation<List<IFXObject>> original) {
-		if (!(fxEditor instanceof PhotonEffectEditor)) {
-			return original.call(toCopied);
-		}
-
-		if (lobecorp$copyDepth == 0 && treeList.getSelected().stream().map(FXObjectTreeNode::getKey)
-				.anyMatch(selected -> selected != toCopied && toCopied.transform().isInheritedParent(selected.transform()))) {
-			return List.of();
-		}
-
-		lobecorp$copyDepth++;
-		try {
-			var result = original.call(toCopied);
-
-			return result;
-		} finally {
-			lobecorp$copyDepth--;
-		}
-	}
 }

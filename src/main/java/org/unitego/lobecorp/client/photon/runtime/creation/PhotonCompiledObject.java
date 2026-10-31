@@ -2,6 +2,8 @@ package org.unitego.lobecorp.client.photon.runtime.creation;
 
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
+import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
+import com.lowdragmc.photon.client.fx.instance.InstanceBaker;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.beam.BeamEmitter;
@@ -42,6 +44,7 @@ import java.util.function.Supplier;
 /// 定义拥有构造指令与冻结数据；实例拥有配置、运行槽、变换及渲染工作区。
 public class PhotonCompiledObject {
 	private final PhotonFrozenTag snapshot;
+	private @Nullable InstanceBaker.Placement placement;
 	private final BaseState base;
 	private final String type;
 	private final Class<?> objectClass;
@@ -86,7 +89,13 @@ public class PhotonCompiledObject {
 		var factory = canonical.getFXObjectType();
 
 		if (!known(canonical.getClass())) {
-			return nativePlan(frozen, base, type, canonical.getClass(), factory, "未知对象类型：" + canonical.getClass().getName());
+			var plan = nativePlan(frozen, base, type, canonical.getClass(), factory,
+					"未知或未支持完整复位的对象类型：" + canonical.getClass().getName());
+			if (authored instanceof FXInstanceObject instance) {
+				// 与原生 FXData.copy 一致，placement 属于定义来源，不是运行播放器。
+				plan.placement = instance.getPlacement();
+			}
+			return plan;
 		}
 
 		var extras = new HashSet<>(data.keySet());
@@ -258,6 +267,9 @@ public class PhotonCompiledObject {
 			initialize(result);
 		}
 
+		if (result instanceof FXInstanceObject instance) {
+			instance.setPlacement(placement);
+		}
 		return result;
 	}
 
@@ -278,8 +290,12 @@ public class PhotonCompiledObject {
 				throw new IllegalArgumentException("当前作者节点类型与原生回退定义不匹配。");
 			}
 
-			return IFXObject.CODEC.parse(NbtOps.INSTANCE,
+			var result = IFXObject.CODEC.parse(NbtOps.INSTANCE,
 					IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, live).getOrThrow()).getOrThrow();
+			if (live instanceof FXInstanceObject from && result instanceof FXInstanceObject to) {
+				to.setPlacement(from.getPlacement());
+			}
+			return result;
 		}
 
 		var result = Objects.requireNonNull(constructor.get());

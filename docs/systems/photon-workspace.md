@@ -1,5 +1,9 @@
 # Photon 当前能力与恢复入口
 
+## 2026-10-31 Photon26.1.2.9当前交付
+
+2026-10-31 同平台迁移完成：Photon26.1.2.9、LDLib2 26.1.2.43、KilaGraph26.1.0.16.a；MC/NeoForge/JDK保持。旧18轮深入归因确认旧Star运行时预热和私有FX重复编译；迁移补齐显式准备来源、世界/资源代次、已知UUID删除重插的数组顺序、ValueIO/FXInstance/FXPack和新全屏合成Iris边界。最终普通/光影×NATIVE/HYBRID四条路径各1局通过，共12次激光及归档后契约通过；不是三轮/18局复测。HYBRID两局主窗私有编译0、缓存命中60、池命中/复位238、失败/布局回退0；最坏仍普通427.216ms、光影269.515ms，首发SharedPrepared/命名/字段回退/姿态几何及旧空白未知区间使P22/P23继续开放。编译/生产包隔离/Data、12项定向JUnit通过，23生成输出不变，六配置与五原WIP/暂存SHA恢复保持，游戏/Debug/observer及8子代理已回收。完整本地报告.agent/reports/20261031-photon26129-migration-final.md，证据build/agent-backups/20261031-photon-26129-migration；原失败和带Iris提示结果保留，未推送。
+
 ## 2026-10-31 HYBRID与自有激光18轮实测
 
 新增独立queen25/laser3/blank25场景，普通/光影各三轮，R2有效18个新JVM/世界全部通过；激光6局共18次STARTED，同一queen、组合并发1、15组件活跃、无fallback/error/overlap及期限内尾迹回收。blank45并裁前25，laser固定10/20/30秒，加载39.573～60.971秒另录。4前置试跑（2通过、2失败）保留不计R2；测试发现局部动画公共参数分发与RECOVERY末端cue漏消费，已仅修自有组合层并重编后完整重测。

@@ -1,6 +1,14 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.fx.PreloadContext;
+import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
+import com.lowdragmc.photon.client.fx.timeline.property.ConfigPropertyType;
+import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleRendererSetting;
 import com.lowdragmc.photon.client.gameobject.emitter.data.InstancedRendererSetting;
@@ -62,8 +70,12 @@ public class PhotonOwnedEffectAssets {
 		deviceRevision++;
 	}
 
+	public static String deviceIdentity() {
+		return deviceStamp();
+	}
+
 	private static String deviceStamp() {
-		return deviceRevision + ":" + PhotonRenderTypes.reloadGeneration() + ":" +
+		return deviceRevision + ":" + FXHelper.generation() + ":" + PhotonRenderTypes.reloadGeneration() + ":" +
 				IrisCompat.isUsingShaderPack() + ":" +
 				IrisCompat.packName();
 	}
@@ -89,6 +101,55 @@ public class PhotonOwnedEffectAssets {
 		if (depth > PhotonSpawnConfig.MAX_DEPTH) {
 			throw new IllegalArgumentException("自有特效子资源深度超限");
 		}
+		PhotonChildSpawner.bindPreloadDefinition(definition.getFxData());
+		var context = new PreloadContext() {
+			@Override
+			public void texture(Identifier id) {
+				Minecraft.getInstance().getTextureManager().getTexture(id);
+			}
+
+			@Override
+			public void onRenderThread(Runnable job) {
+				PhotonIrisPipelineAccess.useNativePipeline(job);
+			}
+
+			@Override
+			public void fx(Identifier id) {
+				if (!path.add(id)) {
+					throw new IllegalArgumentException("自有特效子资源循环：" + id);
+				}
+				try {
+					prepare(PhotonOwnedEffectResources.resolveDefinition(id, source), source, retained, path, depth + 1);
+				} finally {
+					path.remove(id);
+				}
+			}
+
+			@Override
+			public boolean isAnimated(IFXObject object, String propertyPath) {
+				var timelines = new ArrayList<Timeline>();
+				timelines.add(definition.getFxData().timeline());
+				for (var candidate : definition.getFxData().objects()) {
+					if (candidate instanceof FXInstanceObject instance) {
+						timelines.add(instance.getTimeline());
+					}
+				}
+				for (var timeline : timelines) {
+					for (var track : timeline.leafTracks(false)) {
+						if (track.mute() || !(track instanceof AnimationTrack animation)
+								|| !object.id().equals(animation.targetId())) {
+							continue;
+						}
+						for (var property : animation.properties()) {
+							if (property.type() instanceof ConfigPropertyType config && config.storeKey().equals(propertyPath)) {
+								return true;
+							}
+						}
+					}
+				}
+				return false;
+			}
+		};
 		var assets = new ArrayList<Object>();
 		try {
 			for (var object : definition.getFxData().objects()) {
@@ -111,6 +172,7 @@ public class PhotonOwnedEffectAssets {
 				} else if (object instanceof Emitter emitter) {
 					prepareMaterials(emitter.rendererRuntime(), emitter.geometryMode(), variants(emitter));
 				}
+				object.preload(context);
 				if (object instanceof PhotonChildSpawner child && child.config.source == PhotonSpawnConfig.Source.FX) {
 					var id = child.config.fxLocation;
 					if (id == null || !path.add(id)) {
@@ -127,6 +189,13 @@ public class PhotonOwnedEffectAssets {
 			}
 		} catch (IOException failure) {
 			throw new UncheckedIOException("自有模型静态准备失败", failure);
+		}
+		var location = definition.getFxLocation();
+		var identity = source.kind().name() + ":" + source.effectId() + ":" +
+				(location == null ? definition.getFxData().objects().stream().map(IFXObject::getName).toList() : location);
+		if (PhotonRuntimeFactory.mode() != PhotonRuntimeFactory.Mode.NATIVE) {
+			PhotonRuntimeFactory.registerPreparedSource(definition,
+					new PhotonRuntimeFactory.PreparedSourceKey(identity, source.revision()));
 		}
 		retained.put(definition, List.copyOf(assets));
 	}
@@ -176,6 +245,10 @@ public class PhotonOwnedEffectAssets {
 				throw new IllegalStateException("自有材质缺少可准备的渲染描述");
 			}
 			precompile(info.programs().main());
+			var cpuData = PhotonRenderTypes.cpuDataPipeline(info);
+			if (cpuData != null) {
+				precompile(cpuData);
+			}
 			if (!variants.isEmpty()) {
 				var instancedType = mode == VertexFormat.Mode.QUADS ? type : setting.getRenderType(VertexFormat.Mode.QUADS);
 				var instancedInfo = instancedType == null ? null : PhotonRenderTypes.drawInfo(instancedType);
@@ -185,6 +258,11 @@ public class PhotonOwnedEffectAssets {
 						var graph = instancedInfo.bindings().graph();
 						if (graph != null) {
 							precompile(PhotonPipelines.graphShader(graph.compiled(), variant, recipe.key(), graph.usedChannelMask(), graph.usesCustomData()));
+						} else if (recipe.source() != null) {
+							var pipeline = recipe.source().pipeline(variant, false);
+							if (pipeline != null) {
+								precompile(pipeline);
+							}
 						} else if (recipe.customShaderKey() != null) {
 							precompile(PhotonPipelines.instancedCustomShader(variant, recipe.customShaderKey()));
 						} else {
@@ -192,6 +270,9 @@ public class PhotonOwnedEffectAssets {
 						}
 					}
 				}
+			}
+			if (info.bindings().binder() != null) {
+				info.bindings().binder().prepare();
 			}
 			var manager = Minecraft.getInstance().getTextureManager();
 			info.bindings().textures().values().forEach(manager::getTexture);
@@ -382,7 +463,10 @@ public class PhotonOwnedEffectAssets {
 	}
 
 	public static void invalidate(PhotonOwnedEffectResources.SourceKey source) {
-		PREPARED.remove(source);
+		var prepared = PREPARED.remove(source);
+		if (prepared != null) {
+			prepared.keySet().forEach(PhotonRuntimeFactory::unregisterPreparedSource);
+		}
 		DEVICE_STAMPS.remove(source);
 	}
 

@@ -21,6 +21,11 @@ import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.FXData;
+import com.lowdragmc.photon.client.fx.PreloadContext;
+import java.lang.ref.WeakReference;
+import java.util.HashSet;
+import java.util.ArrayDeque;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.resources.Identifier;
 import java.util.function.Function;
@@ -59,6 +64,74 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	private @Nullable PhotonSpawnTemplateUtil.Template prepared;
 	private @Nullable FX preparedDefinition;
 	private @Nullable Function<Identifier, FX> ownedDefinitionResolver;
+
+
+	private @Nullable WeakReference<FXData> preloadDefinition;
+	private static final ThreadLocal<Set<IFXObject>> PRELOAD_PATH = ThreadLocal.withInitial(HashSet::new);
+
+	/// 定义预加载不构造运行树；作者内存发布也应调用此入口。
+	public static void bindPreloadDefinition(FXData definition) {
+		for (var object : definition.objects()) {
+			if (object instanceof PhotonChildSpawner child) {
+				child.preloadDefinition = new WeakReference<>(definition);
+			}
+		}
+	}
+
+	@Override
+	public void preload(PreloadContext context) {
+		if (!config.enabled && !context.isAnimated(this, "enabled")) {
+			return;
+		}
+
+		var visiting = PRELOAD_PATH.get();
+		if (!visiting.add(this)) {
+			return;
+		}
+
+		try {
+			if (config.source == PhotonSpawnConfig.Source.FX) {
+				if (config.fxLocation != null) {
+					context.fx(config.fxLocation);
+				}
+				return;
+			}
+
+			var definition = preloadDefinition == null ? null : preloadDefinition.get();
+			if (definition == null) {
+				throw new IllegalStateException("PROJECT 预加载缺少所属定义，需先绑定静态定义。");
+			}
+			var id = config.template.getTransformId();
+			var target = definition.objects().stream().filter(object -> object.id().equals(id)).findFirst().orElse(null);
+			if (!(target instanceof Emitter) || target == this) {
+				throw new IllegalArgumentException("PROJECT 预加载模板缺失或递归。");
+			}
+
+			var pending = new ArrayDeque<IFXObject>();
+			var seen = new HashSet<UUID>();
+			pending.add(target);
+			while (!pending.isEmpty()) {
+				var object = pending.removeFirst();
+				if (!seen.add(object.id()) || seen.size() > PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
+					throw new IllegalArgumentException("PROJECT 预加载模板循环或超出对象预算。");
+				}
+				// 模板可在原工程中禁用；资源准备不能沿用外层父级禁用过滤。
+				object.preload(context);
+				if (config.includeChildren) {
+					for (var child : definition.objects()) {
+						if (object.id().equals(child.transform()._getInternalParentID())) {
+							pending.add(child);
+						}
+					}
+				}
+			}
+		} finally {
+			visiting.remove(this);
+			if (visiting.isEmpty()) {
+				PRELOAD_PATH.remove();
+			}
+		}
+	}
 
 	/// 仅显式绑定的自有组合使用私有准备成果；未绑定时保持Photon原生解析。
 	public void ownedDefinitionResolver(Function<Identifier, FX> resolver) {

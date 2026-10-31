@@ -8,6 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,9 @@ public interface FXPackExporterAccessor {
 
 	@Invoker("walk")
 	void lobecorp$walk(CompoundTag data);
+
+	@Invoker("packSources")
+	Map<Identifier, byte[]> lobecorp$packSources(CompoundTag root, Identifier self) throws IOException;
 
 	@Accessor("files")
 	Map<Identifier, byte[]> lobecorp$files();

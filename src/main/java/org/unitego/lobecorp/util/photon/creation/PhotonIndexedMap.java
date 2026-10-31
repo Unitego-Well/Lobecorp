@@ -2,10 +2,12 @@ package org.unitego.lobecorp.util.photon.creation;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.AbstractCollection;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -26,15 +28,18 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 	private final Layout layout;
 	private final V[] objects;
 	private final boolean[] presence;
+	private final int[] insertionOrder;
 	private LinkedHashMap<UUID, V> materialized;
 	private int size;
 	private int modifications;
+	private long leaseGeneration;
 	private long materializations;
 
 	public PhotonIndexedMap(Layout layout, IntFunction<V[]> arrayFactory) {
 		this.layout = Objects.requireNonNull(layout);
 		objects = arrayFactory.apply(layout.keys.length);
 		presence = new boolean[layout.keys.length];
+		insertionOrder = new int[layout.keys.length];
 	}
 
 	public static Layout compile(List<UUID> insertionOrder) {
@@ -100,7 +105,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		}
 
 		var slot = layout.slots.get(key);
-		if (slot == null || (!presence[slot] && slot != size)) {
+		if (slot == null) {
 			materialize();
 			return put(key, value);
 		}
@@ -108,7 +113,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		var previous = objects[slot];
 		if (!presence[slot]) {
 			presence[slot] = true;
-			size++;
+			insertionOrder[size++] = slot;
 			modifications++;
 		}
 
@@ -122,9 +127,24 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 			return null;
 		}
 
-		materialize();
 		modifications++;
-		return materialized.remove(key);
+		if (materialized != null) {
+			return materialized.remove(key);
+		}
+
+		int slot = layout.slots.get((UUID) key);
+		var previous = objects[slot];
+		objects[slot] = null;
+		presence[slot] = false;
+		for (int index = 0; index < size; index++) {
+			if (insertionOrder[index] == slot) {
+				System.arraycopy(insertionOrder, index + 1, insertionOrder, index, size - index - 1);
+				insertionOrder[--size] = 0;
+				break;
+			}
+		}
+
+		return previous;
 	}
 
 	@Override
@@ -142,6 +162,13 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		materialized = null;
 		size = 0;
 		modifications++;
+		leaseGeneration++;
+	}
+
+	private void checkLease(long generation) {
+		if (generation != leaseGeneration) {
+			throw new ConcurrentModificationException();
+		}
 	}
 
 	@Override
@@ -197,19 +224,23 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 	@Override
 	public @NotNull Set<UUID> keySet() {
+		long generation = leaseGeneration;
 		return new AbstractSet<>() {
 			@Override
 			public int size() {
+				checkLease(generation);
 				return PhotonIndexedMap.this.size();
 			}
 
 			@Override
 			public boolean contains(Object key) {
+				checkLease(generation);
 				return containsKey(key);
 			}
 
 			@Override
 			public boolean remove(Object key) {
+				checkLease(generation);
 				if (!containsKey(key)) {
 					return false;
 				}
@@ -219,11 +250,13 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 			@Override
 			public void clear() {
+				checkLease(generation);
 				PhotonIndexedMap.this.clear();
 			}
 
 			@Override
 			public @NotNull Iterator<UUID> iterator() {
+				checkLease(generation);
 				var entries = new ObjectIterator();
 				return new Iterator<>() {
 					@Override
@@ -234,6 +267,46 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 					@Override
 					public UUID next() {
 						return entries.next().getKey();
+					}
+
+					@Override
+					public void remove() {
+						entries.remove();
+					}
+				};
+			}
+		};
+	}
+
+	@Override
+	public @NotNull Collection<V> values() {
+		long generation = leaseGeneration;
+		return new AbstractCollection<>() {
+			@Override
+			public int size() {
+				checkLease(generation);
+				return PhotonIndexedMap.this.size();
+			}
+
+			@Override
+			public void clear() {
+				checkLease(generation);
+				PhotonIndexedMap.this.clear();
+			}
+
+			@Override
+			public @NotNull Iterator<V> iterator() {
+				checkLease(generation);
+				var entries = new ObjectIterator();
+				return new Iterator<>() {
+					@Override
+					public boolean hasNext() {
+						return entries.hasNext();
+					}
+
+					@Override
+					public V next() {
+						return entries.next().getValue();
 					}
 
 					@Override
@@ -259,7 +332,8 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		}
 
 		materialized = new LinkedHashMap<>();
-		for (int slot = 0; slot < size; slot++) {
+		for (int index = 0; index < size; index++) {
+			int slot = insertionOrder[index];
 			materialized.put(layout.keys[slot], objects[slot]);
 			objects[slot] = null;
 			presence[slot] = false;
@@ -270,25 +344,30 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 	@Override
 	public @NotNull Set<Entry<UUID, V>> entrySet() {
+		long generation = leaseGeneration;
 		return new AbstractSet<>() {
 			@Override
 			public int size() {
+				checkLease(generation);
 				return PhotonIndexedMap.this.size();
 			}
 
 			@Override
 			public void clear() {
+				checkLease(generation);
 				PhotonIndexedMap.this.clear();
 			}
 
 			@Override
 			public boolean contains(Object value) {
+				checkLease(generation);
 				return value instanceof Entry<?, ?> entry && containsKey(entry.getKey())
 						&& Objects.equals(get(entry.getKey()), entry.getValue());
 			}
 
 			@Override
 			public boolean remove(Object value) {
+				checkLease(generation);
 				if (!(value instanceof Entry<?, ?> entry) || !contains(value)) {
 					return false;
 				}
@@ -298,13 +377,14 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 			@Override
 			public @NotNull Iterator<Entry<UUID, V>> iterator() {
+				checkLease(generation);
 				return new ObjectIterator();
 			}
 		};
 	}
 
 	private class ObjectIterator implements Iterator<Entry<UUID, V>> {
-		private final int limit;
+		private int limit;
 		private final Iterator<Entry<UUID, V>> delegate;
 		private int expected = modifications;
 		private int cursor;
@@ -329,6 +409,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 		@Override
 		public boolean hasNext() {
+			checkModification();
 			return delegate == null ? cursor < limit : delegate.hasNext();
 		}
 
@@ -340,11 +421,12 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 			}
 
 			if (delegate != null) {
+				last = delegate.next().getKey();
 				removable = true;
-				return delegate.next();
+				return new ObjectEntry(last);
 			}
 
-			last = layout.keys[cursor++];
+			last = layout.keys[insertionOrder[cursor++]];
 			removable = true;
 			return new ObjectEntry(last);
 		}
@@ -358,18 +440,16 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 			if (delegate != null) {
 				delegate.remove();
+				modifications++;
 			} else {
-				materialize();
-				var iterator = materialized.entrySet().iterator();
-				while (iterator.hasNext()) {
-					if (Objects.equals(iterator.next().getKey(), last)) {
-						iterator.remove();
-						break;
-					}
+				boolean indexed = materialized == null;
+				PhotonIndexedMap.this.remove(last);
+				if (indexed) {
+					cursor--;
+					limit--;
 				}
 			}
 
-			modifications++;
 			expected = modifications;
 			removable = false;
 		}
@@ -377,6 +457,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 	private class ObjectEntry implements Entry<UUID, V> {
 		private final UUID key;
+		private final long generation = leaseGeneration;
 
 		private ObjectEntry(UUID key) {
 			this.key = key;
@@ -384,16 +465,19 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 		@Override
 		public UUID getKey() {
+			checkLease(generation);
 			return key;
 		}
 
 		@Override
 		public V getValue() {
+			checkLease(generation);
 			return get(key);
 		}
 
 		@Override
 		public V setValue(V value) {
+			checkLease(generation);
 			return put(key, value);
 		}
 

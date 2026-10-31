@@ -1,5 +1,20 @@
 # BenchMod 基准工具链
 
+## 2026-10-31 Photon26.1.2.9迁移独立回归
+
+新Scenario `lobecorp.photon-06-migration-laser3`，45秒、5秒单女皇、10/20/30秒激光；普通/光影×NATIVE/HYBRID各一有效独立JVM/世界，12实际触发及归档后来源/复位/ValueIO/FXInstance/PROJECT契约通过。不是三轮或18局矩阵，不修改旧Scene。
+
+| 路径 | 加载s（JVM到可见世界） | P99 ms | 最长ms | >100ms |
+|---|---:|---:|---:|---:|
+| HYBRID普通r5 | 41.752 | 26.272 | 427.216 | 4 |
+| NATIVE普通r2 | 40.917 | 23.836 | 281.040 | 9 |
+| NATIVE光影r2 | 49.268 | 49.996 | 418.869 | 10 |
+| HYBRID光影r2 | 51.732 | 37.208 | 269.515 | 7 |
+
+两局HYBRID主窗私有缓存命中60、私有/根定义编译0、池命中与复位238、失败/布局回退0；第二/三次发射区间无>100ms。旧Star运行树预热及私有程序重复编译已修；首发仍命中SharedPrepared、字段原生回退、命名初始化和姿态/几何，GC暂停不足以解释峰值。原光影合成映射提示修复后两局独立重测不再出现。均最大化2560×1494、vsync=true、cap260、视距16/模拟12，无降负载；无完整视觉/GUI/reload循环验收，P22/P23仍开放。
+
+共11次启动，另2初始化失败、3场景门禁失败、2带光影映射提示的功能通过样本均保留。源清单v2/v3/v4区分Bench模式断言与光影入口适配，不冒称同源严格A/B。完整帧CSV保留，trace ring覆盖明确；首发JFR按实际单调/UTC桥接，GarbageCollection并发周期不当作GCPhasePause。证据 `build/agent-backups/20261031-photon-26129-migration`，完整本地报告 `.agent/reports/20261031-photon26129-migration-final.md`。配置/原WIP已按SHA恢复保持，8子代理及游戏/Debug/observer已回收，未推送。
+
 ## 2026-10-31 HYBRID与自有激光18轮实测
 
 新增独立queen25/laser3/blank25场景，普通/光影各三轮，R2有效18个新JVM/世界全部通过；激光6局共18次STARTED，同一queen、组合并发1、15组件活跃、无fallback/error/overlap及期限内尾迹回收。blank45并裁前25，laser固定10/20/30秒，加载39.573～60.971秒另录。4前置试跑（2通过、2失败）保留不计R2；测试发现局部动画公共参数分发与RECOVERY末端cue漏消费，已仅修自有组合层并重编后完整重测。

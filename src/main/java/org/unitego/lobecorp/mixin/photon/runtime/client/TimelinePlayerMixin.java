@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.IdentityHashMap;
 
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
+import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
 import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 
@@ -67,16 +68,16 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 	}
 
 	@WrapOperation(method = "applyAnimations", at = @At(value = "INVOKE",
-			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimationTrack;sampleInto(Lcom/lowdragmc/photon/client/gameobject/FXObject;D)V"))
-	private void lobecorp$rememberAuthoredPose(AnimationTrack track, FXObject target, double time, Operation<Void> original) {
+			target = "Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;apply(Lcom/lowdragmc/photon/client/gameobject/FXObject;D)V"))
+	private void lobecorp$rememberAuthoredPose(AnimatedProperty property, FXObject target, double time, Operation<Void> original) {
 		if (recording || !(target.getEffectExecutor() instanceof FXProjectEffectExecutor)) {
-			original.call(track, target, time);
+			original.call(property, target, time);
 			return;
 		}
 		var current = PhotonAuthoringPose.capture(target);
 		var previous = lobecorp$authoredPoses.get(target);
 		var base = previous == null ? current : current.authored(previous[0], previous[1]);
-		original.call(track, target, time);
+		original.call(property, target, time);
 		lobecorp$authoredPoses.put(target, new PhotonAuthoringPose[]{base, PhotonAuthoringPose.capture(target)});
 	}
 

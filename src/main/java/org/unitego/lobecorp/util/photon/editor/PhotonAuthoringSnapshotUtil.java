@@ -2,6 +2,9 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.instance.InstanceIds;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import net.minecraft.nbt.CompoundTag;
@@ -25,8 +28,14 @@ public class PhotonAuthoringSnapshotUtil {
         }
         var wrappers = result.getCompoundOrEmpty("fxData").getListOrEmpty("fxObjects");
         var objects = fx.getFxData().objects();
-        if (wrappers.size() != objects.size()) {
-            throw new IllegalStateException("制作对象序列化身份不一致。");
+        var byId = new LinkedHashMap<UUID, CompoundTag>();
+        for (var value : wrappers) {
+            if (value instanceof CompoundTag wrapper) {
+                var id = InstanceIds.parse(wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("transform").getStringOr("id", ""));
+                if (id != null) {
+                    byId.put(id, wrapper);
+                }
+            }
         }
         for (int index = 0; index < objects.size(); index++) {
             if (!(objects.get(index) instanceof FXObject object)) {
@@ -47,7 +56,11 @@ public class PhotonAuthoringSnapshotUtil {
             if (serialized == null) {
                 throw new IllegalStateException("无法序列化制作对象姿态。");
             }
-            var wrapper = (CompoundTag) wrappers.get(index);
+            var wrapper = byId.get(object.id());
+            if (wrapper == null) {
+                // 原生实例保存为覆盖记录；其展开对象不作为顶层对象再次发布。
+                continue;
+            }
             wrapper.getCompoundOrEmpty("data").put("transform", serialized.getCompoundOrEmpty("data").getCompoundOrEmpty("transform").copy());
         }
         return result;

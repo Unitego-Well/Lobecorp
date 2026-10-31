@@ -4,7 +4,7 @@
 
 ## 模式与职责
 
-启动属性 `lobecorp.photon.creation.mode` 支持 `native`、`compiled`、`pooled`、`indexed`、`hybrid`，大小写不敏感，启动时读取；资源重载不热切换策略。默认仍为 NATIVE，HYBRID 仅显式选择，尚未进行运行或性能验收。
+启动属性 `lobecorp.photon.creation.mode` 支持 `native`、`compiled`、`pooled`、`indexed`、`hybrid`，大小写不敏感，启动时读取；资源重载不热切换策略。默认仍为 NATIVE，HYBRID 仅显式选择。26.1.2.9迁移的普通/光影独立回归已实际验证私有缓存、池复用/复位和来源隔离；两局HYBRID主窗编译0、池命中/复位238、失败/布局回退0。不等于完整性能或视觉验收，首发长帧仍在，见[迁移](photon-dependency-upgrade.md#2026-10-31-同平台迁移)。
 
 | 模式 | 实际实现 |
 |---|---|
@@ -24,13 +24,13 @@ C没有重写集中模拟、SoA或GPU粒子执行器。公开 `createRuntime(fal
 
 原 `PhotonIndexedMap.putAll()` 与 `clear()` 会物化为LinkedHashMap。因此旧INDEXED虽安装该Map类型，现有构造接线并未保持数组存储；历史C的分配结果不能单独归因为数组查找。本次保留旧API和四模式行为，只让HYBRID逐项装载，并在排空、跨真实tick/完成帧屏障后的独占租约复位中调用 `resetForLease()`。该入口清空引用、占位与计数，撤销物化并使旧迭代器失效；旧租约的引用、视图及条目不可跨代使用。
 
-未知节点类型仍不复用，保持fresh及原native字段回退；动态Map操作仍可物化以保持插入次序和Map语义，不强行维持数组。复位失败由现有池丢弃旧实例并fresh创建，发射数量、时序、自然尾迹与native kernel不变。成功的数组复位与物化回退应分别观测，Map类型本身不是数组路径生效证据。
+未知节点类型仍不复用，保持fresh及原native字段回退。已知 UUID 槽新增独立插入顺序数组，允许任意顺序加入、删除和重插，不因原生子先父后接线而物化；替换值不改变插入序。未知键及原动态 compute/merge/putAll 仍可物化以保留 Map 语义。resetForLease 同时撤销旧视图、条目与迭代器的代次使用。复位失败由现有池丢弃旧实例并fresh创建，发射数量、时序、自然尾迹与native kernel不变。成功的数组复位与物化回退应分别观测，Map类型本身不是数组路径生效证据。
 
-HYBRID不改女皇生成时的beamDefinitions/prewarm drain、材质准备或调度预算，不能据租约/索引机制宣称秒级生成卡顿已解决。
+上述 HYBRID 融合最初没有改女皇预热。2026-10-31 迁移进一步将旧 Star 根/依赖声明到资源阶段准备，并默认关闭附近女皇触发的运行时预热；自有冻结 FX 也补齐显式资源登记，避免每次 acquire 重编译导致池键变化。该修复须以迁移场景的主窗编译增量、真实池 hit/reset 和帧数据验收，机制修复本身不证明秒级卡顿全部消失。
 
 `statistics()` 追加五个累计指标：`hybrid_lease_acquires` 为成功获取的受管租约；`hybrid_fresh_indexed_creates` 为构造完成时数组未物化的新实例（含无租约fresh）；`hybrid_indexed_resets` 为完整复位结束且数组未物化；`hybrid_reuse_type_rejections` 为创建/复位检查发现的非白名单类型；`hybrid_layout_fallbacks` 为构造或复位检查发现的布局缺失/物化。最后两项是检查事件计数，不是唯一实例数，也不覆盖借出后每次动态编辑；后续仍需现场核对Map状态。原统计键保留。
 
-### 后续五模式比较
+### 首次接入时的五模式比较计划（历史）
 
 当前阶段仅实现与定向IDEA静态检查，不构建、Data、JUnit、微基准或游戏。恢复测试授权后新增独立Scenario实现、ID与配置，在同一新场景比较NATIVE/COMPILED/POOLED/INDEXED/HYBRID，不改旧Scenario或旧矩阵。完整规划在本地 `.agent/plans/20261031-photon-hybrid-comparison.md`。
 
@@ -43,7 +43,8 @@ HYBRID不改女皇生成时的beamDefinitions/prewarm drain、材质准备或调
 - `PhotonRuntimeFactory.prepare(FX)` 发布不可原地改写的新定义。FXHelper缓存资源的原地制作变更必须重新prepare或随clearCache失效；替换FXData也会重新准备。
 - `acquire(FX, world)` / `acquire(Definition, world, Mode)` 返回独占Lease；`instantiate(Definition, Mode)` 明确创建fresh后端。
 - Lease.runtime()仅在当前租约内借用。close使旧租约失效；借出的原生FXRuntime/FXObject引用不可跨close保存继续操作，Java原生对象接口本身不会变成代理句柄。
-- 世界/资源代次失效会清理受管池与定义缓存；过期Definition不能继续实例化。池键包含定义、世界及代次，操作由客户端线程串行执行。
+- 世界失效 `invalidateWorld()` 退休租约与池、清世界引用，但保留不可变资源程序；资源失效 `invalidateAll()` 才清静态定义并提高定义代次。过期租约不能继续使用。池键包含定义、世界及租约代次，操作由客户端线程串行执行。
+- 自有冻结 FX 使用 `registerPreparedSource(FX, PreparedSourceKey(source, revision))`，释放作者/资源快照时对应 unregister；`preparedSourceCurrent` 仅检查，不在发射中隐式登记或编译。未登记可变作者对象仍按内容 fresh 准备，不跨调用缓存。统计区分 `prepared_source_cache_hits` 与 `prepared_source_compilations`。
 - PROJECT程序按ID、类型、目标、是否含子对象、控制器修订缓存；transfer取本次live作者配置/TRS。过滤命名定义不改源库，当前源/source未知数据独占恢复。
 
 只共享私有冻结Tag、不可变拓扑和未绑定程序。配置可变组、renderer状态、随机数、变换、运行槽、回调、求值器、粒子队列与已绑定动画目标属于实例。FILE来源不预绑旧共享准备；已编译模型的配置指纹变化使旧准备失效。

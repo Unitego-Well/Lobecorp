@@ -55,6 +55,7 @@ public class QueenBeamEffects {
 	private static final boolean PREWARM = !"false".equals(System.getProperty("lobecorp.photon.prewarmBeam", "true"));
 	private static @Nullable Level prewarmedLevel;
 	private static boolean prewarmed;
+	private static final boolean LEGACY_RUNTIME_PREWARM = Boolean.getBoolean("lobecorp.photon.legacyRuntimePrewarm");
 	/// 预热好的首次运行态（含已准备的子实例）；只给首个同定义施放使用，用后即移除。
 	private static final Map<Identifier, PhotonGeoEffect> PREPARED = new HashMap<>();
 	/// 运行态复用：默认关闭的实验；通过后同一内容的下一次施放复用已销毁对象树并重新 emit。
@@ -72,7 +73,8 @@ public class QueenBeamEffects {
 
 	/// 只读当前世界的既有预热队列状态，不触发或改变预热。
 	public static boolean prewarmComplete(Level level) {
-		return !PREWARM || prewarmedLevel == level && prewarmed && prewarmQueue == null;
+		return !PREWARM || (!LEGACY_RUNTIME_PREWARM ? QueenBeamResourcePreparation.ready()
+				: prewarmedLevel == level && prewarmed && prewarmQueue == null);
 	}
 
 	public static void tick() {
@@ -82,7 +84,7 @@ public class QueenBeamEffects {
 			clear();
 			return;
 		}
-		if (PREWARM) {
+		if (PREWARM && LEGACY_RUNTIME_PREWARM) {
 			if (level != prewarmedLevel) {
 				discardPrepared();
 				prewarmedLevel = level;

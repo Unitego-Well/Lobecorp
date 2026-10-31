@@ -76,6 +76,8 @@ lobecorp.photon.bench.eagerShaderBuiltin=true仅作启动时原生控制，默�
 
 ### PH-01 BeamParticle 场景预览相机空实体
 
+2026-10-31 迁移结论：Photon 26.1.2.9 的 `getRealEnd(Vector3f)` 已直接使用 emitter.getLevel，level 为 null 时返回原终点，碰撞交由 CollisionQuery。旧 camera 空实体与两处 Entity.level 补丁已精确退役；同一 Mixin 仅保留自有 `BeamConfig.getEnd` 长度覆盖。以下为 .2 修复历史，不是 .9 的调用结构或本轮运行验收。
+
 - **分类与现象：** 上游实现与预览相机的兼容缺陷。光束启用方块或实体射线检测时，场景预览相机没有实体可导致空指针；正常世界相机不据此判定为有同样问题。
 - **原生入口与根因证据：** Photon 26.1.2.2 的 `BeamParticle.getRealEnd(Camera,Vector3f)` 在 BLOCKS／BLOCKS_AND_ENTITIES 和 ENTITIES／BLOCKS_AND_ENTITIES 两条分支均直接调用 `camera.entity().level()`，共两处；前面已经算出经发射器变换的终点。
 - **项目补丁：** [BeamParticleMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/BeamParticleMixin.java)扩展现有混入：非空相机实体调用原 Entity.level；空实体时改用 `getEmitter().getLevel()`，`require=2` 校验两处覆盖。相机实体及发射器世界都不存在时，在首个 BeamConfig.getRaycast 前返回原局部 `end`，通过 `@Local(name="end")` 明确定位。

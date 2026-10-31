@@ -41,7 +41,7 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		QueenBeamEffects.clear();
-		PhotonRuntimeFactory.invalidateAll();
+		PhotonRuntimeFactory.invalidateWorld();
 	}
 
 	@SubscribeEvent
@@ -57,7 +57,7 @@ public class ClientRuntimeEvents {
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
 		QueenBeamEffects.clear();
-		PhotonRuntimeFactory.invalidateAll();
+		PhotonRuntimeFactory.invalidateWorld();
 		PhotonFrameCapture.cancel();
 		LcModelLodUtil.clear();
 	}
@@ -76,7 +76,7 @@ public class ClientRuntimeEvents {
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
 			QueenBeamEffects.clear();
-			PhotonRuntimeFactory.invalidateAll();
+			PhotonRuntimeFactory.invalidateWorld();
 			LcAttachments.clear(level);
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();

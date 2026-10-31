@@ -2,6 +2,9 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.fxpack.FXPackExporter;
+import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
+import java.io.ByteArrayInputStream;
 import com.lowdragmc.photon.client.fx.fxpack.FXPacks;
 import net.minecraft.client.Minecraft;
 
@@ -83,6 +86,7 @@ public class PhotonCompositionExportUtil {
 			root.put("owned_composition", PhotonOwnedLaserComposition.serialize(composition));
 			ids.putString(entry.getKey(), archive.fxId().toString());
 		}
+		captureInstanceSources(definitions, resources);
 		validateComponents(composition, components);
 		var manifest = new CompoundTag();
 		manifest.putInt("version", 1);
@@ -99,6 +103,38 @@ public class PhotonCompositionExportUtil {
 			Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
 		} finally {
 			Files.deleteIfExists(temporary);
+		}
+	}
+
+	private static void captureInstanceSources(Map<String, CompoundTag> definitions, Map<String, byte[]> resources) throws IOException {
+		var exporter = (FXPackExporterAccessor) (Object) FXPackExporterAccessor.lobecorp$create(Platform.getFrozenRegistry());
+		for (var entry : Map.copyOf(definitions).entrySet()) {
+			var path = entry.getKey();
+			var slash = path.indexOf("/fx/");
+			if (slash < 0 || !path.endsWith(".fx")) {
+				continue;
+			}
+			var id = Identifier.fromNamespaceAndPath(path.substring("assets/".length(), slash), path.substring(slash + 4, path.length() - 3));
+			for (var dependency : exporter.lobecorp$packSources(entry.getValue(), id).entrySet()) {
+				var target = "assets/" + dependency.getKey().getNamespace() + "/fx/" + dependency.getKey().getPath() + ".fx";
+				try (var input = new ByteArrayInputStream(dependency.getValue())) {
+					var tag = NbtIo.readCompressed(input, NbtAccounter.create(MAX_DEFINITION_BYTES));
+					var previous = definitions.putIfAbsent(target, tag);
+					if (previous != null && !previous.equals(tag)) {
+						throw new IOException("实例源同路径不同内容：" + target);
+					}
+				}
+			}
+		}
+		if (!exporter.lobecorp$warnings().isEmpty()) {
+			throw new IOException("实例源依赖未闭合：" + exporter.lobecorp$warnings());
+		}
+		for (var entry : exporter.lobecorp$files().entrySet()) {
+			var path = "assets/" + entry.getKey().getNamespace() + "/" + entry.getKey().getPath();
+			var previous = resources.putIfAbsent(path, entry.getValue().clone());
+			if (previous != null && !Arrays.equals(previous, entry.getValue())) {
+				throw new IOException("实例资源同路径不同内容：" + path);
+			}
 		}
 	}
 
@@ -120,7 +156,17 @@ public class PhotonCompositionExportUtil {
 	private static Data readData(Path path, boolean effective) throws IOException {
 		try (var zip = FileSystems.newFileSystem(path)) {
 			var manifestPath = zip.getPath(MANIFEST);
-			var manifest = NbtIo.readCompressed(manifestPath, NbtAccounter.create(MAX_DEFINITION_BYTES));
+			CompoundTag manifest;
+			if (effective) {
+				var resource = Minecraft.getInstance().getResourceManager()
+						.getResource(Identifier.fromNamespaceAndPath("lobecorp", "compositions/owned_laser.nbt"))
+						.orElseThrow(() -> new IOException("发布组合清单尚未挂载"));
+				try (var input = new BufferedInputStream(resource.open())) {
+					manifest = NbtIo.readCompressed(input, NbtAccounter.create(MAX_DEFINITION_BYTES));
+				}
+			} else {
+				manifest = NbtIo.readCompressed(manifestPath, NbtAccounter.create(MAX_DEFINITION_BYTES));
+			}
 			if (manifest.getIntOr("version", 0) != 1) {
 				throw new IOException("不支持的组合清单版本");
 			}

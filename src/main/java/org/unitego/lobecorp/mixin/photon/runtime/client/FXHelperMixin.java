@@ -21,8 +21,8 @@ public abstract class FXHelperMixin {
 	@Unique
 	private static volatile List<Identifier> lobecorp$modelIds;
 
-	@ModifyExpressionValue(method = "loadFX", at = @At(value = "INVOKE",
-			target = "Lnet/minecraft/resources/Identifier;fromNamespaceAndPath(Ljava/lang/String;Ljava/lang/String;)Lnet/minecraft/resources/Identifier;"))
+	@ModifyExpressionValue(method = "readTag", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/fx/FXHelper;fileLocation(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/resources/Identifier;"))
 	private static Identifier lobecorp$modelDefinition(Identifier original) {
 		var manager = Minecraft.getInstance().getResourceManager();
 		if (manager.getResource(original).isPresent()) {

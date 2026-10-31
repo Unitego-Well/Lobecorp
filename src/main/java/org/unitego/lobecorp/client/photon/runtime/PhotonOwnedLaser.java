@@ -2,6 +2,7 @@ package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
@@ -442,6 +443,10 @@ public class PhotonOwnedLaser implements AutoCloseable {
 				throw new IllegalArgumentException("未登记组成件：" + name);
 			}
 
+			if (PhotonRuntimeFactory.mode() != PhotonRuntimeFactory.Mode.NATIVE
+					&& !PhotonRuntimeFactory.preparedSourceCurrent(definition)) {
+				throw new IllegalStateException("自有组件编译准备已失效，禁止临场重复编译");
+			}
 			effect = new PhotonGeoEffect(definition, level) {
 				@Override
 				public PostEffectStack postEffectSink() {

@@ -1,5 +1,13 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-10-31 同平台迁移
+
+当前目录已选择 Photon 26.1.2.9、LDLib2 26.1.2.43、KilaGraph 26.1.0.16.a；Minecraft 26.1.2、NeoForge 26.1.2.100、JDK 25 保持。依据 DS 同平台报告与上游固定提交 `37c147156aef673913eccfcbe38d8b3ce5423872` 的依赖声明，并已实际解析新 Maven 制品。下文 10-10 发布与验收条目是历史记录，不是当前版本结论。
+
+本次适配覆盖原生 FXInstance 放置、预加载上下文、碰撞与光照复位、Kila 材质/CPU records、ValueIO 工程保存以及原生 FXPack 闭包；自有组合、来源隔离和旧资产保留。自有冻结 FX 显式登记 source/revision，世界切换不再清静态定义；女皇旧特效默认采用资源级准备，运行时预热仅 `lobecorp.photon.legacyRuntimePrewarm=true` 可选。
+
+编译/生产包隔离、Data、12项索引JUnit，以及普通/光影×NATIVE/HYBRID四条独立路径和归档后契约已通过；23生成输出不变。新全屏合成Iris映射提示已修并独立重测，两局HYBRID编译增量0、真实池命中/复位238、复位失败/布局回退0。首发仍有长帧，没有稳定收益比例或完整视觉/GUI/长期reload验收。失败与前置带提示结果全部保留，详见本地 `.agent/reports/20261031-photon26129-migration-final.md`。
+
 > 当前维护入口为 [Photon 工作区](photon-workspace.md) 与 [版本目录](../../gradle/libs.versions.toml)。本页保留依赖升级时的调用核对，旧 Geo 桥接路径缺失不表示当前源码有同名类；后续运行仍须单独验收。
 
 核对日期：2026-10-10。本页记录 Minecraft 26.1.2／NeoForge

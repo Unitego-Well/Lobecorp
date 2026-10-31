@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.UUID;
 
@@ -56,7 +58,7 @@ public class PhotonIndexedMapTest {
 			a.remove();
 		}
 		equivalent(expected, actual);
-		assertEquals(1, actual.materializationCount());
+		assertEquals(0, actual.materializationCount());
 	}
 
 	@Test
@@ -206,6 +208,150 @@ public class PhotonIndexedMapTest {
 		expected.putAll(additions);
 		actual.putAll(additions);
 		equivalent(expected, actual);
+	}
+
+	@Test
+	public void shuffledKnownInsertionsAndReplacementsKeepNativeOrderWithoutMaterializing() {
+		var keys = keys(24);
+		keys.add(null);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		var expected = new LinkedHashMap<UUID, String>();
+		var random = new Random(26129);
+		for (int step = 0; step < 1000; step++) {
+			var key = keys.get(random.nextInt(keys.size()));
+			String value = step % 3 == 0 ? null : "v" + step;
+			if (step % 4 == 0) {
+				assertEquals(expected.remove(key), actual.remove(key));
+			} else {
+				assertEquals(expected.put(key, value), actual.put(key, value));
+			}
+
+			equivalent(expected, actual);
+			assertFalse(actual.isMaterialized());
+		}
+		assertEquals(0, actual.materializationCount());
+	}
+
+	@Test
+	public void childBeforeParentDetachAndReattachMatchesNativeAcrossLeases() {
+		var keys = keys(4);
+		var root = keys.get(0);
+		var child = keys.get(1);
+		var sibling = keys.get(2);
+		var parent = keys.get(3);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		for (int lease = 0; lease < 20; lease++) {
+			var expected = new LinkedHashMap<UUID, String>();
+			for (var key : keys) {
+				assertEquals(expected.put(key, key.toString()), actual.put(key, key.toString()));
+			}
+			var oldIterator = actual.entrySet().iterator();
+			assertEquals(expected.remove(child), actual.remove(child));
+			assertThrows(ConcurrentModificationException.class, oldIterator::next);
+			equivalent(expected, actual);
+			assertEquals(expected.put(child, "reattached"), actual.put(child, "reattached"));
+			assertEquals(expected.put(parent, "scene"), actual.put(parent, "scene"));
+			assertEquals(List.of(root, sibling, parent, child), new ArrayList<>(actual.keySet()));
+			equivalent(expected, actual);
+			assertFalse(actual.isMaterialized());
+			actual.resetForLease();
+		}
+		assertEquals(0, actual.materializationCount());
+	}
+
+	@Test
+	@SuppressWarnings("RedundantCollectionOperation")
+	public void indexedViewsRemoveAndSetValueKeepTraversalAndOrder() {
+		var keys = keys(12);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		var expected = new LinkedHashMap<UUID, String>();
+		for (var key : keys.reversed()) {
+			actual.put(key, null);
+			expected.put(key, null);
+		}
+		var ai = actual.entrySet().iterator();
+		var ei = expected.entrySet().iterator();
+		while (ei.hasNext()) {
+			var ee = ei.next();
+			var ae = ai.next();
+			assertEquals(ee, ae);
+			assertEquals(ee.setValue("updated"), ae.setValue("updated"));
+			ai.remove();
+			ei.remove();
+			equivalent(expected, actual);
+		}
+		assertFalse(ai.hasNext());
+		assertThrows(NoSuchElementException.class, ai::next);
+		for (var key : keys.reversed()) {
+			actual.put(key, null);
+			expected.put(key, null);
+		}
+		assertEquals(expected.values().remove(null), actual.values().remove(null));
+		assertEquals(expected.keySet().remove(keys.get(4)), actual.keySet().remove(keys.get(4)));
+		assertEquals(expected.entrySet().remove(Map.entry(keys.get(5), "absent")),
+				actual.entrySet().remove(Map.entry(keys.get(5), "absent")));
+		equivalent(expected, actual);
+		assertEquals(0, actual.materializationCount());
+	}
+
+	@Test
+	public void fallbackPreservesReorderedEntriesAndExistingIteratorAfterValueOnlyCompute() {
+		var keys = keys(5);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		var expected = new LinkedHashMap<UUID, String>();
+		for (var key : keys.reversed()) {
+			actual.put(key, "before");
+			expected.put(key, "before");
+		}
+		actual.remove(keys.get(2));
+		expected.remove(keys.get(2));
+		actual.put(keys.get(2), null);
+		expected.put(keys.get(2), null);
+		var ai = actual.entrySet().iterator();
+		var ei = expected.entrySet().iterator();
+		assertEquals(expected.compute(keys.get(4), (_, _) -> "after"),
+				actual.compute(keys.get(4), (_, _) -> "after"));
+		while (ei.hasNext()) {
+			var ae = ai.next();
+			var ee = ei.next();
+			assertEquals(ee, ae);
+			assertEquals(ee.setValue("entry"), ae.setValue("entry"));
+			ai.remove();
+			ei.remove();
+		}
+		equivalent(expected, actual);
+		assertEquals(1, actual.materializationCount());
+	}
+
+	@Test
+	public void resetInvalidatesOldViewsEntriesAndIteratorsInBothStorageModes() {
+		var keys = keys(3);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		for (boolean fallback : new boolean[]{false, true}) {
+			actual.put(keys.get(2), "old");
+			if (fallback) {
+				actual.put(new UUID(999, 999), "unknown");
+			}
+			var oldKeys = actual.keySet();
+			var oldValues = actual.values();
+			var oldEntries = actual.entrySet();
+			var iterator = oldEntries.iterator();
+			var entry = iterator.next();
+			actual.resetForLease();
+			actual.put(keys.get(2), "new");
+			assertThrows(ConcurrentModificationException.class, iterator::hasNext);
+			assertThrows(ConcurrentModificationException.class, iterator::next);
+			assertThrows(ConcurrentModificationException.class, iterator::remove);
+			assertThrows(ConcurrentModificationException.class, oldKeys::size);
+			assertThrows(ConcurrentModificationException.class, oldValues::iterator);
+			assertThrows(ConcurrentModificationException.class, oldEntries::clear);
+			assertThrows(ConcurrentModificationException.class, () -> entry.setValue("stale"));
+			assertThrows(ConcurrentModificationException.class, entry::getValue);
+			assertEquals("new", actual.values().iterator().next());
+			assertEquals(1, actual.size());
+			assertFalse(actual.isMaterialized());
+			actual.resetForLease();
+		}
 	}
 
 	private static ArrayList<UUID> keys(int count) {

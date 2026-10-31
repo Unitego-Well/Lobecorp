@@ -20,7 +20,7 @@ public abstract class ModularUIWidgetMixin {
 	@Final
 	private ModularUI modularUI;
 
-	@WrapOperation(method = "dispatchCommand(Ljava/lang/String;III)Z", at = @At(value = "INVOKE",
+	@WrapOperation(method = "dispatchCommand(Ljava/lang/String;IIIZ)Z", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/gui/ui/event/UIEventDispatcher;dispatchEvent(Lcom/lowdragmc/lowdraglib2/gui/ui/event/UIEvent;)V"))
 	private void lobecorp$routeProjectSave(UIEvent event, Operation<Void> original) {
 		if (UIEvents.EXECUTE_COMMAND.equals(event.type) && CommandEvents.SAVE.equals(event.command)) {
@@ -33,7 +33,7 @@ public abstract class ModularUIWidgetMixin {
 		original.call(event);
 	}
 
-	@WrapOperation(method = "dispatchCommand(Ljava/lang/String;III)Z", at = @At(value = "INVOKE",
+	@WrapOperation(method = "dispatchCommand(Ljava/lang/String;IIIZ)Z", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/gui/ui/event/UIEventDispatcher;dispatchAllChildren(Lcom/lowdragmc/lowdraglib2/gui/ui/event/UIEvent;)Z"))
 	private boolean lobecorp$validateProjectSave(UIEvent event, Operation<Boolean> original) {
 		if (!UIEvents.VALIDATE_COMMAND.equals(event.type) || !CommandEvents.SAVE.equals(event.command)) {

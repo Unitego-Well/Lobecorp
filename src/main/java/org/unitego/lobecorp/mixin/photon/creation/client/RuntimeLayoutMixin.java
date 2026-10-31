@@ -17,6 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.creation.IPhotonRuntimeCreationAccess;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 
+import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
@@ -47,6 +49,11 @@ public abstract class RuntimeLayoutMixin implements IPhotonRuntimeCreationAccess
 	private ParticleTickHost host;
 	@Shadow
 	private int generationAtEmit;
+	@Shadow
+	@Final
+	private List<FXInstanceObject> instances;
+	@Shadow
+	private boolean beginningInstances;
 	@Unique
 	private Runnable lobecorp$initialTick;
 	@Unique
@@ -73,6 +80,10 @@ public abstract class RuntimeLayoutMixin implements IPhotonRuntimeCreationAccess
 
 	@Override
 	public void lobecorp$resetCreationState(FXData data) {
+		timelinePlayer.stop();
+		instances.forEach(FXInstanceObject::stopAudio);
+		instances.clear();
+		beginningInstances = false;
 		fxData = data;
 		timelinePlayer = new TimelinePlayer((FXRuntime) (Object) this, data.timeline());
 		emitted = false;

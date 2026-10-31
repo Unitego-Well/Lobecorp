@@ -27,6 +27,8 @@ import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import net.minecraft.nbt.NbtAccounter;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -229,6 +231,18 @@ public class PhotonModelPackExportUtil {
 		PhotonEditorProjectGuardUtil.requireSupported(root);
 		var exporter = (FXPackExporterAccessor) (Object) FXPackExporterAccessor.lobecorp$create(provider);
 		exporter.lobecorp$walk(root);
+		var instanceSources = exporter.lobecorp$packSources(root, id);
+		for (var entry : instanceSources.entrySet()) {
+			var path = "assets/" + entry.getKey().getNamespace() + "/fx/" + entry.getKey().getPath() + ".fx";
+			try (var input = new ByteArrayInputStream(entry.getValue())) {
+				var tag = NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap());
+				var previous = definitions.putIfAbsent(path, tag);
+				if (previous != null && !previous.equals(tag)) {
+					throw new IOException("实例源存在同路径不同内容：" + path);
+				}
+			}
+		}
+
 		if (!exporter.lobecorp$warnings().isEmpty()) {
 			throw new IOException("包依赖未闭合：" + exporter.lobecorp$warnings());
 		}

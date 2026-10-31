@@ -1,6 +1,8 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.LoadingOverlay;
+import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
@@ -46,6 +48,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static volatile boolean preparing;
 	private static volatile String reloadFailure = "";
 	private static volatile long generation;
+	private static int nativeFXGeneration = -1;
 	private static final Map<Identifier, Consumer<Prepared>> DEFINITION_PREPARERS = new LinkedHashMap<>();
 	private static final Map<Identifier, Consumer<SourceKey>> DEFINITION_INVALIDATORS = new LinkedHashMap<>();
 
@@ -249,9 +252,15 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	/// 由客户端维护入口调用，设备变化不在技能创建栈中同步补载。
 	public static void refreshDeviceResources() {
 		requireClientThread();
-		if (preparing) {
+		if (preparing || Minecraft.getInstance().getOverlay() instanceof LoadingOverlay) {
 			return;
 		}
+		if (nativeFXGeneration != FXHelper.generation()) {
+			var manager = Minecraft.getInstance().getResourceManager();
+			apply(prepare(manager, Profiler.get()), manager, Profiler.get());
+			return;
+		}
+		QueenBeamResourcePreparation.prepare();
 		for (var prepared : java.util.List.copyOf(AUTHORING.values())) {
 			if (!PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
 				try {
@@ -371,7 +380,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		}
 	}
 
-	private Map<Identifier, Result> prepare(ResourceManager manager, ProfilerFiller profiler) {
+	private static Map<Identifier, Result> prepare(ResourceManager manager, ProfilerFiller profiler) {
 		var results = new LinkedHashMap<Identifier, Result>();
 		for (var entry : registrations().entrySet()) {
 			try {
@@ -408,7 +417,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		}
 	}
 
-	private void apply(Map<Identifier, Result> preparations, ResourceManager manager, ProfilerFiller profiler) {
+	private static void apply(Map<Identifier, Result> preparations, ResourceManager manager, ProfilerFiller profiler) {
 		requireClientThread();
 		long nextGeneration = generation + 1;
 		for (var previous : exported.values()) {
@@ -440,6 +449,8 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		});
 		exported = Map.copyOf(published);
 		generation = nextGeneration;
+		nativeFXGeneration = FXHelper.generation();
 		preparing = false;
+		QueenBeamResourcePreparation.prepare();
 	}
 }

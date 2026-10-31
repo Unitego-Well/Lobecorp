@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.photon.model;
 
+import com.lowdragmc.photon.client.fx.PreloadContext;
 import com.lowdragmc.lowdraglib2.configurator.ConfiguratorParser;
 import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
@@ -268,6 +269,24 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		failure = null;
+	}
+
+	/// 接入原生预加载：按模型实际分组准备材质、纹理和CPU管线，不生成运行时间线。
+	@Override
+	public void preload(PreloadContext context) {
+		context.onRenderThread(() -> {
+			try {
+				prepare();
+			} catch (IOException invalid) {
+				throw new IllegalStateException("模型预加载失败：" + getName(), invalid);
+			}
+
+			for (int group : groupOrder) {
+				var renderer = materials.group(group);
+				preloadGroup(context, renderer, geometryMode(), null, true, false,
+						renderer.isWriteCustomMask() || context.isAnimated(this, "renderer.writeCustomMask"));
+			}
+		});
 	}
 
 	/// 预热渲染侧：准备模型资源并预构建其材质渲染类型；不发射、不推进时间线。

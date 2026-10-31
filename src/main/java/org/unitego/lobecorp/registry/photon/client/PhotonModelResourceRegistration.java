@@ -6,6 +6,7 @@ import net.neoforged.neoforge.client.resources.VanillaClientListeners;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
+import org.unitego.lobecorp.client.photon.runtime.QueenBeamResourcePreparation;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 
 public class PhotonModelResourceRegistration {
@@ -13,6 +14,7 @@ public class PhotonModelResourceRegistration {
 
 	public static void registerReload(AddClientReloadListenersEvent event) {
 		PhotonOwnedLaser.register();
+		QueenBeamResourcePreparation.register();
 		event.addListener(RELOAD_ID, PhotonModelSourceUtil.resourceReloadListener());
 		var owned = Lobecorp.id("photon_owned_effect_resources");
 		event.addListener(owned, new PhotonOwnedEffectResources());

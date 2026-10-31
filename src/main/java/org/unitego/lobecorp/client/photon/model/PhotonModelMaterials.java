@@ -100,15 +100,16 @@ public class PhotonModelMaterials {
 
 	private static MaterialSetting copy(MaterialSetting source, IMaterial material) {
 		var result = new MaterialSetting(material).setCull(source.isCull())
-				.setDepthMask(source.isDepthMask()).setDepthTest(source.isDepthTest());
+				.setDepthMask(source.isDepthMask()).setDepthTest(source.isDepthTest())
+				.setRenderStateSource(source.getRenderStateSource());
 		var from = source.getBlendMode();
 		var to = result.getBlendMode();
-		to.setEnableBlend(from.isEnableBlend());
-		to.setBlendFunc(from.getBlendFunc());
-		to.setSrcColorFactor(from.getSrcColorFactor());
-		to.setDstColorFactor(from.getDstColorFactor());
-		to.setSrcAlphaFactor(from.getSrcAlphaFactor());
-		to.setDstAlphaFactor(from.getDstAlphaFactor());
+        to.setEnableBlend(from.isEnableBlend());
+        to.setBlendFunc(from.getBlendFunc());
+        to.setSrcColorFactor(from.getSrcColorFactor());
+        to.setDstColorFactor(from.getDstColorFactor());
+        to.setSrcAlphaFactor(from.getSrcAlphaFactor());
+        to.setDstAlphaFactor(from.getDstAlphaFactor());
 		return result;
 	}
 }

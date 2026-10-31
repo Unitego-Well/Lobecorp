@@ -57,7 +57,7 @@ public abstract class PhotonFXLoadDiagnosticsMixin {
 		}
 	}
 
-	@WrapOperation(method = "loadFX", at = @At(value = "INVOKE",
+	@WrapOperation(method = "readTag", at = @At(value = "INVOKE",
 			target = "Lnet/minecraft/server/packs/resources/ResourceManager;open(Lnet/minecraft/resources/Identifier;)Ljava/io/InputStream;"))
 	private static InputStream lobecorp$open(ResourceManager manager, Identifier location, Operation<InputStream> original) {
 		if (!PhotonCastProfiler.enabled()) {
@@ -75,7 +75,7 @@ public abstract class PhotonFXLoadDiagnosticsMixin {
 		}
 	}
 
-	@WrapOperation(method = "loadFX", at = @At(value = "INVOKE",
+	@WrapOperation(method = "readTag", at = @At(value = "INVOKE",
 			target = "Lnet/minecraft/nbt/NbtIo;readCompressed(Ljava/io/InputStream;Lnet/minecraft/nbt/NbtAccounter;)Lnet/minecraft/nbt/CompoundTag;"))
 	private static CompoundTag lobecorp$read(InputStream in, NbtAccounter accounter, Operation<CompoundTag> original) {
 		if (!PhotonCastProfiler.enabled()) {
@@ -92,7 +92,7 @@ public abstract class PhotonFXLoadDiagnosticsMixin {
 		}
 	}
 
-	@WrapOperation(method = "loadFX", at = @At(value = "INVOKE",
+	@WrapOperation(method = "readTag", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/fx/FXHelper;applyVersionFixes(Lnet/minecraft/nbt/CompoundTag;)Lnet/minecraft/nbt/CompoundTag;"))
 	private static CompoundTag lobecorp$fix(CompoundTag tag, Operation<CompoundTag> original) {
 		if (!PhotonCastProfiler.enabled()) {
@@ -109,7 +109,7 @@ public abstract class PhotonFXLoadDiagnosticsMixin {
 		}
 	}
 
-	@WrapOperation(method = "loadFX", at = @At(value = "INVOKE",
+	@WrapOperation(method = "deserialize", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/fx/FX;deserializeNBT(Lnet/minecraft/core/HolderLookup$Provider;Lnet/minecraft/nbt/CompoundTag;)V"))
 	private static void lobecorp$deserialize(FX fx, HolderLookup.Provider provider, CompoundTag tag, Operation<Void> original) {
 		if (!PhotonCastProfiler.enabled()) {

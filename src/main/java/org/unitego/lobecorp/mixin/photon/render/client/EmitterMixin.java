@@ -31,7 +31,7 @@ import java.util.List;
 public abstract class EmitterMixin {
 
 
-	@Inject(method = "bakeGroup", at = @At("HEAD"))
+	@Inject(method = "bakeGroup(Lcom/lowdragmc/photon/client/render/PhotonViewSettings;Ljava/util/List;Lnet/minecraft/client/Camera;FLcom/lowdragmc/photon/client/gameobject/emitter/data/RendererSetting$Runtime;Lcom/mojang/blaze3d/vertex/VertexFormat$Mode;Lcom/lowdragmc/photon/client/gameobject/emitter/Emitter$GeometryBaker;Lcom/lowdragmc/photon/client/gameobject/emitter/Emitter$CpuRecordSource;)V", at = @At("HEAD"))
 	private void lobecorp$startCpuBatch(CallbackInfo ci, @Local(argsOnly = true) List<DrawJob> out,
 	                                    @Share("lobecorp$compatStart") LocalIntRef start) {
 		start.set(out.size());
@@ -43,7 +43,7 @@ public abstract class EmitterMixin {
 		start.set(out.size());
 	}
 
-	@Inject(method = "bakeGroup", at = @At("RETURN"))
+	@Inject(method = "bakeGroup(Lcom/lowdragmc/photon/client/render/PhotonViewSettings;Ljava/util/List;Lnet/minecraft/client/Camera;FLcom/lowdragmc/photon/client/gameobject/emitter/data/RendererSetting$Runtime;Lcom/mojang/blaze3d/vertex/VertexFormat$Mode;Lcom/lowdragmc/photon/client/gameobject/emitter/Emitter$GeometryBaker;Lcom/lowdragmc/photon/client/gameobject/emitter/Emitter$CpuRecordSource;)V", at = @At("RETURN"))
 	private void lobecorp$markCpuBatch(CallbackInfo ci, @Local(argsOnly = true) List<DrawJob> out,
 	                                   @Local(argsOnly = true) Camera camera, @Local(argsOnly = true) RendererSetting.Runtime renderer,
 	                                   @Share("lobecorp$compatStart") LocalIntRef start) {

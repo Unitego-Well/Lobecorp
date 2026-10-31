@@ -1,5 +1,11 @@
 # Photon 定义编译与受管实例创建
 
+## 2026-10-31 排空与私有定义退役补正
+
+`PhotonLeasePool.release`对不可复用类型也保持DRAINING所有权；自然结束并跨真实tick/完成帧QUARANTINE后才discard/dispose，不进入idle。RuntimePool不在reusable判定时提前移除owned，销毁finally通知Scope清理。Factory在父级停放或显式force销毁时退役其PROJECT定义与对应空闲池；活跃/排空中的子实例仍按原屏障完成，不能用destroy(false)立即抹掉Scope或可见尾迹。
+
+PhotonChildSpawner在update（paused早退之前）和getParticleAmount前prune已finished实例，使停止后的父实例能够自然结束。索引Map非结构性物化时既有迭代器切换到当前游标，remove资格和次序保持；租约代次对entry.equals也生效。维护时不得把未知类型不复用等同于提前放弃生命周期管理。LeasePool15/IndexedMap15/ScopedInvalidation1项限定JUnit已通过，完整宿主/游戏生命周期仍未验收；用户禁止后续游戏测试。
+
 本模块在定义准备、实例状态与释放之间建立统一边界，覆盖根特效、FX来源和PROJECT子树。默认模式为 NATIVE；A/B/C 是可显式启动的实验后端。2026-10-31 的12局对照没有证明任一后端同时改善最坏长帧，详见[基准结果](benchmod.md#2026-10-31-实例创建架构三方案对照)。
 
 ## 模式与职责

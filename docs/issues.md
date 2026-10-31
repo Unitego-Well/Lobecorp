@@ -1,5 +1,11 @@
 # Photon 未解决问题汇总
 
+## 2026-10-31 Photon负责范围审查修正（禁止后续游戏）
+
+PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计数、设备代次/失败重试、Map迭代续接、FILE最新几何冻结及子源/.mfx依赖已补正。FILE导出独占配置先准备，只写来源/资产字段，完整guard通过才提交，发布校验保持。迁移fixture使用实际受管租约与自然排空，报告后置且核对必需frames/session/hash。
+
+37限定JUnit、3Node及首轮编译/生产包隔离/Data通过，23生成JSON不变；追加FILE顺序补正IDEA无error，最终编译/包隔离退出0。P01-r1新review场景曾失败并保留，不计通过；用户禁止后未启动P01-r2或光影。六设置恢复、两个Sol关闭。DS超长旧对话精简接续后归档，补充静态报告已收敛，无新增确认P1/P2；验收资源条目预算末项超一已局部修正。批量静态非逐行全覆盖，P22/P23开放，无新增游戏/FPS通过结论。本地报告 `.agent/reports/20261031-photon-workspace-review-final.md`。
+
 ## 2026-10-31 Photon同平台迁移与剩余首发长帧
 
 2026-10-31 同平台迁移完成：Photon26.1.2.9、LDLib2 26.1.2.43、KilaGraph26.1.0.16.a；MC/NeoForge/JDK保持。旧18轮深入归因确认旧Star运行时预热和私有FX重复编译；迁移补齐显式准备来源、世界/资源代次、已知UUID删除重插的数组顺序、ValueIO/FXInstance/FXPack和新全屏合成Iris边界。最终普通/光影×NATIVE/HYBRID四条路径各1局通过，共12次激光及归档后契约通过；不是三轮/18局复测。HYBRID两局主窗私有编译0、缓存命中60、池命中/复位238、失败/布局回退0；最坏仍普通427.216ms、光影269.515ms，首发SharedPrepared/命名/字段回退/姿态几何及旧空白未知区间使P22/P23继续开放。编译/生产包隔离/Data、12项定向JUnit通过，23生成输出不变，六配置与五原WIP/暂存SHA恢复保持，游戏/Debug/observer及8子代理已回收。完整本地报告.agent/reports/20261031-photon26129-migration-final.md，证据build/agent-backups/20261031-photon-26129-migration；原失败和带Iris提示结果保留，未推送。

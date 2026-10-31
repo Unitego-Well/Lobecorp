@@ -2,6 +2,7 @@ package org.unitego.lobecorp.util.photon.creation;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
@@ -350,6 +351,103 @@ public class PhotonIndexedMapTest {
 			assertEquals("new", actual.values().iterator().next());
 			assertEquals(1, actual.size());
 			assertFalse(actual.isMaterialized());
+			actual.resetForLease();
+		}
+	}
+
+
+	@Test
+	public void valueOnlyFallbackTransfersPartlyConsumedIteratorsAndRemoveToNativeStorage() {
+		var keys = keys(4);
+		for (int operation = 0; operation < 6; operation++) {
+			var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+			var expected = new LinkedHashMap<UUID, String>();
+			for (var key : keys) {
+				actual.put(key, "before");
+				expected.put(key, "before");
+			}
+
+			var ai = actual.entrySet().iterator();
+			var ei = expected.entrySet().iterator();
+			assertEquals(ei.next(), ai.next());
+			for (Map<UUID, String> map : List.of(expected, actual)) {
+				switch (operation) {
+					case 0 -> map.compute(keys.getLast(), (_, _) -> "after");
+					case 1 -> map.computeIfAbsent(keys.getLast(), _ -> "unused");
+					case 2 -> map.computeIfPresent(keys.getLast(), (_, _) -> "after");
+					case 3 -> map.merge(keys.getLast(), "after", String::concat);
+					case 4 -> map.putAll(Map.of(keys.getLast(), "after"));
+					case 5 -> map.computeIfAbsent(new UUID(99, 99), _ -> null);
+				}
+			}
+
+			assertTrue(actual.isMaterialized());
+			ai.remove();
+			ei.remove();
+			while (ei.hasNext()) {
+				assertEquals(ei.next(), ai.next());
+				ai.remove();
+				ei.remove();
+			}
+			assertFalse(ai.hasNext());
+			assertThrows(NoSuchElementException.class, ai::next);
+			assertThrows(IllegalStateException.class, ai::remove);
+			equivalent(expected, actual);
+		}
+	}
+
+	@Test
+	public void viewsAndHeldNullEntryStayBackedAcrossValueOnlyMaterialization() {
+		var keys = keys(3);
+		keys.add(null);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		var expected = new LinkedHashMap<UUID, String>();
+		for (var key : keys.reversed()) {
+			actual.put(key, null);
+			expected.put(key, null);
+		}
+		var actualKeys = actual.keySet();
+		var actualValues = actual.values();
+		var actualEntries = actual.entrySet();
+		var held = actualEntries.iterator().next();
+		var nativeHeld = expected.entrySet().iterator().next();
+		var ai = actualValues.iterator();
+		var ei = expected.values().iterator();
+		assertEquals(ei.next(), ai.next());
+		actual.putAll(Map.of());
+		expected.putAll(Map.of());
+		assertEquals(nativeHeld.setValue("updated"), held.setValue("updated"));
+		assertEquals(nativeHeld, held);
+		ai.remove();
+		ei.remove();
+		assertEquals(expected.keySet().remove(keys.getFirst()), actualKeys.remove(keys.getFirst()));
+		assertEquals(expected.entrySet().remove(new AbstractMap.SimpleEntry<UUID, String>(keys.get(1), null)),
+				actualEntries.remove(new AbstractMap.SimpleEntry<UUID, String>(keys.get(1), null)));
+		assertEquals(new ArrayList<>(expected.values()), new ArrayList<>(actualValues));
+		equivalent(expected, actual);
+	}
+
+	@Test
+	public void oldViewSpliteratorsAndEntryComparisonsCannotRebindAfterLeaseReset() {
+		var keys = keys(2);
+		var actual = new PhotonIndexedMap<>(PhotonIndexedMap.compile(keys), String[]::new);
+		for (boolean fallback : new boolean[]{false, true}) {
+			actual.put(keys.getFirst(), "old");
+			if (fallback) {
+				actual.putAll(Map.of());
+			}
+			var oldKeys = actual.keySet().spliterator();
+			var oldValues = actual.values().spliterator();
+			var oldEntries = actual.entrySet().spliterator();
+			var entry = actual.entrySet().iterator().next();
+			actual.resetForLease();
+			actual.put(keys.getLast(), "new");
+			assertThrows(ConcurrentModificationException.class, () -> oldKeys.tryAdvance(_ -> fail("stale key")));
+			assertThrows(ConcurrentModificationException.class, () -> oldValues.tryAdvance(_ -> fail("stale value")));
+			assertThrows(ConcurrentModificationException.class, () -> oldEntries.tryAdvance(_ -> fail("stale entry")));
+			assertThrows(ConcurrentModificationException.class, () -> entry.equals(Map.entry(keys.getLast(), "new")));
+			assertThrows(ConcurrentModificationException.class, entry::hashCode);
+			assertEquals(Map.of(keys.getLast(), "new"), actual);
 			actual.resetForLease();
 		}
 	}

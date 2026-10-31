@@ -9,6 +9,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerProvider;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
 import org.unitego.lobecorp.client.bench.PhotonMigrationLaserScenario;
+import org.unitego.lobecorp.client.bench.PhotonWorkspaceReviewScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridQueenScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridLaserScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridBlankScenario;
@@ -47,6 +48,10 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		if (PhotonWorkspaceReviewScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonWorkspaceReviewScenario.ID, "工作区审查：自然排空、子池退休与文件导出",
+					Set.of("client", "photon", "review", "lifecycle"), Duration.ofSeconds(240)), _ -> new PhotonWorkspaceReviewScenario());
+		}
 		if (PhotonMigrationLaserScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonMigrationLaserScenario.ID, "迁移回归：45秒三次真实激光",
 					Set.of("client", "photon", "migration", "laser"), Duration.ofSeconds(360)), _ -> new PhotonMigrationLaserScenario());

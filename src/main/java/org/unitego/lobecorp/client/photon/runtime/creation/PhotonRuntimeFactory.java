@@ -61,7 +61,8 @@ public class PhotonRuntimeFactory {
 	}
 
 	private static final Mode MODE = Mode.valueOf(System.getProperty(MODE_PROPERTY, "native").toUpperCase(Locale.ROOT));
-	private static final PhotonRuntimePool POOL = new PhotonRuntimePool(PhotonRuntimeFactory::resetSupported, PhotonRuntimeFactory::parked);
+    private static final PhotonRuntimePool POOL = new PhotonRuntimePool(PhotonRuntimeFactory::resetSupported,
+            PhotonRuntimeFactory::parked, PhotonRuntimeFactory::retireScope);
 	private static final Map<FX, String> RESOURCE_SOURCES = new WeakHashMap<>();
 	private static final Map<FX, CachedDefinition> DEFINITIONS = new WeakHashMap<>();
 	// 值不持有作为 key 的 runtime、scene 或其对象，避免弱键经值重新强可达。
@@ -693,7 +694,22 @@ public class PhotonRuntimeFactory {
 		}
 	}
 
+	/// 强制销毁也覆盖没有租约的编辑器/原生公开实例，子池仍遵守已有退休屏障。
+	public static void onRuntimeForceDestroyed(FXRuntime runtime) {
+		retireScope(runtime);
+	}
+
+	private static void retireScope(FXRuntime runtime) {
+		var scope = SCOPES.remove(runtime);
+		if (scope != null) {
+			var projects = List.copyOf(scope.projects.values());
+			scope.projects.clear();
+			projects.forEach(PhotonRuntimeFactory::invalidateDefinition);
+		}
+	}
+
 	private static void parked(FXRuntime runtime) {
+		retireScope(runtime);
 		if (runtime instanceof IPhotonRuntimeCreationAccess access) {
 			access.lobecorp$restoreCreationCallbacks();
 		}

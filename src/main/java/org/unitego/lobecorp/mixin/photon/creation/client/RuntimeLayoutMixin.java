@@ -78,6 +78,13 @@ public abstract class RuntimeLayoutMixin implements IPhotonRuntimeCreationAccess
 		}
 	}
 
+    @Inject(method = "destroy", at = @At("TAIL"))
+    private void lobecorp$retireForcedScope(boolean force, CallbackInfo result) {
+        if (force) {
+            PhotonRuntimeFactory.onRuntimeForceDestroyed((FXRuntime) (Object) this);
+        }
+    }
+
 	@Override
 	public void lobecorp$resetCreationState(FXData data) {
 		timelinePlayer.stop();

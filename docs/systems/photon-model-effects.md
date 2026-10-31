@@ -1,5 +1,11 @@
 # Photon 模型特效
 
+## 2026-10-31 导出最新来源与校验顺序
+
+PhotonModelPackExportUtil.prepare(FILE配置)先清旧快照，再读取当前作者文件，冻结成EMBEDDED并重建纹理/材质依赖。原生包walk的模型wrapper在独占副本上恢复配置并准备，仅替换source/resource/file/snapshotSource/assetJson/assetDependencies/assetMaterialDependencies，其他字段保持；完整guard通过后才提交config，失败不改变输入wrapper。禁止在FILE冻结前调用IFXObject.deserializeWrapper，否则现有对象guard会先拒绝；也不能全量重编码配置将不合法播放字段悄悄规范化为默认值。发布guard和被保护原件规则保持。
+
+自定义子生成器依赖只识别明确注册type与FX来源，无关未知fxLocation文本不参与解析。读取和原生包预检统一优先.fx，缺失回落.mfx，写入命名规则不改。来源/依赖纯测试4项已通过；本轮追加wrapper顺序补正IDEA无error、编译/生产包隔离退出0，公共FILE工作流和完整宿主导出尚未实测。用户禁止后续游戏测试，不能以编译冒称G1或视觉/性能通过。
+
 ## 规范恢复避免整树适配副本（2026-10-31）
 
 PhotonModelAssetUtil.borrowCanonicalConfig复用版本/config/resource/renderer校验，只在已有modelRenderer时借读；PhotonModelRuntimeCopyUtil的规范路径不再先adapt整份data。公开adaptObject仍返回独占深副本，既有缺renderer推导、快照失败及错误顺序保留。复杂renderer各自复制子树供native parser，snapshot/依赖/rememberSource仍独占，不保留输入可变Tag，不共享活运行态，公共类型Codec未改。

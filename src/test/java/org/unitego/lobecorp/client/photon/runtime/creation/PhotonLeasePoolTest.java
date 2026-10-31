@@ -196,11 +196,24 @@ public class PhotonLeasePoolTest {
 		pool.pulse(1, 1);
 		pool.pulse(2, 2);
 		assertEquals(0, pool.statistics().idle());
-		assertEquals(1, pool.statistics().retired());
+		assertEquals(0, pool.statistics().retired());
+		assertEquals(1, pool.statistics().quarantine());
 		assertFalse(value.force);
 		assertEquals(0, value.disposals);
 		assertEquals(5, value.particles);
-		assertNotSame(value, pool.acquire("unknown", Fake::new, Fake::reset).runtime());
+		var replacement = pool.acquire("unknown", Fake::new, Fake::reset);
+		assertNotSame(value, replacement.runtime());
+		value.alive = false;
+		value.particles = 0;
+		pool.pulse(3, 3);
+		pool.pulse(4, 3);
+		assertEquals(0, value.disposals);
+		pool.pulse(4, 4);
+		assertEquals(1, value.disposals);
+		assertEquals(1, pool.statistics().retired());
+		assertEquals(0, pool.statistics().idle());
+		assertTrue(replacement.current());
+		pool.clear();
 	}
 
 	@Test

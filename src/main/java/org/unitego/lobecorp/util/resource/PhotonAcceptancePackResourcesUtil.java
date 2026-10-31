@@ -80,20 +80,23 @@ public class PhotonAcceptancePackResourcesUtil {
 					}
 					var document = PhotonResourceReader.read(file, limits);
 					origins.add(file + "#" + document.sha256());
-					for (var entry : document.entries()) {
-						expandedBytes = Math.addExact(expandedBytes, entry.sourceBytes());
-						if (expandedBytes > limits.unpackedBytes() || resources.size() > limits.entries()) {
-							throw new IOException("验收包集合超过展开预算。");
-						}
-						var name = entry.origin().substring(document.origin().length() + 2);
-						if (name.startsWith("assets/")) {
-							int separator = name.indexOf('/', "assets/".length());
-							if (separator < 0) {
-								throw new IOException("验收包资源缺少命名空间。");
-							}
-							resources.add(Identifier.fromNamespaceAndPath(name.substring("assets/".length(), separator), name.substring(separator + 1)));
-						}
-					}
+                    for (var entry : document.entries()) {
+                        expandedBytes = Math.addExact(expandedBytes, entry.sourceBytes());
+                        if (expandedBytes > limits.unpackedBytes()) {
+                            throw new IOException("验收包集合超过展开预算。");
+                        }
+                        var name = entry.origin().substring(document.origin().length() + 2);
+                        if (name.startsWith("assets/")) {
+                            int separator = name.indexOf('/', "assets/".length());
+                            if (separator < 0) {
+                                throw new IOException("验收包资源缺少命名空间。");
+                            }
+                            resources.add(Identifier.fromNamespaceAndPath(name.substring("assets/".length(), separator), name.substring(separator + 1)));
+                            if (resources.size() > limits.entries()) {
+                                throw new IOException("验收包集合超过展开预算。");
+                            }
+                        }
+                    }
 				} catch (IOException | RuntimeException invalid) {
 					throw new IllegalStateException("无法读取验收屏蔽来源：" + file, invalid);
 				}

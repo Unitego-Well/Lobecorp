@@ -17,6 +17,7 @@ import org.unitego.lobecorp.util.photon.playback.PhotonSpawnConfigUtil;
 import java.util.List;
 
 public class LcPhotonSpawnTypes {
+	public static final String TYPE_NAME = "lobecorp_emitter_spawner";
 	private static final List<RuntimeBinding> BINDINGS = List.of(
 			binding("enabled", ConfigValueType.BOOL),
 			binding("duration", ConfigValueType.INT),
@@ -36,7 +37,7 @@ public class LcPhotonSpawnTypes {
 			binding("parameters.beamWidth", ConfigValueType.NUMBER_FUNCTION),
 			binding("parameters.playbackSpeed", ConfigValueType.FLOAT));
 
-	@LDLRegisterClient(name = "lobecorp_emitter_spawner", registry = "photon:fx_object")
+	@LDLRegisterClient(name = TYPE_NAME, registry = "photon:fx_object")
 	public static final FXObjectType SPAWNER = new FXObjectType() {
 		@Override
 		public IFXObject create() {

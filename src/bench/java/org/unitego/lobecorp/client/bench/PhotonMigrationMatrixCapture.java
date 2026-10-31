@@ -180,12 +180,15 @@ public class PhotonMigrationMatrixCapture {
 				if (profile.get("exporting").getAsBoolean()) {
 					return BenchClientStepResult.CONTINUE;
 				}
-				value.validate(profile);
+				if (value.archivedReport == null) {
+					value.validate(profile);
+				}
 				value.verified = true;
 				value.archive(context, profile);
 				if (!value.nativeCheck.step(context, value.label)) {
 					return BenchClientStepResult.CONTINUE;
 				}
+				value.finishArchive(context);
 				return BenchClientStepResult.COMPLETE;
 			}
 		} catch (Exception | LinkageError problem) {
@@ -313,6 +316,7 @@ public class PhotonMigrationMatrixCapture {
 		private boolean armed;
 		private boolean finished;
 		private boolean archived;
+		private JsonObject archivedReport;
 		private boolean sparkStopping;
 		private final AtomicBoolean cleanupRequested = new AtomicBoolean();
 		private volatile Throwable failure;
@@ -1002,20 +1006,33 @@ public class PhotonMigrationMatrixCapture {
 		}
 
 		private void archive(BenchClientContext context, JsonObject profile) throws Exception {
-			if (archived) {
+			if (archivedReport != null) {
 				return;
 			}
 			validate(profile);
 			long begun = System.nanoTime();
 			archiveRaw(context, profile);
 			require(!rawManifest.isEmpty(), "entry_raw_artifacts_missing");
+			for (var suffix : List.of("_frames.csv", "_session.json")) {
+				require(rawManifest.asList().stream().anyMatch(item -> item.getAsJsonObject().get("artifact")
+						.getAsString().endsWith(label + suffix)), "migration_raw_required_missing:" + suffix);
+			}
 			spark.archive(context);
 			exportNs = System.nanoTime() - begun;
 			var result = report();
 			result.addProperty("export_ns", exportNs);
-			result.addProperty("archived", true);
+			result.addProperty("archived", false);
 			result.addProperty("scope", "world-visible render HEAD zero; 5s scheduled server spawn; independent variant deadline cleanup; natural frame DURATION");
 			result.add("frame_artifacts", rawManifest.deepCopy());
+			archivedReport = result;
+		}
+
+		private void finishArchive(BenchClientContext context) throws IOException {
+			nativeCheck.verify();
+			require(archivedReport != null && failure == null, "migration_archive_not_ready");
+			var result = archivedReport.deepCopy();
+			result.addProperty("native_contracts_verified", true);
+			result.addProperty("archived", true);
 			context.artifacts().write(label + "_migration26129.json", "application/json", result.toString());
 			archived = true;
 			Lobecorp.LOGGER.info("MIGRATION_MATRIX runId={} phase=archived label={} verified={}", runId, label, verified);

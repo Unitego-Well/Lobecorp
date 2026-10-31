@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 public class PhotonRuntimePool {
 	private final Predicate<IFXObject> resetSupported;
 	private final Consumer<FXRuntime> idleCleanup;
+    private final Consumer<FXRuntime> disposedCleanup;
 	// 每个单槽池沿用原排空/fence 状态机；同键容量仍由组内真实活跃峰值决定。
 	private final Map<Object, Group> groups = new HashMap<>();
 	private final Set<FXRuntime> owned = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -62,12 +63,7 @@ public class PhotonRuntimePool {
 
 		@Override
 		public boolean reusable(FXRuntime value) {
-			boolean reusable = value.objects.values().stream().allMatch(object -> object != null && resetSupported.test(object));
-			if (!reusable) {
-				owned.remove(value);
-			}
-
-			return reusable;
+			return value.objects.values().stream().allMatch(object -> object != null && resetSupported.test(object));
 		}
 
 		@Override
@@ -78,7 +74,11 @@ public class PhotonRuntimePool {
 		@Override
 		public void dispose(FXRuntime value) {
 			owned.remove(value);
-			value.destroy(true);
+			try {
+				value.destroy(true);
+			} finally {
+				disposedCleanup.accept(value);
+			}
 		}
 	};
 
@@ -98,8 +98,15 @@ public class PhotonRuntimePool {
 	}
 
 	public PhotonRuntimePool(Predicate<IFXObject> resetSupported, Consumer<FXRuntime> idleCleanup) {
+		this(resetSupported, idleCleanup, _ -> {
+		});
+	}
+
+	public PhotonRuntimePool(Predicate<IFXObject> resetSupported, Consumer<FXRuntime> idleCleanup,
+							 Consumer<FXRuntime> disposedCleanup) {
 		this.resetSupported = Objects.requireNonNull(resetSupported);
 		this.idleCleanup = Objects.requireNonNull(idleCleanup);
+		this.disposedCleanup = Objects.requireNonNull(disposedCleanup);
 	}
 
 	public Lease acquire(Object key, Supplier<FXRuntime> create, Consumer<FXRuntime> reset) {

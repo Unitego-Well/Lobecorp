@@ -1,11 +1,15 @@
 package org.unitego.lobecorp.util.photon.model;
 
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
+import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.fxpack.FXPackExporter;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
@@ -52,29 +56,62 @@ public class PhotonModelPackExportUtil {
 			if (!(object instanceof PhotonModelOutput model)) {
 				continue;
 			}
-			var loaded = PhotonModelSourceUtil.load(model.config);
-			var definition = loaded.definition();
-			model.config.setAssetSnapshot(loaded.snapshot());
-			model.config.source = PhotonModelOutputConfig.Source.EMBEDDED;
-			model.config.resource = null;
-			model.config.file = "";
-			var dependencies = new CompoundTag();
-			var textures = new ArrayList<Identifier>();
-			for (var entry : definition.materials().entrySet()) {
-				if (!entry.getValue().materialData().isEmpty()) {
-					dependencies.put(entry.getKey(), PhotonModelAssetUtil.material(entry.getValue().materialData()));
-				}
-				if (!entry.getValue().texture().isEmpty()) {
-					var id = Identifier.tryParse(entry.getValue().texture());
-					if (id == null) {
-						throw new IOException("模型贴图ID无效：" + entry.getValue().texture());
-					}
-					textures.add(id);
-				}
-			}
-			model.config.assetMaterialDependencies = dependencies;
-			model.config.assetDependencies = textures;
+			prepare(model.config);
 		}
+	}
+
+	public static void prepare(PhotonModelOutputConfig config) throws IOException {
+		if (config.source == PhotonModelOutputConfig.Source.FILE) {
+			config.setAssetSnapshot(new ByteArrayTag(new byte[0]));
+		}
+		var loaded = PhotonModelSourceUtil.load(config);
+		var definition = loaded.definition();
+		config.setAssetSnapshot(loaded.snapshot());
+		config.source = PhotonModelOutputConfig.Source.EMBEDDED;
+		config.resource = null;
+		config.file = "";
+		var dependencies = new CompoundTag();
+		var textures = new ArrayList<Identifier>();
+		for (var entry : definition.materials().entrySet()) {
+			if (!entry.getValue().materialData().isEmpty()) {
+				dependencies.put(entry.getKey(), PhotonModelAssetUtil.material(entry.getValue().materialData()));
+			}
+			if (!entry.getValue().texture().isEmpty()) {
+				var id = Identifier.tryParse(entry.getValue().texture());
+				if (id == null) {
+					throw new IOException("模型贴图ID无效：" + entry.getValue().texture());
+				}
+				textures.add(id);
+			}
+		}
+		config.assetMaterialDependencies = dependencies;
+		config.assetDependencies = textures;
+	}
+
+	/// 原生实例源由上游按NBT遍历；只替换模型配置，不重新编码其余未知字段。
+	public static void prepareModelObject(CompoundTag wrapper) throws IOException {
+		if (!LcPhotonModelOutputTypes.TYPE_NAME.equals(wrapper.getStringOr("type", ""))) {
+			return;
+		}
+		var candidate = wrapper.copy();
+		var data = candidate.getCompoundOrEmpty("data");
+		var config = new PhotonModelOutputConfig();
+		PersistedParser.deserializeNBT(data.getCompoundOrEmpty("config").copy(), config, Platform.getFrozenRegistry());
+		prepare(config);
+		var encoded = data.getCompoundOrEmpty("config").copy();
+		var prepared = PersistedParser.serializeNBT(config, Platform.getFrozenRegistry());
+		for (var key : List.of("source", "resource", "file", "snapshotSource", PhotonModelOutputConfig.ASSET_KEY,
+				"assetDependencies", "assetMaterialDependencies")) {
+			var value = prepared.get(key);
+			if (value == null) {
+				encoded.remove(key);
+			} else {
+				encoded.put(key, value.copy());
+			}
+		}
+		data.put("config", encoded);
+		PhotonEditorProjectGuardUtil.requireSupported(candidate);
+		wrapper.getCompoundOrEmpty("data").put("config", encoded);
 	}
 
 	public static FXPackExporter.Result export(File file, String namespace, String name, FX copy, HolderLookup.Provider provider, boolean modelDefinition) throws IOException {
@@ -258,18 +295,54 @@ public class PhotonModelPackExportUtil {
 		}
 	}
 
+	public static Set<Identifier> instanceSources(CompoundTag data, Set<Identifier> nativeSources) throws IOException {
+		var sources = new LinkedHashSet<>(nativeSources);
+		collectSourceIds(data, sources);
+		return sources;
+	}
+
+	private static @Nullable Identifier childSource(CompoundTag wrapper) throws IOException {
+		if (!LcPhotonSpawnTypes.TYPE_NAME.equals(wrapper.getStringOr("type", ""))) {
+			return null;
+		}
+
+		var config = wrapper.getCompoundOrEmpty("data").getCompoundOrEmpty("config");
+		var source = config.getStringOr("source", PhotonSpawnConfig.Source.PROJECT.getSerializedName());
+		var text = config.getStringOr("fxLocation", "");
+		if (text.isEmpty() || !source.equals("FX") && !source.equals(PhotonSpawnConfig.Source.FX.getSerializedName())) {
+			return null;
+		}
+
+		var id = Identifier.tryParse(text);
+		if (id == null) {
+			throw new IOException("子特效资源ID无效：" + text);
+		}
+		return id;
+	}
+
+	private static void collectSourceIds(Tag tag, Set<Identifier> sources) throws IOException {
+		if (tag instanceof CompoundTag compound) {
+			var id = childSource(compound);
+			if (id != null) {
+				sources.add(id);
+			}
+			for (var child : compound.entrySet()) {
+				collectSourceIds(child.getValue(), sources);
+			}
+		} else if (tag instanceof ListTag list) {
+			for (var child : list) {
+				collectSourceIds(child, sources);
+			}
+		}
+	}
+
 	private static void collect(Tag tag, Map<Identifier, FX> dependencies, Set<Identifier> active, int depth) throws IOException {
 		if (depth > 64 || dependencies.size() > 256) {
 			throw new IOException("子特效导出依赖超出预算。");
 		}
 		if (tag instanceof CompoundTag compound) {
-			var text = compound.getStringOr("fxLocation", "");
-			var source = compound.getStringOr("source", "FX");
-			if (!text.isEmpty() && (source.equals("FX") || source.equals(PhotonSpawnConfig.Source.FX.getSerializedName()))) {
-				var id = Identifier.tryParse(text);
-				if (id == null) {
-					throw new IOException("子特效资源ID无效：" + text);
-				}
+			var id = childSource(compound);
+			if (id != null) {
 				if (active.contains(id)) {
 					throw new IOException("子特效导出依赖循环：" + active + " → " + id);
 				}

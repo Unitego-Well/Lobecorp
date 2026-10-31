@@ -105,14 +105,8 @@ public class PhotonLeasePool<T> {
 		}
 
 		if (owned.get(slot.value) == slot && slot.state == State.STOPPING) {
-			if (!reusable) {
-				// 未知类型已按 force 参数停止；交宿主自然排空，不额外强制清除可见残留。
-				owned.remove(slot.value);
-				slot.state = State.RETIRED;
-				retired++;
-				return;
-			}
-
+            // 不可复用实例同样保留到自然尾迹结束，再跨屏障销毁，不能遗失回收所有权。
+            slot.reusable = reusable;
 			slot.state = State.DRAINING;
 			pending.add(slot);
 		}
@@ -153,6 +147,11 @@ public class PhotonLeasePool<T> {
 	}
 
 	private void park(Slot<T> slot) {
+		if (!slot.reusable) {
+			discard(slot, null);
+			return;
+		}
+
 		long generation = epoch;
 		slot.state = State.PARKING;
 		try {
@@ -324,6 +323,7 @@ public class PhotonLeasePool<T> {
 		private final Object key;
 		private final T value;
 		private State state;
+		private boolean reusable;
 		private Lease<T> lease;
 		private long tick;
 		private long frame;

@@ -3,6 +3,18 @@ package org.unitego.lobecorp.client.bench;
 import com.google.gson.JsonObject;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
+import org.unitego.lobecorp.util.photon.creation.PhotonIndexedMap;
+
+import java.io.IOException;
+import java.util.UUID;
+import java.util.Objects;
+
+import net.minecraft.client.Minecraft;
+
+import java.util.ConcurrentModificationException;
+
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
 import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
@@ -42,10 +54,34 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 	private long frame;
 	private long releasedNs;
 	private boolean complete;
+	private boolean baseComplete;
+	private FXRuntime projectScopeA;
+	private FXRuntime projectScopeB;
+	private PhotonChildSpawner projectOwnerA;
+	private PhotonChildSpawner projectOwnerB;
+	private FXRuntime projectBackend;
+	private PhotonRuntimeFactory.Lease projectReleased;
+	private UUID projectTarget;
+	private UUID projectNested;
+	private FX projectDefinitionA;
+	private FX projectDefinitionB;
+	private FX naturalSource;
+	private PhotonRuntimeFactory.Definition naturalDefinition;
+	private PhotonRuntimeFactory.Lease naturalLease;
+	private FXRuntime naturalBackend;
+	private ParticleEmitter naturalEmitter;
+	private boolean naturalReleased;
+	private boolean naturalDrained;
+	private long phaseStartedNs;
+	private boolean projectResetVerified;
+	private boolean naturalDrainVerified;
 
 	public boolean step(BenchClientContext context, String label) throws Exception {
 		if (complete) {
 			return true;
+		}
+		if (baseComplete) {
+			return completeContracts(context, label);
 		}
 		if (source == null) {
 			source = fixture();
@@ -101,18 +137,38 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 			close();
 		}
 		verifyInstancePlacement();
-		verifyProjectIsolation();
-		verifyProjectValueIO();
+		beginProjectIsolation();
+		baseComplete = true;
+		return false;
+	}
+
+	private boolean completeContracts(BenchClientContext context, String label) throws Exception {
+		require(System.nanoTime() - phaseStartedNs < TimeUnit.SECONDS.toNanos(30), "migration_contract_phase_timeout");
+		if (!projectResetVerified) {
+			if (PhotonRuntimeFactory.ticks() - tick < 2 || PhotonRuntimeFactory.frames() - frame < 2) {
+				return false;
+			}
+			verifyProjectReset();
+			verifyProjectValueIO();
+			beginNaturalDrain(context);
+			return false;
+		}
+		if (!stepNaturalDrain()) {
+			return false;
+		}
 		complete = true;
 		var report = new JsonObject();
 		report.addProperty("main_window_sample", false);
 		report.addProperty("passed", true);
-		report.addProperty("fixture_scope", "empty-node native copy, HYBRID reset, private source and world isolation");
+		report.addProperty("fixture_scope", "HYBRID empty-node and PROJECT reuse/reset, source/world isolation, live-host non-force particle drain");
 		report.addProperty("coverage_complete", true);
 		report.addProperty("project_valueio", "PASSED: composition, knownAs and unknown author field");
 		report.addProperty("fxinstance_placement", "PASSED: native and HYBRID expanded placement/template/source parity");
-		report.addProperty("project_source_isolation", "PASSED: independent scopes/state and inherited private resolver");
+		report.addProperty("project_source_isolation", "PASSED: managed PROJECT scopes, inherited private resolver and reused live-state reset");
+		report.addProperty("project_reset_verified", projectResetVerified);
+		report.addProperty("natural_drain_verified", naturalDrainVerified);
 		context.artifacts().write(label + "_migration-contracts.json", "application/json", report.toString());
+		close();
 		return true;
 	}
 
@@ -129,7 +185,14 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 			var archive = PhotonModelPackExportUtil.capture("lobecorp", "migration_instance_fixture", restored,
 					Platform.getFrozenRegistry(), false);
 			require(archive.definitions().containsKey("assets/lobecorp/fx/migration_instance_fixture.fx"), "instance_export_root_missing");
-		} catch (java.io.IOException failure) {
+			var sourceId = Objects.requireNonNull(expected.getFx(), "instance_source_missing");
+			var sourcePath = "assets/" + sourceId.getNamespace() + "/fx/" + sourceId.getPath() + ".fx";
+			var resource = Minecraft.getInstance().getResourceManager()
+					.getResource(FXHelper.fileLocation(sourceId)).orElseThrow();
+			boolean bundled = resource.sourcePackId().equals("vanilla") || resource.sourcePackId().startsWith("mod");
+			require(bundled || archive.definitions().containsKey(sourcePath), "instance_export_dependency_missing");
+			require(FXHelper.readTag(sourceId) != null, "instance_export_dependency_unreadable");
+		} catch (IOException failure) {
 			throw new IllegalStateException("instance_export_dependency_failure", failure);
 		}
 		var nativeCopy = PhotonRuntimeFactory.nativeRuntime(restored);
@@ -156,7 +219,7 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 		}
 	}
 
-	private static void verifyProjectIsolation() {
+	private void beginProjectIsolation() {
 		var fx = new FX();
 		var target = new ParticleEmitter();
 		target.setName("migration_project_template");
@@ -169,10 +232,14 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 		var owner = new PhotonChildSpawner();
 		owner.setName("migration_project_owner");
 		owner.config.source = PhotonSpawnConfig.Source.PROJECT;
+		owner.config.includeChildren = true;
 		owner.config.template.setTransform(target.transform());
 		fx.getFxData().objects().addAll(List.of(target, nested, owner));
-		var first = PhotonRuntimeFactory.nativeRuntime(fx);
-		var second = PhotonRuntimeFactory.nativeRuntime(fx);
+		var definition = PhotonRuntimeFactory.prepare(fx);
+		var first = PhotonRuntimeFactory.instantiate(definition, PhotonRuntimeFactory.Mode.HYBRID);
+		projectScopeA = first;
+		var second = PhotonRuntimeFactory.instantiate(definition, PhotonRuntimeFactory.Mode.HYBRID);
+		projectScopeB = second;
 		var definitionA = fixture();
 		var definitionB = fixture();
 		PhotonSpawnTemplateUtil.Template a = null;
@@ -180,12 +247,21 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 		try {
 			var firstOwner = (PhotonChildSpawner) first.objects.get(owner.id());
 			var secondOwner = (PhotonChildSpawner) second.objects.get(owner.id());
+			projectOwnerA = firstOwner;
+			projectOwnerB = secondOwner;
+			projectTarget = target.id();
+			projectNested = nested.id();
+			projectDefinitionA = definitionA;
+			projectDefinitionB = definitionB;
 			firstOwner.source(first, Set.of());
 			secondOwner.source(second, Set.of());
 			firstOwner.ownedDefinitionResolver(_ -> definitionA);
 			secondOwner.ownedDefinitionResolver(_ -> definitionB);
 			a = PhotonSpawnTemplateUtil.create(firstOwner);
 			b = PhotonSpawnTemplateUtil.create(secondOwner);
+			require(a.lease() != null && b.lease() != null, "project_unmanaged_fallback");
+			projectBackend = a.runtime();
+			projectReleased = a.lease();
 			require(a.runtime() != b.runtime() && a.scope() == first && b.scope() == second, "project_scope_alias");
 			var copied = a.runtime().objects.get(target.id());
 			var independent = b.runtime().objects.get(target.id());
@@ -203,8 +279,106 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 			if (b != null) {
 				b.close(true);
 			}
-			first.destroy(true);
-			second.destroy(true);
+		}
+		tick = PhotonRuntimeFactory.ticks();
+		frame = PhotonRuntimeFactory.frames();
+		phaseStartedNs = System.nanoTime();
+	}
+
+
+	private void verifyProjectReset() {
+		var live = (ParticleEmitter) projectScopeA.objects.get(projectTarget);
+		live.transform().localScale(new Vector3f(2, 3, 4));
+		live.config.setDuration(7);
+		var oldValues = projectBackend.objects.values();
+		long hits = PhotonRuntimeFactory.statistics().get("pool_hit");
+		var template = PhotonSpawnTemplateUtil.create(projectOwnerA);
+		try {
+			require(template.lease() != null && template.runtime() == projectBackend, "project_backend_not_reused");
+			require(PhotonRuntimeFactory.statistics().get("pool_hit") > hits, "project_pool_hit_missing");
+			require(!projectReleased.current() && template.lease().current(), "project_stale_lease");
+			require(template.scope() == projectScopeA, "project_reused_scope_changed");
+			var copied = (ParticleEmitter) template.runtime().objects.get(projectTarget);
+			require(copied.transform().localScale().equals(live.transform().localScale())
+					&& copied.config.getDuration() == live.config.getDuration(), "project_live_state_not_restored");
+			require(!copied.transform().localScale().equals(projectScopeB.objects.get(projectTarget).transform().localScale()),
+					"project_live_state_scope_leak");
+			var child = (PhotonChildSpawner) template.runtime().objects.get(projectNested);
+			require(child.resolveDefinition(child.config.fxLocation) == projectDefinitionA, "project_reused_private_source_lost");
+			require(projectOwnerB.resolveDefinition(child.config.fxLocation) == projectDefinitionB, "project_other_source_changed");
+			require(template.runtime().objects instanceof PhotonIndexedMap<?> indexed && !indexed.isMaterialized(),
+					"project_reset_layout_fallback");
+			try {
+				oldValues.iterator();
+				throw new IllegalStateException("project_old_view_rebound");
+			} catch (ConcurrentModificationException expected) {
+				// 上一租约的视图不能读取刚复位的实例。
+			}
+			projectResetVerified = true;
+		} finally {
+			template.close(true);
+		}
+	}
+
+	private void beginNaturalDrain(BenchClientContext context) {
+		naturalSource = new FX();
+		var emitter = new ParticleEmitter();
+		emitter.config.setLooping(true);
+		emitter.config.setDuration(20);
+		emitter.config.setStartLifetime(NumberFunction.constant(8));
+		emitter.config.emission.setEmissionRate(NumberFunction.constant(1));
+		naturalSource.getFxData().objects().add(emitter);
+		naturalDefinition = PhotonRuntimeFactory.registerPreparedSource(naturalSource,
+				new PhotonRuntimeFactory.PreparedSourceKey("migration-natural-fixture", 1));
+		naturalLease = PhotonRuntimeFactory.acquire(naturalDefinition, world, PhotonRuntimeFactory.Mode.HYBRID);
+		naturalBackend = naturalLease.runtime();
+		naturalEmitter = (ParticleEmitter) naturalBackend.objects.get(emitter.id());
+		var level = context.minecraft().level;
+		require(level != null, "natural_drain_world_missing");
+		var player = Objects.requireNonNull(context.minecraft().player, "natural_drain_player_missing");
+		naturalBackend.root.transform().localPosition(new Vector3f((float) player.getX(), (float) player.getY() + 1, (float) player.getZ()));
+		naturalBackend.emit(() -> level);
+		phaseStartedNs = System.nanoTime();
+	}
+
+	private boolean stepNaturalDrain() {
+		if (!naturalReleased) {
+			if (naturalEmitter.getParticleAmount() == 0) {
+				return false;
+			}
+			naturalLease.close(false);
+			require(!naturalLease.current() && naturalEmitter.getParticleAmount() > 0, "natural_tails_force_cleared");
+			var early = PhotonRuntimeFactory.acquire(naturalDefinition, world, PhotonRuntimeFactory.Mode.HYBRID);
+			try {
+				require(early.runtime() != naturalBackend, "natural_draining_backend_reused");
+			} finally {
+				early.close(true);
+			}
+			naturalReleased = true;
+			return false;
+		}
+		if (!naturalDrained) {
+			if (naturalEmitter.getParticleAmount() != 0 || naturalEmitter.isAlive() || !naturalBackend.isFinished()) {
+				return false;
+			}
+			tick = PhotonRuntimeFactory.ticks();
+			frame = PhotonRuntimeFactory.frames();
+			naturalDrained = true;
+			return false;
+		}
+		if (PhotonRuntimeFactory.ticks() - tick < 2 || PhotonRuntimeFactory.frames() - frame < 2) {
+			return false;
+		}
+		long hits = PhotonRuntimeFactory.statistics().get("pool_hit");
+		var reused = PhotonRuntimeFactory.acquire(naturalDefinition, world, PhotonRuntimeFactory.Mode.HYBRID);
+		try {
+			require(reused.runtime() == naturalBackend && reused.current() && !naturalLease.current(), "natural_backend_not_reused");
+			require(PhotonRuntimeFactory.statistics().get("pool_hit") > hits, "natural_pool_hit_missing");
+			require(!naturalBackend.isEmitted() && naturalEmitter.getParticleAmount() == 0, "natural_reset_not_clean");
+			naturalDrainVerified = true;
+			return true;
+		} finally {
+			reused.close(true);
 		}
 	}
 
@@ -243,6 +417,18 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 	public void close() {
 		if (released != null) {
 			released.close(true);
+		}
+		if (naturalLease != null) {
+			naturalLease.close(true);
+		}
+		if (naturalSource != null) {
+			PhotonRuntimeFactory.unregisterPreparedSource(naturalSource);
+		}
+		if (projectScopeA != null) {
+			projectScopeA.destroy(true);
+		}
+		if (projectScopeB != null) {
+			projectScopeB.destroy(true);
 		}
 		if (source != null) {
 			PhotonRuntimeFactory.unregisterPreparedSource(source);

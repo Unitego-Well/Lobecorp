@@ -392,6 +392,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	@Override
 	protected void update(float delta) {
+        prune();
 		if (paused) {
 			return;
 		}
@@ -629,6 +630,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	@Override
 	public int getParticleAmount() {
+		prune();
 		return instances.size();
 	}
 

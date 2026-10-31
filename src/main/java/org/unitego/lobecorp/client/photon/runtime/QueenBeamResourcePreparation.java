@@ -19,8 +19,34 @@ import java.util.Set;
 /// 只预热本模组声明的旧技能资源，不在女皇出现时创建持有世界的整棵运行树。
 public class QueenBeamResourcePreparation {
 	private static final boolean ENABLED = !"false".equals(System.getProperty("lobecorp.photon.prewarmBeam", "true"));
-	private static String attempted = "";
-	private static String completed = "";
+    // 失败后最多每秒重试一次，避免维护入口每帧重复加载和刷日志。
+    private static final long RETRY_DELAY_NANOS = 1_000_000_000L;
+    private static final PreparationGate GATE = new PreparationGate();
+
+    public static class PreparationGate {
+        private String attempted = "";
+        private String completed = "";
+        private long lastAttempt;
+
+        public boolean begin(String stamp, long now) {
+            if (completed.equals(stamp) || attempted.equals(stamp) && now - lastAttempt < RETRY_DELAY_NANOS) {
+                return false;
+            }
+            attempted = stamp;
+            lastAttempt = now;
+            completed = "";
+            return true;
+        }
+
+        public void complete(String stamp) {
+            completed = stamp;
+        }
+
+        public boolean ready(String stamp) {
+            return completed.equals(stamp);
+        }
+    }
+
 	private static String failure = "";
 
 	private static List<Identifier> effects() {
@@ -44,11 +70,10 @@ public class QueenBeamResourcePreparation {
 			return;
 		}
 		var resources = effects();
-		var stamp = PhotonOwnedEffectAssets.deviceIdentity() + ":" + resources;
-		if (stamp.equals(attempted)) {
+		var stamp = preparationStamp(resources);
+		if (!GATE.begin(stamp, System.nanoTime())) {
 			return;
 		}
-		attempted = stamp;
 		failure = "";
 		try {
 			if (resources.isEmpty()) {
@@ -58,7 +83,7 @@ public class QueenBeamResourcePreparation {
 			for (var id : resources) {
 				prepare(id, visited);
 			}
-			completed = PhotonOwnedEffectAssets.deviceIdentity() + ":" + resources;
+			GATE.complete(stamp);
 		} catch (RuntimeException invalid) {
 			failure = invalid.toString();
 			Lobecorp.LOGGER.warn("技能静态资源准备失败，未建立预热运行树", invalid);
@@ -86,8 +111,13 @@ public class QueenBeamResourcePreparation {
 		}
 	}
 
+	private static String preparationStamp(List<Identifier> resources) {
+		return PhotonOwnedEffectAssets.deviceIdentity() + ":" + PhotonOwnedEffectResources.resourceRevision()
+				+ ":" + PhotonRuntimeFactory.mode() + ":" + resources;
+	}
+
 	public static boolean ready() {
-		return !ENABLED || failure.isEmpty() && completed.equals(PhotonOwnedEffectAssets.deviceIdentity() + ":" + effects());
+		return !ENABLED || failure.isEmpty() && GATE.ready(preparationStamp(effects()));
 	}
 
 	public static String failure() {

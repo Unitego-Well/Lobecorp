@@ -77,7 +77,7 @@ public class PhotonOwnedEffectAssets {
 	private static String deviceStamp() {
 		return deviceRevision + ":" + FXHelper.generation() + ":" + PhotonRenderTypes.reloadGeneration() + ":" +
 				IrisCompat.isUsingShaderPack() + ":" +
-				IrisCompat.packName();
+                IrisCompat.packName() + ":" + PhotonRuntimeFactory.mode();
 	}
 
 	public static boolean deviceCurrent(PhotonOwnedEffectResources.SourceKey source) {
@@ -88,9 +88,18 @@ public class PhotonOwnedEffectAssets {
 		if (!Minecraft.getInstance().isSameThread()) {
 			throw new IllegalStateException("静态资源准备必须在客户端线程");
 		}
+		var stamp = deviceStamp();
+		if (!stamp.equals(DEVICE_STAMPS.get(source))) {
+			invalidate(source);
+		}
 		var retained = PREPARED.computeIfAbsent(source, _ -> new IdentityHashMap<>());
-		prepare(definition, source, retained, new HashSet<>(), 0);
-		DEVICE_STAMPS.put(source, deviceStamp());
+		try {
+			prepare(definition, source, retained, new HashSet<>(), 0);
+			DEVICE_STAMPS.put(source, stamp);
+		} catch (RuntimeException failure) {
+			invalidate(source);
+			throw failure;
+		}
 	}
 
 	private static void prepare(FX definition, PhotonOwnedEffectResources.SourceKey source,

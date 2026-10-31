@@ -385,7 +385,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 	private class ObjectIterator implements Iterator<Entry<UUID, V>> {
 		private int limit;
-		private final Iterator<Entry<UUID, V>> delegate;
+		private Iterator<Entry<UUID, V>> delegate;
 		private int expected = modifications;
 		private int cursor;
 		private UUID last;
@@ -404,6 +404,14 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		private void checkModification() {
 			if (expected != modifications) {
 				throw new ConcurrentModificationException();
+			}
+
+			if (delegate == null && materialized != null) {
+				// 非结构修改也会物化；迁移游标及最近条目的 remove 权限。
+				delegate = materialized.entrySet().iterator();
+				for (int index = 0; index < cursor; index++) {
+					delegate.next();
+				}
 			}
 		}
 
@@ -483,6 +491,7 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 
 		@Override
 		public boolean equals(Object other) {
+			checkLease(generation);
 			return other instanceof Entry<?, ?> entry && Objects.equals(key, entry.getKey())
 					&& Objects.equals(getValue(), entry.getValue());
 		}

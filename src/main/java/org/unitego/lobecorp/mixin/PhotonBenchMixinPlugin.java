@@ -74,6 +74,13 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public @Nullable List<String> getMixins() {
 		var scenario = System.getProperty("modBench.scenarios", "");
+		if (scenario.equals("lobecorp.photon-04-queen-entry-25s")
+				|| scenario.equals("lobecorp.photon-04-entry-blank-25s")) {
+			if (!Boolean.getBoolean(PRESERVE_WINDOW_PROPERTY)) {
+				throw new IllegalStateException("进入场景要求显式保留游戏窗口。");
+			}
+			return List.of("bench.ClientGraphicsControllerMixin", "bench.PhotonEntry25MinecraftMixin");
+		}
 		// 与 Bench 注册项对应；Mixin 插件不能提前加载 Bench 类。
 		boolean performanceOnly = scenario.equals("lobecorp.photon-02-first-cast-performance")
 				|| scenario.equals("lobecorp.photon-03-repeat-performance");

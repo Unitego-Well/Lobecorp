@@ -8,6 +8,8 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientRegistrar;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerProvider;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
+import org.unitego.lobecorp.client.bench.PhotonQueenEntryScenario;
+import org.unitego.lobecorp.client.bench.PhotonEntryBlankScenario;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonModelRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonNativeControlScenario;
@@ -40,6 +42,22 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
+		var selectedProperty = System.getProperty("modBench.scenarios", "");
+
+		if (PhotonQueenEntryScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonQueenEntryScenario.ID,
+							"进入世界首帧起25秒，第5秒添加静止女皇，无施法无靶",
+							Set.of("client", "photon", "queen", "entry"), Duration.ofSeconds(180)),
+					_ -> new PhotonQueenEntryScenario());
+		}
+
+		if (PhotonEntryBlankScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonEntryBlankScenario.ID,
+							"进入世界首帧起25秒空白对照，不添加女皇",
+							Set.of("client", "photon", "blank", "entry"), Duration.ofSeconds(180)),
+					_ -> new PhotonEntryBlankScenario());
+		}
+
 		if (LobecorpBenchConfig.PHOTON_REPEAT_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
 			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_REPEAT_PERFORMANCE_SCENARIO,
 							"三次特效，开始间隔五秒，共用四十秒窗口，无截图",

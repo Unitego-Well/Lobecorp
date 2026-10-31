@@ -1,5 +1,9 @@
 # Photon 模型特效
 
+## 2026-10-31 导出根ID保留与碰撞拒绝
+
+capture及旧公开export入口在写目标文件前调用verifyExportIdentity，按Photon原生InstanceBaker.directSources与自定义instanceSources遍历FX引用；任意层级引用规范化后的导出根ID时明确拒绝并要求改名，访问过的来源只去重，不用self过滤掩盖冲突。最终定义集合putIfAbsent并比较内容，禁止同路径不同定义覆盖；原.fx/.mfx/.mfxpack选择和写入协议保持。间接源中缺失引用仍交原依赖闭合处理，不在此入口静默补写。两文件IDEA代码检查无error；未运行导出/包回读/游戏，后续验收不能沿用旧测试结果。
+
 ## 2026-10-31 导出最新来源与校验顺序
 
 PhotonModelPackExportUtil.prepare(FILE配置)先清旧快照，再读取当前作者文件，冻结成EMBEDDED并重建纹理/材质依赖。原生包walk的模型wrapper在独占副本上恢复配置并准备，仅替换source/resource/file/snapshotSource/assetJson/assetDependencies/assetMaterialDependencies，其他字段保持；完整guard通过后才提交config，失败不改变输入wrapper。禁止在FILE冻结前调用IFXObject.deserializeWrapper，否则现有对象guard会先拒绝；也不能全量重编码配置将不合法播放字段悄悄规范化为默认值。发布guard和被保护原件规则保持。

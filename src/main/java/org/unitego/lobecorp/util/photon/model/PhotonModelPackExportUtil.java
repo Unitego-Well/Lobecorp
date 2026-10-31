@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.util.photon.model;
 
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.instance.InstanceBaker;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
@@ -120,6 +121,9 @@ public class PhotonModelPackExportUtil {
 		try {
 			var dependencies = new LinkedHashMap<Identifier, FX>();
 			collect(copy.serializeNBT(provider), dependencies, new LinkedHashSet<>(), 0);
+			var rootId = Identifier.fromNamespaceAndPath(FXPackExporterAccessor.lobecorp$sanitize(namespace),
+					FXPackExporterAccessor.lobecorp$sanitize(name));
+			verifyExportIdentity(copy, rootId, dependencies, provider);
 			var warnings = new ArrayList<String>();
 			for (var entry : dependencies.entrySet()) {
 				var dependency = new FX();
@@ -248,6 +252,9 @@ public class PhotonModelPackExportUtil {
 	public static Archive capture(String namespace, String name, FX copy, HolderLookup.Provider provider, boolean modelDefinition) throws IOException {
 		var dependencies = new LinkedHashMap<Identifier, FX>();
 		collect(copy.serializeNBT(provider), dependencies, new LinkedHashSet<>(), 0);
+		var id = Identifier.fromNamespaceAndPath(FXPackExporterAccessor.lobecorp$sanitize(namespace),
+				FXPackExporterAccessor.lobecorp$sanitize(name));
+		verifyExportIdentity(copy, id, dependencies, provider);
 		var definitions = new LinkedHashMap<String, CompoundTag>();
 		var resources = new LinkedHashMap<String, byte[]>();
 		for (var entry : dependencies.entrySet()) {
@@ -256,10 +263,35 @@ public class PhotonModelPackExportUtil {
 			prepare(dependency);
 			captureDefinition(entry.getKey(), dependency, provider, false, definitions, resources);
 		}
-		var id = Identifier.fromNamespaceAndPath(FXPackExporterAccessor.lobecorp$sanitize(namespace),
-				FXPackExporterAccessor.lobecorp$sanitize(name));
 		captureDefinition(id, copy, provider, modelDefinition, definitions, resources);
 		return new Archive(id, Map.copyOf(definitions), Map.copyOf(resources), FXPackExporterAccessor.lobecorp$metadata());
+	}
+
+	/// 根ID不可重新绑定到其任何层级的来源；原生packSources会跳过self，必须在写包前单独校验。
+	private static void verifyExportIdentity(FX root, Identifier rootId, Map<Identifier, FX> dependencies,
+	                                         HolderLookup.Provider provider) throws IOException {
+		var pending = new ArrayList<FX>();
+		var visited = new LinkedHashSet<Identifier>();
+		pending.add(root);
+		while (!pending.isEmpty()) {
+			var data = pending.removeLast().serializeNBT(provider).getCompoundOrEmpty("fxData");
+			for (var source : instanceSources(data, InstanceBaker.directSources(data))) {
+				if (source.equals(rootId)) {
+					throw new IOException("导出根ID与子特效来源冲突，请更换导出名称：" + rootId);
+				}
+				if (!visited.add(source)) {
+					continue;
+				}
+
+				var definition = dependencies.get(source);
+				if (definition == null) {
+					definition = FXHelper.getFX(source);
+				}
+				if (definition != null) {
+					pending.add(definition);
+				}
+			}
+		}
 	}
 
 	private static void captureDefinition(Identifier id, FX fx, HolderLookup.Provider provider, boolean modelDefinition,
@@ -284,7 +316,11 @@ public class PhotonModelPackExportUtil {
 			throw new IOException("包依赖未闭合：" + exporter.lobecorp$warnings());
 		}
 		root.putInt("version", FXProject.VERSION);
-		definitions.put("assets/" + id.getNamespace() + "/fx/" + id.getPath() + (modelDefinition ? ".mfx" : ".fx"), root.copy());
+		var definitionPath = "assets/" + id.getNamespace() + "/fx/" + id.getPath() + (modelDefinition ? ".mfx" : ".fx");
+		var existing = definitions.putIfAbsent(definitionPath, root.copy());
+		if (existing != null && !existing.equals(root)) {
+			throw new IOException("导出定义同路径不同内容：" + definitionPath);
+		}
 		for (var entry : exporter.lobecorp$files().entrySet()) {
 			var path = "assets/" + entry.getKey().getNamespace() + "/" + entry.getKey().getPath();
 			var bytes = entry.getValue().clone();

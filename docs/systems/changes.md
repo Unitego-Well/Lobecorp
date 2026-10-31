@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-10-31 两项P2代码修复（仅IDEA验证）
+
+`PhotonOwnedEffectResources`将已读取的CPU Prepared与公开READY结果分离保存，初次发布和设备重建共用准备入口。失败保留快照，同设备戳每秒最多一次尝试，新戳立即允许，成功转READY并清重试记录；资源重载替换快照并清旧代次记录，读取失败无快照不重试，公开Result约束保持。`PhotonModelPackExportUtil`在capture和export写包前遍历原生实例与自定义子源引用，拒绝任何层级与规范化根ID相同的依赖；定义同路径不同内容也拒绝，避免静默覆盖或self跳过。
+
+仅两个修改Java文件IDEA检查：0 error，6项提示均在原有代码；新增两个helper各2处语义引用已核对。按用户明确边界未构建、Data、JUnit、Bench、游戏或Debug，不宣称运行、视觉或长帧验收；P22/P23保持。中转站v4.1-flash low只读复核完成，两个P2静态修复闭合，无新增确认P1/P2。本地结果`.agent/reports/20261031-photon-p2-fix-final.md`。
+
 ## 2026-10-31 Photon负责范围审查修正（禁止后续游戏）
 
 PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计数、设备代次/失败重试、Map迭代续接、FILE最新几何冻结及子源/.mfx依赖已补正。FILE导出独占配置先准备，只写来源/资产字段，完整guard通过才提交，发布校验保持。迁移fixture使用实际受管租约与自然排空，报告后置且核对必需frames/session/hash。

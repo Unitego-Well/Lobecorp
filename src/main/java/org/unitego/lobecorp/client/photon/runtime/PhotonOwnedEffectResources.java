@@ -42,6 +42,13 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static final Map<SourceKey, Prepared> AUTHORING = new ConcurrentHashMap<>();
 	private static final Map<SourceKey, Map<Identifier, String>> DEPENDENCY_SOURCES = new LinkedHashMap<>();
 	private static volatile Map<Identifier, Result> exported = Map.of();
+	// 设备失败不丢弃已读取的独占CPU快照；对外Result仍只有READY携带成果。
+	private static Map<Identifier, Prepared> exportedDefinitions = Map.of();
+	private static final Map<SourceKey, DeviceRetry> DEVICE_RETRIES = new LinkedHashMap<>();
+	private static final long DEVICE_RETRY_DELAY_NANOS = 1_000_000_000L;
+
+	private record DeviceRetry(String stamp, long attemptedAt) {
+	}
 	private static final Map<SourceKey, Map<Identifier, FX>> RESOLVED = new LinkedHashMap<>();
 	private static final Map<Identifier, Map<String, Identifier>> SNAPSHOT_COMPONENTS = new LinkedHashMap<>();
 	private static @Nullable SourceKey resolvingSource;
@@ -271,20 +278,34 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 			}
 		}
 		var current = new LinkedHashMap<>(exported);
-		current.replaceAll((_, result) -> {
-			var prepared = result.prepared();
+		current.replaceAll((id, result) -> {
+			var prepared = exportedDefinitions.get(id);
 			if (prepared == null || PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
 				return result;
 			}
-			try {
-				prepareDefinitions(prepared);
-				return result;
-			} catch (RuntimeException failure) {
-				PhotonOwnedEffectAssets.invalidate(prepared.source());
-				return new Result(Readiness.FAILED, null, "设备资源重建失败：" + failure);
-			}
+			return prepareExported(prepared, result);
 		});
 		exported = Map.copyOf(current);
+	}
+
+	private static Result prepareExported(Prepared prepared, Result previous) {
+		var source = prepared.source();
+		var stamp = PhotonOwnedEffectAssets.deviceIdentity();
+		long now = System.nanoTime();
+		var retry = DEVICE_RETRIES.get(source);
+		if (retry != null && retry.stamp().equals(stamp) && now - retry.attemptedAt() < DEVICE_RETRY_DELAY_NANOS) {
+			return previous;
+		}
+
+		DEVICE_RETRIES.put(source, new DeviceRetry(stamp, now));
+		try {
+			prepareDefinitions(prepared);
+			DEVICE_RETRIES.remove(source);
+			return new Result(Readiness.READY, prepared, "");
+		} catch (RuntimeException failure) {
+			PhotonOwnedEffectAssets.invalidate(source);
+			return new Result(Readiness.FAILED, null, "设备资源重建失败：" + failure);
+		}
 	}
 
 	public static long resourceRevision() {
@@ -420,18 +441,17 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static void apply(Map<Identifier, Result> preparations, ResourceManager manager, ProfilerFiller profiler) {
 		requireClientThread();
 		long nextGeneration = generation + 1;
-		for (var previous : exported.values()) {
-			var prepared = previous.prepared();
-			if (prepared != null) {
-				var invalidate = DEFINITION_INVALIDATORS.get(prepared.source().effectId());
-				if (invalidate != null) {
-					invalidate.accept(prepared.source());
-					PhotonOwnedEffectAssets.invalidate(prepared.source());
-					DEPENDENCY_SOURCES.remove(prepared.source());
-					RESOLVED.remove(prepared.source());
-				}
+		for (var prepared : exportedDefinitions.values()) {
+			var invalidate = DEFINITION_INVALIDATORS.get(prepared.source().effectId());
+			if (invalidate != null) {
+				invalidate.accept(prepared.source());
+				PhotonOwnedEffectAssets.invalidate(prepared.source());
+				DEPENDENCY_SOURCES.remove(prepared.source());
+				RESOLVED.remove(prepared.source());
 			}
 		}
+		DEVICE_RETRIES.clear();
+		var definitions = new LinkedHashMap<Identifier, Prepared>();
 		var published = new LinkedHashMap<Identifier, Result>();
 		preparations.forEach((id, result) -> {
 			var prepared = result.prepared();
@@ -440,13 +460,10 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 				return;
 			}
 			var ready = new Prepared(new SourceKey(id, SourceKind.EXPORTED_FX, nextGeneration), prepared.components());
-			try {
-				prepareDefinitions(ready);
-				published.put(id, new Result(Readiness.READY, ready, ""));
-			} catch (RuntimeException failure) {
-				published.put(id, new Result(Readiness.FAILED, null, "自有组件静态定义准备失败：" + failure));
-			}
+			definitions.put(id, ready);
+			published.put(id, prepareExported(ready, new Result(Readiness.PREPARING, null, "")));
 		});
+        exportedDefinitions = Map.copyOf(definitions);
 		exported = Map.copyOf(published);
 		generation = nextGeneration;
 		nativeFXGeneration = FXHelper.generation();

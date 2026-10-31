@@ -22,6 +22,8 @@ import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXHelper;
+import net.minecraft.resources.Identifier;
+import java.util.function.Function;
 
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
@@ -56,6 +58,20 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	private @Nullable String failure;
 	private @Nullable PhotonSpawnTemplateUtil.Template prepared;
 	private @Nullable FX preparedDefinition;
+	private @Nullable Function<Identifier, FX> ownedDefinitionResolver;
+
+	/// 仅显式绑定的自有组合使用私有准备成果；未绑定时保持Photon原生解析。
+	public void ownedDefinitionResolver(Function<Identifier, FX> resolver) {
+		ownedDefinitionResolver = resolver;
+	}
+
+	public void inheritDefinitionResolver(PhotonChildSpawner owner) {
+		ownedDefinitionResolver = owner.ownedDefinitionResolver;
+	}
+
+	public @Nullable FX resolveDefinition(Identifier id) {
+		return ownedDefinitionResolver == null ? FXHelper.getFX(id) : ownedDefinitionResolver.apply(id);
+	}
 
 	/// 每个生成器只持有下一次独占实例；准备不发射粒子、音频或推进时间线。
 	public boolean prepareNext() {
@@ -83,7 +99,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 			FX definition;
 			definitionStartNs = diagnostic ? System.nanoTime() : 0;
 			try {
-				definition = FXHelper.getFX(config.fxLocation);
+				definition = resolveDefinition(config.fxLocation);
 			} finally {
 				if (diagnostic) {
 					definitionEndNs = System.nanoTime();
@@ -159,7 +175,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					reason = "source_changed";
 				} else if (config.fxLocation == null) {
 					reason = "location_missing";
-				} else if (FXHelper.getFX(config.fxLocation) != definition) {
+				} else if (resolveDefinition(config.fxLocation) != definition) {
 					reason = "definition_changed";
 				} else if (!candidate.path().contains("fx:" + config.fxLocation)) {
 					reason = "location_changed";
@@ -505,6 +521,9 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	@Override
 	public void remove(boolean force) {
 		discardPrepared();
+		if (force) {
+			ownedDefinitionResolver = null;
+		}
 		super.remove(force);
 
 		if (force || config.endBehavior == PhotonSpawnConfig.EndBehavior.CLEAR) {

@@ -3,7 +3,6 @@ package org.unitego.lobecorp.util.photon.playback;
 import com.lowdragmc.lowdraglib2.math.Transform;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.photon.client.fx.FXData;
-import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
@@ -18,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
@@ -56,7 +54,7 @@ public class PhotonSpawnTemplateUtil {
 			}
 
 			var path = descend(owner, "fx:" + location);
-			var fx = FXHelper.getFX(location);
+			var fx = owner.resolveDefinition(location);
 
 			if (fx == null || fx.getFxData().objects().size() > PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
 				throw new IllegalArgumentException("子发射FX缺失或超出对象预算：" + location);
@@ -67,7 +65,10 @@ public class PhotonSpawnTemplateUtil {
 			runtime.objects.values().stream()
 					.filter(PhotonChildSpawner.class::isInstance)
 					.map(PhotonChildSpawner.class::cast)
-					.forEach(child -> child.source(runtime, path));
+					.forEach(child -> {
+						child.inheritDefinitionResolver(owner);
+						child.source(runtime, path);
+					});
 			return new Template(runtime, runtime, path, lease);
 		}
 
@@ -100,7 +101,10 @@ public class PhotonSpawnTemplateUtil {
 		if (lease != null) {
 			var runtime = lease.runtime();
 			runtime.objects.values().stream().filter(PhotonChildSpawner.class::isInstance)
-					.map(PhotonChildSpawner.class::cast).forEach(child -> child.source(scope, path));
+					.map(PhotonChildSpawner.class::cast).forEach(child -> {
+						child.inheritDefinitionResolver(owner);
+						child.source(scope, path);
+					});
 			return new Template(runtime, scope, path, lease);
 		}
 
@@ -123,7 +127,10 @@ public class PhotonSpawnTemplateUtil {
 		runtime.objects.values().stream()
 				.filter(PhotonChildSpawner.class::isInstance)
 				.map(PhotonChildSpawner.class::cast)
-				.forEach(child -> child.source(scope, path));
+				.forEach(child -> {
+					child.inheritDefinitionResolver(owner);
+					child.source(scope, path);
+				});
 		return new Template(runtime, scope, path);
 	}
 

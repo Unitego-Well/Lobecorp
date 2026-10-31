@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-10-31 自有激光v2剩余实现完成
+
+15独立组成件及可序列化组合阶段/绑定/参数/结束策略已接通；实际光束内部激活时序外移，reverse_muzzle保留PROJECT喷口模板。资源级准备覆盖递归FX、模型/拓扑、材质图、基础/实例化管线和原版纹理管理器；运行私有resolver消费同一准备成果。组合工作区支持编排、暂停/步进/seek、实时作者修订、工程保存恢复、冻结包导出与有效资源包回读，作者/发行/发布预览来源分离，局部预览不清Photon全局缓存。补齐帧插值及新路径旧laser预热隔离；原生/旧资源保留，仍-Dlobecorp.photon.ownedLaser=true显式选择，默认旧生产路径。
+
+15 Java限定IDEA静态0 error/27 warning、2 JSON静态无错误；未构建/Data/测试/游戏，不宣称视觉等价或长帧收益，P22/P23继续开放。本地.agent/reports/20261031-owned-laser-completion-final.md及三份handoff记录调用链/备份；四个本轮子代理已关闭，原WIP与staged run-control保护，未推送。
+
 ## 2026-10-31 自有激光组合首批接入
 
 六外层组件独立FX资源；资源reload客户端静态定义准备与作者内存修订分开，按阶段创建组件。仅自有编辑器/女皇激光可选接入，旧资源和Photon原生保持，启动属性lobecorp.photon.ownedLaser=true，默认旧路径。6 Java静态0 error/7 warning；未构建/Data/测试/游戏，不能称视觉或性能通过。光束内部细分、完整模型/材质GPU前置、帧插值及完整组合工作区仍待完成，P22/P23开放。源及备份见本地.agent/reports/20261031-owned-laser-implementation.md与core-handoff；原WIP保留、代理关闭。

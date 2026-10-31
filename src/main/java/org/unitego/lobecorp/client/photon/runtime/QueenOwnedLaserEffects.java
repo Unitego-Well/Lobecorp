@@ -5,8 +5,6 @@ import net.minecraft.world.level.ClipContext;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
-import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
@@ -29,6 +27,10 @@ public class QueenOwnedLaserEffects {
 	private static final Map<UUID, Playing> PLAYING = new HashMap<>();
 	private static final Map<UUID, Long> LEGACY = new HashMap<>();
 	private static final List<PhotonOwnedLaser> TAILS = new ArrayList<>();
+
+	public static boolean enabled() {
+		return ENABLED;
+	}
 
 	public static boolean handle(TheQueenOfHatred owner, LcAnimationSnapshot snapshot) {
 		if (!ENABLED || TheQueenOfHatredAnimationDefinitions.isStarBeam(snapshot.definitionId())) {
@@ -105,96 +107,72 @@ public class QueenOwnedLaserEffects {
 		private Phase phase;
 		private Vec3 frozenOrigin;
 		private Vec3 frozenEnd;
+		private LcAnimationSnapshot latest;
 
 		private Playing(TheQueenOfHatred owner, LcAnimationSnapshot snapshot, PhotonOwnedLaser effect) {
 			this.owner = owner;
 			revision = snapshot.playbackRevision();
 			this.effect = effect;
+			effect.frameAnchor(partial -> anchor(latest, partial));
 		}
 
 		private void update(LcAnimationSnapshot snapshot) {
+			latest = snapshot;
+			var value = parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE);
+			var next = value == Phase.OUTPUT.ordinal() ? Phase.OUTPUT : value == Phase.RECOVERY.ordinal() ? Phase.RECOVERY : Phase.CHARGE;
+			anchor(snapshot, 1);
+			if (next != phase) {
+				phase = next;
+				double duration = parameter(snapshot, switch (phase) {
+					case CHARGE -> TheQueenOfHatredBeamAnimation.WINDUP_TICKS;
+					case OUTPUT -> TheQueenOfHatredBeamAnimation.ENTRY_TICKS;
+					case RECOVERY -> TheQueenOfHatredBeamAnimation.RECOVERY_TICKS;
+				});
+				effect.phase(PhotonOwnedLaserComposition.Phase.valueOf(phase.name()), duration);
+			}
+			effect.advance(Math.max(0, snapshot.serverTick()
+					- parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE_STARTED_TICK)));
+		}
+
+		private void anchor(LcAnimationSnapshot snapshot, float partial) {
+			if (snapshot == null || !effect.current()) {
+				return;
+			}
 			var phaseValue = parameter(snapshot, TheQueenOfHatredBeamAnimation.PHASE);
-			var next = phaseValue == Phase.OUTPUT.ordinal() ? Phase.OUTPUT : phaseValue == Phase.RECOVERY.ordinal() ? Phase.RECOVERY : Phase.CHARGE;
+			boolean recovery = phaseValue == Phase.RECOVERY.ordinal();
 			var offset = StarBeamSkill.origin(owner).subtract(owner.getEyePosition())
 					.yRot(owner.yBodyRot * Mth.DEG_TO_RAD).xRot(-owner.getXRot() * Mth.DEG_TO_RAD)
-					.xRot(owner.getViewXRot(1) * Mth.DEG_TO_RAD).yRot(-owner.yBodyRot * Mth.DEG_TO_RAD);
-			var staff = owner.getEyePosition(1).add(offset);
-			var origin = frozenOrigin == null ? staff.add(owner.getViewVector(1)) : frozenOrigin;
-			var target = staff.add(owner.getViewVector(1).scale(LaserSkill.RANGE));
-			var end = frozenEnd != null ? frozenEnd : next == Phase.CHARGE ? target
+					.xRot(owner.getViewXRot(partial) * Mth.DEG_TO_RAD)
+					.yRot(-Mth.rotLerp(partial, owner.yBodyRotO, owner.yBodyRot) * Mth.DEG_TO_RAD);
+			var staff = owner.getEyePosition(partial).add(offset);
+			var look = owner.getViewVector(partial);
+			var origin = frozenOrigin == null ? staff.add(look) : frozenOrigin;
+			var target = staff.add(look.scale(LaserSkill.RANGE));
+			var end = frozenEnd != null ? frozenEnd : phaseValue == Phase.CHARGE.ordinal() ? target
 					: owner.level().clip(new ClipContext(staff, target, ClipContext.Block.COLLIDER,
 					ClipContext.Fluid.NONE, owner)).getLocation();
-			if (frozenEnd == null && end.subtract(origin).dot(owner.getViewVector(1)) <= 0) {
+			if (frozenEnd == null && end.subtract(origin).dot(look) <= 0) {
 				end = origin;
+			}
+			if (recovery && frozenOrigin == null) {
+				frozenOrigin = origin;
+				frozenEnd = end;
 			}
 			var direction = end.subtract(origin);
 			if (direction.lengthSqr() == 0) {
-				direction = owner.getLookAngle();
+				direction = look;
 			}
-
-			var rotation = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), direction.normalize().toVector3f());
+			direction = direction.normalize();
+			var rotation = new Quaternionf().rotationTo(new Vector3f(0, 0, 1), direction.toVector3f());
 			var position = origin.toVector3f().sub(rotation.transform(effect.space().circleOffset()));
 			var beamStart = new Vec3(rotation.transform(effect.space().beamOffset()).add(position));
-			var beamEnd = beamStart.add(direction.normalize().scale(Math.max(0, end.subtract(beamStart).dot(direction.normalize()))));
+			double distance = Math.max(0, end.subtract(beamStart).dot(direction));
 			effect.anchor(position, rotation);
-			if (next != phase) {
-				phase = next;
-				transition(snapshot, origin, end);
-			}
-
-			if (phase == Phase.OUTPUT) {
-				updateBeam(beamEnd.distanceTo(beamStart));
-			}
-		}
-
-		private void transition(LcAnimationSnapshot snapshot, Vec3 origin, Vec3 end) {
-			if (phase == Phase.CHARGE) {
-				for (var name : List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle")) {
-					effect.activate(name, "charge_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.WINDUP_TICKS), Map.of());
-				}
-			} else if (phase == Phase.OUTPUT) {
-				effect.stop("accumulate_particle", true);
-				effect.activate("light_ball", "laser_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.ENTRY_TICKS), Map.of());
-				effect.activate("laser", "laser_start", parameter(snapshot, TheQueenOfHatredBeamAnimation.ENTRY_TICKS), Map.of());
-			} else {
-				frozenOrigin = origin;
-				frozenEnd = end;
-				for (var name : PhotonOwnedLaser.COMPONENTS) {
-					if (effect.component(name) != null) {
-						var animations = ((PhotonNamedAccess) effect.component(name).runtime()).lobecorp$namedRuntime();
-						if (animations != null) {
-							animations.play(name.equals("laser") ? "laser_end" : "charge_end",
-									parameter(snapshot, TheQueenOfHatredBeamAnimation.RECOVERY_TICKS), true, Map.of());
-						}
-					}
-				}
-			}
-		}
-
-		private void updateBeam(double distance) {
-			var part = effect.component("laser");
-			if (part == null) {
-				return;
-			}
-
-			var animations = ((PhotonNamedAccess) part.runtime()).lobecorp$namedRuntime();
-			var handle = animations == null ? null : animations.playback("laser_start");
-			var inputs = Map.of("length", List.of(Math.max(effect.space().minimumLength(), (float) distance / Math.abs(effect.space().beamScale().z))),
+			var inputs = Map.of("length", List.of(Math.max(effect.space().minimumLength(),
+							(float) distance / Math.abs(effect.space().beamScale().z))),
 					"width", List.of((float) LaserSkill.WIDTH / Math.abs(effect.space().beamScale().x)),
 					"enabled", List.of(distance > 0 ? 1f : 0f));
-			if (handle != null) {
-				animations.stageParameters(handle, inputs);
-			}
-
-			if (part.runtime().findObject("laser") instanceof PhotonChildSpawner spawner) {
-				for (var id : spawner.instanceIds()) {
-					var child = spawner.animations(id);
-					var childHandle = child == null ? null : child.playback("laser_start");
-					if (childHandle != null) {
-						child.stageParameters(childHandle, inputs);
-					}
-				}
-			}
+			effect.beam(beamStart.toVector3f(), rotation, inputs);
 		}
 
 		private static double parameter(LcAnimationSnapshot snapshot, String key) {

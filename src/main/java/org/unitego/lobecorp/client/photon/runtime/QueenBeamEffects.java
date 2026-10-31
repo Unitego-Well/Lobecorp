@@ -76,6 +76,7 @@ public class QueenBeamEffects {
 	}
 
 	public static void tick() {
+		PhotonOwnedEffectResources.refreshDeviceResources();
 		var level = Minecraft.getInstance().level;
 		if (level == null) {
 			clear();
@@ -180,6 +181,13 @@ public class QueenBeamEffects {
 					TheQueenOfHatredAnimationDefinitions.LASER_PHASE_TWO,
 					TheQueenOfHatredAnimationDefinitions.STAR_BEAM,
 					TheQueenOfHatredAnimationDefinitions.STAR_BEAM_PHASE_TWO)) {
+				if (QueenOwnedLaserEffects.enabled()
+						&& !TheQueenOfHatredAnimationDefinitions.isStarBeam(animationId)
+						&& PhotonOwnedEffectResources.lookup(new PhotonOwnedEffectResources.SourceKey(PhotonOwnedLaser.ID,
+								PhotonOwnedEffectResources.SourceKind.EXPORTED_FX, PhotonOwnedEffectResources.resourceRevision()))
+						.readiness() == PhotonOwnedEffectResources.Readiness.READY) {
+					continue;
+				}
 				long phase = System.nanoTime();
 				var animation = LcAnimationDefinitions.resolve(animationId);
 				var effectId = animation == null ? null : animation.effectId();

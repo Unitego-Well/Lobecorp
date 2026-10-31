@@ -2,7 +2,6 @@ package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
-import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
@@ -14,8 +13,18 @@ import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
+import com.lowdragmc.photon.client.gameobject.FXObject;
+
+import java.util.Set;
+import java.util.function.Consumer;
+
+import com.mojang.serialization.JsonOps;
+import net.minecraft.nbt.NbtOps;
+import com.google.gson.JsonParser;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.FloatTag;
+import org.unitego.lobecorp.Lobecorp;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import org.joml.Quaternionf;
@@ -34,15 +43,32 @@ import java.util.stream.Collectors;
 
 /// 每个组成件按需独立创建；作者快照与资源快照共用执行核心，模拟仍由 Photon 宿主推进。
 public class PhotonOwnedLaser implements AutoCloseable {
-	public static final Identifier ID = Identifier.fromNamespaceAndPath("lobecorp", "the_queen_of_hatred/laser_composition_v1");
-	public static final List<String> COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle", "laser");
+	public static final Identifier V1_ID = Identifier.fromNamespaceAndPath("lobecorp", "the_queen_of_hatred/laser_composition_v1");
+	public static final Identifier ID = Identifier.fromNamespaceAndPath("lobecorp", "the_queen_of_hatred/laser_composition_v2");
+	private static final List<String> OUTER_COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle", "laser");
+	public static final List<String> COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle",
+			"laser_body", "dust_column", "source_dust", "pink_sequence_stars", "yellow_sequence_stars",
+			"blue_sequence_stars", "flower_muzzle_spawner", "launch_spikes", "white_lines", "laser_tail");
+	public static final List<String> BEAM_COMPONENTS = List.of("laser_body", "dust_column", "source_dust",
+			"pink_sequence_stars", "yellow_sequence_stars", "blue_sequence_stars", "flower_muzzle_spawner",
+			"launch_spikes", "white_lines", "laser_tail");
+	private PhotonOwnedLaserComposition.Definition composition = PhotonOwnedLaserComposition.defaults();
+	private PhotonOwnedLaserComposition.Phase phase;
+	private double phaseDuration;
+	private final Set<Integer> fired = new HashSet<>();
+	private final Map<String, PhotonOwnedLaserComposition.Binding> bindings = new LinkedHashMap<>();
+	private final Vector3f beamPosition = new Vector3f();
+	private final Quaternionf beamRotation = new Quaternionf();
+	private Map<String, List<Float>> beamInputs = Map.of();
+	private Consumer<Float> frameAnchor;
 	private final PhotonOwnedEffectResources.SourceKey source;
 	private final Level level;
 	private static final Map<PhotonOwnedEffectResources.SourceKey, PreparedDefinition> PREPARED = new LinkedHashMap<>();
 	private final Map<String, FX> definitions;
 	private final BeamSpace space;
 
-	private record PreparedDefinition(Map<String, FX> definitions, BeamSpace space) {
+	private record PreparedDefinition(Map<String, FX> definitions, BeamSpace space,
+	                                  PhotonOwnedLaserComposition.Definition composition) {
 		public PreparedDefinition {
 			definitions = Map.copyOf(definitions);
 		}
@@ -83,9 +109,13 @@ public class PhotonOwnedLaser implements AutoCloseable {
 
 	public static void register() {
 		var ids = new LinkedHashMap<String, Identifier>();
-		COMPONENTS.forEach(name -> ids.put(name, Identifier.fromNamespaceAndPath("lobecorp",
+		OUTER_COMPONENTS.forEach(name -> ids.put(name, Identifier.fromNamespaceAndPath("lobecorp",
 				"the_queen_of_hatred/owned_laser_v1_" + name)));
 		PhotonOwnedEffectResources.register(ID, ids);
+		var finalIds = new LinkedHashMap<String, Identifier>();
+		COMPONENTS.forEach(name -> finalIds.put(name, Identifier.fromNamespaceAndPath(ID.getNamespace(),
+				"the_queen_of_hatred/owned_laser_v2_" + name)));
+		PhotonOwnedEffectResources.registerSnapshotComponents(ID, finalIds);
 		PhotonOwnedEffectResources.registerDefinitionPreparation(ID, PhotonOwnedLaser::prepareDefinitions, PREPARED::remove);
 	}
 
@@ -103,6 +133,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		}
 		definitions = prepared.definitions();
 		space = prepared.space();
+		composition = prepared.composition();
 	}
 
 	/// 仅由资源 apply 或作者修订发布调用；成果不暴露可变 FX，不持世界或租约。
@@ -112,41 +143,89 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		}
 		var definitions = new LinkedHashMap<String, FX>();
 		for (var entry : prepared.components().entrySet()) {
-			var fx = new FX();
-			var tag = entry.getValue().definition();
-			int version = tag.getIntOr("version", FXProject.VERSION);
-			if (version < FXProject.VERSION) {
-				var wrapper = new CompoundTag();
-				wrapper.put("fx", tag);
-				tag = PhotonFXProjectDataFixer.INSTANCE.applyFixes(version, FXProject.VERSION, wrapper).getCompoundOrEmpty("fx");
+			definitions.put(entry.getKey(), restoreComponent(entry.getValue().definition()));
+		}
+		BeamSpace space;
+		if (definitions.containsKey("laser")) {
+			space = prepareSpace(definitions, prepared.source());
+			var spawner = definitions.get("laser").getFxData().objects().stream().filter(PhotonChildSpawner.class::isInstance)
+					.map(PhotonChildSpawner.class::cast).filter(value -> value.getName().equals("laser")).findFirst().orElseThrow();
+			var childLocation = spawner.config.fxLocation;
+			if (childLocation == null) {
+				throw new IllegalArgumentException("光束组成件缺少子资源");
 			}
-			if (version > FXProject.VERSION) {
-				throw new IllegalArgumentException("自有组件版本高于当前 Photon：" + version);
-			}
-			removeActivation(tag.getCompoundOrEmpty("fxData").getCompoundOrEmpty("timeline").getListOrEmpty("tracks"));
-			fx.deserializeNBT(Platform.getFrozenRegistry(), tag);
-			var targets = fx.getFxData().objects().stream()
-					.filter(object -> !(object instanceof PhotonNamedController))
-					.map(IFXObject::id).collect(Collectors.toSet());
-			for (var object : fx.getFxData().objects()) {
-				if (object instanceof PhotonNamedController controller) {
-					var definition = PhotonProjectDefinitionUtil.filter(controller.definition(), targets);
-					for (var animation : definition.getListOrEmpty("animations")) {
-						removeActivation(((CompoundTag) animation).getListOrEmpty("tracks"));
-					}
-					controller.definition(definition);
-					controller.preparePlaybackDefinition();
-					try {
-						PhotonNamedController.compileDefinition(controller.definition(), controller.source()).install(controller);
-					} catch (IOException invalid) {
-						throw new IllegalArgumentException("组成件命名定义准备失败", invalid);
+			var beam = PhotonOwnedEffectResources.resolveDefinition(childLocation, prepared.source());
+			for (var part : split(beam, BEAM_COMPONENTS).entrySet()) {
+				var fx = new FX();
+				var partTag = part.getValue();
+				for (var value : partTag.getCompoundOrEmpty("fxData").getListOrEmpty("fxObjects")) {
+					var data = ((CompoundTag) value).getCompoundOrEmpty("data");
+					if (data.getStringOr("name", "").equals("laser_anchor")) {
+						var transform = data.getCompoundOrEmpty("transform");
+						transform.put("localPosition", vectorTag(0, 0, 0));
+						transform.put("localScale", vectorTag(1, 1, 1));
 					}
 				}
+				fx.deserializeNBT(Platform.getFrozenRegistry(), partTag);
+				finalizeDefinition(fx);
+				definitions.put(part.getKey(), fx);
 			}
-			definitions.put(entry.getKey(), fx);
+			definitions.remove("laser");
+		} else {
+			var metadata = prepared.components().values().iterator().next().definition().getCompoundOrEmpty("owned_beam_space");
+			space = new BeamSpace(readVector(metadata, "circle"), readVector(metadata, "offset"),
+					readVector(metadata, "scale"), metadata.getFloatOr("minimum", Float.NaN));
+			if (!Float.isFinite(space.minimumLength()) || !space.beamScale().isFinite()
+					|| space.beamScale().x == 0 || space.beamScale().z == 0) {
+				throw new IllegalArgumentException("导出组合空间元数据缺失或无效");
+			}
+		}
+		for (var fx : definitions.values()) {
+			PhotonOwnedEffectAssets.prepare(fx, prepared.source());
 		}
 		PREPARED.keySet().removeIf(key -> key.effectId().equals(prepared.source().effectId()) && key.kind() == prepared.source().kind());
-		PREPARED.put(prepared.source(), new PreparedDefinition(definitions, prepareSpace(definitions)));
+		PREPARED.put(prepared.source(), new PreparedDefinition(definitions, space, loadComposition(prepared)));
+	}
+
+	private static FX restoreComponent(CompoundTag tag) {
+		int version = tag.getIntOr("version", FXProject.VERSION);
+		if (version > FXProject.VERSION) {
+			throw new IllegalArgumentException("自有组件版本高于当前Photon：" + version);
+		}
+		if (version < FXProject.VERSION) {
+			var wrapper = new CompoundTag();
+			wrapper.put("fx", tag);
+			tag = PhotonFXProjectDataFixer.INSTANCE.applyFixes(version, FXProject.VERSION, wrapper).getCompoundOrEmpty("fx");
+		}
+		removeActivation(tag.getCompoundOrEmpty("fxData").getCompoundOrEmpty("timeline").getListOrEmpty("tracks"));
+		var fx = new FX();
+		fx.deserializeNBT(Platform.getFrozenRegistry(), tag);
+		finalizeDefinition(fx);
+		return fx;
+	}
+
+	private static PhotonOwnedLaserComposition.Definition loadComposition(PhotonOwnedEffectResources.Prepared prepared) {
+		var metadata = prepared.components().values().iterator().next().definition();
+		if (metadata.contains("owned_composition")) {
+			return PhotonOwnedLaserComposition.deserialize(metadata.getCompoundOrEmpty("owned_composition"));
+		}
+		if (prepared.source().kind() == PhotonOwnedEffectResources.SourceKind.AUTHORING) {
+			return PhotonOwnedLaserComposition.defaults();
+		}
+		var path = Identifier.fromNamespaceAndPath(ID.getNamespace(), "fx/" + ID.getPath() + ".json");
+		var resource = Minecraft.getInstance().getResourceManager().getResource(path);
+		if (resource.isEmpty()) {
+			return PhotonOwnedLaserComposition.defaults();
+		}
+		try (var reader = resource.get().openAsReader()) {
+			var tag = JsonOps.INSTANCE.convertTo(NbtOps.INSTANCE, JsonParser.parseReader(reader));
+			if (!(tag instanceof CompoundTag compound)) {
+				throw new IllegalArgumentException("组合定义必须为对象");
+			}
+			return PhotonOwnedLaserComposition.deserialize(compound);
+		} catch (IOException failure) {
+			throw new IllegalArgumentException("组合定义读取失败", failure);
+		}
 	}
 
 	private record LocalPose(Vector3f position, Quaternionf rotation, Vector3f scale) {
@@ -177,7 +256,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		return new LocalPose(matrix.transformPosition(new Vector3f()), rotation, scale);
 	}
 
-	private static BeamSpace prepareSpace(Map<String, FX> definitions) {
+	private static BeamSpace prepareSpace(Map<String, FX> definitions, PhotonOwnedEffectResources.SourceKey source) {
 		var circleFX = definitions.get("circle");
 		var circle = circleFX.getFxData().objects().stream().filter(object -> object.getName().equals("circle"))
 				.findFirst().orElseThrow();
@@ -188,7 +267,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 			throw new IllegalArgumentException("光束组成件缺少子资源");
 		}
 		// 元数据在客户端发布阶段读取；不在每次技能构造时解析子定义。
-		var child = FXHelper.getFX(spawner.config.fxLocation, false);
+		var child = PhotonOwnedEffectResources.resolveDefinition(spawner.config.fxLocation, source);
 		if (child == null) {
 			throw new IllegalArgumentException("光束子资源缺失");
 		}
@@ -246,10 +325,14 @@ public class PhotonOwnedLaser implements AutoCloseable {
 
 	/// 从当前内存序列化独立组成件，保留祖先变换；不重新读取已保存工程。
 	public static Map<String, CompoundTag> split(FX project) {
+		return split(project, OUTER_COMPONENTS);
+	}
+
+	public static Map<String, CompoundTag> split(FX project, List<String> components) {
 		var source = project.serializeNBT(Platform.getFrozenRegistry());
 		var objects = source.getCompoundOrEmpty("fxData").getListOrEmpty("fxObjects");
 		var result = new LinkedHashMap<String, CompoundTag>();
-		for (var name : COMPONENTS) {
+		for (var name : components) {
 			var selected = objects.stream().map(CompoundTag.class::cast)
 					.filter(object -> object.getCompoundOrEmpty("data").getStringOr("name", "").equals(name))
 					.findFirst().orElseThrow(() -> new IllegalArgumentException("组成件缺失：" + name));
@@ -299,8 +382,16 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		while (!pending.isEmpty()) {
 			var object = pending.removeFirst();
 			var body = object.getCompoundOrEmpty("data");
-			if (body.getCompoundOrEmpty("config").getStringOr("source", "").endsWith(".PROJECT")) {
-				throw new IllegalArgumentException("组成件含工程外部模板引用，须先明确独立资源边界");
+			var config = body.getCompoundOrEmpty("config");
+			if (config.getStringOr("source", "").endsWith(".PROJECT")) {
+				var template = config.getCompoundOrEmpty("template").getStringOr("uuid", "");
+				var dependency = objects.stream().map(CompoundTag.class::cast)
+						.filter(value -> value.getCompoundOrEmpty("data").getCompoundOrEmpty("transform")
+								.getStringOr("id", "").equals(template)).findFirst()
+						.orElseThrow(() -> new IllegalArgumentException("组成件模板依赖缺失：" + template));
+				if (!keep.contains(template)) {
+					pending.addLast(dependency);
+				}
 			}
 			var transform = body.getCompoundOrEmpty("transform");
 			var id = transform.getStringOr("id", "");
@@ -328,10 +419,21 @@ public class PhotonOwnedLaser implements AutoCloseable {
 	}
 
 	public PhotonNamedRuntime activate(String name, String animation, double duration, Map<String, List<Float>> inputs) {
-		if (closed) {
-			throw new IllegalStateException("组合已结束");
+		if (!current()) {
+			throw new IllegalStateException("组合已结束或资源已失效");
 		}
 
+		if (name.equals("laser")) {
+			PhotonNamedRuntime first = null;
+			for (var part : BEAM_COMPONENTS) {
+				bindings.put(part, PhotonOwnedLaserComposition.Binding.BEAM);
+				var runtime = activate(part, animation, duration, inputs);
+				if (first == null) {
+					first = runtime;
+				}
+			}
+			return first;
+		}
 		var effect = active.get(name);
 		if (effect == null) {
 			var definition = definitions.get(name);
@@ -346,12 +448,37 @@ public class PhotonOwnedLaser implements AutoCloseable {
 				}
 			};
 			try {
-				effect.anchor(position, rotation, new Vector3f(1));
-				effect.start();
 				for (var object : effect.runtime().objects.values()) {
-					// 仅此组成件的已筛选子树及祖先，不包含其他组成件。
-					object.setSelfActive(true);
-					object.setSelfVisible(true);
+					if (object instanceof PhotonChildSpawner spawner) {
+						spawner.ownedDefinitionResolver(id -> PhotonOwnedEffectResources.requireResolvedDefinition(source, id));
+					}
+				}
+				active.put(name, effect);
+				applyAnchors();
+				if (name.equals("flower_muzzle_spawner")) {
+					var template = effect.runtime().findObject("reverse_muzzle");
+					if (template != null) {
+						template.setSelfActive(false);
+						template.setSelfVisible(false);
+					}
+				}
+				effect.start();
+				var rootObject = (FXObject) effect.runtime().root;
+				if (rootObject != null && frameAnchor != null) {
+					var previous = rootObject.getOnUpdateFrame();
+					rootObject.setOnUpdateFrame(partial -> {
+						if (!closed) {
+							try {
+								frameAnchor.accept(partial);
+							} catch (RuntimeException failure) {
+								close();
+								Lobecorp.LOGGER.warn("自有组合帧更新失败", failure);
+							}
+						}
+						if (previous != null) {
+							previous.accept(partial);
+						}
+					});
 				}
 				var component = effect.runtime().findObject(name);
 				if (component != null) {
@@ -360,6 +487,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 				}
 				active.put(name, effect);
 			} catch (RuntimeException failure) {
+				active.remove(name, effect);
 				effect.close();
 				throw failure;
 			}
@@ -374,10 +502,196 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		return runtime;
 	}
 
+
+	private static ListTag vectorTag(float x, float y, float z) {
+		var values = new ListTag();
+		values.add(FloatTag.valueOf(x));
+		values.add(FloatTag.valueOf(y));
+		values.add(FloatTag.valueOf(z));
+		return values;
+	}
+
+	private static Vector3f readVector(CompoundTag tag, String name) {
+		var values = tag.getListOrEmpty(name);
+		if (values.size() != 3) {
+			throw new IllegalArgumentException("组合空间向量缺失：" + name);
+		}
+		return new Vector3f(values.get(0).asFloat().orElseThrow(), values.get(1).asFloat().orElseThrow(),
+				values.get(2).asFloat().orElseThrow());
+	}
+
+	public static PhotonOwnedLaser previewComponents(Map<String, CompoundTag> components, long revision, Level level) {
+		register();
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.PUBLISHED_PREVIEW, revision);
+		PhotonOwnedEffectResources.publishPublishedPreview(key, components);
+		var effect = new PhotonOwnedLaser(key, level);
+		effect.editorPreview = true;
+		return effect;
+	}
+
+	public static Map<String, CompoundTag> exportComponents(FX project) {
+		var parts = splitComponents(project);
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
+		var space = PREPARED.get(key).space();
+		return serializeComponents(parts, space);
+	}
+
+	public Map<String, CompoundTag> exportComponents() {
+		if (!current()) {
+			throw new IllegalStateException("发布组合已失效，请重新载入");
+		}
+		return serializeComponents(definitions, space);
+	}
+
+	private static Map<String, CompoundTag> serializeComponents(Map<String, FX> parts, BeamSpace space) {
+		var metadata = new CompoundTag();
+		metadata.put("circle", vectorTag(space.circleOffset().x, space.circleOffset().y, space.circleOffset().z));
+		metadata.put("offset", vectorTag(space.beamOffset().x, space.beamOffset().y, space.beamOffset().z));
+		metadata.put("scale", vectorTag(space.beamScale().x, space.beamScale().y, space.beamScale().z));
+		metadata.putFloat("minimum", space.minimumLength());
+		var result = new LinkedHashMap<String, CompoundTag>();
+		parts.forEach((name, fx) -> {
+			var tag = fx.serializeNBT(Platform.getFrozenRegistry());
+			tag.put("owned_beam_space", metadata.copy());
+			result.put(name, tag);
+		});
+		return Map.copyOf(result);
+	}
+
+	public static Map<String, FX> splitComponents(FX project) {
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
+		PhotonOwnedEffectResources.publishAuthoring(key, split(project));
+		var prepared = PREPARED.get(key);
+		if (prepared == null) {
+			throw new IllegalStateException("作者组合尚未准备");
+		}
+		var result = new LinkedHashMap<String, FX>();
+		prepared.definitions().forEach((name, fx) -> {
+			var copy = new FX();
+			copy.deserializeNBT(Platform.getFrozenRegistry(), fx.serializeNBT(Platform.getFrozenRegistry()));
+			result.put(name, copy);
+		});
+		return Map.copyOf(result);
+	}
+
+	public void componentPose(String name, Vector3f offset, Quaternionf rotation, Map<String, List<Float>> inputs) {
+		var effect = active.get(name);
+		if (effect == null) {
+			return;
+		}
+		boolean beam = bindings.get(name) == PhotonOwnedLaserComposition.Binding.BEAM;
+		var orientation = new Quaternionf(beam ? beamRotation : this.rotation);
+		var origin = new Vector3f(beam ? beamPosition : position).add(orientation.transform(new Vector3f(offset)));
+		effect.anchor(origin, orientation.mul(rotation), beam ? space.beamScale() : new Vector3f(1));
+		var runtime = ((PhotonNamedAccess) effect.runtime()).lobecorp$namedRuntime();
+		var handle = runtime == null ? null : runtime.playback("laser_start");
+		if (handle != null) {
+			var merged = new LinkedHashMap<String, List<Float>>(beam ? beamInputs : Map.of());
+			merged.putAll(inputs);
+			runtime.stageParameters(handle, merged);
+		}
+	}
+
+	private static void finalizeDefinition(FX fx) {
+		var targets = fx.getFxData().objects().stream().filter(object -> !(object instanceof PhotonNamedController))
+				.map(IFXObject::id).collect(Collectors.toSet());
+		for (var object : fx.getFxData().objects()) {
+			if (object instanceof PhotonNamedController controller) {
+				var definition = PhotonProjectDefinitionUtil.filter(controller.definition(), targets);
+				for (var value : definition.getListOrEmpty("animations")) {
+					removeActivation(((CompoundTag) value).getListOrEmpty("tracks"));
+				}
+				controller.definition(definition);
+				controller.preparePlaybackDefinition();
+				try {
+					PhotonNamedController.compileDefinition(controller.definition(), controller.source()).install(controller);
+				} catch (IOException failure) {
+					throw new IllegalArgumentException("光束组成件动画准备失败", failure);
+				}
+			}
+		}
+	}
+
+	public void composition(PhotonOwnedLaserComposition.Definition definition) {
+		if (!active.isEmpty()) {
+			throw new IllegalStateException("运行中不可替换组合定义");
+		}
+		for (var cue : definition.cues()) {
+			if (!definitions.containsKey(cue.component())) {
+				throw new IllegalArgumentException("未登记组成件：" + cue.component());
+			}
+		}
+		composition = definition;
+	}
+
+	public void phase(PhotonOwnedLaserComposition.Phase next, double duration) {
+		if (phase == next) {
+			return;
+		}
+		phase = next;
+		phaseDuration = duration;
+		fired.clear();
+		if (next == PhotonOwnedLaserComposition.Phase.OUTPUT) {
+			stop("accumulate_particle", true);
+		}
+		advance(0);
+	}
+
+	public void advance(double phaseTicks) {
+		if (closed || phase == null || !Double.isFinite(phaseTicks) || phaseTicks < 0) {
+			return;
+		}
+		for (int i = 0; i < composition.cues().size(); i++) {
+			var cue = composition.cues().get(i);
+			double at = cue.scaleToPhase() ? cue.delayTicks() * phaseDuration / PhotonOwnedLaserComposition.AUTHORED_PHASE_TICKS : cue.delayTicks();
+			if (cue.phase() != phase || at > phaseTicks || !fired.add(i)) {
+				continue;
+			}
+			bindings.put(cue.component(), cue.binding());
+			if (cue.animation().isEmpty()) {
+				stop(cue.component(), cue.stopPolicy() == PhotonOwnedLaserComposition.StopPolicy.IMMEDIATE);
+			} else if (phase != PhotonOwnedLaserComposition.Phase.RECOVERY || active.containsKey(cue.component())) {
+				activate(cue.component(), cue.animation(), Math.max(0, phaseDuration - at),
+						cue.binding() == PhotonOwnedLaserComposition.Binding.BEAM ? beamInputs : Map.of());
+			}
+		}
+		applyAnchors();
+	}
+
+	public void frameAnchor(Consumer<Float> callback) {
+		frameAnchor = callback;
+	}
+
+	public void beam(Vector3f position, Quaternionf rotation, Map<String, List<Float>> inputs) {
+		beamPosition.set(position);
+		beamRotation.set(rotation);
+		beamInputs = Map.copyOf(inputs);
+		for (var entry : active.entrySet()) {
+			if (bindings.get(entry.getKey()) != PhotonOwnedLaserComposition.Binding.BEAM) {
+				continue;
+			}
+			var runtime = ((PhotonNamedAccess) entry.getValue().runtime()).lobecorp$namedRuntime();
+			var handle = runtime == null ? null : runtime.playback("laser_start");
+			if (handle != null) {
+				runtime.stageParameters(handle, beamInputs);
+			}
+		}
+		applyAnchors();
+	}
+
+	private void applyAnchors() {
+		active.forEach((name, effect) -> {
+			boolean beam = bindings.get(name) == PhotonOwnedLaserComposition.Binding.BEAM;
+			effect.anchor(beam ? beamPosition : position, beam ? beamRotation : rotation,
+					beam ? space.beamScale() : new Vector3f(1));
+		});
+		composition.poses().forEach((name, pose) -> componentPose(name, pose.offset(), pose.rotation(), pose.inputs()));
+	}
+
 	public void anchor(Vector3f position, Quaternionf rotation) {
 		this.position.set(position);
 		this.rotation.set(rotation);
-		active.values().forEach(effect -> effect.anchor(position, rotation, new Vector3f(1)));
+		applyAnchors();
 	}
 
 	public PhotonGeoEffect component(String name) {
@@ -385,6 +699,10 @@ public class PhotonOwnedLaser implements AutoCloseable {
 	}
 
 	public void stop(String name, boolean force) {
+		if (name.equals("laser")) {
+			BEAM_COMPONENTS.forEach(part -> stop(part, force));
+			return;
+		}
 		var effect = active.remove(name);
 		if (effect != null) {
 			if (force) {
@@ -414,7 +732,9 @@ public class PhotonOwnedLaser implements AutoCloseable {
 	}
 
 	public boolean current() {
-		return !closed && PhotonOwnedEffectResources.lookup(source).readiness() == PhotonOwnedEffectResources.Readiness.READY;
+		var prepared = PREPARED.get(source);
+		return !closed && prepared != null && prepared.definitions() == definitions
+				&& PhotonOwnedEffectResources.lookup(source).readiness() == PhotonOwnedEffectResources.Readiness.READY;
 	}
 
 	@Override

@@ -1,6 +1,14 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
 import net.minecraft.client.Minecraft;
+import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.photon.client.fx.FX;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
+
+import java.io.UncheckedIOException;
+
+import com.lowdragmc.photon.gui.editor.FXProject;
+import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -30,7 +38,11 @@ import java.util.function.Consumer;
 public class PhotonOwnedEffectResources extends ContextAwareReloadListener implements PreparableReloadListener {
 	private static final Map<Identifier, Map<String, Identifier>> REGISTRATIONS = new LinkedHashMap<>();
 	private static final Map<SourceKey, Prepared> AUTHORING = new ConcurrentHashMap<>();
+	private static final Map<SourceKey, Map<Identifier, String>> DEPENDENCY_SOURCES = new LinkedHashMap<>();
 	private static volatile Map<Identifier, Result> exported = Map.of();
+	private static final Map<SourceKey, Map<Identifier, FX>> RESOLVED = new LinkedHashMap<>();
+	private static final Map<Identifier, Map<String, Identifier>> SNAPSHOT_COMPONENTS = new LinkedHashMap<>();
+	private static @Nullable SourceKey resolvingSource;
 	private static volatile boolean preparing;
 	private static volatile String reloadFailure = "";
 	private static volatile long generation;
@@ -42,15 +54,91 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		DEFINITION_INVALIDATORS.putIfAbsent(id, invalidate);
 	}
 
+	/// 在客户端使用当前有效资源包视图恢复独立定义；不会建立运行实例。
+	public static FX resolveDefinition(Identifier id, SourceKey source) {
+		requireClientThread();
+		boolean scoped = source.equals(resolvingSource);
+		var cache = scoped ? RESOLVED.computeIfAbsent(source, _ -> new LinkedHashMap<>()) : null;
+		if (cache != null && cache.containsKey(id)) {
+			return cache.get(id);
+		}
+		try {
+			var component = readComponent(Minecraft.getInstance().getResourceManager(), id);
+			DEPENDENCY_SOURCES.computeIfAbsent(source, _ -> new LinkedHashMap<>()).put(id,
+					component.sourcePack() + ":" + component.resource());
+			var tag = component.definition();
+			int version = tag.getIntOr("version", FXProject.VERSION);
+			if (version > FXProject.VERSION) {
+				throw new IllegalArgumentException("子特效版本高于当前Photon：" + id);
+			}
+			if (version < FXProject.VERSION) {
+				var wrapper = new CompoundTag();
+				wrapper.put("fx", tag);
+				tag = PhotonFXProjectDataFixer.INSTANCE.applyFixes(version, FXProject.VERSION, wrapper).getCompoundOrEmpty("fx");
+			}
+			var result = new FX();
+			result.deserializeNBT(Platform.getFrozenRegistry(), tag);
+			result.setFxLocation(id);
+			if (scoped) {
+				for (var object : result.getFxData().objects()) {
+					if (object instanceof PhotonNamedController controller) {
+						controller.preparePlaybackDefinition();
+						PhotonNamedController.compileDefinition(controller.definition(), controller.source()).install(controller);
+					}
+				}
+			}
+			if (cache != null) {
+				cache.put(id, result);
+			}
+			return result;
+		} catch (IOException failure) {
+			throw new UncheckedIOException("自有子资源恢复失败：" + id, failure);
+		}
+	}
+
 	private static void prepareDefinitions(Prepared prepared) {
 		var prepare = DEFINITION_PREPARERS.get(prepared.source().effectId());
 		if (prepare != null) {
-			prepare.accept(prepared);
+			PhotonOwnedEffectAssets.invalidate(prepared.source());
+			RESOLVED.remove(prepared.source());
+			var previousSource = resolvingSource;
+			resolvingSource = prepared.source();
+			try {
+				prepare.accept(prepared);
+				if (!PhotonOwnedEffectAssets.prepared(prepared.source())) {
+					throw new IllegalStateException("组成件未完成静态资产准备");
+				}
+			} catch (RuntimeException failure) {
+				PhotonOwnedEffectAssets.invalidate(prepared.source());
+				DEPENDENCY_SOURCES.remove(prepared.source());
+				RESOLVED.remove(prepared.source());
+				throw failure;
+			} finally {
+				resolvingSource = previousSource;
+			}
 		}
 	}
 
 
-	public enum SourceKind {AUTHORING, EXPORTED_FX}
+	public static FX requireResolvedDefinition(SourceKey source, Identifier id) {
+		requireClientThread();
+		var definitions = RESOLVED.get(source);
+		var definition = definitions == null ? null : definitions.get(id);
+		if (definition == null || lookup(source).readiness() != Readiness.READY) {
+			throw new IllegalStateException("自有子定义未准备或已失效：" + id);
+		}
+		return definition;
+	}
+
+	public static void registerSnapshotComponents(Identifier effectId, Map<String, Identifier> components) {
+		SNAPSHOT_COMPONENTS.putIfAbsent(effectId, Map.copyOf(components));
+	}
+
+	public static Map<Identifier, String> dependencySources(SourceKey source) {
+		return Map.copyOf(DEPENDENCY_SOURCES.getOrDefault(source, Map.of()));
+	}
+
+	public enum SourceKind {AUTHORING, EXPORTED_FX, PUBLISHED_PREVIEW}
 
 	public enum Readiness {UNREGISTERED, PREPARING, READY, FAILED}
 
@@ -121,14 +209,17 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		return Map.copyOf(REGISTRATIONS);
 	}
 
-	/// READY 表示数据及已登记的客户端定义准备完成，不表示模型、材质或设备程序已准备完成。
+	/// READY 要求组成件定义与静态资产准备均已完成；动态场景纹理仍由实际绘制提供。
 	public static Result lookup(SourceKey key) {
 		if (!registrations().containsKey(key.effectId())) {
 			return new Result(Readiness.UNREGISTERED, null, "");
 		}
 
-		if (key.kind() == SourceKind.AUTHORING) {
+		if (key.kind() != SourceKind.EXPORTED_FX) {
 			var prepared = AUTHORING.get(key);
+			if (prepared != null && !PhotonOwnedEffectAssets.deviceCurrent(key)) {
+				return new Result(Readiness.PREPARING, null, "设备准备已失效");
+			}
 			return new Result(prepared == null ? Readiness.PREPARING : Readiness.READY, prepared, "");
 		}
 
@@ -149,7 +240,42 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 			return new Result(Readiness.FAILED, null, "请求的资源代次与已发布数据不一致");
 		}
 
+		if (result.prepared() != null && !PhotonOwnedEffectAssets.deviceCurrent(key)) {
+			return new Result(Readiness.PREPARING, null, "设备准备已失效");
+		}
 		return result;
+	}
+
+	/// 由客户端维护入口调用，设备变化不在技能创建栈中同步补载。
+	public static void refreshDeviceResources() {
+		requireClientThread();
+		if (preparing) {
+			return;
+		}
+		for (var prepared : java.util.List.copyOf(AUTHORING.values())) {
+			if (!PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
+				try {
+					prepareDefinitions(prepared);
+				} catch (RuntimeException failure) {
+					invalidatePreview(prepared.source().effectId(), prepared.source().kind());
+				}
+			}
+		}
+		var current = new LinkedHashMap<>(exported);
+		current.replaceAll((_, result) -> {
+			var prepared = result.prepared();
+			if (prepared == null || PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
+				return result;
+			}
+			try {
+				prepareDefinitions(prepared);
+				return result;
+			} catch (RuntimeException failure) {
+				PhotonOwnedEffectAssets.invalidate(prepared.source());
+				return new Result(Readiness.FAILED, null, "设备资源重建失败：" + failure);
+			}
+		});
+		exported = Map.copyOf(current);
 	}
 
 	public static long resourceRevision() {
@@ -163,29 +289,56 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 			throw new IllegalArgumentException("必须使用作者工程来源");
 		}
 
+		publishSnapshot(key, definitions);
+	}
+
+	public static void publishPublishedPreview(SourceKey key, Map<String, CompoundTag> definitions) {
+		requireClientThread();
+		if (key.kind() != SourceKind.PUBLISHED_PREVIEW) {
+			throw new IllegalArgumentException("必须使用发布预览来源");
+		}
+		publishSnapshot(key, definitions);
+	}
+
+	private static void publishSnapshot(SourceKey key, Map<String, CompoundTag> definitions) {
 		var registration = registrations().get(key.effectId());
 		if (registration == null || !registration.keySet().equals(definitions.keySet())) {
-			throw new IllegalArgumentException("作者工程组件未登记或不完整：" + key.effectId());
+			registration = SNAPSHOT_COMPONENTS.get(key.effectId());
 		}
-
+		if (registration == null || !registration.keySet().equals(definitions.keySet())) {
+			throw new IllegalArgumentException("组合组件未登记或不完整：" + key.effectId());
+		}
 		var components = new LinkedHashMap<String, Component>();
-		definitions.forEach((name, tag) -> components.put(name,
-				new Component(registration.get(name), "authoring-memory", Objects.requireNonNull(tag))));
-		AUTHORING.keySet().removeIf(previous -> previous.effectId().equals(key.effectId()));
+		for (var entry : definitions.entrySet()) {
+			components.put(entry.getKey(), new Component(registration.get(entry.getKey()),
+					key.kind() == SourceKind.AUTHORING ? "authoring-memory" : "published-preview", entry.getValue()));
+		}
+		invalidatePreview(key.effectId(), key.kind());
 		var prepared = new Prepared(key, components);
 		prepareDefinitions(prepared);
 		AUTHORING.put(key, prepared);
 	}
 
 	public static void invalidateAuthoring(Identifier effectId) {
+		invalidatePreview(effectId, SourceKind.AUTHORING);
+	}
+
+	public static void invalidatePublishedPreview(Identifier effectId) {
+		invalidatePreview(effectId, SourceKind.PUBLISHED_PREVIEW);
+	}
+
+	private static void invalidatePreview(Identifier effectId, SourceKind kind) {
 		requireClientThread();
 		AUTHORING.keySet().removeIf(key -> {
-			if (!key.effectId().equals(effectId)) {
+			if (!key.effectId().equals(effectId) || key.kind() != kind) {
 				return false;
 			}
 			var invalidate = DEFINITION_INVALIDATORS.get(effectId);
 			if (invalidate != null) {
 				invalidate.accept(key);
+				PhotonOwnedEffectAssets.invalidate(key);
+				DEPENDENCY_SOURCES.remove(key);
+				RESOLVED.remove(key);
 			}
 			return true;
 		});
@@ -203,14 +356,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		preparing = true;
 		reloadFailure = "";
 		try {
-			return CompletableFuture.supplyAsync(() -> {
-						try {
-							return prepare(currentReload.resourceManager(), Profiler.get());
-						} finally {
-							// 全局其他监听器 prepare 失败时屏障可能不完成，不能让本地状态永久卡住。
-							preparing = false;
-						}
-					}, taskExecutor).thenCompose(barrier::wait).thenAcceptAsync(preparations ->
+			return CompletableFuture.supplyAsync(() -> prepare(currentReload.resourceManager(), Profiler.get()), taskExecutor).thenCompose(barrier::wait).thenAcceptAsync(preparations ->
 							apply(preparations, currentReload.resourceManager(), Profiler.get()), reloadExecutor)
 					.whenComplete((_, failure) -> {
 						preparing = false;
@@ -271,6 +417,9 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 				var invalidate = DEFINITION_INVALIDATORS.get(prepared.source().effectId());
 				if (invalidate != null) {
 					invalidate.accept(prepared.source());
+					PhotonOwnedEffectAssets.invalidate(prepared.source());
+					DEPENDENCY_SOURCES.remove(prepared.source());
+					RESOLVED.remove(prepared.source());
 				}
 			}
 		}

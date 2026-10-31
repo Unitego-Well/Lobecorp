@@ -1,0 +1,445 @@
+{
+  "version": 1,
+  "cues": [
+    {
+      "component": "circle",
+      "phase": "CHARGE",
+      "delay_ticks": 0,
+      "animation": "charge_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "circle",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "charge_end",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "circle2",
+      "phase": "CHARGE",
+      "delay_ticks": 0,
+      "animation": "charge_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "circle2",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "charge_end",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "circle3",
+      "phase": "CHARGE",
+      "delay_ticks": 0,
+      "animation": "charge_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "circle3",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "charge_end",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "light_ball",
+      "phase": "CHARGE",
+      "delay_ticks": 0,
+      "animation": "charge_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "light_ball",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "charge_end",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "accumulate_particle",
+      "phase": "CHARGE",
+      "delay_ticks": 0,
+      "animation": "charge_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "accumulate_particle",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "charge_end",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "light_ball",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "ROOT",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "laser_body",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "laser_body",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "dust_column",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "dust_column",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "source_dust",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "source_dust",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "pink_sequence_stars",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "pink_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "yellow_sequence_stars",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "yellow_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "blue_sequence_stars",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "blue_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "flower_muzzle_spawner",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "flower_muzzle_spawner",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "launch_spikes",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "launch_spikes",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "white_lines",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "white_lines",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "laser_tail",
+      "phase": "OUTPUT",
+      "delay_ticks": 0,
+      "animation": "laser_start",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "laser_tail",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "laser_end",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "launch_spikes",
+      "phase": "OUTPUT",
+      "delay_ticks": 10,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "laser_body",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "dust_column",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "source_dust",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "pink_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "pink_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "yellow_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "yellow_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "blue_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "blue_sequence_stars",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "flower_muzzle_spawner",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "flower_muzzle_spawner",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "launch_spikes",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE"
+    },
+    {
+      "component": "white_lines",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "white_lines",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "laser_tail",
+      "phase": "RECOVERY",
+      "delay_ticks": 0,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "NATURAL"
+    },
+    {
+      "component": "laser_tail",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "BEAM",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "circle",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "ROOT",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "circle2",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "ROOT",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "circle3",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "ROOT",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "light_ball",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "ROOT",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    },
+    {
+      "component": "accumulate_particle",
+      "phase": "RECOVERY",
+      "delay_ticks": 20,
+      "animation": "",
+      "binding": "ROOT",
+      "stop_policy": "IMMEDIATE",
+      "scale_to_phase": true
+    }
+  ],
+  "poses": {}
+}

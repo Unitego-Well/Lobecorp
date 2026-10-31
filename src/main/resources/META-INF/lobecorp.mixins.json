@@ -93,6 +93,7 @@
 		"photon.editor.client.ConfiguratorMixin",
 		"photon.runtime.client.FXRuntimeMixin",
 		"photon.runtime.client.FXHelperMixin",
+		"photon.runtime.client.PhotonOwnedDeviceMixin",
 		"photon.runtime.client.BeamRuntimeMixin",
 		"photon.runtime.client.BeamParticleMixin",
 		"photon.runtime.client.EmitterMixin",

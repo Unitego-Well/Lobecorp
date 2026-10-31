@@ -14,6 +14,7 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,45 @@ public class QueenOwnedLaserEffects {
 	private static final Map<UUID, Playing> PLAYING = new HashMap<>();
 	private static final Map<UUID, Long> LEGACY = new HashMap<>();
 	private static final List<PhotonOwnedLaser> TAILS = new ArrayList<>();
+	private static final boolean STATISTICS_ENABLED = Set.of("lobecorp.photon-05-hybrid-queen25",
+					"lobecorp.photon-05-hybrid-laser3", "lobecorp.photon-05-hybrid-blank25")
+			.contains(System.getProperty("modBench.scenarios", ""));
+	private static long startedCount;
+	private static long fallbackCount;
+	private static long errorCount;
+	private static int maximumConcurrent;
+	private static long overlapCount;
+	private static final List<ComponentStatistics> COMPONENT_HISTORY = new ArrayList<>();
+
+	public record ComponentStatistics(long ordinal, Set<String> created, Set<String> activeObserved) {
+		public ComponentStatistics {
+			created = Set.copyOf(created);
+			activeObserved = Set.copyOf(activeObserved);
+		}
+	}
+
+	public record Statistics(long started, long fallbacks, long errors, int playing, int tails,
+	                         int maximumConcurrent, long overlaps, List<ComponentStatistics> components) {
+	}
+
+	/// 客户端线程只读快照；计数跨世界清理保留，供采集者按起始快照作差。
+	public static Statistics statistics() {
+		var components = new ArrayList<>(COMPONENT_HISTORY);
+		PLAYING.values().forEach(value -> components.add(new ComponentStatistics(value.ordinal, value.created, value.activeObserved)));
+		return new Statistics(startedCount, fallbackCount, errorCount, PLAYING.size(), TAILS.size(),
+				maximumConcurrent, overlapCount, List.copyOf(components));
+	}
+
+	private static void observeConcurrency() {
+		if (!STATISTICS_ENABLED) {
+			return;
+		}
+		int count = PLAYING.size() + (int) TAILS.stream().filter(effect -> !effect.finished()).count();
+		maximumConcurrent = Math.max(maximumConcurrent, count);
+		if (count > 1) {
+			overlapCount++;
+		}
+	}
 
 	public static boolean enabled() {
 		return ENABLED;
@@ -51,6 +91,7 @@ public class QueenOwnedLaserEffects {
 			var key = new PhotonOwnedEffectResources.SourceKey(PhotonOwnedLaser.ID,
 					PhotonOwnedEffectResources.SourceKind.EXPORTED_FX, PhotonOwnedEffectResources.resourceRevision());
 			if (PhotonOwnedEffectResources.lookup(key).readiness() != PhotonOwnedEffectResources.Readiness.READY) {
+				fallbackCount++;
 				LEGACY.put(snapshot.instanceId(), snapshot.playbackRevision());
 				return false;
 			}
@@ -59,12 +100,22 @@ public class QueenOwnedLaserEffects {
 			playing = new Playing(owner, snapshot, new PhotonOwnedLaser(key, owner.level()));
 			LEGACY.remove(snapshot.instanceId());
 			PLAYING.put(snapshot.instanceId(), playing);
+			observeConcurrency();
 		}
 
 		try {
 			playing.update(snapshot);
+			for (var name : STATISTICS_ENABLED ? PhotonOwnedLaser.COMPONENTS : List.<String>of()) {
+				if (playing.effect.component(name) != null) {
+					playing.created.add(name);
+					if (playing.effect.component(name).isAlive()) {
+						playing.activeObserved.add(name);
+					}
+				}
+			}
 			return true;
 		} catch (RuntimeException failure) {
+			errorCount++;
 			LEGACY.put(snapshot.instanceId(), snapshot.playbackRevision());
 			playing.effect.close();
 			PLAYING.remove(snapshot.instanceId());
@@ -86,6 +137,9 @@ public class QueenOwnedLaserEffects {
 				return false;
 			}
 
+			if (STATISTICS_ENABLED) {
+				COMPONENT_HISTORY.add(new ComponentStatistics(entry.getValue().ordinal, entry.getValue().created, entry.getValue().activeObserved));
+			}
 			entry.getValue().effect.retire();
 			TAILS.add(entry.getValue().effect);
 			return true;
@@ -101,6 +155,9 @@ public class QueenOwnedLaserEffects {
 	}
 
 	private static class Playing {
+		private final long ordinal = STATISTICS_ENABLED ? ++startedCount : 0;
+		private final Set<String> created = STATISTICS_ENABLED ? new HashSet<>() : Set.of();
+		private final Set<String> activeObserved = STATISTICS_ENABLED ? new HashSet<>() : Set.of();
 		private final TheQueenOfHatred owner;
 		private final long revision;
 		private final PhotonOwnedLaser effect;

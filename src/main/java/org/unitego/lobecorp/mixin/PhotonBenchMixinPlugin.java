@@ -74,6 +74,15 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public @Nullable List<String> getMixins() {
 		var scenario = System.getProperty("modBench.scenarios", "");
+		if (scenario.equals("lobecorp.photon-05-hybrid-queen25")
+				|| scenario.equals("lobecorp.photon-05-hybrid-laser3")
+				|| scenario.equals("lobecorp.photon-05-hybrid-blank25")) {
+			if (!Boolean.getBoolean(PRESERVE_WINDOW_PROPERTY)) {
+				throw new IllegalStateException("混合场景要求保留游戏窗口。");
+			}
+			return List.of("bench.ClientGraphicsControllerMixin", "bench.PhotonHybridMinecraftMixin",
+					"bench.PhotonHybridSkillObservationMixin");
+		}
 		if (scenario.equals("lobecorp.photon-04-queen-entry-25s")
 				|| scenario.equals("lobecorp.photon-04-entry-blank-25s")) {
 			if (!Boolean.getBoolean(PRESERVE_WINDOW_PROPERTY)) {

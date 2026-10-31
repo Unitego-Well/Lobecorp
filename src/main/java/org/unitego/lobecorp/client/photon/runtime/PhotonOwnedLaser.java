@@ -32,6 +32,7 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
 
 import java.util.LinkedHashMap;
@@ -498,10 +499,25 @@ public class PhotonOwnedLaser implements AutoCloseable {
 			throw new IllegalStateException("组成件命名控制器缺失：" + name);
 		}
 
-		runtime.play(animation, duration, true, inputs);
+		var definition = runtime.library().animations().stream().filter(value -> value.name().equals(animation))
+				.findFirst().orElseThrow(() -> new IllegalArgumentException("命名动画不存在：" + animation));
+		runtime.play(animation, duration, true,
+				bindings.get(name) == PhotonOwnedLaserComposition.Binding.BEAM ? componentInputs(definition, inputs) : inputs);
 		return runtime;
 	}
 
+
+	/// 组合公共输入只投影到该局部动画的形参；显式组件覆盖仍由命名系统严格校验。
+	private static Map<String, List<Float>> componentInputs(Definition definition, Map<String, List<Float>> inputs) {
+		var projected = new LinkedHashMap<String, List<Float>>();
+		for (var parameter : definition.parameters()) {
+			var value = inputs.get(parameter.name());
+			if (value != null) {
+				projected.put(parameter.name(), value);
+			}
+		}
+		return Map.copyOf(projected);
+	}
 
 	private static ListTag vectorTag(float x, float y, float z) {
 		var values = new ListTag();
@@ -586,7 +602,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		var runtime = ((PhotonNamedAccess) effect.runtime()).lobecorp$namedRuntime();
 		var handle = runtime == null ? null : runtime.playback("laser_start");
 		if (handle != null) {
-			var merged = new LinkedHashMap<String, List<Float>>(beam ? beamInputs : Map.of());
+			var merged = new LinkedHashMap<String, List<Float>>(beam ? componentInputs(handle.definition(), beamInputs) : Map.of());
 			merged.putAll(inputs);
 			runtime.stageParameters(handle, merged);
 		}
@@ -673,7 +689,7 @@ public class PhotonOwnedLaser implements AutoCloseable {
 			var runtime = ((PhotonNamedAccess) entry.getValue().runtime()).lobecorp$namedRuntime();
 			var handle = runtime == null ? null : runtime.playback("laser_start");
 			if (handle != null) {
-				runtime.stageParameters(handle, beamInputs);
+				runtime.stageParameters(handle, componentInputs(handle.definition(), beamInputs));
 			}
 		}
 		applyAnchors();
@@ -716,6 +732,10 @@ public class PhotonOwnedLaser implements AutoCloseable {
 	}
 
 	public void retire() {
+		if (phase == PhotonOwnedLaserComposition.Phase.RECOVERY) {
+			// 权威快照可在阶段末tick前移除，仍须消费已声明的末端清理cue。
+			advance(phaseDuration);
+		}
 		active.values().forEach(effect -> effect.stop(false));
 	}
 

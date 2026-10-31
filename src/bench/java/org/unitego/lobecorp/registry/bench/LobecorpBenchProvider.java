@@ -8,6 +8,9 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientRegistrar;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerProvider;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
+import org.unitego.lobecorp.client.bench.PhotonHybridQueenScenario;
+import org.unitego.lobecorp.client.bench.PhotonHybridLaserScenario;
+import org.unitego.lobecorp.client.bench.PhotonHybridBlankScenario;
 import org.unitego.lobecorp.client.bench.PhotonQueenEntryScenario;
 import org.unitego.lobecorp.client.bench.PhotonEntryBlankScenario;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
@@ -43,6 +46,18 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		if (PhotonHybridQueenScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonHybridQueenScenario.ID, "混合：进入后25秒单女皇",
+					Set.of("client", "photon", "hybrid", "entry"), Duration.ofSeconds(240)), _ -> new PhotonHybridQueenScenario());
+		}
+		if (PhotonHybridLaserScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonHybridLaserScenario.ID, "混合：45秒单女皇三次真实激光",
+					Set.of("client", "photon", "hybrid", "laser"), Duration.ofSeconds(240)), _ -> new PhotonHybridLaserScenario());
+		}
+		if (PhotonHybridBlankScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonHybridBlankScenario.ID, "混合：45秒空白，含前25秒基线",
+					Set.of("client", "photon", "hybrid", "blank"), Duration.ofSeconds(240)), _ -> new PhotonHybridBlankScenario());
+		}
 
 		if (PhotonQueenEntryScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonQueenEntryScenario.ID,

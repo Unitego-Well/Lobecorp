@@ -1,5 +1,11 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-01 导出通知兼容核对
+
+实际解析 Photon 26.1.2.9 源码与字节码：`readProject(CompoundTag)` 仍通过 `TagValueInput.create` 调用 `deserializeProject(ValueInput)`；本分支完整 MapCodec 捕获、knownAs 与组合快照实现保留，不因主线入口不同而替换。`FXProjectMixin` 已在 deserialize HEAD 读取扩展数据，覆盖原生提前返回路径。
+
+导出操作已迁至 `FXFileActions`，分支通知容器与翻译仍在，但缺少导出成功触发；定向接入 `c1b12d6` 的 `FXFileActionsMixin` 与客户端注册。普通 FX 在压缩写入及 clearCache 成功后通知，FXPack 在 reportResolution 通知，保留原生结果弹窗与重载确认。仅作用于 PhotonEffectEditor，不引入主线其他业务改动。编译、Data 与静态检查结果见[修改记录](changes.md)；游戏与性能测试继续暂停，未作运行通知验收。
+
 ## 2026-10-31 同平台迁移
 
 当前目录已选择 Photon 26.1.2.9、LDLib2 26.1.2.43、KilaGraph 26.1.0.16.a；Minecraft 26.1.2、NeoForge 26.1.2.100、JDK 25 保持。依据 DS 同平台报告与上游固定提交 `37c147156aef673913eccfcbe38d8b3ce5423872` 的依赖声明，并已实际解析新 Maven 制品。下文 10-10 发布与验收条目是历史记录，不是当前版本结论。

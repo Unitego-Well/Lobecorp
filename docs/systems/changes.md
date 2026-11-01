@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-11-01 补齐新版光子导出通知
+
+核对实际 Photon26.1.2.9 源码和字节码：readProject仍调用deserializeProject，完整MapCodec捕获与knownAs/组合快照有效，保留分支Lossless实现；deserialize HEAD扩展读取已覆盖原生提前返回。上游导出转移到FXFileActions后，分支仅余通知容器和文案，缺少成功触发。定向从c1b12d6应用新增FXFileActionsMixin及JSON注册，Git三方模式中新增类直接应用、JSON干净三方合并；保留原生FXPack弹窗，不同步整支业务。
+
+新增类IDEA格式化且错误0，编译/生产包隔离与Data退出0；构建存在reserveBuildIdentity配置缓存不可序列化提示，未扩展处理。未执行游戏、通知视觉或性能验收，测试继续暂停。来源与不变的捕获路径见[依赖升级](photon-dependency-upgrade.md)。补丁与修改前文档哈希保留在build/agent-backups/20261101-photonmod-notification及IDEA编辑备份；原配置、两份测试与性能工具暂存不纳入提交。
+
 ## 2026-11-01 Photon接入公共开发窗口策略
 
 通过Git三方应用94165d5，逐段解决文档及Sweeper冲突，保留Photon既有记录与六个已删除的非本分支场景/辅助类；引入开发窗口生命周期、后台节流/暂停和失焦grabMouse保护，客户端Mixin条目与Photon原有条目合并保留。Photon的Hybrid/Entry/Migration、原生/模型/工作区审查等场景取消主动Focus/Max和native MAX硬门禁，保留原生状态观察、未最小化及有效尺寸检查。三个旧开发性能入口不再重复操作窗口、改AFK/VSync/FPS/pause选项或伪造开发输入；正常鼠标释放和production采样原行为保留。

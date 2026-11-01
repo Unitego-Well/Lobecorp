@@ -159,7 +159,7 @@ SINGLE_CAPTURE 不启用时自动再采一组相反的 Spark 状态；Spark 指�
 - src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/client/photon/animation/PhotonAnimationController.java`）
 - src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/emitter/PhotonEmitterTemplateUtil.java`）
 - [src/main/java/org/unitego/lobecorp/config/client/VisualQualityConfig.java](../../src/main/java/org/unitego/lobecorp/config/client/VisualQualityConfig.java)
-- [run/client/config/lobecorp-visual-quality.toml](../../run/client/config/lobecorp-visual-quality.toml)
+- run/client/config/lobecorp-visual-quality.toml�����ػ���ʷ��λ��`../../run/client/config/lobecorp-visual-quality.toml`��δ�汾�ֿⷢ����
 - src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java（历史引用，当前工作区缺失：`../../src/main/java/org/unitego/lobecorp/util/photon/render/PhotonQualityUtil.java`）
 - [src/main/java/org/unitego/lobecorp/world/entity/abnormalitie/the_queen_of_hatred/TheQueenOfHatredBeamAnimation.java](../../src/main/java/org/unitego/lobecorp/world/entity/abnormalitie/the_queen_of_hatred/TheQueenOfHatredBeamAnimation.java)
 - [src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimations.java](../../src/main/java/org/unitego/lobecorp/client/animation/LcClientAnimations.java)

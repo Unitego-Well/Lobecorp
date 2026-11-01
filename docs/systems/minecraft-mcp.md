@@ -62,7 +62,7 @@ PNG 像素、窗口尺寸和 GUI 缩放坐标是不同量。当前版本的定�
 
 ## 2026-10-15 命令执行适配
 
-已修复 [PlayerWorldHelper.sendCommand](../../../minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/PlayerWorldHelper.java) 在当前 26.1.2 客户端找不到命令方法的问题。原实现只尝试玩家的 `connection()` 方法、大小写不符的 `Connection` 字段及旧单机执行入口；当前玩家公开字段为 `connection`，Minecraft 已提供 `getConnection()`。
+已修复 PlayerWorldHelper.sendCommand（本地或历史定位：`../../../minecraft-mcp/packages/common/src/main/java/xyz/langyo/minecraft/mcp/common/PlayerWorldHelper.java`，未随本仓库发布） 在当前 26.1.2 客户端找不到命令方法的问题。原实现只尝试玩家的 `connection()` 方法、大小写不符的 `Connection` 字段及旧单机执行入口；当前玩家公开字段为 `connection`，Minecraft 已提供 `getConnection()`。
 
 当前路径优先从 Minecraft 取得连接并调用原生 `sendCommand`。NeoForge 在此先处理 `sparkc` 等客户端命令，未处理时再按玩家身份与当前签名协议提交服务端；原生调用已提交或抛错时不会继续重发。其他既有反射代码未清理，没有新增旧版本兼容格式或适配分支。
 

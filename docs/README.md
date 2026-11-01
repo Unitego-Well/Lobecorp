@@ -236,8 +236,8 @@ IDEA 扩展已独立迁移并最终命名为 `idea-mcp-expand`，工程为 `E:/x
 | 工作 | 本地总览 | 分支 |
 |---|---|---|
 | 原始项目 | 本页、[原始问题汇总](issues.md) | `dev` |
-| Photon | [Photon 工作区总览](../.workspace/lobecorp_photon/README.md) | `codex/photon` |
-| Horde | [Horde 工作区总览](../.workspace/lobecorp_horde/README.md) | `codex/horde` |
+| Photon | Photon 工作区总览（本地或历史定位：`../.workspace/lobecorp_photon/README.md`，未随本仓库发布） | `codex/photon` |
+| Horde | Horde 工作区总览（本地或历史定位：`../.workspace/lobecorp_horde/README.md`，未随本仓库发布） | `codex/horde` |
 
 这些工作区入口用于本机协调；新克隆未准备对应工作区时不会存在。本页只管理入口，不复制或代管其他工作的任务、问题与验收。2026-10-27已为两个现有工作区创建新对话接续当前任务；当前有效ID统一见[工作区对话路由](systems/workspace-layout.md#对话路由)，保留的旧对话排除后续检索、跟踪与投递。
 

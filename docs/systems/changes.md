@@ -312,7 +312,7 @@
 
 - 按用户要求，在 AGENTS.md 和工作流程中落实进度文档规则：复用所属工作的总览或索引，记录更新时间、完成项、进行中、下一步及实际检查边界；阶段结束、阻塞或停止前更新，不只在聊天中说明。
 - 有异议或疑问的部分先不实施，只维护在各自唯一问题汇总；其余已确认、已授权且可独立推进的工作继续。原始项目不复制其他工作进度，不另建并列台账，不借文档维护扩大业务或验证范围。
-- 已向未归档的 photon、horde 聊天发出落盘要求，并通过 IDEA 回读确认 [Photon 总览](../../.workspace/lobecorp_photon/docs/systems/photon-workspace.md) 与 [Horde 总览](../../.workspace/lobecorp_horde/docs/systems/horde-index.md) 均已新增当前任务进度，包含更新时间、完成项、进行中、下一步及检查边界，并链接各自唯一问题清单。原始项目只保留入口，不代管或重新验收其业务状态。
+- 已向未归档的 photon、horde 聊天发出落盘要求，并通过 IDEA 回读确认 Photon 总览（本地或历史定位：`../../.workspace/lobecorp_photon/docs/systems/photon-workspace.md`，未随本仓库发布） 与 Horde 总览（本地或历史定位：`../../.workspace/lobecorp_horde/docs/systems/horde-index.md`，未随本仓库发布） 均已新增当前任务进度，包含更新时间、完成项、进行中、下一步及检查边界，并链接各自唯一问题清单。原始项目只保留入口，不代管或重新验收其业务状态。
 - 本次仅通过 IDEA 局部修改三份原始规范与记录，统一文档诊断均 analyzed、无截断、0 错误，保留8项既有链接警告；新增规则及进度入口未报告问题。未构建、Data、测试、同步或启动游戏。修改前六份文档、索引及现有并行资源的字节、换行与 SHA256 清单位于 `.git/progress-docs-20261023-49ce274a/`。
 
 ## 2026-10-23 重启后的后台 Git 扩展验收

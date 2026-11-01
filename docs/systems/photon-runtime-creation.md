@@ -1,5 +1,11 @@
 # Photon 定义编译与受管实例创建
 
+## 设备戳通知与通用ID索引基线（2026-11-02）
+
+已确认根因是设备戳消费入口漏通知：`PhotonOwnedEffectAssets` 在准备来源时比较并保存 `DEVICE_STAMPS`，但已READY来源没有再次准备时，`PhotonOwnedEffectResources` 未比较当前设备身份，导致光影等设备条件变化后旧来源未重新提交。修复在发布时采样 `deviceIdentity()`，保存为已发布来源基线；后续客户端入口仅在基线存在且变化时置`deviceDirty`并只重排已发布来源，关闭与reload清空基线。该修复不缓存姿态、不改变创建/恢复顺序，也不替换Scheduler的失败重试。
+
+功能确认局完成3次光影激光，376条readiness全READY、回退/错误0、verified/cleanup=true；源码dirty阶段仅证明设备通知路径可用，不是性能收益或完整复测。`PhotonModelPoseSampler` 同时将part/morph ID校验改为构造期不可变集合，保留既有骨骼/clip索引、ThreadLocal scratch与每次输出所有权。性能门槛仍开放，后续安静A/B须以包含本修复的已提交基线比较。
+
 ## 事件准备与静态资源生命周期（2026-11-01）
 
 PhotonOwnedPreparationScheduler只管理来源/修订/代次、任务状态和各自重试期限；成功、取消仅删除相应任务，不吞掉其他来源的dueAt。PhotonOwnedEffectResources的客户端入口消费设备/资源通知并派发CPU任务，worker持有独占快照；恢复FX、材质和设备资源在客户端提交。AUTHORING、PUBLISHED_PREVIEW与EXPORTED_FX隔离，新修订失败保留旧成果；cancelSnapshot不误删旧来源DEVICE恢复任务。reload改变dispatch epoch并重排仍有效的待准备修订；旧epoch回调直接返回。静态准备不持有世界，世界切换不等同全局关闭；只有客户端最终退出关闭账本并取消future。关闭后queueSnapshot在任何pending写入前拒绝。

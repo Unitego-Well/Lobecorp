@@ -2,9 +2,9 @@
 
 ## 2026-11-01 R3光影激光资源准备未就绪
 
-受测a58fbf1，18局中15有效，HSL01/02/03三独立JVM均在第10秒施法门槛报hybrid_resources_not_ready_at_cast。45秒窗口分别435/429/432条readiness全部PREPARING，casts为空，Spark完整归档且清理完成。其他五组各3局通过；已确认资源准备未就绪，不将其断言为CPU、设备提交或设备戳失效中的某个根因。未改源码、延后施法或放宽门槛，失败原件保留build/agent-backups/20261101-photon-event-perf-r3/HSL0*/results/artifacts/custom/*failure.json。
+受测a58fbf1，18局中15有效，HSL01/02/03三独立JVM均在第10秒施法门槛报hybrid_resources_not_ready_at_cast。45秒窗口分别435/429/432条readiness全部PREPARING，casts为空，Spark完整归档且清理完成。其他五组各3局通过。后续独立诊断已确认设备stamp漏通知：`PhotonOwnedEffectResources`未消费已READY来源的设备身份变化；修复后功能确认局3次光影激光、376条readiness全READY、回退/错误0、verified/cleanup=true。该修复来自dirty源码，完整性能矩阵仍待安静模式复测，不能据此关闭P22/P23。未延后施法或放宽门槛，失败原件保留build/agent-backups/20261101-photon-event-perf-r3/HSL0*/results/artifacts/custom/*failure.json。
 
-下一步在相同源码的独立诊断局核对准备队列、来源修订、设备提交及设备戳，不能把失败空负载当光影激光性能。P22/P23仍开放：普通激光三局最坏275.10/287.75/396.47ms，每局均有>250ms；光影空白一局259.59ms。完整统计见[Photon入口](systems/photon-workspace.md#2026-11-01-r3性能矩阵已执行15有效3失败)和本地.agent/reports/20261101-photon-event-performance-r3.md；不作跨提交收益归因。
+下一步在新独立安静场景同条件复测设备修复后的完整性能矩阵，确认READY与最长完整帧，不能把功能确认局当性能收益。普通女皇已按单只原版牛同场景最坏完整帧配对判定，三轮全部保留，保留P99/CPU作用域；激光按每局完整窗口max≤100ms，另标活跃窗但不替代全窗。P22/P23仍开放：普通激光三局最坏275.10/287.75/396.47ms，每局均有>250ms；光影空白一局259.59ms。R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校时，最坏帧不变。完整统计见[Photon入口](systems/photon-workspace.md#2026-11-02-通用性能修复与校时基线冻结)和本地.agent/reports/20261101-photon-event-performance-r3.md；不作跨提交收益归因。
 
 ## 2026-10-31 完整18局后的剩余边界
 

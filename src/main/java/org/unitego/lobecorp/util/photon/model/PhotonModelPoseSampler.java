@@ -24,7 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.stream.Collectors;
 import java.util.function.ToDoubleFunction;
 
 /// 单资产的纯CPU姿态求值器；准备结果可共享，每次求值只使用调用局部可变数据。
@@ -38,6 +40,8 @@ public class PhotonModelPoseSampler {
 	private final float minimumDelta;
 	private final BoneRig skeleton;
 	private final Map<String, Clip> clipIndex;
+	private final Set<String> partIds;
+	private final Set<String> morphIds;
 	private final ThreadLocal<SamplingScratch> scratch = ThreadLocal.withInitial(SamplingScratch::new);
 
 	/// 采样期临时对象按线程隔离：同一准备结果可被多个线程并发求值，不能共享可写缓冲。
@@ -142,17 +146,20 @@ public class PhotonModelPoseSampler {
 		clipIndex = Map.copyOf(clips);
 
 		parents = new int[definition.parts().size()];
-		var partIds = new HashMap<String, Integer>();
+		var partIndices = new HashMap<String, Integer>();
 
 		for (int index = 0; index < parents.length; index++) {
-			partIds.put(definition.parts().get(index).id(), index);
+			partIndices.put(definition.parts().get(index).id(), index);
 		}
+
+		partIds = Set.copyOf(partIndices.keySet());
+		morphIds = definition.morphs().stream().map(PhotonModelDefinition.Morph::id).collect(Collectors.toUnmodifiableSet());
 
 		var ordered = new ArrayList<Integer>();
 		var included = new boolean[parents.length];
 
 		for (int index = 0; index < parents.length; index++) {
-			parents[index] = partIds.getOrDefault(definition.parts().get(index).parentId(), -1);
+			parents[index] = partIndices.getOrDefault(definition.parts().get(index).parentId(), -1);
 		}
 
 		for (int index = 0; index < parents.length; index++) {
@@ -192,13 +199,13 @@ public class PhotonModelPoseSampler {
 		var combinedScratch = scratch.combined;
 
 		for (var id : input.morphWeights().keySet()) {
-			if (definition.morphs().stream().noneMatch(morph -> morph.id().equals(id))) {
+			if (!morphIds.contains(id)) {
 				throw new IllegalArgumentException("模型形状键不存在：" + id);
 			}
 		}
 
 		for (var id : input.partOverrides().keySet()) {
-			if (definition.parts().stream().noneMatch(part -> part.id().equals(id))) {
+			if (!partIds.contains(id)) {
 				throw new IllegalArgumentException("模型部件不存在：" + id);
 			}
 		}

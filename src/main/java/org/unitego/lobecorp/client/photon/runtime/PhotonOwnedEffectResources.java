@@ -58,6 +58,8 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static volatile String reloadFailure = "";
 	private static volatile long generation;
 	private static int nativeFXGeneration = -1;
+	// 绑定准备发布时的设备凭据；首帧无基线时只等待发布，不据此重复准备。
+	private static @Nullable String observedDeviceIdentity;
 	private static volatile boolean deviceDirty;
 	private static long authoringRevision;
 	private static volatile boolean dispatchInFlight;
@@ -278,6 +280,12 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		if (nativeFXGeneration != FXHelper.generation()) {
 			nativeFXGeneration = FXHelper.generation();
 			PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.EXPORTED, null, ++authoringRevision);
+		}
+		var currentDevice = PhotonOwnedEffectAssets.deviceIdentity();
+		if (observedDeviceIdentity != null && !currentDevice.equals(observedDeviceIdentity)) {
+			// 基线随触发同步推进；循环只保留已发布来源，失败任务仍由 Scheduler 自有到期重试。
+			observedDeviceIdentity = currentDevice;
+			deviceDirty = true;
 		}
 		if (deviceDirty) {
 			deviceDirty = false;
@@ -569,6 +577,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		requireClientThread();
 		DISPATCH_GENERATION.incrementAndGet();
 		dispatchInFlight = false;
+		observedDeviceIdentity = null;
 		PhotonOwnedPreparationScheduler.close();
 		var completions = List.copyOf(SNAPSHOT_COMPLETIONS.values());
 		SNAPSHOT_COMPLETIONS.clear();
@@ -591,6 +600,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	                                      PreparationBarrier barrier, Executor reloadExecutor) {
 		long epoch = DISPATCH_GENERATION.incrementAndGet();
 		dispatchInFlight = false;
+		observedDeviceIdentity = null;
 		PhotonOwnedPreparationScheduler.reset();
 		preparing = true;
 		reloadFailure = "";
@@ -665,6 +675,8 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 	private static void apply(Map<Identifier, Result> preparations, ResourceManager manager, ProfilerFiller profiler) {
 		requireClientThread();
+		// 发布时重新采样设备凭据；准备期间若已变化，下一次 tick 会再次入队。
+		var appliedDevice = PhotonOwnedEffectAssets.deviceIdentity();
 		exportedDataRetry = false;
 		long nextGeneration = generation + 1;
 		var previousDefinitions = exportedDefinitions;
@@ -700,6 +712,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		generation = nextGeneration;
 		reloadFailure = "";
 		nativeFXGeneration = FXHelper.generation();
+		observedDeviceIdentity = appliedDevice;
 		for (var prepared : previousDefinitions.values()) {
 			PhotonOwnedPreparationScheduler.cancelSource(prepared.source().effectId(), SourceKind.EXPORTED_FX);
 			invalidateDefinition(prepared.source());

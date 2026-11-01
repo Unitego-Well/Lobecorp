@@ -1,5 +1,13 @@
 # 系统修改记录
 
+## 2026-11-02 冻结通用性能修复与校时基线
+
+设备stamp漏通知已确认：`PhotonOwnedEffectAssets` 的设备戳只在 `prepareAssets` 读取后保存；已READY来源未再次经过准备时，`PhotonOwnedEffectResources` 没有比较设备身份，造成光影切换后来源仍停留在旧设备状态。修复只增加已发布来源的设备身份基线、变化检测与关闭/reload复位，发布时重新采样设备身份；不缓存姿态、不改创建算法，失败任务继续由Scheduler到期重试。功能确认局完成3次光影激光，376条readiness全READY、回退/错误0、verified/cleanup=true；该局源码dirty，只作功能确认，不作性能收益样本。
+
+`PhotonModelPoseSampler` 只新增不可变part/morph ID集合，替换每次sample逐项流扫描；骨骼/clip索引和线程scratch/输出语义不变。新增LookupTest两项；30项相关Java CPU测试、2项Python时钟锚点/窗口边界回归、Compile/生产包隔离与Data（23输出written0/removed0）通过。CSV原分析器漏减`frame_origin_ns-started_ns`，原WIP保持，新v2分析器由父复核并用于校时；R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校时，最坏帧不变。性能门槛未达标，不能把本基线当作总体完成。
+
+本提交仅含两份生产修复、两个新测试、v2分析器与最小系统文档；原配置、两份测试、旧分析器、run-control、flow-audit和pycache保持原暂存/WIP。manifest位于`build/agent-backups/20261102-photon-quiet-baseline/source-manifest.json`。
+
 ## 2026-11-01 R3性能矩阵执行与证据归档
 
 受测a58fbf1，新增忽略的18份R3运行配置与独立原字节输入，保留R1/R2失败/中止证据，不改生产/Bench源码、原场景或用户设置。普通/光影×女皇25秒/三次激光/空白各3局全部执行，15局有效，3光影激光均因资源PREPARING未达施法门槛失败；完整矩阵INCOMPLETE。P99逐局nearest-rank复算，五组汇总与失败边界见[当前入口](photon-workspace.md#2026-11-01-r3性能矩阵已执行15有效3失败)，原因仅记录在[唯一问题清单](../issues.md#2026-11-01-r3光影激光资源准备未就绪)。

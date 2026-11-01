@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-02 通用性能修复与校时基线冻结
+
+设备戳漏通知已确认并修复，功能确认局3次光影激光、376条readiness全READY、回退/错误0、verified/cleanup=true；该局源码dirty，仅作功能确认。Sampler新增不可变part/morph ID集合；30项相关Java CPU测试、2项Python时钟回归、Compile/生产包隔离与Data（23输出written0/removed0）通过。R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校正CSV相对trace起点偏移，最坏帧不变；受保护原脚本未改。
+
+硬目标仍未达成：激光最长完整帧≤100ms、普通女皇≤同负载普通生物1.5倍均待安静模式同条件A/B。普通女皇已按“最多/最长”严格含义采用单只原版牛同场景最坏完整帧为对照，保留P99/CPU作用域；每轮配对报告QueenMax/CowMax，三轮全部保留，门槛QueenMax≤1.5×CowMax。激光按每局完整窗口max≤100ms判定，另标激光活跃窗但不替代全窗。新Bench场景尚未实现，端口19877与旧R4配置只占位，未启动游戏/采样。基线manifest见`build/agent-backups/20261102-photon-quiet-baseline/source-manifest.json`；完整交接见本地`.agent/reports/20261102-photon-quiet-baseline-freeze.md`。
+
 ## 2026-11-01 R3性能矩阵已执行，15有效3失败
 
 用户重新授权开始测试；在a58fbf1上串行执行普通/光影×女皇25秒/三次激光/空白各3局。15局通过完整帧/Spark归档校验，三局光影激光均因资源PREPARING未能施法，不计有效性能。普通激光最坏275.10～396.47ms，光影空白单局259.59ms，P22/P23不关闭；没有同版本优化收益结论。具体失败见[唯一问题清单](../issues.md#2026-11-01-r3光影激光资源准备未就绪)，完整统计见本地.agent/reports/20261101-photon-event-performance-r3.md与build/agent-backups/20261101-photon-event-perf-r3/matrix-audit.json。

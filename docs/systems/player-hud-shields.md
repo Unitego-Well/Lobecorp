@@ -1,5 +1,13 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 当前：LDLib2 事件 HUD
+
+使用LDLib2 26.1.2.42的 `ModularHudLayer` 和 `ModularUI`，统一组件 `EventHudComponent` 继承 `UIElement`，构造时指定 `TOP/LEFT/RIGHT`。顶部居中位于屏幕上方，左右从屏幕高度三分之一处开始，各自由column容器按加入顺序向下堆叠、间隔4 GUI像素；组件高度由内容决定，禁止收缩，移除自动补位。
+
+注册签名为 `register(id, englishName, chineseName, componentFactory)`；名称保存在类型定义中，组件工厂每个活动UUID调用一次。同UUID同类型重复show返回已有实例，类型冲突拒绝。`show(type, uuid)` 显示、`hide(uuid)`移除、`clear()`清理活动UI；换世界清理实例并保留定义。深夜清扫注册 `MidnightCleanupHud::new`，固定LEFT，目前仅空容器，未接入自动事件同步、纹理或计时内容。HUD仍注册在伤害滤镜之上。
+
+本轮IDEA定向编译与Data成功，生成目录无新增Git差异；未进游戏，布局、动态堆叠及缩放尚无实机视觉证据。下方早期GuiLayer注册方式为历史，已由此实现替代。
+
 ## 2026-11-01 事件 HUD 注册
 
 `EventHud.register(Identifier, GuiLayer)` 按事件ID注册绘制器，重复ID拒绝注册，按注册顺序调用。`EventHudRegistration.register()` 由既有 `PlayerHudRegistration.register` 初始化，使用 `MidnightCleanup.ID` 注册 `MidnightCleanupHud.INSTANCE`；深夜清扫目前为空绘制入口，尚无布局、计时或激活条件。四份Java文件经IDEA定向编译通过，未做游戏验证。

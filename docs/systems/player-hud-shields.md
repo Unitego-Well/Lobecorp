@@ -1,5 +1,9 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-01 修复迁移后玩家 HUD 初始化被跳过
+
+HudLayer曾创建宿主ModularUI，但getModularUI只返回UIElement的框架归属；该归属在ModularUI.init时才赋值。ModularHudLayer.render先读getter，读到null就返回，导致根UI永远无法进入init。现根层优先返回已创建宿主，子节点未拥有宿主时仍返回框架归属。此次为可直接确认的绘制跳过路径修复，IDEA定向编译通过；未做游戏视觉复测，不宣称所有迁移HUD均已实机恢复。
+
 ## 2026-11-01 HUD 迁移补全：运行覆盖层
 
 已盘点全部RegisterGuiLayersEvent入口与RenderGuiEvent.Post分发：生命/理智/护盾、伤害/低理智滤镜、屏幕粒子、事件HUD、指挥家HUD均经LDLib2驱动。另将Post阶段的指挥家指令光标/框选及Horde统计文字接入RuntimeOverlayHud的LDLib2画布，保持原Post阶段和先指令后统计的绘制顺序；沿既有登录/登出/卸载入口释放UI，不新增订阅。特定投影、精灵裁切与画线仍由组件回调复用原绘制算法，未重写世界渲染或原版HUD。

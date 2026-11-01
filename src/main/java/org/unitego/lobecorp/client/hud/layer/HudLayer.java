@@ -29,7 +29,7 @@ public abstract class HudLayer extends UIElement implements ModularHudLayer {
 
 	@Override
 	public @Nullable ModularUI getModularUI() {
-		return super.getModularUI();
+		return modularUI != null ? modularUI : super.getModularUI();
 	}
 
 	@Override

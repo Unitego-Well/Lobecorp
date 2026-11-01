@@ -23,6 +23,8 @@ DS 会话除本文件外必须执行[DS 执行规则](docs/standards/ds-executio
 
 ## 工具、编辑与并行
 
+所有工作区统一执行[测试场景保护](docs/standards/workflow.md#测试场景保护)、[DS 辅助模型与路由](docs/standards/workflow.md#ds-辅助模型与路由)及[项目工具链](docs/systems/README.md#项目工具链)，不再作为单一分支专属要求。
+
 子代理只能使用所选模型支持的最低推理档位；创建、接续或重新委派时显式指定，不因任务复杂而自行提高。该要求仅适用于子代理；用户对当前任务的明确指令优先。具体执行见[子代理最低推理档位](docs/standards/workflow.md#子代理最低推理档位)。
 
 DS中转调用、适用任务、回报与轮换使用[通用规则版本化快照](docs/standards/ds-collaboration.md)；项目交接和停止边界见[工作流程](docs/standards/workflow.md#ds-简单任务委派与停止检查)。通用规则只由统一来源维护，快照随提交同步，不依赖本机文件链接。

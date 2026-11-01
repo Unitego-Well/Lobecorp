@@ -64,7 +64,7 @@ core/centre是同一横截面时间窗的占据样本数相对无分割基线比
 
 本轮Java三份磁盘SHA256保持：HordeDebugState c2051b2d101d8b87a8e7e40983ecf9d813a09e405edaae49233daa789c4a3a26，HordeGpuRenderer c884e8d237f3a5cfc3af9c89f2451f54f916c917fd414d73da36339a6a37283b，受保护HordeSplitState bae9c66a5fda4de45e5ceff7eba819574c4be2ddf03c8790261b99bda9b26e48。本轮未构建、Data、游戏、配置、Git暂存/提交/推送；父代理正在进行的编译不计本轮测试证据。代码局部编辑及补丁生成均使用IDEA快照哈希；core shader CRLF、include和Python LF保留。Python新增回归范围IDE格式化后内容哈希未变，17项结果仍对应当前源码。
 
-累计[源码补丁](20261028-horde-core-distribution.patch)已更新到本轮最终代码；包含前轮两份HUD Java差异，但本轮不再改Java。07仍为视觉失败，下一次普通/Iris实机由父代理执行，需验证强中心、宽而连续的外缘、无同圈硬墙、移动/退出与性能；平面双精度测试不代替GPU float/硬件GLSL或视觉验收。
+累计源码补丁（本地未发布定位：`20261028-horde-core-distribution.patch`，不作为公共证据入口）已更新到本轮最终代码；包含前轮两份HUD Java差异，但本轮不再改Java。07仍为视觉失败，下一次普通/Iris实机由父代理执行，需验证强中心、宽而连续的外缘、无同圈硬墙、移动/退出与性能；平面双精度测试不代替GPU float/硬件GLSL或视觉验收。
 
 以下为前轮历史记录，旧版“当前/未运行”的说法由上文覆盖。
 

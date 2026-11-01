@@ -349,7 +349,7 @@ S09 已并入 P06，不另建同一问题副本。下表的原生 GLTF／VAT 路
 | photon-performance.md、photon-world-performance-comparison.md、photon-detailed-performance-plan.md、laser-release-profile.md | [检测工具](systems/photon-performance-tool.md)、[静态候选](systems/photon-performance-audit.md)；这些不是缺失原报告，也没有原始实测数据 |
 | shader-compatibility-exit.md | [粒子与渲染](systems/particle-rendering.md)；没有新增 EXIT 兼容结论 |
 | queen-star-beam.md、queen-arcana-beam.md、light-ball.md、laser-spell.md | [女皇技能表现](systems/queen-beam-skill-effects.md)、[资源规范](systems/resources-datagen.md)；旧工程结构与对象索引未找回 |
-| effect-authoring-lessons.md、photon-effect-authoring-history.md | [制作 Skill](../.codex/skills/lobecorp-effect-authoring/SKILL.md) 与 [修改记录](systems/changes.md) 只作现存规则／历史入口，不替代缺失案例 |
+| effect-authoring-lessons.md、photon-effect-authoring-history.md | 制作 Skill（当前分支缺失，原路径：`../.codex/skills/lobecorp-effect-authoring/SKILL.md`；见[问题汇总](issues.md)） 与 [修改记录](systems/changes.md) 只作现存规则／历史入口，不替代缺失案例 |
 | 专项 Skill 中的雾／体积 API 旧锚点 | photon-effect-mcp-api.md 当前没有“雾与体积效果入口2026-10-14”章节；Skill 原字节保留，未创建无证据的同名内容 |
 | 共同基础的玩家／附着历史截图 | 保留现有历史条目和缺失说明，不将 horde 或其他工作区的验收写入本页 |
 

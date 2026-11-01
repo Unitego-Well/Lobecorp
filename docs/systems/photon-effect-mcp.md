@@ -12,9 +12,9 @@ MCP 新建、打开和枚举工程仅使用 `/lobecorp photon_editor` 对应的�
 
 | 当前问题 | 读取 |
 |---|---|
-| 制作方法、参考复刻、变量或交付 | [制作 Skill](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |
+| 制作方法、参考复刻、变量或交付 | 制作 Skill（当前分支缺失，原路径：`../../.codex/skills/lobecorp-effect-authoring/SKILL.md`；见[问题汇总](../issues.md)） |
 | 工具参数、事务、资源、视角、保存 | [API 对应章节](photon-effect-mcp-api.md) |
-| 连接、截图、控制与 Debug | [Minecraft MCP Skill](../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md) |
+| 连接、截图、控制与 Debug | Minecraft MCP Skill（当前分支缺失，原路径：`../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；见[问题汇总](../issues.md)） |
 | 当前工程路径、形参、依赖及限制 | 女皇星束（历史路径 `queen-star-beam.md`，本工作区不存在） |
 | 经验与故障模式 | 制作经验（历史路径 `effect-authoring-lessons.md`，本工作区不存在） |
 | 旧参数、采样或当时验收 | 历史记录（历史路径 `photon-effect-authoring-history.md`，本工作区不存在）对应标题 |

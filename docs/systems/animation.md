@@ -139,8 +139,8 @@ ticket 选择纹理；清道夫模型保留当前变体映射和尸体处理。
 
 ## 修改前核对与尚未验收
 
-修改前读取[动画规范](../../.codex/skills/lobecorp-entity-animation/SKILL.md)
-和[视觉同步规范](../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md)，再用 IDEA 确认当前 GeckoLib 类型、Mixin
+修改前读取动画规范（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-animation/SKILL.md`；见[问题汇总](../issues.md)）
+和视觉同步规范（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；见[问题汇总](../issues.md)），再用 IDEA 确认当前 GeckoLib 类型、Mixin
 目标、控制器引用和调用侧。历史类名与文档不能替代当前解析结果。
 
 核对动画层顺序、遮罩骨骼、默认姿态、暂停标记、重触发、移动倍率、服务端权威、晚加入同步，以及完成、取消、卸载后的姿态与粒子清理。不要改变技能前摇、后摇或碰撞时间来补偿纯视觉过渡。

@@ -150,8 +150,8 @@ Menu-backed 交互；不要因为使用 LDLib2 就绕过服务器校验。
 DataTicket、图层、头像提交或调试快照能力；不能以新增 RenderLayer 代替需要服务端同步的事实。
 
 修改 UI 时同时读运行 wrapper
-与资产来源；修改资源时保留作者排版，生成输出只通过生成源更新。涉及动画和粒子状态时遵循 [实体动画规范](../../.codex/skills/lobecorp-entity-animation/SKILL.md)
-和 [实体视觉同步规范](../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md)。
+与资产来源；修改资源时保留作者排版，生成输出只通过生成源更新。涉及动画和粒子状态时遵循 实体动画规范（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-animation/SKILL.md`；见[问题汇总](../issues.md)）
+和 实体视觉同步规范（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；见[问题汇总](../issues.md)）。
 
 ## 待查项与文档维护
 

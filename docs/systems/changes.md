@@ -1016,7 +1016,7 @@ PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计�
 - 选择持杖和上半身随瞄准俯仰。新增四个 TheQueenOfHatredAnimationDefinitions，包装完整 data 资源 aim/aim2，声明 up_body 姿态修饰与 effectId。新增 TheQueenOfHatredBeamAnimation，技能生命周期创建/更新/停止动画；LcAnimationInstance 可显式关闭自动片段结束，默认行为不变。
 - LaserSkill/StarBeamSkill 不再触发原 AIM action。删除已备份的 EntitySkillClientEvents 五个特效监听；QueenBeamEffects 按动画 UUID 与阶段快照拥有实例，复用已有 LcAnimationStatePayload。客户端本地资源覆盖合并代码骨骼绝对结果，头部俯仰依据动画状态去重，不依赖特效加载结果。技能伤害、命中规则、射程、冷却和注册时序未改。
 - PhotonSpawnedEffects/Spawner 支持每源最多一个未发射 FX 预备实例。女皇蓄力期间复制光束、预解析独占动画库及模型/拓扑，释放时消费；重启、真正结束、来源变化分别处理保留、回收和失效。FXRuntimeMixin 与 PhotonAnimationRuntime 共用校验后的库，避免发射重复解码。锚点与长度共用射线结果，不将活动运行态或随机采样入共享池。
-- 新增服务端完整模型/动画副本，已按正文及 JSON 解析核对与 assets 原文件一致；原 Photon 工程、模型/着色器资产和特效定义未改。系统文档、入口与[备份索引](../../backups/queen-code-animation-20261018/README.md)已更新。
+- 新增服务端完整模型/动画副本，已按正文及 JSON 解析核对与 assets 原文件一致；原 Photon 工程、模型/着色器资产和特效定义未改。系统文档、入口与备份索引（本地未发布定位：`../../backups/queen-code-animation-20261018/README.md`，不作为公共证据入口）已更新。
 - 17 个 Java 经 IDEA 诊断、修改范围格式化，保留既有无关警告；本次新增类与特效/模型预备路径无新增诊断。最终 IDEA 编译 isSuccess=true/problems=[]；Data exitCode=0。旧特效事件及两个技能旧 AIM 调用已检查，无测试、游戏启动、资源重载或性能/视觉实测。不将代码优化或历史性能数据当作本轮稳定 100 FPS 证明。
 
 ## 2026-10-18：编辑器设置翻译与提示换行
@@ -1143,7 +1143,7 @@ PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计�
 - laser 新增 laser_start／laser_end 两个命名阶段，75／54 轨道；原 200t laser 动画及主时间轴保留。通过原生模型片段、激活和运行时属性保持光柱与持续发射，结束时从原片段 180t 收尾。未改 Java、模型几何、UV、着色器或模板。
 - 两份工程保存 dirty=false，定义原生回读及完整 ID 加载通过；依赖包 37／59 条目、warnings=[]。同一个原生预览运行实例依次完成蓄力保持 481t、蓄力结束、激光保持 481t、激光结束与再次启动；开始各来源最多一个实例，结束归零，problems=[]。结束沿用原激光 handle；额外修正结束阶段覆盖默认尺寸，length=6、width=0.5、intensity=0.7 开始后，结束采样仍为长度 6、内柱宽 0.50420165、强度 0.7。
 - IDEA 编译 isSuccess=true、problems=[]；正常 Data 日志 BUILD SUCCESSFUL in 29s，19 文件写入 0、删除 0，MCP 未返回退出码。工程、定义、包与主资源输出的动画名称一致，输出定义与源定义一致，主资源输出不含被排除的工程输入；对象资源、变换、十个辅助动画、空基线、原 laser 动画及主时间轴逐项对比不变。四份修改文档最终诊断为空，生成目录 Git 差异为空；鼠标恢复并退出控制模式，三处用户断点保留、无代理断点。
-- [备份](../../backups/laser-spell-phases-20261016/README.md)包含两份修改前实时工程、磁盘工程／定义／包及三份文档，receipt.json 和 receipt-end-parameters.json 记录实际检查。未新增性能、联机或实体技能验收，未手动暂存、重置或提交。
+- 备份（本地未发布定位：`../../backups/laser-spell-phases-20261016/README.md`，不作为公共证据入口）包含两份修改前实时工程、磁盘工程／定义／包及三份文档，receipt.json 和 receipt-end-parameters.json 记录实际检查。未新增性能、联机或实体技能验收，未手动暂存、重置或提交。
 
 ## 2026-10-16：激光法术改为直接调用激光
 
@@ -1162,7 +1162,7 @@ PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计�
 - 源码的 11 个 FX 工程均已生成同目录 .fx，原生回读及完整 ID 加载的缺失列表为空；同时规范字符串及模型 JSON 字节数组中的便携图路径。laser／laser_spell 包分别 37／59 条目，warnings=[]，组合包有七份 FX 定义。counterattack.mfxproj 缺 renderer／playback，原生读取报 invalid_renderer；旁边 JSON 与工程模型不同，未替换、未修改原模型、未导出 MFX，导出配置待确认。
 - 两个工程保存 dirty=false。IDEA 编译 isSuccess=true、problems=[]；IDEA Data 日志 BUILD SUCCESSFUL，19 文件写入 0、删除 0，MCP 未回传退出码。生成目录无 Git 差异；主资源输出含全部 11 份 FX、两个新包与尾粒子材质，fxproj／mfxproj／zip／bbmodel 数为 0，旧运行定义无残留；未单独构建完整 JAR、运行独立测试或新增性能／联机／发行环境验收。
 - 已查看透视持续画面与末端粒子。MCP 直接 seek 在命名动画暂停时只推进场景，整工程替换后旧工作区还会保留旧库；本轮重建两工作区，工程快照变化为 0，再用 scrub 与同步 simulateTo 复核。最终采样实际动画时间 347、problems=[]、六发射器 inactive 且实例数为 0，结束画面无残留；旧 MCP 347／348 截图不计作收尾证据。未修改这两处 Java 接口，流程限制记录于激光法术文档。
-- [备份](../../backups/laser-spell-integration-20261016/README.md)包含改名前文件、实时工程、外观调整前资产及导出回执。精确核对后移除四个旧名资产和本轮两个中文副本；没有删除其他用户工程。整文档自动格式化被自动审批拒绝，改为仅对本轮五张表格局部对齐；新文档和激光资产文档诊断为空，既有 AGENTS／系统索引表格提示及资源文档失效锚点保留。收尾保留用户新调整的透视相机与播放状态，鼠标释放并退出 MCP 控制，恢复断点全局未静音状态，三处用户断点保留且本轮 agent 断点为 0。未手动暂存、重置或提交。
+- 备份（本地未发布定位：`../../backups/laser-spell-integration-20261016/README.md`，不作为公共证据入口）包含改名前文件、实时工程、外观调整前资产及导出回执。精确核对后移除四个旧名资产和本轮两个中文副本；没有删除其他用户工程。整文档自动格式化被自动审批拒绝，改为仅对本轮五张表格局部对齐；新文档和激光资产文档诊断为空，既有 AGENTS／系统索引表格提示及资源文档失效锚点保留。收尾保留用户新调整的透视相机与播放状态，鼠标释放并退出 MCP 控制，恢复断点全局未静音状态，三处用户断点保留且本轮 agent 断点为 0。未手动暂存、重置或提交。
 
 ## 2026-10-16：三色序列星粒与全部同类包装归位
 
@@ -1208,7 +1208,7 @@ PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计�
 - 根 AGENTS 的 15 个规则章节完整迁入 docs/standards 的 workflow、java-and-packages、entity-contracts，约束效力不变。全局 AGENTS／dev-standards／提示词及索引同步按需路由；项目根入口与系统索引合计从 14,357 减为 3,725 字符，约减少 74.1%，这是文本字符统计，不是实际 token 消耗测量。
 - Photon 特效 MCP 拆为简短入口、API 与限制、制作／故障／验收历史；新增制作经验和系统导航补充。当前工程统一指向 queen_star_beam；27 步对应表明确为 2026-10-14 基线，旧 refined／V3 记录不再充当活动工程指令或新一轮验收。
 - 已静态核对文件内容、Skill 基础前置元数据、本地链接／锚点及原规则迁移，未发现新增缺失；12 份修改前备份哈希一致。原暂存条目保持，已有 67 个代码／资源文件哈希未变；未暂存、提交或重置。官方 quick_validate.py 因缺少 PyYAML 无法运行，未安装依赖，基础静态检查不等于官方校验通过或新会话自动发现。
-- 备份与静态报告位于 [vfx-guidance-20261015-201054](../../backups/vfx-guidance-20261015-201054/README.md)，包含全局与项目原文件、SHA-256、修改前暂存清单和实际检查边界。未进行新的源码、性能、视觉或发行 JAR 验收。
+- 备份与静态报告位于 vfx-guidance-20261015-201054（本地未发布定位：`../../backups/vfx-guidance-20261015-201054/README.md`，不作为公共证据入口），包含全局与项目原文件、SHA-256、修改前暂存清单和实际检查边界。未进行新的源码、性能、视觉或发行 JAR 验收。
 
 ## 2026-10-15：星束正式命名、开发资源直读与 run 资产迁移
 
@@ -1493,7 +1493,7 @@ PROJECT子池Scope退役、不可复用租约排空后回收、子生成器计�
 
 ## 2026-10-13：Minecraft MCP 项目技能、操作文档与粒子运行检查
 
-- 按用户要求新增 [lobecorp-minecraft-mcp](../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md) 与 [Minecraft MCP 文档](minecraft-mcp.md)，在系统索引增加入口。常规使用先 `ping` 握手，仅在失败、版本或桥接变化时重新排查；记录 Mod HTTP 与 bridge stdio 的分层、端口覆盖、截图 JSON 解析、控件枚举、Debug 路径格式、单执行者归属、临时断点释放及项目栈帧求值限制。
+- 按用户要求新增 lobecorp-minecraft-mcp（当前分支缺失，原路径：`../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；见[问题汇总](../issues.md)） 与 [Minecraft MCP 文档](minecraft-mcp.md)，在系统索引增加入口。常规使用先 `ping` 握手，仅在失败、版本或桥接变化时重新排查；记录 Mod HTTP 与 bridge stdio 的分层、端口覆盖、截图 JSON 解析、控件枚举、Debug 路径格式、单执行者归属、临时断点释放及项目栈帧求值限制。
 - 已通过 IDEA 核对本地 26.1.2 NeoForge Mod JAR、修复工程和 bridge；当前 46 项工具匹配。第二次 Client Debug 实际进入主菜单和隔离新世界，`ping` 得到 pong，控制模式和截图成功。按钮重复／空标签、坐标偏离和文本输入回显未生效的现象按实测记录，不把工具返回成功当成界面结果。
 - 世界文本截图确认可见方向、黑色轮廓和 LEFT_TO_RIGHT 逐字中间状态；MutableComponent 后续追加不影响已存文本。相同 revision 的两次周期同步保留 Particle／layout 对象身份，playback 从 620 增长到 648。CENTER_OUT 的 17 字符中心排名通过 Debug 核对；完整单字动画和自动范围边缘尚未视觉验收。详见[文本粒子实测](text-particles.md#2026-10-13-debug-与-minecraft-mcp-实测)。
 - 真实伤害链路中，generic 的 2、1 和当前玩家近战的 1 均到达服务端发包断点，生命 1000 → 996。第三次会话重做后，客户端恰有 amount=3／centered=false 与 amount=1／centered=true 两个实例，MCP 截图确认身体位置与中心上浮；显式 hurtAt 的 2.5 保留完整指定坐标，非文本 diamond 纹理可见。自然到期后的对象字段清空、同一池壳复用、单批正文／描边与跨帧缓存身份均通过 Debug 核对。

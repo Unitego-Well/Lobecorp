@@ -1,5 +1,10 @@
 # 系统文档索引
 
+## 分支专属导航与同步保留
+
+本页工作区职责、任务入口和工具端口是分支专属补充；同步公共地基发生冲突时须保留并逐段审查，不整文件选用源版本。公共规范使用本分支跟踪文件中的正文和仓库内链接，不依赖原始物理工作树；各分支进度、问题和验收证据仍由所属分支维护，不复制到 dev，也不将 dev 视为所有分支当前任务的执行者。同步只传播已提交内容，本地未发布报告、备份和运行输出仅作定位，不构成公共证据。
+
+
 全部自有 Markdown、规则、Skill、记忆、工具参考及只读边界见 [文档总索引](../README.md)；本页仅按系统职责提供专题入口。
 
 本工作区负责 **Photon／特效**，真实根为 `E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon`，分支为 `codex/photon`。先读 [当前能力与恢复入口](photon-workspace.md)、[Photon 唯一问题汇总](../issues.md) 和 [MCP API](photon-effect-mcp-api.md)，再按下表选择专题。其余系统作为共同基础保留，不表示在本工作区重新验收；旧资料缺失时只保留明确的历史路径。
@@ -59,7 +64,7 @@
 | Minecraft MCP | [工作区固定版本接入](minecraft-mcp-workspace.md)、[Minecraft MCP](minecraft-mcp.md)、[GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)、[后台接管、鼠标释放与限帧](minecraft-mcp-background-control.md) |
 | 特效 MCP | [Photon 特效 MCP](photon-effect-mcp.md) |
 | 特效经验 | 制作经验与维护规范（历史路径 `effect-authoring-lessons.md`，本工作区不存在） |
-| AI 特效制作 | [制作技能](../../.codex/skills/lobecorp-effect-authoring/SKILL.md) |
+| AI 特效制作 | 制作技能（当前分支缺失，原路径：`../../.codex/skills/lobecorp-effect-authoring/SKILL.md`；见[问题汇总](../issues.md)） |
 | 修改记录 | [修改记录](changes.md) |
 
 ## 修改与规则入口

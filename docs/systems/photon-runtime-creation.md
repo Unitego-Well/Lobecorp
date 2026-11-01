@@ -73,5 +73,5 @@ PhotonStatePlanUtil只编译已声明的LDLib持久化schema，准备时读取�
 
 本批38项纯JUnit通过；宿主检查在主窗口归档后运行，11资源/80对象、四模式fresh对照、复用/旧租约、source隔离、状态及命名等每局74项通过。测试不等于完整视觉、Iris、净保留或长期生命周期验收。P22/P23保持开放。
 
-[本地研究与完整参照表](../../.agent/reports/20261031-runtime-redesign-final.md)；证据根 `build/agent-backups/20261031-runtime-redesign/`。四方案完整原字节在freeze-v1各694文件，freeze-v2各8文件覆盖形成实际受测版本，manifest明确恢复次序；不覆盖准备/失败版本。
+本地研究与完整参照表（本地未发布定位：`../../.agent/reports/20261031-runtime-redesign-final.md`，不作为公共证据入口）；证据根 `build/agent-backups/20261031-runtime-redesign/`。四方案完整原字节在freeze-v1各694文件，freeze-v2各8文件覆盖形成实际受测版本，manifest明确恢复次序；不覆盖准备/失败版本。
 

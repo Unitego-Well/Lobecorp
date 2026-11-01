@@ -1,6 +1,6 @@
 # Minecraft MCP
 
-核对日期：2026-10-13。本文记录本地桥接结构、快速使用路径与本轮实际结果，避免每次游戏检查重复排查。项目技能入口为 [lobecorp-minecraft-mcp](../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md)
+核对日期：2026-10-13。本文记录本地桥接结构、快速使用路径与本轮实际结果，避免每次游戏检查重复排查。项目技能入口为 lobecorp-minecraft-mcp（当前分支缺失，原路径：`../../.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；见[问题汇总](../issues.md)）
 ；版本、工具配置或 Mod 改变时再核对对应源码。
 
 ## 结构化游戏操控

@@ -12,7 +12,7 @@
 - 多段技能使用通用多段技能与多段普通技能层次；上一段完成后的默认续段窗口为 10 tick，超时重置段数并开始整套冷却。清道夫与女皇普攻的 AI 和指挥家 HUD 共用连段机制。
 - 指挥家 HUD 按现有技能类型稳定排序：普通攻击（BASIC）→ 攻击技能（ATTACK）→ 辅助技能（SUPPORT），同类保留原顺序，不为排序另建未确认的技能类型。
 - 轻量技能效果实例由服务端 `ServerLevel` 管理，拥有独立位置和生命周期；不注册为 Minecraft 实体，不写入世界存档，也不等同于命中框。来源实体和技能结束的移除绑定分别控制，复用已有命中框及快照同步能力。
-- 动画规则遵循 [实体动画 Skill](../../.codex/skills/lobecorp-entity-animation/SKILL.md)，视觉同步规则遵循 [实体视觉同步 Skill](../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md)。不通过每 tick 重播维持动作，不用多个状态或 Payload 重复驱动同一表现；动态移动动画倍率使用渲染部分刻插值，动画选择保留现有速度判定与迟滞。
+- 动画规则遵循 实体动画 Skill（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-animation/SKILL.md`；见[问题汇总](../issues.md)），视觉同步规则遵循 实体视觉同步 Skill（当前分支缺失，原路径：`../../.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；见[问题汇总](../issues.md)）。不通过每 tick 重播维持动作，不用多个状态或 Payload 重复驱动同一表现；动态移动动画倍率使用渲染部分刻插值，动画选择保留现有速度判定与迟滞。
 - 事件订阅遵循 [事件监听规范](../event-registration.md)：按功能域保留唯一入口，客户端入口限制发行侧；保留总线、优先级、取消语义及处理顺序。
 
 ## 实体技能转向与星束命中

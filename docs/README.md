@@ -27,32 +27,32 @@
 | [MCP 后台控制](../.agents/skills/lobecorp-mcp-background-control/SKILL.md) | `.agents/skills/lobecorp-mcp-background-control/SKILL.md`；已跟踪 |
 | [Lobecorp Normify](../.agents/skills/lobecorp-normify/SKILL.md) | `.agents/skills/lobecorp-normify/SKILL.md`；已跟踪 |
 | [工作区共同地基同步](../.agents/skills/lobecorp-workspace-sync/SKILL.md) | `.agents/skills/lobecorp-workspace-sync/SKILL.md`；已跟踪 |
-| [IDE Index MCP - Tools Reference](../.claude/skills/ide-index-mcp/references/tools-reference.md) | `.claude/skills/ide-index-mcp/references/tools-reference.md`；本地保留，不纳入本次提交 |
-| [IDE Index MCP - Agent Guide](../.claude/skills/ide-index-mcp/SKILL.md) | `.claude/skills/ide-index-mcp/SKILL.md`；本地保留，不纳入本次提交 |
-| [JetBrains Debugger MCP - Complete Tool Reference](../.claude/skills/jetbrains-debugger/references/tool-reference.md) | `.claude/skills/jetbrains-debugger/references/tool-reference.md`；本地保留，不纳入本次提交 |
-| [JetBrains Debugger MCP](../.claude/skills/jetbrains-debugger/SKILL.md) | `.claude/skills/jetbrains-debugger/SKILL.md`；本地保留，不纳入本次提交 |
-| [指挥家项目记忆](../.codex/skills/lobecorp-conductor/references/architecture.md) | `.codex/skills/lobecorp-conductor/references/architecture.md`；本地保留，不纳入本次提交 |
-| [实体技能架构参考](../.codex/skills/lobecorp-conductor/references/entity-skill-architecture.md) | `.codex/skills/lobecorp-conductor/references/entity-skill-architecture.md`；本地保留，不纳入本次提交 |
-| [指挥家数据迁移历史记录](../.codex/skills/lobecorp-conductor/references/migration-plan.md) | `.codex/skills/lobecorp-conductor/references/migration-plan.md`；本地保留，不纳入本次提交 |
-| [指挥家维护](../.codex/skills/lobecorp-conductor/SKILL.md) | `.codex/skills/lobecorp-conductor/SKILL.md`；本地保留，不纳入本次提交 |
-| [Photon 原生制作参考](../.codex/skills/lobecorp-effect-authoring/references/native-workflow.md) | `.codex/skills/lobecorp-effect-authoring/references/native-workflow.md`；本地保留，不纳入本次提交 |
-| [Lobecorp 制作与交付约定](../.codex/skills/lobecorp-effect-authoring/references/project-workflow.md) | `.codex/skills/lobecorp-effect-authoring/references/project-workflow.md`；本地保留，不纳入本次提交 |
-| [教程冲击波逐步对应表](../.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md) | `.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md`；本地保留，不纳入本次提交 |
-| [AI 特效制作](../.codex/skills/lobecorp-effect-authoring/SKILL.md) | `.codex/skills/lobecorp-effect-authoring/SKILL.md`；本地保留，不纳入本次提交 |
-| [Lobecorp 实体动画](../.codex/skills/lobecorp-entity-animation/SKILL.md) | `.codex/skills/lobecorp-entity-animation/SKILL.md`；本地保留，不纳入本次提交 |
-| [Lobecorp 实体视觉同步](../.codex/skills/lobecorp-entity-visual-sync/SKILL.md) | `.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；本地保留，不纳入本次提交 |
-| [Lobecorp Event Architecture](../.codex/skills/lobecorp-event-architecture/SKILL.md) | `.codex/skills/lobecorp-event-architecture/SKILL.md`；本地保留，不纳入本次提交 |
-| [连接、截图与输入定位](../.codex/skills/lobecorp-minecraft-mcp/references/connection-and-input.md) | `.codex/skills/lobecorp-minecraft-mcp/references/connection-and-input.md`；本地保留，不纳入本次提交 |
-| [Debug 与控制归属](../.codex/skills/lobecorp-minecraft-mcp/references/debug-ownership.md) | `.codex/skills/lobecorp-minecraft-mcp/references/debug-ownership.md`；本地保留，不纳入本次提交 |
-| [固定操作快速流程](../.codex/skills/lobecorp-minecraft-mcp/references/fast-flows.md) | `.codex/skills/lobecorp-minecraft-mcp/references/fast-flows.md`；本地保留，不纳入本次提交 |
-| [Lobecorp Minecraft MCP](../.codex/skills/lobecorp-minecraft-mcp/SKILL.md) | `.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；本地保留，不纳入本次提交 |
+| IDE Index MCP - Tools Reference（当前分支缺失，原路径：`../.claude/skills/ide-index-mcp/references/tools-reference.md`；见[问题汇总](issues.md)） | `.claude/skills/ide-index-mcp/references/tools-reference.md`；本地保留，不纳入本次提交 |
+| IDE Index MCP - Agent Guide（当前分支缺失，原路径：`../.claude/skills/ide-index-mcp/SKILL.md`；见[问题汇总](issues.md)） | `.claude/skills/ide-index-mcp/SKILL.md`；本地保留，不纳入本次提交 |
+| JetBrains Debugger MCP - Complete Tool Reference（当前分支缺失，原路径：`../.claude/skills/jetbrains-debugger/references/tool-reference.md`；见[问题汇总](issues.md)） | `.claude/skills/jetbrains-debugger/references/tool-reference.md`；本地保留，不纳入本次提交 |
+| JetBrains Debugger MCP（当前分支缺失，原路径：`../.claude/skills/jetbrains-debugger/SKILL.md`；见[问题汇总](issues.md)） | `.claude/skills/jetbrains-debugger/SKILL.md`；本地保留，不纳入本次提交 |
+| 指挥家项目记忆（当前分支缺失，原路径：`../.codex/skills/lobecorp-conductor/references/architecture.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-conductor/references/architecture.md`；本地保留，不纳入本次提交 |
+| 实体技能架构参考（当前分支缺失，原路径：`../.codex/skills/lobecorp-conductor/references/entity-skill-architecture.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-conductor/references/entity-skill-architecture.md`；本地保留，不纳入本次提交 |
+| 指挥家数据迁移历史记录（当前分支缺失，原路径：`../.codex/skills/lobecorp-conductor/references/migration-plan.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-conductor/references/migration-plan.md`；本地保留，不纳入本次提交 |
+| 指挥家维护（当前分支缺失，原路径：`../.codex/skills/lobecorp-conductor/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-conductor/SKILL.md`；本地保留，不纳入本次提交 |
+| Photon 原生制作参考（当前分支缺失，原路径：`../.codex/skills/lobecorp-effect-authoring/references/native-workflow.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-effect-authoring/references/native-workflow.md`；本地保留，不纳入本次提交 |
+| Lobecorp 制作与交付约定（当前分支缺失，原路径：`../.codex/skills/lobecorp-effect-authoring/references/project-workflow.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-effect-authoring/references/project-workflow.md`；本地保留，不纳入本次提交 |
+| 教程冲击波逐步对应表（当前分支缺失，原路径：`../.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-effect-authoring/references/tutorial-shockwave-breakdown.md`；本地保留，不纳入本次提交 |
+| AI 特效制作（当前分支缺失，原路径：`../.codex/skills/lobecorp-effect-authoring/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-effect-authoring/SKILL.md`；本地保留，不纳入本次提交 |
+| Lobecorp 实体动画（当前分支缺失，原路径：`../.codex/skills/lobecorp-entity-animation/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-entity-animation/SKILL.md`；本地保留，不纳入本次提交 |
+| Lobecorp 实体视觉同步（当前分支缺失，原路径：`../.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-entity-visual-sync/SKILL.md`；本地保留，不纳入本次提交 |
+| Lobecorp Event Architecture（当前分支缺失，原路径：`../.codex/skills/lobecorp-event-architecture/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-event-architecture/SKILL.md`；本地保留，不纳入本次提交 |
+| 连接、截图与输入定位（当前分支缺失，原路径：`../.codex/skills/lobecorp-minecraft-mcp/references/connection-and-input.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-minecraft-mcp/references/connection-and-input.md`；本地保留，不纳入本次提交 |
+| Debug 与控制归属（当前分支缺失，原路径：`../.codex/skills/lobecorp-minecraft-mcp/references/debug-ownership.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-minecraft-mcp/references/debug-ownership.md`；本地保留，不纳入本次提交 |
+| 固定操作快速流程（当前分支缺失，原路径：`../.codex/skills/lobecorp-minecraft-mcp/references/fast-flows.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-minecraft-mcp/references/fast-flows.md`；本地保留，不纳入本次提交 |
+| Lobecorp Minecraft MCP（当前分支缺失，原路径：`../.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；见[问题汇总](issues.md)） | `.codex/skills/lobecorp-minecraft-mcp/SKILL.md`；本地保留，不纳入本次提交 |
 
 ## 记忆与 FAQ（原字节保留）
 
 | 文档 | 路径与维护状态 |
 |---|---|
 | [.cherry-assistant/faq.md](../.cherry-assistant/faq.md) | `.cherry-assistant/faq.md`；已跟踪 |
-| [Lobecorp Mod Architecture Decisions](../memory/FACT.md) | `memory/FACT.md`；本地保留，不纳入本次提交 |
+| Lobecorp Mod Architecture Decisions（本地未发布定位：`../memory/FACT.md`，不作为公共证据入口） | `memory/FACT.md`；本地保留，不纳入本次提交 |
 
 ## 规则、入口与架构
 

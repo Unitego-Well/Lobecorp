@@ -4,6 +4,8 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -47,15 +49,15 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 		lobecorp$rawContainer(PhotonProjectNbtUtil.read(input));
 	}
 
-	@Inject(method = "deserializeProject", at = @At("HEAD"))
-	private void lobecorp$captureData(ValueInput input, CallbackInfo ci) {
-		lobecorp$rawData = PhotonProjectNbtUtil.read(input);
+	@Inject(method = "readProject", at = @At("HEAD"))
+	private void lobecorp$captureData(CompoundTag tag, CallbackInfo ci) {
+		lobecorp$rawData = tag.copy();
 	}
 
-	@Inject(method = "deserializeProject", at = @At("RETURN"))
-	private void lobecorp$captureKnown(ValueInput input, CallbackInfo ci) {
+	@Inject(method = "readProject", at = @At("RETURN"))
+	private void lobecorp$captureKnown(CompoundTag tag, CallbackInfo ci) {
 		lobecorp$knownBefore = lobecorp$currentData();
-		var preview = input.read(PhotonProjectPreviewUtil.PROJECT_FIELD, ExtraCodecs.NBT).orElse(null);
+		var preview = tag.get(PhotonProjectPreviewUtil.PROJECT_FIELD);
 		lobecorp$knownBefore.remove(PhotonProjectPreviewUtil.PROJECT_FIELD);
 		if (preview != null) {
 			lobecorp$knownBefore.put(PhotonProjectPreviewUtil.PROJECT_FIELD, preview.copy());
@@ -73,7 +75,13 @@ public abstract class FXProjectLosslessMixin implements IProject, PhotonProjectR
 	@Unique
 	private CompoundTag lobecorp$currentData() {
 		var result = new CompoundTag();
-		result.put("fx", ((FXProject) (Object) this).getFx().serializeNBT(Platform.getFrozenRegistry()));
+		var project = (FXProject) (Object) this;
+		result.put("fx", project.getFx().serializeNBT(Platform.getFrozenRegistry()));
+		var knownAs = new ListTag();
+		project.getKnownAs().forEach(id -> knownAs.add(StringTag.valueOf(id.toString())));
+		if (!knownAs.isEmpty()) {
+			result.put("knownAs", knownAs);
+		}
 		var preview = ((PhotonProjectPreviewAccess) this).lobecorp$projectPreview();
 		if (preview != null) {
 			result.put(PhotonProjectPreviewUtil.PROJECT_FIELD, preview);

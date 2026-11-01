@@ -10,6 +10,9 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.Collection;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -21,8 +24,8 @@ public abstract class FXHelperMixin {
 	@Unique
 	private static volatile List<Identifier> lobecorp$modelIds;
 
-	@ModifyExpressionValue(method = "loadFX", at = @At(value = "INVOKE",
-			target = "Lnet/minecraft/resources/Identifier;fromNamespaceAndPath(Ljava/lang/String;Ljava/lang/String;)Lnet/minecraft/resources/Identifier;"))
+	@ModifyExpressionValue(method = "readTag", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/photon/client/fx/FXHelper;fileLocation(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/resources/Identifier;"))
 	private static Identifier lobecorp$modelDefinition(Identifier original) {
 		var manager = Minecraft.getInstance().getResourceManager();
 		if (manager.getResource(original).isPresent()) {
@@ -51,6 +54,11 @@ public abstract class FXHelperMixin {
 		}
 		result.sort(Comparator.comparing(Identifier::getNamespace).thenComparing(Identifier::getPath));
 		return List.copyOf(result);
+	}
+
+	@Inject(method = "invalidate", at = @At("HEAD"))
+	private static void lobecorp$invalidateModelIds(Collection<Identifier> locations, CallbackInfo ci) {
+		lobecorp$modelIds = null;
 	}
 
 	@Inject(method = "clearCache", at = @At("HEAD"))

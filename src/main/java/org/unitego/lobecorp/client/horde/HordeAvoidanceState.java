@@ -76,10 +76,10 @@ public class HordeAvoidanceState implements AutoCloseable {
 			throw new IllegalStateException("群体固定列数变化需要新的事件资源");
 		}
 
-		long first = firstRow(time, event.speed, event.length, event.rules.rowSpacing());
-		long last = lastRow(time, event.speed, event.stop, event.rules.rowSpacing());
+        long first = firstRow(time, event.speed, event.length, event.rowSpacing());
+        long last = lastRow(time, event.speed, event.stop, event.rowSpacing());
 		int count = last < first ? 0 : Math.toIntExact(last - first + 1);
-		int capacityRows = Math.max(count, Math.toIntExact((long) Math.ceil(event.length / event.rules.rowSpacing()) + 1));
+		int capacityRows = Math.max(count, Math.toIntExact((long) Math.ceil(event.length / event.rowSpacing()) + 1));
 		ensureWrite(event.columns, capacityRows);
 		firstRow = first;
 		rows = count;

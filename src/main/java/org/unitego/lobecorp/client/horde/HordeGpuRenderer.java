@@ -643,8 +643,8 @@ public class HordeGpuRenderer {
 		HordeRenderMetrics.set(HordeRenderMetrics.Counter.REGIONS, split.count());
 		put((float) origin.x, (float) origin.y, (float) origin.z, (float) batch.time());
 		put((float) camera.x, (float) camera.y, (float) camera.z, (float) event.speed);
-		put((float) event.rules.rowSpacing(), (float) event.rules.columnSpacing(), event.columns, (float) event.length);
-		put((float) (batch.time() * event.speed - row * event.rules.rowSpacing()), batch.block().firstColumn(), batch.block().columns(), columnOffset);
+		put((float) event.rowSpacing(), (float) event.columnSpacing(), event.columns, (float) event.length);
+		put((float) (batch.time() * event.speed - row * event.rowSpacing()), batch.block().firstColumn(), batch.block().columns(), columnOffset);
 		put((float) batch.block().first(), (float) batch.block().last(), vertexOffset, split.count());
 		put(item.geometry().model.vertexCount(), item.geometry().model.frames(), item.geometry().model.duration(), item.geometry().hasGlow ? 1 : 0);
 		put(LIGHT.mask(), event.nodes.length, 0, event.entityHeight);

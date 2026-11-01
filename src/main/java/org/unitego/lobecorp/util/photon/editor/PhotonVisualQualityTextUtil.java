@@ -44,6 +44,7 @@ public class PhotonVisualQualityTextUtil {
 		LangHandler.creates(Lobecorp.NAMESPACE, group("effects"), "World effects", "世界特效");
 		LangHandler.creates(Lobecorp.NAMESPACE, group("animations"), "Entity animations", "实体动画");
 		LangHandler.creates(Lobecorp.NAMESPACE, group("models"), "Model detail", "模型精细度");
+        LangHandler.creates(Lobecorp.NAMESPACE, group("cache"), "Cache", "缓存");
 		LangHandler.creates(Lobecorp.NAMESPACE, group("adaptation"), "Adaptive response", "自适应响应");
 		LangHandler.creates(Lobecorp.NAMESPACE, group("general"), "General", "通用");
 		registerEffects();
@@ -139,13 +140,13 @@ public class PhotonVisualQualityTextUtil {
 		register("models.exemptModels", "Exempt model sources", "免简化的模型来源",
 				"Comma-separated entity registry IDs or exact effect emitter names.",
 				"以英文逗号分隔实体注册 ID 或特效发射器内部名称，列表中的模型保持完整。");
-		register("models.cacheEntries", "Cache entry limit", "缓存条目上限",
+		register("cache.cacheEntries", "Cache entry limit", "缓存条目上限",
 				"Maximum entries per model cache. Cleared on resource reload and world exit.",
 				"每种模型缓存的最大条目数，资源重载和退出世界时清理。");
-		register("models.cacheMiB", "Cache budget (MiB)", "缓存预算（MiB）",
+		register("cache.cacheMiB", "Cache budget (MiB)", "缓存预算（MiB）",
 				"Memory budget per model cache in MiB.",
 				"每种模型缓存的内存预算，单位为 MiB。");
-		register("models.maxBakesPerFrame", "New bakes per frame", "每帧最大烘焙数",
+		register("cache.maxBakesPerFrame", "New bakes per frame", "每帧最大烘焙数",
 				"Maximum new model bakes per cache per frame. Draws original geometry when the budget is exhausted.",
 				"每种缓存每帧最多新烘焙的模型数，预算不足时暂时绘制原模型。");
 	}

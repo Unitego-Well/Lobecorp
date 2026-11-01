@@ -132,7 +132,7 @@ public final class HordeDebugState {
             double headStation = HordeTide.head(now, event.speed);
             int middle = event.columns / 2;
             long headRow = 0;
-            long tailRow = (long) Math.floor(Math.min(headStation, event.length) / event.rules.rowSpacing());
+            long tailRow = (long) Math.floor(Math.min(headStation, event.length) / event.rowSpacing());
             result.add(new TideGizmo(position(event, headRow, middle, now), true));
             if (tailRow > 0) {
                 result.add(new TideGizmo(position(event, tailRow, middle, now), false));
@@ -142,8 +142,8 @@ public final class HordeDebugState {
     }
 
     private static Vec3 position(HordeClient.ClientEvent event, long row, int column, double now) {
-        return event.tide.position(row, column, event.columns, now, event.rules.rowSpacing(),
-                event.rules.columnSpacing(), event.speed);
+        return event.tide.position(row, column, event.columns, now, event.rowSpacing(),
+                event.columnSpacing(), event.speed);
     }
 
     private static String format(double value) {

@@ -25,6 +25,8 @@ DS 会话除本文件外必须执行[DS 执行规则](docs/standards/ds-executio
 
 ## 工具、编辑与并行
 
+所有工作区统一执行[测试场景保护](docs/standards/workflow.md#测试场景保护)、[DS 辅助模型与路由](docs/standards/workflow.md#ds-辅助模型与路由)及[项目工具链](docs/systems/README.md#项目工具链)，不再作为单一分支专属要求。
+
 子代理只能使用所选模型支持的最低推理档位；创建、接续或重新委派时显式指定，不因任务复杂而自行提高。该要求仅适用于子代理；用户对当前任务的明确指令优先。具体执行见[子代理最低推理档位](docs/standards/workflow.md#子代理最低推理档位)。
 
 DS中转调用、适用任务、回报与轮换使用[通用规则版本化快照](docs/standards/ds-collaboration.md)；项目交接和停止边界见[工作流程](docs/standards/workflow.md#ds-简单任务委派与停止检查)。通用规则只由统一来源维护，快照随提交同步，不依赖本机文件链接。
@@ -45,7 +47,3 @@ IDEA 专属编辑、后台 Git、工作树隔离、外部 Minecraft MCP 制品�
 | 实体、AI、技能、动画、同步或星束命中 | [实体契约](docs/standards/entity-contracts.md)适用章节，再读对应项目 Skill |
 | 进入游戏、截图、控制、连接或 Debug | Minecraft MCP Skill（路径 `.codex/skills/lobecorp-minecraft-mcp/SKILL.md` 当前缺失，须先核对入口并读取，缺失状态见[问题汇总](docs/systems/horde-issues.md)）：按[后台输入与测试边界](docs/standards/workflow.md#后台输入与测试边界)核对窗口状态，编辑器嵌入游戏，快速测试世界流程合批 |
 | 制作、修改或对照验收特效 | 特效制作 Skill（路径 `.codex/skills/lobecorp-effect-authoring/SKILL.md` 当前缺失，须先核对入口并读取，缺失状态见[问题汇总](docs/systems/horde-issues.md)）：按问题读取制作参考，使用透视 |
-
-## Horde 专属补充
-
-- 开发与验收工具链固定为 **spark、BenchMod、mc mcp、idea mcp、debug**，各环节用途与入口见[项目工具链](docs/systems/README.md#项目工具链)；不得用其他方式替代对应环节。

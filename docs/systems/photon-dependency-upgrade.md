@@ -1,5 +1,23 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-01 主工作区版本同步
+
+按用户澄清，仅同步Photon工作区的PhotonMod版本升级及必需API兼容，不合入整个工作区、资源调度架构、性能工具或分支进度。版本目录三项增量来自acfbf85b，通过Git apply --3way --index应用，其他依赖版本保持。
+
+| 依赖 | 主根原版本 | 当前版本 |
+|---|---|---|
+| Photon | 26.1.2.3 | 26.1.2.9 |
+| LDLib2 | 26.1.2.42 | 26.1.2.43 |
+| KilaGraph | 26.1.0.15 | 26.1.0.16.a |
+
+Minecraft26.1.2、NeoForge26.1.2.100、Java25及Maven模块坐标不变。主根IDEA依赖模型已重新导入并确认解析至Photon26.1.2.9。
+
+必要兼容限定为：Occlusion绘制作业保留新增backFacesFirst/records及不支持绑定的回退；撤除上游已替代的copySceneObject及Camera射线补丁；保留光束长度覆盖。项目保存命令转向LDLib2五参dispatchCommand，FXData guard锁定三参反序列化、Emitter批次锁定八参执行层，模型资源回退转至readTag/fileLocation并清理invalidate后的模型ID缓存。FXProject读取预览和原树保留跟随新deserialize/readProject路径，并保留knownAs；导出通知转到实际FXFileActions成功路径，保留上游资源包解析状态与重载选项。没有引入租约/组合/事件准备接口。
+
+本次只做静态检查、依赖解析、编译/生产包隔离及Data；游戏测试继续暂停，未验证客户端Mixin应用、导出通知画面或性能。原始六份snake暂存和.gitignore未混交，Photon工作区原WIP保持。以下发布日期与“最新”措辞只属于2026-10-10历史记录。
+
+## 2026-10-10 历史升级记录
+
 核对日期：2026-10-10。本页记录 Minecraft 26.1.2／NeoForge
 分支的发布证据、更新范围、项目依赖声明与适配检查。功能职责见 [Photon 编辑器](photon-editor.md)、[模型特效](photon-model-effects.md)、[命名动画](photon-named-animations.md)
 和[修复对照](photon-ldlib2-fixes.md)。

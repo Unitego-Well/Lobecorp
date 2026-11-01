@@ -51,7 +51,7 @@ public class PhotonOcclusionUtil {
 
 				pipeline = info.programs().main();
 				replacement = new Job(wrapper(job.renderType(), info), job.mesh(), job.buffer(),
-						job.stage(), job.orderInLayer(), job.distanceSq(), job.mask());
+						job.stage(), job.orderInLayer(), job.distanceSq(), job.mask(), job.backFacesFirst(), job.records());
 			} else if (original instanceof InstancedJob job) {
 				if (!supports(job)) {
 					continue;
@@ -60,7 +60,7 @@ public class PhotonOcclusionUtil {
 				pipeline = job.programs().main();
 				replacement = new InstancedJob(new PhotonDrawInfo.Programs(PhotonOcclusionPipelineUtil.color(pipeline)),
 						job.geometry(), job.bindings(), job.positionOffset(), job.blendEquation(),
-						job.stage(), job.orderInLayer(), job.distanceSq(), job.variant(), job.mask());
+						job.stage(), job.orderInLayer(), job.distanceSq(), job.variant(), job.mask(), job.backFacesFirst());
 			}
 
 			if (pipeline == null) {
@@ -77,6 +77,7 @@ public class PhotonOcclusionUtil {
 	private static boolean supports(Job job, @Nullable PhotonDrawInfo info) {
 		return info != null && PhotonOcclusionPipelineUtil.supports(info.programs().main())
 				&& info.bindings().graph() == null && info.bindings().customUniforms() == null
+				&& info.bindings().binder() == null && job.records() == null
 				&& info.bindings().textures().containsKey(TEXTURE_SAMPLER)
 				&& PhotonMaterialUniforms.sliceFor(job.renderType()) != null;
 	}
@@ -84,6 +85,7 @@ public class PhotonOcclusionUtil {
 	private static boolean supports(InstancedJob job) {
 		return PhotonOcclusionPipelineUtil.supports(job.programs().main())
 				&& job.bindings().graph() == null && job.bindings().customSlice() == null
+				&& job.bindings().binder() == null
 				&& job.bindings().textures().containsKey(TEXTURE_SAMPLER);
 	}
 

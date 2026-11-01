@@ -131,7 +131,8 @@
 		"photon.editor.client.TrackEditorMixin",
 		"photon.editor.client.AdditionalGPUDataSettingMixin",
 		"photon.editor.client.TextFieldMixin",
-		"photon.editor.client.TextAreaMixin"
+		"photon.editor.client.TextAreaMixin",
+		"photon.editor.client.FXFileActionsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-01 R3性能矩阵已执行，15有效3失败
+
+用户重新授权开始测试；在a58fbf1上串行执行普通/光影×女皇25秒/三次激光/空白各3局。15局通过完整帧/Spark归档校验，三局光影激光均因资源PREPARING未能施法，不计有效性能。普通激光最坏275.10～396.47ms，光影空白单局259.59ms，P22/P23不关闭；没有同版本优化收益结论。具体失败见[唯一问题清单](../issues.md#2026-11-01-r3光影激光资源准备未就绪)，完整统计见本地.agent/reports/20261101-photon-event-performance-r3.md与build/agent-backups/20261101-photon-event-perf-r3/matrix-audit.json。
+
+本轮只读观察窗口，固定负载/场景与源码保持，旧失败局不覆盖；测试已结束，游戏/Debug/observer/helper已释放，原WIP保留。未通知其他会话，未进行窗口最小化/鼠标交互等专项验收。下方暂停记录为此前阶段历史。
+
 ## 2026-11-01 公共窗口策略已接入，性能继续暂停
 
 已通过Git三方同步94165d5并完成Photon专属适配：窗口生命周期由公共DevelopmentWindowPolicy一次非激活铺满处理，测试场景只读观察焦点/native max位；不调用场景Focus/Max/restore，不用native MAX位作为硬门禁。保留未最小化、有效窗口/帧尺寸和原负载/ID/时长。开发旧性能入口移除窗口/AFK/VSync/FPS/pause改写与伪造输入，production PhotonFrameCapture的原有输入计时行为保留。正常的一次鼠标释放及聚焦后用户主动点击逻辑未全局禁用。

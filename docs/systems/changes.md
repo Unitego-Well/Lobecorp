@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-11-01 R3性能矩阵执行与证据归档
+
+受测a58fbf1，新增忽略的18份R3运行配置与独立原字节输入，保留R1/R2失败/中止证据，不改生产/Bench源码、原场景或用户设置。普通/光影×女皇25秒/三次激光/空白各3局全部执行，15局有效，3光影激光均因资源PREPARING未达施法门槛失败；完整矩阵INCOMPLETE。P99逐局nearest-rank复算，五组汇总与失败边界见[当前入口](photon-workspace.md#2026-11-01-r3性能矩阵已执行15有效3失败)，原因仅记录在[唯一问题清单](../issues.md#2026-11-01-r3光影激光资源准备未就绪)。
+
+Spark/帧原件、18截图和启动JFR保留，trace环覆盖不冒充完整时间归因；普通激光最坏396.47ms，光影空白259.59ms，性能未达无长帧目标，不作历史收益比例。测试结束Debug与自有客户端/observer/helper释放，原两个禁用断点和WIP/工具暂存保留。只提交结果文档，不重新构建/Data，不推送或通知其他会话。IDEA编辑备份与本地.agent报告保留修改前记录。
+
 ## 2026-11-01 补齐新版光子导出通知
 
 核对实际 Photon26.1.2.9 源码和字节码：readProject仍调用deserializeProject，完整MapCodec捕获与knownAs/组合快照有效，保留分支Lossless实现；deserialize HEAD扩展读取已覆盖原生提前返回。上游导出转移到FXFileActions后，分支仅余通知容器和文案，缺少成功触发。定向从c1b12d6应用新增FXFileActionsMixin及JSON注册，Git三方模式中新增类直接应用、JSON干净三方合并；保留原生FXPack弹窗，不同步整支业务。

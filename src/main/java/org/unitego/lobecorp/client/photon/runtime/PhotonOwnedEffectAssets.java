@@ -58,6 +58,8 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /// 仅处理资源定义，不建立运行实例；共享纹理和管线由原有管理器持有。
 public class PhotonOwnedEffectAssets {
@@ -65,6 +67,11 @@ public class PhotonOwnedEffectAssets {
 	private static final Map<PhotonOwnedEffectResources.SourceKey, String> DEVICE_STAMPS = new LinkedHashMap<>();
 
 	private static long deviceRevision;
+	private static volatile DeviceStampKey cachedDeviceStamp;
+
+	private record DeviceStampKey(long revision, int fxGeneration, long renderGeneration, boolean iris,
+	                              String pack, PhotonRuntimeFactory.Mode mode, String value) {
+	}
 
 	public static void invalidateDeviceResources() {
 		deviceRevision++;
@@ -75,13 +82,30 @@ public class PhotonOwnedEffectAssets {
 	}
 
 	private static String deviceStamp() {
-		return deviceRevision + ":" + FXHelper.generation() + ":" + PhotonRenderTypes.reloadGeneration() + ":" +
-				IrisCompat.isUsingShaderPack() + ":" +
-                IrisCompat.packName() + ":" + PhotonRuntimeFactory.mode();
+		long revision = deviceRevision;
+		int fxGeneration = FXHelper.generation();
+		long renderGeneration = PhotonRenderTypes.reloadGeneration();
+		boolean iris = IrisCompat.isUsingShaderPack();
+		String pack = IrisCompat.packName();
+		var mode = PhotonRuntimeFactory.mode();
+		var cached = cachedDeviceStamp;
+		if (cached != null && cached.revision() == revision && cached.fxGeneration() == fxGeneration
+				&& cached.renderGeneration() == renderGeneration && cached.iris() == iris
+				&& Objects.equals(cached.pack(), pack) && cached.mode() == mode) {
+			return cached.value();
+		}
+		var value = revision + ":" + fxGeneration + ":" + renderGeneration + ":" + iris + ":" + pack + ":" + mode;
+		cachedDeviceStamp = new DeviceStampKey(revision, fxGeneration, renderGeneration, iris, pack, mode, value);
+		return value;
 	}
 
 	public static boolean deviceCurrent(PhotonOwnedEffectResources.SourceKey source) {
 		return deviceStamp().equals(DEVICE_STAMPS.get(source));
+	}
+
+	/// 只读判断：当前设备 stamp 是否已与已准备 stamp 不同；不触发任何准备或设备操作。
+	public static boolean devicePending(PhotonOwnedEffectResources.SourceKey source) {
+		return !deviceCurrent(source);
 	}
 
 	public static void prepare(FX definition, PhotonOwnedEffectResources.SourceKey source) {
@@ -305,7 +329,42 @@ public class PhotonOwnedEffectAssets {
 	private record FileFingerprint(String attributes, String content) {
 	}
 
-	/// 内存内容与文件属性作门禁；资源流不暴露文件属性，逐次轮转确认一个依赖的内容。
+	/// 客户端只捕获内存 NBT 与依赖清单；文件和资源流的内容确认放到 worker。
+	public static CompletableFuture<String> probeAuthoring(FX definition) {
+		var memory = definition.serializeNBT(Platform.getFrozenRegistry()).toString();
+		var files = List.copyOf(AUTHOR_FILES.keySet());
+		var resources = List.copyOf(AUTHOR_RESOURCES.keySet());
+		var manager = Minecraft.getInstance().getResourceManager();
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				var digest = MessageDigest.getInstance("SHA-256");
+				digest.update(memory.getBytes(StandardCharsets.UTF_8));
+				for (var file : files) {
+					digest.update(file.toString().getBytes(StandardCharsets.UTF_8));
+					digest.update(fileFingerprint(file, null).content().getBytes(StandardCharsets.UTF_8));
+				}
+				for (var id : resources) {
+					digest.update(id.toString().getBytes(StandardCharsets.UTF_8));
+					var resource = manager.getResource(id);
+					if (resource.isEmpty()) {
+						digest.update("missing".getBytes(StandardCharsets.UTF_8));
+						continue;
+					}
+					try (var input = resource.get().open()) {
+						digest.update(resource.get().sourcePackId().getBytes(StandardCharsets.UTF_8));
+						digest.update(streamFingerprint(input).getBytes(StandardCharsets.UTF_8));
+					}
+				}
+				return HexFormat.of().formatHex(digest.digest());
+			} catch (IOException failure) {
+				throw new UncheckedIOException(failure);
+			} catch (NoSuchAlgorithmException impossible) {
+				throw new AssertionError(impossible);
+			}
+		});
+	}
+
+	/// 在显式打开或新修订提交后发现依赖；tick 轮询只使用独占清单异步确认内容。
 	public static String authoringFingerprint(FX definition) {
 		try {
 			long generation = PhotonOwnedEffectResources.resourceRevision();

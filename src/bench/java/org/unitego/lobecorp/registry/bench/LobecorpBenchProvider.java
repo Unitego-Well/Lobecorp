@@ -8,6 +8,9 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientRegistrar;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerProvider;
 import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
+import org.unitego.lobecorp.client.bench.PhotonLogicRegressionScenario;
+import org.unitego.lobecorp.client.bench.PhotonWorkspaceContractScenario;
+import org.unitego.lobecorp.client.bench.PhotonBridgeContractScenario;
 import org.unitego.lobecorp.client.bench.PhotonMigrationLaserScenario;
 import org.unitego.lobecorp.client.bench.PhotonWorkspaceReviewScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridQueenScenario;
@@ -48,6 +51,21 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		if (PhotonBridgeContractScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonBridgeContractScenario.ID, "标准MCP导出与关闭契约",
+					Set.of("client", "photon", "bridge", "logic"), Duration.ofSeconds(600)), _ -> new PhotonBridgeContractScenario());
+			return;
+		}
+		if (PhotonWorkspaceContractScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonWorkspaceContractScenario.ID, "组合状态、依赖与冻结回读契约",
+					Set.of("client", "photon", "workspace", "logic"), Duration.ofSeconds(600)), _ -> new PhotonWorkspaceContractScenario());
+			return;
+		}
+		if (PhotonLogicRegressionScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonLogicRegressionScenario.ID, "Photon独立逻辑回归",
+					Set.of("client", "photon", "logic"), Duration.ofSeconds(360)), _ -> new PhotonLogicRegressionScenario());
+			return;
+		}
 		if (PhotonWorkspaceReviewScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonWorkspaceReviewScenario.ID, "工作区审查：自然排空、子池退休与文件导出",
 					Set.of("client", "photon", "review", "lifecycle"), Duration.ofSeconds(240)), _ -> new PhotonWorkspaceReviewScenario());

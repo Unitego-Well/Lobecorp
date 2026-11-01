@@ -34,6 +34,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /// 仅准备显式登记的自有组件数据；不持有世界、实体或运行租约。
 @NullMarked
@@ -44,11 +47,10 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static volatile Map<Identifier, Result> exported = Map.of();
 	// 设备失败不丢弃已读取的独占CPU快照；对外Result仍只有READY携带成果。
 	private static Map<Identifier, Prepared> exportedDefinitions = Map.of();
-	private static final Map<SourceKey, DeviceRetry> DEVICE_RETRIES = new LinkedHashMap<>();
+	private static final Map<SourceKey, Prepared> PENDING_SNAPSHOTS = new LinkedHashMap<>();
+	private static final Map<SourceKey, CompletableFuture<SourceKey>> SNAPSHOT_COMPLETIONS = new LinkedHashMap<>();
 	private static final long DEVICE_RETRY_DELAY_NANOS = 1_000_000_000L;
 
-	private record DeviceRetry(String stamp, long attemptedAt) {
-	}
 	private static final Map<SourceKey, Map<Identifier, FX>> RESOLVED = new LinkedHashMap<>();
 	private static final Map<Identifier, Map<String, Identifier>> SNAPSHOT_COMPONENTS = new LinkedHashMap<>();
 	private static @Nullable SourceKey resolvingSource;
@@ -56,6 +58,11 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static volatile String reloadFailure = "";
 	private static volatile long generation;
 	private static int nativeFXGeneration = -1;
+	private static volatile boolean deviceDirty;
+	private static long authoringRevision;
+	private static volatile boolean dispatchInFlight;
+	private static boolean exportedDataRetry;
+	private static final AtomicLong DISPATCH_GENERATION = new AtomicLong();
 	private static final Map<Identifier, Consumer<Prepared>> DEFINITION_PREPARERS = new LinkedHashMap<>();
 	private static final Map<Identifier, Consumer<SourceKey>> DEFINITION_INVALIDATORS = new LinkedHashMap<>();
 
@@ -215,13 +222,17 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		}
 	}
 
+	private static synchronized boolean registered(Identifier effectId) {
+		return REGISTRATIONS.containsKey(effectId);
+	}
+
 	private static synchronized Map<Identifier, Map<String, Identifier>> registrations() {
 		return Map.copyOf(REGISTRATIONS);
 	}
 
 	/// READY 要求组成件定义与静态资产准备均已完成；动态场景纹理仍由实际绘制提供。
 	public static Result lookup(SourceKey key) {
-		if (!registrations().containsKey(key.effectId())) {
+		if (!registered(key.effectId())) {
 			return new Result(Readiness.UNREGISTERED, null, "");
 		}
 
@@ -256,54 +267,163 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		return result;
 	}
 
-	/// 由客户端维护入口调用，设备变化不在技能创建栈中同步补载。
+	/// tick 只消费失效通知并派发 CPU 任务；FX 恢复与设备提交使用客户端任务队列。
 	public static void refreshDeviceResources() {
 		requireClientThread();
-		if (preparing || Minecraft.getInstance().getOverlay() instanceof LoadingOverlay) {
+		if (PhotonOwnedPreparationScheduler.closed() || preparing
+				|| Minecraft.getInstance().getOverlay() instanceof LoadingOverlay) {
 			return;
 		}
+
 		if (nativeFXGeneration != FXHelper.generation()) {
-			var manager = Minecraft.getInstance().getResourceManager();
-			apply(prepare(manager, Profiler.get()), manager, Profiler.get());
-			return;
+			nativeFXGeneration = FXHelper.generation();
+			PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.EXPORTED, null, ++authoringRevision);
 		}
-		QueenBeamResourcePreparation.prepare();
-		for (var prepared : java.util.List.copyOf(AUTHORING.values())) {
-			if (!PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
-				try {
-					prepareDefinitions(prepared);
-				} catch (RuntimeException failure) {
-					invalidatePreview(prepared.source().effectId(), prepared.source().kind());
-				}
+		if (deviceDirty) {
+			deviceDirty = false;
+			for (var prepared : AUTHORING.values()) {
+				queueDevice(prepared.source());
 			}
+			for (var prepared : exportedDefinitions.values()) {
+				queueDevice(prepared.source());
+			}
+			PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.QUEEN_BEAM, null, ++authoringRevision);
 		}
-		var current = new LinkedHashMap<>(exported);
-		current.replaceAll((id, result) -> {
-			var prepared = exportedDefinitions.get(id);
-			if (prepared == null || PhotonOwnedEffectAssets.deviceCurrent(prepared.source())) {
-				return result;
-			}
-			return prepareExported(prepared, result);
-		});
-		exported = Map.copyOf(current);
+		dispatchReady(System.nanoTime());
 	}
 
-	private static Result prepareExported(Prepared prepared, Result previous) {
-		var source = prepared.source();
-		var stamp = PhotonOwnedEffectAssets.deviceIdentity();
-		long now = System.nanoTime();
-		var retry = DEVICE_RETRIES.get(source);
-		if (retry != null && retry.stamp().equals(stamp) && now - retry.attemptedAt() < DEVICE_RETRY_DELAY_NANOS) {
-			return previous;
+	private static void queueDevice(SourceKey source) {
+		PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.DEVICE, source, source.revision());
+	}
+
+	private static void dispatchReady(long now) {
+		if (dispatchInFlight || !PhotonOwnedPreparationScheduler.hasWork(now)) {
+			return;
 		}
 
-		DEVICE_RETRIES.put(source, new DeviceRetry(stamp, now));
+		for (var kind : PhotonOwnedPreparationScheduler.Kind.values()) {
+			var tasks = PhotonOwnedPreparationScheduler.ready(kind, now);
+			if (tasks.isEmpty()) {
+				continue;
+			}
+
+			var task = PhotonOwnedPreparationScheduler.begin(tasks.getFirst());
+			switch (kind) {
+				case EXPORTED -> startExported(task);
+				case QUEEN_BEAM -> startQueen(task);
+				case AUTHORING, PUBLISHED_PREVIEW, DEVICE -> startSnapshot(task);
+			}
+			return;
+		}
+	}
+
+	private static <T> void dispatch(PhotonOwnedPreparationScheduler.Task task,
+	                                Supplier<T> worker, Consumer<T> commit) {
+		dispatchInFlight = true;
+		long epoch = DISPATCH_GENERATION.get();
+		var device = PhotonOwnedEffectAssets.deviceIdentity();
+		var client = Minecraft.getInstance();
+		CompletableFuture.supplyAsync(worker).whenComplete((value, failure) ->
+				client.schedule(() -> {
+					if (epoch != DISPATCH_GENERATION.get()) {
+						return;
+					}
+					dispatchInFlight = false;
+					if (!PhotonOwnedPreparationScheduler.current(task, task.revision())) {
+						return;
+					}
+
+					try {
+						if (failure != null) {
+							throw new IllegalStateException("CPU准备失败", failure);
+						}
+						if (!device.equals(PhotonOwnedEffectAssets.deviceIdentity())) {
+							throw new IllegalStateException("准备期间设备代次已变化");
+						}
+						PhotonOwnedPreparationScheduler.ready(task);
+						commit.accept(value);
+						PhotonOwnedPreparationScheduler.commit(task);
+					} catch (RuntimeException invalid) {
+						PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, invalid.toString());
+					}
+				}));
+	}
+
+	private static Prepared normalize(Prepared prepared) {
+		var tags = PhotonOwnedLaser.prepareCpu(prepared);
+		var components = new LinkedHashMap<String, Component>();
+		prepared.components().forEach((name, component) -> components.put(name,
+				new Component(component.resource(), component.sourcePack(), tags.get(name))));
+		return new Prepared(prepared.source(), components);
+	}
+
+	private static void startExported(PhotonOwnedPreparationScheduler.Task task) {
+		var manager = Minecraft.getInstance().getResourceManager();
+		dispatch(task, () -> prepare(manager, Profiler.get()), preparations ->
+				{
+					apply(preparations, manager, Profiler.get());
+					if (exportedDataRetry) {
+						throw new IllegalStateException("部分导出数据读取失败");
+					}
+				});
+	}
+
+	private static void startQueen(PhotonOwnedPreparationScheduler.Task task) {
+		// Photon 的异步预载负责文件读取；设备准备只在客户端提交。
+		var resources = QueenBeamResourcePreparation.preload();
+		dispatch(task, () -> {
+			resources.join();
+			return true;
+		}, _ -> {
+			QueenBeamResourcePreparation.prepare();
+			if (!QueenBeamResourcePreparation.ready()) {
+				throw new IllegalStateException(QueenBeamResourcePreparation.failure());
+			}
+		});
+	}
+
+	private static void startSnapshot(PhotonOwnedPreparationScheduler.Task task) {
+		var source = task.source();
+		var prepared = PENDING_SNAPSHOTS.get(source);
+		if (prepared == null) {
+			prepared = source.kind() == SourceKind.EXPORTED_FX
+					? exportedDefinitions.get(source.effectId()) : AUTHORING.get(source);
+		}
+		if (prepared == null || !prepared.source().equals(source)) {
+			PhotonOwnedPreparationScheduler.cancel(task.id());
+			return;
+		}
+
+		var snapshot = prepared;
+		dispatch(task, () -> normalize(snapshot), ready -> {
+			prepareDefinitions(ready);
+			if (source.kind() == SourceKind.EXPORTED_FX) {
+				var next = new LinkedHashMap<>(exported);
+				next.put(source.effectId(), new Result(Readiness.READY, ready, ""));
+				exported = Map.copyOf(next);
+			} else {
+				publishPrepared(ready);
+				PENDING_SNAPSHOTS.remove(source);
+				var completion = SNAPSHOT_COMPLETIONS.remove(source);
+				if (completion != null) {
+					completion.complete(source);
+				}
+			}
+		});
+	}
+
+	private static Result prepareExported(Prepared prepared) {
 		try {
 			prepareDefinitions(prepared);
-			DEVICE_RETRIES.remove(source);
 			return new Result(Readiness.READY, prepared, "");
 		} catch (RuntimeException failure) {
-			PhotonOwnedEffectAssets.invalidate(source);
+			queueDevice(prepared.source());
+			var tasks = PhotonOwnedPreparationScheduler.ready(PhotonOwnedPreparationScheduler.Kind.DEVICE, System.nanoTime());
+			for (var task : tasks) {
+				if (prepared.source().equals(task.source())) {
+					PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, failure.toString());
+				}
+			}
 			return new Result(Readiness.FAILED, null, "设备资源重建失败：" + failure);
 		}
 	}
@@ -330,7 +450,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		publishSnapshot(key, definitions);
 	}
 
-	private static void publishSnapshot(SourceKey key, Map<String, CompoundTag> definitions) {
+	private static Prepared snapshot(SourceKey key, Map<String, CompoundTag> definitions) {
 		var registration = registrations().get(key.effectId());
 		if (registration == null || !registration.keySet().equals(definitions.keySet())) {
 			registration = SNAPSHOT_COMPONENTS.get(key.effectId());
@@ -338,27 +458,97 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		if (registration == null || !registration.keySet().equals(definitions.keySet())) {
 			throw new IllegalArgumentException("组合组件未登记或不完整：" + key.effectId());
 		}
+
 		var components = new LinkedHashMap<String, Component>();
 		for (var entry : definitions.entrySet()) {
 			components.put(entry.getKey(), new Component(registration.get(entry.getKey()),
 					key.kind() == SourceKind.AUTHORING ? "authoring-memory" : "published-preview", entry.getValue()));
 		}
-		invalidatePreview(key.effectId(), key.kind());
-		var prepared = new Prepared(key, components);
+		return new Prepared(key, components);
+	}
+
+	private static void publishSnapshot(SourceKey key, Map<String, CompoundTag> definitions) {
+		var prepared = snapshot(key, definitions);
 		prepareDefinitions(prepared);
-		AUTHORING.put(key, prepared);
+		publishPrepared(prepared);
+	}
+
+	private static void publishPrepared(Prepared prepared) {
+		var source = prepared.source();
+		var obsolete = AUTHORING.keySet().stream().filter(key -> !key.equals(source)
+				&& key.effectId().equals(source.effectId()) && key.kind() == source.kind()).toList();
+		AUTHORING.put(source, prepared);
+		for (var key : obsolete) {
+			AUTHORING.remove(key);
+			invalidateDefinition(key);
+		}
+	}
+
+	/// 捕获独占 NBT 后入队；失败保留旧快照，成功才完成通知。
+	public static CompletableFuture<SourceKey> queueSnapshot(SourceKey key, Map<String, CompoundTag> definitions) {
+		requireClientThread();
+		if (PhotonOwnedPreparationScheduler.closed()) {
+			throw new IllegalStateException("自有资源准备已关闭");
+		}
+		cancelPending(key.effectId(), key.kind());
+		PENDING_SNAPSHOTS.put(key, snapshot(key, definitions));
+		var completion = new CompletableFuture<SourceKey>();
+		SNAPSHOT_COMPLETIONS.put(key, completion);
+		var kind = key.kind() == SourceKind.AUTHORING
+				? PhotonOwnedPreparationScheduler.Kind.AUTHORING : PhotonOwnedPreparationScheduler.Kind.PUBLISHED_PREVIEW;
+		PhotonOwnedPreparationScheduler.enqueue(kind, key, key.revision());
+		return completion;
+	}
+
+	private static void cancelPending(Identifier effectId, SourceKind kind) {
+		PhotonOwnedPreparationScheduler.cancelSnapshot(effectId, kind);
+		PENDING_SNAPSHOTS.keySet().removeIf(key -> key.effectId().equals(effectId) && key.kind() == kind);
+		var cancelled = SNAPSHOT_COMPLETIONS.keySet().stream()
+				.filter(key -> key.effectId().equals(effectId) && key.kind() == kind).toList();
+		for (var key : cancelled) {
+			SNAPSHOT_COMPLETIONS.remove(key).cancel(false);
+		}
 	}
 
 	public static void invalidateAuthoring(Identifier effectId) {
+		cancelPending(effectId, SourceKind.AUTHORING);
 		invalidatePreview(effectId, SourceKind.AUTHORING);
 	}
 
 	public static void invalidatePublishedPreview(Identifier effectId) {
+		cancelPending(effectId, SourceKind.PUBLISHED_PREVIEW);
 		invalidatePreview(effectId, SourceKind.PUBLISHED_PREVIEW);
+	}
+
+	/// 编辑事件撤销尚未提交的旧修订；工作区稳定后提交新的独占快照。
+	public static void markAuthoringDirty(Identifier effectId) {
+		requireClientThread();
+		cancelPending(effectId, SourceKind.AUTHORING);
+	}
+
+	public static void markPublishedPreviewDirty(Identifier effectId) {
+		requireClientThread();
+		cancelPending(effectId, SourceKind.PUBLISHED_PREVIEW);
+	}
+
+	/// 通知可能来自渲染回调；只置位，来源枚举在客户端消费通知时执行。
+	public static void markDeviceDirty() {
+		deviceDirty = true;
+	}
+
+	private static void invalidateDefinition(SourceKey key) {
+		var invalidate = DEFINITION_INVALIDATORS.get(key.effectId());
+		if (invalidate != null) {
+			invalidate.accept(key);
+		}
+		PhotonOwnedEffectAssets.invalidate(key);
+		DEPENDENCY_SOURCES.remove(key);
+		RESOLVED.remove(key);
 	}
 
 	private static void invalidatePreview(Identifier effectId, SourceKind kind) {
 		requireClientThread();
+		PhotonOwnedPreparationScheduler.cancelSource(effectId, kind);
 		AUTHORING.keySet().removeIf(key -> {
 			if (!key.effectId().equals(effectId) || key.kind() != kind) {
 				return false;
@@ -374,6 +564,22 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		});
 	}
 
+	/// 全局定义不依赖世界；仅客户端退出时撤销全部准备任务与回调。
+	public static void closePreparation() {
+		requireClientThread();
+		DISPATCH_GENERATION.incrementAndGet();
+		dispatchInFlight = false;
+		PhotonOwnedPreparationScheduler.close();
+		var completions = List.copyOf(SNAPSHOT_COMPLETIONS.values());
+		SNAPSHOT_COMPLETIONS.clear();
+		PENDING_SNAPSHOTS.clear();
+		completions.forEach(completion -> completion.cancel(false));
+		for (var source : List.copyOf(AUTHORING.keySet())) {
+			invalidateDefinition(source);
+		}
+		AUTHORING.clear();
+	}
+
 	private static void requireClientThread() {
 		if (!Minecraft.getInstance().isSameThread()) {
 			throw new IllegalStateException("自有特效资源必须在客户端线程发布");
@@ -383,12 +589,31 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	@Override
 	public CompletableFuture<Void> reload(SharedState currentReload, Executor taskExecutor,
 	                                      PreparationBarrier barrier, Executor reloadExecutor) {
+		long epoch = DISPATCH_GENERATION.incrementAndGet();
+		dispatchInFlight = false;
+		PhotonOwnedPreparationScheduler.reset();
 		preparing = true;
 		reloadFailure = "";
 		try {
 			return CompletableFuture.supplyAsync(() -> prepare(currentReload.resourceManager(), Profiler.get()), taskExecutor).thenCompose(barrier::wait).thenAcceptAsync(preparations ->
-							apply(preparations, currentReload.resourceManager(), Profiler.get()), reloadExecutor)
+							{
+								if (epoch == DISPATCH_GENERATION.get()) {
+									apply(preparations, currentReload.resourceManager(), Profiler.get());
+									if (exportedDataRetry) {
+										var task = PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.EXPORTED, null, epoch);
+										PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, "资源读取失败");
+									}
+									for (var source : PENDING_SNAPSHOTS.keySet()) {
+										var kind = source.kind() == SourceKind.AUTHORING
+												? PhotonOwnedPreparationScheduler.Kind.AUTHORING : PhotonOwnedPreparationScheduler.Kind.PUBLISHED_PREVIEW;
+										PhotonOwnedPreparationScheduler.enqueue(kind, source, source.revision());
+									}
+								}
+							}, reloadExecutor)
 					.whenComplete((_, failure) -> {
+						if (epoch != DISPATCH_GENERATION.get()) {
+							return;
+						}
 						preparing = false;
 						if (failure != null) {
 							reloadFailure = "自有特效资源重载失败：" + failure;
@@ -412,7 +637,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 				// 代次在客户端发布时赋值，worker 不接触注册表和 FX 对象恢复。
 				results.put(entry.getKey(), new Result(Readiness.READY,
-						new Prepared(new SourceKey(entry.getKey(), SourceKind.EXPORTED_FX, 0), components), ""));
+						normalize(new Prepared(new SourceKey(entry.getKey(), SourceKind.EXPORTED_FX, 0), components)), ""));
 			} catch (IOException | RuntimeException exception) {
 				results.put(entry.getKey(), new Result(Readiness.FAILED, null, "自有特效组件数据准备失败：" + exception));
 			}
@@ -440,34 +665,54 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 	private static void apply(Map<Identifier, Result> preparations, ResourceManager manager, ProfilerFiller profiler) {
 		requireClientThread();
+		exportedDataRetry = false;
 		long nextGeneration = generation + 1;
-		for (var prepared : exportedDefinitions.values()) {
-			var invalidate = DEFINITION_INVALIDATORS.get(prepared.source().effectId());
-			if (invalidate != null) {
-				invalidate.accept(prepared.source());
-				PhotonOwnedEffectAssets.invalidate(prepared.source());
-				DEPENDENCY_SOURCES.remove(prepared.source());
-				RESOLVED.remove(prepared.source());
-			}
-		}
-		DEVICE_RETRIES.clear();
+		var previousDefinitions = exportedDefinitions;
 		var definitions = new LinkedHashMap<Identifier, Prepared>();
 		var published = new LinkedHashMap<Identifier, Result>();
 		preparations.forEach((id, result) -> {
 			var prepared = result.prepared();
 			if (prepared == null) {
-				published.put(id, result);
-				return;
+				exportedDataRetry = true;
+				prepared = previousDefinitions.get(id);
+				if (prepared == null) {
+					published.put(id, result);
+					return;
+				}
 			}
 			var ready = new Prepared(new SourceKey(id, SourceKind.EXPORTED_FX, nextGeneration), prepared.components());
+			var preparation = prepareExported(ready);
+			var previous = previousDefinitions.get(id);
+			if (preparation.readiness() != Readiness.READY && previous != null) {
+				var fallback = new Prepared(ready.source(), previous.components());
+				var restored = prepareExported(fallback);
+				if (restored.readiness() == Readiness.READY) {
+					ready = fallback;
+					preparation = restored;
+					exportedDataRetry = true;
+				}
+			}
 			definitions.put(id, ready);
-			published.put(id, prepareExported(ready, new Result(Readiness.PREPARING, null, "")));
+			published.put(id, preparation);
 		});
-        exportedDefinitions = Map.copyOf(definitions);
+		exportedDefinitions = Map.copyOf(definitions);
 		exported = Map.copyOf(published);
 		generation = nextGeneration;
+		reloadFailure = "";
 		nativeFXGeneration = FXHelper.generation();
+		for (var prepared : previousDefinitions.values()) {
+			PhotonOwnedPreparationScheduler.cancelSource(prepared.source().effectId(), SourceKind.EXPORTED_FX);
+			invalidateDefinition(prepared.source());
+		}
+		// 导出替换不撤销作者任务；导出失败的设备任务须保留自己的到期时间。
+		for (var entry : published.entrySet()) {
+			if (entry.getValue().readiness() == Readiness.FAILED && definitions.containsKey(entry.getKey())) {
+				var source = definitions.get(entry.getKey()).source();
+				var task = PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.DEVICE, source, source.revision());
+				PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, entry.getValue().failure());
+			}
+		}
 		preparing = false;
-		QueenBeamResourcePreparation.prepare();
+		PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.QUEEN_BEAM, null, generation);
 	}
 }

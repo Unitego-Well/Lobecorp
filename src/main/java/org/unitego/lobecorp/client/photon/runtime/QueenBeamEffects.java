@@ -4,8 +4,6 @@ import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
@@ -498,20 +496,6 @@ public class QueenBeamEffects {
 			} catch (RuntimeException invalid) {
 				effect.close();
 				throw invalid;
-			}
-		}
-
-		private static void controlled(ListTag tracks) {
-			for (var tag : tracks) {
-				var track = (CompoundTag) tag;
-				var data = track.getCompoundOrEmpty("data");
-				if (track.getStringOr("type", "").equals("group")) {
-					controlled(data.getListOrEmpty("children"));
-				} else if (track.getStringOr("type", "").equals("lobecorp_child_animation")) {
-					for (var clip : data.getListOrEmpty("clips")) {
-						((CompoundTag) clip).putString("mode", "CONTROLLED");
-					}
-				}
 			}
 		}
 

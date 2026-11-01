@@ -83,6 +83,7 @@
 		"photon.editor.client.UIDebuggerWindowStateDevelopmentResourcesMixin",
 		"photon.editor.client.DialogSizeStoreDevelopmentResourcesMixin",
 		"photon.editor.client.EditorWindowMixin",
+		"photon.editor.client.FloatingViewRootMixin",
 		"photon.editor.client.ViewMenuMixin",
 		"photon.editor.client.AppearanceSettingsMixin",
 		"photon.editor.client.ModularUIWidgetMixin",

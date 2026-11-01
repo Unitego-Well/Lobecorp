@@ -149,6 +149,12 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		return library;
 	}
 
+	/// 返回与 play 相同的已编译计划定义，供调用方投影形参而不重复扫描动画列表。
+	public @Nullable Definition definition(String name) {
+		var plan = plans.get(name);
+		return plan == null ? null : plan.definition;
+	}
+
 	public boolean matchesController() {
 		if (closed) {
 			return false;

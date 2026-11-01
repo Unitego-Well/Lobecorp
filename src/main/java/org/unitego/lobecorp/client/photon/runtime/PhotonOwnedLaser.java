@@ -138,6 +138,26 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		composition = prepared.composition();
 	}
 
+	/// 纯 CPU：只做版本修正与 NBT 副本，不创建 FX、不碰设备；可在 worker 调用。
+	public static Map<String, CompoundTag> prepareCpu(PhotonOwnedEffectResources.Prepared prepared) {
+		var result = new LinkedHashMap<String, CompoundTag>();
+		for (var entry : prepared.components().entrySet()) {
+			var tag = entry.getValue().definition();
+			int version = tag.getIntOr("version", FXProject.VERSION);
+			if (version > FXProject.VERSION) {
+				throw new IllegalArgumentException("自有组件版本高于当前Photon：" + entry.getKey());
+			}
+			if (version < FXProject.VERSION) {
+				var wrapper = new CompoundTag();
+				wrapper.put("fx", tag);
+				tag = PhotonFXProjectDataFixer.INSTANCE.applyFixes(version, FXProject.VERSION, wrapper).getCompoundOrEmpty("fx");
+			}
+			tag.putInt("version", FXProject.VERSION);
+			result.put(entry.getKey(), tag);
+		}
+		return Map.copyOf(result);
+	}
+
 	/// 仅由资源 apply 或作者修订发布调用；成果不暴露可变 FX，不持世界或租约。
 	private static void prepareDefinitions(PhotonOwnedEffectResources.Prepared prepared) {
 		if (!Minecraft.getInstance().isSameThread()) {
@@ -185,8 +205,8 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		for (var fx : definitions.values()) {
 			PhotonOwnedEffectAssets.prepare(fx, prepared.source());
 		}
-		PREPARED.keySet().removeIf(key -> key.effectId().equals(prepared.source().effectId()) && key.kind() == prepared.source().kind());
-		PREPARED.put(prepared.source(), new PreparedDefinition(definitions, space, loadComposition(prepared)));
+		var composition = loadComposition(prepared);
+		PREPARED.put(prepared.source(), new PreparedDefinition(definitions, space, composition));
 	}
 
 	private static FX restoreComponent(CompoundTag tag) {
@@ -320,6 +340,12 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		register();
 		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, revision);
 		PhotonOwnedEffectResources.publishAuthoring(key, split(currentProject));
+		var preview = new PhotonOwnedLaser(key, level);
+		preview.editorPreview = true;
+		return preview;
+	}
+
+	public static PhotonOwnedLaser preparedPreview(PhotonOwnedEffectResources.SourceKey key, Level level) {
 		var preview = new PhotonOwnedLaser(key, level);
 		preview.editorPreview = true;
 		return preview;
@@ -504,8 +530,10 @@ public class PhotonOwnedLaser implements AutoCloseable {
 			throw new IllegalStateException("组成件命名控制器缺失：" + name);
 		}
 
-		var definition = runtime.library().animations().stream().filter(value -> value.name().equals(animation))
-				.findFirst().orElseThrow(() -> new IllegalArgumentException("命名动画不存在：" + animation));
+		var definition = runtime.definition(animation);
+		if (definition == null) {
+			throw new IllegalArgumentException("命名动画不存在：" + animation);
+		}
 		runtime.play(animation, duration, true,
 				bindings.get(name) == PhotonOwnedLaserComposition.Binding.BEAM ? componentInputs(definition, inputs) : inputs);
 		return runtime;

@@ -37,7 +37,8 @@ public class PhotonRepeatedEffectAssets {
 		}
 
 		// 审计在真实首次 getFX 之后；不提前读取被测资源。
-		var raw = resource(Identifier.parse("photon:fx/first_effect2.fx"), PhotonRepeatedEffectConfig.FX_SHA256, hashes);
+		var raw = resource(FXHelper.fileLocation(Identifier.parse(PhotonRepeatedEffectConfig.NATIVE_FX)),
+				PhotonRepeatedEffectConfig.FX_SHA256, hashes);
 		var directory = Minecraft.getInstance().gameDirectory.toPath();
 		file(directory.resolve(PhotonRepeatedEffectConfig.FX_FILE), PhotonRepeatedEffectConfig.FX_SHA256, hashes);
 		file(directory.resolve(PhotonRepeatedEffectConfig.MATERIAL_FILE), PhotonRepeatedEffectConfig.MATERIAL_SHA256, hashes);

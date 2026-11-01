@@ -1,5 +1,19 @@
 # 系统修改记录
 
+## 2026-11-01 事件准备与完整逻辑验收
+
+事件任务按来源、修订及独立dueAt调度；CPU准备异步、设备提交保留客户端线程，取消/reload/关闭拒绝旧代次，稳态不扫描作者图。编辑器owner改为结构与宿主事件通知。实机发现并修正即时样式旧读、模型导出跳过自定义资产ValueIO、发布预览刷新顺序及关闭后拒绝入队仍改pending的问题。新增三个独立Bench场景及验收夹具，原场景保持。
+
+F7统一139项、B1标准MCP16项分别通过，编译/生产包隔离、Data23份written0、Scheduler7项JUnit通过；证据与边界见[当前验收](photon-workspace.md#2026-11-01-完整逻辑与端到端导出验收)。失败轮次与构建输出保留在所属build/agent-backups，Git历史保留修改前已提交版本，IDEA快照哈希用于已有WIP保护；原有配置、两份测试与工具暂存不混交。用户另明确允许集成纯数据配置构造器。没有推送、性能收益或完整视觉验收结论。
+
+## 2026-11-01 独立游戏逻辑回归：58项通过
+
+新增独立 Bench 场景 lobecorp.photon-08-logic-regression，精确注册后返回，不修改旧场景。R3/R4保留失败证据；R4 Debug确认ADDED已写入NONE，而isDisplayed仍读布局旧值。生产控件通知的去重改用getValueImmediate(LayoutProperties.DISPLAY)，避免同帧反向迁移漏写；夹具同样读取即时样式，不再把未解析布局当事件失败。
+
+R5独立JVM PID45280，58项断言全部通过、0失败，Bench最终run_complete PASSED；编译与生产包隔离通过。游戏内嵌编辑器截图已回看；本轮无性能结论，JFR关闭，spark仅加载且后台采样关闭。证据根build/agent-backups/20261101-photon-logic-bench-r5/client，断言agent-results/photon-logic-regression-20261101/report.json，截图screenshots/logic-verified.png与logic-world.png；Bench报告位于同前缀r4/results，实际游戏目录为r5，路径差异如实保留。报告full_requested_matrix_passed=false：保存对话框取消、确定性真实worker晚到、组合时间/播放与冻结导出仍未覆盖，不称完整矩阵或视觉等价验收。
+
+最终Debug sessions=[]，本轮断点已移除，PID45280与临时桥接46800/51932均已退出，Sol已关闭。规范同步已提交2215c05、2ee1ff8；业务代码仍在原WIP中待精确集成，不混入原配置、测试、run-control和audit工具暂存。
+
 ## 2026-11-01：明确同类事件处理入口复用
 
 - 按用户示例补充通用Java规范：已有事件入口时，新增业务接入该入口，不按业务后缀另建同类事件处理方法；允许内部职责拆分，禁止重复订阅和平行入口。

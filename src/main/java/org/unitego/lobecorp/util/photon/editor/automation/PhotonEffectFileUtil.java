@@ -328,7 +328,7 @@ public class PhotonEffectFileUtil {
 		workspacePath(target.toString());
 		PhotonEditorProjectGuardUtil.requireSupportedFile(target.toFile());
 		if (overwrite) {
-			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} else {
 			Files.move(source, target);
 		}

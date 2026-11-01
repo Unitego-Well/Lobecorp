@@ -12,9 +12,10 @@ import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefiniti
 import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /// 只预热本模组声明的旧技能资源，不在女皇出现时创建持有世界的整棵运行树。
 public class QueenBeamResourcePreparation {
@@ -45,18 +46,61 @@ public class QueenBeamResourcePreparation {
         public boolean ready(String stamp) {
             return completed.equals(stamp);
         }
+
+        public void fail(String stamp, long dueAt) {
+            attempted = stamp;
+            lastAttempt = dueAt - RETRY_DELAY_NANOS;
+            completed = "";
+        }
+
+        public boolean retryDue(long now) {
+            return completed.isEmpty() && !attempted.isEmpty() && now >= lastAttempt + RETRY_DELAY_NANOS;
+        }
     }
 
 	private static String failure = "";
+	private static List<Identifier> cachedEffects = List.of();
+	private static long cachedEffectsRevision = Long.MIN_VALUE;
+	private static PhotonRuntimeFactory.Mode cachedEffectsMode;
+	private static boolean cachedEffectsOwned;
+	private static PreparationStamp cachedPreparationStamp;
+
+	private record PreparationStamp(long revision, PhotonRuntimeFactory.Mode mode, String device,
+	                                List<Identifier> resources, String value) {
+	}
 
 	private static List<Identifier> effects() {
-		return List.of(TheQueenOfHatredAnimationDefinitions.LASER,
+		long revision = PhotonOwnedEffectResources.resourceRevision();
+		var mode = PhotonRuntimeFactory.mode();
+		boolean owned = QueenOwnedLaserEffects.enabled();
+		if (revision == cachedEffectsRevision && mode == cachedEffectsMode && owned == cachedEffectsOwned) {
+			return cachedEffects;
+		}
+		var candidates = List.of(TheQueenOfHatredAnimationDefinitions.LASER,
 						TheQueenOfHatredAnimationDefinitions.LASER_PHASE_TWO,
 						TheQueenOfHatredAnimationDefinitions.STAR_BEAM,
 						TheQueenOfHatredAnimationDefinitions.STAR_BEAM_PHASE_TWO).stream()
-				.filter(id -> !QueenOwnedLaserEffects.enabled() || TheQueenOfHatredAnimationDefinitions.isStarBeam(id))
-				.map(LcAnimationDefinitions::resolve).filter(Objects::nonNull)
-				.map(value -> value.effectId()).filter(Objects::nonNull).distinct().toList();
+				.filter(id -> !owned || TheQueenOfHatredAnimationDefinitions.isStarBeam(id))
+				.toList();
+		var effectIds = new LinkedHashSet<Identifier>();
+		boolean complete = true;
+		for (var id : candidates) {
+			var definition = LcAnimationDefinitions.resolve(id);
+			var effectId = definition == null ? null : definition.effectId();
+			if (effectId == null) {
+				complete = false;
+				continue;
+			}
+			effectIds.add(effectId);
+		}
+		var next = List.copyOf(effectIds);
+		if (complete) {
+			cachedEffects = next;
+			cachedEffectsRevision = revision;
+			cachedEffectsMode = mode;
+			cachedEffectsOwned = owned;
+		}
+		return next;
 	}
 
 	public static void register() {
@@ -65,13 +109,18 @@ public class QueenBeamResourcePreparation {
 		}
 	}
 
+	public static CompletableFuture<Void> preload() {
+		return ENABLED ? FXHelper.preload(effects()) : CompletableFuture.completedFuture(null);
+	}
+
 	public static void prepare() {
 		if (!ENABLED) {
 			return;
 		}
 		var resources = effects();
 		var stamp = preparationStamp(resources);
-		if (!GATE.begin(stamp, System.nanoTime())) {
+		long now = System.nanoTime();
+		if (!GATE.begin(stamp, now)) {
 			return;
 		}
 		failure = "";
@@ -86,8 +135,14 @@ public class QueenBeamResourcePreparation {
 			GATE.complete(stamp);
 		} catch (RuntimeException invalid) {
 			failure = invalid.toString();
+			GATE.fail(stamp, now + RETRY_DELAY_NANOS);
 			Lobecorp.LOGGER.warn("技能静态资源准备失败，未建立预热运行树", invalid);
 		}
+	}
+
+	/// 只读判断是否存在已到期或待重试的技能资源；无失败时返回 false。
+	public static boolean retryDue(long now) {
+		return ENABLED && GATE.retryDue(now);
 	}
 
 	private static void prepare(Identifier id, Set<Identifier> visited) {
@@ -112,8 +167,17 @@ public class QueenBeamResourcePreparation {
 	}
 
 	private static String preparationStamp(List<Identifier> resources) {
-		return PhotonOwnedEffectAssets.deviceIdentity() + ":" + PhotonOwnedEffectResources.resourceRevision()
-				+ ":" + PhotonRuntimeFactory.mode() + ":" + resources;
+		long revision = PhotonOwnedEffectResources.resourceRevision();
+		var mode = PhotonRuntimeFactory.mode();
+		var device = PhotonOwnedEffectAssets.deviceIdentity();
+		var cached = cachedPreparationStamp;
+		if (cached != null && cached.revision() == revision && cached.mode() == mode
+				&& cached.device().equals(device) && cached.resources().equals(resources)) {
+			return cached.value();
+		}
+		var value = device + ":" + revision + ":" + mode + ":" + resources;
+		cachedPreparationStamp = new PreparationStamp(revision, mode, device, List.copyOf(resources), value);
+		return value;
 	}
 
 	public static boolean ready() {

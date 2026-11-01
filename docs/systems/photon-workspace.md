@@ -1,5 +1,89 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-01 完整逻辑与端到端导出验收
+
+本轮范围为事件准备、编辑器归属、组合状态、资源与关闭生命周期、导出事务的完整逻辑矩阵。F7独立客户端139项断言全部通过、0失败、无未测项；真实worker门禁分别验证取消、reload及最终关闭的旧epoch回调返回。B1标准MCP再通过16项端到端检查：真实原生粒子与OBJ三角模型的定义/包导出、修订保持、拒绝覆盖、拒绝脏关闭、显式关闭及PROJECT_CLOSED。四输出均回读：每定义1对象、每包2条目。两者分别报告，不把重叠检查相加为覆盖率。
+
+最终编译/生产包隔离、Data（23份written0）及7项Scheduler JUnit通过；限定源码审查无确认P1/P2。修复即时display旧读、导出ValueIO遗漏快照、发布刷新先激活后改定义、关闭拒绝写入pending表四处实际发现的问题。原生空工程关闭仅验证对话框/标签和既有生命周期保持，不将inactive runtime的valid值扩称GPU资源销毁。当前无控件强/弱登记表，控件更新仅使用事件本地引用。历史G1、视觉等价与P22/P23性能问题不属于本轮通过结论。
+
+原始证据：build/agent-backups/20261101-photon-full-logic-f7/client/agent-results/photon-logic-regression-20261101/report.json；F7截图同client/screenshots/full-logic-final.png；MCP调用与回读证据build/agent-backups/20261101-photon-bridge-b1/mcp-evidence.json，截图bridge-model.png。框架自动帧间隔记录存在，JFR关闭、无主动Spark采集，不将这些运行称为零性能采集或优化收益。游戏/Debug/临时桥接和本轮断点均已回收，失败轮次保留。
+
+## F7完整逻辑139项通过，最终端到端导出与提交待收尾
+
+F7独立PID43848，139项全部通过、0失败、not_run为空，completed_checks_passed及full_requested_matrix_passed均true；关闭拒绝不改变pending状态已实际通过。真实reload旧epoch4/当前5、最终关闭旧epoch5/当前6，在return后STEP_OUT才记录消费。Data成功，23生成文件written0；Scheduler本次JUnit7/7，XML时间2026-11-01T10:27:49.574Z。截图F7 client/screenshots/full-logic-final.png已回看，属于游戏内编辑器帧，不扩称完整视觉或性能验收；游戏退出、Debug sessions=[]、临时断点移除。最终Sol只读审查未发现证据充分的当前可达P1/P2，已关闭。
+
+为严格满足计划ordinary effect_export入口，再新增独立photon-11-bridge-contract待真实MCP调用，底层往返已由完整场景通过，不重复其余矩阵。用户明确允许把原保护的PhotonModelOutputConfig(boolean)纯数据构造改动一并集成；其他原配置/测试/工具暂存继续保护。完整目标仍active，待MCP端到端结果与精确提交。
+
+## F6统一138项通过，关闭拒绝无副作用补正待F7
+
+F6独立PID70044，138项断言通过、0失败；覆盖新增live=false、初始化既有控件、global stamp三来源重建、reload晚到和最终关闭。Debug真实证据：旧reload callback捕获epoch4/当前5，在return分支后STEP_OUT才记录消费；最终关闭捕获epoch5/当前6、closed=true，同样返回后记录，不伪置成功。截图client/screenshots/full-logic-final.png已落盘。证据build/agent-backups/20261101-photon-full-logic-f6/client/agent-results/photon-logic-regression-20261101/report.json；游戏退出、Debug sessions=[]，本轮全部断点移除。
+
+最后代码审查发现queueSnapshot在Scheduler关闭拒绝前先写待准备表；已将closed检查前置，并新增rejection_preserves_pending_state断言。改后构建通过（ij_run__BenchMod_Compile_2593638800713691781.log），待F7实机确认；报告full_requested_matrix_passed改为完整模式、末阶段、无遗漏且无失败时计算，不能用字段本身替代逐项审计。完整目标继续active，待最终回归、Data及精确集成。
+
+## 审计补证夹具已接入（待实机）
+
+已新增owner.initialization_refreshes_existing_control；源码复核当前featureControls注册表已删除，通知方法只使用事件本地控件引用，不靠GC判断。WorkspaceCheck新增phase9–12，真实按钮切live=false、跨tick不自动刷新、显式手动刷新完成、恢复live自动刷新，尚未运行。LifecycleCheck已新增并接入runner末尾：global stamp失效及三来源重建、真实reload worker门禁、最后closePreparation取消/拒绝/旧回调；主线须在旧dispatch客户端回调epoch拒绝返回后记录oldCallbackConsumed，不能仅手填该标志。已修正测试预期，reload可合法重准备相同修订，不能把新epoch发布误判旧worker回写。新增代码错误级静态0，构建日志ij_run__BenchMod_Compile_2616727209077701334.log；下一步F6实机补证，完整目标active。两Sol已关闭，暂无本线游戏。
+
+## F5统一轮次111项通过，完整审计仍有补证项
+
+F5独立JVM PID61544，111项断言全部通过、not_run为空、completed_checks_passed=true；真实桥接discardUnsaved=false拒绝及project/runtime/revision保持已通过。W6组合31项已在本轮统一执行，不能与之前报告直接相加。full_requested_matrix_passed仍false：审计发现live=false手动刷新、global设备stamp失效重建、reload期间worker晚到与最终closePreparation边界缺少独立证据，已新委派互斥范围补证；owner初始化前既有控件及原生关闭资源清理需再核对。F5证据build/agent-backups/20261101-photon-full-logic-f5/client/agent-results/photon-logic-regression-20261101/report.json，Bench日志ij_run__Photon_Full_Logic_F5_15220023896767368154.log；游戏已退出，Debug sessions=[]，worker断点移除，临时bridge22328已关闭。截图桥接调用在退出后返回not connected，未伪称新增截图成功。框架自动帧间隔采集存在，jfr=false不等于零性能采集，本轮无性能结论。完整目标active。
+
+## 组合契约W5与发布刷新顺序修正（待重跑）
+
+W5实机20项断言通过，新增冻结导出成功、源工程不变、重复输出失败保留旧文件、清单存在、真实挂包回读、定义一致及15组成件完整，证明ValueIO资产快照修正有效。随后发布预览刷新抛“运行中不可替换组合定义”：restartPreview先importPublished/applyTime激活第0帧，再composition导致保护拒绝。已增加importPublished(preserveDefinition)，保留编辑定义/禁用集合并在首次applyTime前应用组合；不取消运行态保护。IDEA错误0，构建日志ij_run__BenchMod_Compile_16244508899460837620.log，运行效果待W6。W5证据build/agent-backups/20261101-photon-workspace-w5/results；Debug sessions=[]，setup断点移除。目标active，剩余输出/清理及最终完整轮次仍待验证。
+
+## 组合契约W4与导出准备修正（待重跑）
+
+W4实机11项断言通过，包括删除依赖后原生回退、恢复自动刷新及播放目标保持。冻结导出阶段真实失败“模型实例没有内嵌资产”，堆栈落prepareModelObject。源码确认该路径直接PersistedParser读写，未调用PhotonModelOutputConfig自定义ValueIO中assetSnapshot读写；已将此单一路径改为config.deserialize/serialize与ProblemReporter检查，保留未知字段局部写回。静态错误0，构建正在/已由本轮日志ij_run__BenchMod_Compile_11029998293328529092.log核实，冻结导出运行效果尚未证明。W4证据build/agent-backups/20261101-photon-workspace-w4/results；客户端已stopped，本轮setup断点移除。完整目标active，待W5和最终全矩阵。
+
+## 组合契约W3（7项通过，删除阶段待重跑）
+
+W3实机已通过原生工程载入、seek17、UI responder持久化、暂停时间保持、自动刷新保持以及同大小同mtime纹理变更检测，共7项。阶段3因仍沿用“模型缺失必须失败保留旧预览”的夹具预期超时。已核对当前TextureManager.loadContentsSafe对纹理读取异常返回TextureContents.createMissing；夹具修正为原生纹理删除必须自动探测并完成回退修订，再以该新修订作为恢复基线，防止恢复断言提前通过。该修正尚未实机验证；无生产修改。W3证据build/agent-backups/20261101-photon-workspace-w3/results，Debug已stopped，临时setup断点移除；完整目标仍active。
+
+## 组合契约W2根因修正（待重跑）
+
+W2在异常包装入口Debug确认原始NoSuchElementException来自openNativeAuthor查找顶层ParticleEmitter；真实laser_spell工程顶层是子生成器、命名控制器与空对象，没有顶层粒子发射器。夹具现新增独立原生ParticleEmitter（发射率0）承载临时纹理依赖，保留原激光对象，不改变生产门禁。静态错误0、编译/生产包隔离成功（ij_run__BenchMod_Compile_1195581560841061619.log）。W2失败证据和完整异常栈保留，Debug sessions=[]、临时异常断点移除；下一步W3重跑，组合/导出仍未验收，目标active。
+
+## 组合契约W1（失败，待根因诊断）
+
+新增独立photon-09-workspace-contract，仅用于组合问题迭代，不代替完整矩阵。WorkspaceCheck已改为原生FXProject引用临时目录资源包TextureMaterial，真实挂包重载后才载入作者；保留同大小同mtime、删除恢复、冻结回读及模型单资产往返断言。编译成功。W1实机在初次重载后包装异常退出、assertions为空，当前外层信息不足以归因；已增强新场景报告保存failure_stack并记录真实异常链，下一轮在failure入口核对。证据build/agent-backups/20261101-photon-workspace-w1/results，日志ij_run__Photon_Workspace_W1_2231674735570731872.log；Debug sessions=[]、临时setup断点移除、Sol已关闭。目标保持active，组合/导出仍未验收。
+
+## 完整测试F3诊断与夹具修正（待重跑）
+
+F3在WorkspaceCheck载入后断点确认currentProject=null，实际containsExtensions(project)=true：夹具将FILE模型加入普通FXProject，现有EditorMixin格式门禁正确拒绝打开。未绕过生产门禁；改用正式PhotonModelProject的既有模型对象承载FILE依赖，再添加真实激光原生成件，并增加project_loaded断言。修改后IDEA错误0、BenchMod Compile及生产包隔离通过（日志ij_run__BenchMod_Compile_10775974074924045374.log）。F3已正常退出、Debug sessions=[]，两个临时断点已移除。下一步F4独立目录重跑完整矩阵；当前不称组合/导出已通过，完整目标仍active。
+
+## 完整测试F2进展（未完成）
+
+F2实机76项断言通过、断言失败0，但随后WorkspaceCheck.begin调用真实组合begin时报“请先打开激光作者工程”，故completed_checks_passed=false。真实worker晚到、保存取消、确认退出及夹具宿主重挂均已通过；组合状态/依赖/冻结导出尚未执行，不能称完整测试通过。下一步在真实组合begin入口Debug核对测试editor的currentProject与载入路径，不凭推测改生产逻辑。证据build/agent-backups/20261101-photon-full-logic-f2/client/agent-results/photon-logic-regression-20261101/report.json，客户端PID66420已退出，Debug sessions=[]，本轮worker断点已移除。
+
+## 完整测试F1进展（未完成）
+
+F1实机真实worker晚到6项断言全部通过：后台normalize断点处客户端取消旧修订、放行前future已取消、后继完成、旧提交未发布。真实保存框取消和runtime身份保持通过；确认退出阶段LDLib2末项hideHost关闭测试宿主，runner误判为意外卸载，F1报告保留失败。runner已只在实际原生确认调用栈内接纳预期卸载并重挂自有宿主，错误级静态0项，尚待F2重跑。WorkspaceCheck已交付并接入，依赖与冻结导出待实机。F1证据build/agent-backups/20261101-photon-full-logic-f1/client/agent-results/photon-logic-regression-20261101/report.json；游戏已退出，临时worker断点移除，两Sol已关闭，完整目标保持active。
+
+## 2026-11-01 完整矩阵补测进行中
+
+用户持续目标为“进行完整测试”，58项通过仅为已有子集。当前新增LateWorkerCheck，真实normalize worker暂停后由客户端取消旧来源，后继真实任务成功用于证明旧回调已消费且未发布；尚未运行。CloseCheck已落盘，runner已接入晚到、保存取消两阶段并通过错误级静态检查，确认退出后的真实清理及桥接拒绝仍待补证。WorkspaceCheck此前仅完成研究未交付，已明确要求继续真实组合状态、外部依赖自动探测与冻结导出回读实现；不把研究记为完成。独立配置Photon Full Logic F1及隔离gameDir已创建，尚未启动；完整矩阵结果仍未通过，任务保持active。主线负责集成和实机验证，两项Sol仅写独占新增夹具。
+
+## 2026-11-01 独立游戏逻辑回归：58项通过
+
+新增独立 Bench 场景 lobecorp.photon-08-logic-regression，精确注册后返回，不修改旧场景。R3/R4保留失败证据；R4 Debug确认ADDED已写入NONE，而isDisplayed仍读布局旧值。生产控件通知的去重改用getValueImmediate(LayoutProperties.DISPLAY)，避免同帧反向迁移漏写；夹具同样读取即时样式，不再把未解析布局当事件失败。
+
+R5独立JVM PID45280，58项断言全部通过、0失败，Bench最终run_complete PASSED；编译与生产包隔离通过。游戏内嵌编辑器截图已回看；本轮无性能结论，JFR关闭，spark仅加载且后台采样关闭。证据根build/agent-backups/20261101-photon-logic-bench-r5/client，断言agent-results/photon-logic-regression-20261101/report.json，截图screenshots/logic-verified.png与logic-world.png；Bench报告位于同前缀r4/results，实际游戏目录为r5，路径差异如实保留。报告full_requested_matrix_passed=false：保存对话框取消、确定性真实worker晚到、组合时间/播放与冻结导出仍未覆盖，不称完整矩阵或视觉等价验收。
+
+最终Debug sessions=[]，本轮断点已移除，PID45280与临时桥接46800/51932均已退出，Sol已关闭。规范同步已提交2215c05、2ee1ff8；业务代码仍在原WIP中待精确集成，不混入原配置、测试、run-control和audit工具暂存。
+
+## 2026-11-01 游戏测试启动排查（未通过）
+
+已创建独立 Photon Logic Toolchain 20261101 配置，使用 photonBenchClient 与端口19877。实际客户端确认加载 spark、modbench_runtime、mcpmod、sodium；首次运行目录缺失及随后 Bench 必填 resultDirectory 缺失均保留失败日志。补充基础参数后 Bench 自动启动默认 sweeper-render 并退出，不能作为 Photon 逻辑验收。尝试在独立 JVM 通过 Debug 置 attempted 停止默认自动入口，也未得到持续可用客户端；没有 report.json 通过证据、未完成截图和完整断言，不能宣称游戏测试完成。最新日志 ij_run__Photon_Logic_Toolchain_20261101_3581605753112257345.log 位于 IDEA 临时目录；Debug 最终 sessions=[]，本轮临时断点已显式移除。下一步应建立 Bench 正式独立逻辑场景或确认真实无自动测量入口，不继续沿用空场景默认启动。
+
+并行非性能测试授权已收到。规范960aedf的三方cherry-pick被Git以现有本地修改阻止，未覆盖WIP；同步尚未完成。
+
+## 2026-11-01 迁移后主线验证（进行中）
+
+已在原有 codex/photon 工作树接续，基线 HEAD 为 8d3a5e5，保留全部既有暂存和未暂存改动。IDEA 执行 PhotonOwnedPreparationSchedulerTest，7 项通过、0 失败、0 错误，XML 时间为本日 15:45；覆盖独立重试期限、cancelSnapshot 保留 DEVICE、来源取消及旧代次失效。BenchMod Compile 成功，生产包无 Bench 内容检查通过；reserveBuildIdentity 的既有配置缓存问题导致缓存丢弃，未导致构建失败。Data 成功，23 份生成输出 written=0。
+
+正在审查事件准备与维护性业务差异及独立游戏逻辑入口。尚未启动本轮游戏或性能采集；完整运行矩阵、视觉与 P22/P23 未验收，不以这批 JUnit、构建和 Data 替代。测试证据为 build/test-results/test/TEST-org.unitego.lobecorp.client.photon.runtime.PhotonOwnedPreparationSchedulerTest.xml；IDEA 构建与 Data 日志分别为 ij_run__BenchMod_Compile_9169604801606548857.log 和 ij_run__Data_16479489654129160222.log（IDEA 临时目录）。
+
 ## 2026-10-31 两项P2后完整18局复测
 
 用户明确复跑普通/光影×憎恶25秒、单憎恶三次激光、空白各3次，18独立JVM/世界全部PASSED，18次STARTED、单憎恶/组合并发1、每次15组成件活跃、无回退/错误/重叠，尾迹34.530～34.607秒结束。受测eaf6155及原WIP不变，旧场景不改，新控制独立归档。加载39.408～48.321秒；18份启动JFR PID匹配且每局1份启动录制，最早1.104～1.406秒只有墙钟；144原始文件SHA一致，六设置/五保护文件SHA恢复保持、游戏/Debug/observer回收。

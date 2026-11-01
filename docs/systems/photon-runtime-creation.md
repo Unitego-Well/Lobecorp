@@ -1,5 +1,11 @@
 # Photon 定义编译与受管实例创建
 
+## 事件准备与静态资源生命周期（2026-11-01）
+
+PhotonOwnedPreparationScheduler只管理来源/修订/代次、任务状态和各自重试期限；成功、取消仅删除相应任务，不吞掉其他来源的dueAt。PhotonOwnedEffectResources的客户端入口消费设备/资源通知并派发CPU任务，worker持有独占快照；恢复FX、材质和设备资源在客户端提交。AUTHORING、PUBLISHED_PREVIEW与EXPORTED_FX隔离，新修订失败保留旧成果；cancelSnapshot不误删旧来源DEVICE恢复任务。reload改变dispatch epoch并重排仍有效的待准备修订；旧epoch回调直接返回。静态准备不持有世界，世界切换不等同全局关闭；只有客户端最终退出关闭账本并取消future。关闭后queueSnapshot在任何pending写入前拒绝。
+
+F7真实global设备戳变化、三来源恢复、reload晚到及最终关闭检查通过，后两者通过THREAD暂停worker与客户端epoch拒绝返回的实际Debug证据验证。此处不保证CPU提交无长帧，也不把回调故障注入称为驱动故障恢复；见[验收范围](photon-workspace.md#2026-11-01-完整逻辑与端到端导出验收)。
+
 ## 2026-10-31 排空与私有定义退役补正
 
 `PhotonLeasePool.release`对不可复用类型也保持DRAINING所有权；自然结束并跨真实tick/完成帧QUARANTINE后才discard/dispose，不进入idle。RuntimePool不在reusable判定时提前移除owned，销毁finally通知Scope清理。Factory在父级停放或显式force销毁时退役其PROJECT定义与对应空闲池；活跃/排空中的子实例仍按原屏障完成，不能用destroy(false)立即抹掉Scope或可见尾迹。

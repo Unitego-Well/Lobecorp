@@ -33,6 +33,16 @@ public class PhotonModelOutputConfig implements IPersistedSerializable {
 		EMBEDDED, RESOURCE, FILE
 	}
 
+	public PhotonModelOutputConfig() {
+		this(true);
+	}
+
+	/// 材质注册需要游戏环境；纯数据用途（资源与文件读取、序列化）可关闭默认渲染材质。
+	public PhotonModelOutputConfig(boolean withRendererDefaults) {
+		this.modelRenderer = withRendererDefaults ? rendererDefaults() : new RendererSetting();
+		this.renderer = withRendererDefaults ? rendererDefaults() : new RendererSetting();
+	}
+
 	@Persisted
 	public Source source = Source.EMBEDDED;
 	@Persisted
@@ -75,9 +85,9 @@ public class PhotonModelOutputConfig implements IPersistedSerializable {
 	@Configurable(name = "photon.lobecorp.model.override_renderer")
 	public boolean overrideRenderer;
 	@Persisted(subPersisted = true)
-	public final RendererSetting modelRenderer = rendererDefaults();
+	public final RendererSetting modelRenderer;
 	@Persisted(subPersisted = true)
-	public final RendererSetting renderer = rendererDefaults();
+	public final RendererSetting renderer;
 	@Persisted
 	public CompoundTag assetMaterialDependencies = new CompoundTag();
 	@Persisted

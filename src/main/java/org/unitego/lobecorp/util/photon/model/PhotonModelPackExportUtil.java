@@ -8,8 +8,12 @@ import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.fxpack.FXPackExporter;
+import com.lowdragmc.photon.client.fx.fxpack.FXPacks;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.ProblemReporter;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -97,10 +101,19 @@ public class PhotonModelPackExportUtil {
 		var candidate = wrapper.copy();
 		var data = candidate.getCompoundOrEmpty("data");
 		var config = new PhotonModelOutputConfig();
-		PersistedParser.deserializeNBT(data.getCompoundOrEmpty("config").copy(), config, Platform.getFrozenRegistry());
+		var reporter = new ProblemReporter.Collector();
+		config.deserialize(TagValueInput.create(reporter, Platform.getFrozenRegistry(), data.getCompoundOrEmpty("config").copy()));
+		if (!reporter.isEmpty()) {
+			throw new IOException("模型导出配置读取失败：" + reporter.getReport());
+		}
 		prepare(config);
 		var encoded = data.getCompoundOrEmpty("config").copy();
-		var prepared = PersistedParser.serializeNBT(config, Platform.getFrozenRegistry());
+		var output = TagValueOutput.createWithContext(reporter, Platform.getFrozenRegistry());
+		config.serialize(output);
+		if (!reporter.isEmpty()) {
+			throw new IOException("模型导出配置写入失败：" + reporter.getReport());
+		}
+		var prepared = output.buildResult();
 		for (var key : List.of("source", "resource", "file", "snapshotSource", PhotonModelOutputConfig.ASSET_KEY,
 				"assetDependencies", "assetMaterialDependencies")) {
 			var value = prepared.get(key);
@@ -125,28 +138,73 @@ public class PhotonModelPackExportUtil {
 					FXPackExporterAccessor.lobecorp$sanitize(name));
 			verifyExportIdentity(copy, rootId, dependencies, provider);
 			var warnings = new ArrayList<String>();
-			for (var entry : dependencies.entrySet()) {
-				var dependency = new FX();
-				dependency.deserializeNBT(provider, entry.getValue().serializeNBT(provider));
-				prepare(dependency);
-				var exported = FXPackExporter.exportInto(file, entry.getKey().getNamespace(), entry.getKey().getPath(), dependency, provider);
-				warnings.addAll(exported.warnings());
+			var target = file.toPath();
+			var parent = target.getParent();
+
+			// 临时文件不带 .fxpack 后缀，原生 guard 不会识别；先对正式目标保留旧数据保护与锁定语义。
+			PhotonEditorProjectGuardUtil.requireSupportedFile(file);
+			if (FXPacks.isFileLocked(file)) {
+				throw new IOException("fx pack " + file + " is in use");
 			}
-			var result = FXPackExporter.exportInto(file, namespace, name, copy, provider);
-			warnings.addAll(result.warnings());
-			int fileCount;
-			try (var zip = FileSystems.newFileSystem(file.toPath())) {
-				if (modelDefinition) {
-					var prefix = "assets/" + result.fxId().getNamespace() + "/fx/" + result.fxId().getPath();
-					var source = zip.getPath(prefix + ".fx");
-					var target = zip.getPath(prefix + ".mfx");
-					Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+
+			if (parent != null) {
+				Files.createDirectories(parent);
+			}
+
+			var temporary = target.resolveSibling("." + file.getName() + ".lobecorp-" + System.nanoTime() + ".tmp");
+			Throwable primaryFailure = null;
+
+			try {
+				if (Files.exists(target)) {
+					Files.copy(target, temporary, StandardCopyOption.REPLACE_EXISTING);
 				}
-				try (var files = Files.walk(zip.getPath("assets"))) {
-					fileCount = Math.toIntExact(files.filter(Files::isRegularFile).count());
+
+				for (var entry : dependencies.entrySet()) {
+					var dependency = new FX();
+					dependency.deserializeNBT(provider, entry.getValue().serializeNBT(provider));
+					prepare(dependency);
+					var exported = FXPackExporter.exportInto(temporary.toFile(), entry.getKey().getNamespace(), entry.getKey().getPath(), dependency, provider);
+					warnings.addAll(exported.warnings());
+				}
+
+				var result = FXPackExporter.exportInto(temporary.toFile(), namespace, name, copy, provider);
+				warnings.addAll(result.warnings());
+				int fileCount;
+
+				try (var zip = FileSystems.newFileSystem(temporary)) {
+					if (modelDefinition) {
+						var prefix = "assets/" + result.fxId().getNamespace() + "/fx/" + result.fxId().getPath();
+						var source = zip.getPath(prefix + ".fx");
+						var definition = zip.getPath(prefix + ".mfx");
+						Files.move(source, definition, StandardCopyOption.REPLACE_EXISTING);
+					}
+
+					try (var files = Files.walk(zip.getPath("assets"))) {
+						fileCount = Math.toIntExact(files.filter(Files::isRegularFile).count());
+					}
+				}
+
+				// 原子替换失败时不回退为非原子覆盖，保留原目标。
+				if (FXPacks.isFileLocked(file)) {
+					throw new IOException("fx pack " + file + " is in use");
+				}
+
+				Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+				return new FXPackExporter.Result(result.fxId(), fileCount, List.copyOf(warnings));
+			} catch (IOException | RuntimeException | Error failure) {
+				primaryFailure = failure;
+				throw failure;
+			} finally {
+				try {
+					Files.deleteIfExists(temporary);
+				} catch (IOException cleanupFailure) {
+					if (primaryFailure != null) {
+						primaryFailure.addSuppressed(cleanupFailure);
+					} else {
+						throw cleanupFailure;
+					}
 				}
 			}
-			return new FXPackExporter.Result(result.fxId(), fileCount, List.copyOf(warnings));
 		} finally {
 			if (previous) {
 				EXPORTING.set(true);

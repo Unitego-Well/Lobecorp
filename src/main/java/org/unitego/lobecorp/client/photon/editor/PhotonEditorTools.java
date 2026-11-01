@@ -15,6 +15,8 @@ import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.editor.ui.menu.MenuTab;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.layout.LayoutProperties;
+import dev.vfyjxf.taffy.style.TaffyDisplay;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
@@ -54,14 +56,12 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorActions;
-import org.unitego.lobecorp.util.TranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
@@ -150,8 +150,6 @@ public class PhotonEditorTools {
 	private FXRuntime libraryPreview;
 	private Identifier libraryPreviewId;
 	private Map<AnimatedProperty, Map<Long, Integer>> linkedTangents = new WeakHashMap<>();
-	/// 只登记扩展模块开关控件；弱键不会保留已移除的面板。
-	private Map<UIElement, String> featureControls = new WeakHashMap<>();
 	/// 扩展运行时控件和编辑器设置的翻译键前缀。
 	private static final String CONTROL_PREFIX = "photon.lobecorp.";
 	/// Photon 编辑器操作翻译键的公共前缀。
@@ -269,87 +267,33 @@ public class PhotonEditorTools {
 	}
 
 	public static boolean controlEnabled(String name, UIElement element) {
-		String feature = name.startsWith(PhotonEmitterSpawnerTextUtil.PREFIX) ? PhotonEmitterSpawnerTextUtil.FEATURE
-				: name.contains("rotation_cycle") ? "rotation_cycle"
-				: name.contains("view_depth_sort") ? "depth_sort"
-				: name.startsWith(TranslationKeys.PHOTON_OCCLUSION_KEY) ? PhotonEditorTextUtil.OCCLUSION_FEATURE
-				: name.contains("cycle_offset") || name.contains("cycle_time_offset") ? "time_offset" : null;
-
-		if (feature == null && name.contains("lifetime_cycle")) {
-			for (var parent = element.getParent(); parent != null; parent = parent.getParent()) {
-				if (!(parent instanceof PhotonConfiguratorNameAccess access) || access.lobecorp$name() == null) {
-					continue;
-				}
-
-				String group = access.lobecorp$name().toLowerCase(Locale.ROOT);
-
-				if (group.contains("colorover")) {
-					feature = "color_cycle";
-					break;
-				}
-
-				if (group.contains("sizeover")) {
-					feature = "size_cycle";
-					break;
-				}
-
-				if (group.contains("velocityover")) {
-					feature = "velocity_cycle";
-					break;
-				}
-
-				if (group.contains("forceover")) {
-					feature = "force_cycle";
-					break;
-				}
-
-				if (group.contains("uvanimation")) {
-					feature = "uv_cycle";
-					break;
-				}
-			}
-		}
-
-		return feature == null || enabled(element, feature);
+		return enabled(element, name);
 	}
 
 	public PhotonEditorTools(FXEditor editor) {
 		this.editor = editor;
-		editor.selfAndAllChildren().filter(PhotonConfiguratorNameAccess.class::isInstance)
-				.forEach(element -> registerControl(element, ((PhotonConfiguratorNameAccess) element).lobecorp$name()));
+		refreshControls(editor);
 		LcPhotonEditorActions.register(editor, this::canRunShortcut, action -> safely(() -> runAction(action)));
 		editor.addEventListener(UIEvents.TICK, _ -> tick());
 	}
 
 	public static void updateControlRegistration(UIElement element, String name, boolean attached) {
-		var editor = findEditor(element);
-		if (editor != null && !isPhotonEditor(editor)) {
-			if (attached && isFeatureControlName(name)) {
-				element.setDisplay(false);
-			}
+		if (!attached || !isFeatureControlName(name)) {
 			return;
 		}
 
-		var tools = editor == null ? null : of(editor);
+		boolean display = controlEnabled(name, element);
 
-		if (tools == null) {
-			return;
+		if ((element.getLayoutStyle().getValueImmediate(LayoutProperties.DISPLAY) != TaffyDisplay.NONE) != display) {
+			element.setDisplay(display);
 		}
-
-		if (!attached) {
-			tools.featureControls.remove(element);
-			return;
-		}
-
-		tools.registerControl(element, name);
 	}
 
-	private void registerControl(UIElement element, String name) {
-		if (!isFeatureControlName(name)) {
-			return;
-		}
-
-		featureControls.put(element, name);
+	/// 仅在宿主归属变化或初始化时刷新；每个控件按最近的编辑器解析归属。
+	public static void refreshControls(UIElement root) {
+		root.selfAndAllChildren().filter(PhotonConfiguratorNameAccess.class::isInstance)
+				.forEach(element -> updateControlRegistration(element,
+						((PhotonConfiguratorNameAccess) element).lobecorp$name(), true));
 	}
 
 	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
@@ -802,13 +746,6 @@ public class PhotonEditorTools {
 
 	private void tick() {
 		syncPreviewRange();
-		featureControls.forEach((element, name) -> {
-			boolean display = controlEnabled(name, element);
-
-			if (element.isDisplayed() != display) {
-				element.setDisplay(display);
-			}
-		});
 
 		if (editor.runtime == null) {
 			return;
@@ -1321,8 +1258,15 @@ public class PhotonEditorTools {
 			change.run();
 		} catch (RuntimeException error) {
 			for (int i = 0; i < targets.size(); i++) {
-				PersistedParser.deserializeNBT(before.get(i), targets.get(i), provider);
+				try {
+					PersistedParser.deserializeNBT(before.get(i), targets.get(i), provider);
+				} catch (RuntimeException rollbackFailure) {
+					if (rollbackFailure != error) {
+						error.addSuppressed(rollbackFailure);
+					}
+				}
 			}
+
 			throw error;
 		}
 

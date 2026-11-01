@@ -1,5 +1,9 @@
 # Photon 模型特效
 
+## 冻结导出必须经过完整ValueIO（2026-11-01）
+
+prepareModelObject的配置读取/写入调用PhotonModelOutputConfig.deserialize/serialize及ProblemReporter；不能只调用PersistedParser字段解析，因为内嵌资产assetSnapshot由自定义ValueIO维护。原递归导出因此把存在的快照读为空并报“模型实例没有内嵌资产”。准备完成后仍只替换资产/来源相关键，保留未涉及字段并运行现有guard。F7冻结包真实挂载回读通过；B1还经标准MCP导出含OBJ三角资产的.mfx与.mfxpack并回读，源修订不变。此修正不放宽普通.fxproj与单资产.mfxproj的格式边界。
+
 ## 2026-10-31 导出根ID保留与碰撞拒绝
 
 capture及旧公开export入口在写目标文件前调用verifyExportIdentity，按Photon原生InstanceBaker.directSources与自定义instanceSources遍历FX引用；任意层级引用规范化后的导出根ID时明确拒绝并要求改名，访问过的来源只去重，不用self过滤掩盖冲突。最终定义集合putIfAbsent并比较内容，禁止同路径不同定义覆盖；原.fx/.mfx/.mfxpack选择和写入协议保持。间接源中缺失引用仍交原依赖闭合处理，不在此入口静默补写。两文件IDEA代码检查无error；未运行导出/包回读/游戏，后续验收不能沿用旧测试结果。

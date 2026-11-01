@@ -5,11 +5,13 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.util.photon.PhotonFXResourceUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
@@ -53,5 +55,15 @@ public abstract class FXHelperMixin {
 	@Inject(method = "clearCache", at = @At("HEAD"))
 	private static void lobecorp$clearModelIds(CallbackInfoReturnable<Integer> ci) {
 		lobecorp$modelIds = null;
+	}
+
+	@Inject(method = "invalidate", at = @At("HEAD"))
+	private static void lobecorp$clearModelIdsOnInvalidate(CallbackInfo ci) {
+		lobecorp$modelIds = null;
+	}
+
+	@Inject(method = "invalidate", at = @At("RETURN"))
+	private static void lobecorp$markOwnedEffectsDirty(CallbackInfo ci) {
+		PhotonOwnedEffectResources.markDeviceDirty();
 	}
 }

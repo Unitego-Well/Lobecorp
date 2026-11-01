@@ -7,6 +7,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.GameShuttingDownEvent;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
@@ -82,6 +84,11 @@ public class ClientRuntimeEvents {
 			LcClientAttachments.clear();
 			LcPlayerAnimationRuntime.clear();
 		}
+	}
+
+	@SubscribeEvent
+	public static void onGameShuttingDown(GameShuttingDownEvent event) {
+		PhotonOwnedEffectResources.closePreparation();
 	}
 
 	@SubscribeEvent

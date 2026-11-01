@@ -68,6 +68,9 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	private long pollAt;
 	private long changedAt;
 	private long revision;
+	private long refreshGeneration;
+	private String pendingFingerprint = "";
+	private boolean probeInFlight;
 	private long time;
 	private long target = -1;
 	private boolean playing;
@@ -96,6 +99,12 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 		button(controls, "取消并清理", this::cancel);
 		button(controls, "实时刷新开关", () -> {
 			live = !live;
+			if (!live) {
+				refreshGeneration++;
+				pendingFingerprint = "";
+				PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
+				PhotonOwnedEffectResources.markPublishedPreviewDirty(PhotonOwnedLaser.ID);
+			}
 			status.setText(live ? "实时刷新开启" : "实时刷新暂停，修改后请手动刷新");
 		});
 		button(controls, "立即刷新并保留时间", this::refreshPreview);
@@ -321,11 +330,16 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	private void changed() {
 		changedAt = System.nanoTime();
 		published = "";
+		pendingFingerprint = "";
+		refreshGeneration++;
 		if (project != null && authoring) {
 			persist();
+			// 内存编辑只入队准备，不删除当前快照；新快照成功后才替换。
+			PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
 		}
-		if (!authoring && preview != null) {
-			refreshPreview();
+		if (!authoring && live && preview != null) {
+			preview.composition(effective());
+			applyTime();
 		}
 	}
 
@@ -411,15 +425,26 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 			throw new IllegalStateException("请先打开激光作者工程");
 		}
 		project = current;
-		releasePreview();
+		refreshGeneration++;
+		pendingFingerprint = "";
+		PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
+		PhotonOwnedEffectResources.markPublishedPreviewDirty(PhotonOwnedLaser.ID);
+		PhotonOwnedEffectAssets.authoringFingerprint(project.getFx());
+		var next = PhotonOwnedLaser.preview(project.getFx(), ++revision, editor.sceneView.level);
+		next.composition(effective());
+		if (preview != null) {
+			preview.close();
+		}
+		if (!authoring) {
+			PhotonOwnedEffectResources.invalidatePublishedPreview(PhotonOwnedLaser.ID);
+		}
 		authoring = true;
 		editor.sceneView.particleManager.pause();
 		editor.sceneView.reset();
 		if (editor.runtime != null) {
 			editor.runtime.destroy(true);
 		}
-		preview = PhotonOwnedLaser.preview(project.getFx(), ++revision, editor.sceneView.level);
-		preview.composition(effective());
+		preview = next;
 		phase = null;
 		time = 0;
 		target = -1;
@@ -432,6 +457,11 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 		if (preview == null) {
 			return;
 		}
+		if (authoring && project != null) {
+			queueAuthoringRefresh(observed, false);
+			return;
+		}
+
 		long at = target >= 0 ? target : time;
 		boolean resume = playing;
 		restartPreview();
@@ -443,17 +473,7 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 		if (authoring) {
 			begin(false);
 		} else {
-			var edited = definition;
-			var excluded = new HashSet<>(disabled);
-			importPublished();
-			definition = edited;
-			disabled.clear();
-			disabled.addAll(excluded);
-			preview.composition(effective());
-			poseOffsets.clear();
-			poseRotations.clear();
-			rebuildRows();
-			applyTime();
+			importPublished(true);
 		}
 	}
 
@@ -551,22 +571,87 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 		});
 	}
 
+	/// 只负责外部文件/外部修改的有界检测；内存编辑已由 changed() 立即标脏。
 	private void pollAuthoring() {
 		long now = System.nanoTime();
 		if (!live || !authoring || project == null || now < pollAt) {
 			return;
 		}
 		pollAt = now + POLL_NANOS;
-		String fingerprint = PhotonOwnedEffectAssets.authoringFingerprint(project.getFx());
+		if (probeInFlight) {
+			return;
+		}
+
+		probeInFlight = true;
+		var expectedProject = project;
+		long expectedGeneration = refreshGeneration;
+		PhotonOwnedEffectAssets.probeAuthoring(project.getFx()).whenComplete((fingerprint, failure) ->
+				Minecraft.getInstance().schedule(() -> {
+					probeInFlight = false;
+					if (closed || !live || !authoring || project != expectedProject
+							|| refreshGeneration != expectedGeneration) {
+						return;
+					}
+					if (failure != null) {
+						status.setText("作者依赖读取失败，保留当前预览：" + failure.getMessage());
+						return;
+					}
+					guarded(() -> acceptFingerprint(fingerprint));
+				}));
+	}
+
+	private void acceptFingerprint(String fingerprint) {
+		long now = System.nanoTime();
 		if (!fingerprint.equals(observed)) {
 			observed = fingerprint;
 			changedAt = now;
+			refreshGeneration++;
+			pendingFingerprint = "";
+			PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
 			return;
 		}
-		if ((!fingerprint.equals(published)) && now - changedAt >= DEBOUNCE_NANOS) {
-			refreshPreview();
-			published = fingerprint;
+		if (!fingerprint.equals(published) && !fingerprint.equals(pendingFingerprint)
+				&& now - changedAt >= DEBOUNCE_NANOS && preview != null) {
+			queueAuthoringRefresh(fingerprint, true);
 		}
+	}
+
+	private void queueAuthoringRefresh(String fingerprint, boolean automatic) {
+		var expectedProject = project;
+		long expectedGeneration = ++refreshGeneration;
+		pendingFingerprint = fingerprint;
+		var key = new PhotonOwnedEffectResources.SourceKey(PhotonOwnedLaser.ID,
+				PhotonOwnedEffectResources.SourceKind.AUTHORING, ++revision);
+		PhotonOwnedEffectResources.queueSnapshot(key, PhotonOwnedLaser.split(project.getFx()))
+				.whenComplete((source, failure) -> Minecraft.getInstance().schedule(() -> {
+					if (closed || automatic && !live || !authoring || project != expectedProject
+							|| refreshGeneration != expectedGeneration) {
+						return;
+					}
+
+					pendingFingerprint = "";
+					if (failure != null) {
+						status.setText("作者准备已取消：" + failure.getMessage());
+						return;
+					}
+					guarded(() -> {
+						PhotonOwnedEffectAssets.authoringFingerprint(project.getFx());
+						var next = PhotonOwnedLaser.preparedPreview(source, editor.sceneView.level);
+						next.composition(effective());
+						long at = target >= 0 ? target : time;
+						if (preview != null) {
+							preview.close();
+						}
+						preview = next;
+						editor.sceneView.reset();
+						phase = null;
+						time = 0;
+						target = at;
+						published = fingerprint;
+						applyTime();
+						status.setText("作者修订已准备并替换");
+					});
+				}));
 	}
 
 	private void export() {
@@ -625,21 +710,37 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	}
 
 	private void importPublished() {
-		releasePreview();
-		editor.sceneView.particleManager.pause();
-		editor.sceneView.reset();
-		if (editor.runtime != null) {
-			editor.runtime.destroy(true);
-		}
+		importPublished(false);
+	}
+
+	private void importPublished(boolean preserveDefinition) {
+		refreshGeneration++;
+		pendingFingerprint = "";
+		PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
+		PhotonOwnedEffectResources.markPublishedPreviewDirty(PhotonOwnedLaser.ID);
 		PhotonCompositionExportUtil.Loaded loaded;
 		try {
 			loaded = PhotonCompositionExportUtil.read(exportPath.getText(), ++revision, editor.sceneView.level);
 		} catch (IOException failure) {
 			throw new IllegalStateException("发布回读失败", failure);
 		}
+		if (preview != null) {
+			preview.close();
+		}
+		if (authoring) {
+			PhotonOwnedEffectResources.invalidateAuthoring(PhotonOwnedLaser.ID);
+		}
+		editor.sceneView.particleManager.pause();
+		editor.sceneView.reset();
+		if (editor.runtime != null) {
+			editor.runtime.destroy(true);
+		}
 		preview = loaded.runtime();
-		definition = loaded.definition();
-		disabled.clear();
+		if (!preserveDefinition) {
+			definition = loaded.definition();
+			disabled.clear();
+		}
+		preview.composition(effective());
 		phase = null;
 		time = 0;
 		target = -1;
@@ -653,6 +754,10 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	}
 
 	private void releasePreview() {
+		refreshGeneration++;
+		pendingFingerprint = "";
+		PhotonOwnedEffectResources.markAuthoringDirty(PhotonOwnedLaser.ID);
+		PhotonOwnedEffectResources.markPublishedPreviewDirty(PhotonOwnedLaser.ID);
 		if (preview != null) {
 			preview.close();
 			preview = null;

@@ -29,6 +29,10 @@
 		"particle.ProjectileMixin"
 	],
 	"client": [
+		"development.client.DevelopmentWindowMixin",
+		"development.client.DevelopmentThrottleMixin",
+		"development.client.DevelopmentPauseMixin",
+		"development.client.DevelopmentMouseMixin",
 		"photon.editor.client.PhotonDefinitionWriteGuardMixin",
 		"photon.editor.client.PhotonPackWriteGuardMixin",
 		"photon.editor.client.PhotonTimelineDataGuardMixin",

@@ -1,5 +1,13 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-01 Horde 工作区定向同步
+
+Horde仅通过Git三方cherry-pick应用原始dev的 `c1b12d6969486640d511a1d16a42fc02ec7c646f` 与 `ef6b824b796770a0e25f0704dd46756d929de972`，目标提交为 `5a582da`、`ec267dc3`。Photon为26.1.2.9、LDLib2为26.1.2.43、KilaGraph为26.1.0.16.a，其余版本锁与本地环境保持。仅修改源提交指定的兼容注入与遮挡工具，未引入Photon工作分支架构或性能工具。
+
+本工作区IDEA运行BenchMod Compile成功（compileJava、compileBenchJava、verifyProductionJarHasNoBenchContent均完成）；Data退出0，23文件written=0、removed=0，生成目录无Git差异。Data日志为 `C:/Users/wang_/AppData/Local/JetBrains/IntelliJIdea2026.2/tmp/ij_run__Data_7949902792740022377.log`。未启动游戏或性能测试，客户端Mixin应用及画面不作验收通过。
+
+原WIP通过保护stash恢复：.gitignore、horde-index、horde-issues、HordeGpuRenderer和HordeSplitPreparationTest原字节SHA256一致，测试暂存blob与保护stash第二父提交一致。混合changes只合并升级记录与原WIP，未整份提交；保护stash继续保留。Git钩子禁用，未推送。
+
 ## 2026-11-01 主工作区版本同步
 
 按用户澄清，仅同步Photon工作区的PhotonMod版本升级及必需API兼容，不合入整个工作区、资源调度架构、性能工具或分支进度。版本目录三项增量来自acfbf85b，通过Git apply --3way --index应用，其他依赖版本保持。

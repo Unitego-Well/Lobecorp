@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-11-01：允许并行非性能游戏测试
+
+- 用户明确要求：不同工作区可并行进行逻辑、功能、交互和视觉游戏测试，不再因存在游戏或Debug统一排队；独立实例、输入与证据边界保留，性能计量与A/B仍协调独占资源。
+- 修改 workflow.md 的测试边界及 workspace-layout.md 的过时串行说明；通过Git提交向工作区分发，不覆盖业务WIP。
+- 文档匹配、差异与链接检查；不运行构建、Data或游戏。修改前备份：build/agent-backups/20261101-parallel-game-tests/backups。
 2026-10-29 实机收尾与默认数量调整：189c4c2 Iris标准流七段23图PASSED，用户接受；随后默认边界粒子40组、刀光批位置×2，保留64格、频率与预算。按“默认粒子数量可以更多*2，不需要测试”仅IDEA静态检查，未构建/Data/JUnit/游戏复测加倍值。测试进程/桥接已结束，Iris原SHA89c870f7a3166eb15aacae6b2890c568f17fe3bad2bc355122d9c3b34fdd2dbe已恢复；隔离配置particleRange64/fragmentGroups40按用户要求保留。备份build/agent-backups/20261029-particle-double。
 
 

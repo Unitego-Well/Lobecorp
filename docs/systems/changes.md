@@ -9,6 +9,17 @@
 用户明确澄清不是整个Photon工作区集成。主根Photon26.1.2.3→26.1.2.9，LDLib2 .42→.43，KilaGraph .15→.16.a；三项版本及Occlusion增量通过Git定向三方应用，其余旧注入按锁定依赖实际方法迁移。保留复制根去重、光束长度、保存重定向、项目预览/原树和导出通知；未引入Photon分支新增业务架构或性能工具。具体兼容范围与检查边界见[依赖升级](photon-dependency-upgrade.md#2026-11-01-主工作区版本同步)。
 
 静态/编译非游戏验证在主根执行，不借用Photon工作区游戏成绩。测试继续暂停，客户端运行、画面和性能未验收。修改前Git基线94165d5e及build/agent-backups/20261101-photonmod-upgrade中的定向patch保留；六份snake暂存和.gitignore原边界保持，不推送远端。
+
+## 2026-11-01：测试不抢鼠标与开发后台窗口策略
+
+- 来源：用户要求修复测试强制前置／抢焦点、防最小化、启动只展开一次、后台不降性能，并补充首要避免抢实体鼠标；覆盖旧保持／恢复焦点要求。
+- BenchWindow 改为只读焦点计数；六个场景移除直接最大化／聚焦或重复还原。Horde 采集保留最小化与采样尺寸有效性，原生 maximized 仅观察，不因非激活铺满未设置该位而自动失败。保留用户 maxFps／VSync，不再修改 Options 或调用 onInputReceived 伪造活跃。
+- 新增 DevelopmentWindowPolicy 及四份开发客户端 Mixin：Window 生命周期一次非激活铺满、移除最小化按钮并拦 SC_MINIMIZE、销毁后释放回调；FramerateLimitTracker 解除开发 AFK／最小化节流；Minecraft 解除开发失焦暂停；MouseHandler 拒绝失焦自动抓取。production 分支不启用，不新增依赖或操作全局鼠标。
+- 边界：一次铺满工作区不伪称原生最大化；非 Windows 跳过本机窗口策略；不保证拦截其他程序直接原生最小化，不将取消节流写成硬件性能收益。原生辅助失败记录并跳过，不以循环抢焦点修复。
+- 验证：IDEA 相关诊断无错误；BenchMod Compile 执行 compileJava、compileBenchJava、verifyProductionJarHasNoBenchContent，BUILD SUCCESSFUL；Data BUILD SUCCESSFUL，23 文件 written=0／removed=0。未运行游戏、真实焦点／最小化／AFK及后台 FPS 验收；开放项留原始唯一问题清单。
+- 同步修正文档与旧焦点规则。文档修改前备份 build/agent-backups/20261101-test-window-policy/backups；已跟踪源码由本次 Git 差异保留前版本。未操作原始 .gitignore 及六份 snake 暂存，不推送。
+
+
 ## 2026-11-01：明确同类事件处理入口复用
 
 - 按用户示例补充通用Java规范：已有事件入口时，新增业务接入该入口，不按业务后缀另建同类事件处理方法；允许内部职责拆分，禁止重复订阅和平行入口。

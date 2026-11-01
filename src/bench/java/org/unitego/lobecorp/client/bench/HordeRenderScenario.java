@@ -21,7 +21,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.ClientCommandHandler;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeGpuRenderer;
 import org.unitego.lobecorp.client.horde.HordeRenderMetrics;
@@ -145,7 +144,6 @@ public class HordeRenderScenario implements BenchClientScenario {
         HordeVisualConfig.DISTANCE.set(-1);
         HordeVisualConfig.ENABLED.set(true);
 		var window = context.minecraft().getWindow().handle();
-		GLFW.glfwMaximizeWindow(window);
 		BenchWindow.reset();
 		BenchWindow.ensure(window);
 		BenchSpark.start(context);

@@ -15,7 +15,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.levelgen.Heightmap;
-import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
@@ -80,7 +79,6 @@ public class RandomCorpseRenderScenario implements BenchClientScenario {
 			throw new IllegalStateException("随机尸体100基准需要集成服务端");
 		}
 		var window = context.minecraft().getWindow().handle();
-		GLFW.glfwMaximizeWindow(window);
 		BenchWindow.reset();
 		BenchWindow.ensure(window);
 		originalPose = context.automation().pose();

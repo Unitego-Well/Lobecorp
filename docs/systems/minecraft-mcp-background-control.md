@@ -3,6 +3,22 @@
 核对日期：2026-10-21。适用于原始项目 dev 的 Minecraft 26.1.2 开发客户端。主入口见 [Minecraft MCP](minecraft-mcp.md)
 ，结构化操作见 [GUI、玩家、实体与方块操控](minecraft-mcp-controls.md)。
 
+## 2026-11-01 开发测试窗口与鼠标边界
+
+用户明确要求：首要避免抢实体鼠标；测试不得反复前置或恢复焦点，启动仅展开一次，防最小化与后台运行不能通过抢焦点实现。此要求覆盖旧的保持／恢复焦点操作规则，具体规则见[后台输入与测试边界](../standards/workflow.md#后台输入与测试边界)。
+
+已确认两类源码路径：项目 BenchWindow 在最小化后每 tick restore/maximize，HordeTideAcceptanceScenario 在失焦时 focus；Photon 所属性能观察器还启动了每 500ms 调用 ShowWindowAsync(3)／SetForegroundWindow 的脚本。Windows 官方定义前者会激活窗口，不能只删除后者；[ShowWindow 文档](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow)与[SetWindowPos 文档](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos)是原生激活副作用的维护依据。
+
+当前项目修复限定开发环境，普通 Client 与 BenchClient 共用，不要求 MCP control_mode 已进入：
+
+- BenchWindow 仅观察焦点，场景不再直接聚焦、反复还原或最大化，不修改 Options 或伪造输入时间戳。
+- DevelopmentWindowPolicy 仅对当前 Windows 游戏窗口安装本地消息链，移除最小化按钮并拦截 SC_MINIMIZE，保留关闭与原消息链；一次使用 SWP_NOACTIVATE／SWP_NOZORDER 铺满工作区，不抢前台。不将工作区铺满伪称 GLFW 原生 maximized=true；不保证拦截外部程序直接调用原生最小化或系统级桌面行为。
+- 开发节流 Mixin 取消 WINDOW_ICONIFIED／SHORT_AFK／LONG_AFK 的额外帧率限制，开发失焦暂停路径取消；用户 maxFps、VSync 和 Options 文件保持，不把取消限流等同于硬件性能提升或保证达到指定 FPS。
+- 开发鼠标 Mixin 在原生窗口失焦时拒绝自动 grabMouse；真人聚焦后点击仍使用原版鼠标控制，不全局永久禁用玩家输入。
+- Photon 专属脚本修复及本轮实例停止证据由其所属工作区维护；本页仅记录跨工作区通用规则，不复制分支验收。
+
+本节为源码实现与维护边界，构建和实机结果以本次修改记录为准；未运行的前后台、最小化与 AFK 行为不得标为已验收。下列 2026-10-21／22 内容保留其 MCP 历史范围，不再作为测试必须维持焦点的要求。
+
 ## 当前鼠标契约（2026-10-22）
 
 已接入[独立仓库固定版本](minecraft-mcp-artifacts.md#历史接入记录)。保留开发默认激活，enter／exit 不改变系统鼠标捕获，取消每 tick 持续释放；模拟输入仅走内部回调，在同步作用域内阻止 grabMouse 居中，真人点击保留原版捕获。显式 release_mouse 只释放一次。本次未构建或运行验收；下方持续释放与历史实测属于旧实现，不代表当前版本。

@@ -8,7 +8,6 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
 import net.minecraft.core.BlockPos;
-import org.lwjgl.glfw.GLFW;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
@@ -48,7 +47,6 @@ public class SweeperRenderScenario implements BenchClientScenario {
     @Override
     public void setup(BenchClientContext context) {
 		var window = context.minecraft().getWindow().handle();
-		GLFW.glfwMaximizeWindow(window);
 		BenchWindow.reset();
 		BenchWindow.ensure(window);
         originalPose = context.automation().pose();

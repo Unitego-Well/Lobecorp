@@ -15,7 +15,6 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import com.zhongbai233.bench.api.neoforge.client.BenchPoseHold;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.levelgen.Heightmap;
-import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.entity.corpse.CorpseBatchRenderer;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
@@ -71,7 +70,6 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		originalPose = context.automation().pose();
 		origin = context.player().blockPosition().offset(-columns * GRID_SPACING / 2, 0,
 				-columns * GRID_SPACING / 2);
-		GLFW.glfwMaximizeWindow(context.minecraft().getWindow().handle());
 		BenchWindow.reset();
 		BenchWindow.ensure(context.minecraft().getWindow().handle());
 		BenchSpark.start(context);

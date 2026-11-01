@@ -706,21 +706,11 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		if (measuring && !focused) {
 			focusLosses++;
 		}
-		if (measuring && (iconified || !maximized)) {
+		if (measuring && iconified) {
 			report.addProperty("window_gate_status", "INVALID");
 			report.addProperty("window_gate_tick", context.scheduler().currentTick());
 			report.addProperty("window_gate_iconified", iconified);
 			report.addProperty("window_gate_maximized", maximized);
-		}
-		// 最大化和保持焦点已获用户明确授权；失焦只计数，不再拒绝样本或整轮。
-		if (!iconified) {
-			long handle = context.minecraft().getWindow().handle();
-			if (!maximized) {
-				GLFW.glfwMaximizeWindow(handle);
-			}
-			if (!focused) {
-				GLFW.glfwFocusWindow(handle);
-			}
 		}
 		if (measuring && (windowWidth != context.minecraft().getWindow().getWidth()
 				|| windowHeight != context.minecraft().getWindow().getHeight())) {
@@ -871,7 +861,7 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		report.addProperty("process_started", ProcessHandle.current().info().startInstant().map(Object::toString).orElse("unknown"));
 		report.addProperty("game_directory", context.minecraft().gameDirectory.getAbsolutePath());
 		report.addProperty("focus_gate_enabled", false);
-		report.addProperty("method_constraint", "Structured in-game state/camera/framebuffer only. User permits game maximize and maintaining focus; focus losses are recorded without a rejection gate. No physical system mouse/keyboard injection, manual desktop automation, restore, show, window move or monitor changes.");
+		report.addProperty("method_constraint", "Structured in-game state/camera/framebuffer only. Development window placement is initialized once using SetWindowPos with NOACTIVATE and NOZORDER; native maximized state is observed only. After initialization no additional window movement, foreground activation or focus restoration is performed by this fixture. Focus losses are recorded without a rejection gate. No physical system mouse/keyboard injection, manual desktop automation or monitor changes.");
 		report.addProperty("pending_failure", pendingFailure == null ? "" : pendingFailure.toString());
 		report.addProperty("failure_spark_wait_ticks", failureSparkWait);
 		report.addProperty("spark_saved", sparkStarted && BenchSpark.saved());

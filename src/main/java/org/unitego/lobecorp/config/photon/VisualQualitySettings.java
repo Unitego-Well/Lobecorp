@@ -63,14 +63,15 @@ public class VisualQualitySettings implements Settings {
 		var groups = new LinkedHashMap<String, ConfiguratorGroup>();
 		entries().forEach((key, value) -> {
 			var path = value.getPath();
-			var section = path.size() > 1 ? path.getFirst() : "general";
+            var section = path.size() > 2 ? path.get(1) : "general";
 			var group = groups.computeIfAbsent(section, name -> {
 				var created = new ConfiguratorGroup(PhotonVisualQualityTextUtil.group(name));
 				father.addConfigurator(created);
 				return created;
 			});
 			var initial = value.get();
-			var label = PhotonVisualQualityTextUtil.label(key);
+            var relativePath = String.join(".", path.subList(1, path.size()));
+            var label = PhotonVisualQualityTextUtil.label(relativePath);
 			Configurator control;
 			if (initial instanceof Boolean) {
 				control = new BooleanConfigurator(label, () -> Boolean.parseBoolean(values.get(key)),
@@ -94,7 +95,7 @@ public class VisualQualitySettings implements Settings {
 						text(value.getDefault()), false);
 			}
 			var tips = new ArrayList<Component>();
-			tips.add(Component.translatable(PhotonVisualQualityTextUtil.description(key)));
+			tips.add(Component.translatable(PhotonVisualQualityTextUtil.description(relativePath)));
 			var defaultValue = value.getDefault();
 			Object defaultText = defaultValue instanceof Boolean enabled
 					? Component.translatable(enabled ? "options.on" : "options.off")

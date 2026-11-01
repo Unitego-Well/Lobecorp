@@ -214,9 +214,9 @@ public class HordeClient {
 				if (block.bounds().distanceToSqr(camera) > range * range || !frustum.isVisible(block.bounds())) {
 					continue;
 				}
-				long first = Math.max(0, (long) Math.floor((now * event.speed - block.last()) / event.rules.rowSpacing()) + 1);
-				long last = Math.min((long) Math.floor(Math.min(event.stop, now) * event.speed / event.rules.rowSpacing()),
-						(long) Math.floor((now * event.speed - block.first()) / event.rules.rowSpacing()));
+                long first = Math.max(0, (long) Math.floor((now * event.speed - block.last()) / event.rowSpacing()) + 1);
+                long last = Math.min((long) Math.floor(Math.min(event.stop, now) * event.speed / event.rowSpacing()),
+                        (long) Math.floor((now * event.speed - block.first()) / event.rowSpacing()));
 				if (last < first) {
 					continue;
 				}
@@ -258,7 +258,7 @@ public class HordeClient {
 			double now = event.time(partialTick);
 			double head = HordeTide.head(now, event.speed);
 			HordeDebugState.setTide(head, Math.max(0, head - event.length), 0,
-					(long) Math.floor(Math.max(0, Math.min(head, event.length)) / event.rules.rowSpacing()));
+					(long) Math.floor(Math.max(0, Math.min(head, event.length)) / event.rowSpacing()));
 			break;
 		}
 		HordeRenderMetrics.extracted(extractionStarted, lastBatches.size());
@@ -320,7 +320,7 @@ public class HordeClient {
 			}
 			double now = event.time(0);
 			head = Math.max(head, HordeTide.head(now, event.speed));
-			rows += Math.max(0, HordeTide.head(now, event.speed) / event.rules.rowSpacing());
+			rows += Math.max(0, HordeTide.head(now, event.speed) / event.rowSpacing());
 			splits += event.split.count();
 		}
 		return "blocks=" + lastBatches.size() + ", submitted=" + submitted + ", tideHead="
@@ -352,6 +352,17 @@ public class HordeClient {
 	public static class ClientEvent {
 		public final UUID id;
 		public HordeRules rules;
+		/// 本地显示间距在接收事件头时固定，不参与服务端规则或同步。
+		private double rowSpacing = 1.8;
+		private double columnSpacing = 1.8;
+
+		public double rowSpacing() {
+			return rowSpacing;
+		}
+
+		public double columnSpacing() {
+			return columnSpacing;
+		}
 		public HordeVisualDefinition visual;
 		public HordeRoute.Node[] nodes;
 		public Vec3 origin;
@@ -421,6 +432,10 @@ public class HordeClient {
 					|| !nextVisual.equals(visual))) {
 				throw new IllegalArgumentException("固定线路或资源变更必须提供完整快照");
 			}
+			if (!ready) {
+				rowSpacing = HordeVisualConfig.ROW_SPACING.get();
+				columnSpacing = HordeVisualConfig.COLUMN_SPACING.get();
+			}
 			rules = nextRules;
 			clock.synchronize(tag.getLongOr("tick", 0), level.getGameTime());
 			stop = tag.getLongOr("stop", nextRules.duration());
@@ -434,7 +449,7 @@ public class HordeClient {
 			nodeCount = nextNodeCount;
 			visual = nextVisual;
 			HordeGpuRenderer.requestResources(nextVisual);
-			columns = Math.max(1, (int) Math.floor(rules.width() / rules.columnSpacing()));
+			columns = Math.max(1, (int) Math.floor(rules.width() / columnSpacing()));
 		}
 
 		private void route(CompoundTag page) {
@@ -543,16 +558,16 @@ public class HordeClient {
 			var a = nodes[segment].at();
 			var b = nodes[end].at();
 			double padding = rules.regionMargin() + HordeSamplingUtil.MAX_VISUAL_OFFSET + MODEL_PADDING;
-			int blockColumns = Math.max(1, (int) Math.floor(BLOCK_WIDTH / rules.columnSpacing()));
+			int blockColumns = Math.max(1, (int) Math.floor(BLOCK_WIDTH / columnSpacing()));
 			for (int first = 0; first < columns; first += blockColumns) {
 				int count = Math.min(blockColumns, columns - first);
-				double low = (first - (columns - 1) / 2d) * rules.columnSpacing() - padding;
-				double high = (first + count - 1 - (columns - 1) / 2d) * rules.columnSpacing() + padding;
+				double low = (first - (columns - 1) / 2d) * columnSpacing() - padding;
+				double high = (first + count - 1 - (columns - 1) / 2d) * columnSpacing() + padding;
 				AABB bounds = blockBounds(segment, low, high);
 				for (int i = segment + 1; i < end; i++) {
 					bounds = bounds.minmax(blockBounds(i, low, high));
 				}
-				double lateral = (first + (count - 1) / 2d - (columns - 1) / 2d) * rules.columnSpacing();
+				double lateral = (first + (count - 1) / 2d - (columns - 1) / 2d) * columnSpacing();
 				var forward = b.subtract(a).multiply(1, 0, 1).normalize();
 				double height = (nodes[segment].height(lateral) + nodes[end].height(lateral)) / 2;
 				var center = new Vec3((a.x + b.x) / 2 - forward.z * lateral, height, (a.z + b.z) / 2 + forward.x * lateral);

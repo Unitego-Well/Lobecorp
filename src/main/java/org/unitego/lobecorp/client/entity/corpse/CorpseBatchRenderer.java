@@ -28,6 +28,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
 import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.client.horde.HordeDataTexture;
 import org.unitego.lobecorp.client.horde.HordeIrisAnimation;
 import org.unitego.lobecorp.client.horde.HordeIrisShadows;
@@ -126,7 +127,7 @@ public class CorpseBatchRenderer {
 	}
 
 	public static boolean available() {
-		return HordeVisualConfig.CORPSE_BATCH.get() && PhotonFrameCapture.renderFrameOpen() && !HordeIrisShadows.shadowPass()
+		return ClientConfig.CORPSE_BATCH.get() && PhotonFrameCapture.renderFrameOpen() && !HordeIrisShadows.shadowPass()
 				&& (retryAt == 0 || System.nanoTime() - retryAt >= 0);
 	}
 

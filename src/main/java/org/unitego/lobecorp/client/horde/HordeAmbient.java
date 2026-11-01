@@ -189,7 +189,7 @@ public class HordeAmbient {
 		var event = located.event();
 		var sample = located.sample();
 		var point = sample.ground();
-		double spacing = Math.max(event.rules.rowSpacing(), event.rules.columnSpacing());
+        double spacing = Math.max(event.rowSpacing(), event.columnSpacing());
 		// 探针在变形后坐标上判内；稀疏样本缺邻不会制造边缘。
 		if (sample.boundary()) {
 			return true;
@@ -197,7 +197,7 @@ public class HordeAmbient {
 
 		// 跨事件接合按代表点的同层距离粗判，不复用单潮身份邻接。
 		for (var other : samples) {
-			double contactDistance = Math.max(spacing, Math.max(other.event().rules.rowSpacing(), other.event().rules.columnSpacing()));
+			double contactDistance = Math.max(spacing, Math.max(other.event().rowSpacing(), other.event().columnSpacing()));
 			if (!other.event().id.equals(event.id) && Math.abs(other.sample().ground().y - point.y) <= 1.5
 					&& other.sample().ground().distanceToSqr(point) <= contactDistance * contactDistance) {
 				return true;
@@ -215,8 +215,8 @@ public class HordeAmbient {
 		for (int row = -1; row <= 1; row++) {
 			for (int column = -1; column <= 1; column++) {
 				var probe = point.add(
-						forward.x * row * event.rules.rowSpacing() - forward.z * column * event.rules.columnSpacing(),
-						0, forward.z * row * event.rules.rowSpacing() + forward.x * column * event.rules.columnSpacing());
+						forward.x * row * event.rowSpacing() - forward.z * column * event.columnSpacing(),
+						0, forward.z * row * event.rowSpacing() + forward.x * column * event.columnSpacing());
 				if (!HordeParticleFlow.clear(circles, event.origin, probe, event.entityHeight)) {
 					return false;
 				}
@@ -261,8 +261,8 @@ public class HordeAmbient {
 	}
 
 	private static boolean activeRow(HordeClient.ClientEvent event, double time, long row) {
-		long first = Math.max(0, (long) Math.floor((time * event.speed - event.length) / event.rules.rowSpacing()) + 1);
-		long last = (long) Math.floor(Math.min(event.stop, time) * event.speed / event.rules.rowSpacing());
+		long first = Math.max(0, (long) Math.floor((time * event.speed - event.length) / event.rowSpacing()) + 1);
+		long last = (long) Math.floor(Math.min(event.stop, time) * event.speed / event.rowSpacing());
 		return row >= first && row <= last;
 	}
 

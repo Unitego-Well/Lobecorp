@@ -25,6 +25,7 @@ public class CompositeHudLayer extends BasicHudLayer {
 		}
 
 		layers.add(new Entry(layer, visible));
+		addChild(layer);
 		return this;
 	}
 
@@ -33,7 +34,12 @@ public class CompositeHudLayer extends BasicHudLayer {
 	}
 
 	public boolean removeLayer(HudLayer layer) {
-		return layers.removeIf(entry -> entry.layer().equals(layer));
+		boolean removed = layers.removeIf(entry -> entry.layer().equals(layer));
+		if (removed) {
+			removeChild(layer);
+		}
+
+		return removed;
 	}
 
 	public List<HudLayer> getLayers() {
@@ -52,9 +58,19 @@ public class CompositeHudLayer extends BasicHudLayer {
 	public void init(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		super.init(graphics, deltaTracker);
 		updatePosition();
+		int top = topPos;
 		for (var entry : layers) {
-			entry.layer().setPosition(leftPos, topPos);
+			boolean visible = entry.visible().getAsBoolean();
+			entry.layer().setVisible(visible);
+			if (visible) {
+				top -= entry.layer().getHeight();
+			}
+
+			entry.layer().setPosition(leftPos, top);
 			entry.layer().init(graphics, deltaTracker);
+			if (visible) {
+				top -= LAYER_GAP;
+			}
 		}
 	}
 
@@ -63,21 +79,7 @@ public class CompositeHudLayer extends BasicHudLayer {
 
 	@Override
 	protected void renderLayer(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		var pose = graphics.pose();
-		pose.pushMatrix();
-		try {
-			for (var entry : layers) {
-				if (!entry.visible().getAsBoolean()) {
-					continue;
-				}
-
-				pose.translate(0, -entry.layer().getHeight());
-				entry.layer().render(graphics, deltaTracker);
-				pose.translate(0, -LAYER_GAP);
-			}
-		} finally {
-			pose.popMatrix();
-		}
+		// 子节点由 LDLib2 提取，不再独立调用子层 render。
 	}
 
 	@Override

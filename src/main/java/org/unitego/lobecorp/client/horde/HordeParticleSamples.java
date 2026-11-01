@@ -129,8 +129,8 @@ public class HordeParticleSamples implements AutoCloseable {
 	    var player = minecraft.player;
 	    var camera = player != null ? player.position() : minecraft.gameRenderer.getMainCamera().position();
 	    var field = new HordeParticleFlow.Field(tide, event.origin, event.split.circles(), time, event.speed,
-			    event.stop, event.columns, event.rules.rowSpacing(),
-			    event.rules.columnSpacing(), event.entityHeight);
+                event.stop, event.columns, event.rowSpacing(),
+                event.columnSpacing(), event.entityHeight);
 	    var samples = flow.sample(field, camera, ++captureSerial);
 	    snapshot = new Snapshot(event.id, time, serial, captureGeneration, now, samples);
     }

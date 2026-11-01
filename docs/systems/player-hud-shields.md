@@ -1,5 +1,39 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-01 修复迁移后玩家 HUD 初始化被跳过
+
+HudLayer曾创建宿主ModularUI，但getModularUI只返回UIElement的框架归属；该归属在ModularUI.init时才赋值。ModularHudLayer.render先读getter，读到null就返回，导致根UI永远无法进入init。现根层优先返回已创建宿主，子节点未拥有宿主时仍返回框架归属。此次为可直接确认的绘制跳过路径修复，IDEA定向编译通过；未做游戏视觉复测，不宣称所有迁移HUD均已实机恢复。
+
+## 2026-11-01 HUD 迁移补全：运行覆盖层
+
+已盘点全部RegisterGuiLayersEvent入口与RenderGuiEvent.Post分发：生命/理智/护盾、伤害/低理智滤镜、屏幕粒子、事件HUD、指挥家HUD均经LDLib2驱动。另将Post阶段的指挥家指令光标/框选及Horde统计文字接入RuntimeOverlayHud的LDLib2画布，保持原Post阶段和先指令后统计的绘制顺序；沿既有登录/登出/卸载入口释放UI，不新增订阅。特定投影、精灵裁切与画线仍由组件回调复用原绘制算法，未重写世界渲染或原版HUD。
+
+主线最后IDEA项目编译成功；前一批Bench生产包隔离与Data通过，最后补全仅代码、无资源变化。未做实机视觉验收，不能将编译成功当作位置、动画、交互及滤镜覆盖正确。原业务WIP与AM测试保留。
+
+## 2026-11-01 全部模组 HUD 迁入 LDLib2
+
+玩家生命、理智、四色护盾与两个全屏滤镜统一由 `HudLayer` 的LDLib2 ModularUI驱动；各子层为真实UIElement，CompositeHudLayer通过子节点树提交，不再逐个调用子层独立render。既有状态取值、精灵、动画、配置、存活与创造模式可见条件、护甲偏移与滤镜注册层级保留；精灵裁切等特定绘制在LDLib2节点回调中执行。
+
+HudLayer的getModularUI返回框架维护的UI归属，只有HUD根render入口创建宿主，不在子节点getter里懒建UI；clear释放宿主后保留节点结构，支持会话重建。ScreenParticleHud接管屏幕伤害粒子的GuiLayer注册与UI生命周期，在LDLib2画布回调内继续使用原粒子投影、合并、内容和动画；登录、登出、卸载沿既有事件入口释放画布。事件HUD与指挥家HUD原已使用LDLib2，本轮保留；原版HUD与世界渲染不在迁移范围。
+
+验证：主线审查源差异并修正根/子UI归属，IDEA项目编译与最后生命周期改动定向编译成功；BenchMod Compile与生产包隔离成功；Data退出0，生成目录无Git差异。尚未进行实机视觉验证，状态条位置/动画、滤镜覆盖顺序和屏幕粒子画面不可据编译判定验收通过。
+
+## 当前：LDLib2 事件 HUD
+
+使用LDLib2 26.1.2.42的 `ModularHudLayer` 和 `ModularUI`，统一组件 `EventHudComponent` 继承 `UIElement`，构造时指定 `TOP/LEFT/RIGHT`。顶部居中位于屏幕上方，左右从屏幕高度三分之一处开始，各自由column容器按加入顺序向下堆叠、间隔4 GUI像素；组件高度由内容决定，禁止收缩，移除自动补位。
+
+注册签名为 `register(id, englishName, chineseName, componentFactory)`；名称保存在类型定义中，组件工厂每个活动UUID调用一次。同UUID同类型重复show返回已有实例，类型冲突拒绝。`show(type, uuid)` 显示、`hide(uuid)`移除、`clear()`清理活动UI；换世界清理实例并保留定义。深夜清扫注册 `MidnightCleanupHud::new`，固定LEFT，目前仅空容器，未接入自动事件同步、纹理或计时内容。HUD仍注册在伤害滤镜之上。
+
+本轮IDEA定向编译与Data成功，生成目录无新增Git差异；未进游戏，布局、动态堆叠及缩放尚无实机视觉证据。下方早期GuiLayer注册方式为历史，已由此实现替代。
+
+## 2026-11-01 事件 HUD 注册
+
+`EventHud.register(Identifier, GuiLayer)` 按事件ID注册绘制器，重复ID拒绝注册，按注册顺序调用。`EventHudRegistration.register()` 由既有 `PlayerHudRegistration.register` 初始化，使用 `MidnightCleanup.ID` 注册 `MidnightCleanupHud.INSTANCE`；深夜清扫目前为空绘制入口，尚无布局、计时或激活条件。四份Java文件经IDEA定向编译通过，未做游戏验证。
+
+## 2026-11-01 事件 HUD 显示层
+
+`PlayerHudRegistration.register` 在既有 HUD 注册入口中注册 `lobecorp:event_hud`，使用 `registerAbove` 放在 `lobecorp:damage_screen_filter` 上方，由 `EventHud.INSTANCE` 承担绘制入口。当前仅建立空显示层，未添加计时器、文本或事件状态逻辑。两份改动 Java 文件通过 IDEA 定向编译；未执行游戏视觉验收。
+
 ## 来源与范围
 
 2026-10-21，用户确认旧项目为 ImaginaryCraft，当前本地目录为

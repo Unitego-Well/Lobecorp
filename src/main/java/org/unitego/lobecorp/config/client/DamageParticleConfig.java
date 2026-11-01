@@ -29,20 +29,24 @@ public class DamageParticleConfig {
 	static {
 		synchronized (ClientConfig.class) {
 			var builder = ClientConfig.section("damageParticles", "Damage particles", "伤害粒子");
+            builder.translation(ClientConfig.translation("damageParticles.display", "Display", "显示")).push("display");
 			ENABLED = builder.comment("启用屏幕粒子。").translation(ClientConfig.translation("damageParticles.enabled", "Enabled", "启用")).define("enabled", DEFAULT_ENABLED);
+			LIFETIME_TICKS = builder.comment("新建及每次合并后的剩余寿命，单位为客户端 tick。")
+					.translation(ClientConfig.translation("damageParticles.lifetimeTicks", "Lifetime in ticks", "显示寿命（刻）")).defineInRange("lifetimeTicks", DEFAULT_LIFETIME_TICKS, 1, Integer.MAX_VALUE);
+			builder.pop().translation(ClientConfig.translation("damageParticles.merge", "Merging", "合并")).push("merge");
 			MERGE_ENABLED = builder.comment("在显示寿命内合并来源、目标、伤害类型相同且位于合并半径内的伤害。")
 					.translation(ClientConfig.translation("damageParticles.mergeEnabled", "Merge damage", "合并伤害")).define("mergeEnabled", DEFAULT_MERGE_ENABLED);
 			MERGE_RADIUS = builder.comment("与首次命中位置的最大合并距离，单位为格；零仅合并同一点。")
 					.translation(ClientConfig.translation("damageParticles.mergeRadius", "Merge radius", "合并半径")).defineInRange("mergeRadius", DEFAULT_MERGE_RADIUS, 0, Double.MAX_VALUE);
-			LIFETIME_TICKS = builder.comment("新建及每次合并后的剩余寿命，单位为客户端 tick。")
-					.translation(ClientConfig.translation("damageParticles.lifetimeTicks", "Lifetime in ticks", "显示寿命（刻）")).defineInRange("lifetimeTicks", DEFAULT_LIFETIME_TICKS, 1, Integer.MAX_VALUE);
+			builder.pop().translation(ClientConfig.translation("damageParticles.capacity", "Capacity", "容量")).push("capacity");
 			MAX_ACTIVE = builder.comment("活跃实例上限；超限回收最旧实例，让新效果可见。")
 					.translation(ClientConfig.translation("damageParticles.maxActive", "Maximum active particles", "活跃粒子上限")).defineInRange("maxActive", DEFAULT_MAX_ACTIVE, 1, Integer.MAX_VALUE);
 			POOL_CAPACITY = builder.comment("空闲实例壳的保留上限；零表示不保留。")
 					.translation(ClientConfig.translation("damageParticles.poolCapacity", "Pool capacity", "空闲池容量")).defineInRange("poolCapacity", DEFAULT_POOL_CAPACITY, 0, Integer.MAX_VALUE);
+			builder.pop().translation(ClientConfig.translation("damageParticles.appearance", "Appearance", "外观")).push("appearance");
 			OUTLINE_COLOR = builder.comment("数字描边颜色，使用有符号 ARGB 整数；零关闭描边。")
 					.translation(ClientConfig.translation("damageParticles.outlineColor", "Outline ARGB color", "描边ARGB颜色")).defineInRange("outlineColor", DEFAULT_OUTLINE_COLOR, Integer.MIN_VALUE, Integer.MAX_VALUE);
-			builder.pop();
+			builder.pop(2);
 
 		}
 

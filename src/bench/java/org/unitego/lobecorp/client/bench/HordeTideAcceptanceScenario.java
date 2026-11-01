@@ -588,7 +588,7 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 				long row = segment == 4 ? 0 : 200;
 				int column = event.columns / 2;
 				var point = event.tide.position(row, column, event.columns, time,
-						event.rules.rowSpacing(), event.rules.columnSpacing(), event.speed);
+                        event.rowSpacing(), event.columnSpacing(), event.speed);
 				item.addProperty("reference_row", row);
 				item.addProperty("reference_column", column);
 				item.add("cpu_reference_position", gson.toJsonTree(point));
@@ -936,8 +936,6 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		result.addProperty("range", HordeVisualConfig.DISTANCE.get());
 		result.addProperty("animation_frames", HordeVisualConfig.ANIMATION_FRAMES.get());
 		result.addProperty("lod", HordeVisualConfig.LOD_ENABLED.get());
-		result.addProperty("lod_near", HordeVisualConfig.LOD_NEAR.get());
-		result.addProperty("lod_far", HordeVisualConfig.LOD_FAR.get());
 		result.addProperty("card_distance", HordeVisualConfig.CARD_DISTANCE.get());
 		result.addProperty("frame_distance", HordeVisualConfig.FRAME_DISTANCE.get());
 		result.addProperty("iris_material_merge", HordeVisualConfig.IRIS_MERGE_MATERIALS.get());

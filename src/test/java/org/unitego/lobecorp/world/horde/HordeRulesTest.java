@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class HordeRulesTest {
 	private static HordeRules rules() {
-		return new HordeRules(6000, 64, 1, 1, 8, 1, 3, 100, 100, 100,
+        return new HordeRules(6000, 64, 8, 1, 3, 100, 100, 100,
 				40, 20, 5, 20, 8, 40, 4);
 	}
 
@@ -56,9 +56,9 @@ public class HordeRulesTest {
 
 	@Test
 	public void nonfiniteGeometryAndOverflowingQuotasAreRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 1, 1, 8,
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 8,
 				1, 3, 100, 100, 100, 40, 20, 5, 20, Double.NaN, 40, 4));
-		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 1, 1, 8,
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 8,
 				Integer.MAX_VALUE, 2, 100, 100, 100, 40, 20, 5, 20, 8, 40, 4));
 	}
 
@@ -73,7 +73,7 @@ public class HordeRulesTest {
 
 	@Test
 	public void perTargetHardCapIncludesInitialQuotaReinforcementAndReservations() {
-		var high = new HordeRules(6000, 64, 1.8, 1.8, 8, 16, 10, 100, 100, 100,
+		var high = new HordeRules(6000, 64, 8, 16, 10, 100, 100, 100,
 				40, 1, 5, 20, 8, 40, 4);
 		var target = new HordeTargetAssignment("target", "domain", UUID.randomUUID(), Vec3.ZERO, high);
 		assertEquals(10, high.maximumQuota());
@@ -143,12 +143,12 @@ public class HordeRulesTest {
 	}
 
 	@Test
-	public void spacingSurvivesRuleRoundTrip() {
+	public void serverRulesRoundTripExcludesClientSpacing() {
 		var original = rules();
 		var restored = HordeRules.load(original.save());
 		assertEquals(original, restored);
-		assertEquals(1, restored.rowSpacing());
-		assertEquals(1, restored.columnSpacing());
+		assertFalse(original.save().contains("row_spacing"));
+		assertFalse(original.save().contains("column_spacing"));
 	}
 
     @Test
@@ -184,8 +184,8 @@ public class HordeRulesTest {
 	}
 
 	@Test
-	public void invalidSpacingIsRejected() {
-		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 0, 1, 8, 1, 3,
+	public void invalidServerWidthIsRejected() {
+		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 0, 8, 1, 3,
 				100, 100, 100, 40, 20, 5, 20, 8, 40, 4));
 	}
 

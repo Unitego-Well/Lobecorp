@@ -18,6 +18,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.entity.corpse.CorpseBatchRenderer;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
@@ -258,7 +259,7 @@ public class CorpseRenderScenario implements BenchClientScenario {
 		var snapshot = environment.snapshot();
 		snapshot.addProperty("entities", count);
 		snapshot.add("corpse_renderer", CorpseBatchRenderer.snapshot());
-		snapshot.addProperty("corpse_batch_enabled", HordeVisualConfig.CORPSE_BATCH.get());
+		snapshot.addProperty("corpse_batch_enabled", ClientConfig.CORPSE_BATCH.get());
 		snapshot.addProperty("measure_ticks", LobecorpBenchConfig.CORPSE_MEASURE_TICKS);
 		snapshot.addProperty("gpu_seconds", GPU_SECONDS);
 		snapshot.addProperty("scope", "Client-only corpses without event source; GPU covers 28 seconds of the 600-tick MEASURE");

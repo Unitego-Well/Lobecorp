@@ -6,6 +6,10 @@
 
 六设置、原WIP/暂存保持，临时进程回收；结果与旧批比较见[BenchMod](systems/benchmod.md)，本地.agent/reports/20261031-photon-p2-hybrid18-final.md。
 
+## 公共开发窗口与后台鼠标策略待验收
+
+`94165d5` 的公共策略禁止强制前置／恢复焦点及抢实体鼠标；开发窗口初始化一次非激活铺满，保护本窗口 SC_MINIMIZE，解除开发 AFK／最小化节流及失焦暂停，拒绝失焦自动抓鼠标。来源提交的 IDEA／Compile／Data 结果不作为 Photon 本次验收；本次仅解决文档冲突，未运行游戏或构建。后续须在不抢实体鼠标、不强制前置条件下核对一次展开、最小化命令保护、失焦关闭 GUI 不抓鼠标、主动点击可操作、AFK 原因解除及 maxFps／VSync／Options 字节保持；不保证拦截外部直接最小化或硬件实际帧率。契约见[后台控制](systems/minecraft-mcp-background-control.md#2026-11-01-开发测试窗口与鼠标边界)。
+
 ## 2026-10-31 两项P2代码修复（仅IDEA验证）
 
 `PhotonOwnedEffectResources`将已读取的CPU Prepared与公开READY结果分离保存，初次发布和设备重建共用准备入口。失败保留快照，同设备戳每秒最多一次尝试，新戳立即允许，成功转READY并清重试记录；资源重载替换快照并清旧代次记录，读取失败无快照不重试，公开Result约束保持。`PhotonModelPackExportUtil`在capture和export写包前遍历原生实例与自定义子源引用，拒绝任何层级与规范化根ID相同的依赖；定义同路径不同内容也拒绝，避免静默覆盖或self跳过。

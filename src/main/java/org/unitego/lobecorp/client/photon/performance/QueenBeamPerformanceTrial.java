@@ -6,7 +6,6 @@ import com.lowdragmc.photon.client.fx.FX;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.SharedConstants;
-import net.minecraft.client.InactivityFpsLimit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.components.Button;
@@ -46,7 +45,6 @@ public class QueenBeamPerformanceTrial {
 	private static final double SETTLE_SECONDS = 20;
 	private static final double LOAD_TIMEOUT_SECONDS = 120;
 	private static final double[] CAST_SECONDS = {4, 31, 58};
-	private static final int FRAME_LIMIT = 260;
 	private static final double TARGET_DISTANCE = QueenBeamPerformanceFixture.TARGET_DISTANCE;
 	private static final double TARGET_HEALTH = QueenBeamPerformanceFixture.TARGET_HEALTH;
 	private static final double CAMERA_X = -7;
@@ -79,9 +77,8 @@ public class QueenBeamPerformanceTrial {
 	private static volatile int queenId = -1;
 	private static volatile boolean fixtureReady;
 	private static volatile @Nullable String failure;
-	private static @Nullable InactivityFpsLimit originalInactivity;
-	private static boolean originalVsync, originalPause, originalGui;
-	private static int originalLimit;
+	private static boolean optionsSaved;
+	private static boolean originalGui;
 
 	private enum State {
 		IDLE, TITLE, CREATE, LOAD, FIXTURE, SETTLE, CAPTURE, VERIFY, COMPLETE, FAILED
@@ -333,8 +330,6 @@ public class QueenBeamPerformanceTrial {
 
 	private static void beginCapture() {
 		var mc = Minecraft.getInstance();
-		GLFW.glfwFocusWindow(mc.getWindow().handle());
-		mc.getFramerateLimitTracker().onInputReceived();
 		MARKS.clear();
 		POSE_SAMPLES.clear();
 		lastAnimation = null;
@@ -459,36 +454,22 @@ public class QueenBeamPerformanceTrial {
 
 	private static void saveOptions() {
 		var mc = Minecraft.getInstance();
-		originalInactivity = mc.options.inactivityFpsLimit().get();
-		originalVsync = mc.options.enableVsync().get();
-		originalLimit = mc.options.framerateLimit().get();
-		originalPause = mc.options.pauseOnLostFocus;
 		originalGui = mc.options.hideGui;
 		originalEntityDistance = mc.options.entityDistanceScaling().get();
+		optionsSaved = true;
 		if (cameraScale > 1) {
 			mc.options.entityDistanceScaling().set(Math.max(2, originalEntityDistance));
 		}
-		GLFW.glfwMaximizeWindow(mc.getWindow().handle());
-		GLFW.glfwShowWindow(mc.getWindow().handle());
-		GLFW.glfwFocusWindow(mc.getWindow().handle());
-		mc.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
-		mc.options.enableVsync().set(false);
-		mc.options.framerateLimit().set(FRAME_LIMIT);
-		mc.options.pauseOnLostFocus = false;
 	}
 
 	private static void restoreOptions() {
 		var mc = Minecraft.getInstance();
-		if (originalInactivity != null) {
-			mc.options.inactivityFpsLimit().set(originalInactivity);
-			mc.options.enableVsync().set(originalVsync);
-			mc.options.framerateLimit().set(originalLimit);
-			mc.options.pauseOnLostFocus = originalPause;
+        if (optionsSaved) {
+            optionsSaved = false;
 			mc.options.hideGui = originalGui;
 			mc.options.entityDistanceScaling().set(originalEntityDistance);
 		}
 		mc.mouseHandler.releaseMouse();
-		GLFW.glfwFocusWindow(mc.getWindow().handle());
 	}
 
 	private static void cleanup() {

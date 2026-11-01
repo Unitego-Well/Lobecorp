@@ -104,9 +104,6 @@ public class PhotonNativeControlScenario implements BenchClientScenario {
 			throw new IllegalStateException("缺少鼠标隔离、原窗口桥或实际作业诊断开关。");
 		}
 
-		var window = context.minecraft().getWindow();
-		GLFW.glfwMaximizeWindow(window.handle());
-		GLFW.glfwFocusWindow(window.handle());
 		focusAudit.audit(true, "setup");
 		originalPose = context.automation().pose();
 		originalFlying = context.player().getAbilities().flying;
@@ -150,16 +147,8 @@ public class PhotonNativeControlScenario implements BenchClientScenario {
 		}
 
 		var handle = context.minecraft().getWindow().handle();
-		if (GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_MAXIMIZED) != GLFW.GLFW_TRUE) {
-			if (maximizeWaitNs == 0) {
-				maximizeWaitNs = System.nanoTime();
-			}
-
-			if (System.nanoTime() - maximizeWaitNs >= TimeUnit.SECONDS.toNanos(10)) {
-				throw new IllegalStateException("原生对照实际 GLFW_MAXIMIZED 未读回 true。");
-			}
-
-			GLFW.glfwMaximizeWindow(handle);
+		if (GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE
+				|| context.minecraft().getWindow().getWidth() <= 0 || context.minecraft().getWindow().getHeight() <= 0) {
 			return BenchClientStepResult.CONTINUE;
 		}
 

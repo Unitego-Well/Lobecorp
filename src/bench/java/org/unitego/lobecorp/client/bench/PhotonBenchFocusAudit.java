@@ -3,9 +3,8 @@ package org.unitego.lobecorp.client.bench;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
 
-/// 显式基准只为当前游戏窗口补焦；真实失焦与补焦次数保留为观测，不据此拒绝样本。
+/// 只读记录当前游戏窗口焦点变化，不据此拒绝样本。
 public final class PhotonBenchFocusAudit {
 	/// 只保留前 256 次焦点转换，计数和观测时长不因时间线截断而丢失。
 	private static final int MAX_TRANSITIONS = 256;
@@ -41,7 +40,7 @@ public final class PhotonBenchFocusAudit {
 				event.addProperty("observed_ns", now);
 				event.addProperty("phase", phase);
 				event.addProperty("focused", current);
-				event.addProperty("restore_requested", !current);
+				event.addProperty("restore_requested", false);
 				timeline.add(event);
 			} else {
 				droppedTransitions++;
@@ -61,8 +60,6 @@ public final class PhotonBenchFocusAudit {
 				measureUnfocusedTicks++;
 			}
 
-			GLFW.glfwFocusWindow(window.handle());
-			restoreRequests++;
 
 		}
 
@@ -83,7 +80,7 @@ public final class PhotonBenchFocusAudit {
 		result.addProperty("focus_restores", restores);
 		result.addProperty("focus_restore_requests", restoreRequests);
 		result.addProperty("focus_restores_scope", "observed_false_to_true_transitions_after_initial_audit");
-		result.addProperty("focus_restore_requests_scope", "audit_requests_excludes_explicit_setup_focus");
+		result.addProperty("focus_restore_requests_scope", "read_only_observation_no_focus_requests");
 		result.addProperty("measure_unfocused_ticks", measureUnfocusedTicks);
 		result.addProperty("focus_gate_enforced", false);
 		result.addProperty("final_focused", focused);

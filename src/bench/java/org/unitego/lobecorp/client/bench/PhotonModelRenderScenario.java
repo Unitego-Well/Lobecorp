@@ -186,9 +186,6 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			throw new IllegalStateException("首次释放窗口保留桥未实际加载，禁止按完整夹具运行。");
 		}
 
-		var window = context.minecraft().getWindow();
-		GLFW.glfwMaximizeWindow(window.handle());
-		GLFW.glfwFocusWindow(window.handle());
 		focusAudit.audit(singleCast && beamCount > 0, "setup");
 		originalPose = context.automation().pose();
 		var player = context.player();
@@ -326,18 +323,8 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			}
 
 			var window = context.minecraft().getWindow();
-			if (singleCast && GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) != GLFW.GLFW_TRUE) {
-				long now = System.nanoTime();
-				if (windowMaximizeWaitStartedNs == 0) {
-					windowMaximizeWaitStartedNs = now;
-				}
-				if (now - windowMaximizeWaitStartedNs >= WINDOW_MAXIMIZE_TIMEOUT_NS) {
-					throw new IllegalStateException("首次释放窗口前置等待超过 10 秒：GLFW_MAXIMIZED 未读回 true；focused="
-							+ GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_FOCUSED) + "，iconified="
-							+ GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED));
-				}
-
-				GLFW.glfwMaximizeWindow(window.handle());
+			if (GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE
+					|| context.minecraft().getWindow().getWidth() <= 0 || context.minecraft().getWindow().getHeight() <= 0) {
 				return BenchClientStepResult.CONTINUE;
 			}
 
@@ -748,7 +735,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("bench_input_isolation_contract_active", !System.getProperty("modBench.resultDirectory", "").isBlank());
 		report.addProperty("bench_input_isolation_source", "BenchInputIsolation.active_contract_BenchMod_0.1.5-beta_required_MouseHandlerMixin_InputConstantsMixin");
 		report.addProperty("bench_input_isolation_runtime_verification", "not_verified_by_source_contract");
-		report.addProperty("setup_focus_requests", 1);
+		report.addProperty("setup_focus_requests", 0);
 		report.addProperty("mouse_grabbed_observed", context.minecraft().mouseHandler.isMouseGrabbed());
 		report.addProperty("glfw_cursor_mode_observed",
 				GLFW.glfwGetInputMode(context.minecraft().getWindow().handle(), GLFW.GLFW_CURSOR));
@@ -865,7 +852,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		report.addProperty("window_maximize_wait_started_ns", windowMaximizeWaitStartedNs);
 		report.addProperty("window_maximize_wait_ns", windowMaximizeWaitStartedNs == 0 || sparkReadyNs == 0
 				? 0 : sparkReadyNs - windowMaximizeWaitStartedNs);
-		report.addProperty("readiness_scope", "spark_ack_and_native_maximized_before_fixture_not_spark_ack_alone");
+		report.addProperty("readiness_scope", "spark_ack_and_valid_non_iconified_window_before_fixture");
 		report.addProperty("evidence_mode", evidenceMode.name());
 		report.addProperty("image_validation", evidenceMode == EvidenceMode.PERFORMANCE ? "NOT_USED" : "VISUAL");
 		if (evidenceMode == EvidenceMode.PERFORMANCE) {

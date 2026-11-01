@@ -346,9 +346,6 @@ public class PhotonMigrationMatrixCapture {
 					if (maximizedNs == 0) {
 						maximizedNs = System.nanoTime();
 					}
-				} else if (maximizeRequestedNs == 0) {
-					maximizeRequestedNs = System.nanoTime();
-					GLFW.glfwMaximizeWindow(window.handle());
 				}
 			}
 			if (recordHead && startNs == 0 && !armed) {
@@ -404,7 +401,11 @@ public class PhotonMigrationMatrixCapture {
 					|| minecraft.screen != null || minecraft.getOverlay() != null) {
 				return;
 			}
-			require(maximizedNs != 0, "entry_not_maximized_before_world");
+			var window = minecraft.getWindow();
+			if (GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE
+					|| window.getWidth() <= 0 || window.getHeight() <= 0) {
+				return;
+			}
 			require(world != null, "entry_no_world_setup");
 			require(IrisCompat.isUsingShaderPack() == expectedShader, "entry_shader_mismatch");
 			require(!PhotonFrameCapture.running() && !PhotonPerformanceCapture.active(), "entry_capture_owned_elsewhere");

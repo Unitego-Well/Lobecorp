@@ -320,9 +320,6 @@ public class PhotonHybridMatrixCapture {
                     if (maximizedNs == 0) {
                         maximizedNs = System.nanoTime();
                     }
-                } else if (maximizeRequestedNs == 0) {
-                    maximizeRequestedNs = System.nanoTime();
-                    GLFW.glfwMaximizeWindow(window.handle());
                 }
             }
             if (recordHead && startNs == 0 && !armed) {
@@ -378,7 +375,11 @@ public class PhotonHybridMatrixCapture {
                     || minecraft.screen != null || minecraft.getOverlay() != null) {
                 return;
             }
-            require(maximizedNs != 0, "entry_not_maximized_before_world");
+            var window = minecraft.getWindow();
+            require(window != null && window.handle() != 0, "entry_window_missing");
+            require(window.getWidth() > 0 && window.getHeight() > 0, "entry_invalid_window_size");
+            require(GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED) != GLFW.GLFW_TRUE,
+                    "entry_window_minimized");
             require(world != null, "entry_no_world_setup");
             require(IrisCompat.isUsingShaderPack() == expectedShader, "entry_shader_mismatch");
             require(!PhotonFrameCapture.running() && !PhotonPerformanceCapture.active(), "entry_capture_owned_elsewhere");
@@ -849,6 +850,7 @@ public class PhotonHybridMatrixCapture {
             result.addProperty("observer_installed_ns", installedNs);
             result.addProperty("observer_installed_epoch_ms", installedEpochMs);
             result.addProperty("window_ready_ns", windowReadyNs);
+	        result.addProperty("window_size_policy", "development_lifecycle_noactivate");
             result.addProperty("maximize_requested_ns", maximizeRequestedNs);
             result.addProperty("maximized_ns", maximizedNs);
             result.addProperty("level_available_ns", levelAvailableNs);

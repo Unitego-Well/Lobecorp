@@ -320,12 +320,14 @@ public class PhotonRepeatedEffectTrial {
 			throw new IllegalStateException("repeat_requires_ide_client");
 		}
 
-		GLFW.glfwMaximizeWindow(Minecraft.getInstance().getWindow().handle());
+		var window = Minecraft.getInstance().getWindow();
+		if (window == null || window.handle() == 0) {
+			throw new IllegalStateException("repeat_window_unavailable");
+		}
 	}
 
 	private void settle() {
-		if (GLFW.glfwGetWindowAttrib(minecraft.getWindow().handle(), GLFW.GLFW_MAXIMIZED) != GLFW.GLFW_TRUE) {
-			prepareWindow();
+        if (GLFW.glfwGetWindowAttrib(minecraft.getWindow().handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE) {
 			stableNs = 0;
 			return;
 		}

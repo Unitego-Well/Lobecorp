@@ -1,5 +1,17 @@
 # 系统修改记录
 
+## 2026-11-01 Photon接入公共开发窗口策略
+
+通过Git三方应用94165d5，逐段解决文档及Sweeper冲突，保留Photon既有记录与六个已删除的非本分支场景/辅助类；引入开发窗口生命周期、后台节流/暂停和失焦grabMouse保护，客户端Mixin条目与Photon原有条目合并保留。Photon的Hybrid/Entry/Migration、原生/模型/工作区审查等场景取消主动Focus/Max和native MAX硬门禁，保留原生状态观察、未最小化及有效尺寸检查。三个旧开发性能入口不再重复操作窗口、改AFK/VSync/FPS/pause选项或伪造开发输入；正常鼠标释放和production采样原行为保留。
+
+16文件IDEA错误级检查0项，19个修改范围格式化；编译/生产包隔离通过，Data23份written0/removed0。没有启动游戏、鼠标/窗口/AFK及性能运行验证，采集继续暂停。分支内不能将非激活铺满冒称native maximized或将编译通过写成后台性能验收。原有配置、测试、分析器与性能工具暂存保护；来源和最终状态见[Photon入口](photon-workspace.md)。
+
+## 2026-11-01：公共开发窗口策略定向同步
+
+- 来源：`94165d5`；仅同步不抢实体鼠标、不强制前置／恢复焦点及公共开发窗口策略说明，保留 Photon 专属正文，不引入 Horde 历史或原始 dev 目录状态。
+- 公共策略：BenchWindow 只读焦点；开发 Window 生命周期一次非激活铺满、保护 SC_MINIMIZE 并释放销毁回调；开发客户端解除 AFK／最小化节流及失焦暂停，拒绝失焦自动抓鼠标。保留 maxFps／VSync／Options，不伪造输入；production 不启用，非 Windows 跳过本机窗口策略，不能保证外部直接最小化或硬件性能收益。
+- 来源提交记录 IDEA、Compile／生产包隔离与 Data 23 文件 written=0／removed=0；这些仅为来源证据，不代表 Photon 同步后的验证。本次只解决四份文档冲突并检查差异、引用和 marker，未构建、运行游戏或采集；实机项留[Photon 唯一清单](../issues.md#公共开发窗口与后台鼠标策略待验收)。Java、Mixin、删除路径与 Git 索引由主线处理。
+
 ## 2026-11-01 性能观察器取消前置与焦点恢复
 
 所属Photon性能脚本将窗口操作改为只读观察：删除PS helper的ShowWindowAsync/SetForegroundWindow及500ms循环变更，仅记录同PID窗口的maximized/focused；两观察器启动日志明确mode=observe_only。未修改公共Java窗口策略、用户选项或系统设置，未运行游戏/性能采集。Node --check与PowerShell Parser通过，定向搜索无鼠标/窗口变更API。防最小化及后台性能未在本次验证；见[所属当前状态](photon-workspace.md#2026-11-01-性能窗口夹具静态修复为只读)。修改前哈希/历史干扰链保留在本地停工交接及Git已暂存初稿，最终提交仅含明确路径。

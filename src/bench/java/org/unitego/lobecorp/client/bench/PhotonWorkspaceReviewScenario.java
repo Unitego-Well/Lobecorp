@@ -56,17 +56,14 @@ public class PhotonWorkspaceReviewScenario implements BenchClientScenario {
 	@Override
 	public void setup(BenchClientContext context) {
 		phaseNs = System.nanoTime();
-		var handle = context.minecraft().getWindow().handle();
-		if (GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_MAXIMIZED) != GLFW.GLFW_TRUE) {
-			GLFW.glfwMaximizeWindow(handle);
-		}
 	}
 
 	@Override
 	public BenchClientStepResult stabilize(BenchClientContext context) {
 		require(System.nanoTime() - phaseNs < TimeUnit.SECONDS.toNanos(30), "review_window_timeout");
 		return context.minecraft().level != null && context.minecraft().player != null
-				&& GLFW.glfwGetWindowAttrib(context.minecraft().getWindow().handle(), GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE
+				&& GLFW.glfwGetWindowAttrib(context.minecraft().getWindow().handle(), GLFW.GLFW_ICONIFIED) != GLFW.GLFW_TRUE
+				&& context.minecraft().getWindow().getWidth() > 0 && context.minecraft().getWindow().getHeight() > 0
 				? BenchClientStepResult.COMPLETE : BenchClientStepResult.CONTINUE;
 	}
 

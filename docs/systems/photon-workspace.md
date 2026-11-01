@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-01 公共窗口策略已接入，性能继续暂停
+
+已通过Git三方同步94165d5并完成Photon专属适配：窗口生命周期由公共DevelopmentWindowPolicy一次非激活铺满处理，测试场景只读观察焦点/native max位；不调用场景Focus/Max/restore，不用native MAX位作为硬门禁。保留未最小化、有效窗口/帧尺寸和原负载/ID/时长。开发旧性能入口移除窗口/AFK/VSync/FPS/pause改写与伪造输入，production PhotonFrameCapture的原有输入计时行为保留。正常的一次鼠标释放及聚焦后用户主动点击逻辑未全局禁用。
+
+本分支已有六个Horde/BenchWindow等文件删除未被复活；四文档冲突只合本次公共增量，保留Photon正文。16个Java静态错误0，修改行格式处理、compileJava/compileBenchJava/生产包隔离及Data通过，23生成文件未写入。未启动游戏或采集，窗口防最小化、真实鼠标/后台帧率仍未验收；非激活铺满不是GLFW native maximized，外部直接最小化不作保证。此前性能失败/中止证据保留，后续须新批次，不自动恢复旧配置。
+
 ## 2026-11-01 性能窗口夹具静态修复为只读
 
 按最新“主要避免抢鼠标”及独占分工，已删除本线PS夹具的ShowWindowAsync/SetForegroundWindow及反复恢复焦点逻辑；两个性能观察器只启动observe_only状态记录。没有窗口前置/聚焦或实体鼠标注入、捕获、居中API；36份新运行配置无直接窗口变更调用。两份Node语法检查、PS解析与定向API搜索通过，未启动游戏/采集作运行验证。性能采集继续暂停，本轮没有有效性能结果；防最小化、一次最大化、后台不降性能留主线统一修复，不能用此静态修改替代验收。原有WIP保护，旧失败与中止证据保留。

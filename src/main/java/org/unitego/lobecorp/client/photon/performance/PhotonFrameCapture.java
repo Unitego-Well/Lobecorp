@@ -9,6 +9,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.TimerQuery;
 import com.sun.management.ThreadMXBean;
 import net.minecraft.client.Minecraft;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
@@ -434,7 +435,9 @@ public class PhotonFrameCapture {
 				startedNs = now;
 				startedAt = Instant.now();
 				deadlineNs = startedNs + (long) (requestedSeconds * NANOSECONDS_PER_SECOND);
-				Minecraft.getInstance().getFramerateLimitTracker().onInputReceived();
+                if (FMLEnvironment.isProduction()) {
+                    Minecraft.getInstance().getFramerateLimitTracker().onInputReceived();
+                }
 			}
 
 			// 在递增 frames 前冻结，容量结束不追加未填充的零值帧，也不再执行后续采样阶段。

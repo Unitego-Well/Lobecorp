@@ -11,6 +11,7 @@ import org.unitego.lobecorp.config.client.PlayerHudConfig;
 
 public class PlayerHudRegistration {
 	public static void register(RegisterGuiLayersEvent event) {
+		EventHudRegistration.register();
 		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, Lobecorp.id("player_status_hud"), PlayerStatusHud.INSTANCE);
 		event.wrapLayer(VanillaGuiLayers.PLAYER_HEALTH, original -> (graphics, delta) -> {
 			var player = Minecraft.getInstance().player;

@@ -1,5 +1,9 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-01 事件 HUD 注册
+
+`EventHud.register(Identifier, GuiLayer)` 按事件ID注册绘制器，重复ID拒绝注册，按注册顺序调用。`EventHudRegistration.register()` 由既有 `PlayerHudRegistration.register` 初始化，使用 `MidnightCleanup.ID` 注册 `MidnightCleanupHud.INSTANCE`；深夜清扫目前为空绘制入口，尚无布局、计时或激活条件。四份Java文件经IDEA定向编译通过，未做游戏验证。
+
 ## 2026-11-01 事件 HUD 显示层
 
 `PlayerHudRegistration.register` 在既有 HUD 注册入口中注册 `lobecorp:event_hud`，使用 `registerAbove` 放在 `lobecorp:damage_screen_filter` 上方，由 `EventHud.INSTANCE` 承担绘制入口。当前仅建立空显示层，未添加计时器、文本或事件状态逻辑。两份改动 Java 文件通过 IDEA 定向编译；未执行游戏视觉验收。

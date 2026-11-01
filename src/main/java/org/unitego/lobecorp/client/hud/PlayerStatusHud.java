@@ -1,8 +1,6 @@
 package org.unitego.lobecorp.client.hud;
 
-import net.minecraft.client.DeltaTracker;
 import org.jspecify.annotations.NullMarked;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.client.hud.layer.CompositeHudLayer;
 import org.unitego.lobecorp.client.hud.layer.HealthBarLayer;
@@ -29,28 +27,9 @@ public class PlayerStatusHud extends CompositeHudLayer {
 
 	@Override
 	protected void updatePosition() {
-		setPosition(screenWidth / 2 - LEFT_OFFSET, screenHeight - BOTTOM_OFFSET);
-	}
-
-	@Override
-	protected void renderLayer(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		if (!playerVisible()) {
-			return;
-		}
-
-		var pose = graphics.pose();
-		pose.pushMatrix();
-		try {
-			if (minecraft.player != null && minecraft.player.isCreative()) {
-				pose.translate(0, 5);
-			} else if (!PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get()) {
-				pose.translate(0, -10);
-			}
-
-			super.renderLayer(graphics, deltaTracker);
-		} finally {
-			pose.popMatrix();
-		}
+		int offset = minecraft.player != null && minecraft.player.isCreative() ? 5
+				: !PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() ? -10 : 0;
+		setPosition(screenWidth / 2 - LEFT_OFFSET, screenHeight - BOTTOM_OFFSET + offset);
 	}
 
 	public int armorOffset() {

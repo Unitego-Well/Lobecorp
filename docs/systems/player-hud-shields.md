@@ -1,5 +1,13 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-01 全部模组 HUD 迁入 LDLib2
+
+玩家生命、理智、四色护盾与两个全屏滤镜统一由 `HudLayer` 的LDLib2 ModularUI驱动；各子层为真实UIElement，CompositeHudLayer通过子节点树提交，不再逐个调用子层独立render。既有状态取值、精灵、动画、配置、存活与创造模式可见条件、护甲偏移与滤镜注册层级保留；精灵裁切等特定绘制在LDLib2节点回调中执行。
+
+HudLayer的getModularUI返回框架维护的UI归属，只有HUD根render入口创建宿主，不在子节点getter里懒建UI；clear释放宿主后保留节点结构，支持会话重建。ScreenParticleHud接管屏幕伤害粒子的GuiLayer注册与UI生命周期，在LDLib2画布回调内继续使用原粒子投影、合并、内容和动画；登录、登出、卸载沿既有事件入口释放画布。事件HUD与指挥家HUD原已使用LDLib2，本轮保留；原版HUD与世界渲染不在迁移范围。
+
+验证：主线审查源差异并修正根/子UI归属，IDEA项目编译与最后生命周期改动定向编译成功；BenchMod Compile与生产包隔离成功；Data退出0，生成目录无Git差异。尚未进行实机视觉验证，状态条位置/动画、滤镜覆盖顺序和屏幕粒子画面不可据编译判定验收通过。
+
 ## 当前：LDLib2 事件 HUD
 
 使用LDLib2 26.1.2.42的 `ModularHudLayer` 和 `ModularUI`，统一组件 `EventHudComponent` 继承 `UIElement`，构造时指定 `TOP/LEFT/RIGHT`。顶部居中位于屏幕上方，左右从屏幕高度三分之一处开始，各自由column容器按加入顺序向下堆叠、间隔4 GUI像素；组件高度由内容决定，禁止收缩，移除自动补位。

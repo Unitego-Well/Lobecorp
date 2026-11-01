@@ -7,12 +7,11 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 public abstract class BasicHudLayer extends HudLayer {
 	@Override
-	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+	protected void renderContents(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		if (minecraft.options.hideGui || minecraft.player == null) {
 			return;
 		}
 
-		init(graphics, deltaTracker);
 		renderLayer(graphics, deltaTracker);
 	}
 

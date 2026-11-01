@@ -35,7 +35,7 @@ public abstract class StatusBarLayer extends HudLayer {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+	protected void renderContents(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		renderStatusBar(graphics, deltaTicks(deltaTracker));
 		renderValueText(graphics);
 	}

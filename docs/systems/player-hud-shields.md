@@ -1,5 +1,11 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-01 HUD 迁移补全：运行覆盖层
+
+已盘点全部RegisterGuiLayersEvent入口与RenderGuiEvent.Post分发：生命/理智/护盾、伤害/低理智滤镜、屏幕粒子、事件HUD、指挥家HUD均经LDLib2驱动。另将Post阶段的指挥家指令光标/框选及Horde统计文字接入RuntimeOverlayHud的LDLib2画布，保持原Post阶段和先指令后统计的绘制顺序；沿既有登录/登出/卸载入口释放UI，不新增订阅。特定投影、精灵裁切与画线仍由组件回调复用原绘制算法，未重写世界渲染或原版HUD。
+
+主线最后IDEA项目编译成功；前一批Bench生产包隔离与Data通过，最后补全仅代码、无资源变化。未做实机视觉验收，不能将编译成功当作位置、动画、交互及滤镜覆盖正确。原业务WIP与AM测试保留。
+
 ## 2026-11-01 全部模组 HUD 迁入 LDLib2
 
 玩家生命、理智、四色护盾与两个全屏滤镜统一由 `HudLayer` 的LDLib2 ModularUI驱动；各子层为真实UIElement，CompositeHudLayer通过子节点树提交，不再逐个调用子层独立render。既有状态取值、精灵、动画、配置、存活与创造模式可见条件、护甲偏移与滤镜注册层级保留；精灵裁切等特定绘制在LDLib2节点回调中执行。

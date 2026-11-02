@@ -172,6 +172,123 @@ public class HudLayerManagerTest {
 		assertEquals(1, secondHosts.getLast().rendered);
 	}
 
+	@Test
+	public void clearRunsClearActionEvenWhenHostWasNeverCreated() {
+		var cleared = new int[]{0};
+		manager.register(id, () -> true, TestHost::new, () -> cleared[0]++);
+
+		manager.clear(id);
+		assertEquals(1, cleared[0]);
+
+		manager.clear();
+		assertEquals(2, cleared[0]);
+	}
+
+	@Test
+	public void renderSameSessionAfterSynchronizeDoesNotClearNewActivity() {
+		var level = new Object();
+		var firstPlayer = new Object();
+		var secondPlayer = new Object();
+		var cleared = new int[]{0};
+		var first = new TestHost();
+		var second = new TestHost();
+		var next = new ArrayList<>(List.of(first, second));
+		manager.register(id, () -> true, next::removeFirst, () -> cleared[0]++);
+
+		manager.renderForSession(id, frame(), session(level, firstPlayer));
+		var clearedBeforeSwitch = cleared[0];
+		manager.renderForSession(id, frame(), session(level, secondPlayer));
+		assertEquals(clearedBeforeSwitch + 1, cleared[0]);
+
+		// 同步后的新会话内新增业务活动；随后同会话渲染不得再次清空。
+		manager.renderForSession(id, frame(), session(level, secondPlayer));
+		assertEquals(clearedBeforeSwitch + 1, cleared[0]);
+		assertEquals(2, second.rendered);
+	}
+
+	@Test
+	public void clearActionFailureStillClearsOtherEntriesAndKeepsOriginalException() {
+		var failOnce = new boolean[]{true};
+		var otherCleared = new int[]{0};
+		var secondId = id.withSuffix("_second");
+		manager.register(id, () -> true, TestHost::new, () -> {
+			if (failOnce[0]) {
+				failOnce[0] = false;
+				throw new IllegalStateException("清理回调失败");
+			}
+		});
+		manager.register(secondId, () -> true, TestHost::new, () -> otherCleared[0]++);
+
+		var thrown = assertThrows(IllegalStateException.class, manager::clear);
+		assertEquals("清理回调失败", thrown.getMessage());
+		assertEquals(1, otherCleared[0]);
+	}
+
+	@Test
+	public void temporarilyHiddenPreservesBusinessState() {
+		var level = new Object();
+		var player = new Object();
+		var cleared = new int[]{0};
+		var host = new TestHost();
+		manager.register(id, () -> true, () -> host, () -> cleared[0]++);
+
+		manager.renderForSession(id, frame(), session(level, player));
+		var clearedBeforeHide = cleared[0];
+		manager.setTemporarilyHidden(id, true);
+		manager.renderForSession(id, frame(), session(level, player));
+		assertEquals(clearedBeforeHide, cleared[0]);
+		assertEquals(0, host.released);
+
+		manager.setTemporarilyHidden(id, false);
+		manager.renderForSession(id, frame(), session(level, player));
+		assertEquals(clearedBeforeHide, cleared[0]);
+	}
+
+	@Test
+	public void singleClearResetsTemporaryHiddenAndAllowsRenderAgain() {
+		var level = new Object();
+		var player = new Object();
+		var created = new ArrayList<TestHost>();
+		manager.register(id, () -> true, () -> {
+			var host = new TestHost();
+			created.add(host);
+			return host;
+		});
+
+		manager.renderForSession(id, frame(), session(level, player));
+		manager.setTemporarilyHidden(id, true);
+		manager.renderForSession(id, frame(), session(level, player));
+		assertEquals(1, created.getFirst().rendered);
+
+		manager.clear(id);
+		manager.renderForSession(id, frame(), session(level, player));
+		assertEquals(2, created.size());
+		assertEquals(1, created.getLast().rendered);
+	}
+
+	@Test
+	public void singleClearResetsTemporaryHiddenWhenClearActionFails() {
+		var level = new Object();
+		var player = new Object();
+		var host = new TestHost();
+		var failOnClear = new boolean[]{false};
+		manager.register(id, () -> true, () -> host, () -> {
+			if (failOnClear[0]) {
+				throw new IllegalStateException("清理回调失败");
+			}
+		});
+
+		manager.renderForSession(id, frame(), session(level, player));
+		manager.setTemporarilyHidden(id, true);
+
+		failOnClear[0] = true;
+		assertThrows(IllegalStateException.class, () -> manager.clear(id));
+		failOnClear[0] = false;
+
+		manager.renderForSession(id, frame(), session(level, player));
+		assertEquals(2, host.rendered);
+	}
+
 	private static HudFrame frame() {
 		return new HudFrame(null, null, null, null, 0, 0);
 	}

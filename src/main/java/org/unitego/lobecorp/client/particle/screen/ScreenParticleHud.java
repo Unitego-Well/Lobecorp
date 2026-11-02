@@ -1,66 +1,52 @@
 package org.unitego.lobecorp.client.particle.screen;
 
-import com.lowdragmc.lowdraglib2.gui.hud.ModularHudLayer;
-import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
-import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
-import com.lowdragmc.lowdraglib2.gui.ui.rendering.IGUIContext;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.multiplayer.ClientLevel;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.gui.GuiLayer;
+import org.jspecify.annotations.NullMarked;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.HudLayerManager;
+import org.unitego.lobecorp.client.hud.host.HudFrame;
+import org.unitego.lobecorp.client.hud.host.HudHost;
 
-/// LDLib2 管理屏幕粒子的绘制生命周期；世界投影与内容批次仍归粒子系统。
-public class ScreenParticleHud implements ModularHudLayer {
-    public static final ScreenParticleHud INSTANCE = new ScreenParticleHud();
-    private @Nullable ModularUI modularUI;
-    private @Nullable ClientLevel level;
-    private @Nullable DeltaTracker deltaTracker;
+/// 屏幕粒子 HUD 门面：宿主与显隐由统一管理器负责，投影与内容批次仍归粒子系统。
+@NullMarked
+public class ScreenParticleHud implements GuiLayer {
+	public static final Identifier ID = Lobecorp.id("screen_particle_hud");
+	public static final ScreenParticleHud INSTANCE = new ScreenParticleHud();
 
-    @Override
-    public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        this.deltaTracker = deltaTracker;
-        try {
-            ModularHudLayer.super.render(graphics, deltaTracker);
-        } finally {
-            this.deltaTracker = null;
-        }
-    }
+	private ScreenParticleHud() {
+	}
 
-    @Override
-    public @Nullable ModularUI getModularUI() {
-        var current = Minecraft.getInstance().level;
-        if (level != current) {
-            clear();
-            level = current;
-        }
-        if (level == null || Minecraft.getInstance().options.hideGui) {
-            return null;
-        }
-        if (modularUI == null) {
-            var canvas = new ParticleCanvas();
-            canvas.layout(layout -> layout.widthPercent(100).heightPercent(100));
-            modularUI = new ModularUI(UI.of(canvas, size -> size));
-        }
-        return modularUI;
-    }
+	/// 向统一管理器注册粒子宿主；须在首次提取前由启动期串行集成调用。
+	public void register() {
+		HudLayerManager.INSTANCE.register(ID, this::visible, () -> {
+			var content = new UIElement();
+			content.layout(layout -> layout.widthPercent(100).heightPercent(100));
+			return new HudHost(content, this::draw, () -> {
+			});
+		});
+	}
 
-    public void clear() {
-        if (modularUI != null) {
-            modularUI.onRemoved();
-            modularUI = null;
-        }
-        level = null;
-    }
+	/// 保留原图层入口；宿主登记由启动期串行集成完成，此处只提交当帧提取。
+	@Override
+	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		HudLayerManager.INSTANCE.render(ID, graphics, deltaTracker);
+	}
 
-    private class ParticleCanvas extends UIElement {
-        @Override
-        protected void drawBackgroundAdditional(IGUIContext context) {
-            if (context instanceof GUIContext clientContext && deltaTracker != null) {
-                ScreenParticles.extract(clientContext.graphics, deltaTracker);
-            }
-        }
-    }
+	public void clear() {
+		HudLayerManager.INSTANCE.clear(ID);
+	}
+
+	private boolean visible() {
+		var minecraft = Minecraft.getInstance();
+		return minecraft.level != null && !minecraft.options.hideGui;
+	}
+
+	private void draw(HudFrame frame) {
+		ScreenParticles.extract(frame.graphics(), frame.deltaTracker());
+	}
 }

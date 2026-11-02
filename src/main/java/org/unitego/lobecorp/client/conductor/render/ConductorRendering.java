@@ -16,7 +16,10 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.*;
+import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
+import net.neoforged.neoforge.client.event.RenderHandEvent;
+import net.neoforged.neoforge.client.event.RenderNameTagEvent;
+import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
@@ -537,7 +540,7 @@ public class ConductorRendering {
 		}
 	}
 
-	public static void onGui(RenderGuiEvent.Post event) {
+	public static void onGui(GuiGraphicsExtractor graphics) {
 		Minecraft minecraft = Minecraft.getInstance();
 
 		if (!ConductorControls.active() || minecraft.screen != null) {
@@ -551,8 +554,6 @@ public class ConductorRendering {
 				&& action != ConductorCommandPayload.Action.CAST && !ConductorControls.dragging()) {
 			return;
 		}
-
-		GuiGraphicsExtractor graphics = event.getGuiGraphics();
 		int x = (int) (minecraft.mouseHandler.xpos() * graphics.guiWidth() / minecraft.getWindow().getWidth());
 		int y = (int) (minecraft.mouseHandler.ypos() * graphics.guiHeight() / minecraft.getWindow().getHeight());
 

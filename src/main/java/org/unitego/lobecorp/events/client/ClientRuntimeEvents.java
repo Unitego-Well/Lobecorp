@@ -19,10 +19,8 @@ import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
-import org.unitego.lobecorp.client.particle.screen.ScreenParticleHud;
+import org.unitego.lobecorp.client.hud.HudLayerManager;
 import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
-import org.unitego.lobecorp.client.hud.PlayerStatusHud;
-import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
@@ -37,11 +35,8 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
 		HordeClient.clear();
-		PlayerStatusHud.INSTANCE.clear();
-		PlayerScreenFilters.INSTANCE.clear();
+		HudLayerManager.INSTANCE.clear();
 		ScreenParticles.clear();
-		ScreenParticleHud.INSTANCE.clear();
-		RuntimeOverlayHud.INSTANCE.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
 		LcAttachedItems.clearClientWorlds();
@@ -54,11 +49,8 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
 		HordeClient.clear();
-		PlayerStatusHud.INSTANCE.clear();
-		PlayerScreenFilters.INSTANCE.clear();
+		HudLayerManager.INSTANCE.clear();
 		ScreenParticles.clear();
-		ScreenParticleHud.INSTANCE.clear();
-		RuntimeOverlayHud.INSTANCE.clear();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
 		LcAttachedItems.clearClientWorlds();
@@ -81,11 +73,8 @@ public class ClientRuntimeEvents {
 		}
 
 		if (event.getLevel() instanceof ClientLevel level) {
-			PlayerStatusHud.INSTANCE.clear();
-			PlayerScreenFilters.INSTANCE.clear();
+			HudLayerManager.INSTANCE.clear();
 			ScreenParticles.clear();
-			ScreenParticleHud.INSTANCE.clear();
-			RuntimeOverlayHud.INSTANCE.clear();
 			TextParticleClient.clear();
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();

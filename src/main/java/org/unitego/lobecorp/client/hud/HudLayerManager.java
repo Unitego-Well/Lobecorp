@@ -31,10 +31,20 @@ public final class HudLayerManager {
 
 	/// 按 `Identifier` 注册宿主工厂与独立可见条件；重复 ID 明确拒绝。
 	public void register(Identifier id, BooleanSupplier visible, Supplier<? extends IHudHost> factory) {
+		register(id, visible, factory, () -> {
+		});
+	}
+
+	/// 注册宿主工厂、显隐条件与会话清理回调；清理回调在明确清理和真实会话切换时执行。
+	///
+	/// 清理回调独立于宿主是否创建；临时隐藏只停止提交，不触发业务状态清理。
+	public void register(Identifier id, BooleanSupplier visible, Supplier<? extends IHudHost> factory,
+	                     Runnable clearAction) {
 		Objects.requireNonNull(id);
 		Objects.requireNonNull(visible);
 		Objects.requireNonNull(factory);
-		if (entries.putIfAbsent(id, new Entry(visible, factory)) != null) {
+		Objects.requireNonNull(clearAction);
+		if (entries.putIfAbsent(id, new Entry(visible, factory, clearAction)) != null) {
 			throw new IllegalArgumentException("HUD 已注册：" + id);
 		}
 	}
@@ -42,6 +52,12 @@ public final class HudLayerManager {
 	/// 返回是否已注册该 ID。
 	public boolean contains(Identifier id) {
 		return entries.containsKey(id);
+	}
+
+	/// 按当前 `Minecraft` 的关卡与玩家对象身份同步会话；业务状态变更前调用。
+	public void synchronizeSession() {
+		var minecraft = Minecraft.getInstance();
+		synchronizeSession(new HudSession(minecraft.level, minecraft.player));
 	}
 
 	/// 在 NeoForge 图层回调中提取对应 HUD；首次调用先创建并初始化宿主。
@@ -59,13 +75,7 @@ public final class HudLayerManager {
 
 	/// 使用显式会话身份提取；调用方负责保证会话与当帧快照一致。
 	public void renderForSession(Identifier id, HudFrame frame, HudSession nextSession) {
-		if (session.update(nextSession)) {
-			try {
-				releaseAll();
-			} finally {
-				resetTemporaryState();
-			}
-		}
+		synchronizeSession(nextSession);
 
 		if (session.unavailable()) {
 			return;
@@ -80,6 +90,16 @@ public final class HudLayerManager {
 		Objects.requireNonNull(entry.host).render(frame);
 	}
 
+	private void synchronizeSession(HudSession nextSession) {
+		if (session.update(nextSession)) {
+			try {
+				releaseAll();
+			} finally {
+				resetTemporaryState();
+			}
+		}
+	}
+
 	/// 暂隐是当前会话状态；只停止提交，不释放宿主，换会话或清理时复位。
 	public void setTemporarilyHidden(Identifier id, boolean hidden) {
 		requireEntry(id).temporarilyHidden = hidden;
@@ -89,7 +109,7 @@ public final class HudLayerManager {
 	public void clear(Identifier id) {
 		var entry = entries.get(id);
 		if (entry != null) {
-			entry.release();
+			entry.clear();
 		}
 	}
 
@@ -144,7 +164,7 @@ public final class HudLayerManager {
 		RuntimeException failure = null;
 		for (var entry : entries.values()) {
 			try {
-				entry.release();
+				entry.clear();
 			} catch (RuntimeException exception) {
 				if (failure == null) {
 					failure = exception;
@@ -162,12 +182,40 @@ public final class HudLayerManager {
 	private static final class Entry {
 		private final BooleanSupplier visible;
 		private final Supplier<? extends IHudHost> factory;
+		private final Runnable clearAction;
 		private @Nullable IHudHost host;
 		private boolean temporarilyHidden;
 
-		private Entry(BooleanSupplier visible, Supplier<? extends IHudHost> factory) {
+		private Entry(BooleanSupplier visible, Supplier<? extends IHudHost> factory, Runnable clearAction) {
 			this.visible = visible;
 			this.factory = factory;
+			this.clearAction = clearAction;
+		}
+
+		private void clear() {
+			RuntimeException failure = null;
+			try {
+				try {
+					release();
+				} catch (RuntimeException exception) {
+					failure = exception;
+				}
+				try {
+					clearAction.run();
+				} catch (RuntimeException exception) {
+					if (failure == null) {
+						failure = exception;
+					} else {
+						failure.addSuppressed(exception);
+					}
+				}
+			} finally {
+				temporarilyHidden = false;
+			}
+
+			if (failure != null) {
+				throw failure;
+			}
 		}
 
 		private void release() {

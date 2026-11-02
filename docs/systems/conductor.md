@@ -1,5 +1,11 @@
 # 指挥家系统
 
+## 2026-11-02 HUD职责与宿主
+
+HUD由HudLayerManager按conductor_hud统一登记和清理，ConductorHud只持业务门面与持续偏好Model；Layout是普通UIElement，Cards负责虚拟卡片，Renderer/Tooltip消费当帧显示数据，Input负责命中与派发。Controls仍唯一拥有选择、命令和相机状态。生命/冷却/移除及效果进度在准备阶段采样，最终布局后再采样可见性与悬浮目标，draw不推进业务时间。HudHost先提取UI树，再在同帧afterRender提交原chrome、肖像和提示顺序。
+
+resetLayout只重置瞬态，不清当前视图引用；宿主释放通过ViewSlot.clearIfSame清引用。菜单面板提示复用ConductorHudTooltip；实际入口ConductorLdlibScreen保留，零消费者ConductorScreen已备份删除。45项相关纯测试与编译/Data通过；本轮实机检查空队伍界面、二次进入后的字符输入、GUI缩放、事件/滤镜/粒子与统一退出清理，未穷举所有兵种、技能和肖像战斗场景，也无性能结论。
+
 > 源码核对日期：2026-10-05。核对范围包括目录、附件、控制能力、命令与快照载荷、区块管理、事件、HUD 和输入入口；通过 IDEA
 > 读取当前实现，未进行游戏、多人服务器、重启恢复或性能实测。
 > 包整理方案 1 已执行，源码链接按实际路径核对；保留三个指挥家客户端关联类的原包，详情见修改记录。

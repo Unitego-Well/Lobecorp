@@ -12,6 +12,8 @@ import org.unitego.lobecorp.config.client.PlayerHudConfig;
 public class PlayerHudRegistration {
 	public static void register(RegisterGuiLayersEvent event) {
 		EventHudRegistration.register();
+		EventHud.INSTANCE.registerLayer();
+		PlayerScreenFilters.INSTANCE.register();
 		PlayerStatusHud.INSTANCE.register();
 		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, PlayerStatusHud.ID, PlayerStatusHud.INSTANCE::render);
 		event.wrapLayer(VanillaGuiLayers.PLAYER_HEALTH, original -> (graphics, delta) -> {

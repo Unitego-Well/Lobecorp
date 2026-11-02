@@ -65,6 +65,10 @@ event 放 Mod 自定义事件，events
 
 入口名称不等同于总线声明，新增监听前必须打开注解与方法签名核对。
 
+## 2026-11-02 客户端 HUD 生命周期契约
+
+玩家状态、事件与屏幕滤镜共用 `HudLayerManager.INSTANCE`；客户端登录、注销和世界卸载仍由 `ClientRuntimeEvents` 唯一入口调用 `clear()`。管理器保持单一会话跟踪器，`synchronizeSession()` 在状态写入前执行，`clearAction` 在显式清理和真实会话切换时执行且不依赖宿主是否已创建。事件 HUD 的 `TOP/LEFT/RIGHT` 三方向各自维护顺序，`hide` 自动补位，`clearActive` 保留定义；不新增 HUD 专用事件订阅。
+
 ## 生命周期与处理顺序
 
 LivingEntityEvents 仅在服务端推进技能：实体具有 IEntitySkillAccess 时走公开接口，否则走兼容工具。随后推进该实体的服务端动画，再维护抓取锚点；非 LivingEntity 同样推进实体动画。伤害回调保留既有倍率、清道夫吸收/战斗目标与指挥家筛选处理顺序。

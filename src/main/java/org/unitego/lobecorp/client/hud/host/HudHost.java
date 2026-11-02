@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 public final class HudHost implements IHudHost, ModularHudLayer {
 	private final Consumer<HudFrame> prepareAction;
 	private final Consumer<HudFrame> renderer;
+	private final Consumer<HudFrame> afterRender;
 	private final Runnable releaseAction;
 	private final UIElement root;
 	private @Nullable ModularUI modularUI;
@@ -30,7 +31,8 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 	/// 由该宿主拥有，重复 [release()] 不会重复执行。
 	public HudHost(UIElement content, Consumer<HudFrame> renderer, Runnable releaseAction) {
 		this(content, _ -> {
-		}, renderer, releaseAction);
+		}, renderer, _ -> {
+		}, releaseAction);
 	}
 
 	/// 创建带布局前准备回调的宿主。
@@ -39,9 +41,20 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 	/// 仍只在 LDLib2 同步提取期间执行。
 	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
 	               Runnable releaseAction) {
+		this(content, prepareAction, renderer, _ -> {
+		}, releaseAction);
+	}
+
+	/// 创建带布局前准备和同步提取后绘制的宿主。
+	///
+	/// `afterRender` 在同一帧作用域内、LDLib2 完成 UI 树提取后执行；不得跨帧保存
+	/// `HudFrame` 或其 graphics/delta 引用。
+	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
+	               Consumer<HudFrame> afterRender, Runnable releaseAction) {
 		Objects.requireNonNull(content);
 		this.prepareAction = Objects.requireNonNull(prepareAction);
 		this.renderer = Objects.requireNonNull(renderer);
+		this.afterRender = Objects.requireNonNull(afterRender);
 		this.releaseAction = Objects.requireNonNull(releaseAction);
 		root = new HostRoot();
 		root.layout(layout -> layout.widthPercent(100).heightPercent(100));
@@ -94,6 +107,7 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 		ensureInitialized(frame.screenWidth(), frame.screenHeight());
 		try (HudFrameScope ignored = HudFrameScope.open(frame)) {
 			ModularHudLayer.super.render(frame.graphics(), frame.deltaTracker());
+			afterRender.accept(frame);
 		}
 	}
 

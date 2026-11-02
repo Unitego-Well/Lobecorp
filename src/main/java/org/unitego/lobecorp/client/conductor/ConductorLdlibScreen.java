@@ -20,6 +20,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme;
 import org.unitego.lobecorp.client.conductor.hud.ConductorTexts;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
@@ -328,7 +329,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 		}
 
 		if (hovered != null && System.currentTimeMillis() - tooltipSince >= TOOLTIP_DELAY_MS) {
-			ConductorHud.drawTooltip(graphics, tooltips.get(hovered.getId()));
+			ConductorHudTooltip.drawTooltip(graphics, tooltips.get(hovered.getId()));
 		}
 	}
 

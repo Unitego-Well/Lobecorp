@@ -771,7 +771,7 @@ public class ConductorControls {
 		return picked;
 	}
 
-	protected static LivingEntity hoveredLivingEntity(Minecraft minecraft) {
+	public static LivingEntity hoveredLivingEntity(Minecraft minecraft) {
 		return active && minecraft.level != null && minecraft.screen == null
 				&& !ConductorHud.INSTANCE.contains(minecraft) ? pickLivingEntity(minecraft) : null;
 	}

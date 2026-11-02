@@ -6,7 +6,6 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.material.IMaterial;
 import com.lowdragmc.photon.client.gameobject.emitter.data.material.TextureMaterial;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 
 import java.io.IOException;
@@ -38,7 +37,7 @@ public class PhotonModelMaterials {
 			var material = entry.getValue();
 
 			if (!material.materialData().isEmpty()) {
-				var data = PhotonModelAssetUtil.material(material.materialData());
+				var data = prepared.materialData(entry.getKey());
 				var parsed = IMaterial.CODEC.parse(NbtOps.INSTANCE, data).getOrThrow();
 
 				if (parsed == IMaterial.MISSING) {

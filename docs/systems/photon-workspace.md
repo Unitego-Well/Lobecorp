@@ -1,10 +1,21 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-02 通用性能重构候选与统一验证
+
+更新时间2026-11-03。通用重构R1已冻结679a2846，R2缓存与SPI修复冻结967cf048，均为本地提交，未集成原始dev。旧“尚未运行”阶段已由真实证据替代：CPU133项历史有效，R2限定26项通过；Global、Native总体PASSED，Native创建74/复制19/元数据10/材质9。完整视觉与真实资源reload仍未覆盖，功能通过不替代性能。
+
+用户已退出安静模式，正式比较使用当前模式同输入A/B。共同观测基线5a41ce04、旧优化679a2846与R2 967cf048首轮各7局已运行；R2七局eligible，严格完整窗激光普通276.8948ms/光影256.7746ms，普通女皇97.0028/牛37.6854=2.5740倍，仍未满足100ms/1.5倍。三轮尚未完成，不混用旧B与R2为同一候选；原失败、最大帧及QCW/QQN部分独立身份留档缺口保留。唯一未决边界见[问题汇总](../issues.md#2026-11-02-通用重构仍待运行与性能验收)。
+
+R2残余JFR推动两项通用修复：Prepared持有纯材质SNBT惰性蓝图，各实例仍独占副本、codec和运行槽；连接动画分块以收齐计数一次拼接，避免不完整前缀反复复制，发布校验/通知时序保持。新修复Compile与生产包隔离17s通过、16项定向CPU通过、Data41s通过且23生成JSON哈希不变；新修复Global与Native总体PASSED，父已回读Native创建74/复制19/元数据10/材质9和四类Global契约；Global截图及部分前后class留档缺失，不能声称身份闭环/完整视觉。真实reload和新批性能尚待运行。模型identity布局仅设计，未实施。用户明确DS失败可换GPT，现由GPT执行、父审核，不通知其他聊天。
+
+系统契约见[创建](photon-runtime-creation.md)、[模型](photon-model-effects.md)、[命名](photon-named-animations.md)、[动画](animation.md)，测量口径见[BenchMod](benchmod.md)。当前独占证据在build/agent-backups/20261103-photon-r3-validation；原件备份与过程报告保留所属.agent及build，不随Git发布。
+
+
 ## 2026-11-02 通用性能修复与校时基线冻结
 
 设备戳漏通知已确认并修复，功能确认局3次光影激光、376条readiness全READY、回退/错误0、verified/cleanup=true；该局源码dirty，仅作功能确认。Sampler新增不可变part/morph ID集合；30项相关Java CPU测试、2项Python时钟回归、Compile/生产包隔离与Data（23输出written0/removed0）通过。R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校正CSV相对trace起点偏移，最坏帧不变；受保护原脚本未改。
 
-硬目标仍未达成：激光最长完整帧≤100ms、普通女皇≤同负载普通生物1.5倍均待安静模式同条件A/B。普通女皇已按“最多/最长”严格含义采用单只原版牛同场景最坏完整帧为对照，保留P99/CPU作用域；每轮配对报告QueenMax/CowMax，三轮全部保留，门槛QueenMax≤1.5×CowMax。激光按每局完整窗口max≤100ms判定，另标激光活跃窗但不替代全窗。新Bench场景尚未实现，端口19877与旧R4配置只占位，未启动游戏/采样。基线manifest见`build/agent-backups/20261102-photon-quiet-baseline/source-manifest.json`；完整交接见本地`.agent/reports/20261102-photon-quiet-baseline-freeze.md`。
+硬目标仍未达成：激光最长完整帧≤100ms、普通女皇≤同负载普通生物1.5倍均待安静模式同条件A/B。普通女皇已按“最多/最长”严格含义采用单只原版牛同场景最坏完整帧为对照，保留P99/CPU作用域；每轮配对报告QueenMax/CowMax，三轮全部保留，门槛QueenMax≤1.5×CowMax。激光按每局完整窗口max≤100ms判定，另标激光活跃窗但不替代全窗。新Bench场景尚未实现，端口19877与旧R4配置只占位，未启动游戏/采样。基线提交`de6a368c0e87de66152ea278d193cb74f7557439`；manifest见`build/agent-backups/20261102-photon-quiet-baseline/source-manifest.json`，完整交接见本地`.agent/reports/20261102-photon-quiet-baseline-freeze.md`。
 
 ## 2026-11-01 R3性能矩阵已执行，15有效3失败
 

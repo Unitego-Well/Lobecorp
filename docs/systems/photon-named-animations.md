@@ -1,5 +1,12 @@
 # Photon 命名动画与参数控制
 
+## 执行计划、事件顺序与贡献所有权（2026-11-02）
+
+冻结的命名定义将模型、信号及原生轨道等预分类为执行计划；播放项持有各自的时钟、句柄和动态状态。tick 的事件推进按播放插入顺序，属性采样/混合仍按 priority 与 order，不能以缓存排序列表替代事件顺序。主 Timeline 可被编辑，每次求值读取当前轨道，不以 Map/List 大小推断内容未变化。
+
+模型贡献由每个 owner 独占的 ContributionState 记录实际触及实例；下一次 apply 或 clear 先从旧实例清除该 owner，再解析当前 UUID 对象。相同 UUID 替换、目标移除或结束时不会遗留旧实例贡献，也不会清掉其他 owner。主 Timeline begin/stop 与 tick/frame 使用同一清理边界。相关真实客户端检查位于独立 global-contracts 场景；当前结果状态只见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)，不沿用下方历史验收。
+
+
 ## 控制器复制契约（2026-10-30）
 
 确切PhotonNamedController的deepCopy使用有界类型复制：保留完整wrapper编码和PhotonNamedCodecUtil.read校验、旧definition替换与unknown/source语义，定义深拷贝而播放状态保持新建。子类继续原生工厂解析；不缓存可变定义快照，不跨实例共享playback、变换或覆盖槽。新旧复制、定义变更可见、返回Tag独立与真实FXData对照已在两个普通FULL的测量后通过；不据此宣称整体FPS、光影或完整视觉通过，参见[复制与预热检查](benchmod.md#2026-10-30-类型复制和材质粒度预热)。

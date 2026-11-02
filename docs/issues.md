@@ -1,10 +1,17 @@
 # Photon 未解决问题汇总
 
+## 2026-11-02 通用重构仍待运行与性能验收
+
+截至2026-11-03，R1/R2功能Global及Native已实际通过，原“尚无本轮游戏”状态失效；新修复后的Global与Native也已通过，但Global截图和部分前后class留档缺失；完整视觉与真实资源reload仍待验证。当前模式R2首轮七局数据合格，但普通/光影激光strict完整窗max276.8948/256.7746ms>100ms，普通女皇/牛97.0028/37.6854=2.5740>1.5，P22/P23继续开放。后两轮尚未运行，不能按单轮或P99关闭目标；QCW/QQN部分独立class门禁记录缺失，保留而不补造。
+
+新JFR证实旧SharedPrepared解析旁路已移除，残余涉及首次类转换、配置恢复、材质解析、动画内容接收、采样/几何及短GC；未封闭整段壁钟归因。已实现定义内纯SNBT蓝图和连接分块一次拼接，Compile/包隔离、16定向CPU与Data23原件不变通过，该候选Global与Native功能已通过，证据缺口仍保留，新批性能待测。动画可变模型的identity布局仅设计，不按反射清单或实体ID预热，不降低质量/数量/时长。当前进度与下一步统一见[工作入口](systems/photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+
 ## 2026-11-01 R3光影激光资源准备未就绪
 
 受测a58fbf1，18局中15有效，HSL01/02/03三独立JVM均在第10秒施法门槛报hybrid_resources_not_ready_at_cast。45秒窗口分别435/429/432条readiness全部PREPARING，casts为空，Spark完整归档且清理完成。其他五组各3局通过。后续独立诊断已确认设备stamp漏通知：`PhotonOwnedEffectResources`未消费已READY来源的设备身份变化；修复后功能确认局3次光影激光、376条readiness全READY、回退/错误0、verified/cleanup=true。该修复来自dirty源码，完整性能矩阵仍待安静模式复测，不能据此关闭P22/P23。未延后施法或放宽门槛，失败原件保留build/agent-backups/20261101-photon-event-perf-r3/HSL0*/results/artifacts/custom/*failure.json。
 
-下一步在新独立安静场景同条件复测设备修复后的完整性能矩阵，确认READY与最长完整帧，不能把功能确认局当性能收益。普通女皇已按单只原版牛同场景最坏完整帧配对判定，三轮全部保留，保留P99/CPU作用域；激光按每局完整窗口max≤100ms，另标活跃窗但不替代全窗。P22/P23仍开放：普通激光三局最坏275.10/287.75/396.47ms，每局均有>250ms；光影空白一局259.59ms。R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校时，最坏帧不变。完整统计见[Photon入口](systems/photon-workspace.md#2026-11-02-通用性能修复与校时基线冻结)和本地.agent/reports/20261101-photon-event-performance-r3.md；不作跨提交收益归因。
+下一步在新独立安静场景同条件复测设备修复后的完整性能矩阵，确认READY与最长完整帧，不能把功能确认局当性能收益。普通女皇已按单只原版牛同场景最坏完整帧配对判定，三轮全部保留，保留P99/CPU作用域；激光按每局完整窗口max≤100ms，另标活跃窗但不替代全窗。基线提交为`de6a368c0e87de66152ea278d193cb74f7557439`。P22/P23仍开放：普通激光三局最坏275.10/287.75/396.47ms，每局均有>250ms；光影空白一局259.59ms。R3旧`matrix-audit.json`为v1，`matrix-audit-v2.json`已校时，最坏帧不变。完整统计见[Photon入口](systems/photon-workspace.md#2026-11-02-通用性能修复与校时基线冻结)和本地.agent/reports/20261101-photon-event-performance-r3.md；不作跨提交收益归因。
 
 ## 2026-10-31 完整18局后的剩余边界
 

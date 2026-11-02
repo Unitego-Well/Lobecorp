@@ -1,5 +1,23 @@
 # 系统修改记录
 
+## 2026-11-03 缓存入口、材质定义与分块重组
+
+- R2 SharedPrepared改经SourceUtil.prepare复用已有准备缓存，独立编译计划共享sampler检查通过；客户端setup初始化官方Gecko服务，未加反射预热清单。R2限定CPU26项、Global与Native总体PASSED，不能替代性能。R2首轮7局仍失败于100ms/1.5倍目标，完整三轮未完成。
+- 后续JFR确认材质SNBT重复解析及动画内容接收链：Prepared定义内惰性语法蓝图返回独占Tag，逐实例codec/运行槽保留；连接PENDING显式计数，收齐后仅拼接一次，乱序/覆盖/clear与ready时序保持。未实施可变模型identity布局，无资源ID特判或降质。
+- 后续修复Compile/Bench/生产包隔离17s通过；材质4、分块8、采样4项CPU通过；Data41s通过，23生成JSON哈希无变化。新修复Global与Native总体PASSED，四类helper与74/19/10/9断言通过；Global截图和部分前后类哈希留档缺失，真实视觉/reload/性能未验收，当前状态见[总览](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+- 修改前快照、JFR逐窗证据与测试原结果保留build/agent-backups/20261103-photon-r2-laser-triage、20261103-photon-r2-queen-triage、20261103-photon-r3-validation及IDEA编辑备份；旧失败和原WIP/暂存保留，未远端推送。
+
+## 2026-11-02 通用性能链路重构候选
+
+- 实例创建：引入不可变模板程序与真实消费租约分离，PROJECT 从当前 scope 重查对象和子树，瞬态 FX 消费当前内容；保留原生回退和既有池生命周期。静态模型来源同步惰性复用 Topology/Sampler，接入现有预热任务；FILE 动态来源保持。
+- 模型采样：使用显式 Workspace 与 primitive sink，渲染不经全量 Frame 中转；公开 Frame 按需独立物化，候选仅成功后发布，实例缓冲与组透明度数组复用。移除旧世界快照回放路径，保留原生几何提交链和数学边界。
+- 命名与主时间轴：冻结定义预分类轨道，事件推进保持播放插入顺序，属性混合仍按 priority/order；owner 状态清理实际触及的旧模型，支持同 UUID 替换，主可变 Timeline 不按集合大小盲缓存。
+- 动画资源：Gecko 发布新缓存后在后台建立本地索引；服务器内容保留即时发布，以完整 version 单次准备，缺失/失败结果稳定，断连只清服务器缓存。本地缺失读取按代次缓存，已准备骨架先命中索引。
+- 验证工具：新增独立单牛、普通女皇、三次激光、空白与全局契约场景；保留旧场景负载。原复制检查只迁移 getter 并保持严格比较，没有用任一 null 就通过的条件放宽断言。Spark 与导出归档完成、截图身份及 CSV 时钟来源单独核对。
+
+本节记录候选实现，不表示性能达标。Java 冻结后已放行 Compile/生产包隔离、相关 CPU 和 Data，实际结果待回读；新游戏、视觉与安静 A/B 尚未执行。硬目标与当前状态见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。修改前原字节及阶段证据保留在本地 build/agent-backups/20261102-photon-global；原 WIP 与受保护暂存保持，备份未随仓库发布。
+
+
 ## 2026-11-02 冻结通用性能修复与校时基线
 
 设备stamp漏通知已确认：`PhotonOwnedEffectAssets` 的设备戳只在 `prepareAssets` 读取后保存；已READY来源未再次经过准备时，`PhotonOwnedEffectResources` 没有比较设备身份，造成光影切换后来源仍停留在旧设备状态。修复只增加已发布来源的设备身份基线、变化检测与关闭/reload复位，发布时重新采样设备身份；不缓存姿态、不改创建算法，失败任务继续由Scheduler到期重试。功能确认局完成3次光影激光，376条readiness全READY、回退/错误0、verified/cleanup=true；该局源码dirty，只作功能确认，不作性能收益样本。

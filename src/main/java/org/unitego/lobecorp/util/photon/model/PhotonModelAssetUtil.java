@@ -10,6 +10,7 @@ import net.minecraft.nbt.TagParser;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.Nullable;
 import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
@@ -109,6 +110,24 @@ public class PhotonModelAssetUtil {
 		}
 
 		return PhotonModelCodec.read(effective);
+	}
+
+	/// 只持有纯语法结果；失败可重试，调用方始终获得独占副本。
+	public static class MaterialBlueprint {
+		private final String source;
+		private @Nullable CompoundTag prepared;
+
+		public MaterialBlueprint(String source) {
+			this.source = source;
+		}
+
+		public synchronized CompoundTag copy() throws IOException {
+			if (prepared == null) {
+				prepared = material(source);
+			}
+
+			return prepared.copy();
+		}
 	}
 
 	public static CompoundTag material(String data) throws IOException {

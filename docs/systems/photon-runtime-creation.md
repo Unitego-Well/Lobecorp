@@ -1,5 +1,18 @@
 # Photon 定义编译与受管实例创建
 
+## 准备缓存入口收敛（2026-11-03）
+
+SharedPrepared.sampler恢复冻结配置后使用SourceUtil.prepare，get返回同一sampler.prepared，不再重复load/Topology.prepare绕过已有来源缓存。单定义多实例及独立编译计划共享纯sampler，Workspace/pose/时间/RNG/材质运行态仍隔离；瞬态可变FX消费当前内容与FILE动态排除不变。R2 Global新增独立计划共享检查通过，Native总体通过；新材质蓝图Global与Native功能已通过，部分截图/身份留档缺口仍保留，性能目标继续开放，统一见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+## 静态程序与真实消费契约（2026-11-02）
+
+本分支候选使用 PhotonTemplateProgram 描述 ROOT、FX、PROJECT 静态来源，保存定义、路径和来源当前性；程序不持有运行租约或场景强引用。ChildSpawner 的准备槽保存程序，真实发射时才取得 Lease 并接线当前动态状态。受管来源按修订复用；未登记的可变 FX 在实际消费时重新读取当前内容，不能将 prepare 到首次消费之间的编辑当作不变。NATIVE 与未受管 PROJECT 保留真实原生复制回退，不新增池或需求调度器。
+
+PROJECT 的当前性从现有 scope 重新解析目标、子树和对象身份；同 UUID 换实例、增删子树会使旧程序失效，仅 TRS 改变不使静态结构重新编译。相同字段 schema 可以复用构造计划，但实例字段必须来自当前 live 来源。NumberFunction 与 TransformRef 的类型复制保持独占；未知类型继续显式原生回退。
+
+模型 SharedPrepared 在定义来源内同步惰性复用 Topology 和纯 CPU Sampler，PreparedModel 与实际 ModelOutput 消费同一来源。现有预热任务触发静态 CPU 准备及基础材质入口，不预创建运行树或求值动态变量。工作区、姿态、输入、Frame 缓存和材质 Runtime 仍由实例拥有；FILE 动态来源不冻结到该共享缓存。该契约是当前分支实现，运行与性能状态统一见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+
 ## 设备戳通知与通用ID索引基线（2026-11-02）
 
 已确认根因是设备戳消费入口漏通知：`PhotonOwnedEffectAssets` 在准备来源时比较并保存 `DEVICE_STAMPS`，但已READY来源没有再次准备时，`PhotonOwnedEffectResources` 未比较当前设备身份，导致光影等设备条件变化后旧来源未重新提交。修复在发布时采样 `deviceIdentity()`，保存为已发布来源基线；后续客户端入口仅在基线存在且变化时置`deviceDirty`并只重排已发布来源，关闭与reload清空基线。该修复不缓存姿态、不改变创建/恢复顺序，也不替换Scheduler的失败重试。

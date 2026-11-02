@@ -1,5 +1,20 @@
 # Photon 模型特效
 
+## 定义内材质语法蓝图（2026-11-03）
+
+SharedPrepared通过既有PhotonModelSourceUtil.prepare复用资源/内嵌准备缓存，不再自行load绕过它；FILE动态来源保持。Topology Prepared现为保留构造、访问器和值语义的类，私有蓝图随定义生命周期释放，不新增全局强缓存。SNBT首次成功解析后保留私有Tag，每次返回深副本；失败保持未准备而可重试。实例仍分别执行IMaterial.CODEC，独占MaterialSetting/RendererSetting.Runtime，不共享材质实例或GPU状态。公开material(String)读取/导出语义保持。
+
+材质4项与采样4项定向CPU通过，Compile/生产包隔离及Data通过；新蓝图Global与Native实机功能通过，但Global截图/部分前后class留档缺失，重载/视觉及最长帧收益仍待测。当前状态见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+## 静态采样程序与实例姿态（2026-11-02）
+
+当前分支的 PreparedSource.sampler() 可提供同来源共享的纯 CPU 采样程序；没有该来源的 Supplier 或动态 FILE 保留原准备路径。共享内容限于拓扑、父序、骨架和片段索引，每个 ModelOutput 保有独立 Workspace、动态绑定、poseBuffer、sampledInput、public Frame 与材质 Runtime。Workspace 仅由创建线程使用和关闭，失败后不得命中未完成输入。
+
+渲染调用 sampleInto 直接写入紧凑局部角点，不构造再复制全量 Vertex/Group/Frame；公开 sampleLocal 仍按需返回独立不可变 Frame。候选只在 endFrame 成功后提交；失败不改写已返回的公开快照。组透明度使用实例私有候选/发布缓冲交换，同尺寸采样不重复分配这两组数组。世界矩阵、颜色、光照及几何提交仍随当前绘制处理。
+
+旧 GeometrySnapshot/SnapshotRecorder 世界提交回放已从当前默认渲染路径移除，旧日期实验段落只保留历史含义。三角到四角展开、法线、insideOut、UV、透明度与原生 BufferBuilder/MeshData/PhotonBufferCache 提交规则保持；不以减少粒子或几何数量取得收益。当前运行证据与性能门槛见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+
 ## 冻结导出必须经过完整ValueIO（2026-11-01）
 
 prepareModelObject的配置读取/写入调用PhotonModelOutputConfig.deserialize/serialize及ProblemReporter；不能只调用PersistedParser字段解析，因为内嵌资产assetSnapshot由自定义ValueIO维护。原递归导出因此把存在的快照读为空并报“模型实例没有内嵌资产”。准备完成后仍只替换资产/来源相关键，保留未涉及字段并运行现有guard。F7冻结包真实挂载回读通过；B1还经标准MCP导出含OBJ三角资产的.mfx与.mfxpack并回读，源修订不变。此修正不放宽普通.fxproj与单资产.mfxproj的格式边界。

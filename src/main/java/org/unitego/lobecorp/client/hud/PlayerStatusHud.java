@@ -1,48 +1,55 @@
 package org.unitego.lobecorp.client.hud;
 
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.api.LcDamageType;
-import org.unitego.lobecorp.client.hud.layer.CompositeHudLayer;
-import org.unitego.lobecorp.client.hud.layer.HealthBarLayer;
-import org.unitego.lobecorp.client.hud.layer.RationalityBarLayer;
-import org.unitego.lobecorp.client.hud.layer.ShieldBarLayer;
-import org.unitego.lobecorp.config.client.PlayerHudConfig;
-import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
+import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.host.HudHost;
+import org.unitego.lobecorp.client.hud.status.PlayerStatusHudView;
 
-/// 玩家状态 HUD 的唯一组合实例；各条与动画状态由实例持有的子层管理。
+/// 玩家状态 HUD 的业务门面；注册、会话清理和护甲偏移仍从这里访问。
 @NullMarked
-public class PlayerStatusHud extends CompositeHudLayer {
-	private static final int LEFT_OFFSET = 105;
-	private static final int BOTTOM_OFFSET = 30;
+public class PlayerStatusHud {
+	public static final Identifier ID = Lobecorp.id("player_status_hud");
 	public static final PlayerStatusHud INSTANCE = new PlayerStatusHud();
 
 	private PlayerStatusHud() {
-		addLayer(new HealthBarLayer(), () -> survivalVisible() && PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get());
-		addLayer(new RationalityBarLayer(), this::playerVisible);
-		for (var type : LcDamageType.values()) {
-			addLayer(new ShieldBarLayer(type), () -> survivalVisible()
-					&& minecraft.player != null && minecraft.player.hasEffect(LcShieldUtil.effect(type)));
-		}
 	}
 
-	@Override
-	protected void updatePosition() {
-		int offset = minecraft.player != null && minecraft.player.isCreative() ? 5
-				: !PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() ? -10 : 0;
-		setPosition(screenWidth / 2 - LEFT_OFFSET, screenHeight - BOTTOM_OFFSET + offset);
+	/// 向统一管理器注册状态条宿主工厂；重复注册由管理器拒绝。
+	public void register() {
+		HudLayerManager.INSTANCE.register(ID, this::visible, () -> {
+			var view = new PlayerStatusHudView();
+			return new HudHost(view, view::prepare, _ -> {
+			}, view::clear);
+		});
+	}
+
+	/// 由 NeoForge 状态层回调提取；宿主创建与布局时序由管理器负责。
+	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		HudLayerManager.INSTANCE.render(ID, graphics, deltaTracker);
 	}
 
 	public int armorOffset() {
-		return survivalVisible() ? getHeight() + 1 : 0;
+		var current = Minecraft.getInstance().player;
+		return survivalVisible(current) ? PlayerStatusHudView.currentLayout().height() + 1 : 0;
 	}
 
-	private boolean playerVisible() {
-		var current = minecraft.player;
-		return current != null && !current.isSpectator();
+	public void clear() {
+		HudLayerManager.INSTANCE.clear(ID);
 	}
 
-	private boolean survivalVisible() {
-		var current = minecraft.player;
+	private boolean visible() {
+		var minecraft = Minecraft.getInstance();
+		return !minecraft.options.hideGui && minecraft.level != null && minecraft.player != null
+				&& !minecraft.player.isSpectator();
+	}
+
+	private boolean survivalVisible(@Nullable LocalPlayer current) {
 		return current != null && !current.isSpectator() && !current.isCreative();
 	}
 }

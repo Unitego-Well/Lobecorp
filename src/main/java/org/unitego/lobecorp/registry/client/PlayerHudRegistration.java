@@ -12,7 +12,8 @@ import org.unitego.lobecorp.config.client.PlayerHudConfig;
 public class PlayerHudRegistration {
 	public static void register(RegisterGuiLayersEvent event) {
 		EventHudRegistration.register();
-		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, Lobecorp.id("player_status_hud"), PlayerStatusHud.INSTANCE);
+		PlayerStatusHud.INSTANCE.register();
+		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, PlayerStatusHud.ID, PlayerStatusHud.INSTANCE::render);
 		event.wrapLayer(VanillaGuiLayers.PLAYER_HEALTH, original -> (graphics, delta) -> {
 			var player = Minecraft.getInstance().player;
 			if (!PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() || player == null || player.isSpectator() || player.isCreative()) {

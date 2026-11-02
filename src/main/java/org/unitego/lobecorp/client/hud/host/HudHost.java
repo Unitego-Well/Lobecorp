@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 /// 通过组合持有 [ModularUI] 的 HUD 宿主；视觉内容保持普通 [UIElement]。
 @NullMarked
 public final class HudHost implements IHudHost, ModularHudLayer {
+	private final Consumer<HudFrame> prepareAction;
 	private final Consumer<HudFrame> renderer;
 	private final Runnable releaseAction;
 	private final UIElement root;
@@ -28,7 +29,18 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 	/// `renderer` 只在 LDLib2 同步提取期间执行；`releaseAction` 与内容节点的释放
 	/// 由该宿主拥有，重复 [release()] 不会重复执行。
 	public HudHost(UIElement content, Consumer<HudFrame> renderer, Runnable releaseAction) {
+		this(content, _ -> {
+		}, renderer, releaseAction);
+	}
+
+	/// 创建带布局前准备回调的宿主。
+	///
+	/// `prepareAction` 在每次提取前、ModularUI 布局计算前执行；`renderer`
+	/// 仍只在 LDLib2 同步提取期间执行。
+	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
+	               Runnable releaseAction) {
 		Objects.requireNonNull(content);
+		this.prepareAction = Objects.requireNonNull(prepareAction);
 		this.renderer = Objects.requireNonNull(renderer);
 		this.releaseAction = Objects.requireNonNull(releaseAction);
 		root = new HostRoot();
@@ -78,6 +90,7 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 			return;
 		}
 
+		prepareAction.accept(frame);
 		ensureInitialized(frame.screenWidth(), frame.screenHeight());
 		try (HudFrameScope ignored = HudFrameScope.open(frame)) {
 			ModularHudLayer.super.render(frame.graphics(), frame.deltaTracker());

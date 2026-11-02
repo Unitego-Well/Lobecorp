@@ -8,7 +8,7 @@
 
 - **spark**：性能剖析基线，`lib/spark-1.10.172-neoforge.jar`。用于帧耗时、GPU 阶段与热点采样；剖析链接与本地 profile 分别记录，本地文件不能冒充已上传链接，不代表任意第三方模组组合。
 - **BenchMod**：项目内基准夹具（`src/bench`），通过 IDEA 的 `BenchClient`、`BenchServer`、`BenchPairedServer`、`BenchRemoteClient` 运行配置启动；场景、门禁与历史数据见 [BenchMod](benchmod.md)。
-- **mc mcp**：Minecraft MCP 桥接（`lib/minecraft-mcp`，固定端口 `MC_MCP_PORT=19876`），负责 `ping`、`screenshot`、`enumerate_widgets`、`execute_command` 与输入控制；接入与限制见 [Minecraft MCP 外部制品消费](minecraft-mcp-artifacts.md)。
+- **mc mcp**：Minecraft MCP 桥接（`lib/minecraft-mcp`，端口以当前工作区配置为准，隔离约定见[制品规范](minecraft-mcp-artifacts.md)），负责 `ping`、`screenshot`、`enumerate_widgets`、`execute_command` 与输入控制；接入与限制见 [Minecraft MCP 外部制品消费](minecraft-mcp-artifacts.md)。
 - **idea mcp**：IDEA MCP（JetBrains 插件，`http://127.0.0.1:64342/stream`），负责源码读写、诊断、运行配置与后台 Git。
 - **debug**：IDEA Debug 会话，负责断点、栈帧与表达式求值，并与 mc mcp 共同完成进游戏、控制与截图。
 

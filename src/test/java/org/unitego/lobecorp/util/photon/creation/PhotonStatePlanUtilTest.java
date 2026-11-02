@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings({"FieldMayBeFinal", "unused"})
-// 容器、Curve、自定义 ValueIO／Additional 及原生 fallback 对照入口为 bench 的 PhotonStatePlanNativeCheck.verify()。
+// 原生 fallback 对照见 PhotonStatePlanNativeCheck.verify()；TransformRef／NumberFunction3 转移见 PhotonProgramContractCheck.verify()。
 public class PhotonStatePlanUtilTest {
 	private static final HolderLookup.Provider PROVIDER = HolderLookup.Provider.create(Stream.empty());
 

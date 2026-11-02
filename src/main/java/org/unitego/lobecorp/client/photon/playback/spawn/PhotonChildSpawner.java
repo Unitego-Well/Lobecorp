@@ -20,6 +20,8 @@ import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.PreloadContext;
@@ -61,8 +63,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	private int budget;
 	private long generated;
 	private @Nullable String failure;
-	private @Nullable PhotonSpawnTemplateUtil.Template prepared;
-	private @Nullable FX preparedDefinition;
+	private @Nullable PhotonTemplateProgram preparedProgram;
 	private @Nullable Function<Identifier, FX> ownedDefinitionResolver;
 
 
@@ -146,77 +147,58 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		return ownedDefinitionResolver == null ? FXHelper.getFX(id) : ownedDefinitionResolver.apply(id);
 	}
 
-	/// 每个生成器只持有下一次独占实例；准备不发射粒子、音频或推进时间线。
+	/// 静态准备只确保当前不可变程序已编译并递归准备；不取得运行租约，也不提前求值动态值。
 	public boolean prepareNext() {
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
-		long createNs = 0;
+		long programNs = 0;
 		long definitionStartNs = 0;
 		long definitionEndNs = 0;
-		long namedNs = 0;
 		var diagnosticScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_PREPARE, config.fxLocation, false) : null;
 		boolean completed = false;
 		String reason = "check_prepared";
 		try {
-			if (prepared != null) {
-				reason = "already_prepared";
+			if (PhotonSpawnTemplateUtil.matches(this, preparedProgram)) {
+				reason = preparedProgram.transientFx() ? "transient_refresh" : "already_prepared";
 				completed = true;
-				return true;
+				return !preparedProgram.transientFx() || refreshTransientProgram();
+			}
+			if (preparedProgram != null) {
+				preparedProgram = null;
 			}
 			reason = "source_or_state_ineligible";
-			if (config.source != PhotonSpawnConfig.Source.FX || config.fxLocation == null || stopped || removed) {
+			if (stopped || removed) {
 				completed = true;
 				return false;
 			}
-			reason = "definition_lookup";
-			FX definition;
-			definitionStartNs = diagnostic ? System.nanoTime() : 0;
-			try {
-				definition = resolveDefinition(config.fxLocation);
-			} finally {
-				if (diagnostic) {
-					definitionEndNs = System.nanoTime();
-				}
-			}
-			if (definition == null) {
-				reason = "definition_missing";
+			reason = "source_ineligible";
+			if (config.source == PhotonSpawnConfig.Source.FX && config.fxLocation == null) {
 				completed = true;
 				return false;
 			}
-			reason = "create";
-			long createStarted = diagnostic ? System.nanoTime() : 0;
-			PhotonSpawnTemplateUtil.Template candidate;
-			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
-			try {
-				candidate = PhotonSpawnTemplateUtil.create(this);
-				if (diagnostic) {
-					createScope.returned(candidate);
-				}
-			} finally {
-				PhotonFXLoadDiagnosticsUtil.finish(createScope);
-				if (diagnostic) {
-					createNs = System.nanoTime() - createStarted;
-				}
-			}
-			try {
-				reason = "prepare_named";
-				long namedStarted = diagnostic ? System.nanoTime() : 0;
-				try {
-					((PhotonNamedAccess) candidate.runtime()).lobecorp$prepareNamedRuntime();
-				} finally {
-					if (diagnostic) {
-						namedNs = System.nanoTime() - namedStarted;
-					}
-				}
-				prepared = candidate;
-				preparedDefinition = definition;
-				reason = "prepared";
+			if (config.source == PhotonSpawnConfig.Source.PROJECT && config.template.getTransformId() == null) {
 				completed = true;
-				return true;
-			} catch (RuntimeException invalid) {
-				candidate.close(true);
-				throw invalid;
+				return false;
 			}
+			reason = "program";
+			long programStarted = diagnostic ? System.nanoTime() : 0;
+			preparedProgram = PhotonSpawnTemplateUtil.program(this);
+			if (diagnostic) {
+				programNs = System.nanoTime() - programStarted;
+			}
+			if (preparedProgram == null) {
+				reason = "native_project";
+				completed = true;
+				return false;
+			}
+			if (preparedProgram.transientFx()) {
+				reason = "transient_fallback";
+				completed = true;
+				return false;
+			}
+			reason = "prepared";
+			completed = true;
+			return true;
 		} finally {
 			if (diagnosticScope != null) {
 				long ended = System.nanoTime();
@@ -224,46 +206,56 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					diagnosticScope.succeeded();
 				}
 				PhotonFXLoadDiagnosticsUtil.finish(diagnosticScope);
-				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} runtime={} startNs={} endNs={} elapsedNs={} createNs={} definitionNs={} definitionStartNs={} definitionEndNs={} namedNs={} diagnosticId={} reason={} completed={}",
-						System.identityHashCode(this), prepared == null ? 0 : System.identityHashCode(prepared.runtime()),
-						started, ended, ended - started, createNs, definitionEndNs - definitionStartNs,
-						definitionStartNs, definitionEndNs, namedNs, diagnosticScope.id(), reason, completed);
+				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} program={} startNs={} endNs={} elapsedNs={} programNs={} definitionNs={} definitionStartNs={} definitionEndNs={} diagnosticId={} reason={} completed={}",
+						System.identityHashCode(this), preparedProgram == null ? 0 : System.identityHashCode(preparedProgram),
+						started, ended, ended - started, programNs, definitionEndNs - definitionStartNs,
+						definitionStartNs, definitionEndNs, diagnosticScope.id(), reason, completed);
 			}
 		}
+	}
+
+	/// 未登记可变 FX 的定义只在 prepare 调用内有效；保留程序类型/结构供预热读取，消费按当前内容重建。
+	private boolean refreshTransientProgram() {
+		var location = config.fxLocation;
+		var fx = location == null ? null : resolveDefinition(location);
+		if (fx == null) {
+			preparedProgram = null;
+			return false;
+		}
+		var path = PhotonSpawnTemplateUtil.path(this);
+		if (path == null) {
+			preparedProgram = null;
+			return false;
+		}
+		preparedProgram = PhotonTemplateProgram.fx(PhotonRuntimeFactory.prepareTransient(fx), location,
+				path, fx, fx.getFxData(), false);
+		return true;
 	}
 
 	private PhotonSpawnTemplateUtil.Template nextTemplate() {
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
 		boolean completed = false;
-		String reason = "no_prepared";
+		String reason = "program_missing";
 		var diagnosticScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_NEXT, config.fxLocation, false) : null;
-		var candidate = prepared;
+		PhotonSpawnTemplateUtil.Template candidate = null;
 		try {
-			var definition = preparedDefinition;
-			prepared = null;
-			preparedDefinition = null;
-			if (candidate != null) {
-				if (config.source != PhotonSpawnConfig.Source.FX) {
-					reason = "source_changed";
-				} else if (config.fxLocation == null) {
-					reason = "location_missing";
-				} else if (resolveDefinition(config.fxLocation) != definition) {
-					reason = "definition_changed";
-				} else if (!candidate.path().contains("fx:" + config.fxLocation)) {
-					reason = "location_changed";
-				} else if (candidate.path().size() != path.size() + 1) {
-					reason = "path_size_changed";
-				} else if (!candidate.path().containsAll(path)) {
-					reason = "path_changed";
-				} else if (path.size() >= Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
-					reason = "depth_limit";
-				} else {
-					reason = "reuse";
-					completed = true;
-					return candidate;
+			var program = preparedProgram;
+			if (program == null) {
+				reason = "program_missing";
+			} else if (path.size() >= Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
+				reason = "depth_limit";
+			} else if (!PhotonSpawnTemplateUtil.matches(this, program)) {
+				reason = "program_stale";
+				preparedProgram = null;
+			} else {
+				reason = "program";
+				candidate = PhotonSpawnTemplateUtil.instantiate(this, program);
+				if (!program.reusable()) {
+					preparedProgram = null;
 				}
-				candidate.close(true);
+				completed = true;
+				return candidate;
 			}
 			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
 			try {
@@ -290,17 +282,18 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		}
 	}
 
-	/// 预热用：读取已准备但未消费的子模板；所有权仍在本生成器，调用方只可读、不得销毁或转移。
-	public @Nullable PhotonSpawnTemplateUtil.Template preparedTemplate() {
-		return prepared;
+	/// 预热用：读取当前不可变程序；真实运行租约尚未创建。
+	public @Nullable PhotonTemplateProgram preparedProgram() {
+		return preparedProgram;
 	}
 
 	private void discardPrepared() {
-		if (prepared != null) {
-			prepared.close(true);
-			prepared = null;
-			preparedDefinition = null;
-		}
+		preparedProgram = null;
+	}
+
+	/// 运行期来源变化只失效当前结构程序，不销毁任何已租运行实例。
+	public void invalidatePreparedProgram() {
+		preparedProgram = null;
 	}
 
 	public PhotonChildSpawner() {
@@ -358,6 +351,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	public void rememberSource(CompoundTag source) {
 		original = source.copy();
+		preparedProgram = null;
 	}
 
 	public CompoundTag source() {
@@ -381,6 +375,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	public void source(IScene scope, Set<String> path) {
 		this.scope = scope;
 		this.path = Set.copyOf(path);
+		preparedProgram = null;
 	}
 
 	@Override

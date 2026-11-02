@@ -335,7 +335,7 @@ public class LcClientAnimations {
 	public static void clear() {
 		clearWorld();
 		LcClientAnimationContents.clear();
-		LcClientAnimationResources.clear();
+		LcClientAnimationResources.clearConnectionContent();
 	}
 
 	private record Frame(LcAnimationSnapshot previous, LcAnimationSnapshot current, long receivedTick) {

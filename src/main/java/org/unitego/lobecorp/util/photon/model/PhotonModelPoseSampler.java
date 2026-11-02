@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
-import java.util.stream.Collectors;
 import java.util.function.ToDoubleFunction;
 
 /// 单资产的纯CPU姿态求值器；准备结果可共享，每次求值只使用调用局部可变数据。
@@ -42,6 +41,8 @@ public class PhotonModelPoseSampler {
 	private final Map<String, Clip> clipIndex;
 	private final Set<String> partIds;
 	private final Set<String> morphIds;
+	private final Map<String, ClipData> clipData;
+	private final Object ownerToken = new Object();
 	private final ThreadLocal<SamplingScratch> scratch = ThreadLocal.withInitial(SamplingScratch::new);
 
 	/// 采样期临时对象按线程隔离：同一准备结果可被多个线程并发求值，不能共享可写缓冲。
@@ -57,6 +58,7 @@ public class PhotonModelPoseSampler {
 		private final Vector3f authored = new Vector3f();
 		private final Matrix4f combined = new Matrix4f();
 		private final Matrix3f normalTransform = new Matrix3f();
+		private final Matrix3f combinedNormalTransform = new Matrix3f();
 		private final Vector3f pivot = new Vector3f();
 		private final Matrix4f local = new Matrix4f();
 		private final Matrix4f pivoted = new Matrix4f();
@@ -64,10 +66,134 @@ public class PhotonModelPoseSampler {
 		private Matrix4f[] boneWorld = new Matrix4f[0];
 		private Matrix4f[] boneSkin = new Matrix4f[0];
 		private float[] morphWeights = new float[0];
-		private Vector3[] positionValues = new Vector3[0];
+		private Vector3f[] positionValues = new Vector3f[0];
 		private int[] positionEpochs = new int[0];
+		private Vector3f[] morphedPositions = new Vector3f[0];
+		private final Vector3f min = new Vector3f();
+		private final Vector3f max = new Vector3f();
+		private final Vector3f morphDelta = new Vector3f();
+		private final Vector3f dimensionValue = new Vector3f();
+		private final Vector3f dimensionScale = new Vector3f();
+		private boolean morphed;
 		private int positionStride;
 		private int positionEpoch;
+
+		private void clear() {
+			faceNormal.zero();
+			faceEdgeA.zero();
+			faceEdgeB.zero();
+			cornerNormal.zero();
+			skin.clear();
+			skinPool.clear();
+			parts = new Matrix4f[0];
+			boneWorld = new Matrix4f[0];
+			boneSkin = new Matrix4f[0];
+			morphWeights = new float[0];
+			positionValues = new Vector3f[0];
+			positionEpochs = new int[0];
+			morphedPositions = new Vector3f[0];
+			morphed = false;
+			positionStride = 0;
+			positionEpoch = 0;
+		}
+	}
+
+	private record ClipData(List<List<TransformKey>> partTracks, List<List<TransformKey>> boneTracks,
+	                        List<List<ValueKey>> morphTracks, List<ValueKey> opacityKeys) {
+	}
+
+	/// 调用线程独占的求值工作区；不持有sampler或ThreadLocal键，避免默认值形成强引用环。
+	public static final class Workspace implements AutoCloseable {
+		private final Object ownerToken;
+		private final Thread ownerThread;
+		private final SamplingScratch scratch;
+		private boolean busy;
+		private boolean closed;
+
+		private Workspace(Object ownerToken, Thread ownerThread) {
+			this.ownerToken = ownerToken;
+			this.ownerThread = ownerThread;
+			scratch = new SamplingScratch();
+		}
+
+		@Override
+		public void close() {
+			if (ownerThread != Thread.currentThread()) {
+				throw new IllegalStateException("模型求值工作区只能在创建线程关闭。");
+			}
+
+			if (closed) {
+				return;
+			}
+
+			if (busy) {
+				throw new IllegalStateException("模型求值工作区正在使用。");
+			}
+
+			closed = true;
+			scratch.clear();
+		}
+	}
+
+	public interface IPrimitivePoseSink {
+		void beginFrame(PhotonModelTopologyUtil.Prepared prepared, float opacity, int groupCount);
+
+		void beginGroup(int groupIndex, int vertexCount, float opacity);
+
+		void vertex(float x, float y, float z, float nx, float ny, float nz, float u, float v);
+
+		void endGroup();
+
+		void endFrame(Vector3 min, Vector3 max, @Nullable Timings timings);
+	}
+
+	private static final class FrameSink implements IPrimitivePoseSink {
+		private final PhotonModelTopologyUtil.Prepared prepared;
+		private final List<Group> groups = new ArrayList<>();
+		private List<Vertex> vertices;
+		private float opacity;
+		private float groupOpacity;
+		private Vector3 min;
+		private Vector3 max;
+		private @Nullable Timings timings;
+
+		private FrameSink(PhotonModelTopologyUtil.Prepared prepared) {
+			this.prepared = prepared;
+		}
+
+		@Override
+		public void beginFrame(PhotonModelTopologyUtil.Prepared prepared, float opacity, int groupCount) {
+			groups.clear();
+			this.opacity = opacity;
+		}
+
+		@Override
+		public void beginGroup(int groupIndex, int vertexCount, float opacity) {
+			vertices = new ArrayList<>(vertexCount);
+			groupOpacity = opacity;
+		}
+
+		@Override
+		public void vertex(float x, float y, float z, float nx, float ny, float nz, float u, float v) {
+			vertices.add(new Vertex(new Vector3(x, y, z), new Vector3(nx, ny, nz), new Vector2(u, v)));
+		}
+
+		@Override
+		public void endGroup() {
+			groups.add(new Group(vertices, groupOpacity));
+			vertices = null;
+		}
+
+		@Override
+		public void endFrame(Vector3 min, Vector3 max, @Nullable Timings timings) {
+			this.min = min;
+			this.max = max;
+			this.timings = timings;
+		}
+
+		private Frame frame() {
+			return new Frame(prepared, groups, opacity, min, max, timings);
+		}
 	}
 
 	private record BoneRig(Map<String, Integer> indices, int[] parents, int[] order, Matrix4f[] inverseBind) {
@@ -146,20 +272,51 @@ public class PhotonModelPoseSampler {
 		clipIndex = Map.copyOf(clips);
 
 		parents = new int[definition.parts().size()];
-		var partIndices = new HashMap<String, Integer>();
+		var indexedParts = new HashMap<String, Integer>();
 
 		for (int index = 0; index < parents.length; index++) {
-			partIndices.put(definition.parts().get(index).id(), index);
+			indexedParts.put(definition.parts().get(index).id(), index);
 		}
 
+		var partIndices = Map.copyOf(indexedParts);
 		partIds = Set.copyOf(partIndices.keySet());
-		morphIds = definition.morphs().stream().map(PhotonModelDefinition.Morph::id).collect(Collectors.toUnmodifiableSet());
+		var indexedMorphs = new LinkedHashMap<String, Integer>();
+
+		for (int index = 0; index < definition.morphs().size(); index++) {
+			indexedMorphs.put(definition.morphs().get(index).id(), index);
+		}
+
+		morphIds = Set.copyOf(indexedMorphs.keySet());
+		var compiledClips = new LinkedHashMap<String, ClipData>();
+
+		for (var clip : clips.values()) {
+			var partTracks = new ArrayList<List<TransformKey>>(definition.parts().size());
+			var boneTracks = new ArrayList<List<TransformKey>>(definition.bones().size());
+			var morphTracks = new ArrayList<List<ValueKey>>(definition.morphs().size());
+
+			for (var part : definition.parts()) {
+				partTracks.add(clip.partTracks().getOrDefault(part.id(), List.of()));
+			}
+
+			for (var bone : definition.bones()) {
+				boneTracks.add(clip.boneTracks().getOrDefault(bone.id(), List.of()));
+			}
+
+			for (var morph : definition.morphs()) {
+				morphTracks.add(clip.morphTracks().getOrDefault(morph.id(), List.of()));
+			}
+
+			compiledClips.put(clip.id(), new ClipData(List.copyOf(partTracks), List.copyOf(boneTracks),
+					List.copyOf(morphTracks), clip.opacityKeys()));
+		}
+
+		clipData = Map.copyOf(compiledClips);
 
 		var ordered = new ArrayList<Integer>();
 		var included = new boolean[parents.length];
 
 		for (int index = 0; index < parents.length; index++) {
-			parents[index] = partIndices.getOrDefault(definition.parts().get(index).parentId(), -1);
+			parents[index] = indexedParts.getOrDefault(definition.parts().get(index).parentId(), -1);
 		}
 
 		for (int index = 0; index < parents.length; index++) {
@@ -190,13 +347,52 @@ public class PhotonModelPoseSampler {
 	}
 
 	public Frame sample(Input input, boolean measure) {
+		var sink = new FrameSink(prepared);
+		sampleInto(input, measure, scratch.get(), sink);
+		return sink.frame();
+	}
+
+	public void sampleInto(Input input, boolean measure, Workspace workspace, IPrimitivePoseSink sink) {
+		Objects.requireNonNull(input);
+		Objects.requireNonNull(workspace);
+		Objects.requireNonNull(sink);
+
+		if (workspace.ownerToken != ownerToken) {
+			throw new IllegalArgumentException("模型求值工作区不属于当前采样器。");
+		}
+
+		if (workspace.ownerThread != Thread.currentThread()) {
+			throw new IllegalStateException("模型求值工作区只能在创建线程使用。");
+		}
+
+		if (workspace.closed) {
+			throw new IllegalStateException("模型求值工作区已关闭。");
+		}
+
+		if (workspace.busy) {
+			throw new IllegalStateException("模型求值工作区不可重入。");
+		}
+
+		workspace.busy = true;
+
+		try {
+			sampleInto(input, measure, workspace.scratch, sink);
+		} finally {
+			workspace.busy = false;
+		}
+	}
+
+	public Workspace newWorkspace() {
+		return new Workspace(ownerToken, Thread.currentThread());
+	}
+
+	public @Nullable Clip clip(String id) {
+		return clipIndex.get(id);
+	}
+
+	private void sampleInto(Input input, boolean measure, SamplingScratch scratch, IPrimitivePoseSink sink) {
 		checkCancelled();
 		var definition = prepared.definition();
-		var scratch = this.scratch.get();
-		var faceNormalScratch = scratch.faceNormal;
-		var cornerNormalScratch = scratch.cornerNormal;
-		var authoredScratch = scratch.authored;
-		var combinedScratch = scratch.combined;
 
 		for (var id : input.morphWeights().keySet()) {
 			if (!morphIds.contains(id)) {
@@ -209,6 +405,7 @@ public class PhotonModelPoseSampler {
 				throw new IllegalArgumentException("模型部件不存在：" + id);
 			}
 		}
+
 		for (var id : input.boneOverrides().keySet()) {
 			if (!skeleton.indices().containsKey(id)) {
 				throw new IllegalArgumentException("模型骨骼不存在：" + id);
@@ -222,43 +419,46 @@ public class PhotonModelPoseSampler {
 			throw new IllegalArgumentException("模型片段不存在：" + input.clip());
 		}
 
+		var compiledClip = clip == null ? null : clipData.get(clip.id());
 		float time = clipTime(input, clip);
-		var matrices = partMatrices(definition, input.partOverrides(), clip, time);
-		var skin = skinMatrices(definition, input.boneOverrides(), clip, time);
-		var weights = morphWeights(definition, input, clip, time);
-		float opacity = input.opacity() * (clip == null ? 1 : sampleValue(clip.opacityKeys(), time, 1));
+		var matrices = partMatrices(definition, input.partOverrides(), compiledClip, time, scratch);
+		var skin = skinMatrices(definition, input.boneOverrides(), compiledClip, time, scratch);
+		var weights = morphWeights(definition, input, compiledClip, time, scratch);
+		float opacity = input.opacity() * (compiledClip == null ? 1 : sampleValue(compiledClip.opacityKeys(), time, 1));
 		long curvesEnd = measure ? System.nanoTime() : 0;
-		var morphed = morph(definition, weights);
-		computePositions(definition, input, matrices, morphed, skin);
+		morph(definition, weights, scratch);
+		computePositions(definition, input, matrices, scratch);
 		long deformationEnd = measure ? System.nanoTime() : 0;
-		var groups = new ArrayList<Group>(prepared.groups().size());
-		var min = new Vector3f(Float.POSITIVE_INFINITY);
-		var max = new Vector3f(Float.NEGATIVE_INFINITY);
+		sink.beginFrame(prepared, opacity, prepared.groups().size());
+		var min = scratch.min.set(Float.POSITIVE_INFINITY);
+		var max = scratch.max.set(Float.NEGATIVE_INFINITY);
+		boolean morphedGeometry = !definition.morphs().isEmpty();
 
-		for (var group : prepared.groups()) {
+		for (int groupIndex = 0; groupIndex < prepared.groups().size(); groupIndex++) {
 			checkCancelled();
+			var group = prepared.groups().get(groupIndex);
 			int partIndex = group.part();
 			var part = definition.parts().get(partIndex);
-			var vertices = new ArrayList<Vertex>(group.corners().size());
-			var normalMatrix = normalMatrix(matrices[partIndex]);
-			boolean morphedGeometry = !definition.morphs().isEmpty();
+			var normalMatrix = normalMatrix(matrices[partIndex], scratch);
 			int lastFace = -1;
+			sink.beginGroup(groupIndex, group.corners().size(), part.opacity());
 
 			for (var corner : group.corners()) {
 				var face = definition.faces().get(corner.face());
-				var position = positionValue(partIndex, corner.vertex());
+				var position = positionValue(partIndex, corner.vertex(), scratch);
 
 				if (lastFace != corner.face()) {
-					faceNormal(partIndex, face.vertices());
+					faceNormal(partIndex, face.vertices(), scratch);
 					lastFace = corner.face();
 				}
 
-				var normal = cornerNormalScratch.set(faceNormalScratch);
+				var normal = scratch.cornerNormal.set(scratch.faceNormal);
 
 				if (!morphedGeometry && !face.normals().isEmpty() && normalMatrix != null) {
 					var authoredValue = face.normals().get(corner.corner());
-					var authored = authoredScratch.set(authoredValue.x(), authoredValue.y(), authoredValue.z());
-					var scale = dimensionScale(definition, part, input, morphed.get(corner.vertex()));
+					var authored = scratch.authored.set(authoredValue.x(), authoredValue.y(), authoredValue.z());
+					var scale = dimensionScale(definition, part, input, morphedPosition(corner.vertex(), scratch), scratch);
+
 
 					if (scale != null && scale.x != 0 && scale.y != 0 && scale.z != 0) {
 						var deformation = skin.get(corner.vertex());
@@ -267,8 +467,8 @@ public class PhotonModelPoseSampler {
 							normalMatrix.transform(authored);
 							authored.mul(Math.signum(matrices[partIndex].determinant3x3()));
 						} else {
-							var combined = combinedScratch.set(matrices[partIndex]).mul(deformation).scale(scale);
-							var normalTransform = normalMatrixInto(combined);
+							var combined = scratch.combined.set(matrices[partIndex]).mul(deformation).scale(scale);
+							var normalTransform = normalMatrixInto(combined, scratch);
 							if (normalTransform != null) {
 								normalTransform.transform(authored);
 								authored.mul(Math.signum(combined.determinant3x3()));
@@ -276,6 +476,7 @@ public class PhotonModelPoseSampler {
 								authored.zero();
 							}
 						}
+
 						if (authored.isFinite() && authored.lengthSquared() > 0) {
 							normal.set(normalized(authored));
 						}
@@ -286,31 +487,38 @@ public class PhotonModelPoseSampler {
 					normal.negate();
 				}
 
-				vertices.add(new Vertex(position, immutable(normal), face.uv().get(corner.corner())));
 				float px = position.x();
 				float py = position.y();
 				float pz = position.z();
+				var uv = face.uv().get(corner.corner());
+				sink.vertex(px, py, pz, normal.x, normal.y, normal.z, uv.x(), uv.y());
+
 				if (px < min.x) {
 					min.x = px;
 				}
+
 				if (py < min.y) {
 					min.y = py;
 				}
+
 				if (pz < min.z) {
 					min.z = pz;
 				}
+
 				if (px > max.x) {
 					max.x = px;
 				}
+
 				if (py > max.y) {
 					max.y = py;
 				}
+
 				if (pz > max.z) {
 					max.z = pz;
 				}
 			}
 
-			groups.add(new Group(vertices, part.opacity()));
+			sink.endGroup();
 		}
 
 		if (prepared.groups().isEmpty()) {
@@ -319,16 +527,15 @@ public class PhotonModelPoseSampler {
 		}
 
 		var timings = measure ? new Timings(curvesEnd - begin, deformationEnd - curvesEnd, System.nanoTime() - deformationEnd) : null;
-		return new Frame(prepared, groups, opacity, immutable(min), immutable(max), timings);
+		sink.endFrame(immutable(min), immutable(max), timings);
 	}
 
 	public PhotonModelTopologyUtil.Prepared prepared() {
 		return prepared;
 	}
 
-	private Matrix4f[] partMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides, @Nullable Clip clip, float time) {
-		var scratch = this.scratch.get();
-
+	private Matrix4f[] partMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides,
+	                                @Nullable ClipData clip, float time, SamplingScratch scratch) {
 		if (scratch.parts.length != parents.length) {
 			scratch.parts = matrices(parents.length);
 		}
@@ -339,7 +546,7 @@ public class PhotonModelPoseSampler {
 			checkCancelled();
 			var part = definition.parts().get(index);
 			var pivot = scratch.pivot.set(part.pivot().x(), part.pivot().y(), part.pivot().z());
-			var sampled = sampleTransform(clip == null ? List.of() : clip.partTracks().getOrDefault(part.id(), List.of()), time, part.transform());
+			var sampled = sampleTransform(clip == null ? List.of() : clip.partTracks().get(index), time, part.transform());
 			var override = overrides.get(part.id());
 
 			if (override != null) {
@@ -361,9 +568,8 @@ public class PhotonModelPoseSampler {
 		return result;
 	}
 
-	private float[] morphWeights(PhotonModelDefinition definition, Input input, @Nullable Clip clip, float time) {
-		var scratch = this.scratch.get();
-
+	private float[] morphWeights(PhotonModelDefinition definition, Input input, @Nullable ClipData clip, float time,
+	                             SamplingScratch scratch) {
 		if (scratch.morphWeights.length != definition.morphs().size()) {
 			scratch.morphWeights = new float[definition.morphs().size()];
 		}
@@ -373,13 +579,13 @@ public class PhotonModelPoseSampler {
 		for (int index = 0; index < weights.length; index++) {
 			var morph = definition.morphs().get(index);
 			weights[index] = input.morphWeights().getOrDefault(morph.id(),
-					clip == null ? morph.weight() : sampleValue(clip.morphTracks().getOrDefault(morph.id(), List.of()), time, morph.weight()));
+					clip == null ? morph.weight() : sampleValue(clip.morphTracks().get(index), time, morph.weight()));
 		}
 
 		return weights;
 	}
 
-	private static List<Vector3> morph(PhotonModelDefinition definition, float[] weights) {
+	private void morph(PhotonModelDefinition definition, float[] weights, SamplingScratch scratch) {
 		boolean changed = false;
 
 		for (float weight : weights) {
@@ -389,15 +595,27 @@ public class PhotonModelPoseSampler {
 			}
 		}
 
-		// 无形状键或权重全为 0 时结果与源顶点逐值相同，跳过两次整表复制。
 		if (!changed) {
-			return definition.vertices();
+			scratch.morphed = false;
+			return;
 		}
 
-		var points = definition.vertices().stream().map(PhotonModelPoseSampler::vector).toList();
+		if (scratch.morphedPositions.length != definition.vertices().size()) {
+			scratch.morphedPositions = new Vector3f[definition.vertices().size()];
+
+			for (int index = 0; index < scratch.morphedPositions.length; index++) {
+				scratch.morphedPositions[index] = new Vector3f();
+			}
+		}
+
+		for (int index = 0; index < scratch.morphedPositions.length; index++) {
+			var source = definition.vertices().get(index);
+			scratch.morphedPositions[index].set(source.x(), source.y(), source.z());
+		}
 
 		for (int index = 0; index < weights.length; index++) {
 			checkCancelled();
+
 			if (weights[index] == 0) {
 				continue;
 			}
@@ -405,23 +623,27 @@ public class PhotonModelPoseSampler {
 			var morph = definition.morphs().get(index);
 
 			for (var entry : morph.deltas().entrySet()) {
-				points.get(entry.getKey()).fma(weights[index], vector(entry.getValue()));
+				var delta = entry.getValue();
+				scratch.morphedPositions[entry.getKey()].fma(weights[index], scratch.morphDelta.set(delta.x(), delta.y(), delta.z()));
 			}
 		}
 
-		return points.stream().map(PhotonModelPoseSampler::immutable).toList();
+		scratch.morphed = true;
 	}
 
-	/// 结果写入线程私有槽位；代数与逐帧新建 Map 的旧实现相同，lambda 与装箱不再产生。
-	private void computePositions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, List<Vector3> source,
-	                              Map<Integer, Matrix4f> skin) {
-		var scratch = this.scratch.get();
+	/// 结果写入线程私有槽位；代数与旧实现相同，不向公开 Frame 暴露可变引用。
+	private void computePositions(PhotonModelDefinition definition, Input input, Matrix4f[] matrices, SamplingScratch scratch) {
 		int vertexCount = definition.vertices().size();
 		int required = definition.parts().size() * vertexCount;
 
 		if (scratch.positionValues.length != required) {
-			scratch.positionValues = new Vector3[required];
+			scratch.positionValues = new Vector3f[required];
 			scratch.positionEpochs = new int[required];
+
+			for (int index = 0; index < scratch.positionValues.length; index++) {
+				scratch.positionValues[index] = new Vector3f();
+			}
+
 			scratch.positionEpoch = 0;
 		}
 
@@ -447,23 +669,31 @@ public class PhotonModelPoseSampler {
 					continue;
 				}
 
-				var position = dimensions(definition, part, input, source.get(vertex));
-				var deformation = skin.get(vertex);
+				var position = dimensions(definition, part, input, morphedPosition(vertex, scratch), scratch);
+				var deformation = scratch.skin.get(vertex);
 
 				if (deformation != null) {
 					deformation.transformPosition(position);
 				}
 
 				matrices[partIndex].transformPosition(position);
-				scratch.positionValues[cell] = immutable(position);
+				scratch.positionValues[cell].set(position);
 				scratch.positionEpochs[cell] = epoch;
 			}
 		}
 	}
 
-	private Vector3 positionValue(int partIndex, int vertex) {
-		var scratch = this.scratch.get();
+	private Vector3f positionValue(int partIndex, int vertex, SamplingScratch scratch) {
 		return scratch.positionValues[partIndex * scratch.positionStride + vertex];
+	}
+
+	private Vector3f morphedPosition(int vertex, SamplingScratch scratch) {
+		if (scratch.morphed) {
+			return scratch.morphedPositions[vertex];
+		}
+
+		var source = prepared.definition().vertices().get(vertex);
+		return scratch.morphDelta.set(source.x(), source.y(), source.z());
 	}
 
 	private static BoneRig prepareBones(PhotonModelDefinition definition) throws IOException {
@@ -504,11 +734,11 @@ public class PhotonModelPoseSampler {
 		return new BoneRig(Map.copyOf(ids), parents, order.stream().mapToInt(Integer::intValue).toArray(), inverse);
 	}
 
-	private Map<Integer, Matrix4f> skinMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides, @Nullable Clip clip, float time) {
+	private Map<Integer, Matrix4f> skinMatrices(PhotonModelDefinition definition, Map<String, PartOverride> overrides,
+	                                            @Nullable ClipData clip, float time, SamplingScratch scratch) {
 		if (definition.weights().isEmpty()) {
 			return Map.of();
 		}
-		var scratch = this.scratch.get();
 
 		if (scratch.boneWorld.length != skeleton.parents().length) {
 			scratch.boneWorld = matrices(skeleton.parents().length);
@@ -520,7 +750,7 @@ public class PhotonModelPoseSampler {
 		for (int index : skeleton.order()) {
 			checkCancelled();
 			var bone = definition.bones().get(index);
-			var sampled = sampleTransform(clip == null ? List.of() : clip.boneTracks().getOrDefault(bone.id(), List.of()), time, bone.bind());
+			var sampled = sampleTransform(clip == null ? List.of() : clip.boneTracks().get(index), time, bone.bind());
 			var override = overrides.get(bone.id());
 			if (override != null) {
 				sampled = new Transform(override.translation() == null ? sampled.translation() : override.translation(),
@@ -587,8 +817,9 @@ public class PhotonModelPoseSampler {
 		return scratch.skin;
 	}
 
-	private Vector3f dimensions(PhotonModelDefinition definition, Part part, Input input, Vector3 source) {
-		var value = vector(source);
+	private Vector3f dimensions(PhotonModelDefinition definition, Part part, Input input, Vector3f source,
+	                            SamplingScratch scratch) {
+		var value = scratch.dimensionValue.set(source);
 		int axis = definition.forwardAxis();
 		float delta = Math.max(input.length() - definition.referenceLength(), minimumDelta);
 		float forward = value.get(axis);
@@ -620,8 +851,9 @@ public class PhotonModelPoseSampler {
 	}
 
 	@Nullable
-	private Vector3f dimensionScale(PhotonModelDefinition definition, Part part, Input input, Vector3 source) {
-		var scale = new Vector3f(input.width() / definition.referenceWidth());
+	private Vector3f dimensionScale(PhotonModelDefinition definition, Part part, Input input, Vector3f source,
+	                                SamplingScratch scratch) {
+		var scale = scratch.dimensionScale.set(input.width() / definition.referenceWidth());
 		float forwardScale = 1;
 
 		if (!localControl) {
@@ -643,26 +875,25 @@ public class PhotonModelPoseSampler {
 	}
 
 	@Nullable
-	private static Matrix3f normalMatrix(Matrix4f matrix) {
-		return matrix.determinant3x3() == 0 ? null : matrix.normal(new Matrix3f());
+	private static Matrix3f normalMatrix(Matrix4f matrix, SamplingScratch scratch) {
+		return matrix.determinant3x3() == 0 ? null : matrix.normal(scratch.normalTransform);
 	}
 
 	@Nullable
-	private Matrix3f normalMatrixInto(Matrix4f matrix) {
-		return matrix.determinant3x3() == 0 ? null : matrix.normal(scratch.get().normalTransform);
+	private static Matrix3f normalMatrixInto(Matrix4f matrix, SamplingScratch scratch) {
+		return matrix.determinant3x3() == 0 ? null : matrix.normal(scratch.combinedNormalTransform);
 	}
 
-	private void faceNormal(int partIndex, List<Integer> face) {
-		var scratch = this.scratch.get();
-		var origin = positionValue(partIndex, face.getFirst());
+	private void faceNormal(int partIndex, List<Integer> face, SamplingScratch scratch) {
+		var origin = positionValue(partIndex, face.getFirst(), scratch);
 		float ox = origin.x();
 		float oy = origin.y();
 		float oz = origin.z();
 		scratch.faceNormal.zero();
 
 		for (int index = 1; index + 1 < face.size(); index++) {
-			var first = positionValue(partIndex, face.get(index));
-			var second = positionValue(partIndex, face.get(index + 1));
+			var first = positionValue(partIndex, face.get(index), scratch);
+			var second = positionValue(partIndex, face.get(index + 1), scratch);
 			scratch.faceEdgeA.set(first.x() - ox, first.y() - oy, first.z() - oz);
 			scratch.faceEdgeB.set(second.x() - ox, second.y() - oy, second.z() - oz);
 			scratch.faceEdgeA.cross(scratch.faceEdgeB);
@@ -736,10 +967,15 @@ public class PhotonModelPoseSampler {
 		var a = keys.get(next - 1);
 		var b = keys.get(next);
 		float amount = (time - a.time()) / (b.time() - a.time());
-		var rotated = rotation(a.transform()).slerp(rotation(b.transform()), amount);
-		return new Transform(immutable(vector(a.transform().translation()).lerp(vector(b.transform().translation()), amount)),
-				new Rotation(rotated.x, rotated.y, rotated.z, rotated.w),
-				immutable(vector(a.transform().scale()).lerp(vector(b.transform().scale()), amount)));
+		var first = a.transform();
+		var second = b.transform();
+		var rotated = rotation(first).slerp(rotation(second), amount);
+		var translation = new Vector3f(first.translation().x(), first.translation().y(), first.translation().z())
+				.lerp(vector(second.translation()), amount);
+		var scale = new Vector3f(first.scale().x(), first.scale().y(), first.scale().z())
+				.lerp(vector(second.scale()), amount);
+		return new Transform(immutable(translation), new Rotation(rotated.x, rotated.y, rotated.z, rotated.w),
+				immutable(scale));
 	}
 
 	private static <T> int upperBound(List<T> keys, float time, ToDoubleFunction<T> keyTime) {
@@ -774,7 +1010,9 @@ public class PhotonModelPoseSampler {
 	}
 
 	private static Matrix4f matrix(Transform value, Matrix4f target) {
-		return target.translationRotateScale(vector(value.translation()), rotation(value), vector(value.scale()));
+		var rotation = rotation(value);
+		return target.translationRotateScale(value.translation().x(), value.translation().y(), value.translation().z(),
+				rotation.x, rotation.y, rotation.z, rotation.w, value.scale().x(), value.scale().y(), value.scale().z());
 	}
 
 	private static Quaternionf rotation(Transform value) {
@@ -788,6 +1026,14 @@ public class PhotonModelPoseSampler {
 			case 0 -> value.x();
 			case 1 -> value.y();
 			default -> value.z();
+		};
+	}
+
+	private static float component(Vector3f value, int axis) {
+		return switch (axis) {
+			case 0 -> value.x;
+			case 1 -> value.y;
+			default -> value.z;
 		};
 	}
 

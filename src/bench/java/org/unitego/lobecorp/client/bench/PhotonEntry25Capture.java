@@ -102,7 +102,7 @@ public class PhotonEntry25Capture {
 		value.require(PhotonRuntimeFactory.mode() == PhotonRuntimeFactory.Mode.NATIVE, "entry_requires_native_creation");
 		value.setupNs = System.nanoTime();
 		if (value.spark == null) {
-			value.spark = PhotonBenchSpark.start(context.minecraft(), value.label);
+			value.spark = PhotonBenchSpark.start(context.minecraft(), value.runId);
 		}
 	}
 

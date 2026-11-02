@@ -18,9 +18,11 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
 import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,7 +32,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
-/// 首施法渲染侧预热：把“第一次绘制才会构建”的材质、着色图与管线提前到女皇出现时构建。
+/// 首施法渲染侧预热：把“第一次绘制才会构建”的材质、着色图与管线提前到静态准备阶段构建。
 ///
 /// 只走绘制用的同一入口（`MaterialSetting#getRenderType` 与 `PhotonPipelines`），不发射粒子、不推进时间线、
 /// 不改变可见性；因此不产生残留粒子或时序偏移。渲染线程调用（客户端 tick 已在该线程）。
@@ -366,10 +368,39 @@ public final class PhotonRenderPrewarm {
 		private void prepare(PhotonChildSpawner spawner, int depth, BooleanSupplier alive) {
 			spawners++;
 			spawner.prepareNext();
-			var template = spawner.preparedTemplate();
+			var program = spawner.preparedProgram();
 
-			if (template != null) {
-				add(template.runtime(), depth - 1, alive);
+			if (program != null) {
+				addProgram(program, depth - 1, alive);
+			}
+		}
+
+		/// 静态程序只准备其定义内的材质/模型与子程序；运行租约仍只在真实发射时取得。
+		private void addProgram(PhotonTemplateProgram program,
+		                        int depth, BooleanSupplier alive) {
+			if (!program.reusable() || !program.current()) {
+				return;
+			}
+
+			BooleanSupplier current = () -> alive.getAsBoolean() && program.current();
+
+			for (var node : program.definition().nodes()) {
+				enqueue(JobType.PREPARE, current, () -> {
+					var model = node.preparedModel();
+					if (model != null) {
+						try {
+							model.prepareStatic();
+							addMaterials(current, model.config(), model.mode());
+						} catch (IOException | RuntimeException invalid) {
+							Lobecorp.LOGGER.warn("静态模型材质预热登记失败：{}", program.key(), invalid);
+						}
+					}
+					for (var child : node.childPrograms()) {
+						if (depth >= 0) {
+							enqueue(JobType.CHILD, current, () -> prepare(child, depth, current));
+						}
+					}
+				});
 			}
 		}
 

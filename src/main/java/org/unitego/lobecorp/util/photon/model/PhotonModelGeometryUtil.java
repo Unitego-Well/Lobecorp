@@ -14,6 +14,18 @@ import javax.annotation.Nullable;
 public class PhotonModelGeometryUtil {
 	private static final float COLOR_CHANNEL_MAX = 255;
 
+	/// 只读局部姿态视图；C 的紧凑缓冲与公开 Frame 都通过同一提交数学写出。
+	public interface LocalPoseView {
+		PhotonModelTopologyUtil.Prepared prepared();
+
+		float opacity();
+
+		float groupOpacity(int groupIndex);
+
+		/// attribute: 0..2 position, 3..5 normal, 6..7 uv.
+		float attribute(int groupIndex, int cornerIndex, int attribute);
+	}
+
 	public static int write(VertexConsumer output, PhotonModelPoseSampler.Frame frame, int groupIndex,
 	                        Matrix4f world, int color, int light) {
 		return write(output, frame, groupIndex, world, color, light, null);
@@ -21,9 +33,23 @@ public class PhotonModelGeometryUtil {
 
 	public static int write(VertexConsumer output, PhotonModelPoseSampler.Frame frame, int groupIndex,
 	                        Matrix4f world, int color, int light, @Nullable NormalCache cache) {
-		var topology = frame.prepared().groups().get(groupIndex);
-		var group = frame.groups().get(groupIndex);
-		var part = frame.prepared().definition().parts().get(topology.part());
+		return writeView(output, new FramePoseView(frame), groupIndex, world, color, light, cache);
+	}
+
+	public static int writePrimitive(VertexConsumer output, LocalPoseView pose, int groupIndex,
+	                                 Matrix4f world, int color, int light, @Nullable NormalCache cache) {
+		return writeView(output, pose, groupIndex, world, color, light, cache);
+	}
+
+	public static int writePrimitive(VertexConsumer output, LocalPoseView pose, int groupIndex,
+	                                 Matrix4f world, int color, int light) {
+		return writePrimitive(output, pose, groupIndex, world, color, light, null);
+	}
+
+	private static int writeView(VertexConsumer output, LocalPoseView pose, int groupIndex,
+	                             Matrix4f world, int color, int light, @Nullable NormalCache cache) {
+		var topology = pose.prepared().groups().get(groupIndex);
+		var part = pose.prepared().definition().parts().get(topology.part());
 		// 热循环只读取调用局部矩阵，不持有缓存中可变矩阵的别名。
 		var normalMatrix = cache == null ? new Matrix3f() : new Matrix3f(cache.update(world));
 		float determinant = cache == null ? world.determinant3x3() : cache.determinant;
@@ -46,20 +72,20 @@ public class PhotonModelGeometryUtil {
 			for (int corner = 0; corner < 4; corner++) {
 				int offset = Math.min(corner, 2);
 				int ordered = part.insideOut() && offset != 0 ? 3 - offset : offset;
-				var vertex = group.vertices().get(indices.get(triangle + ordered));
-				var point = vertex.position();
-				var direction = vertex.normal();
-				world.transformPosition(position.set(point.x(), point.y(), point.z()));
-				normalMatrix.transform(normal.set(direction.x(), direction.y(), direction.z()));
+				int source = indices.get(triangle + ordered);
+				world.transformPosition(position.set(pose.attribute(groupIndex, source, 0),
+						pose.attribute(groupIndex, source, 1), pose.attribute(groupIndex, source, 2)));
+				normalMatrix.transform(normal.set(pose.attribute(groupIndex, source, 3),
+						pose.attribute(groupIndex, source, 4), pose.attribute(groupIndex, source, 5)));
 				normal.mul(Math.signum(determinant));
 
 				if (normal.lengthSquared() > 0 && normal.isFinite()) {
 					normal.normalize();
 				} else {
 					if (fallback == null) {
-						var a = point(group.vertices().get(indices.get(triangle)), world);
-						var b = point(group.vertices().get(indices.get(triangle + (part.insideOut() ? 2 : 1))), world);
-						var c = point(group.vertices().get(indices.get(triangle + (part.insideOut() ? 1 : 2))), world);
+						var a = point(pose, groupIndex, indices.get(triangle), world);
+						var b = point(pose, groupIndex, indices.get(triangle + (part.insideOut() ? 2 : 1)), world);
+						var c = point(pose, groupIndex, indices.get(triangle + (part.insideOut() ? 1 : 2)), world);
 						fallback = b.sub(a).cross(c.sub(a));
 
 						if (fallback.isFinite() && fallback.lengthSquared() > 0) {
@@ -73,8 +99,9 @@ public class PhotonModelGeometryUtil {
 				}
 
 				float shade = part.shading() ? shade(normal) : 1;
-				float alpha = (color >>> 24) / COLOR_CHANNEL_MAX * frame.opacity() * group.opacity();
-				output.addVertex(position.x, position.y, position.z).setUv(vertex.uv().x(), vertex.uv().y())
+				float alpha = (color >>> 24) / COLOR_CHANNEL_MAX * pose.opacity() * pose.groupOpacity(groupIndex);
+				output.addVertex(position.x, position.y, position.z)
+						.setUv(pose.attribute(groupIndex, source, 6), pose.attribute(groupIndex, source, 7))
 						.setColor(((color >>> 16) & 0xFF) / COLOR_CHANNEL_MAX * shade,
 								((color >>> 8) & 0xFF) / COLOR_CHANNEL_MAX * shade,
 								(color & 0xFF) / COLOR_CHANNEL_MAX * shade, alpha)
@@ -83,6 +110,41 @@ public class PhotonModelGeometryUtil {
 		}
 
 		return indices.size() / 3;
+	}
+
+	private record FramePoseView(PhotonModelPoseSampler.Frame frame) implements LocalPoseView {
+
+		@Override
+		public PhotonModelTopologyUtil.Prepared prepared() {
+			return frame.prepared();
+		}
+
+		@Override
+		public float opacity() {
+			return frame.opacity();
+		}
+
+		@Override
+		public float groupOpacity(int groupIndex) {
+			return frame.groups().get(groupIndex).opacity();
+		}
+
+		@Override
+		public float attribute(int groupIndex, int cornerIndex, int attribute) {
+			var vertex = frame.groups().get(groupIndex).vertices().get(cornerIndex);
+
+			return switch (attribute) {
+				case 0 -> vertex.position().x();
+				case 1 -> vertex.position().y();
+				case 2 -> vertex.position().z();
+				case 3 -> vertex.normal().x();
+				case 4 -> vertex.normal().y();
+				case 5 -> vertex.normal().z();
+				case 6 -> vertex.uv().x();
+				case 7 -> vertex.uv().y();
+				default -> throw new IllegalArgumentException("未知局部姿态属性：" + attribute);
+			};
+		}
 	}
 
 	/// 单个模型输出在客户端绘制时独占；返回的矩阵只读借用，不保存在延迟绘制任务中。
@@ -126,9 +188,9 @@ public class PhotonModelGeometryUtil {
 		}
 	}
 
-	private static Vector3f point(PhotonModelPoseSampler.Vertex vertex, Matrix4f world) {
-		var value = vertex.position();
-		return world.transformPosition(new Vector3f(value.x(), value.y(), value.z()));
+	private static Vector3f point(LocalPoseView pose, int groupIndex, int cornerIndex, Matrix4f world) {
+		return world.transformPosition(new Vector3f(pose.attribute(groupIndex, cornerIndex, 0),
+				pose.attribute(groupIndex, cornerIndex, 1), pose.attribute(groupIndex, cornerIndex, 2)));
 	}
 
 	private static float shade(Vector3f normal) {

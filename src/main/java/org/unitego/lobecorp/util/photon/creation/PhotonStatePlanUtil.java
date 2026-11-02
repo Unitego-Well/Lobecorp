@@ -4,6 +4,8 @@ import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigSetter;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
+import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.TransformRef;
+import com.lowdragmc.lowdraglib2.math.GradientColor;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.ManagedFieldUtils;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.CustomDirectAccessor;
@@ -22,6 +24,12 @@ import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.PrimitiveAccessor;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib2.syncdata.field.ManagedKey;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.Constant;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.RandomConstant;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Color;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Gradient;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.EndTag;
 import net.minecraft.nbt.NbtOps;
@@ -33,6 +41,8 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.util.ValueIOSerializable;
+import org.joml.Vector2f;
+import org.joml.Vector4f;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -232,6 +242,15 @@ public class PhotonStatePlanUtil {
 			}, List.of(path + ": missing tag; native no-op"), 0);
 		}
 
+		var prototypeValue = invoke(getter, prototype);
+		if (!Modifier.isFinal(field.getModifiers()) && directCopyValue(prototypeValue)) {
+			var writer = writer(field);
+			return new FieldPlan(target -> {
+				invoke(writer, target, copyLiveValue(prototypeValue));
+				callSetter(setterHandle, getter, target);
+			}, List.of(), 1);
+		}
+
 		var managed = access.key();
 		var accessor = managed.getFieldAccessor();
 		var accessorClass = accessor.getClass();
@@ -282,8 +301,15 @@ public class PhotonStatePlanUtil {
 		}
 		var direct = !Modifier.isFinal(field.getModifiers()) && !key.isReadOnlyManaged() && standardDirect(accessor);
 		var writer = direct ? writer(field) : null;
+		var referenceTransfer = !Modifier.isFinal(field.getModifiers()) && TransformRef.class.isAssignableFrom(field.getType());
 		return (source, target) -> {
 			var value = invoke(access.getter(), source);
+			if (referenceTransfer && (value == null || value instanceof TransformRef)) {
+				var copied = value == null ? null : new TransformRef(((TransformRef) value).getTransformId());
+				invoke(writer(field), target, copied);
+				callSetter(access.setter(), access.getter(), target);
+				return;
+			}
 			if (direct && knownLiveValue(value)) {
 				invoke(writer, target, copyLiveValue(value));
 				callSetter(access.setter(), access.getter(), target);
@@ -387,7 +413,25 @@ public class PhotonStatePlanUtil {
 
 	private static boolean knownLiveValue(Object value) {
 		return value == null || IMMUTABLE_TYPES.contains(value.getClass()) || value instanceof Enum<?>
-				|| value instanceof Tag || JOML_COPIERS.containsKey(value.getClass());
+				|| value instanceof Tag || JOML_COPIERS.containsKey(value.getClass())
+				|| value instanceof TransformRef || supportedNumberFunction(value);
+	}
+
+	private static boolean supportedNumberFunction(Object value) {
+		if (value instanceof NumberFunction3 function) {
+			return function.x != null && function.y != null && function.z != null
+					&& supportedNumberFunction(function.x) && supportedNumberFunction(function.y)
+					&& supportedNumberFunction(function.z);
+		}
+		if (!(value instanceof NumberFunction function)) {
+			return false;
+		}
+		return function.getClass() == Constant.class || function.getClass() == Color.class
+				|| function.getClass() == RandomConstant.class || function.getClass() == Gradient.class;
+	}
+
+	private static boolean directCopyValue(Object value) {
+		return value instanceof TransformRef || supportedNumberFunction(value);
 	}
 
 	private static Object copyLiveValue(Object value) {
@@ -397,7 +441,45 @@ public class PhotonStatePlanUtil {
 		if (value instanceof Tag tag) {
 			return tag.copy();
 		}
+		if (value instanceof TransformRef reference) {
+			return new TransformRef(reference.getTransformId());
+		}
+		if (value instanceof NumberFunction function) {
+			return copyNumberFunction(function);
+		}
+		if (value instanceof NumberFunction3 function) {
+			return new NumberFunction3(copyNumberFunction(function.x), copyNumberFunction(function.y),
+					copyNumberFunction(function.z));
+		}
 		return invoke(Objects.requireNonNull(JOML_COPIERS.get(value.getClass())), value);
+	}
+
+	/// 只复制已核实不会丢失锁点或其他作者状态的精确数值函数类型；未知子类不伪装支持。
+	private static NumberFunction copyNumberFunction(NumberFunction function) {
+		if (function.getClass() == Constant.class) {
+			return new Constant(((Constant) function).getNumber());
+		}
+		if (function.getClass() == Color.class) {
+			return new Color(((Color) function).getNumber().intValue());
+		}
+		if (function.getClass() == RandomConstant.class) {
+			var random = (RandomConstant) function;
+			return new RandomConstant(random.getA(), random.getB());
+		}
+		if (function.getClass() == Gradient.class) {
+			var gradient = ((Gradient) function).getGradientColor();
+			return new Gradient(copyGradient(gradient));
+		}
+		throw new IllegalArgumentException("NumberFunction 不属于已核实的独占复制类型：" + function.getClass().getName());
+	}
+
+	private static GradientColor copyGradient(GradientColor source) {
+		var copy = new GradientColor();
+		copy.getAP().clear();
+		copy.getRgbP().clear();
+		source.getAP().forEach(point -> copy.getAP().add(new Vector2f(point)));
+		source.getRgbP().forEach(point -> copy.getRgbP().add(new Vector4f(point)));
+		return copy;
 	}
 
 	private static boolean standardDirect(IAccessor<?> accessor) {
@@ -533,6 +615,13 @@ public class PhotonStatePlanUtil {
 		var type = value.getClass();
 		if (IMMUTABLE_TYPES.contains(type) || value instanceof Enum<?>) {
 			return () -> value;
+		}
+		if (value instanceof TransformRef reference) {
+			var id = reference.getTransformId();
+			return () -> new TransformRef(id);
+		}
+		if (supportedNumberFunction(value)) {
+			return () -> copyLiveValue(value);
 		}
 
 		if (value instanceof Tag tag) {

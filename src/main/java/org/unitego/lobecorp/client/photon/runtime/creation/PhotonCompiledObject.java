@@ -6,7 +6,9 @@ import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
 import com.lowdragmc.photon.client.fx.instance.InstanceBaker;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
+import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
 import com.lowdragmc.photon.client.gameobject.emitter.beam.BeamEmitter;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.trail.TrailEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.aratrail.AraTrailEmitter;
@@ -21,10 +23,12 @@ import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.util.photon.creation.PhotonFrozenTag;
 import org.unitego.lobecorp.util.photon.creation.PhotonStatePlanUtil;
 import org.unitego.lobecorp.util.photon.creation.PhotonStatePlanUtil.IStatePlan;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 
@@ -55,11 +59,14 @@ public class PhotonCompiledObject {
 	private final int fallbackFields;
 	private final boolean nativeFallback;
 	private final List<IStatePlan> statePlans;
+	private final @Nullable List<PhotonChildSpawner> childPrograms;
+	private final @Nullable PreparedModel preparedModel;
 
 	private PhotonCompiledObject(PhotonFrozenTag snapshot, BaseState base, String type, Class<?> objectClass,
 	                             Supplier<IFXObject> constructor, Consumer<IFXObject> initializer,
 	                             BiConsumer<IFXObject, IFXObject> transfer, List<String> fallbackReasons,
-	                             int fallbackFields, boolean nativeFallback, List<IStatePlan> statePlans) {
+	                             int fallbackFields, boolean nativeFallback, List<IStatePlan> statePlans,
+	                             @Nullable List<PhotonChildSpawner> childPrograms, @Nullable PreparedModel preparedModel) {
 		this.snapshot = snapshot;
 		this.base = base;
 		this.type = type;
@@ -71,6 +78,8 @@ public class PhotonCompiledObject {
 		this.fallbackFields = fallbackFields;
 		this.nativeFallback = nativeFallback;
 		this.statePlans = List.copyOf(statePlans);
+		this.childPrograms = childPrograms == null ? null : List.copyOf(childPrograms);
+		this.preparedModel = preparedModel;
 	}
 
 	public static PhotonCompiledObject compile(IFXObject authored) {
@@ -126,6 +135,8 @@ public class PhotonCompiledObject {
 		};
 		BiConsumer<IFXObject, IFXObject> transferSpecialized = (_, _) -> {
 		};
+		List<PhotonChildSpawner> childPrograms = null;
+		PhotonModelOutput.PreparedSource modelSource = null;
 		var excluded = new HashSet<>(Set.of("name", "transform"));
 
 		if (canonical instanceof PhotonModelOutput model) {
@@ -137,6 +148,7 @@ public class PhotonCompiledObject {
 					configConstructor, Set.of("assetSnapshot"));
 			var prepared = model.config.source == PhotonModelOutputConfig.Source.FILE
 					? null : new SharedPrepared(configPlan, model.config, asset);
+			modelSource = prepared;
 			constructor = () -> new PhotonModelOutput(configConstructor.get(), prepared);
 			specialized = target -> {
 				var output = (PhotonModelOutput) target;
@@ -172,11 +184,33 @@ public class PhotonCompiledObject {
 			excluded.add("definition");
 			reasons.addAll(definition.fallbackReasons());
 			fallbacks += definition.fallbackReasons().size();
-		} else if (canonical instanceof PhotonChildSpawner) {
+		} else if (canonical instanceof PhotonChildSpawner spawner) {
 			var source = new PhotonFrozenTag(data);
-			specialized = target -> ((PhotonChildSpawner) target).rememberSource(source.compoundCopy());
-			transferSpecialized = (live, target) ->
-					((PhotonChildSpawner) target).rememberSource(((PhotonChildSpawner) live).source());
+			excluded.add("config");
+			var config = spawner.config;
+			var configPlan = config.getClass() == PhotonSpawnConfig.class
+					? PhotonStatePlanUtil.compileFields(config, data.getCompoundOrEmpty("config"),
+					PhotonSpawnConfig::new, Set.of()) : null;
+			if (configPlan != null) {
+				plans.add(configPlan);
+			}
+			var preparedChildren = List.of(spawner);
+			specialized = target -> {
+				var copy = (PhotonChildSpawner) target;
+				if (configPlan != null) {
+					configPlan.apply(copy.config);
+				}
+				copy.rememberSource(source.compoundCopy());
+			};
+			transferSpecialized = (live, target) -> {
+				var from = (PhotonChildSpawner) live;
+				var to = (PhotonChildSpawner) target;
+				if (configPlan != null) {
+					configPlan.transfer(from.config, to.config);
+				}
+				to.rememberSource(from.source());
+			};
+			childPrograms = preparedChildren;
 		}
 
 		var state = PhotonStatePlanUtil.compileFields(canonical, data, factory::create, excluded);
@@ -191,8 +225,12 @@ public class PhotonCompiledObject {
 			state.transfer(live, target);
 			copySpecialized.accept(live, target);
 		};
+		PreparedModel model = canonical instanceof PhotonModelOutput output
+				? new PreparedModel(new RendererSetting.Runtime(output.config.overrideRenderer
+				? output.config.renderer : output.config.modelRenderer) {
+		}, output.geometryMode(), modelSource) : null;
 		return new PhotonCompiledObject(snapshot, base, type, canonical.getClass(), constructor, initialize,
-				transfer, reasons, fallbacks, false, plans);
+				transfer, reasons, fallbacks, false, plans, childPrograms, model);
 	}
 
 	private static void installAsset(PhotonModelOutputConfig target, PhotonFrozenTag asset) {
@@ -247,7 +285,7 @@ public class PhotonCompiledObject {
 					var fixed = factory.fixData(data, data.getIntOr("version", 0));
 					PersistedParser.createCodec(() -> target).parse(NbtOps.INSTANCE, fixed).getOrThrow();
 					rememberNativeSource(target, data);
-				}, List.of(reason + "；完整原生快照回退，PROJECT 当前 wrapper 原生恢复"), 1, true, List.of());
+				}, List.of(reason + "；完整原生快照回退，PROJECT 当前 wrapper 原生恢复"), 1, true, List.of(), null, null);
 	}
 
 	private static void rememberNativeSource(IFXObject target, CompoundTag data) {
@@ -346,6 +384,16 @@ public class PhotonCompiledObject {
 		return List.copyOf(reasons);
 	}
 
+	/// 返回编译期捕获的未绑定子发射器，只供静态结构/配置准备读取，不参与运行实例。
+	public List<PhotonChildSpawner> childPrograms() {
+		return childPrograms == null ? List.of() : childPrograms;
+	}
+
+	/// 静态模型准备只读冻结配置与资产，不创建运行实例或持有场景。
+	public @Nullable PreparedModel preparedModel() {
+		return preparedModel;
+	}
+
 	public CompoundTag snapshot() {
 		return snapshot.compoundCopy();
 	}
@@ -395,11 +443,28 @@ public class PhotonCompiledObject {
 		}
 	}
 
-	/// 延迟解析只保存冻结配置指令；共享拓扑，不保存活 sampler、模型或场景。
+	/// 静态准备与实例消费同一来源，不持有运行模型或场景。
+	public record PreparedModel(RendererSetting.Runtime config, VertexFormat.Mode mode,
+								@Nullable PhotonModelOutput.PreparedSource source) {
+		public void prepareStatic() throws IOException {
+			if (source == null) {
+				return;
+			}
+
+			try {
+				source.sampler();
+			} catch (UncheckedIOException invalid) {
+				throw invalid.getCause();
+			}
+		}
+	}
+
+	/// 定义共享延迟拓扑与纯 CPU 采样程序，实例独占求值工作区。
 	private static class SharedPrepared implements PhotonModelOutput.PreparedSource {
 		private final IStatePlan config;
 		private final ModelSource source;
 		private @Nullable PhotonModelTopologyUtil.Prepared prepared;
+		private @Nullable PhotonModelPoseSampler sampler;
 
 		private SharedPrepared(IStatePlan config, PhotonModelOutputConfig values, PhotonFrozenTag asset) {
 			this.config = config;
@@ -415,6 +480,15 @@ public class PhotonCompiledObject {
 
 		private boolean matches(PhotonModelOutputConfig current, PhotonFrozenTag asset) {
 			return source.matches(current, asset);
+		}
+
+		@Override
+		public synchronized PhotonModelPoseSampler sampler() throws IOException {
+			if (sampler == null) {
+				sampler = new PhotonModelPoseSampler(get());
+			}
+
+			return sampler;
 		}
 
 		@Override

@@ -15,6 +15,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonMcpCommands;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorCommand;
 import org.unitego.lobecorp.registry.photon.client.PhotonModelResourceRegistration;
+import org.unitego.lobecorp.registry.animation.client.LcClientAnimationResourceRegistration;
 import org.unitego.lobecorp.registry.animation.client.LcPlayerAnimationRegistration;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
 import org.unitego.lobecorp.registry.entity.client.EntityCorpseReverse;
@@ -93,6 +94,7 @@ public class LobecorpClientEvents {
 		TextParticleRegistration.registerReload(event);
 		ScreenParticleRegistration.registerReload(event);
 		PhotonModelResourceRegistration.registerReload(event);
+		LcClientAnimationResourceRegistration.registerReload(event);
 	}
 
 	@SubscribeEvent

@@ -277,7 +277,8 @@ public class PhotonRuntimeCopyNativeCheck {
 		equal(false, first.slot("count").isOverridden());
 		equal(false, first.slot("duration").isOverridden());
 		equal(List.of(), first.instanceIds());
-		equal(null, first.preparedTemplate());
+		equal(null, first.preparedProgram());
+		equal(null, second.preparedProgram());
 		equal(null, first.getEffectExecutor());
 		independentConfig(first.config, second.config);
 		different(first.slot("count"), second.slot("count"));
@@ -593,13 +594,13 @@ public class PhotonRuntimeCopyNativeCheck {
 		equal(null, first.getOnUpdateTick());
 		equal(null, first.getOnUpdateFrame());
 		equal(null, first.getEffectExecutor());
-		for (var name : List.of("clock", "modelRenderer", "overrideRenderer", "normalCache", "geometrySnapshots", "slots", "playback")) {
+		for (var name : List.of("clock", "modelRenderer", "overrideRenderer", "normalCache", "poseBuffer", "slots", "playback")) {
 			var field = PhotonModelOutput.class.getDeclaredField(name);
 			field.setAccessible(true);
 			different(field.get(source), field.get(first));
 			different(field.get(first), field.get(second));
 		}
-		for (var name : List.of("sampler", "materials", "dynamic", "frame", "sampledInput", "snapshotFrame")) {
+		for (var name : List.of("sampler", "materials", "dynamic", "poseWorkspace", "sampledInput", "publicFrame")) {
 			var field = PhotonModelOutput.class.getDeclaredField(name);
 			field.setAccessible(true);
 			equal(null, field.get(first));

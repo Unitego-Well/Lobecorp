@@ -183,6 +183,11 @@ public class PhotonBenchSpark implements AutoCloseable, CommandSource {
 		return state == State.COMPLETE;
 	}
 
+	/// 只有收到本 label 的唯一启动回执后才允许建立测量零点。
+	public boolean running() {
+		return state == State.RUNNING && ownsSampler && startedAckNs != 0;
+	}
+
 	private void accept(Message message) {
 		var text = message.text();
 

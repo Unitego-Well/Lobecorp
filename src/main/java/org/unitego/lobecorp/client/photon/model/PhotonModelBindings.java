@@ -30,6 +30,9 @@ public class PhotonModelBindings {
 	private final List<TransformSlots> partSlots;
 	private final List<TransformSlots> boneSlots;
 	private final List<MorphSlot> morphSlots;
+	private Map<String, Float> morphSnapshot = Map.of();
+	private Map<String, PartOverride> partSnapshot = Map.of();
+	private Map<String, PartOverride> boneSnapshot = Map.of();
 
 	private record TransformSlots(String id, RuntimeValue<?> position, RuntimeValue<?> rotation,
 	                              RuntimeValue<?> scale) {
@@ -112,15 +115,33 @@ public class PhotonModelBindings {
 			}
 		}
 
-		return result == null ? Map.of() : Map.copyOf(result);
+		Map<String, Float> next = result == null ? Map.of() : Map.copyOf(result);
+
+		if (!next.equals(morphSnapshot)) {
+			morphSnapshot = next;
+		}
+
+		return morphSnapshot;
 	}
 
 	public Map<String, PartOverride> partOverrides(PhotonModelOutput owner, float progress) {
-		return transformOverrides(owner, progress, partSlots);
+		var next = transformOverrides(owner, progress, partSlots);
+
+		if (!next.equals(partSnapshot)) {
+			partSnapshot = next;
+		}
+
+		return partSnapshot;
 	}
 
 	public Map<String, PartOverride> boneOverrides(PhotonModelOutput owner, float progress) {
-		return transformOverrides(owner, progress, boneSlots);
+		var next = transformOverrides(owner, progress, boneSlots);
+
+		if (!next.equals(boneSnapshot)) {
+			boneSnapshot = next;
+		}
+
+		return boneSnapshot;
 	}
 
 	private Map<String, PartOverride> transformOverrides(PhotonModelOutput owner, float progress, List<TransformSlots> plan) {
@@ -165,6 +186,9 @@ public class PhotonModelBindings {
 
 	public void clear() {
 		slots.values().forEach(RuntimeValue::clear);
+		morphSnapshot = Map.of();
+		partSnapshot = Map.of();
+		boneSnapshot = Map.of();
 	}
 
 	private static NumberFunction3 function(Vector3 value) {

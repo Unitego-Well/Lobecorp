@@ -2,7 +2,6 @@ package org.unitego.lobecorp.client.photon.playback;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.fx.timeline.SignalTrack;
 import com.lowdragmc.photon.client.fx.timeline.PhotonSignals;
 import com.lowdragmc.photon.Photon;
 import com.lowdragmc.photon.client.gameobject.FXObject;
@@ -63,13 +62,14 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		private boolean authoring;
 		private final PhotonChildWindows children;
 		private final PhotonNamedNativeTracks nativeTracks;
+		private final PhotonModelClipUtil.ContributionState modelContributions = new PhotonModelClipUtil.ContributionState();
 
 		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime, @Nullable PhotonNamedRuntime callHost) {
 			this.handle = handle;
 			this.plan = plan;
 			completion = handle.definition().completion();
 			children = new PhotonChildWindows(runtime, handle, callHost);
-			nativeTracks = new PhotonNamedNativeTracks(runtime, plan.timeline);
+			nativeTracks = new PhotonNamedNativeTracks(runtime, plan.timeline, plan.leaves, plan.hasAudio(), plan.hasPostProcess());
 		}
 	}
 
@@ -666,15 +666,15 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			try {
 
 				if (simulation) {
-					entry.children.evaluate(entry.plan.leaves, time);
+					entry.children.evaluate(entry.plan.childTracks(), time);
 				} else {
 					entry.children.frame(time);
 				}
 
-				PhotonModelClipUtil.apply(handle, runtime, entry.plan.timeline, time, priority, handle.order());
+				entry.modelContributions.apply(handle, runtime, entry.plan.modelClips(), time, priority, handle.order());
 				entry.nativeTracks.sample(time, simulation, handle.clock().state() == PhotonPlaybackClock.State.PLAYING);
 				if (simulation) {
-					speeds.apply(entry.plan.leaves, time);
+					speeds.apply(entry.plan.speedTracks(), time);
 				}
 
 				for (var property : entry.plan.properties) {
@@ -771,10 +771,11 @@ public class PhotonNamedRuntime implements AutoCloseable {
 				}
 			}
 
-			for (var track : entry.plan.leaves) {
-				if (!(track instanceof SignalTrack signals) || track.mute()) {
+			for (var signals : entry.plan.signalTracks()) {
+				if (signals.mute()) {
 					continue;
 				}
+
 				for (var signal : signals.signals()) {
 					double at = cycle + signal.time() / entry.plan.authoredDuration;
 					if (at <= entry.notifiedPosition || at > position || !entry.handle.clock().looping() && at > 1) {
@@ -902,7 +903,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	private void release(Entry entry) {
 		entry.children.close();
 		entry.nativeTracks.close();
-		PhotonModelClipUtil.clear(entry.handle, runtime);
+		entry.modelContributions.clear(entry.handle);
 		entry.handle.dispose();
 	}
 

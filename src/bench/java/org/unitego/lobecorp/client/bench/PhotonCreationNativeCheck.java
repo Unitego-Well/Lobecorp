@@ -226,13 +226,13 @@ public class PhotonCreationNativeCheck {
 
 	private void staleGeneration() throws Exception {
 		var definition = probes.getFirst().definition();
-		long generation = PhotonRuntimeFactory.statistics().get("generation");
-		require(definition.generation() == generation, "host generation changed during fixture");
+		long definitionGeneration = definition.generation();
+		long poolGeneration = PhotonRuntimeFactory.statistics().get("generation");
 		var constructor = Definition.class.getDeclaredConstructor(String.class, long.class, List.class,
 				PhotonTimelineProgram.class, PhotonFrozenTag.class);
 		constructor.setAccessible(true);
 		// 只构造独立的过期定义，不修改 Factory 代次、缓存或其他活租约。
-		var stale = constructor.newInstance(definition.key(), generation - 1,
+		var stale = constructor.newInstance(definition.key(), definitionGeneration - 1,
 				(List<?>) field(definition, "nodes"), (PhotonTimelineProgram) field(definition, "timeline"),
 				(PhotonFrozenTag) field(definition, "snapshot"));
 		var active = PhotonRuntimeFactory.acquire(definition, new Object(), Mode.COMPILED);
@@ -252,7 +252,7 @@ public class PhotonCreationNativeCheck {
 
 		require(active.current(), "stale generation check invalidated a live lease");
 		active.close(true);
-		equal(generation, PhotonRuntimeFactory.statistics().get("generation"));
+		equal(poolGeneration, PhotonRuntimeFactory.statistics().get("generation"));
 		report.addProperty("generation_case_scope", "isolated stale definition; actual reload not exercised");
 	}
 
@@ -262,10 +262,10 @@ public class PhotonCreationNativeCheck {
 		report.addProperty("active_mode", activeMode.name());
 		report.addProperty("fixture_scope", "11 existing resources; no emission, simulation or visual acceptance");
 		report.addProperty("pool_fixture_is_40s_performance", false);
-		report.addProperty("source_head_at_implementation", "ca2b926b");
+		report.addProperty("source_head_at_implementation", "ca2b926b:historical");
 		report.addProperty("jdk_runtime", Runtime.version().toString());
-		report.addProperty("photon_version", "26.1.2.3");
-		report.addProperty("ldlib2_version", "26.1.2.42");
+		report.addProperty("photon_version", loadedModVersion("photon"));
+		report.addProperty("ldlib2_version", loadedModVersion("ldlib2"));
 		report.addProperty("artifact_id", UUID.randomUUID().toString());
 		report.addProperty("start_ns", started);
 		report.add("fixture_counters_before", counters(countersBefore));
@@ -554,7 +554,7 @@ public class PhotonCreationNativeCheck {
 				require(x.config != y.config && x.slot("count") != y.slot("count"), "spawner state shared");
 				equal(x.slot("count").isOverridden(), y.slot("count").isOverridden());
 				equal(x.instanceIds(), y.instanceIds());
-				equal(x.preparedTemplate(), y.preparedTemplate());
+				equal(x.preparedProgram(), y.preparedProgram());
 			}
 			if (a instanceof PhotonNamedController && b instanceof PhotonNamedController) {
 				equal(null, field(b, "playback"));
@@ -810,6 +810,16 @@ public class PhotonCreationNativeCheck {
 		var result = new JsonObject();
 		values.forEach(result::addProperty);
 		return result;
+	}
+
+	private static String loadedModVersion(String modId) {
+		try {
+			var list = net.neoforged.fml.ModList.get();
+			var file = list == null ? null : list.getModFileById(modId);
+			return file == null ? "unavailable" : file.versionString();
+		} catch (RuntimeException | LinkageError problem) {
+			return "unavailable";
+		}
 	}
 
 	private static String hash(Tag tag) throws Exception {

@@ -51,10 +51,19 @@ public class PhotonNamedPlan {
 	public record Property(FXObject target, AnimatedProperty value, Binding binding) {
 	}
 
+	public record ModelClipTarget(PhotonModelClipTrack track, UUID targetId) {
+	}
+
 	final Definition definition;
 	final Timeline timeline;
 	final List<Track> leaves;
 	final List<Property> properties;
+	private final List<ModelClipTarget> modelClips;
+	private final List<PhotonChildTrack> childTracks;
+	private final List<SpeedTrack> speedTracks;
+	private final List<SignalTrack> signalTracks;
+	private final boolean hasAudio;
+	private final boolean hasPostProcess;
 	final double authoredDuration;
 	final int unusedBindings;
 
@@ -75,6 +84,12 @@ public class PhotonNamedPlan {
 		this.timeline = timeline;
 		leaves = List.copyOf(timeline.leafTracks(false));
 		var prepared = new ArrayList<Property>();
+		var preparedModelClips = new ArrayList<ModelClipTarget>();
+		var preparedChildTracks = new ArrayList<PhotonChildTrack>();
+		var preparedSpeedTracks = new ArrayList<SpeedTrack>();
+		var preparedSignalTracks = new ArrayList<SignalTrack>();
+		boolean audio = false;
+		boolean postProcess = false;
 
 		for (var track : leaves) {
 			if (track.mute()) {
@@ -110,10 +125,28 @@ public class PhotonNamedPlan {
 					|| track instanceof PhotonModelClipTrack || track instanceof PhotonChildTrack
 					|| track instanceof SpeedTrack || track instanceof SignalTrack || track instanceof AudioTrack || track instanceof PostProcessTrack)) {
 				throw new IllegalArgumentException("命名播放尚未支持该轨道：" + track.name());
+			} else if (track instanceof PhotonModelClipTrack modelClip) {
+				preparedModelClips.add(new ModelClipTarget(modelClip, modelClip.targetId()));
+			} else if (track instanceof PhotonChildTrack child) {
+				preparedChildTracks.add(child);
+			} else if (track instanceof SpeedTrack speed) {
+				preparedSpeedTracks.add(speed);
+			} else if (track instanceof SignalTrack signal) {
+				preparedSignalTracks.add(signal);
+			} else if (track instanceof AudioTrack) {
+				audio = true;
+			} else if (track instanceof PostProcessTrack) {
+				postProcess = true;
 			}
 		}
 
 		properties = List.copyOf(prepared);
+		modelClips = List.copyOf(preparedModelClips);
+		childTracks = List.copyOf(preparedChildTracks);
+		speedTracks = List.copyOf(preparedSpeedTracks);
+		signalTracks = List.copyOf(preparedSignalTracks);
+		hasAudio = audio;
+		hasPostProcess = postProcess;
 
 		int unused = 0;
 
@@ -152,6 +185,30 @@ public class PhotonNamedPlan {
 	}
 
 	private record BindingKey(UUID target, String property) {
+	}
+
+	public List<ModelClipTarget> modelClips() {
+		return modelClips;
+	}
+
+	public List<PhotonChildTrack> childTracks() {
+		return childTracks;
+	}
+
+	public List<SpeedTrack> speedTracks() {
+		return speedTracks;
+	}
+
+	public List<SignalTrack> signalTracks() {
+		return signalTracks;
+	}
+
+	public boolean hasAudio() {
+		return hasAudio;
+	}
+
+	public boolean hasPostProcess() {
+		return hasPostProcess;
 	}
 
 	/// 共享未绑定的定义和轨道初始化计划；Property 始终在实例构造时生成。

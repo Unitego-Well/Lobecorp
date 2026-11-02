@@ -28,7 +28,8 @@ public class QueenOwnedLaserEffects {
 	private static final Map<UUID, Playing> PLAYING = new HashMap<>();
 	private static final Map<UUID, Long> LEGACY = new HashMap<>();
 	private static final List<PhotonOwnedLaser> TAILS = new ArrayList<>();
-	private static final boolean STATISTICS_ENABLED = Set.of("lobecorp.photon-05-hybrid-queen25",
+	private static final boolean STATISTICS_ENABLED = Boolean.getBoolean("lobecorp.photon.bench.ownedStatistics")
+			|| Set.of("lobecorp.photon-05-hybrid-queen25",
 					"lobecorp.photon-05-hybrid-laser3", "lobecorp.photon-05-hybrid-blank25",
 					"lobecorp.photon-06-migration-laser3")
 			.contains(System.getProperty("modBench.scenarios", ""));

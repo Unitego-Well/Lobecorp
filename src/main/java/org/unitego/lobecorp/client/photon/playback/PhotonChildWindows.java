@@ -102,7 +102,7 @@ public class PhotonChildWindows implements AutoCloseable {
 		this.callHost = callHost;
 	}
 
-	public void evaluate(List<Track> tracks, double time) {
+	public void evaluate(List<? extends Track> tracks, double time) {
 		if (time < previous) {
 			close();
 		}
@@ -110,7 +110,7 @@ public class PhotonChildWindows implements AutoCloseable {
 		var seen = new HashSet<UUID>();
 
 		for (var leaf : tracks) {
-			if (leaf.mute() || !(leaf instanceof PhotonChildTrack track) || track.clips().isEmpty()) {
+			if (!(leaf instanceof PhotonChildTrack track) || leaf.mute() || track.clips().isEmpty()) {
 				continue;
 			}
 

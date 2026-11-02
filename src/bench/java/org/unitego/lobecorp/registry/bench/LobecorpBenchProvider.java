@@ -16,6 +16,10 @@ import org.unitego.lobecorp.client.bench.PhotonWorkspaceReviewScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridQueenScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridLaserScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridBlankScenario;
+import org.unitego.lobecorp.client.bench.PhotonQuietControlScenario;
+import org.unitego.lobecorp.client.bench.PhotonQuietMatrixCapture;
+import org.unitego.lobecorp.client.bench.PhotonQuietVisualScenario;
+import org.unitego.lobecorp.client.bench.PhotonGlobalContractScenario;
 import org.unitego.lobecorp.client.bench.PhotonQueenEntryScenario;
 import org.unitego.lobecorp.client.bench.PhotonEntryBlankScenario;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
@@ -51,6 +55,11 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		if (PhotonGlobalContractScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(PhotonGlobalContractScenario.ID, "全局命名执行契约",
+					Set.of("client", "photon", "contracts"), Duration.ofSeconds(600)), _ -> new PhotonGlobalContractScenario());
+			return;
+		}
 		if (PhotonBridgeContractScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonBridgeContractScenario.ID, "标准MCP导出与关闭契约",
 					Set.of("client", "photon", "bridge", "logic"), Duration.ofSeconds(600)), _ -> new PhotonBridgeContractScenario());
@@ -85,6 +94,19 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 		if (PhotonHybridBlankScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonHybridBlankScenario.ID, "混合：45秒空白，含前25秒基线",
 					Set.of("client", "photon", "hybrid", "blank"), Duration.ofSeconds(240)), _ -> new PhotonHybridBlankScenario());
+		}
+		if (PhotonQuietMatrixCapture.Variant.selected() != null) {
+			var quiet = PhotonQuietMatrixCapture.Variant.selected();
+			registrar.register(new ScenarioDescriptor(quiet.id(), "安静对照：" + quiet.label(),
+							Set.of("client", "photon", "quiet"), Duration.ofSeconds(600)),
+					_ -> new PhotonQuietControlScenario(quiet));
+			return;
+		}
+		if (PhotonQuietMatrixCapture.VISUAL_ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(selectedProperty, "安静诊断：真实激光与十五组成件视觉",
+							Set.of("client", "photon", "quiet", "visual"), Duration.ofSeconds(600)),
+					_ -> new PhotonQuietVisualScenario());
+			return;
 		}
 
 		if (PhotonQueenEntryScenario.ID.equals(selectedProperty)) {

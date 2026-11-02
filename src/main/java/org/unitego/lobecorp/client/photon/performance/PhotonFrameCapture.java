@@ -441,27 +441,34 @@ public class PhotonFrameCapture {
 			}
 
 			// 在递增 frames 前冻结，容量结束不追加未填充的零值帧，也不再执行后续采样阶段。
-			if (PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null) {
+			if (frames == MAX_FRAMES || PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null) {
 				completeSafely(this, State.CAPACITY, true);
 				return;
 			}
 
-			var allocated = allocatedNow();
+			boolean endpoint = now >= deadlineNs;
+			var allocated = endpoint ? UNAVAILABLE : allocatedNow();
 			pollGpu();
-			runPhases(now);
+			if (!endpoint) {
+				runPhases(now);
+			}
 
 			if (active != this) {
 				return;
 			}
 
 			boolean collectorLimit = PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null;
-			if (collectorLimit || System.nanoTime() >= deadlineNs || frames == MAX_FRAMES) {
-				completeSafely(this, collectorLimit || frames == MAX_FRAMES ? State.CAPACITY : State.DURATION, true);
+			if (collectorLimit) {
+				completeSafely(this, State.CAPACITY, true);
 				return;
 			}
 
 			int index = frames++;
-			PhotonPerformanceCapture.frame(index, startedNs);
+			if (endpoint) {
+				PhotonPerformanceTraceUtil.frame(index, startedNs);
+			} else {
+				PhotonPerformanceCapture.frame(index, startedNs);
+			}
 			if (active != this) {
 				return;
 			}
@@ -488,6 +495,12 @@ public class PhotonFrameCapture {
 					| (GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE ? MAXIMIZED : 0)
 					| (window.isIconified() ? ICONIFIED : 0) | (window.isFullscreen() ? FULLSCREEN : 0)
 					| (minecraft.options.enableVsync().get() ? VSYNC : 0);
+
+			// 终点仅闭合相邻 HEAD 间隔；未执行的 body、GPU 和分配采样保留不可用值。
+			if (endpoint) {
+				completeSafely(this, State.DURATION, true);
+				return;
+			}
 
 			if (allocated >= 0 && previousAllocated >= 0) {
 				allocatedBytes[index] = allocated - previousAllocated;

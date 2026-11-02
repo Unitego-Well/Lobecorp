@@ -37,7 +37,6 @@ import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
@@ -54,7 +53,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +65,11 @@ import java.util.function.Supplier;
 public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	public interface PreparedSource extends Supplier<PhotonModelTopologyUtil.Prepared> {
 		boolean matches(PhotonModelOutputConfig current);
+
+		/// 静态程序可共享，每个输出仍须独立创建工作区。
+		default PhotonModelPoseSampler sampler() throws IOException {
+			return new PhotonModelPoseSampler(get());
+		}
 	}
 
 	@Persisted(subPersisted = true)
@@ -76,13 +79,11 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private @Nullable Supplier<PhotonModelTopologyUtil.Prepared> compiledSupplier;
 	private final PhotonModelClock clock = new PhotonModelClock();
 	private final NormalCache normalCache = new NormalCache();
-	private static final int MAX_SNAPSHOT_VERTICES = PhotonPackedVertexUtil.MAX_VERTICES;
-	private static final boolean PACKED_SNAPSHOT_SUBMISSION = Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY);
-	private final Map<Integer, GeometrySnapshot> geometrySnapshots = new HashMap<>();
-	private @Nullable PhotonModelPoseSampler.Frame snapshotFrame;
-	private boolean frameReused;
+	private final PhotonModelPoseBuffer poseBuffer = new PhotonModelPoseBuffer();
+	private @Nullable PhotonModelPoseSampler.Workspace poseWorkspace;
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<Object, PhotonModelClip.Sample> playback = new LinkedHashMap<>();
+	private @Nullable PhotonModelClip.Sample playbackSelection;
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
 			.thenComparingLong(PhotonModelClip.Sample::order);
 	private CompoundTag original = new CompoundTag();
@@ -91,7 +92,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private @Nullable PhotonModelMaterials materials;
 	private @Nullable PhotonModelBindings dynamic;
 	private @Nullable PhotonModelPoseSampler.Input sampledInput;
-	private @Nullable PhotonModelPoseSampler.Frame frame;
+	private @Nullable PhotonModelPoseSampler.Frame publicFrame;
+	private @Nullable PhotonModelClock.Settings settingsSnapshot;
 	private List<Integer> groupOrder = List.of();
 	private @Nullable String failure;
 	private boolean preparedOverride;
@@ -153,11 +155,12 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public boolean supportsAnimation(String id) {
-		return !id.isEmpty() && sampler != null && definition().clips().stream().anyMatch(clip -> clip.id().equals(id));
+		return !id.isEmpty() && sampler != null && sampler.clip(id) != null;
 	}
 
 	public float animationDuration(String id) {
-		return definition().clips().stream().filter(clip -> clip.id().equals(id)).findFirst().orElseThrow().duration();
+		var clip = sampler == null ? null : sampler.clip(id);
+		return Objects.requireNonNull(clip, "模型动画片段不存在：" + id).duration();
 	}
 
 	public void playback(Object owner, @Nullable PhotonModelClip.Sample sample) {
@@ -170,6 +173,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 			playback.put(owner, sample);
 		}
+
+		playbackSelection = playback.values().stream().max(PLAYBACK_ORDER).orElse(null);
 	}
 
 	private <T> T value(String path, Class<T> type) {
@@ -186,9 +191,15 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private PhotonModelClock.Settings settings() {
-		return new PhotonModelClock.Settings(value("enabled", Boolean.class), value("paused", Boolean.class),
+		var current = new PhotonModelClock.Settings(value("enabled", Boolean.class), value("paused", Boolean.class),
 				value("looping", Boolean.class), getLifetime(), getStartDelay(),
 				nonnegative(value("playbackSpeed", Float.class), 1));
+
+		if (!current.equals(settingsSnapshot)) {
+			settingsSnapshot = current;
+		}
+
+		return settingsSnapshot;
 	}
 
 	private static float nonnegative(float value, float fallback) {
@@ -226,10 +237,11 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		sampler = null;
 		dynamic = null;
 		sampledInput = null;
-		frame = null;
-		snapshotFrame = null;
-		discardPackedSnapshots();
-		geometrySnapshots.clear();
+		settingsSnapshot = null;
+		playbackSelection = null;
+		closeWorkspace();
+		publicFrame = null;
+		poseBuffer.clear();
 	}
 
 	public void prepare() throws IOException {
@@ -239,6 +251,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		if (sampler == null) {
 			try {
 				sampler = compiledSupplier == null ? PhotonModelSourceUtil.prepare(config)
+						: compiledSupplier instanceof PreparedSource source ? source.sampler()
 						: new PhotonModelPoseSampler(compiledSupplier.get());
 			} catch (UncheckedIOException invalid) {
 				throw invalid.getCause();
@@ -256,6 +269,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				return material != null && material.overlay();
 			}));
 			groupOrder = List.copyOf(order);
+			closeWorkspace();
+			poseWorkspace = sampler.newWorkspace();
 		}
 
 		if (dynamic == null) {
@@ -359,15 +374,20 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			dynamic.clear();
 		}
 
-		discardPackedSnapshots();
 		modelRenderer.clear();
 		overrideRenderer.clear();
 		playback.clear();
+		playbackSelection = null;
+		settingsSnapshot = null;
 		sampledInput = null;
-		frame = null;
+		publicFrame = null;
+		poseBuffer.clear();
 
 		try {
 			prepare();
+			if (poseWorkspace == null && sampler != null) {
+				poseWorkspace = sampler.newWorkspace();
+			}
 			clock.reset(settings(), preserveParticles);
 		} catch (IOException | RuntimeException error) {
 			failure = error.getMessage();
@@ -403,10 +423,13 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		clock.stop(settings(), force);
 
 		if (force) {
-			discardPackedSnapshots();
-			frame = null;
+			closeWorkspace();
 			sampledInput = null;
+			publicFrame = null;
 			playback.clear();
+			playbackSelection = null;
+			settingsSnapshot = null;
+			poseBuffer.clear();
 		}
 	}
 
@@ -432,10 +455,10 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 	@Override
 	public void lobecorp$clearParticles() {
-		discardPackedSnapshots();
 		clock.clear();
-		frame = null;
 		sampledInput = null;
+		publicFrame = null;
+		poseBuffer.clear();
 	}
 
 	@Override
@@ -468,7 +491,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public @Nullable PhotonModelPoseSampler.Frame sampledFrame() {
-		return frame;
+		return publicFrame;
 	}
 
 	@Override
@@ -484,28 +507,59 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 	/// 运行属性读取属于客户端线程；返回的不可变局部帧可交给多个视图消费。
 	public @Nullable PhotonModelPoseSampler.Frame sampleLocal(float partialTicks) {
+		var sampled = sampleLocalPose(partialTicks);
+		return sampled == null ? null : publicFrame();
+	}
+
+	private @Nullable PhotonModelPoseSampler.Frame publicFrame() {
+		if (!poseBuffer.complete()) {
+			return null;
+		}
+
+		if (publicFrame == null) {
+			publicFrame = poseBuffer.frame();
+			poseBuffer.invalidateFrameSnapshot();
+		}
+
+		return publicFrame;
+	}
+
+	private @Nullable PhotonModelPoseBuffer sampleLocalPose(float partialTicks) {
+		if (getParticleAmount() == 0 || sampler == null) {
+			return null;
+		}
+
+		if (poseWorkspace == null) {
+			closeWorkspace();
+			poseWorkspace = sampler.newWorkspace();
+		}
+
 		long scope = PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)
 				? PhotonPerformanceTraceUtil.begin(Stage.MODEL_SAMPLE, PhotonPerformanceOwnerUtil.object(this)) : 0;
 		boolean completed = false;
 
 		try {
-			var sampled = sampleLocalFrame(partialTicks);
+			var sampled = evaluateLocalPose(partialTicks);
+			completed = sampled != null;
 
 			if (sampled != null) {
 				failure = null;
 			}
-			completed = true;
+
 			return sampled;
-		} catch (IllegalArgumentException invalid) {
+		} catch (IllegalArgumentException | IllegalStateException invalid) {
 			failure = invalid.getMessage();
+			sampledInput = null;
 			return null;
 		} finally {
 			PhotonPerformanceTraceUtil.end(scope, completed);
 		}
 	}
 
-	private @Nullable PhotonModelPoseSampler.Frame sampleLocalFrame(float partialTicks) {
-		if (getParticleAmount() == 0 || sampler == null) {
+	private @Nullable PhotonModelPoseBuffer evaluateLocalPose(float partialTicks) {
+		var sampler = this.sampler;
+
+		if (sampler == null || poseWorkspace == null) {
 			return null;
 		}
 
@@ -515,12 +569,17 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		boolean loop = isLooping();
 		float time = clipId.isEmpty() ? 0 : clock.animationTime(partialTicks, nonnegative(timeScale(), 1), settings())
 				+ value("animationOffset", Float.class);
-		var selected = playback.values().stream().max(PLAYBACK_ORDER).orElse(null);
+		var selected = playbackSelection;
 
 		if (selected != null) {
 			clipId = selected.animation();
 			loop = selected.effectiveLoop();
-			var clip = definition().clips().stream().filter(candidate -> candidate.id().equals(selected.animation())).findFirst().orElseThrow();
+			var clip = sampler.clip(selected.animation());
+
+			if (clip == null) {
+				throw new IllegalArgumentException("模型片段不存在：" + selected.animation());
+			}
+
 			time = selected.assetTime(clip.duration(), clip.loop());
 		}
 
@@ -531,31 +590,42 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				bindings.partOverrides(this, getT(partialTicks)), bindings.boneOverrides(this, getT(partialTicks)));
 
 		if (!input.equals(sampledInput)) {
-			var computed = sampler.sample(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE));
-			frame = computed;
+			try {
+				sampler.sampleInto(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE), poseWorkspace, poseBuffer);
+			} catch (RuntimeException failure) {
+				poseBuffer.failCandidate();
+				sampledInput = null;
+				throw failure;
+			}
+
+			if (!poseBuffer.complete()) {
+				poseBuffer.failCandidate();
+				sampledInput = null;
+				return null;
+			}
+
 			sampledInput = input;
-			frameReused = false;
+			publicFrame = null;
 
 			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
 				PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_MISS, 1);
 			}
 
-			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE) && computed.timings() != null) {
+			var timings = poseBuffer.timings();
+
+			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE) && timings != null) {
 				int node = PhotonPerformanceOwnerUtil.object(this);
-				var timings = computed.timings();
 				phase(node, "curves", timings.curvesNanos());
 				phase(node, "deformation", timings.deformationNanos());
 				phase(node, "normals_frame", timings.normalsNanos());
 			}
 		} else {
-			frameReused = true;
-
 			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
 				PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_HIT, 1);
 			}
 		}
 
-		return frame;
+		return poseBuffer;
 	}
 
 	private static void phase(int parent, String name, long nanos) {
@@ -570,7 +640,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			return;
 		}
 
-		var sampled = sampleLocal(partialTicks);
+		var sampled = sampleLocalPose(partialTicks);
 
 		if (sampled == null) {
 			return;
@@ -583,13 +653,13 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		int light = getLightColor(BlockPos.containing(transform().position().x, transform().position().y, transform().position().z));
 
 		for (int group : groupOrder) {
-			bakeModelGroup(settings, out, camera, partialTicks, sampled, group, world, color, light, frameReused);
+			bakeModelGroup(settings, out, camera, partialTicks, sampled, group, world, color, light);
 		}
 	}
 
 	private void bakeModelGroup(PhotonViewSettings settings, List<PhotonWorldRenderState.DrawJob> out, Camera camera,
-	                            float partialTicks, PhotonModelPoseSampler.Frame sampled, int group,
-	                            Matrix4f world, int color, int light, boolean stableFrame) {
+	                            float partialTicks, PhotonModelPoseBuffer sampled, int group,
+	                            Matrix4f world, int color, int light) {
 		var topology = sampled.prepared().groups().get(group);
 		var definition = sampled.prepared().definition();
 		var part = definition.parts().get(topology.part());
@@ -613,36 +683,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		try {
 			bakeGroup(settings, out, camera, partialTicks, Objects.requireNonNull(materials).group(group), geometryMode(),
 					(output, _, _) -> {
-						GeometrySnapshot cached = null;
-
-						if (stableFrame) {
-							if (snapshotFrame != sampled) {
-								geometrySnapshots.clear();
-								snapshotFrame = sampled;
-							}
-
-							cached = geometrySnapshots.get(group);
-
-							if (cached != null && !cached.matches(world, groupColor, light)) {
-								cached = null;
-							}
-						}
-
-						int triangles;
-
-						if (cached != null) {
-							cached.replay(output, allowPackedSnapshot(cached));
-							triangles = cached.triangles();
-						} else if (stableFrame) {
-							var snapshot = GeometrySnapshot.captureAndSubmit(output, sampled, group, world, groupColor, light, normalCache);
-							triangles = topology.indices().size() / 3;
-
-							if (snapshot != null) {
-								geometrySnapshots.put(group, snapshot);
-							}
-						} else {
-							triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light, normalCache);
-						}
+						int triangles = PhotonModelGeometryUtil.writePrimitive(output, sampled, group, world,
+								groupColor, light, normalCache);
 
 						if (owner != 0) {
 							PhotonPerformanceTraceUtil.counter(owner, Metric.VERTICES, triangles * 4L);
@@ -658,22 +700,6 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 			PhotonPerformanceTraceUtil.end(scope, completed);
 		}
-	}
-
-	private boolean allowPackedSnapshot(GeometrySnapshot cached) {
-		if (!PACKED_SNAPSHOT_SUBMISSION) {
-			return false;
-		}
-
-		if (cached.packedBytes() != 0) {
-			return true;
-		}
-
-		return GeometrySnapshot.withinPackedBudget(geometrySnapshots.values());
-	}
-
-	private void discardPackedSnapshots() {
-		geometrySnapshots.values().forEach(GeometrySnapshot::discardPacked);
 	}
 
 	@Override
@@ -710,10 +736,12 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		sampler = null;
 		dynamic = null;
 		playback.clear();
+		playbackSelection = null;
+		settingsSnapshot = null;
 		sampledInput = null;
-		frame = null;
-		snapshotFrame = null;
-		geometrySnapshots.clear();
+		publicFrame = null;
+		closeWorkspace();
+		poseBuffer.clear();
 
 		try {
 			prepare();
@@ -727,257 +755,25 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	public IFXObject shallowCopy() {
 		var copied = (PhotonModelOutput) deepCopy();
 		copied.sampler = sampler;
-		copied.groupOrder = groupOrder;
+		copied.groupOrder = List.copyOf(groupOrder);
+		copied.closeWorkspace();
+		copied.publicFrame = null;
+		copied.sampledInput = null;
+		copied.poseBuffer.clear();
+		if (copied.sampler != null) {
+			copied.poseWorkspace = copied.sampler.newWorkspace();
+		}
 		return copied;
 	}
 
-	/// 稳定帧的最终顶点快照；只在姿态输入未变化时复用，避免每帧重复计算世界变换、法线与颜色。
-	public static final class GeometrySnapshot {
-		private static final int STRIDE = 12;
-		private final float[] matrix = new float[16];
-		private final int color;
-		private final int light;
-		private final float[] vertices;
-		private final int[] lights;
-		private final int count;
-		private final int triangles;
-		private @Nullable byte[] packed;
-		private boolean packedAttempted;
-
-		public GeometrySnapshot(Matrix4f world, int color, int light, float[] vertices, int[] lights, int count, int triangles) {
-			matrix[0] = world.m00();
-			matrix[1] = world.m01();
-			matrix[2] = world.m02();
-			matrix[3] = world.m03();
-			matrix[4] = world.m10();
-			matrix[5] = world.m11();
-			matrix[6] = world.m12();
-			matrix[7] = world.m13();
-			matrix[8] = world.m20();
-			matrix[9] = world.m21();
-			matrix[10] = world.m22();
-			matrix[11] = world.m23();
-			matrix[12] = world.m30();
-			matrix[13] = world.m31();
-			matrix[14] = world.m32();
-			matrix[15] = world.m33();
-			this.color = color;
-			this.light = light;
-			this.vertices = vertices;
-			this.lights = lights;
-			this.count = count;
-			this.triangles = triangles;
-		}
-
-		/// 当次始终通过原逐顶点链提交；超出顶点预算时直接写入且不保留快照。
-		public static @Nullable GeometrySnapshot captureAndSubmit(VertexConsumer output, PhotonModelPoseSampler.Frame frame,
-		                                                          int group, Matrix4f world, int color, int light, NormalCache cache) {
-			long vertexCount = (long) (frame.prepared().groups().get(group).indices().size() / 3) * 4;
-			if (vertexCount > MAX_SNAPSHOT_VERTICES) {
-				PhotonModelGeometryUtil.write(output, frame, group, world, color, light, cache);
-				return null;
+	private void closeWorkspace() {
+		if (poseWorkspace != null) {
+			try {
+				poseWorkspace.close();
+			} catch (IllegalStateException busy) {
+				// 销毁顺序由客户端生命周期保证；忙时不能清掉仍在求值的私有 scratch。
 			}
-
-			var recorder = new SnapshotRecorder();
-			int triangles = PhotonModelGeometryUtil.write(recorder, frame, group, world, color, light, cache);
-			recorder.finish();
-			var snapshot = new GeometrySnapshot(world, color, light, recorder.vertices(), recorder.lights(), recorder.count(), triangles);
-			snapshot.replay(output);
-			return snapshot;
-		}
-
-		boolean matches(Matrix4f world, int color, int light) {
-			return this.color == color && this.light == light
-					&& same(world.m00(), matrix[0]) && same(world.m01(), matrix[1])
-					&& same(world.m02(), matrix[2]) && same(world.m03(), matrix[3])
-					&& same(world.m10(), matrix[4]) && same(world.m11(), matrix[5])
-					&& same(world.m12(), matrix[6]) && same(world.m13(), matrix[7])
-					&& same(world.m20(), matrix[8]) && same(world.m21(), matrix[9])
-					&& same(world.m22(), matrix[10]) && same(world.m23(), matrix[11])
-					&& same(world.m30(), matrix[12]) && same(world.m31(), matrix[13])
-					&& same(world.m32(), matrix[14]) && same(world.m33(), matrix[15]);
-		}
-
-		public void replay(VertexConsumer output) {
-			replay(output, false);
-		}
-
-		public void replay(VertexConsumer output, boolean allowPacked) {
-			if (allowPacked && output instanceof IPhotonPackedVertexSink sink) {
-				if (!packedAttempted) {
-					packed = PhotonPackedVertexUtil.pack(vertices, lights, count);
-					packedAttempted = true;
-				}
-
-				if (packed != null && sink.lobecorp$tryAppendPhotonSnapshot(packed, count)) {
-					return;
-				}
-			}
-
-			for (int index = 0, offset = 0; index < count; index++, offset += STRIDE) {
-				output.addVertex(vertices[offset], vertices[offset + 1], vertices[offset + 2])
-						.setUv(vertices[offset + 6], vertices[offset + 7])
-						.setColor(vertices[offset + 8], vertices[offset + 9], vertices[offset + 10], vertices[offset + 11])
-						.setLight(lights[index])
-						.setNormal(vertices[offset + 3], vertices[offset + 4], vertices[offset + 5]);
-			}
-		}
-
-		public static boolean withinPackedBudget(Iterable<GeometrySnapshot> snapshots) {
-			long bytes = 0;
-			for (var snapshot : snapshots) {
-				if (snapshot.count < 0) {
-					return false;
-				}
-				bytes += (long) snapshot.count * PhotonPackedVertexUtil.VERTEX_STRIDE;
-				if (bytes > PhotonPackedVertexUtil.MAX_CACHED_BYTES) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-		public int packedBytes() {
-			return packed == null ? 0 : packed.length;
-		}
-
-		public void discardPacked() {
-			packed = null;
-			packedAttempted = false;
-		}
-
-		int triangles() {
-			return triangles;
-		}
-
-		private static boolean same(float first, float second) {
-			return Float.floatToRawIntBits(first) == Float.floatToRawIntBits(second);
-		}
-	}
-
-	/// 记录一次稳定帧写入的最终顶点属性；数组在输出内复用，不改变 Photon 的提交顺序。
-	static final class SnapshotRecorder implements VertexConsumer {
-		private static final int STRIDE = 12;
-		private float[] vertices = new float[256 * STRIDE];
-		private int[] lights = new int[256];
-		private int count;
-		private int current = -1;
-		private float x, y, z, nx, ny, nz, u, v, r, g, b, a;
-		private int light;
-
-		@Override
-		public VertexConsumer addVertex(float x, float y, float z) {
-			flush();
-
-			if (count == lights.length) {
-				int size = Math.max(1, count * 2);
-				var grownVertices = new float[size * STRIDE];
-				System.arraycopy(vertices, 0, grownVertices, 0, count * STRIDE);
-				vertices = grownVertices;
-				var grownLights = new int[size];
-				System.arraycopy(lights, 0, grownLights, 0, count);
-				lights = grownLights;
-			}
-
-			current = count++;
-			this.x = x;
-			this.y = y;
-			this.z = z;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setColor(int red, int green, int blue, int alpha) {
-			return setColor(red / 255f, green / 255f, blue / 255f, alpha / 255f);
-		}
-
-		@Override
-		public VertexConsumer setColor(int color) {
-			return setColor(color >>> 16 & 255, color >>> 8 & 255, color & 255, color >>> 24);
-		}
-
-		@Override
-		public VertexConsumer setUv(float u, float v) {
-			this.u = u;
-			this.v = v;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setUv1(int u, int v) {
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setUv2(int u, int v) {
-			light = u | v << 16;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setNormal(float x, float y, float z) {
-			nx = x;
-			ny = y;
-			nz = z;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setColor(float red, float green, float blue, float alpha) {
-			r = red;
-			g = green;
-			b = blue;
-			a = alpha;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setLight(int light) {
-			this.light = light;
-			return this;
-		}
-
-		@Override
-		public VertexConsumer setLineWidth(float width) {
-			return this;
-		}
-
-		void finish() {
-			flush();
-		}
-
-		float[] vertices() {
-			return vertices;
-		}
-
-		int[] lights() {
-			return lights;
-		}
-
-		int count() {
-			return count;
-		}
-
-		private void flush() {
-			if (current < 0) {
-				return;
-			}
-
-			int offset = current * STRIDE;
-			vertices[offset] = x;
-			vertices[offset + 1] = y;
-			vertices[offset + 2] = z;
-			vertices[offset + 3] = nx;
-			vertices[offset + 4] = ny;
-			vertices[offset + 5] = nz;
-			vertices[offset + 6] = u;
-			vertices[offset + 7] = v;
-			vertices[offset + 8] = r;
-			vertices[offset + 9] = g;
-			vertices[offset + 10] = b;
-			vertices[offset + 11] = a;
-			lights[current] = light;
-			current = -1;
+			poseWorkspace = null;
 		}
 	}
 }

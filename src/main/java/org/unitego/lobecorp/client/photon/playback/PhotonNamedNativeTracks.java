@@ -3,8 +3,6 @@ package org.unitego.lobecorp.client.photon.playback;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.IEffectExecutor;
 import com.lowdragmc.photon.client.fx.timeline.SpeedTrack;
-import com.lowdragmc.photon.client.fx.timeline.AudioTrack;
-import com.lowdragmc.photon.client.fx.timeline.PostProcessTrack;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.TimelinePlayer;
 import com.lowdragmc.photon.client.fx.timeline.Track;
@@ -21,18 +19,19 @@ import java.util.Set;
 /// 每个命名句柄独占原生音频实例；后期贡献沿用宿主逐帧sink，不替换主时间轴。
 public class PhotonNamedNativeTracks implements AutoCloseable {
 	private final FXRuntime runtime;
-	private final Timeline timeline;
+	private final List<Track> audioTracks;
 	private final TimelinePlayer media;
 	private double previousTime = Double.NaN;
 	private final boolean hasAudio;
 	private final boolean hasPostProcess;
 
-	public PhotonNamedNativeTracks(FXRuntime runtime, Timeline timeline) {
+	public PhotonNamedNativeTracks(FXRuntime runtime, Timeline timeline, List<Track> leaves, boolean hasAudio,
+	                               boolean hasPostProcess) {
 		this.runtime = runtime;
-		this.timeline = timeline;
+		this.hasAudio = hasAudio;
+		this.hasPostProcess = hasPostProcess;
 		media = new TimelinePlayer(runtime, timeline);
-		hasAudio = timeline.leafTracks(false).stream().anyMatch(AudioTrack.class::isInstance);
-		hasPostProcess = timeline.leafTracks(false).stream().anyMatch(PostProcessTrack.class::isInstance);
+		audioTracks = hasAudio ? List.copyOf(leaves) : List.of();
 	}
 
 	public @Nullable IEffectExecutor executor() {
@@ -51,7 +50,7 @@ public class PhotonNamedNativeTracks implements AutoCloseable {
 			}
 			previousTime = time;
 			media.setAudioDispatch(playing);
-			bridge.lobecorp$audio(timeline.leafTracks(false), time);
+			bridge.lobecorp$audio(audioTracks, time);
 		} else if (!simulation && hasPostProcess) {
 			bridge.lobecorp$postProcess(time);
 		}
@@ -100,18 +99,22 @@ public class PhotonNamedNativeTracks implements AutoCloseable {
 			});
 		}
 
-		public void apply(List<Track> leaves, double time) {
-			for (var track : leaves) {
-				if (track.mute() || !(track instanceof SpeedTrack speed)) {
+		public void apply(List<SpeedTrack> tracks, double time) {
+			for (var speed : tracks) {
+				if (speed.mute()) {
 					continue;
 				}
+
 				if (!(runtime.objects.get(speed.targetId()) instanceof FXObject target)) {
 					throw new IllegalArgumentException("速度轨道目标不存在。");
 				}
+
 				float value = speed.sampleSpeed(time);
+
 				if (!Float.isFinite(value) || value < 0) {
 					throw new IllegalArgumentException("速度轨道采样值必须为有限非负数。");
 				}
+
 				var previous = values.get(target);
 				float original = previous == null ? nativeValues.getOrDefault(target, target.getSelfTimeScale()) : previous.original();
 				values.put(target, new Value(original, value));

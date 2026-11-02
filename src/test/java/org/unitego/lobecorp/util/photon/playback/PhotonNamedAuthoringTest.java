@@ -137,10 +137,13 @@ public class PhotonNamedAuthoringTest {
 		var tracks = new ListTag();
 		tracks.add(track("lobecorp_model_animation"));
 		definition.put("tracks", tracks);
-		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+        assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
 		tracks.clear();
 		tracks.add(track("audio"));
-		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+        assertFalse(PhotonEditorProjectGuardUtil.containsTag(wrapper));
+        tracks.clear();
+        tracks.add(track("unsupported_future_track"));
+        assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
 		definition.remove("tracks");
 		data.putString("lobecorp$future", "unsupported");
 		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));

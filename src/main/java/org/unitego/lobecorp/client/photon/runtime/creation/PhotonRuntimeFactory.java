@@ -2,6 +2,7 @@ package org.unitego.lobecorp.client.photon.runtime.creation;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
+import com.lowdragmc.lowdraglib2.math.Transform;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXHelper;
@@ -38,10 +39,12 @@ import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -72,6 +75,9 @@ public class PhotonRuntimeFactory {
 	private static long generation;
 	private static long definitionGeneration;
 	private static final Map<FX, PreparedSourceKey> PREPARED_SOURCES = new WeakHashMap<>();
+	private static final Map<FX, PhotonTemplateProgram> ROOT_PROGRAMS = new WeakHashMap<>();
+	private static final Map<Object, ObjectIdentity> OBJECT_IDENTITIES = new WeakHashMap<>();
+	private static long identitySequence;
 
 	/// 调用方保证发布后 FX 不再原地修改；来源身份不写入 Photon 通用缓存。
 	public record PreparedSourceKey(String source, long revision) {
@@ -128,6 +134,7 @@ public class PhotonRuntimeFactory {
 	public static void unregisterPreparedSource(FX source) {
 		if (PREPARED_SOURCES.remove(source) != null) {
 			var previous = DEFINITIONS.remove(source);
+			ROOT_PROGRAMS.remove(source);
 			if (previous != null) {
 				invalidateDefinition(previous.definition);
 			}
@@ -162,6 +169,9 @@ public class PhotonRuntimeFactory {
 	private static long windowMaxInstanceNanos;
 	private static long initializedNodes;
 	private static long nativeNodeFallbacks;
+	private static long templatePrograms;
+	private static long templateProgramHits;
+	private static long templateLeaseAcquires;
 	private static @Nullable Object observedLevel;
 
 	private record CachedDefinition(WeakReference<FXData> data, Definition definition) {
@@ -173,8 +183,16 @@ public class PhotonRuntimeFactory {
 	private record PoolKey(Definition definition, Object world, long generation, Mode mode) {
 	}
 
-	private record ProjectKey(List<UUID> ids, List<String> types, UUID target,
-	                          boolean children, long controllerRevision) {
+	/// 结构键不包含动态 TRS；对象身份摘要用于发现同 UUID 数据替换。
+	private record ProjectKey(List<UUID> ids, List<ObjectIdentity> identities, UUID target, boolean children,
+	                          long controllerRevision, @Nullable ObjectIdentity controllerIdentity) {
+	}
+
+	private record ProjectProgramKey(ProjectKey structureKey, String definitionKey) {
+	}
+
+	/// 同一对象在本次进程内保持同一 token；token 不持有来源对象。
+	private record ObjectIdentity(long serial) {
 	}
 
 	private static class Scope {
@@ -217,6 +235,7 @@ public class PhotonRuntimeFactory {
 
 		var result = compile(source.getFxData(), preparedKey == null
 				? RESOURCE_SOURCES.getOrDefault(source, "authoring") : preparedKey.source() + "@" + preparedKey.revision());
+		ROOT_PROGRAMS.remove(source);
 		if (RESOURCE_SOURCES.containsKey(source) || PREPARED_SOURCES.containsKey(source)) {
 			var previous = DEFINITIONS.put(source, new CachedDefinition(new WeakReference<>(source.getFxData()), result));
 			if (previous != null) {
@@ -224,6 +243,91 @@ public class PhotonRuntimeFactory {
 			}
 		}
 		return result;
+	}
+
+	/// 只查询或从当前不可变定义生成根模板程序；不实例化运行树，也不在发射路径编译。
+	public static PhotonTemplateProgram rootProgram(FX source) {
+		Objects.requireNonNull(source);
+		boolean reusable = RESOURCE_SOURCES.containsKey(source) || PREPARED_SOURCES.containsKey(source);
+		var definition = reusable ? preparedResource(source) : prepareTransient(source);
+		var cached = ROOT_PROGRAMS.get(source);
+		if (reusable && cached != null && cached.definition() == definition && definitionCurrent(definition)) {
+			templateProgramHits++;
+			return cached;
+		}
+		var program = PhotonTemplateProgram.root(definition, source.getFxLocation(), source, source.getFxData(),
+				reusable);
+		if (reusable) {
+			ROOT_PROGRAMS.put(source, program);
+		}
+		templatePrograms++;
+		return program;
+	}
+
+	/// 按当前来源定义取得根定义与可复用标记；可变未登记 FX 由调用方按每次内容准备。
+	public static @Nullable Definition currentDefinition(FX source) {
+		if (source == null) {
+			return null;
+		}
+		if (RESOURCE_SOURCES.containsKey(source) || PREPARED_SOURCES.containsKey(source)) {
+			return preparedResource(source);
+		}
+		var cached = DEFINITIONS.get(source);
+		return cached != null && cached.data.get() == source.getFxData()
+				&& definitionCurrent(cached.definition) ? cached.definition : null;
+	}
+
+	/// 可变未登记来源每次按当前内容准备，不能跨调用把旧定义当作不变身份。
+	public static Definition prepareTransient(FX source) {
+		Objects.requireNonNull(source);
+		return compile(source.getFxData(), "transient");
+	}
+
+	/// 定义仍属于当前静态代次且未被资源/世界生命周期退休。
+	public static boolean definitionCurrent(Definition definition) {
+		return definition.generation == definitionGeneration && definition.isValid();
+	}
+
+	/// 仅显式注册的不可变/受管 FX 可复用程序；未声明的可变作者数据每次重新取得定义。
+	public static boolean sourceCurrent(@Nullable FX source) {
+		if (source == null) {
+			return false;
+		}
+		if (!RESOURCE_SOURCES.containsKey(source) && !PREPARED_SOURCES.containsKey(source)) {
+			return false;
+		}
+		var cached = DEFINITIONS.get(source);
+		return cached != null && cached.data.get() == source.getFxData()
+				&& definitionCurrent(cached.definition);
+	}
+
+	/// 根模板当前程序只读查询；不存在时不编译、不实例化。
+	public static @Nullable PhotonTemplateProgram cachedRootProgram(FX source) {
+		var program = ROOT_PROGRAMS.get(source);
+		return program != null && definitionCurrent(program.definition()) ? program : null;
+	}
+
+	/// PROJECT 程序的结构键必须仍与当前场景、目标和编译定义一致。
+	public static boolean projectProgramCurrent(PhotonTemplateProgram program) {
+		if (!(program.structureKey() instanceof ProjectProgramKey key)) {
+			return false;
+		}
+		var scope = program.sourceScopeValue();
+		var target = program.projectTarget();
+		if (scope == null || target == null || !key.definitionKey().equals(program.definition().key())
+				|| !definitionCurrent(program.definition())) {
+			return false;
+		}
+		var selected = projectSelection(scope, target, program.includeChildren());
+		return selected != null && key.structureKey().equals(projectStructureKey(scope, target,
+				program.includeChildren()));
+	}
+
+	public static Lease acquire(PhotonTemplateProgram program, Object world) {
+		Objects.requireNonNull(program);
+		ensureCurrent(program.definition());
+		templateLeaseAcquires++;
+		return acquire(program.definition(), world, program.mode());
 	}
 
 	private static Definition preparedResource(FX source) {
@@ -420,6 +524,13 @@ public class PhotonRuntimeFactory {
 
 	public static @Nullable Lease project(IScene scene, List<IFXObject> selected,
 	                                      UUID target, boolean includeChildren, Object world) {
+		return project(scene, selected, target, includeChildren, world, null);
+	}
+
+	/// 带预编译模板程序的 PROJECT 租用；只复用定义并应用本次 live 输入。
+	public static @Nullable Lease project(IScene scene, List<IFXObject> selected,
+	                                      UUID target, boolean includeChildren, Object world,
+	                                      @Nullable PhotonTemplateProgram program) {
 		if (!(scene instanceof FXRuntime scopeRuntime)) {
 			return null;
 		}
@@ -433,6 +544,11 @@ public class PhotonRuntimeFactory {
 			return null;
 		}
 
+		if (program != null && !program.matchesProject(scene, target, includeChildren,
+				program.path())) {
+			return null;
+		}
+
 		projectRequests++;
 		var controllers = scene.getAllSceneObjects().stream()
 				.filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
@@ -443,13 +559,13 @@ public class PhotonRuntimeFactory {
 		if (controller != null && selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
 			throw new IllegalArgumentException("项目模板命名控制器超出对象预算。");
 		}
-		var key = new ProjectKey(selected.stream().map(IFXObject::id).toList(),
-				selected.stream().map(object -> object.getClass().getName()).toList(),
-				target, includeChildren, controller == null ? -1 : controller.definitionRevision());
-		var definition = scope.projects.get(key);
+		var key = program != null ? null : projectKey(selected, target, includeChildren, controller);
+		var definition = program != null ? program.definition() : scope.projects.get(key);
 		if (definition == null) {
 			definition = compileProject(scope.definition, selected, controller, target, includeChildren);
-			scope.projects.put(key, definition);
+			if (key != null) {
+				scope.projects.put(key, definition);
+			}
 			projectCompilations++;
 		}
 		var inputs = new ArrayList<>(selected);
@@ -462,9 +578,19 @@ public class PhotonRuntimeFactory {
 		return new Lease(construct(definition, inputs, mode), null, generation);
 	}
 
-	private static Definition compileProject(Definition parent, List<IFXObject> selected,
-	                                         @Nullable PhotonNamedController controller, UUID target,
-	                                         boolean includeChildren) {
+	/// PROJECT 原生或未受管场景的真实回退信号；不编译、不伪造 Program。
+	public static boolean nativeProjectFallback(IScene scene) {
+		if (!(scene instanceof FXRuntime scopeRuntime)) {
+			return true;
+		}
+		var scope = SCOPES.get(scopeRuntime);
+		return scope == null || scope.mode == Mode.NATIVE || MODE == Mode.NATIVE;
+	}
+
+	/// 编译 PROJECT 子树；公开只读查询供模板程序与预热共用，不取得运行租约。
+	public static Definition compileProject(Definition parent, List<IFXObject> selected,
+	                                        @Nullable PhotonNamedController controller, UUID target,
+	                                        boolean includeChildren) {
 		var plans = new ArrayList<PhotonCompiledObject>();
 		for (var object : selected) {
 			if (object instanceof PhotonNamedController) {
@@ -491,6 +617,93 @@ public class PhotonRuntimeFactory {
 		definition.projectTarget = target;
 		definition.includeChildren = includeChildren;
 		return definition;
+	}
+
+	/// PROJECT 编译定义的结构键；只读当前场景解析，不接收或保存旧 live 对象列表。
+	public static @Nullable Object projectStructureKey(IScene scene, UUID target, boolean includeChildren) {
+		var selected = projectSelection(scene, target, includeChildren);
+		return selected == null ? null : projectKey(selected, target, includeChildren, projectController(scene));
+	}
+
+	private static @Nullable List<IFXObject> projectSelection(IScene scene, UUID target, boolean includeChildren) {
+		var targetObject = scene.getSceneObject(target);
+		if (!(targetObject instanceof Emitter targetEmitter)) {
+			return null;
+		}
+		var pending = new ArrayDeque<Transform>();
+		var seen = new HashSet<Transform>();
+		var selected = new ArrayList<IFXObject>();
+		pending.add(targetEmitter.transform());
+		while (!pending.isEmpty()) {
+			var next = pending.removeFirst();
+			if (!seen.add(next) || selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS
+					|| !(next.sceneObject() instanceof IFXObject object)) {
+				return null;
+			}
+			selected.add(object);
+			if (includeChildren) {
+				pending.addAll(next.children());
+			}
+		}
+		return List.copyOf(selected);
+	}
+
+	private static @Nullable PhotonNamedController projectController(IScene scene) {
+		var controllers = scene.getAllSceneObjects().stream()
+				.filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
+		return controllers.size() == 1 ? controllers.getFirst() : null;
+	}
+
+	/// 按已绑定来源作用域建立 PROJECT 程序；程序只保存静态结构键，不保存当前 live 对象。
+	public static @Nullable PhotonTemplateProgram projectProgram(IScene scene, UUID target, boolean includeChildren,
+	                                                             Set<String> path, @Nullable Definition definition) {
+		if (!(scene instanceof FXRuntime scopeRuntime)) {
+			return null;
+		}
+		var scope = SCOPES.get(scopeRuntime);
+		if (scope == null || scope.mode == Mode.NATIVE || MODE == Mode.NATIVE
+				|| scope.definition.generation != definitionGeneration || !scope.definition.isValid()) {
+			return null;
+		}
+		var structureKey = projectStructureKey(scene, target, includeChildren);
+		if (structureKey == null) {
+			return null;
+		}
+
+		var selected = projectSelection(scene, target, includeChildren);
+		if (selected == null) {
+			return null;
+		}
+
+		var controller = projectController(scene);
+		var key = projectKey(selected, target, includeChildren, controller);
+		if (definition == null) {
+			definition = scope.projects.get(key);
+		}
+		if (definition == null) {
+			definition = compileProject(scope.definition, selected, controller, target, includeChildren);
+			scope.projects.put(key, definition);
+			projectCompilations++;
+			templatePrograms++;
+		} else {
+			ensureCurrent(definition);
+		}
+
+		return PhotonTemplateProgram.project(definition, scene, target, includeChildren, path,
+				new ProjectProgramKey(key, definition.key()));
+	}
+
+	/// 对象身份使用引用相等性的静态 WeakHashMap 生成 token，不使用 identityHashCode 冒充对象身份。
+	private static ProjectKey projectKey(List<IFXObject> selected, UUID target, boolean includeChildren,
+	                                     @Nullable PhotonNamedController controller) {
+		return new ProjectKey(selected.stream().map(IFXObject::id).toList(),
+				selected.stream().map(PhotonRuntimeFactory::objectIdentity).toList(), target, includeChildren,
+				controller == null ? -1 : controller.definitionRevision(),
+				controller == null ? null : objectIdentity(controller));
+	}
+
+	private static ObjectIdentity objectIdentity(IFXObject object) {
+		return OBJECT_IDENTITIES.computeIfAbsent(object, _ -> new ObjectIdentity(++identitySequence));
 	}
 
 	private static @Nullable IFXObject find(List<IFXObject> live, UUID id) {
@@ -774,6 +987,7 @@ public class PhotonRuntimeFactory {
 		definitionGeneration++;
 		PREPARED_SOURCES.clear();
 		DEFINITIONS.clear();
+		ROOT_PROGRAMS.clear();
 		RESOURCE_SOURCES.clear();
 		invalidateWorld();
 	}
@@ -804,6 +1018,7 @@ public class PhotonRuntimeFactory {
 	private static void invalidateDefinition(Definition definition) {
 		definition.valid = false;
 		POOL.invalidate(key -> key instanceof PoolKey pooled && pooled.definition.dependsOn(definition));
+		ROOT_PROGRAMS.values().removeIf(program -> program.definition().dependsOn(definition));
 	}
 
 	private static void ensureCurrent(Definition definition) {
@@ -834,6 +1049,9 @@ public class PhotonRuntimeFactory {
 		result.put("created_runtimes", createdRuntimes);
 		result.put("initialized_nodes", initializedNodes);
 		result.put("native_node_fallbacks", nativeNodeFallbacks);
+		result.put("template_programs", templatePrograms);
+		result.put("template_program_hits", templateProgramHits);
+		result.put("template_lease_acquires", templateLeaseAcquires);
 		result.put("project_requests", projectRequests);
 		result.put("project_compilations", projectCompilations);
 		result.put("indexed_runtimes", indexedRuntimes);
@@ -906,6 +1124,16 @@ public class PhotonRuntimeFactory {
 
 		private boolean dependsOn(Definition definition) {
 			return this == definition || parent != null && parent.dependsOn(definition);
+		}
+
+		/// 只读对象身份，用于静态模板程序与来源结构键；调用方不得修改返回集合。
+		public List<UUID> objectIds() {
+			return nodes.stream().map(PhotonCompiledObject::id).toList();
+		}
+
+		/// 只读编译节点；子程序准备只读其中不可变构造指令。
+		public List<PhotonCompiledObject> nodes() {
+			return nodes;
 		}
 
 		public String key() {

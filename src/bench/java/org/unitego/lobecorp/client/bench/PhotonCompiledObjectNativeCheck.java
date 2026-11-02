@@ -121,10 +121,37 @@ public class PhotonCompiledObjectNativeCheck {
 		if (source.config.source != PhotonModelOutputConfig.Source.FILE) {
 			first.prepare();
 			second.prepare();
-			var firstSampler = (PhotonModelPoseSampler) field(first, "sampler");
-			var secondSampler = (PhotonModelPoseSampler) field(second, "sampler");
-			require(firstSampler != secondSampler, "sampler 工作区必须独占");
-			require(firstSampler.prepared() == secondSampler.prepared(), "只共享 Prepared");
+			var firstEnabled = first.config.enabled;
+			var secondEnabled = second.config.enabled;
+			try {
+				first.config.enabled = true;
+				second.config.enabled = true;
+				first.reset();
+				second.reset();
+				var firstSampler = (PhotonModelPoseSampler) field(first, "sampler");
+				var secondSampler = (PhotonModelPoseSampler) field(second, "sampler");
+				require(firstSampler == secondSampler, "不可变 sampler 必须共享");
+				require(firstSampler.prepared() == secondSampler.prepared(), "只共享 Prepared");
+				var firstWorkspace = field(first, "poseWorkspace");
+				var secondWorkspace = field(second, "poseWorkspace");
+				var firstBuffer = field(first, "poseBuffer");
+				var secondBuffer = field(second, "poseBuffer");
+				require(firstWorkspace != null && secondWorkspace != null && firstWorkspace != secondWorkspace,
+						"Workspace 必须按实例独占");
+				require(firstBuffer != null && secondBuffer != null && firstBuffer != secondBuffer,
+						"PoseBuffer 必须按实例独占");
+				first.sampleLocal(0.25f);
+				var firstFrame = first.sampledFrame();
+				require(firstFrame != null, "第一实例采样必须产生 Frame");
+				require(second.sampledFrame() == null, "第一实例采样不得改变第二实例 Frame");
+				second.sampleLocal(0.75f);
+				var secondFrame = second.sampledFrame();
+				require(secondFrame != null && secondFrame != firstFrame, "两实例 Frame 必须独立");
+				require(first.sampledFrame() == firstFrame, "第二实例采样不得替换第一实例 Frame");
+			} finally {
+				first.config.enabled = firstEnabled;
+				second.config.enabled = secondEnabled;
+			}
 		}
 
 		checkPreparationEdits(plan, first, cases);

@@ -148,7 +148,7 @@ public class PhotonMigrationMatrixCapture {
 		value.require(QueenOwnedLaserEffects.enabled(), "hybrid_requires_owned_laser");
 		value.setupNs = System.nanoTime();
 		if (value.spark == null) {
-			value.spark = PhotonBenchSpark.start(context.minecraft(), value.label);
+			value.spark = PhotonBenchSpark.start(context.minecraft(), value.runId);
 		}
 	}
 

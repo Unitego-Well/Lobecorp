@@ -28,10 +28,12 @@ public class ConductorHudCards {
 	private final Map<String, Button> cardPool = new LinkedHashMap<>();
 	private final ArrayDeque<Button> spareCards = new ArrayDeque<>();
 	private final Map<String, List<UUID>> mountedMembers = new HashMap<>();
+	private final Map<String, Geometry> mountedGeometry = new HashMap<>();
 	private final Map<String, UUID> rosterIds = new HashMap<>();
 	private final Map<String, UUID> selectedIds = new HashMap<>();
 	private final Map<String, String> skillIds = new HashMap<>();
 	private List<Identifier> mountedSkills = List.of();
+	private Geometry mountedSkillsGeometry;
 	private int selectedColumns = 1;
 	private int rosterColumns = -1;
 
@@ -70,14 +72,17 @@ public class ConductorHudCards {
 
 	public void setMountedSkills(List<Identifier> skills) {
 		mountedSkills = skills;
+		mountedSkillsGeometry = null;
 	}
 
 	public void setMountedMembers(String listId, List<UUID> members) {
 		mountedMembers.put(listId, members);
+		mountedGeometry.remove(listId);
 	}
 
 	public void removeMountedMembers(String listId) {
 		mountedMembers.remove(listId);
+		mountedGeometry.remove(listId);
 	}
 
 	public Map<String, List<UUID>> mountedMembers() {
@@ -99,7 +104,7 @@ public class ConductorHudCards {
 
 		if (!members.equals(model.rosterMembers())) {
 			model.setRosterMembers(members);
-			mountedMembers.remove(ConductorHudLayout.ROSTER_LIST);
+			removeMountedMembers(ConductorHudLayout.ROSTER_LIST);
 		}
 	}
 
@@ -121,30 +126,34 @@ public class ConductorHudCards {
 	}
 
 	public void rebuildSelection() {
-		mountedMembers.remove(ConductorHudLayout.SELECTED_LIST);
+		removeMountedMembers(ConductorHudLayout.SELECTED_LIST);
 	}
 
 	public void rebuildSkills() {
 		mountedSkills = List.of();
+		mountedSkillsGeometry = null;
 		skillIds.clear();
 		layout.scroller(ConductorHudLayout.SKILL_LIST).clearAllScrollViewChildren();
 	}
 
 	public void mountCards(String listId, List<UUID> members, Map<String, UUID> ids, boolean horizontal) {
 		ScrollerView list = layout.scroller(listId);
+		int contentWidth = (int) list.viewPort.getContentWidth();
+		int contentHeight = (int) list.viewPort.getContentHeight();
 		int cardHeight = horizontal ? CARD_SIZE : ROSTER_ROW_HEIGHT;
-		int cardWidth = horizontal ? CARD_SIZE : Math.max(1, (int) list.viewPort.getContentWidth());
+		int cardWidth = horizontal ? CARD_SIZE : Math.max(1, contentWidth);
 		int step = cardHeight + CARD_GAP;
-		int columns = horizontal ? Math.max(1, ((int) list.viewPort.getContentWidth() + CARD_GAP) / step) : 1;
+		int columns = horizontal ? Math.max(1, (contentWidth + CARD_GAP) / step) : 1;
 		int count = (members.size() + columns - 1) / columns;
 		int extent = Math.max(0, count * step - CARD_GAP);
-		int viewport = Math.max(0, (int) list.viewPort.getContentHeight());
+		int viewport = Math.max(0, contentHeight);
 		float normalized = list.verticalScroller.getNormalizedValue();
 		int first = Math.max(0, (int) (normalized * Math.max(0, extent - viewport)) / step - BUFFER_ROWS);
 		int last = Math.min(count, first + (viewport + step - 1) / step + BUFFER_ROWS * 2);
 		List<UUID> visible = members.subList(Math.min(members.size(), first * columns), Math.min(members.size(), last * columns));
+		Geometry geometry = new Geometry(contentWidth, contentHeight, columns, extent);
 
-		if (visible.equals(mountedMembers.get(listId)) && columns == (horizontal ? selectedColumns : rosterColumns)) {
+		if (visible.equals(mountedMembers.get(listId)) && geometry.equals(mountedGeometry.get(listId))) {
 			return;
 		}
 
@@ -154,6 +163,7 @@ public class ConductorHudCards {
 			rosterColumns = columns;
 		}
 		mountedMembers.put(listId, List.copyOf(visible));
+		mountedGeometry.put(listId, geometry);
 		list.clearAllScrollViewChildren();
 		ids.clear();
 		list.getScrollerViewStyle().mode(ScrollerMode.VERTICAL)
@@ -177,19 +187,23 @@ public class ConductorHudCards {
 
 	public void mountSkills(List<Identifier> abilities) {
 		ScrollerView list = layout.scroller(ConductorHudLayout.SKILL_LIST);
+		int contentWidth = (int) list.viewPort.getContentWidth();
+		int contentHeight = (int) list.viewPort.getContentHeight();
 		int step = SKILL_SIZE + BUTTON_GAP;
-		int viewport = Math.max(0, (int) list.viewPort.getContentHeight());
+		int viewport = Math.max(0, contentHeight);
 		int extent = Math.max(0, abilities.size() * step - BUTTON_GAP);
 		int first = Math.max(0, (int) (list.verticalScroller.getNormalizedValue() * Math.max(0, extent - viewport)) / step - BUFFER_ROWS);
 		int last = Math.min(abilities.size(), first + (viewport + step - 1) / step + BUFFER_ROWS * 2);
 		first = Math.min(first, abilities.size());
 		List<Identifier> visible = abilities.subList(first, Math.max(first, last));
+		Geometry geometry = new Geometry(contentWidth, contentHeight, 1, extent);
 
-		if (visible.equals(mountedSkills) && (!visible.isEmpty() || abilities.isEmpty())) {
+		if (visible.equals(mountedSkills) && geometry.equals(mountedSkillsGeometry)) {
 			return;
 		}
 
 		mountedSkills = List.copyOf(visible);
+		mountedSkillsGeometry = geometry;
 		skillIds.clear();
 		list.clearAllScrollViewChildren();
 		list.getScrollerViewStyle().mode(ScrollerMode.VERTICAL).horizontalScrollDisplay(ScrollDisplay.NEVER);
@@ -263,6 +277,10 @@ public class ConductorHudCards {
 		return visible.size();
 	}
 
+	/// 一次挂载所用的实际视口与步进范围；任一变化都必须重建卡片与滚动占位。
+	private record Geometry(int contentWidth, int contentHeight, int columns, int extent) {
+	}
+
 	/// 绘制已采样的生命值；读取快照，不推进插值。
 	public void healthBar(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int x, int y, int width,
 	                      float ratio, float shown) {
@@ -282,7 +300,9 @@ public class ConductorHudCards {
 		cardPool.clear();
 		spareCards.clear();
 		mountedSkills = List.of();
+		mountedSkillsGeometry = null;
 		mountedMembers.clear();
+		mountedGeometry.clear();
 		rosterIds.clear();
 		selectedIds.clear();
 		skillIds.clear();

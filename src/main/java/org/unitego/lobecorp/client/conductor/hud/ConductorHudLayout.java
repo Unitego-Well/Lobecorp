@@ -413,5 +413,7 @@ public class ConductorHudLayout extends UIElement {
 		panelLayoutInitialized = false;
 		previousScreenWidth = -1;
 		previousScreenHeight = -1;
+		// model.clearTransient 会清空全部提示；静态按钮提示只在这里重建，动态选择提示仍由渲染阶段刷新。
+		configureIcons();
 	}
 }

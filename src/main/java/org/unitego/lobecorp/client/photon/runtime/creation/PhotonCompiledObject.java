@@ -463,7 +463,6 @@ public class PhotonCompiledObject {
 	private static class SharedPrepared implements PhotonModelOutput.PreparedSource {
 		private final IStatePlan config;
 		private final ModelSource source;
-		private @Nullable PhotonModelTopologyUtil.Prepared prepared;
 		private @Nullable PhotonModelPoseSampler sampler;
 
 		private SharedPrepared(IStatePlan config, PhotonModelOutputConfig values, PhotonFrozenTag asset) {
@@ -485,7 +484,8 @@ public class PhotonCompiledObject {
 		@Override
 		public synchronized PhotonModelPoseSampler sampler() throws IOException {
 			if (sampler == null) {
-				sampler = new PhotonModelPoseSampler(get());
+				var values = (PhotonModelOutputConfig) config.create();
+				sampler = PhotonModelSourceUtil.prepare(values);
 			}
 
 			return sampler;
@@ -493,16 +493,11 @@ public class PhotonCompiledObject {
 
 		@Override
 		public synchronized PhotonModelTopologyUtil.Prepared get() {
-			if (prepared == null) {
-				try {
-					var values = (PhotonModelOutputConfig) config.create();
-					prepared = PhotonModelTopologyUtil.prepare(PhotonModelSourceUtil.load(values).definition());
-				} catch (IOException invalid) {
-					throw new UncheckedIOException(invalid);
-				}
+			try {
+				return sampler().prepared();
+			} catch (IOException invalid) {
+				throw new UncheckedIOException(invalid);
 			}
-
-			return prepared;
 		}
 	}
 }

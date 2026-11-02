@@ -26,6 +26,7 @@ public class PhotonStaticModelContractCheck {
 		result.add("cleanup", cleanup);
 		PhotonModelOutput first = null;
 		PhotonModelOutput second = null;
+		PhotonModelOutput independentlyCompiled = null;
 		boolean passed = false;
 
 		try {
@@ -40,6 +41,20 @@ public class PhotonStaticModelContractCheck {
 			prepared.prepareStatic();
 			var sampler = prepared.source().sampler();
 			require(sampler == prepared.source().sampler(), "静态准备必须复用采样程序");
+			var independentPlan = PhotonCompiledObject.compile(authored);
+			var independentPrepared = independentPlan.preparedModel();
+			require(independentPrepared != null && independentPrepared.source() != null
+					&& independentPrepared.source() != prepared.source(), "独立编译必须创建不同准备来源");
+			independentPrepared.prepareStatic();
+			require(independentPrepared.source().sampler() == sampler,
+					"同内容的独立编译计划必须复用已有采样程序");
+			independentlyCompiled = (PhotonModelOutput) independentPlan.instantiate();
+			independentlyCompiled.setLevel(client.level);
+			independentlyCompiled.reset();
+			var independentFrame = independentlyCompiled.sampleLocal(0);
+			require(independentFrame != null && !independentFrame.groups().isEmpty()
+					&& independentFrame.prepared() == sampler.prepared(),
+					"独立编译实例必须实际消费共享拓扑并生成非空帧");
 			first = (PhotonModelOutput) compiled.instantiate();
 			second = (PhotonModelOutput) compiled.instantiate();
 			first.setLevel(client.level);
@@ -62,6 +77,8 @@ public class PhotonStaticModelContractCheck {
 			require(changed.prepared() == before.prepared(), "两个实例必须共享拓扑");
 			first.remove(true);
 			require(second.sampleLocal(0) == before, "关闭第一例不得破坏第二例");
+			actual.addProperty("independentlyCompiledSharedSampler", true);
+			actual.addProperty("independentlyCompiledSharedTopology", true);
 			actual.addProperty("sharedSampler", true);
 			actual.addProperty("sharedTopology", true);
 			actual.addProperty("distinctWorkspace", true);
@@ -77,7 +94,7 @@ public class PhotonStaticModelContractCheck {
 		} finally {
 			boolean cleaned = true;
 
-			for (var model : new PhotonModelOutput[]{first, second}) {
+			for (var model : new PhotonModelOutput[]{first, second, independentlyCompiled}) {
 				if (model != null) {
 					try {
 						model.remove(true);

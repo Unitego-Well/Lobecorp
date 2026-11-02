@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.events.client;
 
+import com.geckolib.GeckoLibClientServices;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import org.unitego.lobecorp.registry.client.VisualQualityConfigScreens;
 import org.unitego.lobecorp.registry.client.PlayerHudRegistration;
@@ -30,11 +31,20 @@ import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
 import org.unitego.lobecorp.registry.conductor.client.ConductorPortraitRegistration;
 import org.unitego.lobecorp.registry.conductor.client.ConductorRenderStateRegistration;
 
+import java.util.Objects;
+
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class LobecorpClientEvents {
 	@SubscribeEvent
 	public static void onRegisterConfigScreens(FMLClientSetupEvent event) {
 		VisualQualityConfigScreens.register();
+
+		event.enqueueWork(() -> {
+			var startedNs = System.nanoTime();
+			Objects.requireNonNull(GeckoLibClientServices.EVENTS);
+			Objects.requireNonNull(GeckoLibClientServices.ITEM_RENDERING);
+			Lobecorp.LOGGER.info("客户端动画服务初始化完成，耗时 {} ns", System.nanoTime() - startedNs);
+		});
 	}
 
 	@SubscribeEvent

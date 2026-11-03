@@ -4,6 +4,8 @@
 
 冻结的命名定义将模型、信号及原生轨道等预分类为执行计划；播放项持有各自的时钟、句柄和动态状态。tick 的事件推进按播放插入顺序，属性采样/混合仍按 priority 与 order，不能以缓存排序列表替代事件顺序。主 Timeline 可被编辑，每次求值读取当前轨道，不以 Map/List 大小推断内容未变化。
 
+2026-11-03 的激活目标分组在同一事件契约下只改变单次求值的遍历方式：`PhotonActivationTargetUtil.group` 按当前 `Track.mute()`、`ActivatorTrack.targetId()` 与 `ControlTrack` 每个 `clip.targetId()` 建立目标首次序的局部映射；每次 `collect` 重新分组，不跨 tick 缓存。同一 Track 在 leaves 重复出现时保留 occurrence；同一次 ControlTrack occurrence 内按目标去重。`collectTarget` 仍保留原 mute/target 条件、`hasControl`、`clipForObjectAt` 首匹配与 activation/signals/commit/reset 逻辑。父已实测 PhotonActivationTargetUtilTest 8/8、PhotonActivationStateTest 9/9、PhotonTrackCompatibilityTest 5/5，合计 22 项通过；Photon Global Compile 17s、Bench/生产包隔离成功；Data 21s，23 JSON written0/removed0 且前后 SHA256 无变化。测试只覆盖真实 Track/Clip 分组与既有 activation/兼容逻辑，不声称完整 FXRuntime 或游戏 gate 集成；未启动游戏、视觉或性能验收，660ms/P22/P23 不关闭。
+
 模型贡献由每个 owner 独占的 ContributionState 记录实际触及实例；下一次 apply 或 clear 先从旧实例清除该 owner，再解析当前 UUID 对象。相同 UUID 替换、目标移除或结束时不会遗留旧实例贡献，也不会清掉其他 owner。主 Timeline begin/stop 与 tick/frame 使用同一清理边界。相关真实客户端检查位于独立 global-contracts 场景；当前结果状态只见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)，不沿用下方历史验收。
 
 

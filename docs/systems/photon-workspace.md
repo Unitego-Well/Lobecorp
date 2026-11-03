@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-03 激活目标局部预分组已实现，游戏性能未验收
+
+新增 `PhotonActivationTargetUtil.group`，每次 `collect` 按当前 Track/Clip 快照建立目标首次序局部映射；ActivatorTrack 按 header，ControlTrack 仅按 clip target，同一次 occurrence 内去重、同一 Track 多次 leaves occurrence 保留。`PhotonNamedGates.collectTarget` 保留原 mute/target、hasControl、clipForObjectAt、异常与 activation/signals/commit/reset 逻辑，无跨 tick 缓存或线程。
+
+父实测定向 CPU 22/22（TargetUtil 8、ActivationState 9、TrackCompatibility 5）；Photon Global Compile 17s、Bench/生产包隔离成功；Data 21s，23 JSON written0/removed0 且前后 SHA256 无变化。未启动游戏、桥接、视觉或性能采集，660ms/P22/P23 不关闭；目标局部扫描 9→3 不等于整帧收益。契约与修改记录见[命名动画](photon-named-animations.md#执行计划事件顺序与贡献所有权2026-11-02)与[修改记录](changes.md#2026-11-03-激活目标局部预分组)。过程证据仅保存在本地 `.agent`（`20261103-parent-gates-validation.md`、`20261103-gates-local-grouping-implementation.md`），未随 Git 发布。
+
 ## 2026-11-02 通用性能重构候选与统一验证
 
 更新时间2026-11-03。通用重构R1已冻结679a2846，R2缓存与SPI修复冻结967cf048，均为本地提交，未集成原始dev。旧“尚未运行”阶段已由真实证据替代：CPU133项历史有效，R2限定26项通过；Global、Native总体PASSED，Native创建74/复制19/元数据10/材质9。完整视觉与真实资源reload仍未覆盖，功能通过不替代性能。

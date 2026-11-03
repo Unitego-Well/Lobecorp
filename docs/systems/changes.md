@@ -1,5 +1,11 @@
 # 系统修改记录
 
+## 2026-11-03 激活目标局部预分组
+
+- 新增 `PhotonActivationTargetUtil.group`，按当前 `Track` 快照建立目标首次序的 `LinkedHashMap`；ActivatorTrack 按 header 目标，ControlTrack 仅按 `clip.targetId()`，忽略 null，同一次 occurrence 内按目标去重，同一 Track 在 leaves 重复出现保留 occurrence。
+- `PhotonNamedGates.collect` 改用局部目标分组后向 `collectTarget` 传对应轨道列表；`collectTarget` 保留原 mute/target、hasControl、clipForObjectAt、异常、activation/signals/commit/reset 逻辑，无跨 tick 缓存、线程或新依赖。
+- 新增 `PhotonActivationTargetUtilTest`，用真实 Track/Clip 与旧双层扫描 oracle 对照目标序、轨道 occurrence 序、mute/null/改目标/重排/增删 clip/重叠首匹配/半开边界，并做确定性扫描计数。父实测该测试 8/8、ActivationState 9/9、TrackCompatibility 5/5，合计 22 项通过；Photon Global Compile 17s、Bench/生产包隔离成功；Data 21s，23 JSON written0/removed0 且前后 SHA256 无变化。未启动游戏、视觉或性能验收，660ms/P22/P23 不关闭。
+
 ## 2026-11-03 缓存入口、材质定义与分块重组
 
 - R2 SharedPrepared改经SourceUtil.prepare复用已有准备缓存，独立编译计划共享sampler检查通过；客户端setup初始化官方Gecko服务，未加反射预热清单。R2限定CPU26项、Global与Native总体PASSED，不能替代性能。R2首轮7局仍失败于100ms/1.5倍目标，完整三轮未完成。

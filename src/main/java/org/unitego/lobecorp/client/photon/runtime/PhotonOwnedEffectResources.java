@@ -6,14 +6,15 @@ import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 
 import java.io.UncheckedIOException;
 
 import com.lowdragmc.photon.gui.editor.FXProject;
 import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -668,8 +669,10 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 		var resource = selected.orElseThrow(() -> new IOException("缺少自有特效资源：" + effectId));
 		try (var stream = new BufferedInputStream(resource.open())) {
+			var document = PhotonResourceReader.read(actualPath.toString(),
+					PhotonResourceDocument.Kind.of(actualPath.getPath()), stream, PhotonResourceLimits.DEFAULT);
 			return new Component(actualPath, resource.sourcePackId(),
-					NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap()));
+					Objects.requireNonNull(document.nbt()));
 		}
 	}
 

@@ -28,6 +28,7 @@ public class LcClientAnimationContents {
 		if (bytes == null) {
 			return;
 		}
+		PENDING.remove(payload.version());
 
 		var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
 		var content = LcAnimationContent.of(payload.modelId(), payload.animationId(),
@@ -37,7 +38,6 @@ public class LcClientAnimationContents {
 		}
 
 		CONTENT.put(content.version(), content);
-		PENDING.remove(content.version());
 		LcClientAnimations.contentReady(content.version());
 	}
 
@@ -56,7 +56,7 @@ public class LcClientAnimationContents {
 			}
 
 			var assembly = pending.computeIfAbsent(version, _ -> new PendingAssembly(count));
-			if (assembly.chunks.length != count) {
+			if (assembly.count != count) {
 				throw new IllegalArgumentException(version);
 			}
 
@@ -73,32 +73,27 @@ public class LcClientAnimationContents {
 	}
 
 	private static class PendingAssembly {
-		private final byte[] @Nullable [] chunks;
-		private int received;
+		private final Map<Integer, byte[]> chunks = new HashMap<>();
+		private final int count;
 		private long totalBytes;
 
 		private PendingAssembly(int count) {
-			chunks = new byte[count][];
+			this.count = count;
 		}
 
 		private byte @Nullable [] receive(int index, byte[] bytes) {
-			var previous = chunks[index];
-			if (previous == null) {
-				received++;
-			} else {
-				totalBytes -= previous.length;
-			}
-
-			chunks[index] = bytes;
-			totalBytes += bytes.length;
-			if (received != chunks.length) {
+			var previous = chunks.get(index);
+			int nextBytes = Math.toIntExact(totalBytes - (previous == null ? 0 : previous.length) + bytes.length);
+			chunks.put(index, bytes);
+			totalBytes = nextBytes;
+			if (chunks.size() != count) {
 				return null;
 			}
 
 			var result = new byte[Math.toIntExact(totalBytes)];
 			int offset = 0;
-			for (var slot : chunks) {
-				var chunk = Objects.requireNonNull(slot);
+			for (int slot = 0; slot < count; slot++) {
+				var chunk = Objects.requireNonNull(chunks.get(slot));
 				System.arraycopy(chunk, 0, result, offset, chunk.length);
 				offset += chunk.length;
 			}

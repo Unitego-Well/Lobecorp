@@ -1,5 +1,14 @@
 # 系统修改记录
 
+## 2026-11-05 本批审查问题修复
+
+- 服务端动画按来源实体索引，避免每个实体复制/扫描世界全部播放；保留 tick 顺序、帧末兜底及注册失败清理。
+- `LcTransform` 对零缩放构造确定性的退化旋转基，保留正常与镜像变换路径。
+- 动画分块改为按实际到达数据保存，完成后先释放拼接项再解析；按用户选择不新增大小上限。运行特效资源复用现有资源读取器及其默认预算，不再走无限 NBT 堆预算。
+- 技能镜像接收空目标时清除旧引用；无来源命中框使用空碰撞上下文；移除 CASTPROF 未采样的恒零定义计时字段；剪贴板粘贴历史标题复用现有翻译。
+- 全部由主线实施；DS 因用户要求停止，仅保留此前审查交付。IDEA 八文件无错误；已有借用资源/未使用等警告保留。IDEA `Photon Global Compile` 的编译及生产包隔离通过（30秒），`Photon Global Data` 通过（19秒，23个输出、written=0）。配置缓存的既有 reserveBuildIdentity 警告不影响构建。
+- 未执行单元测试、游戏、视觉或性能复测，不将结构性工作减少表述为已测收益。既有 WIP 与暂存内容保留；本批没有修改原版存档缩略图行为。
+
 ## 2026-11-03 激活目标局部预分组
 
 - 新增 `PhotonActivationTargetUtil.group`，按当前 `Track` 快照建立目标首次序的 `LinkedHashMap`；ActivatorTrack 按 header 目标，ControlTrack 仅按 `clip.targetId()`，忽略 null，同一次 occurrence 内按目标去重，同一 Track 在 leaves 重复出现保留 occurrence。

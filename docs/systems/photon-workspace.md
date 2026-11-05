@@ -1,5 +1,11 @@
 # Photon 当前能力与恢复入口
 
+## 2026-11-05 主线接手修复
+
+用户要求主线接手停止使用的 DS 上下文。主线完成本批八文件修复：动画来源索引、零缩放分解、稀疏分块、运行资源预算、空目标同步、空来源命中框、诊断假零字段和粘贴标题。原有 WIP 保留，原版存档图标包装已撤回。
+
+IDEA 八文件无错误，统一编译/生产包隔离及 Data 通过，生成输出 written=0；未执行单元测试、游戏、视觉或性能复测。实现契约见[动画运行时](animation-runtime.md#2026-11-05-动画索引与内容接收)与[空间附着](attachments.md)，当前剩余边界以[问题汇总](../issues.md#2026-11-05-本批修复后的剩余边界)为准。详细收尾见[修改记录](changes.md#2026-11-05-本批审查问题修复)，不将历史性能数据当作本批收益证据。
+
 ## 2026-11-03 激活目标局部预分组已实现，游戏性能未验收
 
 新增 `PhotonActivationTargetUtil.group`，每次 `collect` 按当前 Track/Clip 快照建立目标首次序局部映射；ActivatorTrack 按 header，ControlTrack 仅按 clip target，同一次 occurrence 内去重、同一 Track 多次 leaves occurrence 保留。`PhotonNamedGates.collectTarget` 保留原 mute/target、hasControl、clipForObjectAt、异常与 activation/signals/commit/reset 逻辑，无跨 tick 缓存或线程。

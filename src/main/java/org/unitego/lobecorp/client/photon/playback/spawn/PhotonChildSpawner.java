@@ -152,8 +152,6 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
 		long programNs = 0;
-		long definitionStartNs = 0;
-		long definitionEndNs = 0;
 		var diagnosticScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_PREPARE, config.fxLocation, false) : null;
 		boolean completed = false;
 		String reason = "check_prepared";
@@ -206,10 +204,9 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 					diagnosticScope.succeeded();
 				}
 				PhotonFXLoadDiagnosticsUtil.finish(diagnosticScope);
-				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} program={} startNs={} endNs={} elapsedNs={} programNs={} definitionNs={} definitionStartNs={} definitionEndNs={} diagnosticId={} reason={} completed={}",
+				Lobecorp.LOGGER.info("CASTPROF prepareNext spawner={} program={} startNs={} endNs={} elapsedNs={} programNs={} diagnosticId={} reason={} completed={}",
 						System.identityHashCode(this), preparedProgram == null ? 0 : System.identityHashCode(preparedProgram),
-						started, ended, ended - started, programNs, definitionEndNs - definitionStartNs,
-						definitionStartNs, definitionEndNs, diagnosticScope.id(), reason, completed);
+						started, ended, ended - started, programNs, diagnosticScope.id(), reason, completed);
 			}
 		}
 	}

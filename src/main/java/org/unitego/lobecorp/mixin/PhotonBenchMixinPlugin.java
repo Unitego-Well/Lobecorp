@@ -40,6 +40,12 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+		if (Set.of("lobecorp.photon-12-run-cow25", "lobecorp.photon-12-run-queen25",
+				"lobecorp.photon-12-run-laser3", "lobecorp.photon-12-run-blank45")
+				.contains(System.getProperty("modBench.scenarios", "")) && (BENCH_MIXINS.contains(mixinClassName)
+				|| MATERIAL_MIXINS.contains(mixinClassName))) {
+			return false;
+		}
 		if (MATERIAL_MIXINS.contains(mixinClassName)) {
 			// 插件阶段不加载客户端材质或诊断类。
 			return Boolean.getBoolean("lobecorp.photon.diag.material");
@@ -86,6 +92,12 @@ public class PhotonBenchMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public @Nullable List<String> getMixins() {
 		var scenario = System.getProperty("modBench.scenarios", "");
+		if (Set.of("lobecorp.photon-12-run-cow25", "lobecorp.photon-12-run-queen25",
+				"lobecorp.photon-12-run-laser3", "lobecorp.photon-12-run-blank45")
+				.contains(System.getProperty("modBench.scenarios", ""))) {
+			return List.of("bench.ClientGraphicsControllerMixin", "bench.PhotonRunMinecraftMixin",
+					"bench.PhotonRunSkillObservationMixin", "bench.PhotonQuietEntityRenderObservationMixin");
+		}
 		if (scenario.equals("lobecorp.photon-10-quiet-entity-render-diagnostic")) {
 			if (!Boolean.getBoolean(PRESERVE_WINDOW_PROPERTY)) {
 				throw new IllegalStateException("安静诊断要求显式保留游戏窗口。");

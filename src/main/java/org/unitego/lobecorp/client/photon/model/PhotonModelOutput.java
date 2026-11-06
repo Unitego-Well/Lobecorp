@@ -51,7 +51,6 @@ import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -257,18 +256,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				throw invalid.getCause();
 			}
 			var topology = sampler.prepared();
-			var definition = topology.definition();
-			var order = new ArrayList<Integer>();
-
-			for (int index = 0; index < topology.groups().size(); index++) {
-				order.add(index);
-			}
-
-			order.sort(Comparator.comparing(index -> {
-				var material = definition.materials().get(topology.groups().get(index).material());
-				return material != null && material.overlay();
-			}));
-			groupOrder = List.copyOf(order);
+			groupOrder = topology.groupOrder();
 			closeWorkspace();
 			poseWorkspace = sampler.newWorkspace();
 		}

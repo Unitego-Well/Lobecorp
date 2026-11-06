@@ -62,7 +62,11 @@ public class LcPlayerFirstPersonRenderer extends AvatarRenderer<AbstractClientPl
 			return null;
 		}
 
-		var state = renderer.createRenderState(player, partialTick);
+        if (!LcPlayerAnimationRuntime.firstPersonRequested(player)) {
+            return null;
+        }
+
+        var state = renderer.createRenderState(player, partialTick);
 		var frame = LcPlayerAnimationRuntime.frame(state);
 		if (frame == null || frame.layers().stream().noneMatch(layer -> layer.policy().firstPersonArms()
 				&& layer.policy().weight() > 0)) {

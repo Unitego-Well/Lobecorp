@@ -48,6 +48,41 @@
 - 全部由主线实施；DS 因用户要求停止，仅保留此前审查交付。IDEA 八文件无错误；已有借用资源/未使用等警告保留。IDEA `Photon Global Compile` 的编译及生产包隔离通过（30秒），`Photon Global Data` 通过（19秒，23个输出、written=0）。配置缓存的既有 reserveBuildIdentity 警告不影响构建。
 - 未执行单元测试、游戏、视觉或性能复测，不将结构性工作减少表述为已测收益。既有 WIP 与暂存内容保留；本批没有修改原版存档缩略图行为。
 
+## 2026-11-05 Photon 脚本化性能采集
+
+- 补齐独立 Run 夹具及技能结束、实体提交观察入口；原有 Quiet 负载保留。
+- 新增24格脚本化流程，经 IDEA 标准 MCP 串行启动并通过固定19877 Minecraft MCP保存截图、身份记录及原始帧；新世界和输出独立，失败尝试保留。
+- `20261105-run-matrix-script-r2`：普通／光影×空白／牛／女皇／三次激光各三轮，共188978条帧记录、188954个相邻间隔及24份截图。GPU／分配未采样，Spark／JFR关闭；当前MC的260限帧值为不执行显式限帧的哨兵。
+- 本次统一编译及IDEA检查已执行，采集数据见 `.agent/reports/20261105-performance-script-final.md`。按用户最新指令仅报告采集数据，不作达标或收益判断。未提交推送。
+
+## 2026-11-04 非性能功能运行复验
+
+- 未改业务/测试源码；独立目录与新世界运行现有全局契约场景，四类契约通过；现有完整编辑器逻辑场景按真实 worker/客户端回调门控驱动后 139 条断言通过、遗漏列表为空。
+- `PhotonLogicLateWorkerCheck.cancelAtWorkerGate` 在指定后台入口触发取消；`PhotonLogicLifecycleCheck.atWorkerGate` 在 worker 暂停期间触发重载/关闭；旧 dispatch 回调源与 epoch 核对、实际返回后才确认 `oldCallbackConsumed`，未绕过断言。临时断点全部移除，保留用户原有禁用断点，测试客户端已退出。
+- Spark 后台和 JFR 关闭；功能框架附带统计不用于收益或性能判断。先前场景 ID 组合不匹配、缺少调试门控的未完成轮次保留失败记录，不冒称通过。该结果不等于活跃粒子释放、完整视觉、所有扩展或发行 JAR 验收，当前边界见[工作入口](photon-workspace.md#2026-11-04-非性能功能运行复验)。
+
+## 2026-11-04 交付前行为/生命周期审计与三批正确性验证
+
+- 审查范围为 `git diff HEAD` 的工作树完整内容，AM 路径按当前 Document 核对，与既有原 WIP 分开。三批源码/测试共 14 个互不重叠路径：
+  1. `src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonEditorTools.java`
+  2. `src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java`
+  3. `src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonChildWindows.java`
+  4. `src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java`
+  5. `src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java`
+  6. `src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonOwnedEffectAssets.java`
+  7. `src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/FXRuntimeMixin.java`
+  8. `src/main/java/org/unitego/lobecorp/mixin/photon/runtime/client/TimelinePlayerMixin.java`
+  9. `src/main/java/org/unitego/lobecorp/util/photon/model/PhotonModelTopologyUtil.java`
+  10. `src/main/java/org/unitego/lobecorp/util/photon/playback/PhotonRuntimePreviewUtil.java`
+  11. `src/main/java/org/unitego/lobecorp/util/photon/playback/PhotonSpawnSnapshotUtil.java`
+  12. `src/test/java/org/unitego/lobecorp/util/photon/model/PhotonModelGroupOrderTest.java`
+  13. `src/test/java/org/unitego/lobecorp/util/photon/playback/PhotonRuntimePreviewUtilTest.java`
+  14. `src/test/java/org/unitego/lobecorp/util/photon/playback/PhotonSpawnSnapshotUtilTest.java`
+- 预览绑定迁移为弱键、弱值 util，普通播放四个调用路径不再直接依赖 `PhotonEditorTools`，`AuthoringPose` 保留；`PhotonOwnedEffectAssets` 收紧静态准备失败注销与 retained 成功发布。
+- `Prepared.groupOrder` 使用首次计算的不可变副本且不参与 `equals`；子动画快照先 `prune` 后单次遍历，`PhotonSpawnSnapshotUtil` 保持默认 HashMap 顺序与 null 语义。契约见[工作入口](photon-workspace.md#2026-11-04-交付前行为生命周期审计与三批正确性结果)。
+- 历史验证复用三批 19/15/12 共 46 项、9 类测试，均记录为通过；Compile 与生产包隔离历史成功，部分 `compileJava UP-TO-DATE` 不代表全量重编译；Data 历史成功且 23 份 JSON 路径/哈希不变、written 0/removed stale 0。本次纯文档任务未重跑构建、测试或 Data。
+- 未验收真实 runtime、视觉、reload、失败注入、prune 的 stop/release 和发行包；纯 helper 通过不等于这些链路通过。未使用旧性能数字关闭 P22/P23 或推导收益。
+
 ## 2026-11-03 激活目标局部预分组
 
 - 新增 `PhotonActivationTargetUtil.group`，按当前 `Track` 快照建立目标首次序的 `LinkedHashMap`；ActivatorTrack 按 header 目标，ControlTrack 仅按 `clip.targetId()`，忽略 null，同一次 occurrence 内按目标去重，同一 Track 在 leaves 重复出现保留 occurrence。

@@ -1,0 +1,13 @@
+--sun-misc-unsafe-memory-access=allow
+--enable-native-access=ALL-UNNAMED
+--add-opens
+java.base/java.lang.invoke=ALL-UNNAMED
+--add-exports
+jdk.naming.dns/com.sun.jndi.dns=java.naming
+
+# User JVM Arguments
+-Dterminal.ansi=true
+
+-Dlog4j2.configurationFile=../../build/moddev/clientLog4j2.xml
+-Djava.net.preferIPv6Addresses=system
+-Dmcp.port=19877

@@ -330,9 +330,7 @@ public class PhotonRuntimeFactory {
 				|| !definitionCurrent(program.definition())) {
 			return false;
 		}
-		var selected = projectSelection(scope, target, program.includeChildren());
-		return selected != null && key.structureKey().equals(projectStructureKey(scope, target,
-				program.includeChildren()));
+		return key.structureKey().equals(projectStructureKey(scope, target, program.includeChildren()));
 	}
 
 	public static Lease acquire(PhotonTemplateProgram program, Object world) {
@@ -851,11 +849,6 @@ public class PhotonRuntimeFactory {
 				|| scope.definition.generation != definitionGeneration || !scope.definition.isValid()) {
 			return null;
 		}
-		var structureKey = projectStructureKey(scene, target, includeChildren);
-		if (structureKey == null) {
-			return null;
-		}
-
 		var selected = projectSelection(scene, target, includeChildren);
 		if (selected == null) {
 			return null;

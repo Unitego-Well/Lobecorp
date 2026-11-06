@@ -141,7 +141,8 @@ public class PhotonModelResourceSourceTest {
 	}
 
 	private static PhotonModelOutputConfig config(String name) {
-		var config = new PhotonModelOutputConfig();
+		// 只验证资源来源，不初始化渲染材质；材质注册需要游戏环境。
+		var config = new PhotonModelOutputConfig(false);
 		config.source = PhotonModelOutputConfig.Source.RESOURCE;
 		config.resource = id(name + ".obj");
 		return config;

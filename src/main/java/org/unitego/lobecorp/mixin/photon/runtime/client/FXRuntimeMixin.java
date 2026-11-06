@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
@@ -38,7 +38,7 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 			lobecorp$named.begin();
 		}
 
-		PhotonEditorTools.applyPreview((FXRuntime) (Object) this);
+		PhotonRuntimePreviewUtil.apply((FXRuntime) (Object) this);
 	}
 
 	@Unique

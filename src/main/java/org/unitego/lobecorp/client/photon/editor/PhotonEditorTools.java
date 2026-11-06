@@ -31,6 +31,7 @@ import com.lowdragmc.photon.client.PhotonParticleManager;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
@@ -75,14 +76,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
 import java.util.Locale;
 
 @SuppressWarnings({"FieldMayBeFinal", "unused"})
-public class PhotonEditorTools {
-	/// 只关联编辑器预览实例；游戏内 FXRuntime 不进入此表。
-	private static final Map<FXRuntime, WeakReference<PhotonEditorTools>> PREVIEWS = new WeakHashMap<>();
+public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 	/// 与原设置窗口一致的扩展对话框宽度，单位 GUI 像素。
 	private static final int DIALOG_WIDTH = 350;
 	/// 对话框内容的最大滚动高度，单位 GUI 像素。
@@ -238,32 +236,21 @@ public class PhotonEditorTools {
 
 	public void bindRuntime() {
 		if (boundRuntime != null) {
-			PREVIEWS.remove(boundRuntime);
+			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
 		}
 		boundRuntime = editor.runtime;
 
 		if (boundRuntime != null) {
-			PREVIEWS.put(boundRuntime, new WeakReference<>(this));
+			PhotonRuntimePreviewUtil.bind(boundRuntime, this);
 		}
 	}
 
 	public static void applyPreview(FXRuntime runtime) {
-		var reference = PREVIEWS.get(runtime);
-		var tools = reference == null ? null : reference.get();
-
-		if (tools != null) {
-			tools.applyOverrides(runtime);
-		}
+		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
 	public static boolean visible(IFXObject object) {
-		if (!(object.getScene() instanceof FXRuntime runtime)) {
-			return true;
-		}
-
-		var reference = PREVIEWS.get(runtime);
-		var tools = reference == null ? null : reference.get();
-		return tools == null || tools.previewVisible(runtime, object);
+		return PhotonRuntimePreviewUtil.visible(object);
 	}
 
 	public static boolean controlEnabled(String name, UIElement element) {
@@ -976,9 +963,7 @@ public class PhotonEditorTools {
 			return;
 		}
 
-		if (PREVIEWS.get(libraryPreview) != null) {
-			PREVIEWS.remove(libraryPreview);
-		}
+		PhotonRuntimePreviewUtil.unbind(libraryPreview, this);
 
 		var owned = libraryPreview;
 		libraryPreview = null;
@@ -1003,7 +988,7 @@ public class PhotonEditorTools {
 		linkedTangents.clear();
 
 		if (boundRuntime != null) {
-			PREVIEWS.remove(boundRuntime);
+			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
 		}
 		boundRuntime = null;
 		loopPreview = false;

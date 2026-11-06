@@ -144,7 +144,6 @@ public class PhotonBenchCapture {
 		var flags = raw.getAsJsonObject("frames").getAsJsonArray("flags");
 		var bits = raw.getAsJsonObject("flag_bits");
 		int focused = bits.get("focused").getAsInt();
-		int required = bits.get("maximized").getAsInt();
 		int iconified = bits.get("iconified").getAsInt();
 		if (flags.size() != value.get("frame_count").getAsInt()) {
 			throw new IllegalStateException("原始帧数量与窗口 summary 不一致。");
@@ -157,8 +156,8 @@ public class PhotonBenchCapture {
 				unfocusedFrames++;
 			}
 
-			if ((state & required) != required || (state & iconified) != 0) {
-				throw new IllegalStateException("正式帧窗口存在未最大化或最小化帧。");
+			if ((state & iconified) != 0) {
+				throw new IllegalStateException("正式帧窗口存在最小化帧。");
 			}
 		}
 

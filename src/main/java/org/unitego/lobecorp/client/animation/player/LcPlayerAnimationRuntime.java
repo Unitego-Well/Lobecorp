@@ -29,6 +29,18 @@ public class LcPlayerAnimationRuntime {
 	private static Object modelGeneration = GeckoLibResources.getBakedModels();
 	private static Object animationGeneration = GeckoLibResources.getBakedAnimations();
 
+    /// 没有手臂策略时不构造独立玩家状态，仍按原规则清理空播放历史与资源代次。
+    public static boolean firstPersonRequested(Player player) {
+        refreshResources();
+        if (LcClientAnimations.hasPlayerAnimation(player.getId(), true)) {
+            return true;
+        }
+        if (!LcClientAnimations.hasPlayerAnimation(player.getId(), false)) {
+            HISTORIES.remove(player.getUUID());
+        }
+        return false;
+    }
+
 	public static void prepare(Player player, AvatarRenderState state, float partialTick) {
 		if (!((Object) state instanceof GeoRenderState geoState)) {
 			return;

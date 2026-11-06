@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import org.spongepowered.asm.mixin.Unique;
@@ -187,7 +187,7 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 
 		lobecorp$modelContributions.apply(this, runtime, timeline, time, PhotonModelClipUtil.SCENE_PRIORITY, 0);
-		PhotonEditorTools.applyPreview(runtime);
+		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
 	@Inject(method = "frame", at = @At("RETURN"))
@@ -201,7 +201,7 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 
 		lobecorp$modelContributions.apply(this, runtime, timeline, lastEvalTime + partialTicks, PhotonModelClipUtil.SCENE_PRIORITY, 0);
-		PhotonEditorTools.applyPreview(runtime);
+		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
 	@Inject(method = "stop", at = @At("RETURN"))

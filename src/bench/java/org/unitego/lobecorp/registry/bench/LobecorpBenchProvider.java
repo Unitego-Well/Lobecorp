@@ -17,6 +17,8 @@ import org.unitego.lobecorp.client.bench.PhotonHybridQueenScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridLaserScenario;
 import org.unitego.lobecorp.client.bench.PhotonHybridBlankScenario;
 import org.unitego.lobecorp.client.bench.PhotonQuietControlScenario;
+import org.unitego.lobecorp.client.bench.PhotonRunControlScenario;
+import org.unitego.lobecorp.client.bench.PhotonRunMatrixCapture;
 import org.unitego.lobecorp.client.bench.PhotonQuietMatrixCapture;
 import org.unitego.lobecorp.client.bench.PhotonQuietVisualScenario;
 import org.unitego.lobecorp.client.bench.PhotonGlobalContractScenario;
@@ -55,6 +57,13 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		var run = PhotonRunMatrixCapture.Variant.selected();
+		if (run != null) {
+			registrar.register(new ScenarioDescriptor(run.id(), "轻量 Run 矩阵",
+					Set.of("client", "photon", "run"), Duration.ofSeconds(180)),
+					_ -> new PhotonRunControlScenario(run));
+			return;
+		}
 		if (PhotonGlobalContractScenario.ID.equals(selectedProperty)) {
 			registrar.register(new ScenarioDescriptor(PhotonGlobalContractScenario.ID, "全局命名执行契约",
 					Set.of("client", "photon", "contracts"), Duration.ofSeconds(600)), _ -> new PhotonGlobalContractScenario());

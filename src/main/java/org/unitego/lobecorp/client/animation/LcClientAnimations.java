@@ -172,6 +172,20 @@ public class LcClientAnimations {
 		return visualPoseForEntity(entityId, 1);
 	}
 
+    /// 只查询策略资格，不采样骨骼；已停止但仍淡出的玩家帧继续参与判断。
+    public static boolean hasPlayerAnimation(int entityId, boolean requireFirstPersonArms) {
+        pruneExpired();
+        for (var frame : FRAMES.values()) {
+            var snapshot = frame.current;
+            var policy = snapshot.playerPolicy();
+            if (snapshot.ownerEntityId() == entityId && policy != null
+                    && (!requireFirstPersonArms || policy.firstPersonArms() && policy.weight() > 0)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 	public static boolean hasEntityAnimation(int entityId) {
 		return FRAMES.values().stream().anyMatch(frame -> frame.current.ownerEntityId() == entityId);
 	}

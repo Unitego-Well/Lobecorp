@@ -32,6 +32,32 @@ PROJECT校验/输入对齐、资源级静态子视图与命名描述/实例绑�
 
 IDEA 八文件无错误，统一编译/生产包隔离及 Data 通过，生成输出 written=0；未执行单元测试、游戏、视觉或性能复测。实现契约见[动画运行时](animation-runtime.md#2026-11-05-动画索引与内容接收)与[空间附着](attachments.md)，当前剩余边界以[问题汇总](../issues.md#2026-11-05-本批修复后的剩余边界)为准。详细收尾见[修改记录](changes.md#2026-11-05-本批审查问题修复)，不将历史性能数据当作本批收益证据。
 
+## 2026-11-05 脚本采集、局部修复与全面深查（迁移停止）
+
+普通／光影×空白／单牛／女皇／三次激光各三轮脚本采集已完成：188978条记录、188954个相邻间隔、24份截图与身份记录。数据不证明性能目标通过。已实现小尺寸世界图标读回、采集器减负、PROJECT重复遍历去重和第一人称无手臂策略时避免完整玩家状态提取；相关编译／包隔离及独立普通／光影功能证据通过。无稳定收益的扩大类型预加载已备份撤回，失败和候选原件保留。
+
+当前目标已扩展为全部非Horde代码的多维深入审查；全量基础静态检查完成，人工深查及性能问题尚未完成。DS已恢复并交付慢间隔查询，警告分类迁移时未交付。用户最新经协调要求迁移，现停止新实现／验证／派发。当前交接与精简启动词定位：`.agent/handoffs/20261105-session-rotation-2.md`、`20261105-start-prompt-2.md`（所属工作区本地过程资料，不作为独立公共运行证明）。
+
+## 2026-11-04 非性能功能运行复验
+
+本次在独立新世界执行普通 Run 的 `lobecorp.photon-11-global-contracts`，命名执行、动画资源、模板程序、静态模型四类契约均通过；随后按 `PhotonLogicLateWorkerCheck` 与 `PhotonLogicLifecycleCheck` 要求使用 THREAD 断点驱动 `lobecorp.photon-08-logic-regression`，139 条断言全部通过，`completed_checks_passed`、`full_requested_matrix_passed` 为 true，`not_run` 为空。完整矩阵仅指现有功能夹具，不代表全产品或所有扩展路径。
+
+已实际覆盖编辑器 owner 与关闭取消/确认、工作区状态/导入导出、准备回调失败重试、设备戳重备、真实资源重载后的旧 epoch 回调拒绝与后继恢复、最终关闭后的 future 取消和拒绝入队。两个旧回调均经源身份/过期 epoch 核对并实际返回后，才在项目 tick 帧确认消费。Spark 后台与 JFR 已关闭，框架附带统计未用于结论，业务源码未修改。
+
+仍未验证活跃粒子/子实例自然排空与完整效果视觉、原生关闭后的活跃资源释放/GC、发行 JAR 实际运行、长期与光影组合及真实 GPU 故障。原生空 FX 的关闭观察不是活跃粒子释放证据；此前未完成的组合筛选/缺少调试门控轮次不当作通过，失败记录保留。本节补充先前审计后的运行证据，不用测试通过关闭性能问题。
+
+## 2026-11-04 交付前行为/生命周期审计与三批正确性结果
+
+预览隔离与生命周期：`PhotonRuntimePreviewUtil` 按运行实例弱键关联预览 owner 弱值，注册表不强持有两者，`Preview` 接口由 `PhotonEditorTools` 实现；普通播放四个调用路径改为依赖 util，不再直接链接 `PhotonEditorTools`，`AuthoringPose` 仍保留。API 为 `bind/unbind/apply/visible`；`Bindings.remove(key, expected)` 仅移除匹配 owner，editor 的 bind、rebind、clear 会同步清理对应 `boundRuntime`。
+
+自有资产注册与静态失败清理：`PhotonOwnedEffectAssets.prepare` 使用 device stamp 的 `invalidate -> computeIfAbsent -> prepare -> DEVICE_STAMPS.put` 顺序，异常路径再次 `invalidate`；`registerPreparedSource` 返回编译定义；节点 `prepareStatic` 全部成功后，当前 FX 才加入 `retained`，`prepareStatic` 遇到 IOException/RuntimeException 时先 `unregisterPreparedSource`。`invalidate(source)` 清除 `PREPARED`、注销 key 并移除 `DEVICE_STAMPS`。新增的 register → prepareStatic 循环仅在非 NATIVE 模式且只对非空 `preparedModel` 调用；FILE PreparedSource=null 会早退，native fallback 节点为空，本批不保证所有来源均已准备。
+
+`Prepared.groupOrder` 为懒契约：构造时定义与组列表为不可变输入，材质蓝图映射不可修改，`groupOrder()` 首次计算并以 `List.copyOf` 复用，不参与 `equals/hashCode`。当前生产调用仅来自 `PhotonModelOutput.prepare()` 的客户端线程，`shallowCopy` 继承不可变顺序；本节不声称完整并发或第三方扩展验证。
+
+子动画快照顺序与所有权：`PhotonChildSpawner.animationSnapshot()` 先执行 `prune()`，再遍历 `instances.entrySet()`，每项只调用一次 `PhotonSpawnInstance::animations`；null 时抛出包含实例 ID 的 `子动画生成实例缺少控制器：`。`PhotonSpawnSnapshotUtil` 使用默认容量的 `HashMap`，按源 entry 顺序插入，不提供跨帧 cache，不改变 `instanceIds/animations` 其他调用者的语义；`PhotonChildWindows.targets` 的非 call 分支直接使用快照，`PhotonCallTrack` 与异常文本保持。
+
+三批正确性结果为历史证据复用：14 个源码/测试路径的精确清单仅记录在[修改记录](changes.md#2026-11-04-交付前行为生命周期审计与三批正确性验证)，本审计没有启动游戏。历史 9 类 46 项测试按 19（5+7+7）、15（8+4+3）、12（6+3+3）分组复用；Compile 历史上成功，包含生产包隔离，但部分 `compileJava UP-TO-DATE` 不代表全量重编译；Data 历史上成功，23 份 JSON 路径与哈希不变。本次没有重跑构建、测试或 Data；真实 runtime、视觉、reload、失败注入、prune 的 stop/release 和发行包仍未验收。旧性能数字已被用户声明不可靠，本节不作为当前瓶颈、收益或验收依据。
+
 ## 2026-11-03 激活目标局部预分组已实现，游戏性能未验收
 
 新增 `PhotonActivationTargetUtil.group`，每次 `collect` 按当前 Track/Clip 快照建立目标首次序局部映射；ActivatorTrack 按 header，ControlTrack 仅按 clip target，同一次 occurrence 内去重、同一 Track 多次 leaves occurrence 保留。`PhotonNamedGates.collectTarget` 保留原 mute/target、hasControl、clipForObjectAt、异常与 activation/signals/commit/reset 逻辑，无跨 tick 缓存或线程。

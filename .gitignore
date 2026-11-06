@@ -50,5 +50,5 @@ repo/
 /.backups/
 /.cherry-assistant/
 /backups/
-/logs/latest.log
+/logs/*
 **.java~

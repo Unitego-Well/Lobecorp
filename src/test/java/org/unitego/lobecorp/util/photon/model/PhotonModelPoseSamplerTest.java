@@ -134,11 +134,12 @@ public class PhotonModelPoseSamplerTest {
 	}
 
 	@Test
-	public void rejectsInvalidInputAndUnsupportedSkeletonWithoutDroppingDefinition() throws Exception {
+	public void rejectsInvalidInputAndSingularBindWithoutDroppingDefinition() throws Exception {
 		assertThrows(IllegalArgumentException.class, () -> new Input(Float.NaN, "", true, 1, 1, Anchor.NONE, 1, Map.of()));
 		assertThrows(IllegalArgumentException.class, () -> new Input(0, "", true, -1, 1, Anchor.NONE, 1, Map.of()));
 		var definition = PhotonModelCodec.read("""
-				{"version":1,"bones":[{"id":"root"}]}
+				{"version":1,"bones":[{"id":"root","bind":{"scale":[1e-30,1,1]}},
+				{"id":"child","parentId":"root","bind":{"scale":[1e-30,1,1]}}]}
 				""");
 		assertThrows(IOException.class, () -> new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(definition)));
 		assertEquals("root", definition.bones().getFirst().id());
@@ -168,6 +169,45 @@ public class PhotonModelPoseSamplerTest {
 
 		assertEquals(frame.groups(), sampler.sample(input, false).groups());
 	}
+
+    @Test
+    public void skinsBoneHierarchyAfterMorphAndBeforePartTransform() throws Exception {
+        var definition = PhotonModelCodec.read("""
+                {"version":1,"vertices":[[0,0,0],[1,0,0],[0,1,0]],
+                "parts":[{"id":"main","transform":{"translation":[0,0,3]}}],
+                "faces":[{"vertices":[0,1,2],"uv":[[0,0],[1,0],[0,1]]}],
+                "bones":[{"id":"root","bind":{"translation":[1,0,0]}},{"id":"child","parentId":"root","bind":{"translation":[0,1,0]}}],
+                "weights":{"0":[{"boneId":"child","value":2}],"1":[{"boneId":"root","value":0.5},{"boneId":"child","value":0.5}]},
+                "morphs":[{"id":"raise","weight":1,"deltas":{"0":[0,0,1]}}],
+                "clips":[{"id":"move","duration":10,"boneTracks":{"root":[{"time":0,"transform":{"translation":[1,0,0]}},
+                {"time":10,"transform":{"translation":[3,0,0]}}]}}]}
+                """);
+        var sampler = new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(definition));
+        var frame = sampler.sample(new Input(5, "move", false, 1, 1, Anchor.NONE, 1, Map.of()), false);
+        var vertices = frame.groups().getFirst().vertices();
+        assertEquals(1, vertices.get(0).position().x(), 1e-6);
+        assertEquals(4, vertices.get(0).position().z(), 1e-6);
+        assertEquals(2, vertices.get(1).position().x(), 1e-6);
+        assertEquals(0, vertices.get(2).position().x(), 1e-6);
+        assertEquals(3, vertices.get(2).position().z(), 1e-6);
+        assertEquals(Vector3.ZERO, definition.vertices().getFirst());
+    }
+
+    @Test
+    public void boneOverrideKeepsUnspecifiedAnimatedChannels() throws Exception {
+        var definition = PhotonModelCodec.read("""
+                {"version":1,"vertices":[[0,0,0],[1,0,0],[0,1,0]],
+                "faces":[{"vertices":[0,1,2],"uv":[[0,0],[1,0],[0,1]]}],
+                "bones":[{"id":"root"}],"weights":{"0":[{"boneId":"root","value":1}]},
+                "clips":[{"id":"move","duration":10,"boneTracks":{"root":[{"time":0,"transform":{"translation":[0,0,0]}},
+                {"time":10,"transform":{"translation":[0,2,0]}}]}}]}
+                """);
+        var sampler = new PhotonModelPoseSampler(PhotonModelTopologyUtil.prepare(definition));
+        var override = new PhotonModelPoseSampler.PartOverride(null, null, new Vector3(2, 2, 2));
+        var frame = sampler.sample(new Input(5, "move", false, 1, 1, Anchor.NONE, 1, Map.of(), Map.of(), Map.of("root", override)), false);
+        assertEquals(1, frame.groups().getFirst().vertices().getFirst().position().y(), 1e-6);
+        assertEquals(1, frame.groups().getFirst().vertices().get(1).position().x(), 1e-6);
+    }
 
 	@Test
 	public void samplesExistingModelOccurrencesWithoutChangingOriginals() throws Exception {

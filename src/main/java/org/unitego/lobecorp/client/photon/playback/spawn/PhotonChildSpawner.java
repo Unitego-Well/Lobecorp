@@ -18,6 +18,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
+import org.unitego.lobecorp.util.photon.playback.PhotonSpawnSnapshotUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
@@ -531,6 +532,12 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	public @Nullable PhotonNamedRuntime animations(UUID id) {
 		var instance = instances.get(id);
 		return instance == null ? null : instance.animations();
+	}
+
+	public Map<UUID, PhotonNamedRuntime> animationSnapshot() {
+		prune();
+		return PhotonSpawnSnapshotUtil.snapshot(instances, PhotonSpawnInstance::animations,
+				"子动画生成实例缺少控制器：");
 	}
 
 	public void stopEmission(boolean value) {

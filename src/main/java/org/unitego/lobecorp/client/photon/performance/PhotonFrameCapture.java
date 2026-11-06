@@ -83,6 +83,10 @@ public class PhotonFrameCapture {
 	}
 
 	public static void start(String label, double seconds) {
+		start(label, seconds, true, true);
+	}
+
+	public static void start(String label, double seconds, boolean gpu, boolean allocation) {
 		RenderSystem.assertOnRenderThread();
 
 		if (label == null || !LABEL.matcher(label).matches()) {
@@ -94,7 +98,7 @@ public class PhotonFrameCapture {
 		}
 
 		cancel();
-		active = new Capture(label, seconds);
+		active = new Capture(label, seconds, gpu, allocation);
 	}
 
 	/// 按累计时间与登记顺序在渲染线程执行一次；回调不由采样器决定特效生命周期。
@@ -404,13 +408,21 @@ public class PhotonFrameCapture {
 		private int gpuErrors;
 		private boolean gpuRecording;
 
-		private Capture(String label, double seconds) {
+		private Capture(String label, double seconds, boolean gpu, boolean allocation) {
 			this.label = label;
 			requestedSeconds = seconds;
 			Arrays.fill(intervalsNs, UNAVAILABLE);
 			Arrays.fill(renderCpuNs, UNAVAILABLE);
 			Arrays.fill(renderGpuNs, UNAVAILABLE);
 			Arrays.fill(allocatedBytes, UNAVAILABLE);
+
+			if (!gpu) {
+				gpuProblem = "disabled_by_capture_options";
+			}
+			if (!allocation) {
+				allocationProblem = "disabled_by_capture_options";
+				return;
+			}
 
 			try {
 				if (ManagementFactory.getThreadMXBean() instanceof ThreadMXBean bean && bean.isThreadAllocatedMemorySupported()

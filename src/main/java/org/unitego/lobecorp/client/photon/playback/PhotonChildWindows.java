@@ -199,19 +199,7 @@ public class PhotonChildWindows implements AutoCloseable {
 			throw new IllegalArgumentException("子动画轨道没有有效的生成器目标：" + track.targetId());
 		}
 
-		var result = new HashMap<UUID, PhotonNamedRuntime>();
-
-		for (var id : spawner.instanceIds()) {
-			var runtime = spawner.animations(id);
-
-			if (runtime == null) {
-				throw new IllegalArgumentException("子动画生成实例缺少控制器：" + id);
-			}
-
-			result.put(id, runtime);
-		}
-
-		return result;
+		return spawner.animationSnapshot();
 	}
 
 	public void frame(double time) {

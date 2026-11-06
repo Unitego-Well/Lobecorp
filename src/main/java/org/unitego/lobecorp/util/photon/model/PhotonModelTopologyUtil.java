@@ -7,6 +7,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class PhotonModelTopologyUtil {
 		private final PhotonModelDefinition definition;
 		private final List<Group> groups;
 		private final Map<String, PhotonModelAssetUtil.MaterialBlueprint> materials;
+		private List<Integer> groupOrder;
 
 		public Prepared(PhotonModelDefinition definition, List<Group> groups) {
 			this.definition = definition;
@@ -49,6 +51,25 @@ public class PhotonModelTopologyUtil {
 
 		public List<Group> groups() {
 			return groups;
+		}
+
+		/// 首次由输出准备阶段计算；仅缓存成功结果，不参与值相等契约。
+		public List<Integer> groupOrder() {
+			if (groupOrder == null) {
+				var order = new ArrayList<Integer>();
+
+				for (int index = 0; index < groups.size(); index++) {
+					order.add(index);
+				}
+
+				order.sort(Comparator.comparing(index -> {
+					var material = definition.materials().get(groups.get(index).material());
+					return material != null && material.overlay();
+				}));
+				groupOrder = List.copyOf(order);
+			}
+
+			return groupOrder;
 		}
 
 		/// 蓝图随定义释放，不保存材质实例或GPU状态。

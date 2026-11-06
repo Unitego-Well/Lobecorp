@@ -17,8 +17,8 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Input;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
@@ -611,7 +611,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 				samplePass(partial, simulation);
 
 				if (closed || before == revision) {
-					PhotonEditorTools.applyPreview(runtime);
+					PhotonRuntimePreviewUtil.apply(runtime);
 					return;
 				}
 

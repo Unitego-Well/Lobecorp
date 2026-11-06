@@ -64,6 +64,7 @@
 | 命名粒子动画 | [Photon 命名动画](photon-named-animations.md) |
 | 模型特效 | [Photon 模型特效](photon-model-effects.md) |
 | 事件 | [事件入口](events.md) |
+| 非 Photon 调试开关 | [统一类别日志、属性与命令](debugging.md) |
 | 网络 | [网络协议](network.md) |
 | 资源与生成 | [资源与数据生成](resources-datagen.md) |
 | 激光模板资产 | [星束模板与资源](queen-star-beam.md) |

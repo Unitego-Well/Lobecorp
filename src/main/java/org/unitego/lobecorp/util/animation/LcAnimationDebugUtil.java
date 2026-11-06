@@ -1,21 +1,19 @@
 package org.unitego.lobecorp.util.animation;
 
 import net.minecraft.resources.Identifier;
-import net.neoforged.fml.loading.FMLEnvironment;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.player.LcAnimationTermination;
 import org.unitego.lobecorp.animation.player.LcPlayerAnimationPolicy;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
+import org.unitego.lobecorp.util.debug.LcDebugUtil;
 
 import java.util.UUID;
 
 /// 独立动画与玩家姿态的开发日志；调用方复用现有状态边沿，不维护额外播放状态。
 public class LcAnimationDebugUtil {
 
-	/// 仅在非生产环境生效；可通过 Debug 动态开启，重启后恢复关闭。
-	public static volatile boolean ENABLED = false;
 	private static final String STATE_LOG = "[LC Animation Debug] event={} instance={} entity={} definition={} model={} animation={} content={} revision={} timeSeconds={} stopped={} termination={} policy={}";
 	private static final String MODEL_LOG = "[LC Animation Debug] event=MODEL_LAYER instance={} entity={} model={} modelIdentity={} revision={} timeSeconds={} fadeIn={} fadeOut={} stopped={} sources={} rightArm={} head={}";
 	private static final String REMOVE_LOG = "[LC Animation Debug] event=CLIENT_REMOVED instance={} termination={}";
@@ -23,7 +21,7 @@ public class LcAnimationDebugUtil {
 	private static final String SAMPLE_FAILURE_LOG = "[LC Animation Debug] event=SAMPLE_FAILURE instance={} entity={} definition={} model={} animation={} content={} revision={} timeSeconds={}";
 
 	public static boolean isEnabled() {
-		return ENABLED && !FMLEnvironment.isProduction();
+		return LcDebugUtil.isEnabled(LcDebugUtil.Category.ANIMATION);
 	}
 
 	public static void state(Event event, UUID instanceId, int ownerEntityId, Identifier definitionId,

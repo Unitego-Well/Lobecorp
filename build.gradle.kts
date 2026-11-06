@@ -148,7 +148,7 @@ dependencies {
     implementation(libs.jeiapi)
     implementation(libs.jei)
     implementation(libs.jade)
-    implementation(libs.reretrodamageindicators)
+//    implementation(libs.reretrodamageindicators)
     // photon 依赖
     implementation(libs.ldlib2)
     implementation(libs.kilagraph)
@@ -165,7 +165,7 @@ dependencies {
     internalTestMods(libs.curios)
     internalTestMods(libs.jei)
     internalTestMods(libs.jade)
-    internalTestMods(libs.reretrodamageindicators)
+//    internalTestMods(libs.reretrodamageindicators)
     internalTestMods(libs.ldlib2)
     internalTestMods(libs.kilagraph)
     internalTestMods(libs.photon)

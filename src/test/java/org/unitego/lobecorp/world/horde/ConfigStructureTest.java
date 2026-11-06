@@ -8,7 +8,9 @@ import java.nio.file.Path;
 
 import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.client.DamageParticleConfig;
+import org.unitego.lobecorp.config.client.HealthBarStyle;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.config.client.HudStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
 import org.unitego.lobecorp.config.server.HordeEventConfig;
 import org.unitego.lobecorp.config.server.ServerConfig;
@@ -61,6 +63,41 @@ public class ConfigStructureTest {
 		assertEquals(List.of("hud", "filters", "enable_low_rationality_filter"),
 				PlayerHudConfig.ENABLE_LOW_RATIONALITY_FILTER.getPath());
 		assertEquals(List.of("damageParticles", "merge", "mergeRadius"), DamageParticleConfig.MERGE_RADIUS.getPath());
+	}
+
+	@Test
+	public void hudStyleKeysDefaultsAndEnumClassesAreStable() {
+		assertNotNull(ClientConfig.specification());
+		assertEquals(List.of("hud", "statusBars", "healthStyle"), PlayerHudConfig.HEALTH_STYLE.getPath());
+		assertEquals(List.of("hud", "statusBars", "rationalityStyle"), PlayerHudConfig.RATIONALITY_STYLE.getPath());
+		assertEquals(List.of("hud", "events", "midnight_cleanup", "timerStyle"), PlayerHudConfig.TIMER_STYLE.getPath());
+		assertEquals(HealthBarStyle.VANILLA, PlayerHudConfig.HEALTH_STYLE.getDefault());
+		assertEquals(HudStyle.DEFAULT, PlayerHudConfig.RATIONALITY_STYLE.getDefault());
+		assertEquals(HudStyle.DEFAULT, PlayerHudConfig.TIMER_STYLE.getDefault());
+		assertEquals(HealthBarStyle.class, PlayerHudConfig.HEALTH_STYLE.getSpec().getClazz());
+		assertEquals(HudStyle.class, PlayerHudConfig.RATIONALITY_STYLE.getSpec().getClazz());
+		assertEquals(HudStyle.class, PlayerHudConfig.TIMER_STYLE.getSpec().getClazz());
+	}
+
+	@Test
+	public void hudStyleValuesRoundTripThroughTomlAndOldBooleanIsAbsent() {
+		var clientPath = directory.resolve(ClientConfig.FILE_NAME);
+		try (var config = CommentedFileConfig.builder(clientPath).sync().build()) {
+			ClientConfig.specification().correct(config);
+			config.set("hud.statusBars.healthStyle", "DEFAULT");
+			config.set("hud.statusBars.rationalityStyle", "NEW");
+			config.set("hud.events.midnight_cleanup.timerStyle", "NEW");
+			config.save();
+		}
+		try (var config = CommentedFileConfig.builder(clientPath).sync().build()) {
+			config.load();
+			assertEquals(HealthBarStyle.DEFAULT, config.getEnum("hud.statusBars.healthStyle", HealthBarStyle.class));
+			assertEquals(HudStyle.NEW, config.getEnum("hud.statusBars.rationalityStyle", HudStyle.class));
+			assertEquals(HudStyle.NEW, config.getEnum("hud.events.midnight_cleanup.timerStyle", HudStyle.class));
+			assertFalse(config.contains("hud.statusBars.enable_new_health_bar"));
+			assertTrue(config.contains("hud.filters.enable_low_rationality_filter"));
+			assertTrue(config.contains("hud.filters.enable_lobotomy_corporation_damage_filter"));
+		}
 	}
 
 	@Test

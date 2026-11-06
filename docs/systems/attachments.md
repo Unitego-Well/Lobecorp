@@ -21,6 +21,8 @@ world 锚点使用给定世界变换；entity 锚点采样实体姿态并叠加�
 共享 TRS 值 [LcTransform](../../src/main/java/org/unitego/lobecorp/attachment/LcTransform.java) 的位置单位是格。
 实体、轻量技能效果、命中框和客户端 Photon 适配器继续复用该目标接口，不建立平行目标管理器。
 
+矩阵分解遇到零缩放轴时，以有效轴补齐右手基；仅剩一轴采用最短弧旋转，全零缩放采用单位旋转，避免对零列归一化产生 NaN。退化矩阵本来不能唯一恢复全部旋转，选定上述确定性结果；非退化矩阵及镜像归入 X 缩放的既有语义保留。此处理不使奇异矩阵可逆，保持世界变换切换仍执行原可逆性检查。
+
 ## 来源与生命周期
 
 - `LcAttachmentAnchors.world(level, transform)`：绝对世界锚点，不要求实体或动画。

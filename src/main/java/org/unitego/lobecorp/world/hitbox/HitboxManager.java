@@ -7,6 +7,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.hitbox.geometry.HitboxGeometry;
@@ -183,10 +184,11 @@ public final class HitboxManager {
 		}
 
 		List<Vec3> ends = samplePoints(target.getBoundingBox());
+		var collision = source == null ? CollisionContext.empty() : CollisionContext.of(source);
 		for (Vec3 start : starts) {
 			for (Vec3 end : ends) {
 				HitResult result = instance.level().clip(new ClipContext(start, end,
-						ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, source));
+						ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, collision));
 				if (result.getType() == HitResult.Type.MISS) {
 					return true;
 				}

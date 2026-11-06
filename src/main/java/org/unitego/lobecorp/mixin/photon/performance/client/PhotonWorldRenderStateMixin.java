@@ -17,9 +17,12 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import java.util.List;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceGpu;
+import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 
 @Mixin(PhotonWorldRenderState.class)
 public class PhotonWorldRenderStateMixin {
@@ -44,15 +47,28 @@ public class PhotonWorldRenderStateMixin {
 	@WrapMethod(method = "drain(Ljava/util/List;ZLcom/lowdragmc/photon/client/postfx/runtime/PostEffectStack;ZZZ)V")
 	private static void lobecorp$captureBatchOwners(List<DrawJob> jobs, boolean bloom, PostEffectStack stack,
 	                                                boolean last, boolean layer, boolean opaque, Operation<Void> original) {
-		if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
-			original.call(jobs, bloom, stack, last, layer, opaque);
-			return;
-		}
-		PhotonPerformanceOwnerUtil.beginDraws(jobs);
+		var diagnostic = PhotonSubmissionDiagnostics.beginDrain();
+		boolean completed = false;
+
 		try {
-			original.call(jobs, bloom, stack, last, layer, opaque);
+			if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
+				original.call(jobs, bloom, stack, last, layer, opaque);
+				completed = true;
+				return;
+			}
+
+			PhotonPerformanceOwnerUtil.beginDraws(jobs);
+
+			try {
+				original.call(jobs, bloom, stack, last, layer, opaque);
+				completed = true;
+			} finally {
+				PhotonPerformanceOwnerUtil.endDraws();
+			}
 		} finally {
-			PhotonPerformanceOwnerUtil.endDraws();
+			if (diagnostic != null) {
+				PhotonSubmissionDiagnostics.endDrain(diagnostic, completed);
+			}
 		}
 	}
 
@@ -62,7 +78,7 @@ public class PhotonWorldRenderStateMixin {
 	                                                GpuTextureView sceneColor, GpuTextureView sceneDepth,
 	                                                Operation<Void> original) {
 		if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
-			original.call(cache, run, pipeline, color, depth, sceneColor, sceneDepth);
+			runDraw(pipeline, () -> original.call(cache, run, pipeline, color, depth, sceneColor, sceneDepth));
 			return;
 		}
 		int owner = PhotonPerformanceOwnerUtil.drawOwner(((PhotonDrawRunAccessor) run).lobecorp$renderType());
@@ -73,7 +89,7 @@ public class PhotonWorldRenderStateMixin {
 		long gpu = PhotonPerformanceGpu.begin(pass, node, owner == 0);
 		boolean completed = false;
 		try {
-			original.call(cache, run, pipeline, color, depth, sceneColor, sceneDepth);
+			runDraw(pipeline, () -> original.call(cache, run, pipeline, color, depth, sceneColor, sceneDepth));
 			completed = true;
 		} finally {
 			PhotonPerformanceGpu.end(gpu, completed);
@@ -87,7 +103,7 @@ public class PhotonWorldRenderStateMixin {
 	                                                   GpuTextureView sceneColor, GpuTextureView sceneDepth,
 	                                                   Operation<Void> original) {
 		if (!PhotonPerformanceTraceUtil.enabled(Stage.DRAW)) {
-			original.call(job, pipeline, color, depth, sceneColor, sceneDepth);
+			runDraw(pipeline, () -> original.call(job, pipeline, color, depth, sceneColor, sceneDepth));
 			return;
 		}
 		int owner = PhotonPerformanceOwnerUtil.jobOwner(job);
@@ -98,11 +114,20 @@ public class PhotonWorldRenderStateMixin {
 		long gpu = PhotonPerformanceGpu.begin(pass, node, owner == 0);
 		boolean completed = false;
 		try {
-			original.call(job, pipeline, color, depth, sceneColor, sceneDepth);
+			runDraw(pipeline, () -> original.call(job, pipeline, color, depth, sceneColor, sceneDepth));
 			completed = true;
 		} finally {
 			PhotonPerformanceGpu.end(gpu, completed);
 			PhotonPerformanceTraceUtil.end(scope, completed);
+		}
+	}
+
+	@Unique
+	private static void runDraw(RenderPipeline pipeline, Runnable draw) {
+		if (PhotonIrisPipelineAccess.isPhotonPipeline(pipeline)) {
+			PhotonIrisPipelineAccess.useNativePipeline(draw);
+		} else {
+			draw.run();
 		}
 	}
 }

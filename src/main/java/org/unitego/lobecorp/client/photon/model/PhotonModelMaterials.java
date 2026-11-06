@@ -6,7 +6,6 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.material.IMaterial;
 import com.lowdragmc.photon.client.gameobject.emitter.data.material.TextureMaterial;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 
 import java.io.IOException;
@@ -16,13 +15,21 @@ import java.util.List;
 
 /// 实例材质槽属于客户端；静态几何与姿态采样器不访问材质注册表或GPU。
 public class PhotonModelMaterials {
+	private record GroupBlueprint(List<MaterialSetting> materials) {
+		private GroupBlueprint {
+			materials = List.copyOf(materials);
+		}
+	}
+
 	private final RendererSetting.Runtime base;
 	private final List<RendererSetting.Runtime> groups;
+	private final List<GroupBlueprint> blueprints;
 	private List<MaterialSetting> sourceMaterials;
 
 	public PhotonModelMaterials(RendererSetting config, RendererSetting.Runtime runtime, PhotonModelTopologyUtil.Prepared prepared) throws IOException {
 		base = runtime;
 		groups = new ArrayList<>();
+		blueprints = new ArrayList<>();
 		var definitions = prepared.definition();
 		var resolved = new HashMap<String, IMaterial>();
 
@@ -30,7 +37,7 @@ public class PhotonModelMaterials {
 			var material = entry.getValue();
 
 			if (!material.materialData().isEmpty()) {
-				var data = PhotonModelAssetUtil.material(material.materialData());
+				var data = prepared.materialData(entry.getKey());
 				var parsed = IMaterial.CODEC.parse(NbtOps.INSTANCE, data).getOrThrow();
 
 				if (parsed == IMaterial.MISSING) {
@@ -75,6 +82,7 @@ public class PhotonModelMaterials {
 			};
 			groupRuntime.materials.set(List.copyOf(settings));
 			groups.add(groupRuntime);
+			blueprints.add(new GroupBlueprint(settings));
 		}
 	}
 
@@ -88,6 +96,7 @@ public class PhotonModelMaterials {
 
 	public RendererSetting.Runtime group(int index) {
 		var runtime = groups.get(index);
+		runtime.materials.set(blueprints.get(index).materials());
 		runtime.layer.set(base.getLayer());
 		runtime.orderInLayer.set(base.getOrderInLayer());
 		runtime.vertexSortingMode.set(base.getVertexSortingMode());
@@ -100,15 +109,16 @@ public class PhotonModelMaterials {
 
 	private static MaterialSetting copy(MaterialSetting source, IMaterial material) {
 		var result = new MaterialSetting(material).setCull(source.isCull())
-				.setDepthMask(source.isDepthMask()).setDepthTest(source.isDepthTest());
+				.setDepthMask(source.isDepthMask()).setDepthTest(source.isDepthTest())
+				.setRenderStateSource(source.getRenderStateSource());
 		var from = source.getBlendMode();
 		var to = result.getBlendMode();
-		to.setEnableBlend(from.isEnableBlend());
-		to.setBlendFunc(from.getBlendFunc());
-		to.setSrcColorFactor(from.getSrcColorFactor());
-		to.setDstColorFactor(from.getDstColorFactor());
-		to.setSrcAlphaFactor(from.getSrcAlphaFactor());
-		to.setDstAlphaFactor(from.getDstAlphaFactor());
+        to.setEnableBlend(from.isEnableBlend());
+        to.setBlendFunc(from.getBlendFunc());
+        to.setSrcColorFactor(from.getSrcColorFactor());
+        to.setDstColorFactor(from.getDstColorFactor());
+        to.setSrcAlphaFactor(from.getSrcAlphaFactor());
+        to.setDstAlphaFactor(from.getDstAlphaFactor());
 		return result;
 	}
 }

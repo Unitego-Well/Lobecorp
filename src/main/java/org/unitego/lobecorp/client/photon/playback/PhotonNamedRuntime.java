@@ -2,6 +2,7 @@ package org.unitego.lobecorp.client.photon.playback;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.PhotonSignals;
 import com.lowdragmc.photon.Photon;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
@@ -15,15 +16,16 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Event;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Input;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 
 import javax.annotation.Nullable;
+
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -59,23 +61,32 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		private Completion completion;
 		private boolean authoring;
 		private final PhotonChildWindows children;
+		private final PhotonNamedNativeTracks nativeTracks;
+		private final PhotonModelClipUtil.ContributionState modelContributions = new PhotonModelClipUtil.ContributionState();
 
 		private Entry(PhotonNamedHandle handle, PhotonNamedPlan plan, FXRuntime runtime, @Nullable PhotonNamedRuntime callHost) {
 			this.handle = handle;
 			this.plan = plan;
 			completion = handle.definition().completion();
 			children = new PhotonChildWindows(runtime, handle, callHost);
+			nativeTracks = new PhotonNamedNativeTracks(runtime, plan.timeline, plan.leaves, plan.hasAudio(), plan.hasPostProcess());
 		}
 	}
 
 	private final FXRuntime runtime;
 	private final PhotonNamedController controller;
 	private PhotonNamedLibrary library;
+	private @Nullable CompoundTag librarySource;
+	private @Nullable PhotonNamedController.CompiledDefinition compiledDefinition;
+	private long controllerRevision;
+	private boolean controllerMatches = true;
 	private final UUID id = UUID.randomUUID();
 	private final PhotonNamedMixer mixer = new PhotonNamedMixer();
 	private final PhotonNamedGates gates;
+	private final PhotonNamedNativeTracks.Speeds speeds;
 	private final Map<String, PhotonNamedPlan> plans = new LinkedHashMap<>();
 	private final Map<UUID, Entry> playing = new LinkedHashMap<>();
+	private @Nullable List<Entry> orderedEntries = List.of();
 	private final Map<FXObject, BooleanSupplier> retention = new LinkedHashMap<>();
 	private final ArrayDeque<Notification> events = new ArrayDeque<>();
 	private final FXObject root;
@@ -98,8 +109,13 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	public PhotonNamedRuntime(FXRuntime runtime, PhotonNamedController controller) throws IOException {
 		this.runtime = runtime;
 		this.controller = controller;
-		library = PhotonNamedCodecUtil.read(controller.definition());
+		var compiled = controller.compiledDefinition();
+		compiledDefinition = compiled;
+		library = compiled == null ? PhotonNamedController.readLibrary(controller.definition()) : compiled.library();
+		librarySource = compiled == null ? library.source() : null;
+		controllerRevision = controller.definitionRevision();
 		gates = new PhotonNamedGates(runtime);
+		speeds = new PhotonNamedNativeTracks.Speeds(runtime);
 		root = (FXObject) runtime.root;
 
 		for (var object : runtime.objects.values()) {
@@ -108,7 +124,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			}
 		}
 
-		plans.putAll(preparePlans(runtime, library));
+		plans.putAll(preparePlans(runtime, library, compiled));
 		previousTick = root.getOnUpdateTick();
 		previousFrame = root.getOnUpdateFrame();
 		root.setOnUpdateTick(tickCallback);
@@ -133,12 +149,36 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		return library;
 	}
 
+	/// 返回与 play 相同的已编译计划定义，供调用方投影形参而不重复扫描动画列表。
+	public @Nullable Definition definition(String name) {
+		var plan = plans.get(name);
+		return plan == null ? null : plan.definition;
+	}
+
+	public boolean matchesController() {
+		if (closed) {
+			return false;
+		}
+
+		if (controllerRevision != controller.definitionRevision()) {
+			controllerMatches = compiledDefinition == null ? controller.matchesDefinition(librarySource)
+					: compiledDefinition.matches(controller);
+			controllerRevision = controller.definitionRevision();
+		}
+
+		return controllerMatches;
+	}
+
 	public List<PhotonNamedHandle> playbacks() {
 		return playing.values().stream().map(entry -> entry.handle).toList();
 	}
 
 	public long revision() {
 		return revision;
+	}
+
+	public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+		return mixer.authoredPose(object, current);
 	}
 
 	public void pause(PhotonNamedHandle handle, boolean paused) {
@@ -184,6 +224,13 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		refresh();
 	}
 
+    /// 在原生下一次模拟或帧采样中统一消费连续输入，不在每个字段更新时重跑整条时间线。
+    public void stageParameters(PhotonNamedHandle handle, Map<String, List<Float>> changes) {
+        current(handle);
+        handle.parameters(changes);
+        revision++;
+    }
+
 	public void duration(PhotonNamedHandle handle, double duration) {
 		current(handle);
 		handle.duration(duration);
@@ -194,30 +241,39 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	/// 仅更新后续播放和事件使用的库；现有句柄继续使用其准备时的定义和计划。
 	public void redefine(CompoundTag source) throws IOException {
 		requireOpen();
-		if (library.source().equals(source)) {
+		if (compiledDefinition == null ? librarySource != null && librarySource.equals(source) : compiledDefinition.matchesDefinition(source)) {
 			return;
 		}
 
-		var candidate = PhotonNamedCodecUtil.read(source);
-		var prepared = preparePlans(runtime, candidate);
+		var compiled = compiledDefinition == null ? null
+				: PhotonNamedController.compileDefinition(source, controller.source());
+		var candidate = compiled == null ? PhotonNamedController.readLibrary(source) : compiled.library();
+		var prepared = preparePlans(runtime, candidate, compiled);
 		if (preview != null && prepared.containsKey(preview.handle.definition().id().toString())) {
 			throw new IllegalArgumentException("命名动画身份与工程测试身份冲突。");
 		}
 
 		library = candidate;
+		compiledDefinition = compiled;
+		librarySource = compiled == null ? candidate.source() : null;
+		controllerMatches = compiledDefinition == null ? controller.matchesDefinition(librarySource)
+				: compiledDefinition.matches(controller);
+		controllerRevision = controller.definitionRevision();
 		plans.clear();
 		plans.putAll(prepared);
 		revision++;
 	}
 
 	public static void validateLibrary(FXRuntime runtime, CompoundTag source) throws IOException {
-		preparePlans(runtime, PhotonNamedCodecUtil.read(source));
+		preparePlans(runtime, PhotonNamedController.readLibrary(source), null);
 	}
 
-	private static Map<String, PhotonNamedPlan> preparePlans(FXRuntime runtime, PhotonNamedLibrary library) {
+	private static Map<String, PhotonNamedPlan> preparePlans(FXRuntime runtime, PhotonNamedLibrary library,
+	                                                         @Nullable PhotonNamedController.CompiledDefinition compiled) {
 		var prepared = new LinkedHashMap<String, PhotonNamedPlan>();
 		for (var definition : library.animations()) {
-			var plan = new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition);
+			var plan = compiled == null ? new PhotonNamedPlan(Platform.getFrozenRegistry(), runtime, definition)
+					: new PhotonNamedPlan(runtime, compiled.template(definition.id()));
 			prepared.put(definition.name(), plan);
 			prepared.put(definition.id().toString(), plan);
 		}
@@ -263,6 +319,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 
 		playing.put(plan.definition.id(), new Entry(handle, plan, runtime, null));
+		orderedEntries = null;
 		revision++;
 		queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
 		drainEvents();
@@ -293,6 +350,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		entry.notifiedPosition = handle.position(0);
 		preview = entry;
 		playing.put(definition.id(), entry);
+		orderedEntries = null;
 		revision++;
 		refresh();
 		return handle;
@@ -317,6 +375,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			entry.completion = Completion.HOLD;
 			entry.notifiedPosition = handle.position(0);
 			playing.put(isolated.id(), entry);
+			orderedEntries = null;
 			revision++;
 			refresh();
 			return handle;
@@ -354,6 +413,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			var handle = new PhotonNamedHandle(definition, original.definition.id(), plan.authoredDuration, sequence++, duration,
 					definition.loop(), controlled, inputs);
 			playing.put(definition.id(), new Entry(handle, plan, runtime, null));
+			orderedEntries = null;
 			revision++;
 			queue(new Notification(Event.START, handle, "", "", new CompoundTag()));
 			drainEvents();
@@ -396,6 +456,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 		if (entry != null) {
 			playing.remove(entry.handle.definition().id(), entry);
+			orderedEntries = null;
 			release(entry);
 			revision++;
 			refresh();
@@ -441,6 +502,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			preview = null;
 		}
 		playing.remove(handle.definition().id());
+		orderedEntries = null;
 		release(entry);
 		revision++;
 		refresh();
@@ -527,8 +589,13 @@ public class PhotonNamedRuntime implements AutoCloseable {
 	}
 
 	private List<Entry> ordered() {
-		return playing.values().stream().sorted(Comparator
-				.comparingInt((Entry entry) -> entry.plan.definition.priority()).thenComparingLong(entry -> entry.handle.order())).toList();
+		// 排序键在 Entry 生命周期内固定；成员变更只丢弃缓存，当前采样继续持有原快照。
+		if (orderedEntries == null) {
+			orderedEntries = playing.values().stream().sorted(Comparator
+					.comparingInt((Entry entry) -> entry.plan.definition.priority()).thenComparingLong(entry -> entry.handle.order())).toList();
+		}
+
+		return orderedEntries;
 	}
 
 	private void sample(double partial, boolean simulation) {
@@ -544,7 +611,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 				samplePass(partial, simulation);
 
 				if (closed || before == revision) {
-					PhotonEditorTools.applyPreview(runtime);
+					PhotonRuntimePreviewUtil.apply(runtime);
 					return;
 				}
 
@@ -573,6 +640,7 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		var entries = ordered();
 
 		if (simulation) {
+			speeds.begin();
 			for (var entry : entries) {
 				gates.collect(entry.plan, entry.handle, entry.handle.authoredTime(0));
 			}
@@ -598,12 +666,16 @@ public class PhotonNamedRuntime implements AutoCloseable {
 			try {
 
 				if (simulation) {
-					entry.children.evaluate(entry.plan.leaves, time);
+					entry.children.evaluate(entry.plan.childTracks(), time);
 				} else {
 					entry.children.frame(time);
 				}
 
-				PhotonModelClipUtil.apply(handle, runtime, entry.plan.timeline, time, priority, handle.order());
+				entry.modelContributions.apply(handle, runtime, entry.plan.modelClips(), time, priority, handle.order());
+				entry.nativeTracks.sample(time, simulation, handle.clock().state() == PhotonPlaybackClock.State.PLAYING);
+				if (simulation) {
+					speeds.apply(entry.plan.speedTracks(), time);
+				}
 
 				for (var property : entry.plan.properties) {
 					var binding = property.binding();
@@ -631,12 +703,14 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		mixer.commit();
 
 		if (simulation) {
+			speeds.finish();
 			for (var entry : entries) {
 				if (entry.handle.clock().takeCompletion()) {
 					queue(new Notification(Event.COMPLETE, entry.handle, "", "", new CompoundTag()));
 
 					if (entry.completion == Completion.RELEASE && playing.get(entry.handle.definition().id()) == entry) {
 						playing.remove(entry.handle.definition().id());
+						orderedEntries = null;
 						release(entry);
 						revision++;
 					}
@@ -694,6 +768,29 @@ public class PhotonNamedRuntime implements AutoCloseable {
 					if (++count > EVENT_BUDGET) {
 						throw new IllegalStateException("命名标记超过单次事件预算。");
 					}
+				}
+			}
+
+			for (var signals : entry.plan.signalTracks()) {
+				if (signals.mute()) {
+					continue;
+				}
+
+				for (var signal : signals.signals()) {
+					double at = cycle + signal.time() / entry.plan.authoredDuration;
+					if (at <= entry.notifiedPosition || at > position || !entry.handle.clock().looping() && at > 1) {
+						continue;
+					}
+					if (++count > EVENT_BUDGET) {
+						throw new IllegalStateException("命名信号超过单次事件预算。");
+					}
+					var channel = signals.displayName();
+					queue(new Notification(Event.SIGNAL, entry.handle, channel, signal.name(), signal.data()));
+					var effect = entry.nativeTracks.executor();
+					if (effect != null) {
+						effect.onTimelineSignal(channel, signal.name(), signal.data(), signal.time());
+					}
+					PhotonSignals.fire(effect, channel, signal.name(), signal.data(), signal.time());
 				}
 			}
 
@@ -805,7 +902,8 @@ public class PhotonNamedRuntime implements AutoCloseable {
 
 	private void release(Entry entry) {
 		entry.children.close();
-		PhotonModelClipUtil.clear(entry.handle, runtime);
+		entry.nativeTracks.close();
+		entry.modelContributions.clear(entry.handle);
 		entry.handle.dispose();
 	}
 
@@ -847,9 +945,11 @@ public class PhotonNamedRuntime implements AutoCloseable {
 		}
 
 		closed = true;
+		orderedEntries = List.of();
 		preview = null;
 		mixer.clear();
 		gates.clear();
+		speeds.clear();
 		List.copyOf(playing.values()).forEach(this::release);
 		playing.clear();
 		events.clear();

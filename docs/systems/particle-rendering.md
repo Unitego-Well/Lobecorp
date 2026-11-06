@@ -1,5 +1,7 @@
 # 粒子效果与渲染
 
+> 2026-10-23：当前 Photon 模型输出、命名播放、子特效与女皇表现已接回，入口见 [当前能力与源码](photon-workspace.md#当前能力与源码入口)。下文 2026-10-19 移除状态和更早 Geo／locator／渲染优化描述保留为历史；旧类或资源路径不存在时不推断已恢复等价能力。原版粒子、ParticleStorm 和实体基础说明继续保留，本轮没有运行或视觉验收。
+
 > 2026-10-19 当前状态：自建 Photon 渲染、模型、Geo/女皇特效桥接已移除；原生 Photon、原版粒子、ParticleStorm 与实体动画保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
 核对日期：2026-10-13。版本依据[版本目录](../../gradle/libs.versions.toml)：Minecraft 26.1.2、NeoForge 26.1.2.100、Photon

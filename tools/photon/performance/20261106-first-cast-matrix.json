@@ -1,0 +1,95 @@
+{
+  "schema": "photon-first-cast-standard-v1",
+  "scenario": "lobecorp.photon-02-first-cast-performance",
+  "label": "photon-02-first-cast-performance",
+  "port": 19877,
+  "expectedDimensions": [
+    2538,
+    1472
+  ],
+  "worldStableNs": 10000000000,
+  "primarySeconds": 20,
+  "castAtSeconds": 2,
+  "warmupTicks": 100,
+  "targetMaxHealth": 1024,
+  "launch": {
+    "ideaUrl": "http://127.0.0.1:64342/stream",
+    "mainClass": "net.neoforged.devlaunch.Main",
+    "module": "lobecorp_photon.photonBenchClient",
+    "programArgs": "build/moddev/benchClientRunProgramArgs.txt"
+  },
+  "timeouts": {
+    "launchMs": 240000,
+    "caseMs": 300000,
+    "shutdownMs": 15000,
+    "pollMs": 500
+  },
+  "environmentSources": {
+    "normal": "build/agent-backups/20261106-architecture-standard-r3/N_first_1/build/modBench/runs/default/client",
+    "shader": "build/agent-backups/20261106-architecture-standard-r3/S_first_1/build/modBench/runs/default/client"
+  },
+  "vmFlags": [
+    "-XX:FlightRecorderOptions=stackdepth=256",
+    "--sun-misc-unsafe-memory-access=allow",
+    "--enable-native-access=ALL-UNNAMED",
+    "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+    "--add-exports=jdk.naming.dns/com.sun.jndi.dns=java.naming"
+  ],
+  "properties": {
+    "mcp.port": 19877,
+    "modBench.scenarios": "lobecorp.photon-02-first-cast-performance",
+    "modBench.targetMod": "lobecorp",
+    "modBench.expectedProviderCount": 1,
+    "modBench.seed": 7,
+    "modBench.client.autoWorld": true,
+    "modBench.client.worldPreset": "flat",
+    "modBench.jfr": true,
+    "modBench.phaseTimeoutTicks": 12000,
+    "modBench.client.vsync": true,
+    "modBench.client.renderDistance": 16,
+    "modBench.client.simulationDistance": 12,
+    "modBench.client.fpsLimit": 260,
+    "modBench.client.requireWindowFocus": false,
+    "lobecorp.photon.bench.preserveWindow": true,
+    "lobecorp.photon.bench.probes": true,
+    "lobecorp.photon.creation.mode": "HYBRID",
+    "lobecorp.photon.ownedLaser": true,
+    "lobecorp.photon.diag.cast": true,
+    "lobecorp.photon.diag.material": true,
+    "lobecorp.photon.copyLedger.enabled": true,
+    "lobecorp.photon.trace.maxNodes": 16384,
+    "lobecorp.photon.trace.maxAggregatesPerThread": 65536
+  },
+  "runs": [
+    {
+      "id": "N_first_1",
+      "shader": false,
+      "round": 1
+    },
+    {
+      "id": "N_first_2",
+      "shader": false,
+      "round": 2
+    },
+    {
+      "id": "N_first_3",
+      "shader": false,
+      "round": 3
+    },
+    {
+      "id": "S_first_1",
+      "shader": true,
+      "round": 1
+    },
+    {
+      "id": "S_first_2",
+      "shader": true,
+      "round": 2
+    },
+    {
+      "id": "S_first_3",
+      "shader": true,
+      "round": 3
+    }
+  ]
+}

@@ -2,6 +2,8 @@ package org.unitego.lobecorp.registry.photon.client;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -29,6 +31,19 @@ public class LcPhotonProfileCommand {
 		}
 		start.then(seconds);
 		root.then(start);
+		var repeat = Commands.literal("repeat");
+		var repeatStart = Commands.literal("start");
+		for (var kind : PhotonRepeatedEffectTrial.Kind.values()) {
+			repeatStart.then(Commands.literal(kind.name().toLowerCase(Locale.ROOT))
+					.then(Commands.argument("label", StringArgumentType.word()).executes(context ->
+							repeat(context.getSource(), "start", kind, StringArgumentType.getString(context, "label")))));
+		}
+		repeat.then(repeatStart);
+		for (var action : new String[]{"status", "close", "cancel"}) {
+			repeat.then(Commands.literal(action).then(Commands.argument("label", StringArgumentType.word())
+					.executes(context -> repeat(context.getSource(), action, null, StringArgumentType.getString(context, "label")))));
+		}
+		root.then(repeat);
 		root.then(Commands.literal("open").executes(_ -> {
 			PhotonPerformancePanel.openWorld();
 			return 1;
@@ -46,6 +61,23 @@ public class LcPhotonProfileCommand {
 		root.then(Commands.literal("status").executes(context -> status(context.getSource())));
 		root.executes(context -> status(context.getSource()));
 		dispatcher.register(Commands.literal(Lobecorp.NAMESPACE).then(root));
+	}
+
+	private static int repeat(CommandSourceStack source, String action, PhotonRepeatedEffectTrial.Kind kind, String label) {
+		try {
+			switch (action) {
+				case "start" -> PhotonRepeatedEffectTrial.start(kind, PhotonRepeatedEffectTrial.Mode.BASE, label, null);
+				case "cancel" -> PhotonRepeatedEffectTrial.cancel(label);
+				case "close" -> PhotonRepeatedEffectTrial.close(label);
+				default -> { }
+			}
+			var status = PhotonRepeatedEffectTrial.status(label).toString();
+			source.sendSuccess(() -> Component.literal(status), false);
+			return 1;
+		} catch (Exception problem) {
+			source.sendFailure(Component.literal(problem.toString()));
+			return 0;
+		}
 	}
 
 	private static int start(CommandSourceStack source, double seconds, Mode mode) {

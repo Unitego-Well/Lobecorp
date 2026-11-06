@@ -2,6 +2,7 @@
 
 import com.zhongbai233.bench.gradle.VerifyBenchReportTask
 import org.gradle.api.plugins.ExtensionAware
+import org.jetbrains.gradle.ext.Application
 import org.jetbrains.gradle.ext.Gradle
 import org.jetbrains.gradle.ext.IdeaExtPlugin
 import org.jetbrains.gradle.ext.ProjectSettings
@@ -23,6 +24,7 @@ tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
 
+val photonBenchEnabled = providers.gradleProperty("photonBench").map(String::toBoolean).orElse(false)
 val minecraftMcpJar = files("lib/minecraft-mcp-0.3.0.jar")
 val minecraftMcpBridge = layout.projectDirectory.dir("lib/minecraft-mcp/bridge")
 val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT").orElse(
@@ -36,6 +38,23 @@ val minecraftMcpClient = sourceSets.create("mcpClient") {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().runtimeClasspath + minecraftMcpJar
 }
+
+val photonBenchClient = sourceSets.create("photonBenchClient") {
+    runtimeClasspath += sourceSets["bench"].runtimeClasspath + minecraftMcpJar
+}
+
+// 普通 JVM 验证不经过游戏的嵌套 JAR 加载器，复用当前编译类路径的同版 MixinExtras。
+val mixinExtrasCheckRuntime = sourceSets.main.get().compileClasspath.filter {
+    it.name.startsWith("mixinextras-")
+}
+sourceSets.test {
+    runtimeClasspath += mixinExtrasCheckRuntime
+}
+sourceSets.named("bench") {
+    runtimeClasspath += mixinExtrasCheckRuntime
+}
+// 游戏仍由原启动器提供此类库，检查专用补充不进入 FULL 游戏类路径。
+photonBenchClient.runtimeClasspath = photonBenchClient.runtimeClasspath - mixinExtrasCheckRuntime
 
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
@@ -135,6 +154,9 @@ repositories {
 
 dependencies {
     compileOnly(minecraftMcpJar)
+    if (photonBenchEnabled.get()) {
+        add("benchRuntimeMod", minecraftMcpJar)
+    }
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -218,6 +240,9 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
             logLevel = org.slf4j.event.Level.DEBUG
+            if (name == "benchClient" && photonBenchEnabled.get()) {
+                systemProperty("mcp.port", minecraftMcpGamePort.get())
+            }
             if (!name.startsWith("bench")) {
                 jvmArguments.addAll(
                     "-Dterminal.ansi=true",
@@ -244,6 +269,149 @@ neoForge {
     runs.named("client") {
         sourceSet.set(minecraftMcpClient)
         systemProperty("mcp.port", minecraftMcpGamePort.get())
+    }
+}
+
+modBench {
+    targetMod = modId
+    expectedProviderCount = 1
+    seed = 7
+    jfrEnabled = true
+    serverLevelType = "minecraft:flat"
+    clientWorldPreset = "flat"
+    clientWorldId = "lobecorp-bench"
+    clientRequireWindowFocus = providers.gradleProperty("photonRequireFocus").map(String::toBoolean).orElse(true).get()
+    if (photonBenchEnabled.get()) {
+        scenarioFilter = providers.gradleProperty("photonScenarios").orElse("lobecorp.photon-*").get()
+    }
+}
+
+tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
+    expectedScenarioIds.set(listOf("lobecorp.sweeper-ai"))
+    expectedMetricNames.set(listOf("server.tick.duration", "lobecorp.sweeper_ai.loaded_entities"))
+    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
+    expectedArtifactPaths.set(
+        listOf(
+            "artifacts/samples/lobecorp.sweeper-ai.jsonl",
+            "artifacts/jfr/lobecorp.sweeper-ai.jfr"
+        )
+    )
+}
+
+tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
+    if (photonBenchEnabled.get()) {
+        expectedScenarioIds.set(
+            listOf(
+                "lobecorp.photon-00-empty",
+                "lobecorp.photon-10-static-one",
+                "lobecorp.photon-20-animated-one",
+                "lobecorp.photon-30-static-sixteen",
+                "lobecorp.photon-40-animated-sixteen",
+                "lobecorp.photon-50-cold-sixteen",
+                "lobecorp.photon-60-static-repeat",
+                "lobecorp.photon-70-empty-repeat",
+                "lobecorp.photon-80-static-thirtytwo",
+                "lobecorp.photon-90-animated-thirtytwo",
+                "lobecorp.photon-91-mixed-thirtytwo-laser",
+                "lobecorp.photon-92-mixed-sixtyfour-four-lasers",
+                "lobecorp.photon-99-empty-extreme-repeat"
+            )
+        )
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.photon.loaded_models"))
+        expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime", "sodium", "mcpmod"))
+        expectedArtifactPaths.set(
+            listOf(
+                "artifacts/samples/lobecorp.photon-00-empty.jsonl",
+                "artifacts/jfr/lobecorp.photon-00-empty.jfr",
+                "artifacts/custom/photon-00-empty-workload.json",
+                "artifacts/samples/lobecorp.photon-10-static-one.jsonl",
+                "artifacts/jfr/lobecorp.photon-10-static-one.jfr",
+                "artifacts/custom/photon-10-static-one-workload.json",
+                "artifacts/samples/lobecorp.photon-20-animated-one.jsonl",
+                "artifacts/jfr/lobecorp.photon-20-animated-one.jfr",
+                "artifacts/custom/photon-20-animated-one-workload.json",
+                "artifacts/samples/lobecorp.photon-30-static-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-30-static-sixteen.jfr",
+                "artifacts/custom/photon-30-static-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-40-animated-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-40-animated-sixteen.jfr",
+                "artifacts/custom/photon-40-animated-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-50-cold-sixteen.jsonl",
+                "artifacts/jfr/lobecorp.photon-50-cold-sixteen.jfr",
+                "artifacts/custom/photon-50-cold-sixteen-workload.json",
+                "artifacts/samples/lobecorp.photon-60-static-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-60-static-repeat.jfr",
+                "artifacts/custom/photon-60-static-repeat-workload.json",
+                "artifacts/samples/lobecorp.photon-70-empty-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-70-empty-repeat.jfr",
+                "artifacts/custom/photon-70-empty-repeat-workload.json",
+                "artifacts/samples/lobecorp.photon-80-static-thirtytwo.jsonl",
+                "artifacts/jfr/lobecorp.photon-80-static-thirtytwo.jfr",
+                "artifacts/custom/photon-80-static-thirtytwo-workload.json",
+                "artifacts/custom/photon-80-static-thirtytwo-frames.json",
+                "artifacts/samples/lobecorp.photon-90-animated-thirtytwo.jsonl",
+                "artifacts/jfr/lobecorp.photon-90-animated-thirtytwo.jfr",
+                "artifacts/custom/photon-90-animated-thirtytwo-workload.json",
+                "artifacts/custom/photon-90-animated-thirtytwo-frames.json",
+                "artifacts/samples/lobecorp.photon-91-mixed-thirtytwo-laser.jsonl",
+                "artifacts/jfr/lobecorp.photon-91-mixed-thirtytwo-laser.jfr",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-workload.json",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-frames.json",
+                "artifacts/custom/photon-91-mixed-thirtytwo-laser-beam.png",
+                "artifacts/samples/lobecorp.photon-92-mixed-sixtyfour-four-lasers.jsonl",
+                "artifacts/jfr/lobecorp.photon-92-mixed-sixtyfour-four-lasers.jfr",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-workload.json",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-frames.json",
+                "artifacts/custom/photon-92-mixed-sixtyfour-four-lasers-beam.png",
+                "artifacts/samples/lobecorp.photon-99-empty-extreme-repeat.jsonl",
+                "artifacts/jfr/lobecorp.photon-99-empty-extreme-repeat.jfr",
+                "artifacts/custom/photon-99-empty-extreme-repeat-workload.json",
+                "artifacts/custom/photon-99-empty-extreme-repeat-frames.json"
+            )
+        )
+    } else {
+        expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
+        expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
+        expectedArtifactPaths.set(
+            listOf(
+                "artifacts/samples/lobecorp.sweeper-render.jsonl",
+                "artifacts/jfr/lobecorp.sweeper-render.jfr",
+                "artifacts/screenshots/sweeper-render.png"
+            )
+        )
+    }
+}
+
+if (photonBenchEnabled.get()) {
+    val photonShader = layout.projectDirectory.file("run/client/shaderpacks/ComplementaryReimagined_r5.9.3.zip")
+    val photonShaderEnabled = providers.gradleProperty("photonShader").map(String::toBoolean).orElse(true)
+    val photonSparkBackground = providers.gradleProperty("photonSpark").map(String::toBoolean).orElse(true)
+    val photonBenchDirectory = layout.buildDirectory.dir("modBench/runs/default/client")
+    tasks.named("prepareBenchClientOptions") {
+        inputs.file(photonShader)
+        inputs.property("photonShaderEnabled", photonShaderEnabled)
+        inputs.property("photonSparkBackground", photonSparkBackground)
+        doLast {
+            val directory = photonBenchDirectory.get().asFile
+            val shaderDirectory = directory.resolve("shaderpacks")
+            shaderDirectory.mkdirs()
+            photonShader.asFile.copyTo(shaderDirectory.resolve(photonShader.asFile.name), overwrite = true)
+            directory.resolve("config").mkdirs()
+            val shaderEnabled = photonShaderEnabled.get()
+            directory.resolve("config/iris.properties").writeText(
+                "enableShaders=" + shaderEnabled + "\nshaderPack=" +
+                        (if (shaderEnabled) photonShader.asFile.name else "") + "\n"
+            )
+            val sparkDirectory = directory.resolve("config/spark")
+            sparkDirectory.mkdirs()
+            val configuration = sparkDirectory.resolve("config.json")
+            val text = if (configuration.exists()) configuration.readText() else "{}"
+            val values = groovy.json.JsonSlurper().parseText(text) as Map<*, *>
+            val updated = values.entries.associate { it.key.toString() to it.value }.toMutableMap()
+            updated["backgroundProfiler"] = photonSparkBackground.get()
+            configuration.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(updated)))
+        }
     }
 }
 
@@ -406,6 +574,29 @@ val projectSettings = (idea.project as ExtensionAware).extensions.getByType<Proj
     runConfigurations.create("Minecraft MCP Artifact Check", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
         taskNames = listOf("compileJava", "prepareClientRun", "checkMinecraftMcpBridge", "probeBridge")
+    }
+    runConfigurations.create("Photon Bench Debug", Application::class.java).apply {
+        mainClass = "net.neoforged.devlaunch.Main"
+        moduleRef(project, photonBenchClient)
+        workingDirectory =
+            layout.buildDirectory.dir("modBench/runs/default/client").get().asFile.invariantSeparatorsPath
+        programParameters = "@" + layout.buildDirectory.file("moddev/benchClientRunProgramArgs.txt")
+            .get().asFile.invariantSeparatorsPath
+        val folders = (sourceSets.main.get().output.files + sourceSets["bench"].output.files)
+            .joinToString(";") { "$modId%%${it.invariantSeparatorsPath}" }
+        jvmArgs =
+            "@" + layout.buildDirectory.file("moddev/benchClientRunVmArgs.txt").get().asFile.invariantSeparatorsPath +
+                    " -Dfml.modFolders=$folders"
+    }
+    runConfigurations.create("BenchMod Photon Prepare", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf("benchClasses", "prepareBenchClientRun", "prepareBenchClientOptions")
+        scriptParameters = "-PphotonBench=true"
+    }
+    runConfigurations.create("BenchMod Photon", Gradle::class.java).apply {
+        projectPath = rootDir.absolutePath
+        taskNames = listOf("verifyBenchClient")
+        scriptParameters = "-PphotonBench=true"
     }
     runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath

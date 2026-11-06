@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.photon.model;
 
+import com.lowdragmc.photon.client.fx.PreloadContext;
 import com.lowdragmc.lowdraglib2.configurator.ConfiguratorParser;
 import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
@@ -33,10 +34,14 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
+import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil.NormalCache;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
+import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
+import org.unitego.lobecorp.util.photon.creation.PhotonFrozenTag;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
@@ -45,35 +50,50 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.M
 import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.UncheckedIOException;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /// 独立模型输出复用Photon生命周期与原生材质批次；绘制回调只消费准备后的数据。
 @ParametersAreNonnullByDefault
 public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
+	public interface PreparedSource extends Supplier<PhotonModelTopologyUtil.Prepared> {
+		boolean matches(PhotonModelOutputConfig current);
+
+		/// 静态程序可共享，每个输出仍须独立创建工作区。
+		default PhotonModelPoseSampler sampler() throws IOException {
+			return new PhotonModelPoseSampler(get());
+		}
+	}
+
 	@Persisted(subPersisted = true)
-	public final PhotonModelOutputConfig config = new PhotonModelOutputConfig();
-	private final RendererSetting.Runtime modelRenderer = new RendererSetting.Runtime(config.modelRenderer) {
-	};
-	private final RendererSetting.Runtime overrideRenderer = new RendererSetting.Runtime(config.renderer) {
-	};
+	public final PhotonModelOutputConfig config;
+	private final RendererSetting.Runtime modelRenderer;
+	private final RendererSetting.Runtime overrideRenderer;
+	private @Nullable Supplier<PhotonModelTopologyUtil.Prepared> compiledSupplier;
 	private final PhotonModelClock clock = new PhotonModelClock();
+	private final NormalCache normalCache = new NormalCache();
+	private final PhotonModelPoseBuffer poseBuffer = new PhotonModelPoseBuffer();
+	private @Nullable PhotonModelPoseSampler.Workspace poseWorkspace;
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
 	private final Map<Object, PhotonModelClip.Sample> playback = new LinkedHashMap<>();
+	private @Nullable PhotonModelClip.Sample playbackSelection;
 	private static final Comparator<PhotonModelClip.Sample> PLAYBACK_ORDER = Comparator.comparingInt(PhotonModelClip.Sample::priority)
 			.thenComparingLong(PhotonModelClip.Sample::order);
 	private static final String SAMPLE_FAILURE_OPERATION = "采样";
 	private CompoundTag original = new CompoundTag();
+	private @Nullable PhotonFrozenTag compiledOriginal;
 	private @Nullable PhotonModelPoseSampler sampler;
 	private @Nullable PhotonModelMaterials materials;
 	private @Nullable PhotonModelBindings dynamic;
 	private @Nullable PhotonModelPoseSampler.Input sampledInput;
-	private @Nullable PhotonModelPoseSampler.Frame frame;
+	private @Nullable PhotonModelPoseSampler.Frame publicFrame;
+	private @Nullable PhotonModelClock.Settings settingsSnapshot;
 	private List<Integer> groupOrder = List.of();
 	private final PhotonModelFailureState failures = new PhotonModelFailureState();
 	private boolean preparedOverride;
@@ -81,6 +101,16 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	private boolean preserveParticles;
 
 	public PhotonModelOutput() {
+		this(new PhotonModelOutputConfig(), null);
+	}
+
+	public PhotonModelOutput(PhotonModelOutputConfig config, @Nullable Supplier<PhotonModelTopologyUtil.Prepared> prepared) {
+		this.config = Objects.requireNonNull(config);
+		compiledSupplier = prepared;
+		modelRenderer = new RendererSetting.Runtime(config.modelRenderer) {
+		};
+		overrideRenderer = new RendererSetting.Runtime(config.renderer) {
+		};
 		bind("enabled", () -> config.enabled);
 		bind("duration", () -> config.duration);
 		bind("startDelay", () -> config.startDelay);
@@ -125,11 +155,12 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public boolean supportsAnimation(String id) {
-		return !id.isEmpty() && sampler != null && definition().clips().stream().anyMatch(clip -> clip.id().equals(id));
+		return !id.isEmpty() && sampler != null && sampler.clip(id) != null;
 	}
 
 	public float animationDuration(String id) {
-		return definition().clips().stream().filter(clip -> clip.id().equals(id)).findFirst().orElseThrow().duration();
+		var clip = sampler == null ? null : sampler.clip(id);
+		return Objects.requireNonNull(clip, "模型动画片段不存在：" + id).duration();
 	}
 
 	public void playback(Object owner, @Nullable PhotonModelClip.Sample sample) {
@@ -142,6 +173,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 			playback.put(owner, sample);
 		}
+
+		playbackSelection = playback.values().stream().max(PLAYBACK_ORDER).orElse(null);
 	}
 
 	private <T> T value(String path, Class<T> type) {
@@ -158,9 +191,15 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private PhotonModelClock.Settings settings() {
-		return new PhotonModelClock.Settings(value("enabled", Boolean.class), value("paused", Boolean.class),
+		var current = new PhotonModelClock.Settings(value("enabled", Boolean.class), value("paused", Boolean.class),
 				value("looping", Boolean.class), getLifetime(), getStartDelay(),
 				nonnegative(value("playbackSpeed", Float.class), 1));
+
+		if (!current.equals(settingsSnapshot)) {
+			settingsSnapshot = current;
+		}
+
+		return settingsSnapshot;
 	}
 
 	private static float nonnegative(float value, float fallback) {
@@ -168,29 +207,59 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public void rememberSource(CompoundTag tag) {
+		compiledOriginal = null;
 		original = tag.copy();
 	}
 
+	/// 冻结来源由定义持有，实例保存时才复制；编辑来源时通过 rememberSource 脱离共享。
+	public void compiledSource(PhotonFrozenTag source) {
+		compiledOriginal = Objects.requireNonNull(source);
+		original = new CompoundTag();
+	}
+
 	public CompoundTag source() {
-		return original.copy();
+		return compiledOriginal == null ? original.copy() : compiledOriginal.compoundCopy();
+	}
+
+	public PhotonFrozenTag compileSource() {
+		if (compiledOriginal == null) {
+			compiledOriginal = new PhotonFrozenTag(original);
+			original = new CompoundTag();
+		}
+
+		return compiledOriginal;
+	}
+
+	/// 只替换未接线节点的准备来源，不加载资源或推进播放。
+	public void compiledPreparation(@Nullable Supplier<PhotonModelTopologyUtil.Prepared> prepared) {
+		compiledSupplier = prepared;
+		materials = null;
+		sampler = null;
+		dynamic = null;
+		sampledInput = null;
+		settingsSnapshot = null;
+		playbackSelection = null;
+		closeWorkspace();
+		publicFrame = null;
+		poseBuffer.clear();
 	}
 
 	public void prepare() throws IOException {
-		if (sampler == null) {
-			var definition = loadDefinition();
-			var topology = PhotonModelTopologyUtil.prepare(definition);
-			sampler = new PhotonModelPoseSampler(topology);
-			var order = new ArrayList<Integer>();
-
-			for (int index = 0; index < topology.groups().size(); index++) {
-				order.add(index);
+		if (compiledSupplier instanceof PreparedSource source && !source.matches(config)) {
+			compiledPreparation(null);
 			}
-
-			order.sort(Comparator.comparing(index -> {
-				var material = definition.materials().get(topology.groups().get(index).material());
-				return material != null && material.overlay();
-			}));
-			groupOrder = List.copyOf(order);
+		if (sampler == null) {
+			try {
+				sampler = compiledSupplier == null ? PhotonModelSourceUtil.prepare(config)
+						: compiledSupplier instanceof PreparedSource source ? source.sampler()
+						: new PhotonModelPoseSampler(compiledSupplier.get());
+			} catch (UncheckedIOException invalid) {
+				throw invalid.getCause();
+			}
+			var topology = sampler.prepared();
+			groupOrder = topology.groupOrder();
+			closeWorkspace();
+			poseWorkspace = sampler.newWorkspace();
 		}
 
 		if (dynamic == null) {
@@ -206,8 +275,65 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		failures.clear();
 	}
 
-	private PhotonModelDefinition loadDefinition() throws IOException {
-		return PhotonModelSourceUtil.load(config).definition();
+	/// 接入原生预加载：按模型实际分组准备材质、纹理和CPU管线，不生成运行时间线。
+	@Override
+	public void preload(PreloadContext context) {
+		context.onRenderThread(() -> {
+			try {
+				prepare();
+			} catch (IOException invalid) {
+				throw new IllegalStateException("模型预加载失败：" + getName(), invalid);
+			}
+
+			for (int group : groupOrder) {
+				var renderer = materials.group(group);
+				preloadGroup(context, renderer, geometryMode(), null, true, false,
+						renderer.isWriteCustomMask() || context.isAnimated(this, "renderer.writeCustomMask"));
+			}
+		});
+	}
+
+	/// 预热渲染侧：准备模型资源并预构建其材质渲染类型；不发射、不推进时间线。
+	public int prewarmRenderTypes() {
+		try {
+			prepare();
+		} catch (IOException invalid) {
+			Photon.LOGGER.warn("模型渲染预热准备失败：{}", getName(), invalid);
+			return 0;
+		}
+
+		if (materials == null) {
+			return 0;
+		}
+
+		int built = 0;
+
+		for (int group : groupOrder) {
+			built += PhotonRenderPrewarm.prebuild(materials.group(group), geometryMode());
+		}
+
+		return built;
+	}
+
+	/// 队列的模型准备任务：只准备并逐组登记材质，实际获取留给后续独立任务。
+	public void queuePrewarmRenderTypes(PhotonRenderPrewarm.Queue queue, BooleanSupplier alive) {
+		try {
+			prepare();
+		} catch (IOException invalid) {
+			throw new IllegalStateException("模型渲染预热准备失败：" + getName(), invalid);
+		}
+
+		if (materials == null) {
+			return;
+		}
+
+		for (int group : groupOrder) {
+			try {
+				queue.addMaterials(alive, materials.group(group), geometryMode());
+			} catch (RuntimeException invalid) {
+				Photon.LOGGER.warn("模型材质组预热登记失败：{} / {}", getName(), group, invalid);
+			}
+		}
 	}
 
 	private PhotonModelDefinition definition() {
@@ -216,6 +342,11 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 
 		return sampler.prepared().definition();
+	}
+
+	@Override
+	public IFXObject deepCopy() {
+		return PhotonModelRuntimeCopyUtil.deepCopy(this);
 	}
 
 	@Override
@@ -235,11 +366,17 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		modelRenderer.clear();
 		overrideRenderer.clear();
 		playback.clear();
+		playbackSelection = null;
+		settingsSnapshot = null;
 		sampledInput = null;
-		frame = null;
+		publicFrame = null;
+		poseBuffer.clear();
 
 		try {
 			prepare();
+			if (poseWorkspace == null && sampler != null) {
+				poseWorkspace = sampler.newWorkspace();
+			}
 			clock.reset(settings(), preserveParticles);
 		} catch (IOException | RuntimeException error) {
 			failPreparation("重置", error);
@@ -272,9 +409,13 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		clock.stop(settings(), force);
 
 		if (force) {
-			frame = null;
+			closeWorkspace();
 			sampledInput = null;
+			publicFrame = null;
 			playback.clear();
+			playbackSelection = null;
+			settingsSnapshot = null;
+			poseBuffer.clear();
 		}
 	}
 
@@ -301,8 +442,9 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	@Override
 	public void lobecorp$clearParticles() {
 		clock.clear();
-		frame = null;
 		sampledInput = null;
+		publicFrame = null;
+		poseBuffer.clear();
 	}
 
 	@Override
@@ -335,7 +477,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	public @Nullable PhotonModelPoseSampler.Frame sampledFrame() {
-		return frame;
+		return publicFrame;
 	}
 
 	@Override
@@ -351,19 +493,47 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 
 	/// 运行属性读取属于客户端线程；返回的不可变局部帧可交给多个视图消费。
 	public @Nullable PhotonModelPoseSampler.Frame sampleLocal(float partialTicks) {
+		var sampled = sampleLocalPose(partialTicks);
+		return sampled == null ? null : publicFrame();
+	}
+
+	private @Nullable PhotonModelPoseSampler.Frame publicFrame() {
+		if (!poseBuffer.complete()) {
+			return null;
+		}
+
+		if (publicFrame == null) {
+			publicFrame = poseBuffer.frame();
+			poseBuffer.invalidateFrameSnapshot();
+		}
+
+		return publicFrame;
+	}
+
+	private @Nullable PhotonModelPoseBuffer sampleLocalPose(float partialTicks) {
+		if (getParticleAmount() == 0 || sampler == null) {
+			return null;
+		}
+
+		if (poseWorkspace == null) {
+			closeWorkspace();
+			poseWorkspace = sampler.newWorkspace();
+		}
+
 		long scope = PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)
 				? PhotonPerformanceTraceUtil.begin(Stage.MODEL_SAMPLE, PhotonPerformanceOwnerUtil.object(this)) : 0;
 		boolean completed = false;
 
 		try {
-			var sampled = sampleLocalFrame(partialTicks);
+			var sampled = evaluateLocalPose(partialTicks);
+			completed = sampled != null;
 
 			if (sampled != null) {
 				failures.clear(SAMPLE_FAILURE_OPERATION);
 			}
-			completed = true;
+
 			return sampled;
-		} catch (IllegalArgumentException invalid) {
+		} catch (IllegalArgumentException | IllegalStateException invalid) {
 			failSampling(invalid);
 			return null;
 		} finally {
@@ -371,8 +541,10 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		}
 	}
 
-	private @Nullable PhotonModelPoseSampler.Frame sampleLocalFrame(float partialTicks) {
-		if (getParticleAmount() == 0 || sampler == null) {
+	private @Nullable PhotonModelPoseBuffer evaluateLocalPose(float partialTicks) {
+		var sampler = this.sampler;
+
+		if (sampler == null || poseWorkspace == null) {
 			return null;
 		}
 
@@ -382,12 +554,17 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		boolean loop = isLooping();
 		float time = clipId.isEmpty() ? 0 : clock.animationTime(partialTicks, nonnegative(timeScale(), 1), settings())
 				+ value("animationOffset", Float.class);
-		var selected = playback.values().stream().max(PLAYBACK_ORDER).orElse(null);
+		var selected = playbackSelection;
 
 		if (selected != null) {
 			clipId = selected.animation();
 			loop = selected.effectiveLoop();
-			var clip = definition().clips().stream().filter(candidate -> candidate.id().equals(selected.animation())).findFirst().orElseThrow();
+			var clip = sampler.clip(selected.animation());
+
+			if (clip == null) {
+				throw new IllegalArgumentException("模型片段不存在：" + selected.animation());
+			}
+
 			time = selected.assetTime(clip.duration(), clip.loop());
 		}
 
@@ -395,29 +572,45 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 				nonnegative(value("length", Float.class), definition().referenceLength()),
 				nonnegative(value("width", Float.class), definition().referenceWidth()), config.anchor,
 				Math.clamp(nonnegative(value("opacity", Float.class), 1), 0, 1), bindings.morphWeights(),
-				bindings.partOverrides(this, getT(partialTicks)));
+				bindings.partOverrides(this, getT(partialTicks)), bindings.boneOverrides(this, getT(partialTicks)));
 
 		if (!input.equals(sampledInput)) {
-			var computed = sampler.sample(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE));
-			frame = computed;
+			try {
+				sampler.sampleInto(input, measure || PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE), poseWorkspace, poseBuffer);
+			} catch (RuntimeException failure) {
+				poseBuffer.failCandidate();
+				sampledInput = null;
+				throw failure;
+			}
+
+			if (!poseBuffer.complete()) {
+				poseBuffer.failCandidate();
+				sampledInput = null;
+				return null;
+			}
+
 			sampledInput = input;
+			publicFrame = null;
 
 			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
 				PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_MISS, 1);
 			}
 
-			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE) && computed.timings() != null) {
+			var timings = poseBuffer.timings();
+
+			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_POSE) && timings != null) {
 				int node = PhotonPerformanceOwnerUtil.object(this);
-				var timings = computed.timings();
 				phase(node, "curves", timings.curvesNanos());
 				phase(node, "deformation", timings.deformationNanos());
 				phase(node, "normals_frame", timings.normalsNanos());
 			}
-		} else if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
+		} else {
+			if (PhotonPerformanceTraceUtil.enabled(Stage.MODEL_SAMPLE)) {
 			PhotonPerformanceTraceUtil.counter(PhotonPerformanceOwnerUtil.object(this), Metric.CACHE_HIT, 1);
 		}
+		}
 
-		return frame;
+		return poseBuffer;
 	}
 
 	private static void phase(int parent, String name, long nanos) {
@@ -432,7 +625,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			return;
 		}
 
-		var sampled = sampleLocal(partialTicks);
+		var sampled = sampleLocalPose(partialTicks);
 
 		if (sampled == null) {
 			return;
@@ -450,7 +643,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private void bakeModelGroup(PhotonViewSettings settings, List<PhotonWorldRenderState.DrawJob> out, Camera camera,
-	                            float partialTicks, PhotonModelPoseSampler.Frame sampled, int group,
+	                            float partialTicks, PhotonModelPoseBuffer sampled, int group,
 	                            Matrix4f world, int color, int light) {
 		var topology = sampled.prepared().groups().get(group);
 		var definition = sampled.prepared().definition();
@@ -475,7 +668,8 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		try {
 			bakeGroup(settings, out, camera, partialTicks, Objects.requireNonNull(materials).group(group), geometryMode(),
 					(output, _, _) -> {
-						int triangles = PhotonModelGeometryUtil.write(output, sampled, group, world, groupColor, light);
+						int triangles = PhotonModelGeometryUtil.writePrimitive(output, sampled, group, world,
+								groupColor, light, normalCache);
 
 						if (owner != 0) {
 							PhotonPerformanceTraceUtil.counter(owner, Metric.VERTICES, triangles * 4L);
@@ -530,7 +724,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 		clock.clear();
 	}
 
-	private void failSampling(IllegalArgumentException error) {
+	private void failSampling(RuntimeException error) {
 		reportFailure(SAMPLE_FAILURE_OPERATION, error);
 	}
 
@@ -541,12 +735,17 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	}
 
 	private void invalidate() {
+		compiledSupplier = null;
 		materials = null;
 		sampler = null;
 		dynamic = null;
 		playback.clear();
+		playbackSelection = null;
+		settingsSnapshot = null;
 		sampledInput = null;
-		frame = null;
+		publicFrame = null;
+		closeWorkspace();
+		poseBuffer.clear();
 
 		try {
 			prepare();
@@ -559,7 +758,25 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	public IFXObject shallowCopy() {
 		var copied = (PhotonModelOutput) deepCopy();
 		copied.sampler = sampler;
-		copied.groupOrder = groupOrder;
+		copied.groupOrder = List.copyOf(groupOrder);
+		copied.closeWorkspace();
+		copied.publicFrame = null;
+		copied.sampledInput = null;
+		copied.poseBuffer.clear();
+		if (copied.sampler != null) {
+			copied.poseWorkspace = copied.sampler.newWorkspace();
+		}
 		return copied;
+	}
+
+	private void closeWorkspace() {
+		if (poseWorkspace != null) {
+			try {
+				poseWorkspace.close();
+			} catch (IllegalStateException busy) {
+				// 销毁顺序由客户端生命周期保证；忙时不能清掉仍在求值的私有 scratch。
+			}
+			poseWorkspace = null;
+		}
 	}
 }

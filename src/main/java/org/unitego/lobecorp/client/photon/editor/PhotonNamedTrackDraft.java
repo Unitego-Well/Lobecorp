@@ -1,12 +1,15 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.timeline.Clip;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
 import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonTrackCopyUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 
@@ -19,12 +22,14 @@ import java.util.Map;
 /// 原生编辑器只接触独立轨道树；原始包装和片段按对象归属合并，排序不搬错未知字段。
 public class PhotonNamedTrackDraft {
 	private final Timeline timeline = new Timeline();
+	private final boolean projectTest;
 	private final Map<Track, CompoundTag> originalTracks = new IdentityHashMap<>();
 	private final Map<Clip, CompoundTag> originalClips = new IdentityHashMap<>();
 	private final Map<Clip, CompoundTag> clipBaselines = new IdentityHashMap<>();
 	private final Map<Track, CompoundTag> baselines = new IdentityHashMap<>();
 
-	public PhotonNamedTrackDraft(ListTag source) {
+	public PhotonNamedTrackDraft(ListTag source, boolean projectTest) {
+		this.projectTest = projectTest;
 		read(timeline.tracks(), source);
 	}
 
@@ -41,19 +46,45 @@ public class PhotonNamedTrackDraft {
 	}
 
 	private void read(List<Track> destination, ListTag source) {
+		PhotonTimelineDecodeUtil.checkTracks(source);
 		for (var raw : source) {
 			if (!(raw instanceof CompoundTag entry)) {
 				throw new IllegalArgumentException("制作轨道必须为复合标签。");
 			}
 
-			var track = Timeline.readTrack(Platform.getFrozenRegistry(), entry);
-			if (track == null) {
-				throw new IllegalArgumentException("制作轨道类型未注册：" + entry.getStringOr("type", ""));
-			}
-
+			PhotonEditorProjectGuardUtil.requireSupportedAuthoringTrack(entry, projectTest);
+			var track = readTrack(entry);
 			destination.add(track);
 			remember(track, entry);
 		}
+	}
+
+	private Track readTrack(CompoundTag entry) {
+		var type = PhotonRegistries.TIMELINE_TRACKS.get(entry.getStringOr("type", ""));
+		if (type == null) {
+			throw new IllegalArgumentException("制作轨道类型未注册：" + entry.getStringOr("type", ""));
+		}
+
+		var track = type.create();
+		var data = entry.getCompoundOrEmpty("data");
+		var known = data.copy();
+		if (track instanceof TrackGroup) {
+			known.remove("children");
+		}
+
+		// 草稿已按编辑目标校验；组内读取不能丢失工程测试调用轨道的作用域。
+		track.readData(Platform.getFrozenRegistry(), known);
+		if (track instanceof TrackGroup group) {
+			for (var raw : data.getListOrEmpty("children")) {
+				if (!(raw instanceof CompoundTag child)) {
+					throw new IllegalArgumentException("制作轨道必须为复合标签。");
+				}
+
+				group.children().add(readTrack(child));
+			}
+		}
+
+		return track;
 	}
 
 	private void remember(Track track, CompoundTag entry) {

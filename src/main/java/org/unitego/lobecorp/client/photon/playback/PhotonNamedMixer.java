@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
+
 /// 贡献先收集后按优先级/启动顺序统一应用；每个属性在一次提交中只有一个最终写入。
 public class PhotonNamedMixer {
 	public record Key(UUID target, String property) {
@@ -22,24 +24,40 @@ public class PhotonNamedMixer {
 
 	private static final Comparator<Layer> ORDER = Comparator.comparingInt(Layer::priority)
 			.thenComparingLong(Layer::order).thenComparingLong(Layer::sequence);
-	private final Map<Key, PhotonPropertyTarget> targets = new LinkedHashMap<>();
-	private final Map<Key, List<Layer>> layers = new LinkedHashMap<>();
+	private final Map<Key, TargetState> targetStates = new LinkedHashMap<>();
 	private long sequence;
+
+	private static final class TargetState {
+		private final PhotonPropertyTarget target;
+		private final List<Layer> layers = new ArrayList<>();
+		private final List<PhotonValueContribution> values = new ArrayList<>();
+		private boolean active;
+
+		private TargetState(PhotonPropertyTarget target) {
+			this.target = target;
+		}
+	}
 
 	/// 在原生时间轴求值前释放上一轮临时写入，随后才能读取该轮的新基础值。
 	public void begin() {
-		targets.values().forEach(PhotonPropertyTarget::release);
-		layers.clear();
+		targetStates.values().forEach(state -> state.target.release());
+
+		for (var state : targetStates.values()) {
+			state.layers.clear();
+			state.active = false;
+		}
+
 		sequence = 0;
 	}
 
 	public void add(FXObject target, AnimatedProperty property, double authoredTime, double authoredDuration, long loops, Binding binding,
 	                List<Float> sourceValues, List<Float> scales, List<Float> offsets, int priority, long order) {
 		var key = new Key(target.id(), property.type().key());
-		var resolved = targets.computeIfAbsent(key, _ -> new PhotonPropertyTarget(target, property.type()));
-		var sampled = resolved.sample(property, authoredTime);
-		List<Float> values = binding.source() == ValueSource.CURVE ? sampled.values() : sourceValues;
-		PhotonValueContribution.Function function = binding.source() == ValueSource.CURVE ? sampled.function() : null;
+		var state = targetStates.computeIfAbsent(key, _ -> new TargetState(new PhotonPropertyTarget(target, property.type())));
+		var resolved = state.target;
+		var sampled = binding.source() == ValueSource.CURVE ? resolved.sample(property, authoredTime) : null;
+		List<Float> values = sampled == null ? sourceValues : sampled.values();
+		PhotonValueContribution.Function function = sampled == null ? null : sampled.function();
 
 		if (binding.source() == ValueSource.CURVE && property.type().angular()) {
 			values = floats(property.sample(authoredTime));
@@ -55,7 +73,7 @@ public class PhotonNamedMixer {
 			var shifted = new ArrayList<Float>();
 
 			for (int axis = 0; axis < values.size(); axis++) {
-				float shift = (float) ((end[axis] - start[axis]) * loops);
+				float shift = (end[axis] - start[axis]) * loops;
 				shifts.add(shift);
 				shifted.add(values.get(axis) + shift);
 			}
@@ -69,7 +87,8 @@ public class PhotonNamedMixer {
 		}
 
 		var contribution = new PhotonValueContribution(binding.blend(), binding.component(), values, scales, offsets, function);
-		layers.computeIfAbsent(key, _ -> new ArrayList<>()).add(new Layer(priority, order, sequence++, contribution));
+		state.active = true;
+		state.layers.add(new Layer(priority, order, sequence++, contribution));
 	}
 
 	private static List<Float> floats(float[] values) {
@@ -83,15 +102,34 @@ public class PhotonNamedMixer {
 	}
 
 	public void commit() {
-		for (var entry : layers.entrySet()) {
-			var ordered = entry.getValue();
-			ordered.sort(ORDER);
-			targets.get(entry.getKey()).install(ordered.stream().map(Layer::value).toList());
+		for (var state : targetStates.values()) {
+			if (!state.active) {
+				continue;
+			}
+
+			state.layers.sort(ORDER);
+			state.values.clear();
+
+			for (var layer : state.layers) {
+				state.values.add(layer.value());
+			}
+
+			state.target.install(List.copyOf(state.values));
 		}
 	}
 
 	public void clear() {
 		begin();
-		targets.clear();
+		targetStates.clear();
 	}
+
+    public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+        var result = current;
+
+        for (var state : targetStates.values()) {
+            result = state.target.authoredPose(object, result);
+        }
+
+        return result;
+    }
 }

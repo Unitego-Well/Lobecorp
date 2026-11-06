@@ -29,6 +29,7 @@ public class LcServerAnimations {
 	private static final Map<ServerLevel, Boolean> CLEARING_LEVELS = new IdentityHashMap<>();
 	private static final Map<MinecraftServer, Boolean> CLEARING_SERVERS = new IdentityHashMap<>();
 	private final Map<UUID, LcAnimationInstance> instances = new LinkedHashMap<>();
+	private final Map<Entity, Map<UUID, LcAnimationInstance>> entityInstances = new IdentityHashMap<>();
 	private final Map<UUID, LcAnimationSnapshot> terminalSnapshots = new LinkedHashMap<>();
 
 	public static LcAnimationInstance play(Entity entity, Identifier definitionId) {
@@ -63,8 +64,10 @@ public class LcServerAnimations {
 		LcServerAnimations runtime = LEVELS.get(level);
 
 		if (runtime != null) {
-			new ArrayList<>(runtime.instances.values()).stream()
-					.filter(instance -> instance.sourceEntity() == entity).forEach(LcAnimationInstance::advance);
+			var owned = runtime.entityInstances.get(entity);
+			if (owned != null) {
+				new ArrayList<>(owned.values()).forEach(LcAnimationInstance::advance);
+			}
 		}
 	}
 
@@ -85,7 +88,13 @@ public class LcServerAnimations {
 				}
 			}
 		});
-		runtime.instances.values().removeIf(LcAnimationInstance::isStopped);
+		runtime.instances.values().removeIf(instance -> {
+			if (!instance.isStopped()) {
+				return false;
+			}
+			runtime.removeEntityInstance(instance);
+			return true;
+		});
 		runtime.terminalSnapshots.values().removeIf(snapshot -> terminalExpired(snapshot, level.getGameTime()));
 
 		if (runtime.instances.isEmpty() && runtime.terminalSnapshots.isEmpty()) {
@@ -130,9 +139,10 @@ public class LcServerAnimations {
 
 		if (runtime != null) {
 			runtime.terminalSnapshots.values().removeIf(snapshot -> snapshot.ownerEntityId() == entity.getId());
-			cleanAll(new ArrayList<>(runtime.instances.values()).stream()
-							.filter(instance -> instance.sourceEntity() == entity).toList(),
-					instance -> instance.stop(LcAnimationTermination.UNAVAILABLE));
+			var owned = runtime.entityInstances.get(entity);
+			if (owned != null) {
+				cleanAll(new ArrayList<>(owned.values()), instance -> instance.stop(LcAnimationTermination.UNAVAILABLE));
+			}
 		}
 	}
 
@@ -188,11 +198,16 @@ public class LcServerAnimations {
 
 		var runtime = LEVELS.computeIfAbsent(level, _ -> new LcServerAnimations());
 		runtime.instances.put(instance.id(), instance);
+		var entity = instance.sourceEntity();
+		if (entity != null) {
+			runtime.entityInstances.computeIfAbsent(entity, _ -> new LinkedHashMap<>()).put(instance.id(), instance);
+		}
 
 		try {
 			instance.startActions();
 		} catch (RuntimeException | Error exception) {
 			runtime.instances.remove(instance.id());
+			runtime.removeEntityInstance(instance);
 
 			try {
 				instance.stop();
@@ -205,6 +220,17 @@ public class LcServerAnimations {
 			}
 
 			throw exception;
+		}
+	}
+
+	private void removeEntityInstance(LcAnimationInstance instance) {
+		var entity = instance.sourceEntity();
+		var owned = entityInstances.get(entity);
+		if (owned != null) {
+			owned.remove(instance.id(), instance);
+			if (owned.isEmpty()) {
+				entityInstances.remove(entity);
+			}
 		}
 	}
 

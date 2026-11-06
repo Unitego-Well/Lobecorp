@@ -3,7 +3,6 @@ package org.unitego.lobecorp.client.photon.editor;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
@@ -15,7 +14,6 @@ import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import dev.vfyjxf.taffy.style.FlexWrap;
-import dev.vfyjxf.taffy.style.TaffyDimension;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
@@ -50,8 +48,6 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 	private @Nullable PhotonNamedRuntime playback;
 	private @Nullable PhotonNamedHandle previewHandle;
 	private @Nullable ListTag previewTracks;
-	private float viewportWidth = -1;
-	private float viewportHeight = -1;
 
 	public PhotonNamedTrackWorkspace(FXEditor editor, PhotonNamedAuthoringSession session, UUID definitionId, boolean projectTest) {
 		this.editor = editor;
@@ -62,11 +58,16 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		original = PhotonNamedTrackAuthoringUtil.definition(session.document(), definitionId, projectTest);
 		tracks = original.getListOrEmpty("tracks").copy();
 		context = new PhotonNamedTimelineContext(editor, rows, tracks, this::rebuild,
-				value -> tracks = value.copy(), this::refreshPreview);
+				value -> tracks = value.copy(), this::refreshPreview, projectTest);
 	}
 
 	public void show() {
-		var dialog = new Dialog().setTitle(projectTest ? PhotonProjectPreviewPanel.TITLE : PhotonNamedLibraryPanel.TITLE);
+		var dialog = new PhotonEditorDockedPanel(projectTest ? PhotonProjectPreviewPanel.TITLE : "photon.lobecorp.animation.timeline_panel", PhotonEditorDockedPanel.Slot.BOTTOM);
+		dialog.setId("named.timeline." + definitionId);
+		dialog.setName("named.timeline." + definitionId);
+		dialog.setDynamicName(() -> Component.translatable(projectTest ? PhotonProjectPreviewPanel.TITLE : "photon.lobecorp.animation.timeline_panel")
+				.append(Component.literal(" / " + original.getStringOr("name", ""))));
+		dialog.group(session, false);
 		dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
 		var toolbar = new UIElement().layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.ROW).flexWrap(FlexWrap.WRAP).gapAll(3));
 		toolbar.addChild(new TextElement().setText(Component.literal(original.getStringOr("name", "") + " / " + definitionId)));
@@ -112,7 +113,8 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		rows.layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.COLUMN).gapAll(3));
 		var scroll = new ScrollerView();
 		scroll.layout(layout -> layout.widthPercent(100));
-		fitToHost(dialog, scroll);
+		scroll.layout(layout -> layout.flex(1).minHeight(0));
+		scroll.scrollerStyle(style -> style.adaptiveHeight(false));
 		scroll.addScrollViewChild(rows);
 		dialog.addContent(scroll);
 		dialog.addContent(status);
@@ -135,10 +137,7 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 				event.stopPropagation();
 			}
 		});
-		dialog.addEventListener(UIEvents.TICK, _ -> attempt(() -> {
-			fitToHost(dialog, scroll);
-			context.pollRecording();
-		}, false));
+		dialog.addEventListener(UIEvents.TICK, _ -> attempt(context::pollRecording, false));
 		rebuild();
 		dialog.show(editor);
 	}
@@ -148,20 +147,6 @@ public class PhotonNamedTrackWorkspace implements AutoCloseable {
 		for (var track : context.draft().timeline().tracks()) {
 			row(track, 0);
 		}
-	}
-
-	private void fitToHost(Dialog dialog, ScrollerView scroll) {
-		float width = editor.getContentWidth();
-		float height = editor.getContentHeight();
-		if (width == viewportWidth && height == viewportHeight) {
-			return;
-		}
-
-		viewportWidth = width;
-		viewportHeight = height;
-		dialog.width(TaffyDimension.length(Math.clamp(width - 24, 1, 1000)));
-		// 给标题、换行工具栏、标尺、状态和确认按钮保留空间，滚动区域不挤掉操作入口。
-		scroll.layout(layout -> layout.height(Math.clamp(height - 160, 1, 400)));
 	}
 
 	private void row(Track track, int depth) {

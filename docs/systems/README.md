@@ -39,20 +39,23 @@
 | 指挥家 | [指挥家](conductor.md) |
 | 客户端 UI | [客户端 UI](client-ui.md) |
 | 玩家 HUD、滤镜与护盾 | [ImaginaryCraft 迁移、配置及护盾重写](player-hud-shields.md) |
-| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离) |
+| Photon 编辑器 | [独立入口、原生隔离与制作功能](photon-editor.md#入口与隔离)、[原始备份设计恢复与人工审查](photon-editor-design-restore-20261022.md)、[高级网格、光束衔接与G1续做](photon-workspace.md) |
 | 粒子与渲染 | [粒子与渲染](particle-rendering.md) |
 | 光影兼容研究 | EXIT 适用性、当前版本与后续调用（历史路径：`shader-compatibility-exit.md`；当前 dev 未保留） |
 | 动态视觉精细度 | [距离、负载、自动 LOD 与豁免](visual-quality.md) |
-| 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-plan.md) |
+| 特效移除 | [实施结果、保留能力与备份](photon-removal-result.md)、[原移除计划](photon-removal-result.md#历史移除方案与保留边界) |
 | 特效重写 | [当前需求与文件兼容契约](photon-rewrite-requirements.md) |
-| 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[当前性能静态审查与优化计划](photon-performance-audit.md) |
+| 特效重构交接 | **[2026-10-27 版当前入口](photon-effect-rewrite-handoff-20261027.md)**：本轮成果、阴性结论、恢复清单与下一步；[2026-10-26 版执行计划](photon-effect-rewrite-execution-plan-20261026.md)（R1～R6 框架与历史 A/B 数据） |
+| 模型特效重设计 | [功能、架构及现有资源直接可用硬性门槛](photon-model-redesign.md)、[Sodium 诊断、瓶颈推断、建议与历史审查](photon-performance-audit.md)、[极端场景优化计划](photon-extreme-optimization-plan-20261025.md)、[GPT 执行文档](photon-extreme-execution-gpt-20261025.md) |
 | 特效重设计实施 | [模型输出、命名制作事务、工程测试验收与G1未完成项](photon-redesign-progress.md)、[原始资源基线](photon-resource-baseline-20261019.json) |
+| G1全量资源验收 | [501条来源、逐文件往返、独立包运行与问题台账](photon-resource-acceptance-20261021.md) |
 | G1代码阶段 | [全部代码优先的编写范围、API/MCP和未验证边界](photon-g1-code-stage-20261021.md) |
 | 特效性能 | [检测工具与实施状态](photon-performance-tool.md)、优化、基线与采样（历史路径：`photon-performance.md`；当前 dev 未保留）、世界前后稳定性对比（历史路径：`photon-world-performance-comparison.md`；当前 dev 未保留）、逐对象检测与关键优化计划（历史路径：`photon-detailed-performance-plan.md`；当前 dev 未保留） |
 | 世界文本粒子 | [文本粒子](text-particles.md) |
 | 屏幕伤害粒子 | [屏幕伤害粒子](screen-damage-particles.md) |
 | Photon／LDLib2 修复 | [修复对照](photon-ldlib2-fixes.md) |
 | Photon 依赖升级 | [发布与适配](photon-dependency-upgrade.md) |
+| 实例创建架构 | [定义编译、受管租约、索引布局与原生默认](photon-runtime-creation.md) |
 | 发射器发射器 | [Photon 发射器发射器](photon-emitter-spawner.md) |
 | 命名粒子动画 | [Photon 命名动画](photon-named-animations.md) |
 | 模型特效 | [Photon 模型特效](photon-model-effects.md) |

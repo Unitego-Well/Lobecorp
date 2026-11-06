@@ -158,7 +158,7 @@ public class PhotonObjectClipboardUtil {
 			var selected = view.treeList.getSelected();
 			var father = selected.size() == 1 ? selected.iterator().next().getKey().transform().parent() : null;
 			var destination = father == null ? runtime.root.transform() : father;
-			view.fxEditor.historyView.pushHistory(Component.translatable("photon.copy_fx_object"), EditAction.of(() -> {
+			view.fxEditor.historyView.pushHistory(Component.translatable(PhotonEditorTextUtil.key("paste_system")), EditAction.of(() -> {
 				for (int i = 0; i < objects.size(); i++) {
 					objects.get(i).transform().parent(parents.get(i) < 0 ? destination : objects.get(parents.get(i)).transform(), false);
 					view.addSceneObject(objects.get(i));

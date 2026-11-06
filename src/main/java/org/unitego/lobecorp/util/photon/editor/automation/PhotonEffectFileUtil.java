@@ -19,12 +19,17 @@ import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.client.photon.model.project.PhotonExportDefinition;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelObjUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceJsonUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.CompoundTag;
+import com.lowdragmc.photon.client.fx.FXRuntime;
+
+import java.util.concurrent.Callable;
 
 import java.nio.charset.StandardCharsets;
 
@@ -36,6 +41,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
 
 public class PhotonEffectFileUtil {
 	public static List<Path> roots() {
@@ -43,12 +49,33 @@ public class PhotonEffectFileUtil {
 				FXPacks.getFxPacksDir().toPath().toAbsolutePath().normalize()));
 	}
 
-	/// 已写入临时文件、尚未发布的输出。
-	///
-	/// `commit` 将临时文件发布到目标；未发布时 `close` 删除临时文件。准备阶段的清理不会覆盖首个失败。
-	public record Prepared(Handle handle, Path target, Path temporary, boolean overwrite,
-	                       boolean projectSave, JsonObject exported) implements AutoCloseable {
+	public record Job(Callable<Prepared> work) {
+		public Prepared prepare() throws Exception {
+			return work.call();
+		}
+	}
+
+	public record Prepared(Handle handle, String revision, FXRuntime runtime, Path target, Path temporary,
+	                       boolean overwrite,
+	                       boolean projectSave, JsonObject exported,
+	                       CompoundTag expectedContainer) implements AutoCloseable {
 		public JsonObject commit() throws Exception {
+			var current = PhotonEffectProjectUtil.require(handle.id());
+			if (current.project() != handle.project() || current.editor() != handle.editor()) {
+				throw new PhotonEffectCommandException(Code.PROJECT_CLOSED);
+			}
+			if (!revision.equals(PhotonEffectProjectUtil.revision(current.project())) || current.editor().runtime != runtime) {
+				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
+			}
+			workspacePath(target.toString());
+			if (FXPacks.isFileLocked(target.toFile())) {
+				throw new PhotonEffectCommandException(Code.FILE_LOCKED);
+			}
+			if (projectSave) {
+				if (!expectedContainer.equals(PhotonEffectProjectUtil.container(current.project()))) {
+					throw new PhotonEffectCommandException(Code.REVISION_CONFLICT, "工程容器或元数据已发生变化。");
+				}
+			}
 			publish(temporary, target, overwrite);
 
 			if (!projectSave) {
@@ -72,31 +99,35 @@ public class PhotonEffectFileUtil {
 	}
 
 	/// 耗时编码只写本次临时文件，进入提交阶段后才发布到正式路径。
-	/// 编码、重读或验证失败时清理本次临时文件，清理异常作为首个失败的 suppressed 保留。
-	public static Prepared prepareSave(Handle handle, JsonObject request) throws Exception {
+	public static Job prepareSave(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
 		var target = destination(request, handle.project().getSuffix());
-		var copy = PhotonEffectProjectUtil.copy(handle.project());
+		var container = PhotonEffectProjectUtil.container(handle.project());
+		PhotonEffectProjectUtil.verifyContainer(handle.project(), container);
+		var revision = PhotonEffectProjectUtil.revision(handle.project());
+		var runtime = handle.editor().runtime;
+		boolean overwrite = PhotonEffectJsonUtil.bool(request, "overwrite", false);
+		var suffix = handle.project().getSuffix();
+		return new Job(() -> {
+			workspacePath(target.toString());
 		Files.createDirectories(target.getParent());
-		var temporary = temporary(target, handle.project().getSuffix());
-
+			var temporary = temporary(target, suffix);
 		try {
-			copy.getProjectType().saveProjectToFile(copy, temporary.toFile());
-			var reloaded = copy.getProjectType().loadProjectFromFile(temporary.toFile());
-
-			if (!PhotonEffectProjectUtil.snapshot(copy).equals(PhotonEffectProjectUtil.snapshot(reloaded))) {
-				throw new PhotonEffectCommandException(Code.INVALID_DATA);
+				NbtIo.write(container, temporary);
+				var document = PhotonResourceReader.read(temporary);
+				var actual = document.nbt();
+				if (!Objects.equals(container, actual)) {
+					throw new PhotonEffectCommandException(Code.INVALID_DATA, "完整工程容器磁盘往返不一致。");
 			}
-
-			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), true, new JsonObject());
+				return new Prepared(handle, revision, runtime, target, temporary, overwrite, true, new JsonObject(), container);
 		} catch (Exception | Error failure) {
 			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
+		});
 	}
 
-	/// 导出发布定义或 FXPack；准备失败清理临时文件，提交阶段才替换目标。
-	public static Prepared prepareExport(Handle handle, JsonObject request) throws Exception {
+	public static Job prepareExport(Handle handle, JsonObject request) throws Exception {
 		PhotonEffectEditUtil.validate(handle.project());
 		var kind = PhotonEffectJsonUtil.string(request, "kind");
 		if (kind.equals("obj") || kind.equals("json")) {
@@ -107,54 +138,61 @@ public class PhotonEffectFileUtil {
 			case "pack" -> true;
 			default -> throw new PhotonEffectCommandException(Code.INVALID_ARGUMENT, kind);
 		};
-		var suffix = handle.project() instanceof PhotonModelProject ? pack ? ".mfxpack" : ".mfx" : pack ? FXPacks.SUFFIX : FX.SUFFIX;
+		boolean modelDefinition = handle.project() instanceof PhotonModelProject;
+		var suffix = modelDefinition ? pack ? ".mfxpack" : ".mfx" : pack ? FXPacks.SUFFIX : FX.SUFFIX;
 		var target = destination(request, suffix);
-
 		if (pack && FXPacks.isFileLocked(target.toFile())) {
 			throw new PhotonEffectCommandException(Code.FILE_LOCKED);
 		}
-
 		var exportCopy = PhotonEffectProjectUtil.copy(handle.project());
 		var rawFx = exportCopy instanceof PhotonModelProject model ? model.exportFX().serializeNBT(Platform.getFrozenRegistry())
 				: PhotonEffectProjectUtil.snapshot(exportCopy).getCompoundOrEmpty("fx");
 		var fx = new PhotonExportDefinition(rawFx, Platform.getFrozenRegistry());
 		PhotonModelPackExportUtil.prepare(fx);
+		var name = target.getFileName().toString();
+		var archive = pack ? PhotonModelPackExportUtil.capture(Lobecorp.NAMESPACE,
+				name.substring(0, name.length() - suffix.length()), fx, Platform.getFrozenRegistry(), modelDefinition) : null;
+		var definition = fx.serializeNBT(Platform.getFrozenRegistry());
+		definition.putInt("version", FXProject.VERSION);
+		var revision = PhotonEffectProjectUtil.revision(handle.project());
+		var runtime = handle.editor().runtime;
+		boolean overwrite = PhotonEffectJsonUtil.bool(request, "overwrite", false);
+		return new Job(() -> {
+			workspacePath(target.toString());
 		Files.createDirectories(target.getParent());
 		var temporary = temporary(target, suffix);
-		var result = new JsonObject();
-		var warnings = new JsonArray();
-
 		try {
-			if (pack) {
+				var result = new JsonObject();
+				PhotonResourceDocument originalPack = null;
+				if (archive != null) {
 				if (Files.exists(target)) {
 					Files.copy(target, temporary);
+						originalPack = PhotonResourceReader.read(temporary);
 				}
-
-				var name = target.getFileName().toString();
-				var exported = PhotonModelPackExportUtil.export(temporary.toFile(), Lobecorp.NAMESPACE,
-						name.substring(0, name.length() - suffix.length()), fx, Platform.getFrozenRegistry(), handle.project() instanceof PhotonModelProject);
-				exported.warnings().forEach(warnings::add);
-				if (!exported.warnings().isEmpty()) {
-					throw new PhotonEffectCommandException(Code.INVALID_DATA, "包依赖未闭合：" + exported.warnings());
-				}
-				result.addProperty("fxId", exported.fxId().toString());
-				result.addProperty("fileCount", exported.fileCount());
+					archive.write(temporary);
+					result.addProperty("fxId", archive.fxId().toString());
 			} else {
-				var data = fx.serializeNBT(Platform.getFrozenRegistry());
-				data.putInt("version", FXProject.VERSION);
-				NbtIo.writeCompressed(data, temporary);
+					NbtIo.writeCompressed(definition, temporary);
+				}
+				var document = PhotonResourceReader.read(temporary);
+				var actual = document.nbt();
+				if (archive == null && (!Objects.equals(definition, actual))) {
+					throw new PhotonEffectCommandException(Code.INVALID_DATA, "完整定义磁盘往返不一致。");
+				}
+				if (archive != null) {
+					archive.verify(document, originalPack);
+					result.addProperty("fileCount", document.entries().size());
 			}
-
 			result.addProperty("projectId", handle.id());
 			result.addProperty("path", target.toString());
 			result.addProperty("kind", kind);
-			result.add("warnings", warnings);
-			PhotonResourceReader.read(temporary);
-			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
+				result.add("warnings", new JsonArray());
+				return new Prepared(handle, revision, runtime, target, temporary, overwrite, false, result, null);
 		} catch (Exception | Error failure) {
 			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
+		});
 	}
 
 	public static Path workspacePath(String value) throws IOException {
@@ -178,12 +216,17 @@ public class PhotonEffectFileUtil {
 		return target;
 	}
 
-	private static Prepared prepareModelExchange(Handle handle, JsonObject request, String kind) throws Exception {
+	private static Job prepareModelExchange(Handle handle, JsonObject request, String kind) throws Exception {
 		if (!(handle.project() instanceof PhotonModelProject model)) {
 			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, kind);
 		}
 		var target = destination(request, "." + kind);
 		var value = model.document().get("asset");
+		var revision = PhotonEffectProjectUtil.revision(handle.project());
+		var runtime = handle.editor().runtime;
+		boolean overwrite = PhotonEffectJsonUtil.bool(request, "overwrite", false);
+		boolean flipV = PhotonEffectJsonUtil.bool(request, "flipV", false);
+		return new Job(() -> {
 		byte[] bytes = switch (value) {
 			case ByteArrayTag array -> array.getAsByteArray();
 			case StringTag(var text) -> text.getBytes(StandardCharsets.UTF_8);
@@ -191,8 +234,9 @@ public class PhotonEffectFileUtil {
 		};
 		if (kind.equals("obj")) {
 			var asset = PhotonResourceJsonUtil.read(bytes, PhotonResourceLimits.DEFAULT).getAsJsonObject();
-			bytes = PhotonModelObjUtil.write(asset, PhotonEffectJsonUtil.bool(request, "flipV", false)).getBytes(StandardCharsets.UTF_8);
+				bytes = PhotonModelObjUtil.write(asset, flipV).getBytes(StandardCharsets.UTF_8);
 		}
+			workspacePath(target.toString());
 		Files.createDirectories(target.getParent());
 		var temporary = temporary(target, "." + kind);
 		try {
@@ -202,11 +246,12 @@ public class PhotonEffectFileUtil {
 			result.addProperty("kind", kind);
 			result.addProperty("path", target.toString());
 			result.addProperty("completeProjectBackup", false);
-			return new Prepared(handle, target, temporary, PhotonEffectJsonUtil.bool(request, "overwrite", false), false, result);
+				return new Prepared(handle, revision, runtime, target, temporary, overwrite, false, result, null);
 		} catch (Exception | Error failure) {
 			cleanupTemporary(temporary, failure);
 			throw failure;
 		}
+		});
 	}
 
 	public static Path source(JsonObject request, String suffix) throws IOException {
@@ -291,9 +336,10 @@ public class PhotonEffectFileUtil {
 	}
 
 	private static void publish(Path source, Path target, boolean overwrite) throws Exception {
+		workspacePath(target.toString());
 		PhotonEditorProjectGuardUtil.requireSupportedFile(target.toFile());
 		if (overwrite) {
-			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+			Files.move(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} else {
 			Files.move(source, target);
 		}

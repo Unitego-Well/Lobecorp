@@ -398,7 +398,7 @@ public class ConductorControls {
 	}
 
 	public static void clearSession() {
-		exit(Minecraft.getInstance());
+		clearSessionState();
 		ConductorHud.INSTANCE.setFocusedMember(null);
 		ConductorClient.reset();
 	}
@@ -497,6 +497,16 @@ public class ConductorControls {
 		if (active) {
 			syncView(minecraft, false);
 		}
+
+		clearSessionState();
+
+		if (minecraft.screen == null) {
+			minecraft.mouseHandler.grabMouse();
+		}
+	}
+
+	/// 卸载和注销只清理本地状态，不重新抓取鼠标或向已关闭连接发送消息。
+	private static void clearSessionState() {
 		active = false;
 		cancelFollowing();
 		lastClickedUnit = null;
@@ -513,10 +523,6 @@ public class ConductorControls {
 		ConductorHud.INSTANCE.resetLayout();
 		ConductorManualSkillControl.clear();
 		ConductorCamera.close();
-
-		if (minecraft.screen == null) {
-			minecraft.mouseHandler.grabMouse();
-		}
 	}
 
 	private static void clearCameraKeys() {
@@ -559,14 +565,14 @@ public class ConductorControls {
 			return;
 		}
 
-        if (event.getButton() == MOUSE_MIDDLE) {
-            handleMiddleMouse(event, minecraft);
-        } else if (event.getButton() == MOUSE_LEFT) {
-            handleLeftMouse(event, minecraft);
-        } else if (event.getButton() == MOUSE_RIGHT) {
-            handleRightMouse(event, minecraft);
-        } else {
-            event.setCanceled(true);
+		if (event.getButton() == MOUSE_MIDDLE) {
+			handleMiddleMouse(event, minecraft);
+		} else if (event.getButton() == MOUSE_LEFT) {
+			handleLeftMouse(event, minecraft);
+		} else if (event.getButton() == MOUSE_RIGHT) {
+			handleRightMouse(event, minecraft);
+		} else {
+			event.setCanceled(true);
 		}
 	}
 

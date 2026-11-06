@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Properties;
+import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
 
 public class LobecorpBenchConfig {
 	public static final String PROVIDER_ID = "lobecorp";
@@ -15,6 +16,16 @@ public class LobecorpBenchConfig {
 	public static final String SWEEPER30_AI_SCENARIO = "lobecorp.sweeper30-ai";
 	public static final String SWEEPER30_NOAI_SCENARIO = "lobecorp.sweeper30-noai";
 	public static final String CORPSE_RANDOM100_SCENARIO = "lobecorp.corpse-random100";
+	public static final String PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO = "lobecorp.photon-02-first-cast-performance";
+	public static final String PHOTON_CONTROL_FX_PROPERTY = "lobecorp.photon.bench.controlFx";
+	public static final String PHOTON_CONTROL_FX = PhotonRepeatedEffectConfig.NATIVE_FX;
+	public static final String PHOTON_CONTROL_LABEL = "photon-02-native-data-control";
+	public static final String PHOTON_REPEAT_PERFORMANCE_SCENARIO = PhotonRepeatedEffectConfig.SCENARIO;
+	public static final String PHOTON_CONTROL_FX_SHA256 = PhotonRepeatedEffectConfig.FX_SHA256;
+	public static final String PHOTON_CONTROL_MATERIAL_SHA256 = PhotonRepeatedEffectConfig.MATERIAL_SHA256;
+	public static final String PHOTON_CONTROL_TEXTURE_SHA256 = PhotonRepeatedEffectConfig.TEXTURE_SHA256;
+	public static final int PHOTON_CONTROL_WARMUP_TICKS = 100;
+	public static final int PHOTON_CONTROL_MEASURE_SECONDS = 20;
 	public static final int GRID_WIDTH = 8;
 	public static final int ENTITY_COUNT = GRID_WIDTH * GRID_WIDTH;
 	public static final int GRID_SPACING = 3;

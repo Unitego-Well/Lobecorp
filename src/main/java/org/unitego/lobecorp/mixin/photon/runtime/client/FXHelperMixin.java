@@ -5,10 +5,13 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
+import org.unitego.lobecorp.util.photon.PhotonFXResourceUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -28,11 +31,7 @@ public abstract class FXHelperMixin {
 			target = "Lcom/lowdragmc/photon/client/fx/FXHelper;fileLocation(Lnet/minecraft/resources/Identifier;)Lnet/minecraft/resources/Identifier;"))
 	private static Identifier lobecorp$modelDefinition(Identifier original) {
 		var manager = Minecraft.getInstance().getResourceManager();
-		if (manager.getResource(original).isPresent()) {
-			return original;
-		}
-		var path = original.getPath();
-		return Identifier.fromNamespaceAndPath(original.getNamespace(), path.substring(0, path.length() - 3) + ".mfx");
+		return PhotonFXResourceUtil.resolve(original, id -> manager.getResource(id).isPresent());
 	}
 
 	@ModifyReturnValue(method = "listAllFX", at = @At("RETURN"))
@@ -64,5 +63,15 @@ public abstract class FXHelperMixin {
 	@Inject(method = "clearCache", at = @At("HEAD"))
 	private static void lobecorp$clearModelIds(CallbackInfoReturnable<Integer> ci) {
 		lobecorp$modelIds = null;
+	}
+
+	@Inject(method = "invalidate", at = @At("HEAD"))
+	private static void lobecorp$clearModelIdsOnInvalidate(CallbackInfo ci) {
+		lobecorp$modelIds = null;
+	}
+
+	@Inject(method = "invalidate", at = @At("RETURN"))
+	private static void lobecorp$markOwnedEffectsDirty(CallbackInfo ci) {
+		PhotonOwnedEffectResources.markDeviceDirty();
 	}
 }

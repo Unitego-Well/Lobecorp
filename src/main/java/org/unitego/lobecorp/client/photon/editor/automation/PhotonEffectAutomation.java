@@ -27,7 +27,11 @@ import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -56,6 +60,14 @@ public class PhotonEffectAutomation {
 			}
 			""";
 
+	/// 单个后台文件任务和最多八个排队请求，避免大工程并发复制耗尽内存。
+	private static final ThreadPoolExecutor FILE_WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
+			new ArrayBlockingQueue<>(8), task -> {
+		var thread = new Thread(task, "photon-file-preparation");
+		thread.setDaemon(true);
+		return thread;
+	}, new ThreadPoolExecutor.AbortPolicy());
+
 	private enum Phase {
 		QUEUED, RUNNING, COMMITTING, CANCELLED, DONE
 	}
@@ -64,6 +76,10 @@ public class PhotonEffectAutomation {
 	@SuppressWarnings("UnnecessaryModifier")
 	private interface Action extends AutoCloseable {
 		public JsonObject run() throws Exception;
+
+		public default Callable<Action> background() {
+			return null;
+		}
 
 		@Override
 		public default void close() throws Exception {
@@ -94,36 +110,81 @@ public class PhotonEffectAutomation {
 			if (!phase.compareAndSet(Phase.QUEUED, Phase.RUNNING)) {
 				return;
 			}
-
-			Action action = null;
-
 			try {
 				checkControl();
-				action = prepare(command, arguments);
+				var action = prepare(command, arguments);
+				var background = action.background();
+				if (background == null) {
+					complete(action);
+				} else {
+					try {
+						FILE_WORKER.execute(() -> prepareBackground(action, background));
+					} catch (RuntimeException failure) {
+						closeAction(action);
+						throw failure;
+					}
+				}
+			} catch (Throwable failure) {
+				fail(failure);
+			}
+		}
 
+		private void prepareBackground(Action owner, Callable<Action> background) {
+			Action prepared = null;
+			try {
+				if (phase.get() != Phase.RUNNING) {
+					return;
+				}
+				prepared = background.call();
+				if (phase.get() != Phase.RUNNING) {
+					closeAction(prepared);
+					return;
+				}
+				var ready = prepared;
+				Minecraft.getInstance().execute(() -> complete(ready));
+			} catch (Throwable failure) {
+				closeAction(prepared);
+				fail(failure);
+			} finally {
+				closeAction(owner);
+			}
+		}
+
+		private void complete(Action action) {
+			try {
 				if (!phase.compareAndSet(Phase.RUNNING, Phase.COMMITTING)) {
 					return;
 				}
-
 				checkControl();
 				result.complete(PhotonEffectJsonUtil.success(action.run()));
-			} catch (IllegalArgumentException | IndexOutOfBoundsException | IllegalStateException failure) {
-				result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INVALID_ARGUMENT, String.valueOf(failure.getMessage()))));
-			} catch (Exception failure) {
-				result.complete(PhotonEffectJsonUtil.failure(failure));
-			} catch (Error failure) {
-				result.complete(PhotonEffectJsonUtil.failure(failure));
-				throw failure;
+			} catch (Throwable failure) {
+				fail(failure);
 			} finally {
-				if (action != null) {
-					try {
-						action.close();
-					} catch (Exception cleanupFailure) {
-						Lobecorp.LOGGER.error(cleanupFailure.getMessage(), cleanupFailure);
-					}
-				}
-
+				closeAction(action);
 				phase.set(Phase.DONE);
+			}
+		}
+
+		private void fail(Throwable failure) {
+			if (failure instanceof IllegalArgumentException || failure instanceof IndexOutOfBoundsException || failure instanceof IllegalStateException) {
+				result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INVALID_ARGUMENT, String.valueOf(failure.getMessage()))));
+			} else {
+				result.complete(PhotonEffectJsonUtil.failure(failure));
+			}
+			phase.set(Phase.DONE);
+			if (failure instanceof Error error) {
+				throw error;
+			}
+		}
+
+		private static void closeAction(Action action) {
+			if (action == null) {
+				return;
+			}
+			try {
+				action.close();
+			} catch (Exception cleanupFailure) {
+				Lobecorp.LOGGER.error(cleanupFailure.getMessage(), cleanupFailure);
 			}
 		}
 
@@ -143,6 +204,23 @@ public class PhotonEffectAutomation {
 		}
 	}
 
+	/// 手动编辑器操作沿用同一准备/提交管线，不阻塞客户端线程，也不借用远程接管权限。
+	public static void exportFromEditor(Handle handle, JsonObject arguments, Consumer<String> onFailure) {
+		if (!Minecraft.getInstance().isSameThread()) {
+			throw new IllegalStateException("编辑器导出必须从客户端线程发起。");
+		}
+		var request = arguments.deepCopy();
+		request.addProperty("projectId", handle.id());
+		var action = new Request("effect_export", request, false);
+		action.result.thenAccept(response -> {
+			if (!response.get("ok").getAsBoolean()) {
+				var error = response.getAsJsonObject("error").get("message").getAsString();
+				Minecraft.getInstance().execute(() -> onFailure.accept(error));
+			}
+		});
+		action.run();
+	}
+
 	public static JsonObject execute(String command, JsonObject arguments, boolean writes) {
 		if (arguments.toString().getBytes(StandardCharsets.UTF_8).length > MAX_REQUEST_BYTES) {
 			return PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INVALID_ARGUMENT));
@@ -152,8 +230,12 @@ public class PhotonEffectAutomation {
 		var minecraft = Minecraft.getInstance();
 
 		if (minecraft.isSameThread()) {
+			if (command.equals("effect_save") || command.equals("effect_export") || command.equals("effect_resource_audit")) {
+				return PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION,
+						"文件命令必须由MCP请求线程调用，客户端线程不能等待后台文件任务。"));
+			}
 			request.run();
-			return request.result.join();
+			return request.result.getNow(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INTERNAL_ERROR)));
 		}
 
 		minecraft.execute(request);
@@ -195,6 +277,10 @@ public class PhotonEffectAutomation {
 				var prepared = PhotonEffectProjectUtil.prepareOpen(request);
 				yield prepared::commit;
 			}
+			case "effect_close" -> {
+				var prepared = PhotonEffectProjectUtil.prepareClose(request);
+				yield prepared::commit;
+			}
 			case "effect_resources" -> {
 				var resources = PhotonEffectResourceUtil.list(request);
 				yield () -> resources;
@@ -218,10 +304,7 @@ public class PhotonEffectAutomation {
 				yield prepared::commit;
 			}
 			case "effect_preview" -> preview(handle(request), request);
-			case "effect_resource_audit" -> {
-				var report = PhotonEffectResourceAuditUtil.audit(request);
-				yield () -> report;
-			}
+			case "effect_resource_audit" -> backgroundValue(PhotonEffectResourceAuditUtil.prepare(request));
 			case "effect_animation_state" -> {
 				var state = PhotonEffectNamedUtil.state(handle(request), request.has("controllerId") ? PhotonEffectNamedUtil.uuid(request, "controllerId") : null);
 				yield () -> state;
@@ -245,6 +328,37 @@ public class PhotonEffectAutomation {
 			case "effect_export" -> fileAction(PhotonEffectFileUtil.prepareExport(handle(request), request));
 			case "effect_history" -> history(handle(request), request);
 			default -> throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, command);
+		};
+	}
+
+	private static Action backgroundValue(Callable<JsonObject> work) {
+		return new Action() {
+			@Override
+			public JsonObject run() {
+				throw new IllegalStateException("后台请求尚未完成准备。");
+			}
+
+			@Override
+			public Callable<Action> background() {
+				return () -> {
+					var result = work.call();
+					return () -> result;
+				};
+			}
+		};
+	}
+
+	private static Action fileAction(PhotonEffectFileUtil.Job job) {
+		return new Action() {
+			@Override
+			public JsonObject run() {
+				throw new IllegalStateException("文件任务尚未完成准备。");
+			}
+
+			@Override
+			public Callable<Action> background() {
+				return () -> fileAction(job.prepare());
+			}
 		};
 	}
 
@@ -331,6 +445,7 @@ public class PhotonEffectAutomation {
 	private static JsonObject capabilities() {
 		var result = new JsonObject();
 		result.addProperty("protocolVersion", 1);
+		result.addProperty("projectCloseAvailable", true);
 		result.add("operations", JsonParser.parseString(OPERATION_SCHEMA));
 		for (var key : List.of("set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer", "import_model_obj")) {
 			var operation = result.getAsJsonObject("operations").getAsJsonObject(key);

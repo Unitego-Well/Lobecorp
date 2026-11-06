@@ -1,5 +1,20 @@
 # Photon 命名动画与参数控制
 
+## 执行计划、事件顺序与贡献所有权（2026-11-02）
+
+冻结的命名定义将模型、信号及原生轨道等预分类为执行计划；播放项持有各自的时钟、句柄和动态状态。tick 的事件推进按播放插入顺序，属性采样/混合仍按 priority 与 order，不能以缓存排序列表替代事件顺序。主 Timeline 可被编辑，每次求值读取当前轨道，不以 Map/List 大小推断内容未变化。
+
+2026-11-03 的激活目标分组在同一事件契约下只改变单次求值的遍历方式：`PhotonActivationTargetUtil.group` 按当前 `Track.mute()`、`ActivatorTrack.targetId()` 与 `ControlTrack` 每个 `clip.targetId()` 建立目标首次序的局部映射；每次 `collect` 重新分组，不跨 tick 缓存。同一 Track 在 leaves 重复出现时保留 occurrence；同一次 ControlTrack occurrence 内按目标去重。`collectTarget` 仍保留原 mute/target 条件、`hasControl`、`clipForObjectAt` 首匹配与 activation/signals/commit/reset 逻辑。父已实测 PhotonActivationTargetUtilTest 8/8、PhotonActivationStateTest 9/9、PhotonTrackCompatibilityTest 5/5，合计 22 项通过；Photon Global Compile 17s、Bench/生产包隔离成功；Data 21s，23 JSON written0/removed0 且前后 SHA256 无变化。测试只覆盖真实 Track/Clip 分组与既有 activation/兼容逻辑，不声称完整 FXRuntime 或游戏 gate 集成；未启动游戏、视觉或性能验收，660ms/P22/P23 不关闭。
+
+模型贡献由每个 owner 独占的 ContributionState 记录实际触及实例；下一次 apply 或 clear 先从旧实例清除该 owner，再解析当前 UUID 对象。相同 UUID 替换、目标移除或结束时不会遗留旧实例贡献，也不会清掉其他 owner。主 Timeline begin/stop 与 tick/frame 使用同一清理边界。相关真实客户端检查位于独立 global-contracts 场景；当前结果状态只见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)，不沿用下方历史验收。
+
+
+## 控制器复制契约（2026-10-30）
+
+确切PhotonNamedController的deepCopy使用有界类型复制：保留完整wrapper编码和PhotonNamedCodecUtil.read校验、旧definition替换与unknown/source语义，定义深拷贝而播放状态保持新建。子类继续原生工厂解析；不缓存可变定义快照，不跨实例共享playback、变换或覆盖槽。新旧复制、定义变更可见、返回Tag独立与真实FXData对照已在两个普通FULL的测量后通过；不据此宣称整体FPS、光影或完整视觉通过，参见[复制与预热检查](benchmod.md#2026-10-30-类型复制和材质粒度预热)。
+
+> 2026-10-23：当前实现为 [PhotonNamedRuntime](../../src/main/java/org/unitego/lobecorp/client/photon/playback/PhotonNamedRuntime.java) 与 [PhotonNamedAuthoringSession](../../src/main/java/org/unitego/lobecorp/client/photon/editor/PhotonNamedAuthoringSession.java)，制作、运行、子轨道及句柄边界见 [API 索引](photon-effect-mcp-api.md) 和 [当前能力](photon-workspace.md)。下文 animation 包、旧迁移工具、旧测试和旧界面说明属于历史；当前测试位于 client/photon/playback、util/photon/playback，未在本轮执行。预览隔离补丁未完成 F11／F12 原生复现，G1 未通过。
+
 > 2026-10-19 当前状态：本文描述的自建命名动画实现与专用界面已移除，原生时间轴与实体动画保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 
 2026-10-20恢复进度：新playback已接入受约束的工程测试调用API和工程专用字段保留，8份真实测试定义通过原树读取及原生ValueIO内存往返，工程调用世界内夹具通过。工具菜单新增工程测试面板，提供重启、指定tick定位和停止；这是读取既有测试定义的运行入口，不恢复下文历史命名动画制作工作区。完整旧工程往返、旧播放语义及G1仍未完成，实际检查见[重设计实施进度](photon-redesign-progress.md)。下文历史功能不据此全部恢复。

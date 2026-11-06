@@ -27,6 +27,8 @@ import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonPlaybackTagUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonSpawnConfigUtil;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.ByteTag;
@@ -39,6 +41,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.util.Set;
+import java.util.HashSet;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
@@ -195,6 +198,12 @@ public class PhotonEditorProjectGuardUtil {
 		}
 	}
 
+	public static void requireSupportedAuthoringTrack(CompoundTag track, boolean projectTest) {
+		if (requiresNamedTrackAdapter(track, 0, projectTest) || containsTag(track, 0, projectTest)) {
+			throw new IllegalArgumentException(message());
+		}
+	}
+
 	public static void requireSupported(Tag tag) {
 		if (containsTag(tag)) {
 			throw new IllegalArgumentException(message());
@@ -240,6 +249,10 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	private static boolean containsTag(@Nullable Tag tag, int depth) {
+		return containsTag(tag, depth, false);
+	}
+
+	private static boolean containsTag(@Nullable Tag tag, int depth, boolean projectTest) {
 		if (depth > MAX_DEPTH) {
 			throw new IllegalArgumentException(message());
 		}
@@ -255,15 +268,55 @@ public class PhotonEditorProjectGuardUtil {
 				}
 				try {
 					PhotonModelFileValidationUtil.emitterData(data);
-					return containsTag(data, depth + 1);
+					return containsTag(checkedRendererData(data, true, false), depth + 1);
 				} catch (IOException | RuntimeException invalid) {
 					return true;
 				}
 			}
+			if (Set.of("particle_emitter", "beam_emitter", "trail_emitter").contains(type)
+					&& compound.get("data") instanceof CompoundTag data) {
+				compound = compound.copy();
+				compound.put("data", checkedRendererData(data, false, type.equals("particle_emitter")));
+			}
 
+			if (Set.of("activator", "control", "animation", "speed", "signal", "audio", "post_process", "group").contains(type)
+					&& compound.get("data") instanceof CompoundTag nativeData) {
+				try {
+					PhotonPlaybackTagUtil.validateNativeTrack(nativeData);
+				} catch (IllegalArgumentException invalid) {
+					return true;
+				}
+			}
 			if (type.equals("activator") && compound.get("data") instanceof CompoundTag data
 					&& data.contains(PhotonActivationOptions.TAG)) {
 				return requiresActivationAdapter(compound, data, depth);
+			}
+			if (type.equals("lobecorp_child_animation") || type.equals("lobecorp_model_animation")
+					|| projectTest && type.equals("lobecorp_animation_call")) {
+				if (!(compound.get("data") instanceof CompoundTag data)) {
+					return true;
+				}
+				try {
+					if (type.equals("lobecorp_model_animation")) {
+						PhotonPlaybackTagUtil.validateModelTrack(data);
+					} else {
+						PhotonPlaybackTagUtil.validateChildTrack(data);
+					}
+					return containsTag(data, depth + 1, projectTest);
+				} catch (IllegalArgumentException invalid) {
+					return true;
+				}
+			}
+			if (type.equals("lobecorp_emitter_spawner")) {
+				if (!(compound.get("data") instanceof CompoundTag data)) {
+					return true;
+				}
+				try {
+					PhotonSpawnConfigUtil.validate(data);
+					return containsTag(data, depth + 1);
+				} catch (IllegalArgumentException invalid) {
+					return true;
+				}
 			}
 			if (PhotonResourceInspection.isLegacyType(type)) {
 				return true;
@@ -273,19 +326,107 @@ public class PhotonEditorProjectGuardUtil {
 				if (PhotonResourceInspection.isLegacyField(entry.getKey()) && PhotonInactiveLegacyFieldUtil.allowed(compound, entry.getKey(), entry.getValue())) {
 					continue;
 				}
-				if (PhotonResourceInspection.isLegacyField(entry.getKey()) || containsTag(entry.getValue(), depth + 1)) {
+				if (PhotonResourceInspection.isLegacyField(entry.getKey()) || containsTag(entry.getValue(), depth + 1, projectTest)) {
 					return true;
 				}
 			}
 		} else if (tag instanceof ListTag list) {
 			for (var child : list) {
-				if (containsTag(child, depth + 1)) {
+				if (containsTag(child, depth + 1, projectTest)) {
 					return true;
 				}
 			}
 		}
 
 		return false;
+	}
+
+	/// 只在已适配发射器的真实渲染槽中放行完整固定渲染组合。
+	private static CompoundTag checkedRendererData(CompoundTag data, boolean model, boolean particle) {
+		if (!(data.get("version") instanceof IntTag version) || version.intValue() != (model ? 0 : 2)) {
+			return data;
+		}
+
+		var checked = data.copy();
+		var config = checked.getCompoundOrEmpty("config");
+		for (var key : model ? new String[]{"renderer", "modelRenderer"} : new String[]{"renderer"}) {
+			if (!(config.get(key) instanceof CompoundTag renderer) || !supportedFixedRenderer(renderer)) {
+				continue;
+			}
+
+			renderer.remove("lobecorp$fixedRendering");
+			renderer.remove("lobecorp$viewDepthSort");
+			renderer.remove("lobecorp$occlusion");
+		}
+
+		if (particle) {
+			checkCycleModule(config, "rotationOverLifetime", "rotation", new String[]{"Roll", "Pitch", "Yaw"});
+			checkCycleModule(config, "sizeOverLifetime", "lifetime", new String[]{"X", "Y", "Z"});
+			checkCycleModule(config, "uvAnimation", "lifetime", new String[]{"UV"});
+		}
+
+		return checked;
+	}
+
+	/// 已实现的循环只匹配对应粒子模块，不借用相同字段名放行其他模块。
+	private static void checkCycleModule(CompoundTag config, String moduleName, String cycle, String[] axes) {
+		if (!(config.get(moduleName) instanceof CompoundTag module)
+				|| !strictBoolean(module.get("_enable"))
+				|| !strictBoolean(module.get("lobecorp$" + cycle + "CycleEnabled"))
+				|| !(module.get("lobecorp$" + cycle + "CycleTicks") instanceof IntTag ticks) || ticks.intValue() <= 0) {
+			return;
+		}
+
+		if (module.contains("enable") && (!strictBoolean(module.get("enable"))
+				|| module.getBooleanOr("enable", false) != module.getBooleanOr("_enable", false))) {
+			return;
+		}
+
+		var fields = new HashSet<String>();
+		fields.add("lobecorp$" + cycle + "CycleEnabled");
+		fields.add("lobecorp$" + cycle + "CycleTicks");
+		for (var axis : axes) {
+			fields.add("lobecorp$cycleOffset" + axis);
+		}
+		for (var key : module.keySet()) {
+			if (PhotonResourceInspection.isLegacyField(key) && !fields.contains(key)) {
+				return;
+			}
+		}
+
+		for (var axis : axes) {
+			if (!(module.get("lobecorp$cycleOffset" + axis) instanceof NumericTag value) || !Float.isFinite(value.floatValue())) {
+				return;
+			}
+		}
+
+		module.remove("lobecorp$" + cycle + "CycleEnabled");
+		module.remove("lobecorp$" + cycle + "CycleTicks");
+		for (var axis : axes) {
+			module.remove("lobecorp$cycleOffset" + axis);
+		}
+	}
+
+	private static boolean supportedFixedRenderer(CompoundTag renderer) {
+		if (!strictBoolean(renderer.get("lobecorp$fixedRendering"))
+				|| !strictBoolean(renderer.get("lobecorp$viewDepthSort"))
+				|| !(renderer.get("lobecorp$occlusion") instanceof CompoundTag occlusion)
+				|| !Set.of("enable", "_enable", "alphaCutoff").containsAll(occlusion.keySet())
+				|| !strictBoolean(occlusion.get("_enable"))) {
+			return false;
+		}
+
+		if (occlusion.contains("enable") && (!strictBoolean(occlusion.get("enable"))
+				|| occlusion.getBooleanOr("enable", false) != occlusion.getBooleanOr("_enable", false))) {
+			return false;
+		}
+
+		return occlusion.get("alphaCutoff") instanceof NumericTag cutoff && Double.isFinite(cutoff.doubleValue())
+				&& cutoff.doubleValue() >= 0 && cutoff.doubleValue() <= 1;
+	}
+
+	private static boolean strictBoolean(@Nullable Tag value) {
+		return value instanceof ByteTag number && (number.byteValue() == 0 || number.byteValue() == 1);
 	}
 
 	private static boolean requiresModelProject(@Nullable CompoundTag project) {
@@ -332,6 +473,10 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	private static boolean requiresNamedTrackAdapter(CompoundTag track, int depth) {
+		return requiresNamedTrackAdapter(track, depth, false);
+	}
+
+	private static boolean requiresNamedTrackAdapter(CompoundTag track, int depth, boolean projectTest) {
 		if (depth > MAX_DEPTH || !(track.get("data") instanceof CompoundTag data)) {
 			return true;
 		}
@@ -343,7 +488,7 @@ public class PhotonEditorProjectGuardUtil {
 			}
 
 			for (var child : data.getListOrEmpty("children")) {
-				if (!(child instanceof CompoundTag nested) || requiresNamedTrackAdapter(nested, depth + 2)) {
+				if (!(child instanceof CompoundTag nested) || requiresNamedTrackAdapter(nested, depth + 2, projectTest)) {
 					return true;
 				}
 			}
@@ -351,7 +496,10 @@ public class PhotonEditorProjectGuardUtil {
 			return false;
 		}
 
-		return !Set.of("activator", "control", "animation").contains(type);
+		boolean supported = Set.of("activator", "control", "animation", "speed", "signal", "audio", "post_process",
+				"lobecorp_child_animation", "lobecorp_model_animation").contains(type)
+				|| projectTest && type.equals("lobecorp_animation_call");
+		return !supported || containsTag(track, depth, projectTest);
 	}
 
 	/// 激活扩展仅在原生激活轨道包装中放行，内部未知扩展仍保留保护。
@@ -416,7 +564,7 @@ public class PhotonEditorProjectGuardUtil {
 
 		try {
 			PhotonProjectPreviewUtil.read(source);
-			return containsTag(source, depth);
+			return containsTag(source, depth, true);
 		} catch (IOException | IllegalArgumentException invalid) {
 			return true;
 		}

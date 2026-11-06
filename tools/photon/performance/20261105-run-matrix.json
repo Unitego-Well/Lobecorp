@@ -1,0 +1,248 @@
+{
+  "schema": 1,
+  "pilot": "N_blank45_1",
+  "port": 19877,
+  "runInterface": "IDs confirmed by main; remaining Run properties pending implementation",
+  "runs": [
+    {
+      "id": "N_blank45_1",
+      "shader": false,
+      "scene": "blank45",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_blank45_2",
+      "shader": false,
+      "scene": "blank45",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_blank45_3",
+      "shader": false,
+      "scene": "blank45",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_blank45_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_cow25_1",
+      "shader": false,
+      "scene": "cow25",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_cow25_2",
+      "shader": false,
+      "scene": "cow25",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_cow25_3",
+      "shader": false,
+      "scene": "cow25",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_cow25_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_queen25_1",
+      "shader": false,
+      "scene": "queen25",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_queen25_2",
+      "shader": false,
+      "scene": "queen25",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_queen25_3",
+      "shader": false,
+      "scene": "queen25",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_queen25_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_laser3_1",
+      "shader": false,
+      "scene": "laser3",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_laser3_2",
+      "shader": false,
+      "scene": "laser3",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "N_laser3_3",
+      "shader": false,
+      "scene": "laser3",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/N_laser3_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_blank45_1",
+      "shader": true,
+      "scene": "blank45",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_blank45_2",
+      "shader": true,
+      "scene": "blank45",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_blank45_3",
+      "shader": true,
+      "scene": "blank45",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-blank45",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_blank45_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_cow25_1",
+      "shader": true,
+      "scene": "cow25",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_cow25_2",
+      "shader": true,
+      "scene": "cow25",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_cow25_3",
+      "shader": true,
+      "scene": "cow25",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-cow25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_cow25_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_queen25_1",
+      "shader": true,
+      "scene": "queen25",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_queen25_2",
+      "shader": true,
+      "scene": "queen25",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_queen25_3",
+      "shader": true,
+      "scene": "queen25",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-queen25",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_queen25_3/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_laser3_1",
+      "shader": true,
+      "scene": "laser3",
+      "round": 1,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_1/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_1/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_laser3_2",
+      "shader": true,
+      "scene": "laser3",
+      "round": 2,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_2/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_2/results",
+      "status": "prepared_not_run"
+    },
+    {
+      "id": "S_laser3_3",
+      "shader": true,
+      "scene": "laser3",
+      "round": 3,
+      "scenario": "lobecorp.photon-12-run-laser3",
+      "workingDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_3/build/modBench/runs/default/client",
+      "resultDirectory": "$PROJECT_DIR$/build/agent-backups/20261105-run-matrix/S_laser3_3/results",
+      "status": "prepared_not_run"
+    }
+  ]
+}

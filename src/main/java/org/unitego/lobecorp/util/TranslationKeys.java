@@ -7,6 +7,7 @@ import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 import org.unitego.lobecorp.util.photon.animation.PhotonAnimationTextUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEffectLibraryTextUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
 
 public interface TranslationKeys {
@@ -22,6 +23,9 @@ public interface TranslationKeys {
 	/// 模型特效发射器及模型、UV、动画编辑器的翻译入口。
 	@SuppressWarnings({"unused", "UnnecessaryModifier"})
 	public String PHOTON_MODEL_TEXT = PhotonModelTextUtil.register();
+	/// 特效管理工程（.mfxlib）与其面板的翻译入口。
+	@SuppressWarnings({"unused", "UnnecessaryModifier"})
+	public String PHOTON_EFFECT_LIBRARY_TEXT = PhotonEffectLibraryTextUtil.register();
 	/// 循环采样的时间偏移；单位 tick。
 	String PHOTON_CYCLE_TIME_OFFSET_AXES_KEY = "photon.lobecorp.cycle_time_offset.axes";
 	@SuppressWarnings("unused")

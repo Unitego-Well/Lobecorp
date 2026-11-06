@@ -33,6 +33,12 @@ public class PhotonEffectEditUtil {
 
 	public record Prepared(Handle handle, CompoundTag before, CompoundTag after, boolean dryRun) {
 		public JsonObject commit() {
+            if (handle.editor().getCurrentProject() != handle.project()) {
+                throw new PhotonEffectCommandException(Code.PROJECT_CLOSED);
+            }
+            if (!before.equals(PhotonEffectProjectUtil.snapshot(handle.project()))) {
+                throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
+            }
 			JsonObject result;
 
 			if (!dryRun && !before.equals(after)) {

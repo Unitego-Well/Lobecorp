@@ -1,5 +1,7 @@
 # Photon／LDLib2 修复与兼容对照
 
+> 当前维护入口为 [Photon 工作区](photon-workspace.md)。本页逐条保留版本与修复历史；旧命名动画、混入和迁移工具路径已失效时只保留文字，不视为当前 API。新增恢复布局、网格和预览隔离的未完成项见 [最新 WIP](photon-workspace.md)。
+
 更新日期：2026-10-11。
 
 本文用于升级依赖前定位本项目补丁，区分上游实现的缺陷、依赖行为的兼容适配、性能优化和本项目扩展自身的问题。它不是全部功能清单，也不代替源码与游戏验收。系统入口见[索引](README.md)，功能说明见[Photon 编辑器](photon-editor.md)、[命名动画](photon-named-animations.md)、[发射器发射器](photon-emitter-spawner.md)和[粒子渲染](particle-rendering.md)；各轮实际操作见[修改记录](changes.md)。
@@ -17,6 +19,16 @@
 - “历史检查”只引用对应系统文档已记录的诊断、编译、Data 或断言结果，不把它们计作本轮重新执行。新增断言存在不等于已运行。
 - 本轮文档工作只做源码对照和文档检查；PH-01 的代码修改与实际检查由本轮修复负责人执行，结果单独记录。未运行测试或游戏。
 - 补丁位于 Lobecorp 的 Mixin、适配类与工具类，没有直接改写第三方 JAR。LDLib2 补丁默认限于当前 Photon 编辑器及相应设置；升级时重新确认限定条件。
+
+## ShaderGraph未用默认图的延迟生成（2026-10-31）
+
+这是准备阶段性能优化，非上游功能缺陷。当前LDLib2 26.1.2.42的Resource.buildBuiltin(ResourceInstance)会先填充内置provider，再建global/发布LoadBuiltin；Photon 26.1.2.3的ShaderGraphResource会createGraph/serializeGraph，即使只请求文件图。
+
+ResourceMixin仅为确切ShaderGraphResource延迟默认builder，ResourceInstanceMixin只计成功文件请求。两者正常client生效，不受diag.material开关控制；保留注册/meta/事件/优先级/cache。Builtin实际has/get/add/remove及iterator/getContents按需生成，loaded peek不加载，返回真实可变Map和原生Tag。null addResource在生成前直接false；暂存provider隔离失败，可重试，不注册临时ResourceInstance或移动GL线程。
+
+升级时重新核对NEW/INVOKE描述符、LoadBuiltin订阅者和直接contents访问。已读当前订阅者未见ShaderGraph绕过公开API读取，公开枚举会触发生成；PackResourceManager钩子只清pack层，builtin沿原生命周期保留。
+
+lobecorp.photon.bench.eagerShaderBuiltin=true仅作启动时原生控制，默认false。四新FULL各10项provider/NBT用例通过；B文件请求39080/40464期间默认图生成0，热命中不等于I/O。完整资源重载、视觉、光影和FPS未据此验收；见[统一证据](benchmod.md#2026-10-31-模型复制与默认材质准备优化)。
 
 ## LDLib2：兼容适配与性能优化
 
@@ -63,6 +75,8 @@
 ## Photon：缺陷修复与原生优化
 
 ### PH-01 BeamParticle 场景预览相机空实体
+
+2026-10-31 迁移结论：Photon 26.1.2.9 的 `getRealEnd(Vector3f)` 已直接使用 emitter.getLevel，level 为 null 时返回原终点，碰撞交由 CollisionQuery。旧 camera 空实体与两处 Entity.level 补丁已精确退役；同一 Mixin 仅保留自有 `BeamConfig.getEnd` 长度覆盖。以下为 .2 修复历史，不是 .9 的调用结构或本轮运行验收。
 
 - **分类与现象：** 上游实现与预览相机的兼容缺陷。光束启用方块或实体射线检测时，场景预览相机没有实体可导致空指针；正常世界相机不据此判定为有同样问题。
 - **原生入口与根因证据：** Photon 26.1.2.2 的 `BeamParticle.getRealEnd(Camera,Vector3f)` 在 BLOCKS／BLOCKS_AND_ENTITIES 和 ENTITIES／BLOCKS_AND_ENTITIES 两条分支均直接调用 `camera.entity().level()`，共两处；前面已经算出经发射器变换的终点。

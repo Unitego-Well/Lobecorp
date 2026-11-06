@@ -66,6 +66,7 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 	private CompoundTag timelineBaseline = new CompoundTag();
 	private CompoundTag rawTimeline = new CompoundTag();
 	private ISubscription modelExports;
+	private PhotonModelWorkspace workspace;
 
 	public PhotonModelProject() {
 		var initial = new CompoundTag();
@@ -279,6 +280,9 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 		getFx().getFxData().timeline().tracks().addAll(restored.timeline().tracks());
 		getFx().getFxData().timeline().markers().clear();
 		getFx().getFxData().timeline().markers().addAll(restored.timeline().markers());
+		if (workspace != null) {
+			workspace.invalidate();
+		}
 	}
 
 	private record RestoredProject(CompoundTag source, PhotonModelOutput model, CompoundTag baseline,
@@ -298,6 +302,7 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 
 		if (editor instanceof FXEditor fx) {
 			subscribeExports(fx);
+			showWorkspace(fx);
 		}
 	}
 
@@ -314,8 +319,19 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 		}
 	}
 
+	public void showWorkspace(FXEditor editor) {
+		if (workspace != null) {
+			workspace.close();
+		}
+		workspace = new PhotonModelWorkspace(editor, this);
+	}
+
 	@Override
 	public void onClosed(Editor editor) {
+		if (workspace != null) {
+			workspace.close();
+			workspace = null;
+		}
 		unsubscribeExports();
 		super.onClosed(editor);
 	}

@@ -11,6 +11,7 @@ import org.unitego.lobecorp.animation.adapter.geckolib.LcMolangParser;
 import org.unitego.lobecorp.attachment.LcTransform;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,9 +39,37 @@ public class LcAnimationClip {
 	}
 
 	@SuppressWarnings("UnstableApiUsage")
+	public static Batch parseAll(String animationJson) {
+		return compileAll(ActorAnimations.GSON.fromJson(animationJson, ActorAnimations.class));
+	}
+
+	/// 同一动画文件只解析一次；每个名称仍使用独立的 LC Molang 解析器。
+	@SuppressWarnings("UnstableApiUsage")
+	public static Batch compileAll(ActorAnimations definitions) {
+		Objects.requireNonNull(definitions);
+		var animations = Objects.requireNonNull(definitions.animations());
+		Map<String, LcAnimationClip> clips = new LinkedHashMap<>();
+		Map<String, String> failures = new LinkedHashMap<>();
+
+		for (var name : animations.keySet()) {
+			try {
+				clips.put(name, compile(definitions, name));
+			} catch (RuntimeException exception) {
+				failures.put(name, failure(exception));
+			}
+		}
+
+		return new Batch(clips, failures);
+	}
+
+	@SuppressWarnings("UnstableApiUsage")
 	public static LcAnimationClip parse(String animationJson, String animationName) {
+		return compile(ActorAnimations.GSON.fromJson(animationJson, ActorAnimations.class), animationName);
+	}
+
+	@SuppressWarnings("UnstableApiUsage")
+	private static LcAnimationClip compile(ActorAnimations definitions, String animationName) {
 		// 版本适配点：仅使用 GeckoLib 5.5.2 的资源解析与关键帧烘焙。
-		var definitions = ActorAnimations.GSON.fromJson(animationJson, ActorAnimations.class);
 		var animation = Objects.requireNonNull(definitions.animations().get(animationName),
 				MISSING_ANIMATION + animationName);
 		var parser = new LcMolangParser();
@@ -138,6 +167,18 @@ public class LcAnimationClip {
 		}
 
 		return frames.length - 1;
+	}
+
+	private static String failure(Exception exception) {
+		return exception.getClass().getSimpleName() + ": " + exception.getMessage();
+	}
+
+	/// 批量编译结果；失败项单独保留，不覆盖其他已成功编译的动画。
+	public record Batch(Map<String, LcAnimationClip> clips, Map<String, String> failures) {
+		public Batch {
+			clips = Collections.unmodifiableMap(new LinkedHashMap<>(clips));
+			failures = Collections.unmodifiableMap(new LinkedHashMap<>(failures));
+		}
 	}
 
 	private static class SampleQueries implements ILcAnimationQueries {

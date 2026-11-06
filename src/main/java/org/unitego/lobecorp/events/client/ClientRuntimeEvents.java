@@ -7,6 +7,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.GameShuttingDownEvent;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
@@ -15,8 +17,10 @@ import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticleHud;
@@ -49,6 +53,7 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		QueenBeamEffects.clear();
+		PhotonRuntimeFactory.invalidateWorld();
 	}
 
 	@SubscribeEvent
@@ -67,6 +72,7 @@ public class ClientRuntimeEvents {
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
 		QueenBeamEffects.clear();
+		PhotonRuntimeFactory.invalidateWorld();
 		PhotonFrameCapture.cancel();
 		LcModelLodUtil.clear();
 	}
@@ -90,6 +96,7 @@ public class ClientRuntimeEvents {
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
 			QueenBeamEffects.clear();
+			PhotonRuntimeFactory.invalidateWorld();
 			LcAttachments.clear(level);
 			LcAttachedItems.clear(level);
 			LcClientAttachments.clear();
@@ -105,12 +112,20 @@ public class ClientRuntimeEvents {
 	}
 
 	@SubscribeEvent
+	public static void onGameShuttingDown(GameShuttingDownEvent event) {
+		PhotonOwnedEffectResources.closePreparation();
+	}
+
+	@SubscribeEvent
 	public static void onVisualFrameEnd(RenderFrameEvent.Post event) {
 		LcModelLodUtil.endFrame();
+		PhotonRuntimeFactory.onFrameEnd();
 	}
 
 	@SubscribeEvent
 	public static void onClientTick(ClientTickEvent.Post event) {
+		PhotonRuntimeFactory.onTick();
+		PhotonRepeatedEffectTrial.tick();
 		QueenBeamPerformanceTrial.tick();
 		var level = Minecraft.getInstance().level;
 		if (level != null) {

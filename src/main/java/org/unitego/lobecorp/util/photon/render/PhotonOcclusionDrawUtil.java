@@ -11,6 +11,7 @@ import com.lowdragmc.photon.client.render.PhotonWorldRenderState.Job;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
@@ -176,7 +177,7 @@ public class PhotonOcclusionDrawUtil {
 	/// 实例化几何数据仅借用；原生 endFrame 在颜色及遮罩绘制结束后释放它。
 	@SuppressWarnings("resource")
 	private static void draw(RenderPass pass, PreparedDraw draw, GpuTextureView lightmap, GpuSampler sampler) {
-		pass.setPipeline(draw.pipeline());
+		PhotonIrisPipelineAccess.setPhotonPipeline(pass, draw.pipeline());
 		RenderSystem.bindDefaultUniforms(pass);
 		pass.setUniform(TRANSFORM_UNIFORM, draw.transforms());
 		pass.setUniform(MATERIAL_UNIFORM, draw.material());

@@ -1,13 +1,16 @@
 package org.unitego.lobecorp.util.photon.model;
 
+import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /// 只准备与播放时间无关的面角/三角形/材质分组，姿态更新不重新三角化。
 public class PhotonModelTopologyUtil {
@@ -24,9 +27,69 @@ public class PhotonModelTopologyUtil {
 		}
 	}
 
-	public record Prepared(PhotonModelDefinition definition, List<Group> groups) {
-		public Prepared {
-			groups = List.copyOf(groups);
+	public static final class Prepared {
+		private final PhotonModelDefinition definition;
+		private final List<Group> groups;
+		private final Map<String, PhotonModelAssetUtil.MaterialBlueprint> materials;
+		private List<Integer> groupOrder;
+
+		public Prepared(PhotonModelDefinition definition, List<Group> groups) {
+			this.definition = definition;
+			this.groups = List.copyOf(groups);
+			var blueprints = new LinkedHashMap<String, PhotonModelAssetUtil.MaterialBlueprint>();
+			definition.materials().forEach((id, material) -> {
+				if (!material.materialData().isEmpty()) {
+					blueprints.put(id, new PhotonModelAssetUtil.MaterialBlueprint(material.materialData()));
+				}
+			});
+			materials = Map.copyOf(blueprints);
+		}
+
+		public PhotonModelDefinition definition() {
+			return definition;
+		}
+
+		public List<Group> groups() {
+			return groups;
+		}
+
+		/// 首次由输出准备阶段计算；仅缓存成功结果，不参与值相等契约。
+		public List<Integer> groupOrder() {
+			if (groupOrder == null) {
+				var order = new ArrayList<Integer>();
+
+				for (int index = 0; index < groups.size(); index++) {
+					order.add(index);
+				}
+
+				order.sort(Comparator.comparing(index -> {
+					var material = definition.materials().get(groups.get(index).material());
+					return material != null && material.overlay();
+				}));
+				groupOrder = List.copyOf(order);
+			}
+
+			return groupOrder;
+		}
+
+		/// 蓝图随定义释放，不保存材质实例或GPU状态。
+		public CompoundTag materialData(String id) throws IOException {
+			return materials.get(id).copy();
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return other instanceof Prepared value && definition.equals(value.definition) && groups.equals(value.groups);
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * definition.hashCode() + groups.hashCode();
+		}
+
+		@Override
+		public String toString() {
+			return "Prepared[definition=" + definition + ", groups=" + groups + "]";
 		}
 	}
 

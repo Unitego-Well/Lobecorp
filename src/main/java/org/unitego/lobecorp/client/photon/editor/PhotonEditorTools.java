@@ -15,6 +15,8 @@ import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.editor.ui.menu.MenuTab;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.layout.LayoutProperties;
+import dev.vfyjxf.taffy.style.TaffyDisplay;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
@@ -24,9 +26,12 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.PhotonParticleManager;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
@@ -52,32 +57,30 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorActions;
-import org.unitego.lobecorp.util.TranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEmitterSpawnerTextUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import org.joml.Vector2f;
+import org.joml.Vector3f;
+import org.unitego.lobecorp.Lobecorp;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
 import java.util.Locale;
 
 @SuppressWarnings({"FieldMayBeFinal", "unused"})
-public class PhotonEditorTools {
-	/// 只关联编辑器预览实例；游戏内 FXRuntime 不进入此表。
-	private static final Map<FXRuntime, WeakReference<PhotonEditorTools>> PREVIEWS = new WeakHashMap<>();
+public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 	/// 与原设置窗口一致的扩展对话框宽度，单位 GUI 像素。
 	private static final int DIALOG_WIDTH = 350;
 	/// 对话框内容的最大滚动高度，单位 GUI 像素。
@@ -141,9 +144,10 @@ public class PhotonEditorTools {
 	private String clipboardModule;
 	private Dialog parameterDialog;
 	private FXRuntime boundRuntime;
+	/// 特效管理工程单独持有一份按需预览运行态，避免与编辑器工程的预览互相覆盖。
+	private FXRuntime libraryPreview;
+	private Identifier libraryPreviewId;
 	private Map<AnimatedProperty, Map<Long, Integer>> linkedTangents = new WeakHashMap<>();
-	/// 只登记扩展模块开关控件；弱键不会保留已移除的面板。
-	private Map<UIElement, String> featureControls = new WeakHashMap<>();
 	/// 扩展运行时控件和编辑器设置的翻译键前缀。
 	private static final String CONTROL_PREFIX = "photon.lobecorp.";
 	/// Photon 编辑器操作翻译键的公共前缀。
@@ -232,116 +236,51 @@ public class PhotonEditorTools {
 
 	public void bindRuntime() {
 		if (boundRuntime != null) {
-			PREVIEWS.remove(boundRuntime);
+			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
 		}
 		boundRuntime = editor.runtime;
 
 		if (boundRuntime != null) {
-			PREVIEWS.put(boundRuntime, new WeakReference<>(this));
+			PhotonRuntimePreviewUtil.bind(boundRuntime, this);
 		}
 	}
 
 	public static void applyPreview(FXRuntime runtime) {
-		var reference = PREVIEWS.get(runtime);
-		var tools = reference == null ? null : reference.get();
-
-		if (tools != null) {
-			tools.applyOverrides(runtime);
-		}
+		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
 	public static boolean visible(IFXObject object) {
-		if (!(object.getScene() instanceof FXRuntime runtime)) {
-			return true;
-		}
-
-		var reference = PREVIEWS.get(runtime);
-		var tools = reference == null ? null : reference.get();
-		return tools == null || tools.previewVisible(runtime, object);
+		return PhotonRuntimePreviewUtil.visible(object);
 	}
 
 	public static boolean controlEnabled(String name, UIElement element) {
-		String feature = name.startsWith(PhotonEmitterSpawnerTextUtil.PREFIX) ? PhotonEmitterSpawnerTextUtil.FEATURE
-				: name.contains("rotation_cycle") ? "rotation_cycle"
-				: name.contains("view_depth_sort") ? "depth_sort"
-				: name.startsWith(TranslationKeys.PHOTON_OCCLUSION_KEY) ? PhotonEditorTextUtil.OCCLUSION_FEATURE
-				: name.contains("cycle_offset") || name.contains("cycle_time_offset") ? "time_offset" : null;
-
-		if (feature == null && name.contains("lifetime_cycle")) {
-			for (var parent = element.getParent(); parent != null; parent = parent.getParent()) {
-				if (!(parent instanceof PhotonConfiguratorNameAccess access) || access.lobecorp$name() == null) {
-					continue;
-				}
-
-				String group = access.lobecorp$name().toLowerCase(Locale.ROOT);
-
-				if (group.contains("colorover")) {
-					feature = "color_cycle";
-					break;
-				}
-
-				if (group.contains("sizeover")) {
-					feature = "size_cycle";
-					break;
-				}
-
-				if (group.contains("velocityover")) {
-					feature = "velocity_cycle";
-					break;
-				}
-
-				if (group.contains("forceover")) {
-					feature = "force_cycle";
-					break;
-				}
-
-				if (group.contains("uvanimation")) {
-					feature = "uv_cycle";
-					break;
-				}
-			}
-		}
-
-		return feature == null || enabled(element, feature);
+		return enabled(element, name);
 	}
 
 	public PhotonEditorTools(FXEditor editor) {
 		this.editor = editor;
-		editor.selfAndAllChildren().filter(PhotonConfiguratorNameAccess.class::isInstance)
-				.forEach(element -> registerControl(element, ((PhotonConfiguratorNameAccess) element).lobecorp$name()));
+		refreshControls(editor);
 		LcPhotonEditorActions.register(editor, this::canRunShortcut, action -> safely(() -> runAction(action)));
 		editor.addEventListener(UIEvents.TICK, _ -> tick());
 	}
 
 	public static void updateControlRegistration(UIElement element, String name, boolean attached) {
-		var editor = findEditor(element);
-		if (editor != null && !isPhotonEditor(editor)) {
-			if (attached && isFeatureControlName(name)) {
-				element.setDisplay(false);
-			}
+		if (!attached || !isFeatureControlName(name)) {
 			return;
 		}
 
-		var tools = editor == null ? null : of(editor);
+		boolean display = controlEnabled(name, element);
 
-		if (tools == null) {
-			return;
+		if ((element.getLayoutStyle().getValueImmediate(LayoutProperties.DISPLAY) != TaffyDisplay.NONE) != display) {
+			element.setDisplay(display);
 		}
-
-		if (!attached) {
-			tools.featureControls.remove(element);
-			return;
-		}
-
-		tools.registerControl(element, name);
 	}
 
-	private void registerControl(UIElement element, String name) {
-		if (!isFeatureControlName(name)) {
-			return;
-		}
-
-		featureControls.put(element, name);
+	/// 仅在宿主归属变化或初始化时刷新；每个控件按最近的编辑器解析归属。
+	public static void refreshControls(UIElement root) {
+		root.selfAndAllChildren().filter(PhotonConfiguratorNameAccess.class::isInstance)
+				.forEach(element -> updateControlRegistration(element,
+						((PhotonConfiguratorNameAccess) element).lobecorp$name(), true));
 	}
 
 	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
@@ -794,13 +733,6 @@ public class PhotonEditorTools {
 
 	private void tick() {
 		syncPreviewRange();
-		featureControls.forEach((element, name) -> {
-			boolean display = controlEnabled(name, element);
-
-			if (element.isDisplayed() != display) {
-				element.setDisplay(display);
-			}
-		});
 
 		if (editor.runtime == null) {
 			return;
@@ -981,12 +913,82 @@ public class PhotonEditorTools {
 		visibility.clear();
 	}
 
-	public void clearPreview() {
+	/// 特效管理工程用：把编辑器预览切换到指定特效，同一时刻只保留一份运行态。
+	///
+	/// 与打开FX工程不同，这里不经过工程文件，也不创建整个目录的运行态；传入null表示清空预览。
+	/// 返回是否切换成功，失败时保留原预览并记录原因。
+	public boolean previewEffect(@Nullable Identifier effect) {
+		if (effect == null) {
+			clearEffectPreview();
+			return true;
+		}
 
+		if (Objects.equals(libraryPreviewId, effect) && libraryPreview != null) {
+			return true;
+		}
+
+		var definition = FXHelper.getFX(effect);
+
+		if (definition == null) {
+			Lobecorp.LOGGER.warn("特效管理预览失败，定义缺失：{}", effect);
+			return false;
+		}
+
+		FXRuntime next;
+
+		try {
+			next = definition.createInternalRuntime();
+		} catch (RuntimeException invalid) {
+			Lobecorp.LOGGER.warn("特效管理预览失败，运行态创建异常：{}", effect, invalid);
+			return false;
+		}
+
+		clearEffectPreview();
+		libraryPreview = next;
+		libraryPreviewId = effect;
+		next.root.updatePos(new Vector3f(0.5f, 2, 0.5f));
+		editor.runtime = next;
+		previewRuntime = next;
+		editor.hierarchyView.loadFXRuntime(next);
+		editor.timelineView.rebuild();
+		editor.sceneView.loadScene();
+		editor.reloadEffect();
+		bindRuntime();
+		return true;
+	}
+
+	/// 释放特效管理预览持有的运行态；编辑器自身工程的预览不受影响。
+	public void clearEffectPreview() {
+		if (libraryPreview == null) {
+			return;
+		}
+
+		PhotonRuntimePreviewUtil.unbind(libraryPreview, this);
+
+		var owned = libraryPreview;
+		libraryPreview = null;
+		libraryPreviewId = null;
+
+		if (editor.runtime == owned) {
+			editor.runtime = null;
+			previewRuntime = null;
+			editor.hierarchyView.clearFXRuntime();
+			editor.timelineView.clear();
+			editor.sceneView.clearScene();
+		}
+
+		boundRuntime = null;
+	}
+
+	public @Nullable Identifier previewEffectId() {
+		return libraryPreviewId;
+	}
+
+	public void clearPreview() {
 		linkedTangents.clear();
 
 		if (boundRuntime != null) {
-			PREVIEWS.remove(boundRuntime);
+			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
 		}
 		boundRuntime = null;
 		loopPreview = false;
@@ -1241,8 +1243,15 @@ public class PhotonEditorTools {
 			change.run();
 		} catch (RuntimeException error) {
 			for (int i = 0; i < targets.size(); i++) {
-				PersistedParser.deserializeNBT(before.get(i), targets.get(i), provider);
+				try {
+					PersistedParser.deserializeNBT(before.get(i), targets.get(i), provider);
+				} catch (RuntimeException rollbackFailure) {
+					if (rollbackFailure != error) {
+						error.addSuppressed(rollbackFailure);
+					}
+				}
 			}
+
 			throw error;
 		}
 

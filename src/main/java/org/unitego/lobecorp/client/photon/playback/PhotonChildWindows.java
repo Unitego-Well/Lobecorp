@@ -102,7 +102,7 @@ public class PhotonChildWindows implements AutoCloseable {
 		this.callHost = callHost;
 	}
 
-	public void evaluate(List<Track> tracks, double time) {
+	public void evaluate(List<? extends Track> tracks, double time) {
 		if (time < previous) {
 			close();
 		}
@@ -110,7 +110,7 @@ public class PhotonChildWindows implements AutoCloseable {
 		var seen = new HashSet<UUID>();
 
 		for (var leaf : tracks) {
-			if (leaf.mute() || !(leaf instanceof PhotonChildTrack track) || track.clips().isEmpty()) {
+			if (!(leaf instanceof PhotonChildTrack track) || leaf.mute() || track.clips().isEmpty()) {
 				continue;
 			}
 
@@ -122,12 +122,9 @@ public class PhotonChildWindows implements AutoCloseable {
 				var window = windows.get(clip.id);
 				boolean active = time >= clip.start() && time < clip.end();
 				boolean crossed = previous < clip.start() && time >= clip.end();
+				boolean finishing = window != null && !window.completed && time >= clip.end();
 
-				if (!active && !crossed) {
-					if (window != null && time >= clip.end()) {
-						window.complete();
-					}
-
+				if (!active && !crossed && !finishing) {
 					continue;
 				}
 
@@ -170,9 +167,9 @@ public class PhotonChildWindows implements AutoCloseable {
 					window.children.put(id, new Child(new WeakReference<>(runtime), new WeakReference<>(handle)));
 				}
 
-				window.drive(time, true);
+				window.drive(finishing || crossed ? clip.end() : time, true);
 
-				if (crossed) {
+				if (crossed || finishing) {
 					window.complete();
 				}
 			}
@@ -202,19 +199,7 @@ public class PhotonChildWindows implements AutoCloseable {
 			throw new IllegalArgumentException("子动画轨道没有有效的生成器目标：" + track.targetId());
 		}
 
-		var result = new HashMap<UUID, PhotonNamedRuntime>();
-
-		for (var id : spawner.instanceIds()) {
-			var runtime = spawner.animations(id);
-
-			if (runtime == null) {
-				throw new IllegalArgumentException("子动画生成实例缺少控制器：" + id);
-			}
-
-			result.put(id, runtime);
-		}
-
-		return result;
+		return spawner.animationSnapshot();
 	}
 
 	public void frame(double time) {

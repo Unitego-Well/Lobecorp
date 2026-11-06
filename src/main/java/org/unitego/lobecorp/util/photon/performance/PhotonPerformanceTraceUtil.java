@@ -22,11 +22,21 @@ import java.util.concurrent.CancellationException;
 /// 同 JVM 的有界诊断记录；不引用客户端类，服务端标记不改变业务载荷或执行线程。
 public class PhotonPerformanceTraceUtil {
 	public static final int MAX_NODES = 4096;
+	/// 类初始化时读取 `-Dlobecorp.photon.trace.maxNodes=16384`；默认 4096，钳制到 4096..16384，包含共享节点 0。
+	public static final int EFFECTIVE_MAX_NODES = PhotonPerformanceTraceConfigUtil.maxNodes(
+			System.getProperty(PhotonPerformanceTraceConfigUtil.MAX_NODES_PROPERTY));
 	public static final int MAX_THREADS = 8;
 	public static final int EVENTS_PER_THREAD = 32768;
 	public static final int MAX_DEPTH = 128;
 	public static final int MAX_SPANS_PER_FRAME = 4096;
 	public static final int MAX_AGGREGATES_PER_THREAD = 4096;
+	/// 类初始化时读取 `-Dlobecorp.photon.trace.maxAggregatesPerThread=16384`；默认 4096，钳制到 4096..65536。
+	/// 仅控制每线程 span 聚合，按需增长；报告配套元数据可读取此有效值，计数器与归属预算保持不变。
+	public static final int EFFECTIVE_MAX_AGGREGATES_PER_THREAD = PhotonPerformanceTraceConfigUtil.maxAggregatesPerThread(
+			System.getProperty(PhotonPerformanceTraceConfigUtil.MAX_AGGREGATES_PROPERTY));
+	/// 类初始化时读取计数器独立预算；默认 4096，钳制到 4096..16384，按需增长。
+	public static final int EFFECTIVE_MAX_COUNTERS_PER_THREAD = PhotonPerformanceTraceConfigUtil.maxCountersPerThread(
+			System.getProperty(PhotonPerformanceTraceConfigUtil.MAX_COUNTERS_PROPERTY));
 	public static final int MAX_MARKS = 2048;
 	public static final int MAX_IMPORTANT_MARKS = 512;
 	private static final int MAX_TEXT = 256;
@@ -346,7 +356,7 @@ public class PhotonPerformanceTraceUtil {
 			if (known != null) {
 				return known;
 			}
-			if (session.limit != null || session.nodes.size() >= MAX_NODES) {
+			if (session.limit != null || session.nodes.size() >= EFFECTIVE_MAX_NODES) {
 				session.droppedNodes++;
 				session.limit(LimitReason.NODES);
 				return 0;
@@ -404,7 +414,7 @@ public class PhotonPerformanceTraceUtil {
 
 	public static void generation(int node, int generation) {
 		var session = active;
-		if (session != null && node > 0 && node < MAX_NODES) {
+		if (session != null && node > 0 && node < EFFECTIVE_MAX_NODES) {
 			session.generations.set(node, generation);
 		}
 	}
@@ -491,7 +501,7 @@ public class PhotonPerformanceTraceUtil {
 				long key = ((long) node << 16) | metric.ordinal();
 				var counter = buffer.counters.get(key);
 				if (counter == null) {
-					if (buffer.counters.size() >= MAX_AGGREGATES_PER_THREAD) {
+					if (buffer.counters.size() >= EFFECTIVE_MAX_COUNTERS_PER_THREAD) {
 						buffer.dropped++;
 						buffer.deniedCounterRequests++;
 						session.limit(LimitReason.COUNTERS);
@@ -715,8 +725,8 @@ public class PhotonPerformanceTraceUtil {
 		private WeakIdentityTable<Long2IntOpenHashMap> scopedIdentities = new WeakIdentityTable<>();
 		private List<Context> contexts = new ArrayList<>();
 		private List<Node> nodes = new ArrayList<>();
-		private AtomicIntegerArray parents = new AtomicIntegerArray(MAX_NODES);
-		private AtomicIntegerArray generations = new AtomicIntegerArray(MAX_NODES);
+		private AtomicIntegerArray parents = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
+		private AtomicIntegerArray generations = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
 		private Map<Integer, Map<String, Map<String, Integer>>> namedNodes = new HashMap<>();
 		private List<Buffer> buffers = new ArrayList<>();
 		private List<Mark> marks = new ArrayList<>();
@@ -773,7 +783,7 @@ public class PhotonPerformanceTraceUtil {
 			if (!accepting) {
 				return 0;
 			}
-			if (limit != null || nodes.size() == MAX_NODES) {
+			if (limit != null || nodes.size() == EFFECTIVE_MAX_NODES) {
 				droppedNodes++;
 				limit(LimitReason.NODES);
 				return 0;
@@ -787,7 +797,7 @@ public class PhotonPerformanceTraceUtil {
 		}
 
 		private int generation(int node) {
-			for (int depth = 0; node > 0 && node < MAX_NODES && depth < MAX_DEPTH; depth++) {
+			for (int depth = 0; node > 0 && node < EFFECTIVE_MAX_NODES && depth < MAX_DEPTH; depth++) {
 				int generation = generations.get(node);
 				if (generation != 0) {
 					return generation;
@@ -951,7 +961,7 @@ public class PhotonPerformanceTraceUtil {
 			// 先为父调用预留聚合项，子调用耗尽容量时仍能保留根调用与最大项。
 			long key = ((long) node << 16) | stage.ordinal();
 			if (!aggregates.containsKey(key)) {
-				if (aggregates.size() >= MAX_AGGREGATES_PER_THREAD) {
+				if (aggregates.size() >= EFFECTIVE_MAX_AGGREGATES_PER_THREAD) {
 					dropped++;
 					deniedAggregateRequests++;
 					session.limit(LimitReason.AGGREGATES);

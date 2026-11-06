@@ -1,0 +1,20 @@
+# Applied after benchClientRunVmArgs.txt and fml.modFolders.
+-DmodBench.scenarios=lobecorp.photon-03-repeat-performance
+-Dmcp.port=19877
+-DmodBench.client.worldId=photon_repeat_fl803
+-DmodBench.resultDirectory=E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon/build/modBench/raw-results/photon-repeat-full-laser-v8-03/client
+-Dlobecorp.photon.bench.controlFx=
+-Dlobecorp.photon.trace.maxAggregatesPerThread=65536
+-Dlobecorp.photon.trace.maxNodes=16384
+-Dlobecorp.photon.trace.maxCountersPerThread=16384
+-Dlobecorp.photon.diag.cast=true
+-Dlobecorp.photon.bench.probes=true
+-Dlobecorp.photon.bench.preserveWindow=true
+-DmodBench.jfr=true
+-DmodBench.git.commit=03134c6e064bdac7958efb17435e9e24a3df3f0a
+-XX:StartFlightRecording=name=photon-entry,settings=profile,dumponexit=true,filename=E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_photon/build/agent-backups/20261030-goal-optimized/entry-full-laser-v8-03.jfr
+-DmodBench.phaseTimeoutTicks=12000
+-DmodBench.client.vsync=true
+-DmodBench.client.renderDistance=16
+-DmodBench.client.simulationDistance=12
+-DmodBench.client.requireWindowFocus=false

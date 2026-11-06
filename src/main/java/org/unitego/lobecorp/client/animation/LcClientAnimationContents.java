@@ -5,15 +5,15 @@ import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
 import org.unitego.lobecorp.network.tc.animation.LcAnimationContentPayload;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /// 服务器基础内容仅存在当前连接内，不写资源包或本地磁盘。
 public class LcClientAnimationContents {
 	private static final Map<String, LcAnimationContent> CONTENT = new HashMap<>();
-	private static final Map<String, byte[][]> PENDING = new HashMap<>();
+	private static final Reassembly PENDING = new Reassembly();
 
 	public static @Nullable LcAnimationContent get(String version) {
 		return CONTENT.get(version);
@@ -24,26 +24,13 @@ public class LcClientAnimationContents {
 			return;
 		}
 
-		if (payload.count() <= 0 || payload.index() < 0 || payload.index() >= payload.count()) {
-			throw new IllegalArgumentException(payload.version());
+		var bytes = PENDING.receive(payload.version(), payload.index(), payload.count(), payload.bytes());
+		if (bytes == null) {
+			return;
 		}
+		PENDING.remove(payload.version());
 
-		var chunks = PENDING.computeIfAbsent(payload.version(), _ -> new byte[payload.count()][]);
-		if (chunks.length != payload.count()) {
-			throw new IllegalArgumentException(payload.version());
-		}
-
-		chunks[payload.index()] = payload.bytes();
-		var bytes = new ByteArrayOutputStream();
-		for (var chunk : chunks) {
-			if (chunk == null) {
-				return;
-			}
-
-			bytes.writeBytes(chunk);
-		}
-
-		var json = JsonParser.parseString(bytes.toString(StandardCharsets.UTF_8)).getAsJsonObject();
+		var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
 		var content = LcAnimationContent.of(payload.modelId(), payload.animationId(),
 				json.get("model").getAsString(), json.get("animation").getAsString());
 		if (!content.version().equals(payload.version())) {
@@ -51,12 +38,67 @@ public class LcClientAnimationContents {
 		}
 
 		CONTENT.put(content.version(), content);
-		PENDING.remove(content.version());
 		LcClientAnimations.contentReady(content.version());
 	}
 
 	public static void clear() {
 		CONTENT.clear();
 		PENDING.clear();
+	}
+
+	/// 只接管调用方独占的分块；完整之前不分配拼接缓冲区。
+	protected static class Reassembly {
+		private final Map<String, PendingAssembly> pending = new HashMap<>();
+
+		protected byte @Nullable [] receive(String version, int index, int count, byte[] bytes) {
+			if (count <= 0 || index < 0 || index >= count) {
+				throw new IllegalArgumentException(version);
+			}
+
+			var assembly = pending.computeIfAbsent(version, _ -> new PendingAssembly(count));
+			if (assembly.count != count) {
+				throw new IllegalArgumentException(version);
+			}
+
+			return assembly.receive(index, bytes);
+		}
+
+		protected void remove(String version) {
+			pending.remove(version);
+		}
+
+		protected void clear() {
+			pending.clear();
+		}
+	}
+
+	private static class PendingAssembly {
+		private final Map<Integer, byte[]> chunks = new HashMap<>();
+		private final int count;
+		private long totalBytes;
+
+		private PendingAssembly(int count) {
+			this.count = count;
+		}
+
+		private byte @Nullable [] receive(int index, byte[] bytes) {
+			var previous = chunks.get(index);
+			int nextBytes = Math.toIntExact(totalBytes - (previous == null ? 0 : previous.length) + bytes.length);
+			chunks.put(index, bytes);
+			totalBytes = nextBytes;
+			if (chunks.size() != count) {
+				return null;
+			}
+
+			var result = new byte[Math.toIntExact(totalBytes)];
+			int offset = 0;
+			for (int slot = 0; slot < count; slot++) {
+				var chunk = Objects.requireNonNull(chunks.get(slot));
+				System.arraycopy(chunk, 0, result, offset, chunk.length);
+				offset += chunk.length;
+			}
+
+			return result;
+		}
 	}
 }

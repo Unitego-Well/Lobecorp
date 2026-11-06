@@ -10,6 +10,12 @@ ConductorUtil.parseIdentifier 使用 Identifier.tryParse，非法路径/命名�
 
 指挥施放的资格查询和清理/提交职责集中在 ConductorController；保留前置资格与目标回调顺序、清理移动和重置命令后再提交的原语义。失败时保留旧命令的替代交互未实施。ConductorCapabilities 的公开转发因外部使用承诺未确认而保留，不以内部零引用删除公共扩展。
 
+## 卸载与注销清理（2026-10-31）
+
+ConductorControls.clearSession只供ClientRuntimeEvents的卸载/注销路径调用，清本地操控、相机、HUD与快照状态，不grabMouse、不向已关闭连接发送syncView。正常交互退出仍走exit并按原条件恢复鼠标。不要把两个路径重新合并：Minecraft在clientLevelTeardownInProgress期间拒绝setScreen(null)，旧grabMouse曾因此抛异常，阻断同一事件后面的Photon等清理。
+
+调用图回归、原生鼠标状态/幂等清理及三个新JVM实际退出已通过，旧GUI/RejectedExecution未再出现；只关闭该明确根因，不外推所有输入或长期生命周期。见[本批验证](benchmod.md#2026-10-31-四线并行批次收尾)。
+
 > 源码核对日期：2026-10-05。核对范围包括目录、附件、控制能力、命令与快照载荷、区块管理、事件、HUD 和输入入口；通过 IDEA
 > 读取当前实现，未进行游戏、多人服务器、重启恢复或性能实测。
 > 包整理方案 1 已执行，源码链接按实际路径核对；保留三个指挥家客户端关联类的原包，详情见修改记录。

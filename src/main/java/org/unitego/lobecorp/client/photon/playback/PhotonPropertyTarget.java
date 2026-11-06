@@ -10,6 +10,10 @@ import com.lowdragmc.photon.client.gameobject.RuntimeValue;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import com.lowdragmc.photon.client.fx.timeline.property.PositionPropertyType;
+import com.lowdragmc.photon.client.fx.timeline.property.ScalePropertyType;
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -155,6 +159,22 @@ public class PhotonPropertyTarget {
 
 		return result;
 	}
+
+    public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+        if (object != target || before == null || after == null) {
+            return current;
+        }
+        if (type instanceof PositionPropertyType && current.position().equals(new Vector3f(after[0], after[1], after[2]))) {
+            return new PhotonAuthoringPose(new Vector3f(before[0], before[1], before[2]), current.rotation(), current.scale());
+        }
+        if (type instanceof ScalePropertyType && current.scale().equals(new Vector3f(after[0], after[1], after[2]))) {
+            return new PhotonAuthoringPose(current.position(), current.rotation(), new Vector3f(before[0], before[1], before[2]));
+        }
+        if (type instanceof RotationPropertyType && rotation != null && Arrays.equals(type.captureLive(object), after)) {
+            return new PhotonAuthoringPose(current.position(), rotation, current.scale());
+        }
+        return current;
+    }
 
 	private float[] capture() {
 		if (type instanceof ColorPropertyType color) {

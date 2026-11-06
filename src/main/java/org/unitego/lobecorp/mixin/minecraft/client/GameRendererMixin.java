@@ -6,6 +6,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 import org.unitego.lobecorp.client.photon.performance.IPhotonPerformanceInstrumentation;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
@@ -16,6 +17,7 @@ public class GameRendererMixin implements IPhotonPerformanceInstrumentation {
 	private void lobecorp$captureFrame(DeltaTracker deltaTracker, boolean advanceGameTime, Operation<Void> original) {
 		boolean completed = false;
 		PhotonFrameCapture.beginFrame();
+		PhotonSubmissionDiagnostics.beginFrame();
 		long scope = PhotonPerformanceTraceUtil.begin(Stage.RENDER, 0);
 
 		try {

@@ -2,6 +2,7 @@ package org.unitego.lobecorp.client.photon.model.project;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectAutomation;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
@@ -34,6 +35,7 @@ public class PhotonModelAuthoringPanel {
 			branch.leaf(".mfxpack", () -> export(editor, "pack", ".mfxpack"));
 			branch.leaf("OBJ", () -> export(editor, "obj", ".obj"));
 			branch.leaf("JSON", () -> export(editor, "json", ".json"));
+			branch.leaf("photon.lobecorp.model.editor.model_data", () -> openAdvanced(editor));
 		}));
 	}
 
@@ -48,15 +50,18 @@ public class PhotonModelAuthoringPanel {
 					var request = new JsonObject();
 					request.addProperty("path", file.getAbsolutePath());
 					request.addProperty("kind", kind);
-					try (var prepared = PhotonEffectFileUtil.prepareExport(handle, request)) {
-						prepared.commit();
-					} catch (Exception invalid) {
-						Dialog.showNotification("photon.lobecorp.model.project.type", invalid.getMessage(), null).show(editor);
-					}
+					PhotonEffectAutomation.exportFromEditor(handle, request, error ->
+							Dialog.showNotification("photon.lobecorp.model.project.type", error, null).show(editor));
 				}).show(editor);
 	}
 
 	public static void open(FXEditor editor) {
+		if (editor.getCurrentProject() instanceof PhotonModelProject project) {
+			project.showWorkspace(editor);
+		}
+	}
+
+	public static void openAdvanced(FXEditor editor) {
 		if (!(editor.getCurrentProject() instanceof PhotonModelProject project)) {
 			return;
 		}

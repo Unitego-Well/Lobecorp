@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
@@ -8,6 +9,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,6 +20,28 @@ import org.unitego.lobecorp.util.photon.editor.PhotonEditorTitleUtil;
 @Mixin(EditorWindow.class)
 public abstract class EditorWindowMixin {
 
+	@WrapMethod(method = "showEditor(Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;)V")
+	private void lobecorp$refreshShownControls(Editor editor, Operation<Void> original) {
+		var window = (EditorWindow) (Object) this;
+		var previous = window.getCurrentEditor();
+		original.call(editor);
+
+		if (previous != window.getCurrentEditor()) {
+			PhotonEditorTools.refreshControls(window);
+		}
+	}
+
+	@WrapMethod(method = "removeEditor(Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;)V")
+	private void lobecorp$refreshClosedControls(Editor editor, Operation<Void> original) {
+		var window = (EditorWindow) (Object) this;
+		var previous = window.getCurrentEditor();
+		original.call(editor);
+
+		// 非空的新归属已由 showEditor 通知；这里补齐最后一个标签关闭。
+		if (previous != null && window.getCurrentEditor() == null) {
+			PhotonEditorTools.refreshControls(window);
+		}
+	}
 
 	@WrapOperation(method = "/^(createEditorButton|lambda\\$createEditorButton\\$\\d+)$/", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;getTitle()Lnet/minecraft/network/chat/Component;"))

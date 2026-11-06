@@ -130,9 +130,7 @@ public record EntitySkillSyncPayload(
 			runtime.markSuccessful();
 		}
 
-		if (targetId != NO_TARGET) {
-			runtime.setTarget(owner.level().getEntity(targetId));
-		}
+		runtime.setTarget(targetId == NO_TARGET ? null : owner.level().getEntity(targetId));
 
 		callback.run(runtime);
 

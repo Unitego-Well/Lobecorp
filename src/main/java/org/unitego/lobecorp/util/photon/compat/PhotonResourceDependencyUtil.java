@@ -101,23 +101,34 @@ public class PhotonResourceDependencyUtil {
 		if (text.startsWith("built-in(")) {
 			return List.of();
 		}
-		if (text.startsWith("file(") && text.endsWith(")")) {
+		if (text.startsWith("file(")) {
+			if (!text.endsWith(")")) {
+				return List.of();
+			}
 			text = text.substring(5, text.length() - 1);
-		}
-		var keys = new LinkedHashSet<String>();
-		keys.add(normalize(text));
-		int colon = text.indexOf(':');
-		if (colon > 0) {
-			String namespace = text.substring(0, colon);
-			String path = text.substring(colon + 1);
-			keys.add(normalize("assets/" + namespace + "/" + path));
-			if (reference.path().endsWith("/fxLocation") || reference.path().endsWith("/effectId")) {
-				keys.add(normalize("assets/" + namespace + "/fx/" + path + ".fx"));
-				keys.add(normalize("assets/" + namespace + "/fx/" + path + ".mfx"));
+			if (text.indexOf(':') >= 0) {
+				return List.of();
 			}
 		}
+		try {
+			var keys = new LinkedHashSet<String>();
+			keys.add(normalize(text));
+			int colon = text.indexOf(':');
+			if (colon > 0) {
+				String namespace = text.substring(0, colon);
+				String path = text.substring(colon + 1);
+				keys.add(normalize("assets/" + namespace + "/" + path));
+				if (reference.path().endsWith("/fxLocation") || reference.path().endsWith("/effectId")) {
+					keys.add(normalize("assets/" + namespace + "/fx/" + path + ".fx"));
+					keys.add(normalize("assets/" + namespace + "/fx/" + path + ".mfx"));
+				}
+			}
 
-		return keys.stream().filter(versions::containsKey).toList();
+			return keys.stream().filter(versions::containsKey).toList();
+		} catch (IllegalArgumentException invalid) {
+			// 引用来自原始资源；保留为未解析边，不让越界路径中断整份来源报告。
+			return List.of();
+		}
 	}
 
 	private static List<List<String>> cycles(List<Edge> edges, int maxDepth) throws IOException {

@@ -56,6 +56,12 @@ Slash、Blood 与短烟描述；其他粒子应核对其对应登记与资源，
 
 示例没有同名 assets 模型，客户端直接使用同步模型，并复用原版白混凝土纹理。两份动画均长 6 秒，客户端版本只增加 2.25 秒手部抬高并加倍头部摆动频率，保留 1.5／3 秒交接端点和根运动消费契约；数据包仍可覆盖服务端同 ID 底稿。以上文件不是 Data 输出，未新增纹理传输或 Provider；示例资源契约见 [LcAnimationDemo](../../src/main/java/org/unitego/lobecorp/animation/demo/LcAnimationDemo.java)，命令与代码包装见[动画接口](animation-runtime.md)，物品显示与清理见[显式登记独立模型与物品显示](animation-runtime.md#显式登记独立模型与物品显示)。
 
+## Photon 内置资源
+
+2026-10-23 将本工作区 `run/client/ldlib2/assets/lobecorp` 的正式 Photon 资源迁入 `src/main/resources/assets/lobecorp`：新增 81 个 `.fx`、`.fxproj`、着色图与材质 NBT；37 个既有贴图／着色器内容完全相同，直接复用。资源 ID 与文件字节保持不变，编辑工程与运行定义一并保留。测试命名空间、`g1_resource_acceptance_20261021` 输入输出和 LDLib2 共享元数据不迁入。
+
+迁移前 118 个文件与 SHA256 清单备份于 `C:/Users/wang_/.codex/visualizations/2026/10/23/01a1669e-b2f3-7ca3-831c-69205680df6c/photon-resource-migration-20261023`；模组目标 118 项哈希全部一致。此项是文件迁移核对，游戏资源加载、视觉及性能验收仍待执行。
+
 ## 手动语言合并的实际路径
 
 BasicLangGenerator.mergeManualEntries 使用 user.dir 的父目录，再拼接 lang/<locale>.json。build.gradle.kts 的 Data 工作目录配置为

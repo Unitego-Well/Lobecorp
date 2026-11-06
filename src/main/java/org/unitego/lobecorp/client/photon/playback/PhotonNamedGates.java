@@ -8,6 +8,7 @@ import com.lowdragmc.photon.client.fx.timeline.TimelineState;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.unitego.lobecorp.util.photon.playback.PhotonActivationStateUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonActivationTargetUtil;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
@@ -130,30 +131,14 @@ public class PhotonNamedGates {
 	}
 
 	public void collect(List<Track> leaves, UUID owner, long loop, double time, boolean resetControls) {
-		var ids = new LinkedHashMap<UUID, Boolean>();
+		var targets = PhotonActivationTargetUtil.group(leaves);
 
-		for (var track : leaves) {
-			if (track.mute()) {
-				continue;
-			}
-
-			if (track instanceof ActivatorTrack && track.targetId() != null) {
-				ids.put(track.targetId(), true);
-			} else if (track instanceof ControlTrack) {
-				track.clips().forEach(clip -> {
-					if (clip.targetId() != null) {
-						ids.put(clip.targetId(), true);
-					}
-				});
-			}
-		}
-
-		for (var id : ids.keySet()) {
-			collectTarget(leaves, owner, loop, time, resetControls, id);
+		for (var entry : targets.entrySet()) {
+			collectTarget(entry.getValue(), owner, loop, time, resetControls, entry.getKey());
 		}
 	}
 
-	private void collectTarget(List<Track> leaves, UUID owner, long loop, double time, boolean resetControls, UUID id) {
+	private void collectTarget(List<Track> tracks, UUID owner, long loop, double time, boolean resetControls, UUID id) {
 		if (!(runtime.objects.get(id) instanceof FXObject target)) {
 			throw new IllegalArgumentException("命名激活目标不存在：" + id);
 		}
@@ -163,7 +148,7 @@ public class PhotonNamedGates {
 		Clip control = null;
 		var activations = new LinkedHashMap<Track, Activation>();
 
-		for (var track : leaves) {
+		for (var track : tracks) {
 			if (track.mute()) {
 				continue;
 			}

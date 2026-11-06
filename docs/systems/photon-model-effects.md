@@ -10,7 +10,100 @@ PhotonModelFailureState 统一保存失败阶段和消息，同阶段/消息只�
 
 PhotonModelProject 内部分离文档差异组装、候选准备与成功应用、菜单订阅管理；不移动包或改变对外工程入口。保留原始 NBT、未知字段、UUID 与时间轴差异合并，并维持 onClosed 先注销菜单再调用上游的顺序。定向测试与工程往返/视觉尚待验收的区别见本轮修改记录，不用状态容器测试替代真实工程与渲染验证。
 
+## 定义内材质语法蓝图（2026-11-03）
+
+SharedPrepared通过既有PhotonModelSourceUtil.prepare复用资源/内嵌准备缓存，不再自行load绕过它；FILE动态来源保持。Topology Prepared现为保留构造、访问器和值语义的类，私有蓝图随定义生命周期释放，不新增全局强缓存。SNBT首次成功解析后保留私有Tag，每次返回深副本；失败保持未准备而可重试。实例仍分别执行IMaterial.CODEC，独占MaterialSetting/RendererSetting.Runtime，不共享材质实例或GPU状态。公开material(String)读取/导出语义保持。
+
+材质4项与采样4项定向CPU通过，Compile/生产包隔离及Data通过；新蓝图Global与Native实机功能通过，但Global截图/部分前后class留档缺失，重载/视觉及最长帧收益仍待测。当前状态见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+## 静态采样程序与实例姿态（2026-11-02）
+
+当前分支的 PreparedSource.sampler() 可提供同来源共享的纯 CPU 采样程序；没有该来源的 Supplier 或动态 FILE 保留原准备路径。共享内容限于拓扑、父序、骨架和片段索引，每个 ModelOutput 保有独立 Workspace、动态绑定、poseBuffer、sampledInput、public Frame 与材质 Runtime。Workspace 仅由创建线程使用和关闭，失败后不得命中未完成输入。
+
+渲染调用 sampleInto 直接写入紧凑局部角点，不构造再复制全量 Vertex/Group/Frame；公开 sampleLocal 仍按需返回独立不可变 Frame。候选只在 endFrame 成功后提交；失败不改写已返回的公开快照。组透明度使用实例私有候选/发布缓冲交换，同尺寸采样不重复分配这两组数组。世界矩阵、颜色、光照及几何提交仍随当前绘制处理。
+
+旧 GeometrySnapshot/SnapshotRecorder 世界提交回放已从当前默认渲染路径移除，旧日期实验段落只保留历史含义。三角到四角展开、法线、insideOut、UV、透明度与原生 BufferBuilder/MeshData/PhotonBufferCache 提交规则保持；不以减少粒子或几何数量取得收益。当前运行证据与性能门槛见[工作入口](photon-workspace.md#2026-11-02-通用性能重构候选与统一验证)。
+
+
+## 冻结导出必须经过完整ValueIO（2026-11-01）
+
+prepareModelObject的配置读取/写入调用PhotonModelOutputConfig.deserialize/serialize及ProblemReporter；不能只调用PersistedParser字段解析，因为内嵌资产assetSnapshot由自定义ValueIO维护。原递归导出因此把存在的快照读为空并报“模型实例没有内嵌资产”。准备完成后仍只替换资产/来源相关键，保留未涉及字段并运行现有guard。F7冻结包真实挂载回读通过；B1还经标准MCP导出含OBJ三角资产的.mfx与.mfxpack并回读，源修订不变。此修正不放宽普通.fxproj与单资产.mfxproj的格式边界。
+
+## 2026-10-31 导出根ID保留与碰撞拒绝
+
+capture及旧公开export入口在写目标文件前调用verifyExportIdentity，按Photon原生InstanceBaker.directSources与自定义instanceSources遍历FX引用；任意层级引用规范化后的导出根ID时明确拒绝并要求改名，访问过的来源只去重，不用self过滤掩盖冲突。最终定义集合putIfAbsent并比较内容，禁止同路径不同定义覆盖；原.fx/.mfx/.mfxpack选择和写入协议保持。间接源中缺失引用仍交原依赖闭合处理，不在此入口静默补写。两文件IDEA代码检查无error；未运行导出/包回读/游戏，后续验收不能沿用旧测试结果。
+
+## 2026-10-31 导出最新来源与校验顺序
+
+PhotonModelPackExportUtil.prepare(FILE配置)先清旧快照，再读取当前作者文件，冻结成EMBEDDED并重建纹理/材质依赖。原生包walk的模型wrapper在独占副本上恢复配置并准备，仅替换source/resource/file/snapshotSource/assetJson/assetDependencies/assetMaterialDependencies，其他字段保持；完整guard通过后才提交config，失败不改变输入wrapper。禁止在FILE冻结前调用IFXObject.deserializeWrapper，否则现有对象guard会先拒绝；也不能全量重编码配置将不合法播放字段悄悄规范化为默认值。发布guard和被保护原件规则保持。
+
+自定义子生成器依赖只识别明确注册type与FX来源，无关未知fxLocation文本不参与解析。读取和原生包预检统一优先.fx，缺失回落.mfx，写入命名规则不改。来源/依赖纯测试4项已通过；本轮追加wrapper顺序补正IDEA无error、编译/生产包隔离退出0，公共FILE工作流和完整宿主导出尚未实测。用户禁止后续游戏测试，不能以编译冒称G1或视觉/性能通过。
+
+## 规范恢复避免整树适配副本（2026-10-31）
+
+PhotonModelAssetUtil.borrowCanonicalConfig复用版本/config/resource/renderer校验，只在已有modelRenderer时借读；PhotonModelRuntimeCopyUtil的规范路径不再先adapt整份data。公开adaptObject仍返回独占深副本，既有缺renderer推导、快照失败及错误顺序保留。复杂renderer各自复制子树供native parser，snapshot/依赖/rememberSource仍独占，不保留输入可变Tag，不共享活运行态，公共类型Codec未改。
+
+7项定向JUnit与客户端新增所有权用例通过；一次新FULL共44原生用例通过，15模型等次数copy相对native分配少20.093%，不是相对上批再少20.1%，亦非整体内存/FPS收益。完整编码及其他必要副本仍存在，主窗仍405ms长帧。核心同步派生/首用成本与剩余边界见[本批分析](benchmod.md#2026-10-31-核心长帧归因与次要克隆优化)。
+
+## 模型复制的有界标量恢复（2026-10-31）
+
+PhotonModelOutput.deepCopy接入PhotonModelRuntimeCopyUtil，每次仍通过未改公共IFXObject.CODEC编码当前完整wrapper，保留unknown/source、资源/版本检查及asset适配。确切模型的规范标量/枚举/基础变换直接恢复，两个renderer仍原生PersistedParser解码；snapshot、依赖Tag/列表、变换、renderer、槽与运行态独占，不复制活场景、回调或几何缓存。null规范化、扩展类型和不支持值保留native回退。
+
+未消除完整编码、adaptObject、snapshot setter和rememberSource的大NBT复制，未新引入生产反射。lobecorp.photon.bench.nativeModelCopy=true仅作启动时整模型原生encode/parse控制，默认false；公共类型Codec保持原样作独立基线。配置或parser升级时同步typed字段与穷举原生对照。
+
+全部代码完成后四新FULL各18项复制原生用例通过，覆盖Persisted/Configurable、Source/null、未知字段、变换/renderer/Tag独占、回调及guard。15模型等次数微对照总分配少10.793%～10.884%，不按真实频率加权，墙钟不稳定，不能写成整FX/FPS收益。P22/P23开放，见[统一证据](benchmod.md#2026-10-31-模型复制与默认材质准备优化)。
+
+## 准备缓存账本与死键回收（2026-10-31）
+
+PhotonModelSourceUtil.preparationStatistics仅返回资源/内嵌entries、liveValues与内嵌keyBytes，不暴露实例/世界；RESOURCE键字节为-1表示未计量。keyBytes只指独立NBT键，不含拓扑、求值器、native或GPU内存。
+
+PreparationCache.pruneCleared复用prepare既有逻辑，仅当WeakReference.get()==null时移除键并扣减账本；purgeClearedEmbeddedPreparations由QueenBeamEffects.clear调用。仍存活的EMBEDDED求值器保留，RESOURCE准备继续随资源重载管理，不因一个世界退出任意淘汰。
+
+旧实测GC后曾剩10键/1402357B且无活求值器；最终复验最后3死键630868B→0，RESOURCE4保留，独立缓存clear后求值器回收。每局8个新建/销毁runtime的120个弱引用均回收；整JVM堆差不冒充模型独占净保留，已发射GPU/长时/切维度仍未整体验收。详见[四线释放检查](benchmod.md#2026-10-31-四线并行批次收尾)。
+
+## RESOURCE 模型准备共享（2026-10-28）
+
+实机补测：普通／光影各完成一轮四模型共享、真实资源重载后的 sampler 替换、完整定义／快照／组合指纹和多消费者帧隔离检查，场景 PASSED；真实光束 OUTPUT 截图已检查，Spark 实件保存验证完成后正常退出。标准 MCP 固定 19877 连接成功，配合 IDEA／Debug；两轮总体 INCONCLUSIVE 是实际重载触发暂停／覆盖层标记，未取消相关门禁，不据此宣称性能达标或修改前同相位视觉等价。原 50 项是编码阶段纯 CPU 证据，本次游戏结果另列，详见[BenchMod 诊断记录](benchmod.md#2026-10-28-模型资源真实重载诊断)。
+
+本轮补齐资产准备与播放状态之间的边界：同一资源视图、模型路径和 OBJ UV 翻转选项下，复用已经读取、解析及拓扑准备的纯 CPU 求值器。播放时间、动态绑定、材质运行态和输出帧仍由每个实例独立持有；相机、世界位置及播放时间不是资产缓存键。
+
+内嵌快照继续优先；FILE 来源继续读取当前文件。OBJ 与同名 `.mfx.nbt` 共同确定模型内容，伴生缺失仍为纯 OBJ，存在但损坏则明确失败且不缓存失败。资源重载后新准备必须重新读取，伴生新增、删除和仅伴生内容变化均须生效。
+
+RESOURCE 共享是固定加载机制，没有启动开关，也不使用 16 项／16 MiB 等自设容量淘汰。管理方式依据当前 NeoForge `ObjLoader`：按需读取并强持有已准备模型，直到资源重载统一清空。通过唯一客户端事件入口注册 `ResourceManagerReloadListener`，由 NeoForge 的资源重载流程管理；移除 Photon 渲染代次依赖。键仍按 provider 对象身份、资源 ID 和 UV 选项隔离，不反向强持有 provider；失败不缓存，读取器既有的单文件／格式校验保持。
+
+当前加载器选择基于 NeoForge 26.1.2.100、Photon 26.1.2.3 的实际 API 对照：
+
+| 路线                        | 本轮实际检查                                                                                                           | 适用边界                                                                                                                                  |
+|-----------------------------|------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| 本项目 `PhotonModelObjUtil` | 原面／原顶点索引、负索引、UV／法线、凹多边形、部件／材质名及四个真实 OBJ 均有数值断言；整面缺 UV 补默认值并应用 V 翻转 | 保留伴生骨骼／形变索引和材质槽；混合缺 UV、续行和非单位齐次坐标仍明确拒绝                                                                 |
+| NeoForge `ObjGeometry`      | 公开分组、续行解析等通过；四个生产原件的 `usemtl` 因无 MTL 均真实抛出材质查找异常                                      | 输出面向模型烘焙，不能直接替换当前原始几何＋伴生链；未做完整 bake／atlas 验收，不据此将整个 Neo OBJ 定性为不可用                          |
+| Photon `ObjMeshParser`      | 普通 LF／CRLF、负索引、UV／法线、凹多边形及四个真实模型几何均通过                                                      | 输出扁平三角 mesh，忽略部件／材质名；非法面角可被丢弃后继续成面，非单位齐次坐标直接当原坐标，退化面仍保留，不满足本模型链的原面／索引契约 |
+
+本轮保留现有解析器，仅补齐实测缺省 UV 缺口；不切换外部解析器、不重写另一套加载器。资源管理复用 NeoForge 的重载机制，解析表示保持本项目现有模型契约。
+
+验证：首轮 48 项中 6 项失败均定位为本项目无 UV 输入未填满面角数组，已最小修复，没有放宽 Codec 校验；新增两个缺省／混合缺失回归后，8 类共 50/50 通过（加载器比较 20、资源生命周期 7、其余 23）。24 个资源全部保持复用，重载回调后全部重新读取；四个真实生产 OBJ 原文未删指令，实际检查顶点／面／三角数、部件／材质名和面角映射。IDEA 首次编译通过，修复后一次编译等待超时未作成功证据；随后统一 `benchClasses jar test` 退出码 0，重新编译、打包和测试成功。Data 退出码 0、written=0／removed=0，含缓存的 29 文件 SHA256 全部不变。备份与首轮失败／最终通过 XML 在 `build/agent-backups/20261028-model-resource-lifecycle/`。检查在保留 WIP 的工作副本上执行，未覆盖游戏视觉、性能 A/B 或 W1 全量失败基线。
+
+> 2026-10-23：当前模型由 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java)、[PhotonModelProject](../../src/main/java/org/unitego/lobecorp/client/photon/model/project/PhotonModelProject.java) 与原生工作区接线，高级网格／材质／骨骼采样为未完整验收的 WIP，见 [当前能力](photon-workspace.md#当前能力与源码入口)。下文旧后端、测试路径、模型 LOD 与性能数字属于历史；不能据此调用已删除类。当前测试源码在 src/test/java 的 util/photon/model、util/photon/model/editor 和 client/photon/model，历史通过数不沿用。G1 未通过。
+
 > 2026-10-19 当前状态：本文描述的自建模型特效实现与专用界面已移除，模型资源文件保留；含缺失类型的工程暂时拒绝加载/覆盖。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
+
+## 稳定帧整块提交实验（WP1，2026-10-25）
+
+用户选择 A：允许在禁止游戏测试期间编写默认关闭的 WP1 实验路径，G0／G1 运行验收继续挂起。本节记录实现边界；当前问题与关闭条件统一见 [唯一问题清单 P11](../issues.md#本轮确认的性能问题)，不在本页另建待办。
+
+启动前显式添加 VM 参数 `-Dlobecorp.photon.packedSnapshot=true`，才由 [PhotonBenchMixinPlugin](../../src/main/java/org/unitego/lobecorp/mixin/PhotonBenchMixinPlugin.java) 加载 [BufferBuilderMixin](../../src/main/java/org/unitego/lobecorp/mixin/minecraft/client/BufferBuilderMixin.java)，并启用 [PhotonModelOutput](../../src/main/java/org/unitego/lobecorp/client/photon/model/PhotonModelOutput.java) 的实验回放。缺省为 false，不写入模型、特效资源或持久配置；开关属于启动时选择，不支持运行中热切换。
+
+实验只在 `stableFrame` 且已有 `GeometrySnapshot` 缓存命中的回放处尝试。动画求值和动态帧原写入不变，仍使用原有帧、世界矩阵、颜色与光照匹配条件。随后获用户 A 授权的稳定 cache miss 修复独立于本实验：录制当次正常提交，超限不创建记录器而直接输出、不缓存，现有缓存命中的开关保持默认关闭。[IPhotonPackedVertexSink](../../src/main/java/org/unitego/lobecorp/client/photon/model/IPhotonPackedVertexSink.java) 借读已打包数组，不保存它；入口在任何 reserve 之前拒绝以下不支持情况：
+
+- 实际对象不是精确的原生 `BufferBuilder` 类，或 builder 已结束／已有顶点／仍有未完成属性，未满足 fresh 状态。
+- 实际模式不是 QUADS，格式不是 `PhotonPipelines.PARTICLE_FORMAT` 同一对象，或 mask、32 字节 stride、初始属性 mask 与所有元素偏移不完全匹配。
+- 源顶点含非有限浮点数，顶点数不是正的四倍数、超过 32 Ki 顶点，或 payload 长度与顶点数不符。
+
+[PhotonPackedVertexUtil](../../src/main/java/org/unitego/lobecorp/util/photon/model/PhotonPackedVertexUtil.java) 按原写入链的 byte 量化编码颜色与法线，按低 short／高 short 和 native endian 编码光照；保留位置、UV、顶点顺序及原三角形的重复末角。通过守卫后一次 reserve 加整块复制，再更新 builder 元数据；原 `Emitter.bakeJob`、build、sortQuads、Job 与 mesh／buffer 生命周期保持。返回 false 仅发生在 reserve 前，可继续旧逐顶点回放；reserve 开始后的异常直接传播，不能在已写入或偏移已改变的 builder 上回退。
+
+packed 快照为 GC 管理的 byte[]，每组最多 1 MiB，单个输出全部候选合计最多 4 MiB。reset、强制 remove、clearParticles、invalidate 与新 Frame 会解除相应 packed 引用；不长期持有原生 buffer，也不以盲目增加 staging 初始容量替代减少逐顶点 reserve。
+
+源码核对确认当前 Iris 的已知格式扩展分支未命中 Photon 自定义格式，但这只说明已读到的分支；Sodium 内嵌源码尚未展开。实际 Sodium／Iris 组合兼容性、普通／光影观感、透明排序、性能收益和 G0／G1 均未运行验证，不能据此宣布等价或提速。IDE 静态未发现新增错误；编译及生产包隔离通过，后续漏提交修复新增 3 项边界回归后，相关 16 项非游戏测试通过，无窗口 Data 成功且未写入或移除资源。原生字节对照只验证编码，fake sink 只验证回放契约，均不代表真实 Mixin 已应用；完整结果见 [执行记录](photon-extreme-execution-gpt-20261025.md#wp1-编码阶段2026-10-25用户选择-a)。本阶段未启动游戏。
 
 ## 独立回归测试入口
 

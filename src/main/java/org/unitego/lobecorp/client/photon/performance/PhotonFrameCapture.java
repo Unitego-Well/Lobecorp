@@ -9,6 +9,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.TimerQuery;
 import com.sun.management.ThreadMXBean;
 import net.minecraft.client.Minecraft;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
@@ -81,12 +82,25 @@ public class PhotonFrameCapture {
 		return MAX_SECONDS;
 	}
 
+	/// 供同线程采集适配器对齐结束边界，不创建状态快照。
+	public static boolean running() {
+		return active != null;
+	}
+
 	public static void start(String label, double seconds) {
-		start(label, seconds, () -> true);
+		start(label, seconds, () -> true, true, true);
+	}
+
+	public static void start(String label, double seconds, boolean gpu, boolean allocation) {
+		start(label, seconds, () -> true, gpu, allocation);
 	}
 
 	/// 调用方可让出整帧查询窗口，避免与独立阶段 elapsed 查询嵌套。
 	public static UUID start(String label, double seconds, BooleanSupplier gpuFrameFilter) {
+		return start(label, seconds, gpuFrameFilter, true, true);
+	}
+
+	private static UUID start(String label, double seconds, BooleanSupplier gpuFrameFilter, boolean gpu, boolean allocation) {
 		RenderSystem.assertOnRenderThread();
 		Objects.requireNonNull(gpuFrameFilter);
 
@@ -99,7 +113,7 @@ public class PhotonFrameCapture {
 		}
 
 		cancel();
-		active = new Capture(label, seconds, gpuFrameFilter);
+		active = new Capture(label, seconds, gpuFrameFilter, gpu, allocation);
 		return active.id;
 	}
 
@@ -444,7 +458,7 @@ public class PhotonFrameCapture {
 		private int gpuErrors;
 		private boolean gpuRecording;
 
-		private Capture(String label, double seconds, BooleanSupplier gpuFrameFilter) {
+		private Capture(String label, double seconds, BooleanSupplier gpuFrameFilter, boolean gpu, boolean allocation) {
 			this.label = label;
 			this.gpuFrameFilter = gpuFrameFilter;
 			requestedSeconds = seconds;
@@ -452,6 +466,14 @@ public class PhotonFrameCapture {
 			Arrays.fill(renderCpuNs, UNAVAILABLE);
 			Arrays.fill(renderGpuNs, UNAVAILABLE);
 			Arrays.fill(allocatedBytes, UNAVAILABLE);
+
+			if (!gpu) {
+				gpuProblem = "disabled_by_capture_options";
+			}
+			if (!allocation) {
+				allocationProblem = "disabled_by_capture_options";
+				return;
+			}
 
 			try {
 				if (ManagementFactory.getThreadMXBean() instanceof ThreadMXBean bean && bean.isThreadAllocatedMemorySupported()
@@ -476,31 +498,40 @@ public class PhotonFrameCapture {
 				startedNs = now;
 				startedAt = Instant.now();
 				deadlineNs = startedNs + (long) (requestedSeconds * NANOSECONDS_PER_SECOND);
+                if (FMLEnvironment.isProduction()) {
 				Minecraft.getInstance().getFramerateLimitTracker().onInputReceived();
+			}
 			}
 
 			// 在递增 frames 前冻结，容量结束不追加未填充的零值帧，也不再执行后续采样阶段。
-			if (PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null) {
+			if (frames == MAX_FRAMES || PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null) {
 				completeSafely(this, State.CAPACITY, true);
 				return;
 			}
 
-			var allocated = allocatedNow();
+			boolean endpoint = now >= deadlineNs;
+			var allocated = endpoint ? UNAVAILABLE : allocatedNow();
 			pollGpu();
+			if (!endpoint) {
 			runPhases(now);
+			}
 
 			if (active != this) {
 				return;
 			}
 
 			boolean collectorLimit = PhotonPerformanceCapture.active() && PhotonPerformanceTraceUtil.limit() != null;
-			if (collectorLimit || System.nanoTime() >= deadlineNs || frames == MAX_FRAMES) {
-				completeSafely(this, collectorLimit || frames == MAX_FRAMES ? State.CAPACITY : State.DURATION, true);
+			if (collectorLimit) {
+				completeSafely(this, State.CAPACITY, true);
 				return;
 			}
 
 			int index = frames++;
+			if (endpoint) {
+				PhotonPerformanceTraceUtil.frame(index, startedNs);
+			} else {
 			PhotonPerformanceCapture.frame(index, startedNs);
+			}
 			if (active != this) {
 				return;
 			}
@@ -528,6 +559,12 @@ public class PhotonFrameCapture {
 					| (GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE ? MAXIMIZED : 0)
 					| (window.isIconified() ? ICONIFIED : 0) | (window.isFullscreen() ? FULLSCREEN : 0)
 					| (minecraft.options.enableVsync().get() ? VSYNC : 0);
+
+			// 终点仅闭合相邻 HEAD 间隔；未执行的 body、GPU 和分配采样保留不可用值。
+			if (endpoint) {
+				completeSafely(this, State.DURATION, true);
+				return;
+			}
 
 			if (allocated >= 0 && previousAllocated >= 0) {
 				allocatedBytes[index] = allocated - previousAllocated;

@@ -1,8 +1,16 @@
 # 工作区目录与迁移
 
+## 当前状态：仅原始 dev（2026-11-06）
+
+Photon、Horde 已提交成果已按顺序合入 dev。用户确认清理后，两个子工作区的 Git 注册、物理目录、本地 codex/photon 与 codex/horde 分支及旧兼容 junction 均已移除；对应主会话和关联 DS 辅助会话已归档。当前仅保留本仓库根工作树和协调会话 `01a1a988-6fa4-7863-b381-75c96de1fddb`，不再调度下方历史工作区或会话。
+
+完整本地归档位于原始根 `.local/workspace-retirement-20261106/`，包含未提交内容、存档、编辑资产和运行资料，未随 Git 发布。两个 ZIP 已逐文件校验；源提交与 WIP 另保留恢复引用。恢复须先核对清单，不自动重建工作区或唤醒归档会话。每日文档检查仅维护 dev，原频率与静默策略保持。
+
+## 历史工作区布局
+
 2026-10-23，原始 dev 为地基；任务目录统一位于 `.workspace/lobecorp_<content>`，仍为独立 Git worktree，不是源码副本或嵌套 Git 仓库。原始 `.gitignore` 排除整个 `.workspace/`。
 
-| 任务 | 真实目录 | 当前聊天兼容入口 |
+| 历史任务 | 已移除目录 | 已移除兼容入口 |
 | --- | --- | --- |
 | 特效 | `.workspace/lobecorp_photon` | `C:/Users/wang_/.codex/worktrees/7903/Lobecorp` |
 | 清道夫 | `.workspace/lobecorp_horde` | `C:/Users/wang_/.codex/worktrees/horde-recovery/Lobecorp` |
@@ -18,6 +26,8 @@
 旧创建技能脚本及 Skill 已存入忽略的 `.local/git-wip/git-arrange-20261023-598bed71/`，不再放在有效技能入口；保存位置与恢复边界统一见[原始总索引](../README.md#本次提交与本地保留)，不作为新目录政策依据。新任务显式使用 `git worktree add <原始目录>/.workspace/lobecorp_<content> <已确认分支>`，创建前检查分支、端口及原始状态；独立测试配置仍按项目隔离技能准备。原始索引须排除 `.workspace`，不跨工作区搜索或修改。
 
 ## 对话路由
+
+当前仅使用上方协调入口。以下均为撤销前的历史迁移记录，其中“当前有效”“保留工作树”等描述仅适用于相应日期，不构成现行调度或恢复授权。
 
 2026-11-05 Photon再次迁移：当前负责人为 `01a1aae7-44be-78e3-8594-e70f39e020c6`，替代 `01a1a96e-ed42-7831-94b0-a992c328020d`。新主已只读确认根、分支、HEAD与WIP一致，原工作树及全部改动、采样保留。启动词仅包含基础入口与当前任务状态，完整交接见所属工作区 `.agent/handoffs/20261105-session-rotation-2.md`。本次迁移不自动恢复实施、验证或DS任务；协调与Horde路由不变。
 

@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-11-06 标准首次施法测试脚本
+
+- 新增20261106-first-cast-matrix.mjs、独立JSON profile和first-cast-evidence.mjs，普通/光影各三轮；旧Run入口、矩阵、场景和已有暂存内容保持。默认dry-run，不连接或启动游戏；仅--run会准备独立gameDir并经IDEA启动。
+- 复用延迟世界稳定10秒、Spark后生成真实目标、100 tick暖场、20秒/2秒单次施法场景。MCP桥接和截图放到spark_stop_request之后；仅判选中场景PASSED，其余允许SKIPPED。阶段、帧列、实际JVM、Spark最终teardown/JFR与工件哈希形成采集门禁。
+- 启动/进入世界排除优化统计，延迟后的生成/准备窗与主窗分开列出；GPU/分配/焦点/安静模式/限帧如实记录，未导出的命中伤害与prepared_project_*统计保留unknown，不写性能达标。独立attempt、严格源指纹resume与PID/创建时间清理保护历史和其他实例。
+- Node语法、IDEA检查及六格dry-run通过；dry-run输出目录未创建。未启动游戏、IDEA运行配置或MCP游戏连接，未运行单测/实际采集或Java构建/Data。使用方式见[性能脚本入口](../../tools/photon/performance/README.md#2026-11-06-标准延迟首次施法入口)。
+
 ## 2026-11-06 首次施法创建架构优化
 
 - PROJECT 热消费通过同次同步入口完成来源、路径、子树身份/顺序、controller修订及owner/预算校验后租用；输入按Definition节点一次对齐，创建与复位不再逐节点线性查找。旧公开检查/回退入口保留。

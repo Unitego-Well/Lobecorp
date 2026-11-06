@@ -39,10 +39,12 @@ import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
 
 import java.lang.ref.WeakReference;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -106,6 +108,7 @@ public class PhotonRuntimeFactory {
 		unregisterPreparedSource(source);
 		PhotonChildSpawner.bindPreloadDefinition(source.getFxData());
 		var definition = compile(source.getFxData(), key.source() + "@" + key.revision());
+		prepareProjects(definition, source.getFxData());
 		preparedSourceCompilations++;
 		PREPARED_SOURCES.put(source, key);
 		DEFINITIONS.put(source, new CachedDefinition(new WeakReference<>(source.getFxData()), definition));
@@ -150,6 +153,9 @@ public class PhotonRuntimeFactory {
 	private static long createdRuntimes;
 	private static long projectRequests;
 	private static long projectCompilations;
+	private static long preparedProjectViews;
+	private static long preparedProjectHits;
+	private static long preparedProjectFallbacks;
 	private static long indexedRuntimes;
 	private static long hybridLeaseAcquires;
 	private static long hybridFreshIndexedCreates;
@@ -189,6 +195,12 @@ public class PhotonRuntimeFactory {
 	}
 
 	private record ProjectProgramKey(ProjectKey structureKey, String definitionKey) {
+	}
+
+	private record StaticProjectKey(UUID target, boolean children) {
+	}
+
+	private record StaticProject(Definition definition, List<UUID> selected, @Nullable UUID controller) {
 	}
 
 	/// 同一对象在本次进程内保持同一 token；token 不持有来源对象。
@@ -430,7 +442,7 @@ public class PhotonRuntimeFactory {
 		try {
 			for (int i = 0; i < definition.nodes.size(); i++) {
 				var plan = definition.nodes.get(i);
-				var current = live == null ? null : find(live, plan.id());
+				var current = live == null ? null : live.get(i);
 				IFXObject next;
 				if (current != null && !(current instanceof PhotonNamedController)) {
 					next = plan.instantiateFrom(current);
@@ -565,22 +577,76 @@ public class PhotonRuntimeFactory {
 			}
 			controller = controllers.isEmpty() ? null : controllers.getFirst();
 		}
+		var key = program != null ? null : projectKey(selected, target, includeChildren, controller);
+		return acquireProject(scope, selected, controller, target, includeChildren, world, mode, program, key);
+	}
+
+	/// 同次同步消费内完成 PROJECT 来源、结构与所有权校验，不向调用方暴露 live 校验凭据。
+	public static @Nullable Lease tryProject(IScene scene, IFXObject owner, UUID target, boolean includeChildren,
+	                                         Set<String> expectedPath, Object world, PhotonTemplateProgram program) {
+		if (!(scene instanceof FXRuntime runtime) || program.source() != PhotonTemplateProgram.Source.PROJECT
+				|| !program.reusable() || !program.current() || program.sourceScopeValue() != scene
+				|| !Objects.equals(program.projectTarget(), target) || program.includeChildren() != includeChildren
+				|| !program.path().equals(expectedPath)
+				|| !(program.structureKey() instanceof ProjectProgramKey(var expectedStructure, var expectedDefinition))
+				|| !expectedDefinition.equals(program.definition().key())) {
+			return null;
+		}
+
+		var scope = SCOPES.get(runtime);
+		if (scope == null || !definitionCurrent(scope.definition)) {
+			return null;
+		}
+
+		var mode = scope.mode == Mode.HYBRID ? Mode.HYBRID : MODE;
+		if (mode == Mode.NATIVE) {
+			return null;
+		}
+
+		var selected = projectSelection(scene, target, includeChildren);
+		if (selected == null) {
+			return null;
+		}
+
+		if (selected.stream().anyMatch(object -> object == owner)) {
+			throw new IllegalArgumentException("项目子模板循环、无效或超出对象预算。");
+		}
+
+		var controllers = scene.getAllSceneObjects().stream().filter(PhotonNamedController.class::isInstance)
+				.map(PhotonNamedController.class::cast).toList();
+		if (controllers.size() > 1) {
+			throw new IllegalArgumentException("项目模板含多个命名控制器。");
+		}
+
+		var controller = controllers.isEmpty() ? null : controllers.getFirst();
+		if (!expectedStructure.equals(projectKey(selected, target, includeChildren, controller))) {
+			return null;
+		}
+
+		projectRequests++;
+		return acquireProject(scope, selected, controller, target, includeChildren, world, mode, program, null);
+	}
+
+	private static Lease acquireProject(Scope scope, List<IFXObject> selected,
+	                                    @Nullable PhotonNamedController controller, UUID target,
+	                                    boolean includeChildren, Object world, Mode mode,
+	                                    @Nullable PhotonTemplateProgram program, @Nullable ProjectKey key) {
 		if (controller != null && selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
 			throw new IllegalArgumentException("项目模板命名控制器超出对象预算。");
 		}
-		var key = program != null ? null : projectKey(selected, target, includeChildren, controller);
+
 		var definition = program != null ? program.definition() : scope.projects.get(key);
 		if (definition == null) {
-			definition = compileProject(scope.definition, selected, controller, target, includeChildren);
+			definition = preparedProject(scope.definition, selected, controller, target, includeChildren);
+			if (definition == null) {
+				definition = compileProject(scope.definition, selected, controller, target, includeChildren);
+				projectCompilations++;
+			}
 			if (key != null) {
 				scope.projects.put(key, definition);
 			}
-			projectCompilations++;
 		}
-		var inputs = new ArrayList<>(selected);
-		if (controller != null && inputs.stream().noneMatch(PhotonNamedController.class::isInstance)) {
-			inputs.add(controller);
-		}
+		var inputs = orderedProjectInputs(definition, selected, controller);
 		if (mode == Mode.POOLED || mode == Mode.HYBRID) {
 			return acquirePooled(definition, world, mode, inputs);
 		}
@@ -627,6 +693,116 @@ public class PhotonRuntimeFactory {
 		definition.projectControllerId = controller == null ? null : controller.id();
 		definition.includeChildren = includeChildren;
 		return definition;
+	}
+
+	/// 仅为发布的独占资源编译声明子视图，不绑定场景或构造运行树。
+	private static void prepareProjects(Definition parent, FXData source) {
+		var controllers = source.objects().stream().filter(PhotonNamedController.class::isInstance)
+				.map(PhotonNamedController.class::cast).toList();
+		if (controllers.size() > 1) {
+			return;
+		}
+
+		var controller = controllers.isEmpty() ? null : controllers.getFirst();
+		var objects = new LinkedHashMap<UUID, IFXObject>();
+		var children = new HashMap<UUID, List<IFXObject>>();
+		for (var object : source.objects()) {
+			objects.put(object.id(), object);
+			var parentId = object.transform()._getInternalParentID();
+			if (parentId != null) {
+				children.computeIfAbsent(parentId, _ -> new ArrayList<>()).add(object);
+			}
+		}
+
+		for (var object : source.objects()) {
+			var ordered = children.get(object.id());
+			if (ordered != null) {
+				var ids = object.transform()._getInternalChildID();
+				ordered.sort(Comparator.comparingInt(child -> ids.indexOf(child.id())));
+			}
+		}
+
+		var views = new HashMap<StaticProjectKey, StaticProject>();
+		for (var object : source.objects()) {
+			if (!(object instanceof PhotonChildSpawner child) || child.config.source != PhotonSpawnConfig.Source.PROJECT) {
+				continue;
+			}
+
+			var target = child.config.template.getTransformId();
+			var key = target == null ? null : new StaticProjectKey(target, child.config.includeChildren);
+			if (key == null || views.containsKey(key) || !(objects.get(target) instanceof Emitter)) {
+				continue;
+			}
+
+			var selected = staticProjectSelection(objects.get(target), children, child, child.config.includeChildren);
+			if (selected == null || controller != null && selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
+				continue;
+			}
+
+			try {
+				var definition = compileProject(parent, selected, controller, target, child.config.includeChildren);
+				for (var node : definition.nodes) {
+					node.prepareStatic();
+				}
+				definition.sharedProject = true;
+				views.put(key, new StaticProject(definition, selected.stream().map(IFXObject::id).toList(),
+						controller == null ? null : controller.id()));
+			} catch (IOException | RuntimeException invalid) {
+				preparedProjectFallbacks++;
+				Lobecorp.LOGGER.debug("项目子视图保留动态准备：{} / {}", parent.key, target, invalid);
+			}
+		}
+
+		parent.staticProjects = Map.copyOf(views);
+		preparedProjectViews += views.size();
+	}
+
+	private static @Nullable List<IFXObject> staticProjectSelection(IFXObject target,
+	                                                               Map<UUID, List<IFXObject>> children,
+	                                                               PhotonChildSpawner owner, boolean includeChildren) {
+		var pending = new ArrayDeque<IFXObject>();
+		var selected = new ArrayList<IFXObject>();
+		var seen = new HashSet<UUID>();
+		pending.add(target);
+		while (!pending.isEmpty()) {
+			var object = pending.removeFirst();
+			if (object == owner || !seen.add(object.id()) || selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
+				return null;
+			}
+
+			selected.add(object);
+			if (includeChildren) {
+				pending.addAll(children.getOrDefault(object.id(), List.of()));
+			}
+		}
+		return selected;
+	}
+
+	private static @Nullable Definition preparedProject(Definition parent, List<IFXObject> selected,
+	                                                     @Nullable PhotonNamedController controller,
+	                                                     UUID target, boolean includeChildren) {
+		var prepared = parent.staticProjects.get(new StaticProjectKey(target, includeChildren));
+		if (prepared == null || !definitionCurrent(prepared.definition())
+				|| !prepared.selected().equals(selected.stream().map(IFXObject::id).toList())
+				|| !Objects.equals(prepared.controller(), controller == null ? null : controller.id())) {
+			return null;
+		}
+
+		for (var object : selected) {
+			var node = parent.byId.get(object.id());
+			if (node == null || !node.matchesType(object)) {
+				return null;
+			}
+		}
+		if (controller != null) {
+			var node = parent.byId.get(controller.id());
+			if (node == null || !node.matchesNamedDefinition(controller)) {
+				return null;
+			}
+		}
+
+		preparedProjectHits++;
+		return prepared.definition();
 	}
 
 	/// PROJECT 编译定义的结构键；只读当前场景解析，不接收或保存旧 live 对象列表。
@@ -691,9 +867,12 @@ public class PhotonRuntimeFactory {
 			definition = scope.projects.get(key);
 		}
 		if (definition == null) {
-			definition = compileProject(scope.definition, selected, controller, target, includeChildren);
+			definition = preparedProject(scope.definition, selected, controller, target, includeChildren);
+			if (definition == null) {
+				definition = compileProject(scope.definition, selected, controller, target, includeChildren);
+				projectCompilations++;
+			}
 			scope.projects.put(key, definition);
-			projectCompilations++;
 			templatePrograms++;
 		} else {
 			ensureCurrent(definition);
@@ -716,13 +895,22 @@ public class PhotonRuntimeFactory {
 		return OBJECT_IDENTITIES.computeIfAbsent(object, _ -> new ObjectIdentity(++identitySequence));
 	}
 
-	private static @Nullable IFXObject find(List<IFXObject> live, UUID id) {
-		for (var value : live) {
-			if (value.id().equals(id)) {
-				return value;
-			}
+	/// 每次校验后只对齐一次；空槽沿用原来的冻结定义初始化语义。
+	private static List<IFXObject> orderedProjectInputs(Definition definition, List<IFXObject> selected,
+	                                                   @Nullable PhotonNamedController controller) {
+		var byId = new HashMap<UUID, IFXObject>();
+		for (var object : selected) {
+			byId.putIfAbsent(object.id(), object);
 		}
-		return null;
+		if (controller != null && selected.stream().noneMatch(PhotonNamedController.class::isInstance)) {
+			byId.putIfAbsent(controller.id(), controller);
+		}
+
+		var ordered = new IFXObject[definition.nodes.size()];
+		for (int i = 0; i < ordered.length; i++) {
+			ordered[i] = byId.get(definition.nodes.get(i).id());
+		}
+		return Arrays.asList(ordered);
 	}
 
 	private static void resetRuntime(Definition definition, FXRuntime runtime,
@@ -760,7 +948,7 @@ public class PhotonRuntimeFactory {
 			for (int i = 0; i < actors.size(); i++) {
 				var actor = actors.get(i);
 				resetActor(actor);
-				var current = live == null ? null : find(live, definition.nodes.get(i).id());
+				var current = live == null ? null : live.get(i);
 				if (current != null && !(current instanceof PhotonNamedController)) {
 					definition.nodes.get(i).initializeFrom(current, actor);
 				} else {
@@ -927,7 +1115,9 @@ public class PhotonRuntimeFactory {
 		if (scope != null) {
 			var projects = List.copyOf(scope.projects.values());
 			scope.projects.clear();
-			projects.forEach(PhotonRuntimeFactory::invalidateDefinition);
+			// 共享子视图归资源定义所有，单个租约退役只撤销该 Scope 独占编译的成果。
+			projects.stream().filter(definition -> !definition.sharedProject)
+					.forEach(PhotonRuntimeFactory::invalidateDefinition);
 		}
 	}
 
@@ -1064,6 +1254,9 @@ public class PhotonRuntimeFactory {
 		result.put("template_lease_acquires", templateLeaseAcquires);
 		result.put("project_requests", projectRequests);
 		result.put("project_compilations", projectCompilations);
+		result.put("prepared_project_views", preparedProjectViews);
+		result.put("prepared_project_hits", preparedProjectHits);
+		result.put("prepared_project_fallbacks", preparedProjectFallbacks);
 		result.put("indexed_runtimes", indexedRuntimes);
 		result.put("hybrid_lease_acquires", hybridLeaseAcquires);
 		result.put("hybrid_fresh_indexed_creates", hybridFreshIndexedCreates);
@@ -1104,10 +1297,12 @@ public class PhotonRuntimeFactory {
 		private final PhotonTimelineProgram timeline;
 		private final @Nullable PhotonFrozenTag snapshot;
 		private final PhotonIndexedObjectMap.Layout layout;
+		private Map<StaticProjectKey, StaticProject> staticProjects = Map.of();
 		private @Nullable UUID projectTarget;
 		private @Nullable UUID projectControllerId;
 		private boolean includeChildren;
 		private boolean addedController;
+		private boolean sharedProject;
 
 		private Definition(String key, long generation, List<PhotonCompiledObject> nodes,
 		                   PhotonTimelineProgram timeline, @Nullable PhotonFrozenTag snapshot) {

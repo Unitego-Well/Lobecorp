@@ -379,6 +379,15 @@ public class PhotonCompiledObject {
 		return nativeFallback;
 	}
 
+	/// 静态子视图只复用原定义中的精确节点类型；动态配置仍由 live transfer 恢复。
+	public boolean matchesType(IFXObject object) {
+		return object.getClass() == objectClass && type.equals(object.getFXObjectType().name());
+	}
+
+	public boolean matchesNamedDefinition(PhotonNamedController controller) {
+		return preparedNamed != null && preparedNamed.matches(controller);
+	}
+
 	public int fallbackFields() {
 		return fallbackFields + statePlans.stream().mapToInt(IStatePlan::fallbackFields).sum();
 	}

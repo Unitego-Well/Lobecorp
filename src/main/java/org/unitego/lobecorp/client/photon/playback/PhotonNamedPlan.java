@@ -4,6 +4,7 @@ import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
+import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.fx.timeline.ControlTrack;
 import com.lowdragmc.photon.client.fx.timeline.SpeedTrack;
@@ -31,9 +32,11 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nullable;
@@ -52,6 +55,35 @@ public class PhotonNamedPlan {
 	}
 
 	public record ModelClipTarget(PhotonModelClipTrack track, UUID targetId) {
+	}
+
+	private static boolean isDiscrete(AnimatedPropertyType type) {
+		return type.stepped() && (!(type instanceof ConfigPropertyType config) || config.valueType() != ConfigValueType.INT);
+	}
+
+	private static List<Binding> filterBindings(List<Binding> source, UUID target, String property, boolean discrete) {
+		var bindings = source.isEmpty()
+				? List.of(new Binding(target, property, Blend.OVERRIDE, ValueSource.CURVE, "", -1, 1, 0, "", ""))
+				: source;
+		var filtered = new ArrayList<Binding>(bindings.size());
+
+		for (var binding : bindings) {
+			if (!discrete || binding.blend() == Blend.OVERRIDE) {
+				filtered.add(binding);
+			}
+		}
+
+		return List.copyOf(filtered);
+	}
+
+	private static List<Binding> selectBindings(Definition definition, AnimationTrack track, AnimatedProperty property,
+	                                            @Nullable Template template) {
+		if (template == null) {
+			return definition.bindings().stream().filter(value -> value.target().equals(track.targetId())
+					&& value.property().equals(property.type().key())).toList();
+		}
+
+		return template.bindings.getOrDefault(new BindingKey(track.targetId(), property.type().key()), List.of());
 	}
 
 	final Definition definition;
@@ -90,6 +122,7 @@ public class PhotonNamedPlan {
 		var preparedSignalTracks = new ArrayList<SignalTrack>();
 		boolean audio = false;
 		boolean postProcess = false;
+		boolean staticDescriptions = template != null && template.staticContributions;
 
 		for (var track : leaves) {
 			if (track.mute()) {
@@ -102,19 +135,36 @@ public class PhotonNamedPlan {
 				}
 
 				for (var property : animation.properties()) {
-					var bindings = template == null ? definition.bindings().stream().filter(value -> value.target().equals(track.targetId())
-							&& value.property().equals(property.type().key())).toList()
-							: template.bindings.getOrDefault(new BindingKey(track.targetId(), property.type().key()), List.of());
+					List<Binding> bindings = null;
 
+					if (staticDescriptions) {
+						bindings = template.contributions.get(new PropertyKey(track.targetId(), property.type().key(),
+								isDiscrete(property.type())));
+						if (bindings == null) {
+							staticDescriptions = false;
+						}
+					}
+
+					if (bindings != null) {
+						new PhotonPropertyTarget(target, property.type());
+						if (!target.id().equals(track.targetId())) {
+							staticDescriptions = false;
+						}
+
+						for (var binding : bindings) {
+							prepared.add(new Property(target, property, binding));
+						}
+						continue;
+					}
+
+					bindings = selectBindings(definition, animation, property, template);
 					if (bindings.isEmpty()) {
 						bindings = List.of(new Binding(track.targetId(), property.type().key(), Blend.OVERRIDE, ValueSource.CURVE, "",
 								-1, 1, 0, "", ""));
 					}
 
 					new PhotonPropertyTarget(target, property.type());
-					boolean discrete = property.type().stepped() && (!(property.type() instanceof ConfigPropertyType config)
-							|| config.valueType() != ConfigValueType.INT);
-
+					boolean discrete = isDiscrete(property.type());
 					for (var binding : bindings) {
 						if (!discrete || binding.blend() == Blend.OVERRIDE) {
 							prepared.add(new Property(target, property, binding));
@@ -149,14 +199,19 @@ public class PhotonNamedPlan {
 		hasPostProcess = postProcess;
 
 		int unused = 0;
+		boolean staticUsed = template != null && template.staticContributions && staticDescriptions;
 
 		for (var binding : definition.bindings()) {
 			if (!(runtime.objects.get(binding.target()) instanceof FXObject target)) {
 				throw new IllegalArgumentException("命名绑定对象引用失效：" + binding.target());
 			}
 
-			if (properties.stream().noneMatch(property -> property.target().id().equals(binding.target())
-					&& property.value().type().key().equals(binding.property()))) {
+			boolean used = staticUsed
+					? template.usedKeys.contains(new BindingKey(binding.target(), binding.property()))
+					: properties.stream().anyMatch(property -> property.target().id().equals(binding.target())
+					&& property.value().type().key().equals(binding.property()));
+
+			if (!used) {
 				boolean known = target.getFXObjectType().animatableProperties(target).stream()
 						.anyMatch(type -> type.key().equals(binding.property()));
 
@@ -185,6 +240,9 @@ public class PhotonNamedPlan {
 	}
 
 	private record BindingKey(UUID target, String property) {
+	}
+
+	private record PropertyKey(UUID target, String property, boolean discrete) {
 	}
 
 	public List<ModelClipTarget> modelClips() {
@@ -216,8 +274,11 @@ public class PhotonNamedPlan {
 		private final Definition definition;
 		private final PhotonTimelineProgram program;
 		private final Map<BindingKey, List<Binding>> bindings;
+		private final Map<PropertyKey, List<Binding>> contributions;
+		private final Set<BindingKey> usedKeys;
+		private final boolean staticContributions;
 
-		private Template(Definition definition, PhotonTimelineProgram program) {
+		private Template(Definition definition, PhotonTimelineProgram program, Timeline authored) {
 			this.definition = definition;
 			this.program = program;
 			var indexed = new LinkedHashMap<BindingKey, List<Binding>>();
@@ -228,6 +289,35 @@ public class PhotonNamedPlan {
 
 			indexed.replaceAll((_, values) -> List.copyOf(values));
 			bindings = Map.copyOf(indexed);
+			var preparedContributions = new LinkedHashMap<PropertyKey, List<Binding>>();
+			var preparedUsedKeys = new HashSet<BindingKey>();
+			boolean staticReady = program.fallbackReasons().isEmpty();
+
+			if (staticReady) {
+				for (var track : authored.leafTracks(false)) {
+					if (track.mute() || !(track instanceof AnimationTrack animation)) {
+						continue;
+					}
+
+					for (var property : animation.properties()) {
+						var key = new BindingKey(track.targetId(), property.type().key());
+						boolean discrete = isDiscrete(property.type());
+						var filtered = filterBindings(bindings.getOrDefault(key, List.of()), track.targetId(),
+								property.type().key(), discrete);
+
+						preparedContributions.computeIfAbsent(new PropertyKey(track.targetId(), property.type().key(), discrete),
+								_ -> filtered);
+
+						if (!filtered.isEmpty()) {
+							preparedUsedKeys.add(key);
+						}
+					}
+				}
+			}
+
+			contributions = staticReady ? Map.copyOf(preparedContributions) : Map.of();
+			usedKeys = staticReady ? Set.copyOf(preparedUsedKeys) : Set.of();
+			staticContributions = staticReady;
 		}
 
 		public int decodedTracks() {
@@ -250,7 +340,7 @@ public class PhotonNamedPlan {
 			}
 		}
 
-		return new Template(definition, PhotonTimelineProgram.compilePrepared(timeline, provider));
+		return new Template(definition, PhotonTimelineProgram.compilePrepared(timeline, provider), timeline);
 	}
 
 	private static Timeline readTimeline(HolderLookup.Provider provider, Definition definition) {

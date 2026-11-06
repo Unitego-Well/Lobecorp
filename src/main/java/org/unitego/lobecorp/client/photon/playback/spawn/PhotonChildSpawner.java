@@ -242,17 +242,19 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 				reason = "program_missing";
 			} else if (path.size() >= Math.clamp(config.maxDepth, 1, PhotonSpawnConfig.MAX_DEPTH)) {
 				reason = "depth_limit";
-			} else if (!PhotonSpawnTemplateUtil.matches(this, program)) {
+			} else {
+				candidate = PhotonSpawnTemplateUtil.tryInstantiate(this, program);
+				if (candidate != null) {
+					reason = "program";
+					if (!program.reusable()) {
+						preparedProgram = null;
+					}
+					completed = true;
+					return candidate;
+				}
+
 				reason = "program_stale";
 				preparedProgram = null;
-			} else {
-				reason = "program";
-				candidate = PhotonSpawnTemplateUtil.instantiate(this, program);
-				if (!program.reusable()) {
-					preparedProgram = null;
-				}
-				completed = true;
-				return candidate;
 			}
 			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
 			try {

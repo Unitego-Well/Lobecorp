@@ -86,6 +86,33 @@ public class PhotonSpawnTemplateUtil {
 		return program.matchesProject(scope, target.id(), owner.config.includeChildren, path);
 	}
 
+	/// 尝试消费已有程序；PROJECT 的选树校验与租用在同次调用内完成。
+	public static @Nullable Template tryInstantiate(PhotonChildSpawner owner, PhotonTemplateProgram program) {
+		if (program.source() != PhotonTemplateProgram.Source.PROJECT) {
+			return matches(owner, program) ? instantiate(owner, program) : null;
+		}
+		if (owner.config.source != PhotonSpawnConfig.Source.PROJECT) {
+			return null;
+		}
+
+		IScene scope;
+		try {
+			scope = owner.sourceScope();
+		} catch (RuntimeException unavailable) {
+			return null;
+		}
+
+		var reference = owner.config.template.getTransform(scope);
+		if (reference == null || !(reference.sceneObject() instanceof Emitter target) || target == owner) {
+			return null;
+		}
+
+		var path = descend(owner, "project:" + target.id());
+		var lease = PhotonRuntimeFactory.tryProject(scope, owner, target.id(), owner.config.includeChildren,
+				path, owner.getLevel(), program);
+		return lease == null ? null : ownedTemplate(owner, lease, scope, path);
+	}
+
 	/// 真实发射时由程序取得独占租约并接线来源；动态槽和随机值仍由实例创建阶段处理。
 	public static Template instantiate(PhotonChildSpawner owner, PhotonTemplateProgram program) {
 		if (program == null) {
@@ -105,9 +132,7 @@ public class PhotonSpawnTemplateUtil {
 					? PhotonRuntimeFactory.acquire(PhotonRuntimeFactory.prepareTransient(fx), owner.getLevel(), program.mode())
 					: program.mode() == PhotonRuntimeFactory.Mode.NATIVE
 					? PhotonRuntimeFactory.acquire(fx, owner.getLevel()) : program.acquire(owner.getLevel());
-			var runtime = lease.runtime();
-			wireChildren(owner, runtime, runtime, program.path());
-			return new Template(runtime, runtime, program.path(), lease);
+			return ownedTemplate(owner, lease, lease.runtime(), program.path());
 		}
 		if (program.source() == PhotonTemplateProgram.Source.ROOT) {
 			throw new IllegalArgumentException("根模板不能直接作为子发射实例。");
@@ -118,15 +143,12 @@ public class PhotonSpawnTemplateUtil {
 				|| !target.id().equals(program.projectTarget())) {
 			throw new IllegalArgumentException("项目子发射模板缺失或已变更。");
 		}
-		var selected = selectProject(owner, target);
-		var lease = PhotonRuntimeFactory.project(scope, selected, target.id(),
-				program.includeChildren(), owner.getLevel(), program);
+		var lease = PhotonRuntimeFactory.tryProject(scope, owner, target.id(), program.includeChildren(),
+				program.path(), owner.getLevel(), program);
 		if (lease == null) {
-			return nativeProjectTemplate(owner, scope, selected, program.path());
+			return nativeProjectTemplate(owner, scope, selectProject(owner, target), program.path());
 		}
-		var runtime = lease.runtime();
-		wireChildren(owner, runtime, scope, program.path());
-		return new Template(runtime, scope, program.path(), lease);
+		return ownedTemplate(owner, lease, scope, program.path());
 	}
 
 	/// 一次准备的独占 runtime；消费后所有权转移给实例，未消费则由生成器销毁。
@@ -271,6 +293,18 @@ public class PhotonSpawnTemplateUtil {
 		var runtime = new FXRuntime(new FXData(copies, new Timeline()));
 		wireChildren(owner, runtime, scope, path);
 		return new Template(runtime, scope, path);
+	}
+
+	private static Template ownedTemplate(PhotonChildSpawner owner, PhotonRuntimeFactory.Lease lease,
+	                                      IScene scope, Set<String> path) {
+		try {
+			var runtime = lease.runtime();
+			wireChildren(owner, runtime, scope, path);
+			return new Template(runtime, scope, path, lease);
+		} catch (RuntimeException | Error failure) {
+			lease.close(true);
+			throw failure;
+		}
 	}
 
 	private static void wireChildren(PhotonChildSpawner owner, FXRuntime runtime, IScene scope, Set<String> path) {

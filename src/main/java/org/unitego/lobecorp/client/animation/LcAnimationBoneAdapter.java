@@ -102,22 +102,4 @@ public class LcAnimationBoneAdapter {
 		apply(pose, snapshots, 1);
 	}
 
-	private static void apply(LcSkeletalPose pose, BoneSnapshots snapshots, double weight) {
-		pose.bones().forEach((name, transform) -> snapshots.get(name).ifPresent(snapshot -> {
-			var position = transform.position();
-			var angles = pose.rotationAngles(name);
-			var scale = transform.scale();
-			snapshot.setTranslation(lerp(snapshot.getTranslateX(), position.x * MODEL_UNITS_PER_BLOCK, weight),
-					lerp(snapshot.getTranslateY(), position.y * MODEL_UNITS_PER_BLOCK, weight),
-					lerp(snapshot.getTranslateZ(), -position.z * MODEL_UNITS_PER_BLOCK, weight));
-			snapshot.setRotation(lerp(snapshot.getRotX(), -angles.x, weight),
-					lerp(snapshot.getRotY(), angles.y, weight), lerp(snapshot.getRotZ(), -angles.z, weight));
-			snapshot.setScale(lerp(snapshot.getScaleX(), scale.x, weight),
-					lerp(snapshot.getScaleY(), scale.y, weight), lerp(snapshot.getScaleZ(), scale.z, weight));
-		}));
-	}
-
-	private static float lerp(float from, double to, double weight) {
-		return (float) (from + (to - from) * weight);
-	}
 }

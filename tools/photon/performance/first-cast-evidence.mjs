@@ -114,7 +114,7 @@ export function auditCase(row, profile, source) {
         const warmup = selected[0]?.phases?.find(phase => phase.phase === 'WARMUP');
         checks.warmup = warmup?.outcome === 'completed' && warmup.durationTicks === profile.warmupTicks;
         checks.primary_window = workload.primary_capture_seconds === profile.primarySeconds
-            && capture?.state === 'STOPPED' && capture.requested_seconds === profile.primarySeconds
+            && capture?.state === 'DURATION' && workload.capture_mode === 'natural_wall_duration' && capture.requested_seconds === profile.primarySeconds
             && capture.elapsed_seconds >= profile.primarySeconds && !capture.error
             && capture.started_ns >= captureRequest.ns && stop.ns >= capture.started_ns + profile.primarySeconds * 1e9
             && workload.main_capture_started_ns === capture.started_ns;

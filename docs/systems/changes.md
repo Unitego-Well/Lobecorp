@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-11-06 架构后标准实测与驱动修正
+
+- 完成20261106-architecture-standard-r3六局：普通/光影各三独立JVM与世界，选中场景PASSED/workloadCorrect，采集/工件/清理门禁及最终离线审计通过。按用户确认记录为非安静模式，未改电源设置。
+- 主窗完整最长间隔普通206.0087/276.6928/190.3148ms，光影255.6709/233.3060/191.9216ms；12671帧、12665间隔，18个>100ms，性能目标未关闭。失焦样本保留，未将GPU/CPU相加或以P99替代最大间隔。
+- 实际运行中补齐驱动的IDE目标父目录、AddFile尾行回读及PID记录；自然20秒主窗按当前Bench契约校验DURATION而非STOPPED。r1准备失败、r2单局试跑及误判修正均保留，不混正式六局。业务Java/场景未修改，未推送。
+- 日志各局记录11次program_missing及239～242次program，证明消费复用分支；不等于加载首发命中率或收益百分比。旧Debug/不同环境无严格同条件旧代码基线；生成/准备窗另记，未伪造伤害、GPU排空或prepared_project_*验收。完整证据见工作区.agent/reports/20261106-architecture-standard-test.md。
+
 ## 2026-11-06 标准首次施法测试脚本
 
 - 新增20261106-first-cast-matrix.mjs、独立JSON profile和first-cast-evidence.mjs，普通/光影各三轮；旧Run入口、矩阵、场景和已有暂存内容保持。默认dry-run，不连接或启动游戏；仅--run会准备独立gameDir并经IDEA启动。

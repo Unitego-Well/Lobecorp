@@ -233,26 +233,26 @@ function readback(file, expected) {
 
 async function createText(call, file, text) {
     const relative = slash(path.relative(root, file));
-    if (relative.startsWith('..')) throw Error('IDE write escapes workspace');
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw Error('IDE write escapes workspace');
+    text = text.replaceAll('\r\n', '\n');
+    if (!text.endsWith('\n')) text += '\n';
+    fs.mkdirSync(path.dirname(file), {recursive: true});
     if (fs.existsSync(file)) {
-        const snapshot = await call('ide_read_file_snapshot', {
-            projectPath: root,
-            filePath: relative,
-            source: 'document'
-        });
+        const snapshot = await call('ide_read_file_snapshot', {projectPath: root, filePath: relative, source: 'document'});
         if (snapshot.unsaved || snapshot.documentDiffersFromDisk || typeof snapshot.text !== 'string'
-            || snapshot.text.replaceAll('\r\n', '\n') !== text.replaceAll('\r\n', '\n')) throw Error('Existing IDE Document differs: ' + relative);
+            || snapshot.text.replaceAll('\r\n', '\n') !== text) throw Error('Existing IDE Document differs: ' + relative);
         readback(file, text);
         return;
     }
+    const lines = text.split('\n');
+    lines.pop();
     const patch = '*** Begin Patch\n*** Add File: ' + relative + '\n'
-        + text.replaceAll('\r\n', '\n').split('\n').map(line => '+' + line).join('\n') + '\n*** End Patch';
+        + lines.map(line => '+' + line).join('\n') + '\n*** End Patch';
     const arguments_ = {projectPath: root, expectedContentHash: {[relative]: 'absent'}, patch};
-    if ((await call('ide_apply_patch', {
-        ...arguments_,
-        dryRun: true
-    })).status !== 'dry_run') throw Error('IDE dry-run failed: ' + relative);
-    if ((await call('ide_apply_patch', arguments_)).status !== 'completed') throw Error('IDE write failed: ' + relative);
+    const dry = await call('ide_apply_patch', {...arguments_, dryRun: true});
+    if (dry.status !== 'dry_run') throw Error('IDE dry-run failed: ' + relative + ': ' + JSON.stringify(dry));
+    const written = await call('ide_apply_patch', arguments_);
+    if (written.status !== 'completed') throw Error('IDE write failed: ' + relative + ': ' + JSON.stringify(written));
     readback(file, text);
 }
 
@@ -266,6 +266,8 @@ async function prepareRow(call, profile, row, source) {
     if (!/^enableShaders=/m.test(iris) || !/^shaderPack=/m.test(iris)) throw Error('Iris template is incomplete');
     if (row.shader) {
         const output = path.join(row.cwd, 'shaderpacks/standard-pack.zip');
+        fs.mkdirSync(path.dirname(output), {recursive: true});
+        fs.mkdirSync(path.join(row.dir, 'binary-backups'), {recursive: true});
         if (fs.existsSync(output)) {
             if (fileHash(output) !== fileHash(input.shaderFile)) throw Error('Existing shader copy differs');
         } else {
@@ -526,6 +528,7 @@ export async function standard(argv = process.argv.slice(2)) {
         primary_seconds: profile.primarySeconds,
         stable_before_fixture_ns: profile.worldStableNs,
         screenshot_policy: 'only_after_spark_stop_request',
+        driver_pid: process.pid,
         selected_cases: rows.length,
         full_matrix_cases: profile.runs.length,
         rows: rows.map(row => ({id: row.id, slot: row.slot, world: row.world, directory: row.dir, skip: !!row.skip}))
@@ -565,7 +568,7 @@ export async function standard(argv = process.argv.slice(2)) {
         const source = {
             schema: profile.schema, batch: options.batch, head, variant: 'workspace_' + options.batch,
             dirty: git(['status', '--porcelain']), fingerprint: current, profile, selectedIds: ids,
-            runner_runtime: {node: process.version, platform: process.platform, arch: process.arch},
+            runner_runtime: {node: process.version, platform: process.platform, arch: process.arch, pid: process.pid},
             quietMode: options.quietMode, environmentNote: options.environmentNote,
             observer: 'IDEA Run; incremental stage-log polling only during primary; MCP created after spark_stop_request; no Debug log-capture probe',
             performance_verdict: 'NOT_EVALUATED'

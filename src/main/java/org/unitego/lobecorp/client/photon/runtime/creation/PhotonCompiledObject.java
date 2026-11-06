@@ -61,12 +61,14 @@ public class PhotonCompiledObject {
 	private final List<IStatePlan> statePlans;
 	private final @Nullable List<PhotonChildSpawner> childPrograms;
 	private final @Nullable PreparedModel preparedModel;
+	private final @Nullable PhotonNamedController.CompiledDefinition preparedNamed;
 
 	private PhotonCompiledObject(PhotonFrozenTag snapshot, BaseState base, String type, Class<?> objectClass,
 	                             Supplier<IFXObject> constructor, Consumer<IFXObject> initializer,
 	                             BiConsumer<IFXObject, IFXObject> transfer, List<String> fallbackReasons,
 	                             int fallbackFields, boolean nativeFallback, List<IStatePlan> statePlans,
-	                             @Nullable List<PhotonChildSpawner> childPrograms, @Nullable PreparedModel preparedModel) {
+	                             @Nullable List<PhotonChildSpawner> childPrograms, @Nullable PreparedModel preparedModel,
+	                             @Nullable PhotonNamedController.CompiledDefinition preparedNamed) {
 		this.snapshot = snapshot;
 		this.base = base;
 		this.type = type;
@@ -80,6 +82,7 @@ public class PhotonCompiledObject {
 		this.statePlans = List.copyOf(statePlans);
 		this.childPrograms = childPrograms == null ? null : List.copyOf(childPrograms);
 		this.preparedModel = preparedModel;
+		this.preparedNamed = preparedNamed;
 	}
 
 	public static PhotonCompiledObject compile(IFXObject authored) {
@@ -137,6 +140,7 @@ public class PhotonCompiledObject {
 		};
 		List<PhotonChildSpawner> childPrograms = null;
 		PhotonModelOutput.PreparedSource modelSource = null;
+		PhotonNamedController.CompiledDefinition namedSource = null;
 		var excluded = new HashSet<>(Set.of("name", "transform"));
 
 		if (canonical instanceof PhotonModelOutput model) {
@@ -173,6 +177,7 @@ public class PhotonCompiledObject {
 			plans.add(configPlan);
 		} else if (canonical instanceof PhotonNamedController controller) {
 			var definition = controller.compileDefinition();
+			namedSource = definition;
 			specialized = target -> definition.install((PhotonNamedController) target);
 			transferSpecialized = (live, target) -> {
 				try {
@@ -230,7 +235,7 @@ public class PhotonCompiledObject {
 				? output.config.renderer : output.config.modelRenderer) {
 		}, output.geometryMode(), modelSource) : null;
 		return new PhotonCompiledObject(snapshot, base, type, canonical.getClass(), constructor, initialize,
-				transfer, reasons, fallbacks, false, plans, childPrograms, model);
+				transfer, reasons, fallbacks, false, plans, childPrograms, model, namedSource);
 	}
 
 	private static void installAsset(PhotonModelOutputConfig target, PhotonFrozenTag asset) {
@@ -285,7 +290,7 @@ public class PhotonCompiledObject {
 					var fixed = factory.fixData(data, data.getIntOr("version", 0));
 					PersistedParser.createCodec(() -> target).parse(NbtOps.INSTANCE, fixed).getOrThrow();
 					rememberNativeSource(target, data);
-				}, List.of(reason + "；完整原生快照回退，PROJECT 当前 wrapper 原生恢复"), 1, true, List.of(), null, null);
+				}, List.of(reason + "；完整原生快照回退，PROJECT 当前 wrapper 原生恢复"), 1, true, List.of(), null, null, null);
 	}
 
 	private static void rememberNativeSource(IFXObject target, CompoundTag data) {
@@ -387,6 +392,16 @@ public class PhotonCompiledObject {
 	/// 返回编译期捕获的未绑定子发射器，只供静态结构/配置准备读取，不参与运行实例。
 	public List<PhotonChildSpawner> childPrograms() {
 		return childPrograms == null ? List.of() : childPrograms;
+	}
+
+	/// 预备模型与命名播放的静态成果，不创建运行实例或持有场景。
+	public void prepareStatic() throws IOException {
+		if (preparedModel != null) {
+			preparedModel.prepareStatic();
+		}
+		if (preparedNamed != null) {
+			preparedNamed.prepareStatic();
+		}
 	}
 
 	/// 静态模型准备只读冻结配置与资产，不创建运行实例或持有场景。

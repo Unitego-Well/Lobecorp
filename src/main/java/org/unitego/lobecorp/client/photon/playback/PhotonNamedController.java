@@ -73,6 +73,12 @@ public class PhotonNamedController extends EmptyFXObject {
 			return playbackVersion;
 		}
 
+		/// 提前生成不可变播放定义；不安装控制器或执行播放回调。
+		public void prepareStatic() throws IOException {
+			var prepared = playbackVersion();
+			prepared.playbackVersion();
+		}
+
 		public boolean matches(PhotonNamedController controller) {
 			return definition.equals(controller.definition);
 		}

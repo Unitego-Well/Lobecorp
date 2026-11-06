@@ -227,9 +227,22 @@ public class PhotonOwnedEffectAssets {
 		var identity = source.kind().name() + ":" + source.effectId() + ":" +
 				(location == null ? definition.getFxData().objects().stream().map(IFXObject::getName).toList() : location);
 		if (PhotonRuntimeFactory.mode() != PhotonRuntimeFactory.Mode.NATIVE) {
-			PhotonRuntimeFactory.registerPreparedSource(definition,
+			var preparedDefinition = PhotonRuntimeFactory.registerPreparedSource(definition,
 					new PhotonRuntimeFactory.PreparedSourceKey(identity, source.revision()));
+
+			try {
+				for (var node : preparedDefinition.nodes()) {
+					node.prepareStatic();
+				}
+			} catch (IOException failure) {
+				PhotonRuntimeFactory.unregisterPreparedSource(definition);
+				throw new UncheckedIOException("自有实例静态准备失败", failure);
+			} catch (RuntimeException failure) {
+				PhotonRuntimeFactory.unregisterPreparedSource(definition);
+				throw failure;
+			}
 		}
+
 		retained.put(definition, List.copyOf(assets));
 	}
 

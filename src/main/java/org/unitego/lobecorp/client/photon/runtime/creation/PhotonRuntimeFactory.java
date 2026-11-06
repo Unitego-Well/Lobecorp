@@ -550,12 +550,21 @@ public class PhotonRuntimeFactory {
 		}
 
 		projectRequests++;
-		var controllers = scene.getAllSceneObjects().stream()
-				.filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
-		if (controllers.size() > 1) {
-			throw new IllegalArgumentException("项目模板含多个命名控制器。");
+		PhotonNamedController controller;
+		var preparedController = program == null ? null : program.definition().projectControllerId;
+		if (preparedController != null) {
+			if (!(scene.getSceneObject(preparedController) instanceof PhotonNamedController currentController)) {
+				return null;
+			}
+			controller = currentController;
+		} else {
+			var controllers = scene.getAllSceneObjects().stream()
+					.filter(PhotonNamedController.class::isInstance).map(PhotonNamedController.class::cast).toList();
+			if (controllers.size() > 1) {
+				throw new IllegalArgumentException("项目模板含多个命名控制器。");
+			}
+			controller = controllers.isEmpty() ? null : controllers.getFirst();
 		}
-		var controller = controllers.isEmpty() ? null : controllers.getFirst();
 		if (controller != null && selected.size() >= PhotonSpawnConfig.MAX_TEMPLATE_OBJECTS) {
 			throw new IllegalArgumentException("项目模板命名控制器超出对象预算。");
 		}
@@ -615,6 +624,7 @@ public class PhotonRuntimeFactory {
 		definition.parent = parent;
 		definition.addedController = controller != null && selected.stream().noneMatch(PhotonNamedController.class::isInstance);
 		definition.projectTarget = target;
+		definition.projectControllerId = controller == null ? null : controller.id();
 		definition.includeChildren = includeChildren;
 		return definition;
 	}
@@ -1095,6 +1105,7 @@ public class PhotonRuntimeFactory {
 		private final @Nullable PhotonFrozenTag snapshot;
 		private final PhotonIndexedObjectMap.Layout layout;
 		private @Nullable UUID projectTarget;
+		private @Nullable UUID projectControllerId;
 		private boolean includeChildren;
 		private boolean addedController;
 

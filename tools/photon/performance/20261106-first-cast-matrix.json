@@ -25,8 +25,8 @@
     "pollMs": 500
   },
   "environmentSources": {
-    "normal": "build/agent-backups/20261106-first-cast-inventory-r1/N_first_1/build/modBench/runs/default/client",
-    "shader": "build/agent-backups/20261106-first-cast-inventory-r1/S_first_1/build/modBench/runs/default/client"
+    "normal": "build/agent-backups/20261106-architecture-standard-r3/N_first_1/build/modBench/runs/default/client",
+    "shader": "build/agent-backups/20261106-architecture-standard-r3/S_first_1/build/modBench/runs/default/client"
   },
   "vmFlags": [
     "-XX:FlightRecorderOptions=stackdepth=256",

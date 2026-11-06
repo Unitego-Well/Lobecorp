@@ -41,8 +41,8 @@ public class LcClientAnimationResources {
 	/// 只准备客户端已有的视觉资源；不伪造或提前安装服务器同步内容，也不执行行为回调。
 	public static boolean prepareLocal(Identifier modelId, Identifier animationId, String animationName) {
 		refresh();
-		var model = read(modelId.withPath(MODEL_PREFIX + modelId.getPath() + ".geo.json"));
-		var animation = read(animationId.withPath(ANIMATION_PREFIX + animationId.getPath() + ".animation.json"));
+		var model = read(modelId.withPath(MODEL_PREFIX + modelId.getPath() + ".geo.json")).orElse(null);
+		var animation = read(animationId.withPath(ANIMATION_PREFIX + animationId.getPath() + ".animation.json")).orElse(null);
 		if (model == null || animation == null) {
 			return false;
 		}

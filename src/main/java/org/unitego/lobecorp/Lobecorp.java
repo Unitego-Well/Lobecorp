@@ -37,8 +37,6 @@ public class Lobecorp {
 	public static final Logger LOGGER = LogUtils.getLogger();
 
 	public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
-		LOGGER.info("Unitego.");
-
         modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.specification(), ClientConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.specification(), ServerConfig.FILE_NAME);
 		HordeLang.init();

@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.events.client;
 
+import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -44,6 +45,9 @@ public class ClientRenderingEvents {
 
 	@SubscribeEvent
 	public static void onGui(RenderGuiEvent.Post event) {
+		if (Minecraft.getInstance().level != null) {
+			ConductorRendering.onGui(event.getGuiGraphics());
+		}
 		RuntimeOverlayHud.INSTANCE.render(event);
 	}
 }

@@ -161,12 +161,10 @@ public class SweeperRenderScenario implements BenchClientScenario {
 		if (screenshotPath == null || !Files.isRegularFile(screenshotPath) || Files.size(screenshotPath) == 0) {
 			throw new AssertionError("The sweeper render screenshot is missing");
 		}
-
 		var capture = PhotonFrameCapture.snapshot();
 		if (!capture.get("state").getAsString().equals("DURATION") || capture.get("saved_path").isJsonNull()) {
 			throw new AssertionError("Sweeper GPU timing capture did not finish");
 		}
-
 		var gpu = context.resultDirectory().resolve("artifacts/gpu/sweeper-gpu.json");
 		Files.createDirectories(gpu.getParent());
 		Files.copy(Path.of(capture.get("saved_path").getAsString()), gpu, StandardCopyOption.REPLACE_EXISTING);
@@ -191,7 +189,6 @@ public class SweeperRenderScenario implements BenchClientScenario {
 			if (gpuCaptureStarted) {
 				PhotonFrameCapture.cancel();
 			}
-			BenchWindow.restore();
 			if (poseHold != null) {
 				poseHold.close();
 			}

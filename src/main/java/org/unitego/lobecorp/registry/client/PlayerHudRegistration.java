@@ -3,19 +3,22 @@ package org.unitego.lobecorp.registry.client;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.EventHud;
-import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
+import org.unitego.lobecorp.client.hud.event.EventHud;
+import org.unitego.lobecorp.client.hud.TopLeftHud;
+import org.unitego.lobecorp.client.hud.filter.DamageFilter;
+import org.unitego.lobecorp.client.hud.filter.RationalityFilter;
 import org.unitego.lobecorp.client.hud.PlayerStatusHud;
+import org.unitego.lobecorp.config.client.HealthBarStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
 
 public class PlayerHudRegistration {
 	public static void register(RegisterGuiLayersEvent event) {
 		EventHudRegistration.register();
-		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, Lobecorp.id("player_status_hud"), PlayerStatusHud.INSTANCE);
+		event.registerAbove(VanillaGuiLayers.PLAYER_HEALTH, PlayerStatusHud.ID, PlayerStatusHud.INSTANCE);
 		event.wrapLayer(VanillaGuiLayers.PLAYER_HEALTH, original -> (graphics, delta) -> {
 			var player = Minecraft.getInstance().player;
-			if (!PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() || player == null || player.isSpectator() || player.isCreative()) {
+			if (PlayerHudConfig.HEALTH_STYLE.get() == HealthBarStyle.VANILLA
+					|| player == null || player.isSpectator() || player.isCreative()) {
 				original.render(graphics, delta);
 			}
 		});
@@ -29,8 +32,9 @@ public class PlayerHudRegistration {
 				pose.popMatrix();
 			}
         });
-        event.registerAbove(VanillaGuiLayers.CAMERA_OVERLAYS, Lobecorp.id("damage_screen_filter"), PlayerScreenFilters.INSTANCE::extractDamage);
-        event.registerAbove(Lobecorp.id("damage_screen_filter"), Lobecorp.id("event_hud"), EventHud.INSTANCE);
-		event.registerAboveAll(Lobecorp.id("rationality_screen_filter"), PlayerScreenFilters.INSTANCE::extractRationality);
+		event.registerAbove(VanillaGuiLayers.CAMERA_OVERLAYS, DamageFilter.ID,
+				DamageFilter.INSTANCE);
+		event.registerAbove(DamageFilter.ID, EventHud.ID, TopLeftHud.INSTANCE);
+		event.registerAboveAll(RationalityFilter.ID, RationalityFilter.INSTANCE);
 	}
 }

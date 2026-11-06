@@ -1,5 +1,83 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-06 NEW 独立纹理与 nine_slice
+
+生命组合图按原像素拆为 full、poisioned、withered、frozen、absorbing、physic_shield_bar、erosion_shield_bar、null（各38×7）；理智拆为 rationality_tall、rationality_low、rationality、spirit_shield_bar（各20×7）。null只保留占位，不接入灵魂护盾。12张输出已逐像素核对；源图原字节备份位于 build/agent-backups/20261106-newhud-texture-split，确认无代码引用后删除两张旧value.png。
+
+12张值纹理各配置png.mcmeta的nine_slice，左右边框1、上下0；生命/理智box左右20/15、上下0，头像框和icon未改。PanelStatusBar改为选择独立精灵，移除横向UV偏移和纵向切行，使用完整精灵的原版nine_slice规则。框按动画合计值/最大值伸长，比例限制1～3：生命66～198px，理智48～144px；内部值区增加与框相同的宽度，右侧数字跟随框尾。保持此前挤压、减少变白和pose抖动规则。
+
+IDEA检查无错误；源码及测试源码编译、生产包隔离通过（39秒）。12张裁切像素一致，14份元数据合法且全部入包，生产包旧组合图条目0。未运行游戏或测试，视觉尚未验收；未提交。二进制清理的CLI例外授权已按用户要求通知协调。
+
+## 2026-11-06 NEW 值条、护盾与减少反馈
+
+生命 NEW 与默认/原版互斥，理智 NEW 与默认条互斥。新增 shieldStyle=DEFAULT/NEW（默认DEFAULT）；NEW 护盾仅随对应 NEW 值条生效，否则保留默认独立条。物理/侵蚀映射生命，精神映射理智；灵魂护盾保留默认条，不使用生命纹理第8个占位行。
+
+PanelStatusBar 复用 StatusBarComponent/StatusGauge；生命值纹理38×63、理智20×31，行内容7px、行距1px，以v=row×8选择。生命基础值按原有心形类型选择默认/中毒/凋零/冰冻行，吸收为第5行，物理/侵蚀为第6/7行；理智复用原阈值，高/低/中/精神护盾依次选行。新旧条共享状态判断，不重复触发隐藏旧生命条的心形事件。
+
+SegmentedBarLayout 按值→吸收→护盾分配宽度；挤压时基础值至少保留20%，非零附加段优先保留2px，不够容纳时隐藏尾部。各段横向UV按其相对整条填充区域的起点向下取整，纵向UV仍选择状态行，不从额外段自身重启纹理。条形使用动画值，数字使用真实值，右侧显示最大 / 当前 + 吸收 + 护盾，零附加项不显示，隐藏段仍计入数字。
+
+对应段减少后白色闪光2tick并保留损失白条。StatusBarShake 按各段减少量/该段容量计算百分比，每减少1%对应0.1px，抖动向量幅度上限10px，不设1px下限；在完整圆周随机选择方向，8tick内偏移、反向回弹、复位。整框、图标、数值段和右侧数字共用一次pose变换，不修改布局坐标。初始采样、切样式、会话切换不触发虚假损失，暂停不推进动画。
+
+源码及测试源码编译、生产包隔离、Data已通过；Data23输出写入2份语言文件。最终IDEA检查无错误；收尾构建16秒成功，新增护盾配置中英文翻译已进入构建资源。仅编译测试源码，未执行测试或游戏，视觉效果未验收；未提交。
+
+## 2026-11-06 左上区域统一堆叠
+
+TopLeftHud 将 status 包中的 PlayerStatusPanelHud 与 EventHud 作为独立子元素，以通用纵向容器排列；边距4、间距4统一归组合层。EventHud 不再引用状态面板、面板显隐或高度，其布局从局部原点0开始。保留子包装优先的事件顺序，面板隐藏由容器补位；会话同步保留先到事件，退出显式清空两部分。注册层序及ID保持。代码与测试源码引用已更新；IDEA检查无错误，compileJava、compileTestJava及生产包隔离检查通过（18秒）。仅编译测试源码，未执行测试或游戏，未提交。
+
+## 历史：2026-11-04 LDLib2 组件迁移
+
+四类玩家/事件/滤镜图层统一从 `HudLayerManager.layer(id)` 接入，ID 由所属入口集中提供，保留原版层包装与层序。事件包装通过 `IHudUpdatable` 在布局前更新；注册侧 `TopLeftHud` 持有固定玩家面板，事件视图不再识别具体玩家组件类型。`PlayerAvatar` 组合框背景、皮肤基础脸与外层，保持 50/40/44 尺寸；面板保持 119×50、右侧间距 3、健康框 66×15 与理智框 47×15。统计文字使用 Label；Post 阶段指挥家指令光标由已有事件入口先行分发，特殊绘制与统计分开。
+
+本次验证：IDEA 检查、BenchMod Compile（含生产包隔离）、7 类 52 项状态测试与 Data 通过，Data 23 输出写入 0。游戏只检查本工作区新建测试世界的头像/理智条、护盾 10→6 的部分填充/闪光以及创造/生存/旁观显隐；不将这些截图视作全部样式、低理智滤镜交叉淡变、特殊投影和缩放矩阵的完整视觉验收。新 HUD 数值填充和计时器业务仍未新增。
+
+## 当前架构契约（2026-11-05）
+
+普通战斗 HUD 使用原版 `GuiLayer/GuiGraphicsExtractor`。调用链为注册入口 → 具体 HUD → 绘制组件；玩家状态、事件和滤镜不再经过 `HudLayerManager/HudHost/HudFrame`。管理器与 LDLib2 宿主只保留给指挥家实际需要的交互、布局与布局后绘制。屏幕粒子直接调用原有 `ScreenParticles.extract`，投影、合并和寿命规则仍由粒子系统持有；统计文字在原 Post 入口直接绘制。
+
+### 模块化渲染基础
+
+非指挥家 HUD 使用 BasicHudRenderer 保存浮点 x/y/width/height、visible 和独立的位置/尺寸像素对齐策略（INHERIT/NONE/ROUND/FLOOR/CEIL）。容器累加原始父坐标，最终绘制才对齐，不回写布局或动画。
+
+ContainerHudRenderer 管理单一父级、子元素、自由/纵向/横向布局、间距、自动尺寸、起点/居中/末端锚点和可选剪裁；隐藏子元素不占排列空间。TextureHudRenderer 的 sprite(id) 使用图集相对 ID，texture(id) 使用完整纹理路径；纹理共用颜色、透明度、尺寸与 UV，精灵保持原版缩放元数据。RectangleHudRenderer 处理纯色/渐变，TextHudRenderer 处理文字测量、阴影和对齐。
+
+AbstractHud 统一世界/玩家身份切换、暂停帧增量和渲染入口；玩家、事件和滤镜分别保留自身显隐及清理规则。根默认随屏幕尺寸，setFitToScreen(false) 可使用自定义尺寸。
+
+StatusBarComponent、StatusGaugeView、PlayerStatusHudView、PlayerStatusPanelHud 和事件组件已接入容器；StatusGauge 继续只维护动画数字。StatusGaugeView 使用纹理及矩形元素组合，面板以头像、生命和理智子元素组成，统计文字使用纵向容器。TextureLayer 保留为可变样式描述，不再承担绘制。
+
+基本使用：容器 setPosition/setSize，add 子元素；通过 setLayout、setGap、setAutoSize、setClip、setAnchor 配置布局，通过 setPositionAlignment/setSizeAlignment 或 setPixelAlignment 配置对齐。组件先更新状态，再 render，动画推进不放在通用绘制基类。
+
+### 浮点绘制扩展
+
+`IGuiGraphicsExtractorExpand` 通过 `META-INF/interfaces.json` 注入 GuiGraphicsExtractor；客户端 GuiGraphicsExtractorMixin 实现接口并提供原实例的 Minecraft 与 GUI 图集。`lobecorp$` 浮点重载按当前原版 fill/blit/blitSprite、平铺和九宫格实现；像素 UV 偏移仍为整数。底层分别提交 FloatColoredRectangleRenderState、FloatBlitRenderState 和 FloatTiledBlitRenderState，保留浮点顶点，包围盒向外取整并应用原版剪裁。原 GuiUtil 已删除，调用方全部迁移。
+
+### 状态条与纹理
+
+`PlayerStatusHud` 直接注册原版层，取玩家与帧增量后调用 `PlayerStatusHudView.prepare/render`；视图保存本帧纯布局供渲染复用。生命、理智与四色护盾按既有底部锚点和 2 像素间距堆叠；隐藏条不占高度。护甲偏移仍使用相同布局指标，生命样式 VANILLA 决定原版心形层是否显示。
+
+`StatusBarComponent` 负责采样、格式化与绘制顺序；`StatusGauge` 仅保留数字动画状态。`StatusGaugeView` 直接持有底图、填充和闪光纹理，外观切换直接更新组件，不再经 TextureLayer/Appearance 快照转交。填充使用 IGuiGraphicsExtractorExpand 的浮点图集区域裁切，保持原纹理比例与 mcmeta 动画。生命图形偏移 +3，文字保持组件基准 x，吸收图偏移 +13；零护盾保留文字，零理智使用动态图。文字显式关闭阴影，与本次迁移前的 Label 一致。
+
+原始 PNG 与皮肤使用 `GuiGraphicsExtractor.lobecorp$blit`，GUI 图集使用 `lobecorp$blitSprite`，两者不能混用。`PlayerAvatar` ~~保持框先绘、~~脸后绘、外层最后绘制；框50、脸40、外层44。玩家面板119×50，右间距3，健康框66×15、理智框47×15。
+
+### 滤镜组件
+
+`DamageFilter` 与 `RationalityFilter` 直接实现原版图层入口，分别持有自己的配置、状态、纹理与绘制顺序。共用 `AbstractScreenFilter` 复用 HudSessionTracker、会话切换清理、显隐和暂停增量；删除 PlayerScreenFilters 门面及包装层。伤害通道用内部 Channel 集中保存 current/previous 与 ScreenFilter，删除 DamageScreenFilter 子类和平行状态数组；理智强度直接写入三层 ScreenFilter，透明度只存一份。两类滤镜共用 ScreenFilter 的纹理路径、透明度限制与提取器扩展的全屏绘制。网络通过 DamageFilter.receiveHit 先同步会话再命中，生命周期分别 tick/resetSession；原有测试观察入口保留。
+
+### 动效与会话
+
+状态条与滤镜沿用暂停归零的实时帧增量；插值、拖尾、两段闪光、重复命中复位和隐藏行为保持。render 不推进动画。伤害滤镜状态按首次命中登记，绘制使用相反顺序以保持迁移前实际覆盖关系：LDLib2 45 先按同 z 的子索引降序排序，再反向绘制，净效果为加入顺序；旧视图逆序加入，原版循环因此同样逆序。理智三层保持原顺序。缺失滤镜资源跳过，alpha 只应用一次。
+
+玩家状态、事件与滤镜通过 AbstractHud 统一使用 HudSessionTracker 检查 level/player 身份。滤镜 hit 与事件 show 在写状态前同步会话，首次渲染不会误清同会话的新事件。ClientRuntimeEvents 的登录、退出和世界卸载统一显式清理普通 HUD 与保留的指挥家管理器；暂隐不等于销毁。
+
+### 事件布局与注册
+
+事件组件继承 ContainerHudRenderer，具有浮点位置、尺寸、显隐和子元素绘制能力。EventHud 先画可见玩家面板，然后用生产布局函数递归排列：子包装先于所属容器的活动事件，根事件同样参与，活动实例仍按 show 顺序。面板隐藏时不占高度，无会话直接返回。首次绘制锁定包装注册；show/hide 的 UUID 幂等、类型冲突检查与清理定义保留。
+
+注册仅保留包装 ID/父子关系与事件工厂；旧 UIElement 工厂、任意 LSS 根布局入口、EventHudView 与 IHudUpdatable 已移除。当前事件业务仍为左上纵向堆叠；基础容器另提供自由、纵向、横向布局及锚点。MidnightCleanupHud 仍为空业务组件，未新增计时器或 NEW 数值绘制。
+
+PlayerHudRegistration 直接注册玩家状态、事件与两个滤镜，保留原版生命层包装和护甲位移。层序仍为玩家状态高于 PLAYER_HEALTH；伤害滤镜高于 CAMERA_OVERLAYS；事件高于伤害滤镜；理智滤镜高于所有已注册层。
+
+本轮实现与验证结果以最新修改记录为准。下方按日期保留历史；历史 LDLib2 迁移测试不能作为当前原版实现的验收证据。
+
 ## 2026-11-01 修复迁移后玩家 HUD 初始化被跳过
 
 HudLayer曾创建宿主ModularUI，但getModularUI只返回UIElement的框架归属；该归属在ModularUI.init时才赋值。ModularHudLayer.render先读getter，读到null就返回，导致根UI永远无法进入init。现根层优先返回已创建宿主，子节点未拥有宿主时仍返回框架归属。此次为可直接确认的绘制跳过路径修复，IDEA定向编译通过；未做游戏视觉复测，不宣称所有迁移HUD均已实机恢复。
@@ -18,13 +96,15 @@ HudLayer的getModularUI返回框架维护的UI归属，只有HUD根render入口�
 
 验证：主线审查源差异并修正根/子UI归属，IDEA项目编译与最后生命周期改动定向编译成功；BenchMod Compile与生产包隔离成功；Data退出0，生成目录无Git差异。尚未进行实机视觉验证，状态条位置/动画、滤镜覆盖顺序和屏幕粒子画面不可据编译判定验收通过。
 
-## 当前：LDLib2 事件 HUD
+## 历史：LDLib2 事件 HUD
 
-使用LDLib2 26.1.2.42的 `ModularHudLayer` 和 `ModularUI`，统一组件 `EventHudComponent` 继承 `UIElement`，构造时指定 `TOP/LEFT/RIGHT`。顶部居中位于屏幕上方，左右从屏幕高度三分之一处开始，各自由column容器按加入顺序向下堆叠、间隔4 GUI像素；组件高度由内容决定，禁止收缩，移除自动补位。
+事件 HUD 已改用「根布局配置 + 第一层包装」：`EventHudView` 根为满屏 `UIElement`，`EventHud.registerRootLayout` 在宿主首次创建前生效，调用方可用原生 LDLib2 layout/LSS 设置 flex、grid、padding 或绝对定位；默认不预置三分区。包装只能直属根，`registerWrapper` 创建第一层容器；事件定义可在注册时指定包装或直接挂根，不再通过组件类型或方向枚举决定位置。
 
-注册签名为 `register(id, englishName, chineseName, componentFactory)`；名称保存在类型定义中，组件工厂每个活动UUID调用一次。同UUID同类型重复show返回已有实例，类型冲突拒绝。`show(type, uuid)` 显示、`hide(uuid)`移除、`clear()`清理活动UI；换世界清理实例并保留定义。深夜清扫注册 `MidnightCleanupHud::new`，固定LEFT，目前仅空容器，未接入自动事件同步、纹理或计时内容。HUD仍注册在伤害滤镜之上。
+`EventHudComponent` 只继承 `UIElement`，默认 `flexShrink(0)`；`MidnightCleanupHud` 也仅保留空组件。包装工厂延迟到宿主创建、不能跨宿主共享节点；重复包装 ID、null 参数、引用未登记包装及宿主创建后追加包装/根布局均明确拒绝。视图保持包装节点直属根，根顺序为包装注册顺序在前、直接 HUD 的显示顺序在后，包装内按显示顺序；仅在子项顺序变化时同步，不每帧重建 UI 树。
 
-本轮IDEA定向编译与Data成功，生成目录无新增Git差异；未进游戏，布局、动态堆叠及缩放尚无实机视觉证据。下方早期GuiLayer注册方式为历史，已由此实现替代。
+注册签名为 `register(id, englishName, chineseName, factory)` 与带 `wrapperId` 的重载；名称保存在类型定义中，组件工厂每个活动 UUID 调用一次。同 UUID 同类型重复 show 返回已有实例，类型冲突拒绝。`show(type, uuid)` 显示、`hide(uuid)` 移除、`clear()` 清理活动 UI；换世界清理实例并保留定义。深夜清扫当前为空容器，未接入自动事件同步、纹理或计时内容。HUD 仍注册在伤害滤镜之上。
+
+本轮 IDEA 定向编译与迁移后的 `EventHudStateTest` 通过；未进游戏，根布局、包装定位、动态堆叠及缩放尚无实机视觉证据。下方早期 GuiLayer 与方向堆叠描述为历史，已由此实现替代。
 
 ## 2026-11-01 事件 HUD 注册
 
@@ -74,13 +154,13 @@ Minecraft 26.1.2／NeoForge 26.1.2.100／Java 25。迁移的是浮点绘制能�
 
 | 入口                                                                                                                                                                                                                                                                                                        | 职责                                                      |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------|
-| [GuiUtil](../../src/main/java/org/unitego/lobecorp/util/client/gui/GuiUtil.java)                                                                                                                                                                                                                            | 浮点精灵、UV 裁切、平铺、九宫格、原生纹理、纯色及垂直渐变 |
-| [HudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/HudLayer.java)、[BasicHudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/BasicHudLayer.java)                                                                                                                          | 玩家会话、字体、屏幕尺寸、位置与绘制入口                  |
-| [CompositeHudLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/CompositeHudLayer.java)                                                                                                                                                                                                       | 有序子层、独立显示条件、统一初始化、上堆叠与尺寸计算      |
-| [StatusBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/StatusBarLayer.java)、[HorizontalStatusBar](../../src/main/java/org/unitego/lobecorp/client/hud/widget/HorizontalStatusBar.java)                                                                                                 | 数据／文本与背景、浮点填充、损失拖尾、两段闪光分开维护    |
-| [HealthBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/HealthBarLayer.java)、[RationalityBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/RationalityBarLayer.java)、[ShieldBarLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/ShieldBarLayer.java) | 独立生命、理智与按伤害类型复用的护盾状态条                |
-| [ScreenFilter](../../src/main/java/org/unitego/lobecorp/client/hud/widget/ScreenFilter.java)、[ScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/ScreenFilterLayer.java)                                                                                                         | 可组合的全屏纹理和透明度，缺图跳过                        |
-| [DamageScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/DamageScreenFilterLayer.java)、[RationalityScreenFilterLayer](../../src/main/java/org/unitego/lobecorp/client/hud/layer/RationalityScreenFilterLayer.java)                                                              | 首次命中顺序叠加／复位／逐帧淡出，以及三层理智交叉淡变    |
+| [IGuiGraphicsExtractorExpand](../../src/main/java/org/unitego/lobecorp/api/client/gui/IGuiGraphicsExtractorExpand.java)                                                                                                                                                                                                                            | 浮点精灵、UV 裁切、平铺、九宫格、原生纹理、纯色及垂直渐变 |
+| [HudLayerManager](../../src/main/java/org/unitego/lobecorp/client/hud/HudLayerManager.java)                                                                                                                                                                                                                 | 统一注册、会话跟踪、宿主创建、显隐与清理                    |
+| [HudHost](../../src/main/java/org/unitego/lobecorp/client/hud/host/HudHost.java)                                                                                                                                                                                                                            | 组合持有 ModularUI，提供布局前准备与提取后绘制缝            |
+| [PlayerStatusHudView](../../src/main/java/org/unitego/lobecorp/client/hud/status/PlayerStatusHudView.java)、[StatusBarComponent](../../src/main/java/org/unitego/lobecorp/client/hud/status/StatusBarComponent.java)                                                                                         | 生命、理智与四色护盾的数值刷新、槽位与普通 UIElement 绘制  |
+| [StatusGauge](../../src/main/java/org/unitego/lobecorp/client/hud/status/bar/StatusGauge.java)                                                                                                                                                                                                              | 背景、浮点填充、损失拖尾与两段闪光                          |
+| [ScreenFilter](../../src/main/java/org/unitego/lobecorp/client/hud/widget/ScreenFilter.java)                                                                                                                                                                                                                | 新滤镜共用的全屏纹理与透明度，缺图跳过                      |
+| [EventHudState](../../src/main/java/org/unitego/lobecorp/client/hud/event/EventHudState.java)、[EventHudView](../../src/main/java/org/unitego/lobecorp/client/hud/event/EventHudView.java)                                                                                                                     | 包装归属与 `show` 顺序、补位及普通 UIElement 堆叠               |
 
 GuiUtil 使用当前 AtlasIds.GUI、SpriteId、GuiMetadataSection 与 RenderPipeline。
 九宫格识别当前版本的 stretchInner；GuiSpriteScaling 非封闭，默认分支按普通拉伸处理。
@@ -235,9 +315,9 @@ INSTANCE 的语义引用已核对，状态 HUD 为 5 处、滤镜入口为 7 处
 
 | 相对目录                                 | PNG 数量 | 文本元数据 | 状态   |
 |------------------------------------------|---------:|-----------:|--------|
-| textures/gui/sprites/hud_bar/health      |       11 |          0 | 已迁移 |
-| textures/gui/sprites/hud_bar/rationality |       10 |          2 | 已迁移 |
-| textures/gui/sprites/hud_bar/shield      |       12 |          0 | 已迁移 |
+| textures/gui/sprites/hud/bar/health      |       11 |          0 | 已迁移 |
+| textures/gui/sprites/hud/bar/rationality |       10 |          2 | 已迁移 |
+| textures/gui/sprites/hud/bar/shield      |       12 |          0 | 已迁移 |
 | textures/gui/filter                      |        5 |          0 | 已迁移 |
 
 共 38 张 PNG、2 份动画元数据。现存滤镜为 physics、erosion、rationality、rationality1、rationality2。

@@ -23,9 +23,26 @@ public final class HordeDebugState {
     private static long firstRow;
     private static long lastRow;
     private static long drawnTotal;
-    private static String lastNotice = "";
 
     private HordeDebugState() {
+    }
+
+    /// 会话结束时清空全部观测值，避免断线或重载后继续显示旧统计。
+    public static void reset() {
+        events = 0;
+        batches = 0;
+        instances = 0;
+        groups = 0;
+        splitCircles = 0;
+        splitMaximumRadius = 0;
+        splitWords = 0;
+        splitCapacity = 0;
+        gapChanges = 0;
+        head = 0;
+        tail = 0;
+        firstRow = 0;
+        lastRow = 0;
+        drawnTotal = 0;
     }
 
     /// 每帧开始前清空当帧值，避免事件结束后叠层仍显示旧数据。
@@ -82,10 +99,6 @@ public final class HordeDebugState {
         drawnTotal += count;
     }
 
-    public static void notice(String text) {
-        lastNotice = text == null ? "" : text;
-    }
-
     /// 叠层文本：每行一个观测量，单位与含义写在行内，便于对照实机现象。
     public static List<String> lines() {
         var result = new ArrayList<String>(8);
@@ -97,9 +110,6 @@ public final class HordeDebugState {
                 + " 圆表字数=" + splitWords + " 目标变化=" + gapChanges);
         result.add(HordeClient.statistics());
         result.add(HordeGpuRenderer.statistics());
-        if (!lastNotice.isEmpty()) {
-            result.add("提示：" + lastNotice);
-        }
         return result;
     }
 

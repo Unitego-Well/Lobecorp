@@ -23,6 +23,7 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
@@ -39,6 +40,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,6 +73,10 @@ public class HordeGpuRenderer {
 	private static final float SPLIT_LEAD = 2.5f;
 	private static final float SPLIT_MAXIMUM_OFFSET = 16.0f;
 	private static final int MAX_RETRY_SECONDS = 5;
+	// 开发测量开关：默认复用同一次准备内的分割更新，仅显式设为 false 时跳过去重。
+	private static final String SPLIT_DEDUPLICATION_PROPERTY = "lobecorp.horde.splitDeduplication";
+	private static final boolean SPLIT_DEDUPLICATION = !"false".equalsIgnoreCase(
+			System.getProperty(SPLIT_DEDUPLICATION_PROPERTY));
 	private static int resourceFailures;
 	private static long retryAtNanos;
     private static final int MOTION_ROW_WIDTH = 1024;
@@ -572,6 +578,10 @@ public class HordeGpuRenderer {
 	@SuppressWarnings("resource")
 	private static List<Prepared> prepare(List<HordeClient.Batch> source) {
 		var prepared = new ArrayList<Prepared>();
+		// 只在本次准备中复用成功的分割更新，重入或下一次准备仍重新更新。
+		var splitUpdates = SPLIT_DEDUPLICATION
+				? new IdentityHashMap<HordeClient.ClientEvent, SplitPreparation>()
+				: null;
 		for (var batch : source) {
 			var event = batch.event();
 			if (event.failed) {
@@ -610,7 +620,17 @@ public class HordeGpuRenderer {
 			}, batch.count());
 			var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
 			data.updateHeights(event);
-			event.split.update(event, batch.time());
+			if (splitUpdates == null) {
+				event.split.update(event, batch.time());
+			} else {
+				var splitUpdate = splitUpdates.get(event);
+				if (splitUpdate == null || !splitUpdate.matches(event, batch.time())) {
+					var nextSplitUpdate = new SplitPreparation(event, batch.time());
+					event.split.update(event, batch.time());
+					splitUpdates.put(event, nextSplitUpdate);
+				}
+			}
+
 			data.terrain.update(event, data.heights, batch.time());
 			data.avoidance.prepare(event, batch.time());
 			int verticesPerInstance = verticesPerInstance(geometry);
@@ -622,6 +642,17 @@ public class HordeGpuRenderer {
 			}
 		}
 		return prepared;
+	}
+
+	private record SplitPreparation(double time, Vec3 origin,
+	                                Map<String, HordeClient.RegionBox> regions) {
+		private SplitPreparation(HordeClient.ClientEvent event, double time) {
+			this(time, event.origin, Map.copyOf(event.regions));
+		}
+
+		private boolean matches(HordeClient.ClientEvent event, double nextTime) {
+			return time == nextTime && origin.equals(event.origin) && regions.equals(event.regions);
+		}
 	}
 
 	/// 方向片固定十二个输出槽，方向与单片阈值完全由 GPU 判定；源帧仍缓存全部六向顶点。

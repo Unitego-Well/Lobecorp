@@ -338,6 +338,7 @@ public class HordeClient {
 		HordeRendering.clear();
 		HordeMeshCache.clear();
 		HordeAmbient.clear();
+		HordeDebugState.reset();
 	}
 
 	public record Block(int index, double first, double last, int firstColumn, int columns, AABB bounds, Vec3 center) {

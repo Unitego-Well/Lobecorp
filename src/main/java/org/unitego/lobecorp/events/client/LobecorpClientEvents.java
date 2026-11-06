@@ -9,6 +9,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -17,6 +18,7 @@ import org.unitego.lobecorp.registry.photon.client.LcPhotonMcpCommands;
 import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorCommand;
 import org.unitego.lobecorp.registry.photon.client.PhotonModelResourceRegistration;
 import org.unitego.lobecorp.registry.animation.client.LcClientAnimationResourceRegistration;
+import org.unitego.lobecorp.registry.command.LcDebugCommand;
 import org.unitego.lobecorp.registry.animation.client.LcPlayerAnimationRegistration;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
 import org.unitego.lobecorp.registry.entity.client.EntityCorpseReverse;
@@ -50,6 +52,9 @@ public class LobecorpClientEvents {
 	@SubscribeEvent
 	public static void onRegisterClientCommands(RegisterClientCommandsEvent event) {
 		LcPhotonEditorCommand.register(event.getDispatcher());
+		if (!FMLEnvironment.isProduction()) {
+			LcDebugCommand.registerClient(event.getDispatcher());
+		}
 	}
 
 	@SubscribeEvent

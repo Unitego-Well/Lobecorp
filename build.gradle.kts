@@ -170,7 +170,7 @@ dependencies {
     implementation(libs.jeiapi)
     implementation(libs.jei)
     implementation(libs.jade)
-    implementation(libs.reretrodamageindicators)
+//    implementation(libs.reretrodamageindicators)
     // photon 依赖
     implementation(libs.ldlib2)
     implementation(libs.kilagraph)
@@ -187,7 +187,7 @@ dependencies {
     internalTestMods(libs.curios)
     internalTestMods(libs.jei)
     internalTestMods(libs.jade)
-    internalTestMods(libs.reretrodamageindicators)
+//    internalTestMods(libs.reretrodamageindicators)
     internalTestMods(libs.ldlib2)
     internalTestMods(libs.kilagraph)
     internalTestMods(libs.photon)
@@ -272,31 +272,6 @@ neoForge {
     }
 }
 
-modBench {
-    targetMod = modId
-    expectedProviderCount = 1
-    seed = 7
-    jfrEnabled = true
-    serverLevelType = "minecraft:flat"
-    clientWorldPreset = "flat"
-    clientWorldId = "lobecorp-bench"
-    clientRequireWindowFocus = providers.gradleProperty("photonRequireFocus").map(String::toBoolean).orElse(true).get()
-    if (photonBenchEnabled.get()) {
-        scenarioFilter = providers.gradleProperty("photonScenarios").orElse("lobecorp.photon-*").get()
-    }
-}
-
-tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
-    expectedScenarioIds.set(listOf("lobecorp.sweeper-ai"))
-    expectedMetricNames.set(listOf("server.tick.duration", "lobecorp.sweeper_ai.loaded_entities"))
-    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
-    expectedArtifactPaths.set(
-        listOf(
-            "artifacts/samples/lobecorp.sweeper-ai.jsonl",
-            "artifacts/jfr/lobecorp.sweeper-ai.jfr"
-        )
-    )
-}
 
 tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
     if (photonBenchEnabled.get()) {
@@ -370,14 +345,17 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
             )
         )
     } else {
-        expectedScenarioIds.set(listOf("lobecorp.sweeper-render"))
-        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
+        expectedScenarioIds.set(listOf("lobecorp.sweeper-render", "lobecorp.horde-render"))
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities", "lobecorp.horde_render.instances"))
         expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
         expectedArtifactPaths.set(
             listOf(
                 "artifacts/samples/lobecorp.sweeper-render.jsonl",
                 "artifacts/jfr/lobecorp.sweeper-render.jfr",
-                "artifacts/screenshots/sweeper-render.png"
+                "artifacts/screenshots/sweeper-render.png",
+                "artifacts/samples/lobecorp.horde-render.jsonl",
+                "artifacts/jfr/lobecorp.horde-render.jfr",
+                "artifacts/screenshots/horde-render.png"
             )
         )
     }
@@ -418,7 +396,12 @@ if (photonBenchEnabled.get()) {
 modBench {
     targetMod = modId
     // 测试矩阵按需只跑指定场景，避免每次重启都带跑其它场景。
-    scenarioFilter.set(providers.gradleProperty("benchScenarios").orElse(""))
+    if (photonBenchEnabled.get()) {
+        scenarioFilter.set(providers.gradleProperty("photonScenarios").orElse("lobecorp.photon-*"))
+    } else {
+        scenarioFilter.set(providers.gradleProperty("benchScenarios").orElse(""))
+    }
+    clientRequireWindowFocus = providers.gradleProperty("photonRequireFocus").map(String::toBoolean).orElse(true).get()
     // 2分钟浪潮需要2400测量tick，放大阶段超时以免被默认1200截断。
     phaseTimeoutTicks.set(3600L)
     expectedProviderCount = 1
@@ -443,21 +426,6 @@ tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
     )
 }
 
-tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
-    expectedScenarioIds.set(listOf("lobecorp.sweeper-render", "lobecorp.horde-render"))
-    expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities", "lobecorp.horde_render.instances"))
-    expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
-    expectedArtifactPaths.set(
-        listOf(
-            "artifacts/samples/lobecorp.sweeper-render.jsonl",
-            "artifacts/jfr/lobecorp.sweeper-render.jfr",
-            "artifacts/screenshots/sweeper-render.png",
-            "artifacts/samples/lobecorp.horde-render.jsonl",
-            "artifacts/jfr/lobecorp.horde-render.jfr",
-            "artifacts/screenshots/horde-render.png"
-        )
-    )
-}
 
 tasks.processResources {
     val replaceProperties = mapOf(

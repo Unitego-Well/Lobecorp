@@ -23,10 +23,12 @@ import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.particle.text.TextParticleClient;
 import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
-import org.unitego.lobecorp.client.particle.screen.ScreenParticleHud;
-import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
-import org.unitego.lobecorp.client.hud.PlayerStatusHud;
+import org.unitego.lobecorp.client.hud.HudLayerManager;
 import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
+import org.unitego.lobecorp.client.hud.PlayerStatusHud;
+import org.unitego.lobecorp.client.hud.TopLeftHud;
+import org.unitego.lobecorp.client.hud.filter.DamageFilter;
+import org.unitego.lobecorp.client.hud.filter.RationalityFilter;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
@@ -41,11 +43,9 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
 		HordeClient.clear();
-		PlayerStatusHud.INSTANCE.clear();
-		PlayerScreenFilters.INSTANCE.clear();
+		clearHud();
 		ScreenParticles.clear();
-		ScreenParticleHud.INSTANCE.clear();
-		RuntimeOverlayHud.INSTANCE.clear();
+		RuntimeOverlayHud.INSTANCE.clearChildren();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
 		LcAttachedItems.clearClientWorlds();
@@ -59,11 +59,9 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
 		HordeClient.clear();
-		PlayerStatusHud.INSTANCE.clear();
-		PlayerScreenFilters.INSTANCE.clear();
+		clearHud();
 		ScreenParticles.clear();
-		ScreenParticleHud.INSTANCE.clear();
-		RuntimeOverlayHud.INSTANCE.clear();
+		RuntimeOverlayHud.INSTANCE.clearChildren();
 		TextParticleClient.clear();
 		LcAttachments.clearClientWorlds();
 		LcAttachedItems.clearClientWorlds();
@@ -87,11 +85,9 @@ public class ClientRuntimeEvents {
 		}
 
 		if (event.getLevel() instanceof ClientLevel level) {
-			PlayerStatusHud.INSTANCE.clear();
-			PlayerScreenFilters.INSTANCE.clear();
+			clearHud();
 			ScreenParticles.clear();
-			ScreenParticleHud.INSTANCE.clear();
-			RuntimeOverlayHud.INSTANCE.clear();
+			RuntimeOverlayHud.INSTANCE.clearChildren();
 			TextParticleClient.clear();
 			LcModelLodUtil.clear();
 			LcClientAnimations.clearWorld();
@@ -134,7 +130,8 @@ public class ClientRuntimeEvents {
 
 		LcPlayerAnimationRuntime.tick();
 		ScreenParticles.tick();
-		PlayerScreenFilters.INSTANCE.tick();
+		DamageFilter.INSTANCE.tick();
+		RationalityFilter.INSTANCE.tick();
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 		QueenBeamEffects.tick();
@@ -177,5 +174,14 @@ public class ClientRuntimeEvents {
 		if (event.isAttack() && minecraft.gameMode != null) {
 			minecraft.gameMode.stopDestroyBlock();
 		}
+	}
+
+	/// 清理所有 HUD 会话状态；管理器只保留指挥家等 LDLib2 消费者。
+	private static void clearHud() {
+		HudLayerManager.INSTANCE.clear();
+		PlayerStatusHud.INSTANCE.clear();
+		TopLeftHud.INSTANCE.clear();
+		DamageFilter.INSTANCE.resetSession();
+		RationalityFilter.INSTANCE.resetSession();
 	}
 }

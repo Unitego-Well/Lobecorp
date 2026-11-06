@@ -1,66 +1,36 @@
 package org.unitego.lobecorp.client.particle.screen;
 
-import com.lowdragmc.lowdraglib2.gui.hud.ModularHudLayer;
-import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
-import com.lowdragmc.lowdraglib2.gui.ui.UI;
-import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
-import com.lowdragmc.lowdraglib2.gui.ui.rendering.IGUIContext;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.multiplayer.ClientLevel;
-import org.jspecify.annotations.Nullable;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.gui.GuiLayer;
+import org.jspecify.annotations.NullMarked;
+import org.unitego.lobecorp.Lobecorp;
 
-/// LDLib2 管理屏幕粒子的绘制生命周期；世界投影与内容批次仍归粒子系统。
-public class ScreenParticleHud implements ModularHudLayer {
-    public static final ScreenParticleHud INSTANCE = new ScreenParticleHud();
-    private @Nullable ModularUI modularUI;
-    private @Nullable ClientLevel level;
-    private @Nullable DeltaTracker deltaTracker;
+/// 屏幕粒子 HUD 门面：直接提交粒子系统提取，投影与内容批次仍归粒子系统。
+@NullMarked
+public class ScreenParticleHud implements GuiLayer {
+	public static final Identifier ID = Lobecorp.id("screen_particle_hud");
+	public static final ScreenParticleHud INSTANCE = new ScreenParticleHud();
 
-    @Override
-    public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        this.deltaTracker = deltaTracker;
-        try {
-            ModularHudLayer.super.render(graphics, deltaTracker);
-        } finally {
-            this.deltaTracker = null;
-        }
-    }
+	private ScreenParticleHud() {
+	}
 
-    @Override
-    public @Nullable ModularUI getModularUI() {
-        var current = Minecraft.getInstance().level;
-        if (level != current) {
-            clear();
-            level = current;
-        }
-        if (level == null || Minecraft.getInstance().options.hideGui) {
-            return null;
-        }
-        if (modularUI == null) {
-            var canvas = new ParticleCanvas();
-            canvas.layout(layout -> layout.widthPercent(100).heightPercent(100));
-            modularUI = new ModularUI(UI.of(canvas, size -> size));
-        }
-        return modularUI;
-    }
+	@Override
+	public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		if (visible()) {
+			ScreenParticles.extract(graphics, deltaTracker);
+		}
+	}
 
-    public void clear() {
-        if (modularUI != null) {
-            modularUI.onRemoved();
-            modularUI = null;
-        }
-        level = null;
-    }
+	public void clear() {
+		ScreenParticles.clear();
+	}
 
-    private class ParticleCanvas extends UIElement {
-        @Override
-        protected void drawBackgroundAdditional(IGUIContext context) {
-            if (context instanceof GUIContext clientContext && deltaTracker != null) {
-                ScreenParticles.extract(clientContext.graphics, deltaTracker);
-            }
-        }
-    }
+	private boolean visible() {
+		var minecraft = Minecraft.getInstance();
+		return minecraft.level != null && !minecraft.options.hideGui;
+	}
+
 }

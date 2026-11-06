@@ -69,6 +69,10 @@ event 放 Mod 自定义事件，events
 
 入口名称不等同于总线声明，新增监听前必须打开注解与方法签名核对。
 
+## 2026-11-02 客户端 HUD 生命周期契约
+
+玩家状态、事件与屏幕滤镜共用 `HudLayerManager.INSTANCE`；客户端登录、注销和世界卸载仍由 `ClientRuntimeEvents` 唯一入口调用 `clear()`。管理器保持单一会话跟踪器，`synchronizeSession()` 在状态写入前执行，`clearAction` 在显式清理和真实会话切换时执行且不依赖宿主是否已创建。事件 HUD 的状态保存包装父子关系、注册顺序与 `show` 顺序；包装支持可空父包装，父级必须先行注册，旧无参重载仍为根包装。视图按注册顺序建立包装树，每个容器为“工厂与根布局固定子节点、受管子包装、活动 HUD”顺序；`prepare` 只同步本视图实际挂载的活动 HUD，不再清空整棵容器，`hide` 自动补位，`clear` 保留包装树与固定节点，`clearActive` 保留定义；不新增 HUD 专用事件订阅。
+
 ## 生命周期与处理顺序
 
 LivingEntityEvents 仅在服务端推进技能：实体具有 IEntitySkillAccess 时走公开接口，否则走兼容工具。随后推进该实体的服务端动画，再维护抓取锚点；非 LivingEntity 同样推进实体动画。伤害回调保留既有倍率、清道夫吸收/战斗目标与指挥家筛选处理顺序。
@@ -87,7 +91,7 @@ Mob 创建，不能因迁移入口而重复生成。
 ClientRuntimeEvents 在 tick 先推进当前客户端世界的本地附着，再推进玩家动画运行态、指挥家客户端、输入控制和 Photon Geo 效果；登录、注销和世界卸载清理本地附着、物品描述及渲染缓存，继续沿用原控制、特效和动画内容清理。客户端订阅限制
 Dist.CLIENT，不能加载到专用服务器。文本实例缓存同样在登录、注销和世界卸载时清理；逐字与单字动画由客户端粒子 tick 推进。文本自定义 `ParticleGroup` 和资源重载监听统一经 `LobecorpClientEvents` 委托 `TextParticleRegistration` 登记，不新增平行订阅入口。
 
-`CommandEvents.onRegisterCommands` 委托 `LcAnimationCommand` 注册 `/lobecorp animation player|attachment|item`，沿用管理员权限，不增加第二个命令事件订阅。旧命令及 DemoClient 已移除；真实玩家附着与独立物品显示由通用绑定、物品描述及现有提取／提交事件维护，命令参数和结束时序见[动画调试命令](animation-runtime.md#动画调试命令)。
+`CommandEvents.onRegisterCommands` 委托 `LcAnimationCommand` 注册 `/lobecorp animation player|attachment|item`，沿用管理员权限，不增加第二个命令事件订阅。同一入口追加 `LcDebugCommand.registerServer`，注册 `/lobecorp debug`；客户端命令由 `LobecorpClientEvents.onRegisterClientCommands` 同一入口追加 `LcDebugCommand.registerClient`，不新增订阅。旧命令及 DemoClient 已移除；真实玩家附着与独立物品显示由通用绑定、物品描述及现有提取／提交事件维护，命令参数和结束时序见[动画调试命令](animation-runtime.md#动画调试命令)，统一调试入口见[非 Photon 调试开关](debugging.md)。
 
 ## 修改前检查与复用
 

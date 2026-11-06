@@ -535,6 +535,7 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 			return sampled;
 		} catch (IllegalArgumentException | IllegalStateException invalid) {
 			failSampling(invalid);
+			sampledInput = null;
 			return null;
 		} finally {
 			PhotonPerformanceTraceUtil.end(scope, completed);

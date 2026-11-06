@@ -16,6 +16,18 @@ ConductorControls.clearSession只供ClientRuntimeEvents的卸载/注销路径调
 
 调用图回归、原生鼠标状态/幂等清理及三个新JVM实际退出已通过，旧GUI/RejectedExecution未再出现；只关闭该明确根因，不外推所有输入或长期生命周期。见[本批验证](benchmod.md#2026-10-31-四线并行批次收尾)。
 
+## 2026-11-02 指挥家提示重置与视口缓存回归修复
+
+重置布局时在Model清空提示之后重新登记静态按钮文案，动态队伍/模式提示继续由每帧准备覆盖。成员与技能虚拟列表缓存加入实际viewPort内容宽高、列数及内容范围；实际几何下一帧变化也会失效重挂，保留原卡片池与滚动窗口算法。
+
+两项修复经独立DS只读复查，未发现新增P1/P2；编译及4项既有纯测试通过。主线实机reset后16静态hint恢复且移动提示可见，3个合成非空成员在相同UUID/单列下Geometry高度185→271→180刷新。非完整技能/全滚动边界或性能验收；临时GUI设置和客户端fixture已清理，PID56168已退出。
+
+## 2026-11-02 HUD职责与宿主
+
+HUD由HudLayerManager按conductor_hud统一登记和清理，ConductorHud只持业务门面与持续偏好Model；Layout是普通UIElement，Cards负责虚拟卡片，Renderer/Tooltip消费当帧显示数据，Input负责命中与派发。Controls仍唯一拥有选择、命令和相机状态。生命/冷却/移除及效果进度在准备阶段采样，最终布局后再采样可见性与悬浮目标，draw不推进业务时间。HudHost先提取UI树，再在同帧afterRender提交原chrome、肖像和提示顺序。
+
+resetLayout只重置瞬态，不清当前视图引用；宿主释放通过ViewSlot.clearIfSame清引用。菜单面板提示复用ConductorHudTooltip；实际入口ConductorLdlibScreen保留，零消费者ConductorScreen已备份删除。45项相关纯测试与编译/Data通过；本轮实机检查空队伍界面、二次进入后的字符输入、GUI缩放、事件/滤镜/粒子与统一退出清理，未穷举所有兵种、技能和肖像战斗场景，也无性能结论。
+
 > 源码核对日期：2026-10-05。核对范围包括目录、附件、控制能力、命令与快照载荷、区块管理、事件、HUD 和输入入口；通过 IDEA
 > 读取当前实现，未进行游戏、多人服务器、重启恢复或性能实测。
 > 包整理方案 1 已执行，源码链接按实际路径核对；保留三个指挥家客户端关联类的原包，详情见修改记录。

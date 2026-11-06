@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.PlayerScreenFilters;
+import org.unitego.lobecorp.client.hud.filter.DamageFilter;
 import org.unitego.lobecorp.network.tc.IToClientPayload;
 
 import java.util.UUID;
@@ -41,9 +41,9 @@ public record PlayerDamageFilterPayload(ResourceKey<Level> dimension, UUID targe
 	}
 
 	@Override
-	public void work(IPayloadContext context, AbstractClientPlayer player) {
-		if (player.getUUID().equals(target) && player.level().dimension().equals(dimension)) {
-			PlayerScreenFilters.INSTANCE.hit(channels);
-		}
+    public void work(IPayloadContext context, AbstractClientPlayer player) {
+        if (player.getUUID().equals(target) && player.level().dimension().equals(dimension)) {
+            DamageFilter.INSTANCE.receiveHit(channels);
+        }
 	}
 }

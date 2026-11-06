@@ -51,7 +51,6 @@ public class HordeRenderScenario implements BenchClientScenario {
 	private int count;
     private static final int MEASURE_TICKS = 1200;
 	private static final double COMBAT_HEALTH = 100000.0;
-	private static final double WIDTH = 512;
     private final double speed = LobecorpBenchConfig.hordeSpeed();
     private static final BenchMetricDescriptor INSTANCES = new BenchMetricDescriptor(
             "lobecorp.horde_render.instances", "count", MetricDirection.NEUTRAL);
@@ -806,7 +805,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 		value.addProperty("visible_pixels", visiblePixels);
 		value.addProperty("visible_pixel_bounds", Arrays.toString(visibleBounds));
 		value.addProperty("contrast_pair", "horde-render.png - horde-render-off.png (lower 3/4, channel delta > 16)");
-		value.addProperty("fixture_width", WIDTH);
+		value.addProperty("fixture_width", LobecorpBenchConfig.hordeWidth());
 		value.addProperty("temporary_unloaded_height_samples", temporaryHeightSamples);
 		value.addProperty("fixture_instances", count);
 		value.addProperty("configured_instances", configuredCount);

@@ -16,49 +16,40 @@ import java.util.function.Consumer;
 @NullMarked
 public final class HudHost implements IHudHost, ModularHudLayer {
 	private final Consumer<HudFrame> prepareAction;
-	private final Consumer<HudFrame> renderer;
-	private final Consumer<HudFrame> afterRender;
+	private @Nullable SpecialRoot specialRoot;
+	private @Nullable Consumer<HudFrame> specialAfterRender;
 	private final Runnable releaseAction;
 	private final UIElement root;
 	private @Nullable ModularUI modularUI;
 	private boolean released;
-	private int screenWidth;
-	private int screenHeight;
 
-	/// 创建一个由内容节点驱动绘制的宿主。
-	///
-	/// `renderer` 只在 LDLib2 同步提取期间执行；`releaseAction` 与内容节点的释放
-	/// 由该宿主拥有，重复 [release()] 不会重复执行。
-	public HudHost(UIElement content, Consumer<HudFrame> renderer, Runnable releaseAction) {
-		this(content, _ -> {
+	/// 准备回调先于 LDLib2 的布局与同步提取执行。
+	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Runnable releaseAction) {
+		Objects.requireNonNull(content);
+		this.prepareAction = Objects.requireNonNull(prepareAction);
+		this.releaseAction = Objects.requireNonNull(releaseAction);
+		root = new UIElement();
+		root.layout(layout -> layout.widthPercent(100).heightPercent(100));
+		root.addChild(content);
+	}
+
+	/// 仅供需要在 UI 树背景阶段提交特殊绘制的旧入口使用。
+	public static HudHost special(UIElement content, Consumer<HudFrame> renderer, Runnable releaseAction) {
+		return special(content, _ -> {
 		}, renderer, _ -> {
 		}, releaseAction);
 	}
 
-	/// 创建带布局前准备回调的宿主。
-	///
-	/// `prepareAction` 在每次提取前、ModularUI 布局计算前执行；`renderer`
-	/// 仍只在 LDLib2 同步提取期间执行。
-	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
-	               Runnable releaseAction) {
-		this(content, prepareAction, renderer, _ -> {
-		}, releaseAction);
-	}
-
-	/// 创建带布局前准备和同步提取后绘制的宿主。
-	///
-	/// `afterRender` 在同一帧作用域内、LDLib2 完成 UI 树提取后执行；不得跨帧保存
-	/// `HudFrame` 或其 graphics/delta 引用。
-	public HudHost(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
-	               Consumer<HudFrame> afterRender, Runnable releaseAction) {
-		Objects.requireNonNull(content);
-		this.prepareAction = Objects.requireNonNull(prepareAction);
-		this.renderer = Objects.requireNonNull(renderer);
-		this.afterRender = Objects.requireNonNull(afterRender);
-		this.releaseAction = Objects.requireNonNull(releaseAction);
-		root = new HostRoot();
-		root.layout(layout -> layout.widthPercent(100).heightPercent(100));
-		root.addChild(content);
+	/// 保留特殊入口的布局前准备、背景绘制和布局后绘制顺序。
+	public static HudHost special(UIElement content, Consumer<HudFrame> prepareAction, Consumer<HudFrame> renderer,
+	                              Consumer<HudFrame> afterRender, Runnable releaseAction) {
+		var specialRoot = new SpecialRoot(Objects.requireNonNull(renderer));
+		specialRoot.layout(layout -> layout.widthPercent(100).heightPercent(100));
+		specialRoot.addChild(content);
+		var host = new HudHost(specialRoot, prepareAction, releaseAction);
+		host.specialRoot = specialRoot;
+		host.specialAfterRender = Objects.requireNonNull(afterRender);
+		return host;
 	}
 
 	@Override
@@ -69,13 +60,6 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 
 		if (modularUI == null) {
 			initializeNewUI(screenWidth, screenHeight);
-			return;
-		}
-
-		if (this.screenWidth != screenWidth || this.screenHeight != screenHeight) {
-			modularUI.init(screenWidth, screenHeight);
-			this.screenWidth = screenWidth;
-			this.screenHeight = screenHeight;
 		}
 	}
 
@@ -84,8 +68,6 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 		try {
 			candidate.init(screenWidth, screenHeight);
 			modularUI = candidate;
-			this.screenWidth = screenWidth;
-			this.screenHeight = screenHeight;
 		} catch (RuntimeException exception) {
 			try {
 				candidate.onRemoved();
@@ -105,9 +87,19 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 
 		prepareAction.accept(frame);
 		ensureInitialized(frame.screenWidth(), frame.screenHeight());
-		try (HudFrameScope ignored = HudFrameScope.open(frame)) {
+		var special = specialRoot;
+		if (special == null) {
 			ModularHudLayer.super.render(frame.graphics(), frame.deltaTracker());
-			afterRender.accept(frame);
+			return;
+		}
+
+		var previousFrame = special.frame;
+		special.frame = frame;
+		try {
+			ModularHudLayer.super.render(frame.graphics(), frame.deltaTracker());
+			Objects.requireNonNull(specialAfterRender).accept(frame);
+		} finally {
+			special.frame = previousFrame;
 		}
 	}
 
@@ -149,15 +141,17 @@ public final class HudHost implements IHudHost, ModularHudLayer {
 		}
 	}
 
-	private final class HostRoot extends UIElement {
+	private static final class SpecialRoot extends UIElement {
+		private final Consumer<HudFrame> renderer;
+		private @Nullable HudFrame frame;
+
+		private SpecialRoot(Consumer<HudFrame> renderer) {
+			this.renderer = renderer;
+		}
+
 		@Override
 		protected void drawBackgroundAdditional(IGUIContext context) {
-			if (!(context instanceof GUIContext)) {
-				return;
-			}
-
-			var frame = HudFrameScope.current();
-			if (frame != null) {
+			if (context instanceof GUIContext && frame != null) {
 				renderer.accept(frame);
 			}
 		}

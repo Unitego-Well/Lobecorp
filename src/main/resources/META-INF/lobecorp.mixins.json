@@ -29,6 +29,7 @@
 		"particle.ProjectileMixin"
 	],
 	"client": [
+		"minecraft.client.GuiGraphicsExtractorMixin",
 		"development.client.DevelopmentWindowMixin",
 		"development.client.DevelopmentThrottleMixin",
 		"development.client.DevelopmentPauseMixin",

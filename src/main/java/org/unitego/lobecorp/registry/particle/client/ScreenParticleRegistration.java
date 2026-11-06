@@ -16,7 +16,6 @@ public class ScreenParticleRegistration {
 	private static final Identifier RELOAD_ID = Lobecorp.id("screen_particle_contents");
 
 	public static void register(RegisterGuiLayersEvent event) {
-		ScreenParticleHud.INSTANCE.register();
 		event.registerAbove(VanillaGuiLayers.AFTER_CAMERA_DECORATIONS, LAYER_ID, ScreenParticleHud.INSTANCE);
 	}
 

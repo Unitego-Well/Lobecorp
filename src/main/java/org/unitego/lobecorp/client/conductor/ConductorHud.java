@@ -266,7 +266,7 @@ public class ConductorHud implements GuiLayer {
 			var tooltip = ConductorHud.INSTANCE.tooltip;
 			renderer = new ConductorHudRenderer(model, layout, cards, tooltip);
 			input = new ConductorHudInput(model, layout, cards, renderer);
-			host = new HudHost(layout, _ -> renderer.prepare(), _ -> {
+			host = HudHost.special(layout, _ -> renderer.prepare(), _ -> {
 			}, frame -> {
 				renderer.prepareAfterLayout(Minecraft.getInstance());
 				renderer.draw(frame.graphics());

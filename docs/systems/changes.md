@@ -1,5 +1,121 @@
 # 系统修改记录
 
+## 2026-11-06 清理旧报告与历史数据
+
+按用户明确确认，仅清理Horde工作区的.agent过程材料、旧agent-backups、build/reports及test-results。保留最新状态汇总、索引、系统契约、问题清单和最新纹理备份。删除4359个文件，约3.10GiB；修复指向已清理材料的引用。历史原始证据不再存在，以下历史数字不作为当前验收证明。本次不改源码、资源、配置或存档，不构建、不测试、不提交。精确清单见工作区 build/agent-backups/20261106-newhud-texture-split/cleanup-manifest-20261106.json。
+
+## 2026-11-06 NEW 独立纹理与 nine_slice
+
+生命组合图按原像素拆为 full、poisioned、withered、frozen、absorbing、physic_shield_bar、erosion_shield_bar、null（各38×7）；理智拆为 rationality_tall、rationality_low、rationality、spirit_shield_bar（各20×7）。null只保留占位，不接入灵魂护盾。12张输出已逐像素核对；源图原字节备份位于 build/agent-backups/20261106-newhud-texture-split，确认无代码引用后删除两张旧value.png。
+
+12张值纹理各配置png.mcmeta的nine_slice，左右边框1、上下0；生命/理智box左右20/15、上下0，头像框和icon未改。PanelStatusBar改为选择独立精灵，移除横向UV偏移和纵向切行，使用完整精灵的原版nine_slice规则。框按动画合计值/最大值伸长，比例限制1～3：生命66～198px，理智48～144px；内部值区增加与框相同的宽度，右侧数字跟随框尾。保持此前挤压、减少变白和pose抖动规则。
+
+IDEA检查无错误；源码及测试源码编译、生产包隔离通过（39秒）。12张裁切像素一致，14份元数据合法且全部入包，生产包旧组合图条目0。未运行游戏或测试，视觉尚未验收；未提交。二进制清理的CLI例外授权已按用户要求通知协调。
+
+## 2026-11-06 NEW 值条、护盾与减少反馈
+
+生命 NEW 与默认/原版互斥，理智 NEW 与默认条互斥。新增 shieldStyle=DEFAULT/NEW（默认DEFAULT）；NEW 护盾仅随对应 NEW 值条生效，否则保留默认独立条。物理/侵蚀映射生命，精神映射理智；灵魂护盾保留默认条，不使用生命纹理第8个占位行。
+
+PanelStatusBar 复用 StatusBarComponent/StatusGauge；生命值纹理38×63、理智20×31，行内容7px、行距1px，以v=row×8选择。生命基础值按原有心形类型选择默认/中毒/凋零/冰冻行，吸收为第5行，物理/侵蚀为第6/7行；理智复用原阈值，高/低/中/精神护盾依次选行。新旧条共享状态判断，不重复触发隐藏旧生命条的心形事件。
+
+SegmentedBarLayout 按值→吸收→护盾分配宽度；挤压时基础值至少保留20%，非零附加段优先保留2px，不够容纳时隐藏尾部。各段横向UV按其相对整条填充区域的起点向下取整，纵向UV仍选择状态行，不从额外段自身重启纹理。条形使用动画值，数字使用真实值，右侧显示最大 / 当前 + 吸收 + 护盾，零附加项不显示，隐藏段仍计入数字。
+
+对应段减少后白色闪光2tick并保留损失白条。StatusBarShake 按各段减少量/该段容量计算百分比，每减少1%对应0.1px，抖动向量幅度上限10px，不设1px下限；在完整圆周随机选择方向，8tick内偏移、反向回弹、复位。整框、图标、数值段和右侧数字共用一次pose变换，不修改布局坐标。初始采样、切样式、会话切换不触发虚假损失，暂停不推进动画。
+
+源码及测试源码编译、生产包隔离、Data已通过；Data23输出写入2份语言文件。最终IDEA检查无错误；收尾构建16秒成功，新增护盾配置中英文翻译已进入构建资源。仅编译测试源码，未执行测试或游戏，视觉效果未验收；未提交。
+
+## 2026-11-06 左上区域统一堆叠
+
+TopLeftHud 将 status 包中的 PlayerStatusPanelHud 与 EventHud 作为独立子元素，以通用纵向容器排列；边距4、间距4统一归组合层。EventHud 不再引用状态面板、面板显隐或高度，其布局从局部原点0开始。保留子包装优先的事件顺序，面板隐藏由容器补位；会话同步保留先到事件，退出显式清空两部分。注册层序及ID保持。代码与测试源码引用已更新；IDEA检查无错误，compileJava、compileTestJava及生产包隔离检查通过（18秒）。仅编译测试源码，未执行测试或游戏，未提交。
+
+## 2026-11-06 HUD 模块化架构
+
+非指挥家 HUD 已迁到 BasicHudRenderer、容器、纹理、文字、矩形及像素对齐基础；AbstractHud 统一会话和暂停处理，值条保留原动画，头像/面板/事件/统计已接入。已实现并完成IDEA代码检查（无错误；保留未使用公开API和面板既有占位警告）；CLI compileJava、compileBenchJava、compileTestJava及生产包隔离检查通过（最终18秒）。仅编译现有测试源码，未执行测试、Data或游戏；视觉与运行时尚未验收。保留混合WIP，未提交或推送。契约见 player-hud-shields.md。
+
+## 2026-11-05 浮点绘制接口迁移
+
+- 将浮点绘制迁入 IGuiGraphicsExtractorExpand，按当前 GuiGraphicsExtractor 对应方法实现填充、渐变、原始纹理、精灵、九宫格与平铺；保留整数像素 UV 偏移及浮点目标顶点。
+- interfaces.json 注入编译接口，客户端 GuiGraphicsExtractorMixin 接入运行时；浮点矩形/纹理/平铺状态分别对应原版状态实现。
+- 六个 HUD 调用文件迁至提取器扩展，删除 GuiUtil。原字节备份 历史材料已清理；验证：CLI compileJava、compileBenchJava 与生产包隔离检查通过（3分30秒，含接口注入依赖重建），11个相关Java文件IDEA检查0错误；源码GuiUtil引用0、旧类已删除。未运行测试、Data或游戏，运行时与视觉效果未验收。
+
+## 2026-11-05 滤镜职责集中
+
+- 两类滤镜直接注册原版图层；删除 PlayerScreenFilters 与 DamageScreenFilter，共用 AbstractScreenFilter 会话/显隐/暂停流程，继续复用 HudSessionTracker 和 ScreenFilter 绘制。
+- 伤害通道数据集中为内部 Channel，活动集合直接持有通道对象，衰减/快照/绘制共用同一数据；去掉平行数组、重复透明度和 prepare 转发，理智三层直接更新 ScreenFilter。网络与客户端生命周期改为直接调用所属滤镜，保留现有命中/衰减/层序算法。
+- 验证：7个相关Java文件IDEA检查0错误，网络包保留2条既有Level资源检查警告；BenchMod Compile及生产包隔离10秒成功，旧管理器/子类源码引用为0。未运行测试、Data或游戏；本轮无资源变化。全工作区diff检查仅报告既有HordeDebugStateResetTest末尾空行，未处理无关WIP。原字节备份 历史材料已清理，保留混合 WIP 与原索引，未提交。
+
+## 2026-11-05 滤镜状态与绘制合并
+
+- DamageFilterState 合入原视图并统一命名 DamageFilter；理智对应统一为 RationalityFilter，删除两个 State 文件，更新门面引用和测试名称。
+- 保持命中复位、衰减、三层透明度、暂停与覆盖顺序，清理统一归组件；删除伤害滤镜重复的顺序快照缓存。
+- 全部修改后统一验证：5个相关文件IDEA诊断无错误/警告，BenchMod Compile及生产包隔离通过，DamageFilterTest 7项与RationalityFilterTest 6项全部通过，Data23输出写入0；源码无FilterState/FilterView残留。按用户要求不进行游戏验证。原字节备份本地定位build/agent-backups/20261105-filter-merge；既有混合WIP保留，未提交或推送。
+
+## 2026-11-05 原版战斗 HUD 精简
+
+- 普通状态条、头像、滤镜、事件、统计与屏幕粒子改为原版直接绘制；注册直接连接具体 HUD，管理器/LDLib2 宿主仅保留指挥家消费者。
+- 纹理由组件直接持有，删除 Appearance 传递、旧 EventHudView 与 IHudUpdatable。保留动画时间、浮点裁切、数值格式、原始皮肤 UV、滤镜覆盖顺序和会话首击。
+- 修复迁移中的生命文字偏移、零护盾文字、事件根/嵌套顺序及登录/退出/卸载清理；状态条文字显式关闭阴影，保持迁移前外观。系统当前正文已同步。
+- 代码完成后统一验证：BenchMod Compile/生产包隔离通过；6类41项状态与布局测试通过；Data23输出写入0。实机确认头像、理智、护盾6/10裁切、耗尽与旁观隐藏，未穷举全部动效/缩放。测试客户端已保存退出，接管false后正常关闭。旧LDLib2阶段测试不代替当前结果。备份本地定位build/agent-backups/20261104-native-hud-reset与20261105-native-hud-main-finish。未暂存、提交或推送。
+
+## 2026-11-04 HUD 原生 LDLib2 注册与组件
+
+- 注册统一使用薄图层适配，滤镜图层 ID 集中声明；HudHost 缩放交给 ModularHudLayer，删除 HudFrameScope 及专属测试，保留首击与会话清理。
+- 普通头像、状态条、滤镜、统计文字由 LDLib2 纹理/ProgressBar/Label 组合；状态动画保留，填充通过固定纹理子节点与裁切视口显示。新建 PlayerAvatar、StatusGaugeView 和 IHudUpdatable，事件包装不再判断具体玩家类型。
+- 指挥家投影及屏幕粒子保留显式 special 入口；仅调用适配，不改其业务。未新增新 HUD 数值/计时器业务、配置键、资源或协议。
+- 验证：BenchMod Compile 与生产包隔离通过；7 类 52 项测试通过；Data 23 输出、写入 0。有限实机覆盖头像、理智、护盾 10→6 裁切及旁观隐藏，不代表全部视觉组合或性能验收。
+- 备份：本地未发布定位 历史材料已清理、20261104-task-a-hud-resume 与 task-b-20261104；本次保留原索引及其他 WIP。
+
+## 2026-11-04 撤销 Horde 成员跨卸载持久归属修复
+
+- 用户决定事件清道夫不需要跨卸载持续存储。已撤销 `HordeRuntime.leave` 的 `reason == null` 早返、`shouldDestroy` 早返，以及 `tickParticipants` 的新增运行态清理/`shouldDestroy` 分支/不可见 identity 跳过；`leave` 恢复原 `release(mob)`，区块卸载重新释放参战名额。
+- `HordeRuntime` 相对 HEAD 已无本任务差异；`HordeSavedData`、`HordeParticipant`、`join`、正常关服有效分配与存储格式保留。专用卸载测试已备份至 历史材料已清理，索引已 `rm --cached`，工作树文件已删除；未新增镜像测试。
+- 公共文档撤回当前修复/待验收结论；GPU 去重后续验收由用户终止，不宣称性能通过。Bench 宽度 metadata 文件保留待单独测试，Renderer 与 GPU 测试未改。
+- 验证：IDEA `HordeRuntime.java` errors-only 诊断与 `BenchMod Compile` 结果见 历史材料已清理（本地未发布定位，不作为公共证据入口）。未运行 Data、JUnit、游戏、MCP 或性能。
+
+## 2026-11-03 非指挥家 HUD 窄结构布局与滤镜叶
+
+- `PlayerStatusHudView` 保留满屏 root，只保留一种 `positionType(ABSOLUTE)` 入口；新增原生 Taffy 底部 stack（`width(93)`、`COLUMN_REVERSE`、`gapAll(2)`、`alignItems(FLEX_START)`），按生命、理智、护盾顺序承载子条。锚点为 `left=floor(screenWidth/2)-105`、`bottom=30-verticalOffset`（创造 +5、生命关闭 -10），旧 `screenHeight-30+offset` 只作为指标对照，不写入 bottom。
+- `StatusBarComponent` 删除逐条绝对 `place`，改为 `updateFrameVisibility`：隐藏条 `display:none` 不占高度/gap，先更新可见性再 `prepare`，`gauge.advance` 每帧一次。保留数值格式、`Minecraft.font`、原基线、`StatusGauge` 全部像素/拖尾/闪光/吸收/心形/护盾/理智动态；`armorOffset` 仍用 `StatusHudLayout.height()+1` 纯指标。
+- `ScreenFilter` 改为真实全屏 `ABSOLUTE` `UIElement` 叶，保留资源缺失跳过、`GuiUtil.blit`、alpha 颜色与不重复 opacity；`DamageFilter`/`RationalityFilter` 在 `prepare` 推进状态并更新 alpha，draw 只读。伤害滤镜按 entries 逆序加入节点，依赖 `UIElementRenderer.drawContents` 从子列表末尾向前绘制的方向保持首次命中顺序；仅在顺序变化时重排，inactive alpha 归零。
+- 未改 `StatusHudLayout`、`PlayerStatusHud`、`ScreenParticleHud`、`HudHost`/`HudLayerManager`/`HudFrame*`/`HudSessionTracker`、EventHud/Midnight、RuntimeOverlay、Conductor 与 `PlayerHudRegistration` 层序；未新增 Menu/网络/纹理/配置键。
+- IDEA 诊断 0 errors；`StatusHudLayoutTest` 4、`StatusGaugeAnimationTest` 6、`DamageFilterTest` 7、`RationalityFilterTest` 6 均通过；`BenchMod Compile` `BUILD SUCCESSFUL in 4s`，`Data` `BUILD SUCCESSFUL in 20s` 且 `src/generated/resources` 无差异。未进游戏，两档 GUI scale 视觉、滤镜层序与字体基线仍待实机验收。实施报告：历史材料已清理（本地未发布定位，不作为公共证据入口）。
+
+## 2026-11-03 非 Photon 调试日志统一与 Horde 调试清理
+
+- 新增 `util/debug/LcDebugUtil` 统一技能、动画、附着三类开发日志开关；默认全关，生产环境强制关闭。属性 `lobecorp.debug` 提供全局默认，`lobecorp.debug.skill/animation/attachment` 单类别覆盖，显式 false 覆盖全局 true，解析遵循标准 `Boolean.parseBoolean`。三套既有 DebugUtil 删除各自 `ENABLED` 与重复生产判断，保留日志格式、INFO、动画 ERROR、边沿去重和调用点。
+- 新增 `registry/command/LcDebugCommand`，`/lobecorp debug` 与 `status` 显示当前 JVM 三类状态，`skill|animation|attachment|all on|off` 切换；服务端保持 `GAMEMASTERS`，客户端仅开发环境本地注册、无管理员门槛。服务端命令由 `CommandEvents` 追加，客户端由 `LobecorpClientEvents.onRegisterClientCommands` 同一入口追加；Brigadier 同根合并不覆盖既有 `animation/horde/Photon` 命令，未新增网络包。
+- 删除 `Lobecorp` 构造器 `LOGGER.info("Unitego.")`；删除 `HordeDebugState.notice/lastNotice` 与 `lines()` 提示分支；新增 `HordeDebugState.reset()` 并在 `HordeClient.clear()` 末尾调用，重置全部会话观测值。`beginFrame`/`beginDraw` 时序、GPU clear、`HordeRenderMetrics` 均未改。
+- F3 机制、11 条目、四个 `configured &&` mixin、`HordeDebugRenderer` 与 `LcDebugRuntimeOptions` 本轮未改；原版 `MC_DEBUG_ENABLED` 前提记录于[非 Photon 调试开关](debugging.md)。
+- 验证与未验证边界见实施报告（本地未发布定位：历史材料已清理，不作为公共证据入口）。
+
+## 2026-11-03 Horde 停止追踪与真实移除清理［已撤销，2026-11-04］
+
+- 历史实现（已于 2026-11-04 撤销）：`HordeRuntime.leave` 曾增加移除原因早返与持久归属保留；`tickParticipants` 曾增加惰性清理。当前均不再生效，区块卸载恢复原 `release` 释放名额。以下历史验证边界不再适用。
+- 历史实现（已于 2026-11-04 撤销）：`HordeRuntime.tickParticipants` 曾新增运行态清理与 `shouldDestroy` 分支；当前恢复原 `isRemoved`/非存活后直接 `continue`。以下历史描述仅留档，不代表当前行为。
+- 未改 `death` 计数/配额、`join`、`HordeParticipant`、存档格式、Brain/AI、网络、视觉、事件订阅。IDEA 诊断仅保留既有 `tick()` continue 警告；`BenchMod Compile` `BUILD SUCCESSFUL in 18s`，`compileJava` 实际执行，`HordeRuntime.class` 时间 2026-11-03 13:46:25。未运行现有枚举/NBT 测试作为接线回归，未进游戏。
+- 历史验证（已撤销，不再作为当前验收依据）。本批未执行 Git 写。
+
+## 2026-11-03 Horde 成员临时卸载保留持久归属［已撤销，2026-11-04］
+
+- 历史实现（已于 2026-11-04 撤销）：`HordeRuntime.leave` 曾按 `RemovalReason.shouldDestroy()` 保留临时卸载归属；当前恢复原 `release`。
+- 专用卸载测试覆盖临时/永久移除原因与持久 map 往返；已随修复撤销并备份，不再作为当前验收依据。
+
+## 2026-11-03 事件 HUD 根布局与第一层包装
+
+- `EventHud` 新增宿主首次创建前生效的根布局配置 `registerRootLayout(Consumer<UIElement>)`，以及直属根的第一层包装 `registerWrapper(id, Supplier<UIElement>)`；`register` 保持直接挂根并新增带 `wrapperId` 的重载。包装与根布局仅限启动期，宿主创建后拒绝追加。
+- `EventHudState` 改为纯 JVM 状态：定义携带可空包装 ID，活动以 `LinkedHashMap` 保存 `show` 插入顺序，`activeInOrder(wrapperId)` 返回该父容器的实例顺序，不再依赖 `EventHudDirection`/`EnumMap`。`EventHudComponent` 去掉方向字段与构造参数，`MidnightCleanupHud` 不再固定 LEFT；方向枚举先备份后删除。
+- `EventHudView` 保留包装节点直属根，根顺序为包装注册顺序在前、直接 HUD 的 `show` 顺序在后，包装内按 `show` 顺序；仅在子项顺序变化时同步，`clear` 解除活动子节点并保留包装。
+- 迁移 `EventHudStateTest` 覆盖直挂、两个包装分组顺序与 hide 补位、重复 show、clear 再 show、未登记包装拒绝、宿主创建后包装拒绝；IDEA 定向编译与该测试通过。
+- 未进游戏，视觉与真实布局未经验收。修改前备份：历史材料已清理。
+
+## 2026-11-03 事件 HUD 两层包装与深夜清扫资源常量
+
+- `EventHudState` 将包装从纯 ID 集合改为有序父级定义：旧无参 `registerWrapper` 仍为根包装，新增可空父 ID 重载；父必须先行注册，重复 ID、自父、未知父与宿主创建后追加均拒绝；新增 `wrapperParent` 与 `childWrapperIds`，父级关系和插入顺序只由状态层持有。
+- `EventHud` 保留额外工厂表，只新增父级重载并先让状态校验成功再写入工厂；`EventHudView` 按注册顺序建树，容器顺序固定为工厂与根布局固定节点、受管子包装、活动 HUD；`prepare` 只移除本视图实际挂载的活动节点并按引用追加，`clear` 只解除活动节点并清空追踪列表，不再使用 `clearAllChildren`，包装树与固定节点保留。
+- `EventHudRegistration` 登记 `lobecorp:event_hud/top_left` 根包装与 `lobecorp:event_hud/top_left/events` 子包装，第一层绝对定位 4 像素左上、第二层纵向 gap 4 像素；`MidnightCleanupHud` 归属事件堆叠；其他 HUD 直挂语义未改。
+- `MidnightCleanupHud` 增加四个私有静态 `Identifier`：`digits`、`text_box_middle`、`text_box_right`、`timer`，均沿现有直接纹理路径；未改 PNG、未新增绘制、倒计时或自动 `show`，未用字段警告保留。
+- `EventHudStateTest` 扩展至 11 项，新增父级顺序、未知父与自父拒绝、两层归属与隐藏补位；IDEA 定向运行 `11/0/0/0`，`BenchMod Compile` `BUILD SUCCESSFUL`。未进游戏，左上位置、两层布局、固定节点保留与纹理绘制均未验收。本批未执行 Git 写；既有 WIP 与索引保持。
+
 ## 2026-11-02 指挥家提示重置与视口缓存回归修复
 
 重置布局时在Model清空提示之后重新登记静态按钮文案，动态队伍/模式提示继续由每帧准备覆盖。成员与技能虚拟列表缓存加入实际viewPort内容宽高、列数及内容范围；实际几何下一帧变化也会失效重挂，保留原卡片池与滚动窗口算法。
@@ -11,6 +127,16 @@
 统一管理器拥有全部7层的会话与清理，普通UIElement负责组件，NeoForge保留原层序/Post时机；事件定义/UUID活动/三方向堆叠、状态条、滤镜、粒子、运行覆盖均接入统一HudHost。指挥家分离显示模型、布局、卡片、输入、提示与绘制；业务动画在准备阶段采样，依赖几何的采样在最终布局后，绘制只读。resetLayout保留视图、释放按同引用清理；移除11类旧HUD链及零消费者原生指挥家Screen，保留原字节备份。
 
 编译与Data成功（23输出written0/removed0），45项相关纯测试通过；实机确认空队伍指挥家界面、退出重入后的搜索输入、缩放、三方向事件堆叠/隐藏补位、两种滤镜、屏幕粒子和统计文字。退出后7宿主全释放，事件/粒子归零、view=null，临时设置恢复且测试PID17972已退出。未穷举全部兵种技能与性能。契约见[玩家HUD](player-hud-shields.md)、[指挥家](conductor.md)、[事件](events.md)。其它Renderer/测试/配置资源存量WIP不并入本次提交。
+
+## 2026-11-01 配置结构重规划
+
+按用户确认的新结构重新生成，不迁移旧值。代码提交b787b40：客户端/服务端各唯一ModConfig，尸体批绘移至客户端根，行列间距移至客户端事件/深夜清扫/浪潮/显示并从服务端快照剥离，清理无消费者LOD距离选项及旧自动合并代码。配置结构与编辑器回写见[配置结构](configuration.md)。25项相关测试、主源码/Bench编译、生产包隔离与Data成功；未做游戏配置界面验收。原Renderer去重WIP及AM测试边界保留，未推送。
+
+## 2026-11-01 HUD 迁移补全：运行覆盖层
+
+已盘点全部RegisterGuiLayersEvent入口与RenderGuiEvent.Post分发：生命/理智/护盾、伤害/低理智滤镜、屏幕粒子、事件HUD、指挥家HUD均经LDLib2驱动。另将Post阶段的指挥家指令光标/框选及Horde统计文字接入RuntimeOverlayHud的LDLib2画布，保持原Post阶段和先指令后统计的绘制顺序；沿既有登录/登出/卸载入口释放UI，不新增订阅。特定投影、精灵裁切与画线仍由组件回调复用原绘制算法，未重写世界渲染或原版HUD。
+
+主线最后IDEA项目编译成功；前一批Bench生产包隔离与Data通过，最后补全仅代码、无资源变化。未做实机视觉验收，不能将编译成功当作位置、动画、交互及滤镜覆盖正确。原业务WIP与AM测试保留。
 
 ## 2026-11-01 补齐光束粒子升级适配提交
 
@@ -29,9 +155,19 @@
 - 新增 DevelopmentWindowPolicy 及四份开发客户端 Mixin：Window 生命周期一次非激活铺满、移除最小化按钮并拦 SC_MINIMIZE、销毁后释放回调；FramerateLimitTracker 解除开发 AFK／最小化节流；Minecraft 解除开发失焦暂停；MouseHandler 拒绝失焦自动抓取。production 分支不启用，不新增依赖或操作全局鼠标。
 - 边界：一次铺满工作区不伪称原生最大化；非 Windows 跳过本机窗口策略；不保证拦截其他程序直接原生最小化，不将取消节流写成硬件性能收益。原生辅助失败记录并跳过，不以循环抢焦点修复。
 - 验证：IDEA 相关诊断无错误；BenchMod Compile 执行 compileJava、compileBenchJava、verifyProductionJarHasNoBenchContent，BUILD SUCCESSFUL；Data BUILD SUCCESSFUL，23 文件 written=0／removed=0。未运行游戏、真实焦点／最小化／AFK及后台 FPS 验收；开放项留原始唯一问题清单。
-- 同步修正文档与旧焦点规则。文档修改前备份 build/agent-backups/20261101-test-window-policy/backups；已跟踪源码由本次 Git 差异保留前版本。未操作原始 .gitignore 及六份 snake 暂存，不推送。
+- 同步修正文档与旧焦点规则。文档修改前备份 历史材料已清理；已跟踪源码由本次 Git 差异保留前版本。未操作原始 .gitignore 及六份 snake 暂存，不推送。
 
 
+## 2026-11-01 LDLib2 事件 HUD 堆叠
+
+- EventHud改用LDLib2 ModularHudLayer，定义注册与UUID活动实例分离；顶部居中、左、右三列各自向下排列，隐藏后自动补位，换世界清理UI。
+- 注册形参为事件ID、英文名、中文名与独立组件工厂；深夜清扫通过MidnightCleanupHud::new归入左侧，未增加具体纹理、计时及事件自动激活逻辑。
+- IDEA定向编译与Data退出0；未做游戏或视觉验收，旧Horde业务WIP和测试暂存保持。
+
+## 2026-11-01 游戏资源英文命名
+
+- 用户纠正为游戏资源目录与文件名只能使用英文，覆盖此前误述的中文命名要求；项目通用规范同步订正，不批量改名无关资源。
+- 本批HUD资源目录改为 hud/events/midnight_cleanup，四图为 timer.png、digits.png、text_box_middle.png、text_box_right.png；重命名保持PNG原字节，未接入渲染或执行游戏验收。
 ## 2026-11-01：明确同类事件处理入口复用
 
 - 按用户示例补充通用Java规范：已有事件入口时，新增业务接入该入口，不按业务后缀另建同类事件处理方法；允许内部职责拆分，禁止重复订阅和平行入口。
@@ -42,7 +178,11 @@
 
 - 用户明确要求：不同工作区可并行进行逻辑、功能、交互和视觉游戏测试，不再因存在游戏或Debug统一排队；独立实例、输入与证据边界保留，性能计量与A/B仍协调独占资源。
 - 修改 workflow.md 的测试边界及 workspace-layout.md 的过时串行说明；通过Git提交向工作区分发，不覆盖业务WIP。
-- 文档匹配、差异与链接检查；不运行构建、Data或游戏。修改前备份：build/agent-backups/20261101-parallel-game-tests/backups。
+- 文档匹配、差异与链接检查；不运行构建、Data或游戏。修改前备份：历史材料已清理。
+
+## 2026-11-01 Horde Batch 分割更新去重（静态交付）
+
+仅 HordeGpuRenderer 的 prepare 增加本次调用局部去重，保存同事件最近成功的时间、原点和区域内容快照；资源跳过不登记，独立 prepare 不共享记录。新增 HordeSplitPreparationTest 4 项，HordeSplitState 未改。IDEA 生产文件无新增诊断、新测试 0 错误/警告；独立静态复核未发现正常有限输入、单线程 prepare 路径的阻塞项，64 槽竞争及超过 64 个源圆的测试覆盖补充中，所有运行验证未执行，不能据此关闭问题或宣称性能收益。用户要求先不构建、不进游戏，由主线统一安排后续。未提交/推送，原 WIP 与 AM 测试索引保持；修改前后源码哈希及编辑证据见修复报告（本地未发布定位：历史材料已清理，不作为公共证据入口），最小验证入口与缺失技能见验证准备（本地未发布定位：历史材料已清理，不作为公共证据入口）。
 2026-10-29 实机收尾与默认数量调整：189c4c2 Iris标准流七段23图PASSED，用户接受；随后默认边界粒子40组、刀光批位置×2，保留64格、频率与预算。按“默认粒子数量可以更多*2，不需要测试”仅IDEA静态检查，未构建/Data/JUnit/游戏复测加倍值。测试进程/桥接已结束，Iris原SHA89c870f7a3166eb15aacae6b2890c568f17fe3bad2bc355122d9c3b34fdd2dbe已恢复；隔离配置particleRange64/fragmentGroups40按用户要求保留。备份build/agent-backups/20261029-particle-double。
 
 
@@ -51,25 +191,25 @@
 实现局部软桥、最终发布圆同源快照、有界CPU粒子流场、最终出生筛选与64格粒子范围；生成数量/频率不变，声音仍32格。保持GPU状态、方向片、服务端判断和原WIP。32项回归、生产Java诊断、BenchMod Compile与Data成功；当前新版实机未运行，旧留观PID10404保持。实现/预算/误差见[horde渲染](horde-rendering-implementation.md#2026-10-29-近邻桥接与粗粒子流场)，报告.agent/reports/20261029-horde-merge-particles.md，原字节备份build/agent-backups/20261029-*。
 
 
-2026-10-28 路径实测修正（当前）：原16项测试3失败已保留；弱压力渐入端把完整左右需求缩成≤.25格的“平手”，加上两侧前导范围不同，导致远侧误锁，原核心外单位也被推入核心。现改左右共用farDelta提前量、按未乘pressure的几何并集需求选侧；已锁侧保持。运动目标改用连续需求并集U，较小需求不会平均削弱外侧需求；个体有效半径.8–1.35、跨列补偿.45保留分散外缘。Python -B最终17项全部通过（55.862秒，退出0）：单圆speed.25/.75中心占据比均0、全核心.004989/0；三圆中心0、全核心.015272，中位横移6.644/6.664/8.591格，外缘跨度2.822/3.040/3.499格；原门槛不放宽。新增弱渐入选侧回归。仅本轮GLSL/路径测试与文档修改，Java不变；数值通过不等于普通/Iris实机验收。报告见.agent/reports/20261028-horde-soft-pressure.md，累计源码补丁同目录20261028-horde-core-distribution.patch。
+2026-10-28 路径实测修正（当前）：原16项测试3失败已保留；弱压力渐入端把完整左右需求缩成≤.25格的“平手”，加上两侧前导范围不同，导致远侧误锁，原核心外单位也被推入核心。现改左右共用farDelta提前量、按未乘pressure的几何并集需求选侧；已锁侧保持。运动目标改用连续需求并集U，较小需求不会平均削弱外侧需求；个体有效半径.8–1.35、跨列补偿.45保留分散外缘。Python -B最终17项全部通过（55.862秒，退出0）：单圆speed.25/.75中心占据比均0、全核心.004989/0；三圆中心0、全核心.015272，中位横移6.644/6.664/8.591格，外缘跨度2.822/3.040/3.499格；原门槛不放宽。新增弱渐入选侧回归。仅本轮GLSL/路径测试与文档修改，Java不变；数值通过不等于普通/Iris实机验收。报告见历史材料已清理，累计源码补丁同目录20261028-horde-core-distribution.patch。
 
 以下为前轮历史记录，旧版“当前/未运行”的说法由上文覆盖。
 
-2026-10-28 中心分流修正（覆盖此前软压力版）：07被用户判为视觉失败；HUD圆数/字数为0已定位为提取时清零、GUI先于世界绘制读取的统计时序，不能据此判漏上传。主路线origin=center+(250,0,0)，三牛局部(-250,0/±3.473)、minimumY0与夹具一致，NoAI/NoGravity不设置noPhysics；不改筛选。当前中心改用独立个体有效半径0.9–1.25、强度1.2–1.45及0.97–1缓慢呼吸，重叠混合D/(1+M)，跨列补偿0.65保留散度，纵横压力独立渐变。提前量按增强需求、0.7横速及1.8倍渐入时间计算。仅HordeDebugState/HordeGpuRenderer修正HUD统计；GPU四字状态、0.7积分、3倍sway、CPU区域职责与服务端不变。新增实际积分路径密度/核心占据/位移分位数检查，未执行。详见 .agent/reports/20261028-horde-soft-pressure.md 的当前交付节；补丁同目录20261028-horde-core-distribution.patch。
+2026-10-28 中心分流修正（覆盖此前软压力版）：07被用户判为视觉失败；HUD圆数/字数为0已定位为提取时清零、GUI先于世界绘制读取的统计时序，不能据此判漏上传。主路线origin=center+(250,0,0)，三牛局部(-250,0/±3.473)、minimumY0与夹具一致，NoAI/NoGravity不设置noPhysics；不改筛选。当前中心改用独立个体有效半径0.9–1.25、强度1.2–1.45及0.97–1缓慢呼吸，重叠混合D/(1+M)，跨列补偿0.65保留散度，纵横压力独立渐变。提前量按增强需求、0.7横速及1.8倍渐入时间计算。仅HordeDebugState/HordeGpuRenderer修正HUD统计；GPU四字状态、0.7积分、3倍sway、CPU区域职责与服务端不变。新增实际积分路径密度/核心占据/位移分位数检查，未执行。详见 历史材料已清理 的当前交付节；补丁同目录20261028-horde-core-distribution.patch。
 
 以下条目按时间保留；旧版“当前”结论以本条覆盖。
 
-2026-10-28 软度调整：用户允许短暂穿入核心和越出路线边缘；当前以渐变压力、稳定个体强度/相位及带自由先验的饱和混合替代圈界投影/hard capacity/hard max。保留0.7积分、锁侧、3倍sway和四字状态，测试改为柔和密度相关不变量。本轮仅静态检查、未运行测试/构建/游戏；普通05/Iris06采集PASSED不代表软度通过。详见[渲染实现](horde-rendering-implementation.md)及 .agent/reports/20261028-horde-soft-pressure.md。
+2026-10-28 软度调整：用户允许短暂穿入核心和越出路线边缘；当前以渐变压力、稳定个体强度/相位及带自由先验的饱和混合替代圈界投影/hard capacity/hard max。保留0.7积分、锁侧、3倍sway和四字状态，测试改为柔和密度相关不变量。本轮仅静态检查、未运行测试/构建/游戏；普通05/Iris06采集PASSED不代表软度通过。详见[渲染实现](horde-rendering-implementation.md)及 历史材料已清理。
 
-2026-10-28 当前改为每EventData四字双RGBA8避让状态，替代下面静态草稿。整route活动行窗按半开边界迁移，拆组前每事件更新一次；锁侧不随移动圆穿中线翻转，活动/退场的sway+avoidance总横向状态限速0.7。Motion8保留，CPU不做逐单位更新，3倍sway保留。禁止测试前6项标量数值回归已通过；Java窗口测试、GPU/游戏/性能均待父代理。三份新文件有IDEA自动暂存，未提交。详见[渲染实现](horde-rendering-implementation.md)及 .agent/reports/20261028-horde-gpu-state.md。
+2026-10-28 当前改为每EventData四字双RGBA8避让状态，替代下面静态草稿。整route活动行窗按半开边界迁移，拆组前每事件更新一次；锁侧不随移动圆穿中线翻转，活动/退场的sway+avoidance总横向状态限速0.7。Motion8保留，CPU不做逐单位更新，3倍sway保留。禁止测试前6项标量数值回归已通过；Java窗口测试、GPU/游戏/性能均待父代理。三份新文件有IDEA自动暂存，未提交。详见[渲染实现](horde-rendering-implementation.md)及 历史材料已清理。
 
-2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 .agent/reports/20261028-horde-path-correction.md；最新补丁/清单在 build/agent-backups/20261028-horde-path-correction/。此结果不是游戏或硬件 GLSL 验收。
+2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 历史材料已清理；最新补丁/清单在 历史材料已清理。此结果不是游戏或硬件 GLSL 验收。
 
 ## 2026-10-28 客户端路径与摆动
 
 2026-10-28 路径实现：sway 频率 3 倍、幅度不变；GPU 同侧最大包络提前绕圆，静态局部直线分割速度基准/上界为常规速度×0.7，保留 16 格上限。多圆交接仅保证 C0，动态圆、复杂通道、fade 与超范围净空不作绝对保证；I49 保留。新增 tools/horde_path_contract_test.py，待父代理统一运行和验收；本次仅静态检查。详见[渲染实现](horde-rendering-implementation.md)。
 
-范围：horde_split.glsl、horde_motion.glsl、horde_motion.fsh、HordeTide.java、独立数值测试及本系统文档。备份 build/agent-backups/20261028-horde-path/；保留原 11 项未暂存、2 项未跟踪 WIP，最终测试与提交交父代理。
+范围：horde_split.glsl、horde_motion.glsl、horde_motion.fsh、HordeTide.java、独立数值测试及本系统文档。备份 历史材料已清理；保留原 11 项未暂存、2 项未跟踪 WIP，最终测试与提交交父代理。
 
 ## 2026-10-28 标准流普通与Iris复测
 
@@ -87,7 +227,7 @@
 - CPU 粒子核心与轮廓查询改读平滑圆，轮廓的固定外扩和引导长度随半径归零。仅共享平滑圆与 fade 权重；GPU 保留固定 reach 并缩放 push，CPU 缩小轮廓引导带，不代表完整几何一致。`HordeTide` / `HordeParticleSamples` 本身不读取 regions 或平滑圆，仍生成解析候选；本次只修复后续核心/轮廓筛选，没有补齐 I49 的 GPU 分割位移等既有位置差异。
 - 修改文件：`HordeClient`、`HordeSplitState`、`horde_split.glsl`；新增 `HordeSplitTransitionTest` 的 4 项无 GPU 回归，覆盖三类键零起步、精确退场、复入/反转及 CPU 小圆轮廓。测试待父代理统一运行。
 - 已完成 IDEA 本次行格式化与统一静态诊断：生产 Java/GLSL 和新测试均 0 错误；两份生产 Java 合计 5 项既有警告，无新增警告。未执行构建、Data、测试、游戏或 Debug；未暂存、提交或推送。服务端代码与方向片文件不在本次修改内。
-- 修改前原字节备份：`build/agent-backups/20261028-horde-client-split/`；已有空圆纹理初始化 3 行 WIP 保留，父代理提交时须排除该旧 hunk。
+- 修改前原字节备份：历史材料已清理；已有空圆纹理初始化 3 行 WIP 保留，父代理提交时须排除该旧 hunk。
 
 ## 2026-10-28 方向片剔除与超远单片
 
@@ -97,7 +237,7 @@
 - 六方向片、动画帧与图集继续在资源准备阶段预烘焙、上传并常驻缓存；保留源模型六向 24 顶点帧，不改投影尺度或图集比例。`Prepared.verticesPerInstance` 仅按 geometry tier 返回片档 12 或完整模型顶点数，统一原版索引数、Iris 实例上限、工作集布局、展开范围与合批绘制数量。`AnimationInfo.x` 保留源模型 24 顶点帧跨度，输出跨度通过闲置的 `FrameLod.w` 传递；Iris 的 UV、法线、切线和 mid-texcoord 跟随被选中的原始面。
 - **新增方向与单片选择全部在 GPU**：`FrameLod.y` 传独立单片距离，GPU 按每实例最终 `point + OriginTime.xyz` 的三维距离严格 `>64` 判定；`-1` 关闭，恰好 64 格保留普通片。超远实例保留一个主方向 quad，另两个 quad 的四角均映射为同一顶点而成为零面积，不进入片段着色。CPU 沿用区域批量提交，保留相机相对原点 `OriginTime.xyz=event.origin-camera`、区域行列、时钟及既有必要参数，不新增按批次距离选顶点数、逐实例距离/方向计算或逐帧 CPU 几何构造；原完整模型/片批次 LOD 与数量范围不变。
 - 已完成 IDEA 本次 Java 行格式化和五份 Java/GLSL 静态诊断：0 错误；渲染器 11 项既有警告，其余无警告。未执行 Compile、Data、测试、游戏、Debug、同步、暂存、提交或推送；硬件 GLSL、视觉与性能未验证。
-- 保留 `HordeMeshReduction`、`HordeCardBake` 和分割实现的全部既有 WIP，不修改投影比例、图集烘焙、发光材质或阴影阶段跳过。原字节备份：`build/agent-backups/20261028-horde-card-culling/`；文档基线另存 `post-split-docs/`，包含此前分割记录。
+- 保留 `HordeMeshReduction`、`HordeCardBake` 和分割实现的全部既有 WIP，不修改投影比例、图集烘焙、发光材质或阴影阶段跳过。原字节备份：历史材料已清理；文档基线另存 `post-split-docs/`，包含此前分割记录。
 
 ## 2026-10-27 低频截图视觉复测（一次，已结束）
 
@@ -106,7 +246,7 @@
 - 测量23602帧：均值5.771ms、P95 12.215ms、P99 17.800ms、最长92.287ms，>50ms为3帧、>100ms为0。旧重型取证轮P99 77.095ms、>100ms为133帧；该历史对照同时调整了截图频率、图片分析和GPU计时，不能当严格生产性能A/B。启动/暖机仍有428.842/207.739ms尖峰，不能宣称全程无卡顿。
 - 环境有效、失焦0、GPU绘制失败0；本场景GPU计时disabled、查询0、报告丢弃0，不据此推断全部GPU问题解决。Spark已保存：https://spark.lucko.me/omg5qbAPH6。
 - 自有PID28636（22:02:45.773+08:00启动）正常退出，Debug为空；自有事件/目标0，30个探针无未完成项。Horde本轮游戏测试已结束并释放。
-- 本轮31份实际产物归档：`build/agent-backups/20261027-low-frequency-client-1793109801528/`；此前205份原始证据备份：`build/agent-backups/20261027-low-frequency-before-run/`。完整运行报告与截图路径放自有.agent。
+- 本轮31份实际产物归档：历史材料已清理；此前205份原始证据备份：历史材料已清理。完整运行报告与截图路径放自有.agent。
 
 ## 2026-10-27 视觉测试改为低频截图保存（代码阶段完成）
 
@@ -114,26 +254,26 @@
 - 截图使用单个异步请求、实际 scheduler 间隔至少 100 tick（正常 20TPS 约 5 秒）、每段最多 3 张、同一受控 elapsed 去重；七段320 tick配方不变，warmup两张也串行限频。完整性只核对文件存在且非空，不宣称内容可见或行为通过。本场景 `HordeRenderMetrics.start` 的 GPU 开关为 false，不进行全阶段 GPU 查询。
 - 保留 Spark 全程、有界上传等待、原始失败、目标/事件/世界规则恢复；保持游戏最大化和焦点，失焦只记录。生产片比例修复和已有 WIP 未修改；未新增安静模式、线程池、场景或优化路径。
 - 检查：IDEA 无错误/警告，单文件编译成功。本次未运行游戏、Debug、Data 或运行期回归；启动前先向用户报告并等待确认，CPU/GPU 卡顿仍属待实测。
-- 原字节备份：`build/agent-backups/20261027-visual-capture-rewrite/`，原哈希 `c71700830c58946eef0b8a09c447fdf4d3ea02e2309d66abc26c00002e0a5103`，新哈希 `e2e285201b30e14b046678ed2f2de930f9b4c2ad2503800ea2c866787f1e07c7`。旧截图、JFR及失败轮保留。
+- 原字节备份：历史材料已清理，原哈希 `c71700830c58946eef0b8a09c447fdf4d3ea02e2309d66abc26c00002e0a5103`，新哈希 `e2e285201b30e14b046678ed2f2de930f9b4c2ad2503800ea2c866787f1e07c7`。旧截图、JFR及失败轮保留。
 
 ## 2026-10-27 无割圆首次绘制修复与验收门禁准备
 
 - 实机复现：无割圆首次绘制时 `HordeSplitState.view()` 在 motion render pass 内创建空纹理并上传，触发 `Close the existing render pass before performing additional commands`。仅在 `publish()` 的零圆分支提前分配纹理，新增 3 行，保留排序/平滑/数量与全部既有 WIP。
-- 备份：`build/agent-backups/20261027-split-empty-texture/`；原始/备份 SHA256 `51f89065e3f3f82e4d79ade713728c94f24bc54822560173a7bc67629f7c199f`。修复版 IDEA 无错误、BenchMod Compile 成功；粒子/圆区/优化既有测试共 15 项通过。
-- 运行边界：修复版诊断轮已显示浪潮且原异常未复现，但未保持最大化，不能作正式矩阵或性能有效样本。两轮 Spark 已上传，PID62036/53904 正常退出；逐项证据位于 `build/agent-backups/20261027-horde-acceptance-runtime/`，完整运行报告仅放自有 `.agent/`。
+- 备份：历史材料已清理；原始/备份 SHA256 `51f89065e3f3f82e4d79ade713728c94f24bc54822560173a7bc67629f7c199f`。修复版 IDEA 无错误、BenchMod Compile 成功；粒子/圆区/优化既有测试共 15 项通过。
+- 运行边界：修复版诊断轮已显示浪潮且原异常未复现，但未保持最大化，不能作正式矩阵或性能有效样本。两轮 Spark 已上传，PID62036/53904 正常退出；逐项证据位于 历史材料已清理，完整运行报告仅放自有 历史材料已清理。
 - 当前阶段：新增独立视觉矩阵与严格窗口性能入口，保留现有 `BenchWindow` 和五份场景 WIP。尚未取得七段完整画面、I49 GPU 世界坐标误差或普通/光影各三轮，不记为验收通过。
 
 ## 2026-10-27 Horde 重写验收准备与粒子差异纠正
 
 - 范围：仅 Horde 工作区文档与 `/.agent/` 忽略规则；业务代码、夹具及其他 WIP 不改。本阶段等待本对话游戏/Debug/性能及重负载构建放行。
 - 静态核对 `a1de8439`：粒子未应用 GPU 分割；低速漂移缩放、正弦哈希精度、地形高度与横向流阻尼也存在差异。更正 I49，保留“实机偏差是否超过 1 格”未验证状态，不恢复 GPU 回读、不选新架构。
-- 准备：核对现有运行配置及 500×500/0.75/10 监守者/站程 400/2400 tick 参数；自有 `.agent/` 保存矩阵和冻结清单，不提交运行报告。开测时还须取得世界/seed、实际制品哈希、光影、窗口、相机及进程归属。
-- 保护：IDEA 检查 13 份文件无未保存差异，并按原字节备份至 `build/agent-backups/20261027-horde-acceptance-preflight/`，SHA256 一致；保留现存 Gradle、五份基准、烘焙/减面/指标、旧备份删除和日志 WIP。
+- 准备：核对现有运行配置及 500×500/0.75/10 监守者/站程 400/2400 tick 参数；自有 历史材料已清理 保存矩阵和冻结清单，不提交运行报告。开测时还须取得世界/seed、实际制品哈希、光影、窗口、相机及进程归属。
+- 保护：IDEA 检查 13 份文件无未保存差异，并按原字节备份至 历史材料已清理，SHA256 一致；保留现存 Gradle、五份基准、烘焙/减面/指标、旧备份删除和日志 WIP。
 - 检查边界：仅 IDEA 快照、粒子类诊断（0 错误、4 项既有警告）、后台 Git 与离线审查；未执行构建、Data、游戏、Debug、截图或性能采样。系统进程查询不可用，不能据此断言其他任务已释放 GPU。本阶段未创建游戏或 Debug 对象。
 
 ## 2026-10-27 按进度的潮与确定性分割（重写）
 
-- 用户要求先备份、再整体重写：先做「按进度的潮」，再做「分割」，并补齐大量调试信息。备份为 Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`，含当时 17 项未提交改动）与 `build/agent-backups/20261027-pre-rewrite/`（src、docs、`working-tree.patch`、`status.txt`）。
+- 用户要求先备份、再整体重写：先做「按进度的潮」，再做「分割」，并补齐大量调试信息。备份为 Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`，含当时 17 项未提交改动）与 历史材料已清理（src、docs、`working-tree.patch`、`status.txt`）。
 - 删除整条持久状态链路：`HordeUnitState`、`HordeUnitStats`、`HordeRegionState`、`HordeSpatialIndex`，以及 `horde_unit.vsh/fsh`、`horde_unit.glsl`、`horde_avoid.glsl`、`horde_spatial.glsl`、`horde_region_update.fsh`、`horde_spatial_index.fsh`、`horde_unit_stats.fsh`、`horde_particle_samples.fsh`。单位不再有 GPU 历史纹理、速度积分、环形页、空间位图与光照/波带隐藏分支。
 - 按进度的潮：新增 `HordeTide`（纯函数位置，与 GLSL `movingLocation` 同公式）并重写 `horde_motion.glsl`、`horde_motion.fsh`；位置只由波头站程、行列与事件时钟决定，`HordeParameters` 由 17 个 vec4 精简为 15 个（240 字节）。同一行列在任何帧、任何视角下映射到同一位置，因此「历史失效→回落解析锚点」的重填路径不再存在。
 - 分割：新增 `horde_split.glsl`（只输出站程延迟与横向偏移，圆几何的连续函数，两次迭代收敛，无逐单位状态）与 `HordeSplitState`（CPU 平滑圆表，5 字/圆，线性扫描取代多层 GPU 位图）。`HordeClient` 持有分割圆表并在事件替换/移除/清空时释放纹理。
@@ -142,13 +282,13 @@
 - 调试信息：新增 `HordeDebugState`（事件/批次/绘制组/实例/潮头潮尾/可见行/分割圆数量/最大半径/圆表字数/目标变化多行叠层，`STATISTICS` 开关）；`HordeDebugRenderer` 用 `Gizmos.circle` 画分割割圆、点标潮头潮尾；`HordeGpuRenderer.statistics()` 增加 `GPU instances=`、光照区段与 Iris 状态；分割圆数量接入 `Counter.REGIONS` 报告指标；粒子采样带节流诊断日志。
 - 验证：IDEA 编译 0 错误；`BenchMod Compile` 退出 0（`compileBenchJava`、`jar`、`verifyProductionJarHasNoBenchContent`）；`HordeRegionTest`(4)、`HordeOptimizationTest`(8)、`HordeParticleSamplesTest`(3)、`HordeCircularMotionContractTest`(2) 共 17 项通过；BenchMod `lobecorp.horde-render` 实机 PASSED（`client.environment.valid=true`、焦点 losses=0）：25,643 实例、分割圆 64、粒子 5.45/刻、`visible_pixels` 547,611、horde draw GPU 5.252 ms、帧 15.318 ms / P99 33.154 ms、failures=0，spark 链接 `https://spark.lucko.me/8ZU75qbZIC`。
 - 未完成：多目标聚散、狭窄夹缝、高低楼层、多玩家与跨维度的实机矩阵；硬件 GLSL 之外的着色器行为定量；粒子地形让步位移与 GPU 最终位置的差异未逐点核对。另有两轮因窗口失焦判 INCONCLUSIVE（`client.window.focus_lost`），只作无效轮保留，未计入数据。
-- 证据归档：`build/agent-backups/20261027-tide-rewrite/`（`bench-run*.log`、`run1/`、`run2/`、`run3/` 历史轮次）；结果目录 `build/modBench/raw-results/default/client/`。
+- 证据归档：历史材料已清理（`bench-run*.log`、`run1/`、`run2/`、`run3/` 历史轮次）；结果目录 `build/modBench/raw-results/default/client/`。
 
 ## 2026-10-27 DOC-HORDE-01 文档导航与重复页整合
 
 - 重新盘点 99 份自有 Markdown；两份重复页完整迁入[事件监听规范](events.md#事件监听规范)与[MCP 历史接入记录](minecraft-mcp-artifacts.md#历史接入记录)后删除，保留 97 份，分类入口沿用[系统索引](README.md#全部保留文档分类索引)。根 README 只保留介绍与基本入口。
 - 更新全部合并页入链，修正可核对的现存入口与锚点；缺失源码、截图、备份和 Skill 保留原路径及历史/缺失边界，统一问题入口见[DOC-HORDE-01](horde-issues.md#doc-horde-01-文档入口与历史来源边界)。不恢复源码、不代管 Photon 问题、不改变业务正文。
-- 原始字节备份：`build/agent-backups/20261027-doc-horde-resume/`。保护既有暂存、未暂存和未保存内容，三份并行所有者文档由协调方单独收尾。
+- 原始字节备份：历史材料已清理。保护既有暂存、未暂存和未保存内容，三份并行所有者文档由协调方单独收尾。
 - 检查范围仅为 IDEA Document/VFS 回读、最小文档诊断、文件/锚点/可达性静态核对；实际结果由所属总览记录。未执行构建、Data、业务测试、游戏、配置或资源操作。
 - 收尾提交 `c37277cf` 已采用独立索引，仅纳入46个文档路径及DOC总览段，15项原暂存补丁85532字符保持。另发现受保护的 `photon-effect-mcp-api.md~` 未暂存删除，归属未唯一确定；未纳入提交，原Git版本已保全，处置边界见唯一问题清单，不擅自恢复或修改IDE安全写设置。
 
@@ -188,11 +328,11 @@
 - 唯一改动落在 `src/main/resources/assets/lobecorp/shaders/core/horde_iris_vertices.fsh` 的局部冗余（不触碰共享 `HordeIrisAnimation` 帧缓存，避免影响尸体路径）：片图集 UV 按输出 word 拆支、法线归一化移入 word8 分支。A/B 实测 expand 4.442 vs 基线 4.437 ms、世界 GPU 19.159 vs 19.201 ms，**无可测收益**，已还原为原字节，本轮不保留生产代码改动。
 - 口径修正：阶段开销须看 `gpu_frame_sum_ns`，`gpu_sample_ns` 是每周期单阶段轮换采样；归档第 09 轮完整均值为 expand 4.262、units 2.743、base 2.336、spatial 1.701 ms。本轮两次运行夹具状态与第 09 轮不同（regions 2 vs 90、spatial 1 级 vs 3 级、base 6.09 vs 2.34 ms），第 09 轮成本结构不可直接沿用。
 - 检查：IDEA `BenchMod Compile` 退出 0；两轮 `lobecorp.horde-render` 均 PASSED（光影开、wardens=0、500×500/2400 tick/站 400/speed 0.75）；夹具配置已恢复 `enableShaders=false`、`hordeWardens=10`。
-- 备份：基线轮归档 `build/agent-backups/20261026-i41-expand-opt/baseline-reverted/`；修改版原始产物被同目录下一次运行覆盖，数值取自其 20:43:18 报告与 GPU 捕获。未推送。
+- 备份：基线轮归档 历史材料已清理；修改版原始产物被同目录下一次运行覆盖，数值取自其 20:43:18 报告与 GPU 捕获。未推送。
 
 ## 2026-10-26 提问 API 优先规则
 
-- 2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 `build/agent-backups/question-api-20261026-2010/`。
+- 2026-10-26 提问规则更新：已将根规范与工作流程统一为优先使用当前软件可用的提问 API，没有时直接在对话中提问；保留一次一个问题、等待回答与未回答不视为确认。仅修改规则与本工作记录，保留既有工作；检查范围为 IDEA 回读与文档诊断，不执行构建、Data、测试、同步、重载或游戏操作。原字节备份位于 历史材料已清理。
 
 ## 2026-10-26 第五轮：GPU 避让重写、片颜色/发光/裁剪与 12 项矩阵
 
@@ -201,17 +341,17 @@
 - 片渲染（生产代码）：修复 `NativeImage.getPixel()` 返回 ARGB 而旧代码按 ABGR+`setPixelABGR` 写入导致的红蓝互换（片偏蓝紫根因）；新增 `HordeCardBake.bakeGlow` 用 glowmask 同布局烘焙发光图集（tier3 `hasGlow=true`，原版混合、Iris EYES 层）；tier3 改用独立 cutout + 背面剔除管线（Iris `ENTITY_CUTOUT_CULL`），按用户要求“透明渲染、非半透明”；不填实心底。涉及 `HordeCardBake`、`HordeGpuRenderer`。
 - 基准（src/bench）：`HordeRenderScenario` 新增 `hordeSpeed`（默认 0.75）、`hordeWardens`（0/10）、pass-a/pass-b 中途截图、Spark 等待 600 tick。监守者轮（10 个）按用户澄清改为**真实事件**：服务端 `HordeEvents.start(...)` 启动 500×500/6000 tick 真实 HordeEvent，事件自身生成真实清道夫参与者与保留全部 AI 的监守者真实战斗；玩家切旁观者模式（不参与 AI 目标选择、每 5 tick 服务端锁位，teardown 恢复游戏模式）；监守者生成后显式 `Pose.STANDING`、清 `IS_EMERGING`、写 24k tick `DIG_COOLDOWN`，避免脱离/挖掘动画循环。09/10（wardens=0）仍用合成快照保证性能表可比。另新增 `Sweeper30RenderScenario`（ai/noai 两 ID）、`RandomCorpseRenderScenario`、`BenchServerWorkload`（服务端实体规格化生成、难度/自然刷怪处理、逐 tick 审计补生成/重追踪、位置预检重抽、诊断字段）；`CorpseRenderScenario` 支持 30 具；所有场景截图/焦点门禁/环境 JSON。
 - 多缺口分割修复（生产代码）：`HordeClient.updateGaps` 只对玩家视距内且落在路线包围盒的目标开缺口（消除远处无关生物造成的“空地分割”），目标离场后缺口滞留 30 tick 再移除；`horde_avoid.glsl` 的走廊分流只取权重最大的单个缺口（不再逐区域累加导致左右逐帧翻转）、硬推力只取穿透最深的缺口（不再求和抵消）；按用户要求把生物分割范围 `VISUAL_GAP_SCALE` 从 3 降到 1.5（最小外扩 3 格不变）。文件 `HordeClient.java`、`HordeAmbient.java`（null 防御）、`horde_avoid.glsl`。
-- 12 项测试矩阵：6 场景（清道夫30 AI、清道夫30 无AI、清道夫尸体30、随机生物尸体100、500×500 无限浪潮 wardens=0、同上 wardens=10）× 光影/非光影，每轮独立重启客户端；逐轮 summary/report/截图/Spark/焦点证据与数据表见 `build/agent-backups/20261026-matrix12/`（matrix.md/csv）和 [BenchMod](benchmod.md) 第五轮节。无效尝试（焦点被外部抢占、Spark bytebin 上传失败、服务端实体同步丢 1、warden 生成失败）均保留证据且未计入数据、未放宽门禁。
+- 12 项测试矩阵：6 场景（清道夫30 AI、清道夫30 无AI、清道夫尸体30、随机生物尸体100、500×500 无限浪潮 wardens=0、同上 wardens=10）× 光影/非光影，每轮独立重启客户端；逐轮 summary/report/截图/Spark/焦点证据与数据表见 历史材料已清理（matrix.md/csv）和 [BenchMod](benchmod.md) 第五轮节。无效尝试（焦点被外部抢占、Spark bytebin 上传失败、服务端实体同步丢 1、warden 生成失败）均保留证据且未计入数据、未放宽门禁。
 - 检查：`compileJava`/`compileBenchJava`/`processResources` BUILD SUCCESSFUL；intellij-index 对本次改动 Java/GLSL 文件 errors=0；矩阵 12 轮均 PASSED（焦点 losses=0，Spark 链接齐全）。未达目标项：500×500 无限浪潮光影轮帧均/世界GPU 仍高于 16.7/15 ms；片 cutout 的透明区会透出背景（用户选择）；多人多事件/移动镜头/真实事件连续录像未复验。
-- 备份：`build/agent-backups/20261026-matrix12/`（12 轮+无效尝试+runbook+focus-monitor+sha256）；`build/agent-backups/20261026-matrix12-runbook/`。未推送。
+- 备份：历史材料已清理（12 轮+无效尝试+runbook+focus-monitor+sha256）；历史材料已清理。未推送。
 
 ## 2026-10-26 第四轮：远档片、20帧烘焙与GPU距离降帧（机制验证）
 
 - 用户要求远档改为烘焙 6 方向片组成盒子，并在游戏开始预烘 20 个跑步帧；按到相机绝对距离降帧：<10 全 20 帧、10–20 10 帧、20–30 5 帧、>30 静止，帧均匀取样；片也要完整 20 帧；新增“使用片的距离（-1 不使用）”“帧的距离（-1 不降低，0 不动）”配置，全部缓存、GPU 处理。
 - 实现：`HordeVisualConfig` 默认 `animationFrames=20`，新增 `cardDistance`/`frameDistance`；`HordeMeshReduction`/`HordeMeshCache` 增加第4档片模型（520/136/48/24）；`HordeGpuRenderer.selectLod` 按 `cardDistance` 切片档并加迟滞、新增 `lod_card_*` 计数；`HordeParameters` 增加第18个 vec4 `FrameLod`（288B）；`horde_motion.fsh` 用 GPU 按相机绝对距离量化帧数；`Data` 已重新生成两份语言文件。
-- 验证：client-1792986006389 PASSED，四档均 frames=20；片档 72 块/4673 实例，展开 785,071，帧 13.079/14.291/14.915ms，世界 GPU 12.702ms，焦点 0；截图/配置/summary 在 `build/agent-backups/20261026-card-lod/`。
+- 验证：client-1792986006389 PASSED，四档均 frames=20；片档 72 块/4673 实例，展开 785,071，帧 13.079/14.291/14.915ms，世界 GPU 12.702ms，焦点 0；截图/配置/summary 在 历史材料已清理。
 - 续：实现真6方向CPU烘焙图集（`HordeCardBake`，6方向×20帧×64px）、tier3图集UV编码与Iris/原版着色器取tile；按用户要求移除中景/远景简化盒，只保留完整模型+片两档。验证 client-1792987990655 PASSED，但 cardDistance=100 时近处完整模型过多（展开 2,882,499，horde 34.435/118.543ms），且远片颜色偏蓝偏暗，需继续校准；详情 benchmod 第四轮节。
-- 复测（用户设定 cardDistance=32/frameDistance=10/animationFrames=20）：client-1792988762923 PASSED，10000 全部走片，展开 240,000、draw 5.450ms、世界 GPU 11.065ms、帧 13.054/23.695/27.035ms；片颜色仍偏蓝偏暗（调试图集本身正常），P99 偏高，需继续校准。归档 build/agent-backups/20261026-card32-retest/。
+- 复测（用户设定 cardDistance=32/frameDistance=10/animationFrames=20）：client-1792988762923 PASSED，10000 全部走片，展开 240,000、draw 5.450ms、世界 GPU 11.065ms、帧 13.054/23.695/27.035ms；片颜色仍偏蓝偏暗（调试图集本身正常），P99 偏高，需继续校准。归档 历史材料已清理。
 - 交接文档：新增 `docs/systems/horde-handoff.md`，记录目标、已实现/未完成、运行命令、10项测试矩阵、避让重写计划与证据路径，供新对话直接继续。
 - 无限数量：maximumVisible=-1 改为按实际无限生成（不再按10000折算），client-1792989806860 PASSED，实际 29,456 实例、展开706,956、draw11.011ms、帧17.358/20.462/24.163ms；片在光影下偏蓝/暗是光影本身效果，按用户要求不改光影。
 
@@ -222,7 +362,7 @@
 - 代码修改 `HordeMeshReduction`：`partOf` 新增 `can/jar/pot/biomass→PART_CAN`；中景 5 盒改为腿脚/躯干/双臂(合并)/头/罐子（顶点仍 136），远景仍 2 盒 48；`bestFace` 只在罐子/上身背面（+z）优先取 `biomass` 红色面、其余面保持灰色，形成灰身体+灰罐体+局部红开口；`NativeImage` 改为选面完成后关闭（修复首次实现提前关闭导致的 “Image is not allocated” 模型准备失败）。
 - 参数对照：优化前后结构/测试参数与光影、普通、尸体结果表已写入 benchmod.md 的“优化前后参数与结果对照（2026-10-26 汇总）”节。
 - 运行记录：`client-1792983163376` PASSED（灰罐体局部红 + Spark 全程覆盖），帧 25.097/32.433/34.945ms、世界 GPU 23.013ms（并行负载），Spark 链接 `https://spark.lucko.me/1kvmGBN9y2` 写入 `artifacts/spark/horde-profile.txt`；该轮不能作为性能达标。此前 `client-1792980328267` 场景级世界 GPU 14.620ms 但整轮因外部抢焦点 INCONCLUSIVE；`client-1792980557725` 被本夹具焦点门禁拒绝(losses=1)；`client-1792980845712`/`1792981136050` PASSED 但 GPU 被并行负载拖慢（33.229/25.472ms）。同顶点档位 520/136/48 的干净三轮仍为上一轮 14.365/15.059/15.026ms、世界 GPU 13.834/14.398/14.534ms，新构建尚无干净三轮。
-- 视觉：游戏内真实事件截图 `build/agent-backups/20261026-appearance-can/can-A3.png`、`can-B3.png`（2560×1494）显示红色罐体/红刀面已保留；若判定过红或罐体轮廓需更接近原灰壳，可再调 UV 优先级。
+- 视觉：游戏内真实事件截图 历史材料已清理、`can-B3.png`（2560×1494）显示红色罐体/红刀面已保留；若判定过红或罐体轮廓需更接近原灰壳，可再调 UV 优先级。
 - 测试规则记录：Spark 在浪潮测试开始时开启、覆盖整个场景（timeout 600，不再 30 秒），测试结束停止并在尸体场景轮询上传链接，`requireSaved` 后才允许关闭客户端；Sodium 保持加载、不为了对比关闭；每轮截屏并交付路径；焦点被外部抢占时拒绝该轮而不是放宽门禁。
 - 本轮运行使用 Gradle 任务 `verifyBenchClient`（IDE MCP 在关闭原始项目后会话丢失，改为同一 Gradle 任务执行并报告该回退）；调试/游戏进程保留运行给用户手动关闭。
 
@@ -234,11 +374,11 @@
 - 外观：`HordeMeshReduction` 中景由 4 盒 112 顶点改为 5 盒 136 顶点（腿脚/躯干/头/左右臂，薄片保留真实几何），远景由 1 盒 24 改为 2 盒 48（上下）；近景 520 全精度、4 帧动画、发光与 LOD 迟滞不变。新增 `lobecorp.horde.lod_{near,mid,far}_instances` 计数。
 - 复测（光影，三轮，均 PASSED/10000 实例）：client-1792976399030/1792976864064/1792977119469 帧均 14.365/15.059/15.026 ms、P99 18.064/18.624/17.971 ms、世界 GPU 13.834/14.398/14.534 ms、draw 7.818/8.457/8.193 ms、展开 898,328/898,320/898,291、复制 50.3 MB；中景实例 4753、远景 5246、近景 0；三轮焦点 0/0。帧均≤16.7、P99≤20、世界 GPU≤15 全部满足。
 - 复测（普通，关闭光影，有效两轮）：client-1792977359699/1792978532864 帧 6.168/6.184 ms（P99 7.552/8.130）、世界 GPU 2.026/1.897 ms、draw 1.359/1.225 ms；当前显示器 165Hz 形成约 6.06 ms 帧间隔地板，与早前 3.40 ms 基线不可直接比较，GPU 阶段未见外观退化。
-- 截图：基准 `artifacts/screenshots/` 四张；游戏内铺满取景 `build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`（人群填满全屏、左右出屏）、`fill-F.png`、`fill-night.png`。游戏内 overlay 记录 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
+- 截图：基准 `artifacts/screenshots/` 四张；游戏内铺满取景 历史材料已清理（人群填满全屏、左右出屏）、`fill-F.png`、`fill-night.png`。游戏内 overlay 记录 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
 - 规则：把“基准/游戏测试必须保持窗口焦点，失焦自动恢复并记录，测量期失焦不得作为有效结果；每轮测试必须截屏并交付可查看路径”写入原始项目 `AGENTS.md` 与 `docs/standards/workflow.md`（另同步工作区副本）。
-- 配置与清理：运行前后恢复隔离 Bench Iris（`enableShaders`）；临时开启的 `run/client` Iris 配置从 `build/agent-backups/20261026-appearance-final/iris.properties.client.before` 按 SHA256 还原；游戏内事件用 `/lobecorp horde clear` 清除、模式还原、保存退出；无游戏/调试进程残留。
+- 配置与清理：运行前后恢复隔离 Bench Iris（`enableShaders`）；临时开启的 `run/client` Iris 配置从 历史材料已清理 按 SHA256 还原；游戏内事件用 `/lobecorp horde clear` 清除、模式还原、保存退出；无游戏/调试进程残留。
 - 复核：本轮 IDEA 全文件格式化曾改动未修改区域排版；已按 `HEAD~1` 原排版还原六个代码文件、只保留语义改动，BenchMod Compile 退出 0（BUILD SUCCESSFUL in 20s），并单独提交恢复。`git diff -w HEAD~1 HEAD` 仅剩本轮语义改动。
-- 备份：修改前源码与 SHA256 在 `build/agent-backups/20261026-appearance-final/before/`；基线、候选与最终轮制品及哈希在 `build/agent-backups/20261026-appearance-baseline/` 与 `20261026-appearance-final/`。本次提交含代码、基准场景与同步文档；不夹带 `build.gradle.kts`、并行文档整理与日志；未推送。
+- 备份：修改前源码与 SHA256 在 历史材料已清理；基线、候选与最终轮制品及哈希在 历史材料已清理 与 `20261026-appearance-final/`。本次提交含代码、基准场景与同步文档；不夹带 `build.gradle.kts`、并行文档整理与日志；未推送。
 
 
 ## 2026-10-26：基准有效性修复、可信复测与 LOD/单位历史优化
@@ -249,10 +389,10 @@
 - 修改后最终配置三轮 client-1792950624281/1792950875573/1792951133286：帧均 14.444/14.456/14.992 ms、P99 16.348/16.273/16.919 ms、世界 GPU 14.089/14.123/14.648 ms、Horde draw 7.354/7.343/7.945 ms；expand 3.136/3.146/3.126、base 2.872/2.882/2.869、units 0.474/0.455/1.016、copy 0.347/0.349/0.346、glow 0.173/0.174/0.173 ms。展开顶点 2.369M→0.659M，Iris 逻辑复制 132.7MB→36.9MB，单位阶段 CPU p95 33–37→0.60–0.62 ms。帧均≤16.7、P99≤20、世界 GPU≤15 三项目标均达到；三轮帧均差 3.7%（<5%）。
 - 普通同夹具 client-1792951390739：帧均 3.365 ms/P99 6.777 ms、世界 GPU 1.663 ms、draw 1.094 ms，相对修改前 3.706/7.940/1.850/1.861 下降约 9.2%/14.6%/21.3%/41.2%。64 尸体光影 8.013–8.113 ms（draw2/fallback0）；256 尸体光影 client-1792949419160 帧均 8.428 ms/P99 10.590 ms、static_drawn 256、fallback 0、draws 2；普通 64 尸体 1.561 ms、普通 256 尸体 client-1792953137469 帧均 1.986 ms/P99 4.382 ms、static_drawn 256、fallback 0、draws 1。
 - 画面：同机位 A/B 在 10000 实例下差异 1.62–1.66M 像素、覆盖画面下 3/4；近景全精度、默认 4 帧、发光 pass、LOD 迟滞与 Iris 布局保持。高位俯视压力视角下中景 4 盒/远景 1 盒外观明显简化，真实事件地面视角、发光、动画与分割连续性的游戏内矩阵未完成，记入问题清单，不宣称视觉验收通过。
-- 游戏内真实事件补充取证（Debug + Minecraft MCP，端口19876）：在有命令隔离世界启动 `/lobecorp horde start lobecorp:midnight_cleanup 161.5 56 3.5 -158.5 56 3.5 20000 96`，事件 id cad5c81e-4f36-4724-a96f-c848a9c4fedd；overlay 显示 events=1、submitted=GPU instances（3180→9484）、batches 56→154、lightSections 153→476、gpuCopy=0；Debug 求值确认 animationFrames/LOD/ENABLED=4/true/true、modelBuilds=3、irisMiWords=16/slots=2、batches 合计 9434；夜间单位发光、近中远三档、650ms 两帧位姿变化、x=110→60 镜头移动后单位持续可见均已截图。区域 3 格净空/平滑退出定量、E4、真实事件 256 尸体仍未完成；一个用户临时断点导致截图超时，采用会话级静音后恢复 false，未删除用户断点。证据 build/agent-backups/20261026-runtime-event/。
+- 游戏内真实事件补充取证（Debug + Minecraft MCP，端口19876）：在有命令隔离世界启动 `/lobecorp horde start lobecorp:midnight_cleanup 161.5 56 3.5 -158.5 56 3.5 20000 96`，事件 id cad5c81e-4f36-4724-a96f-c848a9c4fedd；overlay 显示 events=1、submitted=GPU instances（3180→9484）、batches 56→154、lightSections 153→476、gpuCopy=0；Debug 求值确认 animationFrames/LOD/ENABLED=4/true/true、modelBuilds=3、irisMiWords=16/slots=2、batches 合计 9434；夜间单位发光、近中远三档、650ms 两帧位姿变化、x=110→60 镜头移动后单位持续可见均已截图。区域 3 格净空/平滑退出定量、E4、真实事件 256 尸体仍未完成；一个用户临时断点导致截图超时，采用会话级静音后恢复 false，未删除用户断点。证据 历史材料已清理。
 - 契约回归：IDEA JUnit 配置 HordeRegionTest（3 格净空、中断进出连续、负坐标区域）、HordeSpatialFieldTest、HordeRulesTest、HordeCleanupTest（200 tick 尸体规则与战斗保护）、HordeOptimizationTest 均退出 0；作为契约级证据，不替代游戏内区域净空定量。
 - 运行与检查：全部实机为 Sodium+Iris 隔离 BenchMod Client；BenchMod Compile 退出 0（主/基准编译与生产包隔离通过）；三轮 summary PASSED、workloadCorrect=true，10000/64/256 计数稳定，错误 0。未完成：游戏内区域净空定量（俯视取证未形成可测净空，仅契约单测通过）、E4 换包/重载、首帧≤100ms（STABILIZE 仍有 216–341ms 尖峰）。00:59–01:08 另有并行工作区基准运行，受影响样本已丢弃并记录。
-- 证据：build/agent-backups/20261026-runs/（iris-1/2/3、iris-A4…A9、ordinary-1/B2、256 尸体及 sha256）；修改前源码/着色器版本在 build/agent-backups/20261026-horde-opt/。隔离 Iris 配置已按备份恢复；未改 run/client 用户世界设置；本轮创建的游戏内测试世界待清理说明见问题清单。
+- 证据：历史材料已清理（iris-1/2/3、iris-A4…A9、ordinary-1/B2、256 尸体及 sha256）；修改前源码/着色器版本在 历史材料已清理。隔离 Iris 配置已按备份恢复；未改 run/client 用户世界设置；本轮创建的游戏内测试世界待清理说明见问题清单。
 - 本轮提交仅含：`HordeRenderScenario`、`LobecorpBenchConfig`、`HordeMeshReduction`、`HordeUnitState`、`HordeGpuRenderer`、`horde_motion.glsl`、`horde_unit.glsl` 及本批报告文档；不夹带 build.gradle.kts、entity-contracts.md、并行文档整理中的 horde-index.md 条目、日志与运行产物。未推送。
 
 
@@ -277,38 +417,38 @@
 - 经IDEA运行BenchMod Compile，退出0、BUILD SUCCESSFUL in 47s，compileJava/compileBenchJava与verifyProductionJarHasNoBenchContent通过；Data退出0、BUILD SUCCESSFUL in 21s，确认headless无游戏窗口。29份生成文件只有两份语言和两份缓存SHA256变化，23份实际资源无删除，新增9组中英文配置键；过时独立客户端SPEC/FILE_NAME调用搜索无结果。生成输出未手工编辑。
 - 本轮未执行JUnit、游戏、BenchMod Client/Server、Minecraft MCP或Debug；没有GPU硬件编译、画面、光影、首帧、显存峰值或新A/B数据。全部运行门禁NOT_RUN，不标DONE，不以旧数据宣称60FPS、减面比例或三档缓存节省达标。
 - 实现与回滚逐项见horde-extreme-execution-plan.md第9节；进度见horde-index.md；剩余异议集中到horde-issues.md：双槽窗口与全帧合批区别、32MiB编号历史容量边界、未知尸体兜底、三档总内存及Iris数据pass兼容。没有升级Iris或静默减少配置实例。
-- 备份与实际检查清单：build/agent-backups/20261025-extreme-confirmed/（原字节Base64/SHA256、原暂存补丁、文档修改前快照和verification.json）；首批20261025-extreme-code/备份保留。Data日志：C:/Users/wang_/AppData/Local/JetBrains/IntelliJIdea2026.2/tmp/ij_run__Data_16117074889087978056.log。IDE运行API返回Data退出0但未提供PID，不补造；未创建游戏/探针/浏览器/桥接，未关闭用户IDE或共享Gradle后端。Git临时进程归属/收尾由git_background核对。
+- 备份与实际检查清单：历史材料已清理（原字节Base64/SHA256、原暂存补丁、文档修改前快照和verification.json）；首批20261025-extreme-code/备份保留。Data日志：C:/Users/wang_/AppData/Local/JetBrains/IntelliJIdea2026.2/tmp/ij_run__Data_16117074889087978056.log。IDE运行API返回Data退出0但未提供PID，不补造；未创建游戏/探针/浏览器/桥接，未关闭用户IDE或共享Gradle后端。Git临时进程归属/收尾由git_background核对。
 
 
 ## 2026-10-25：确认独立浪潮整体计时与覆盖审计
 
 - 用户选择A：新增独立Horde draw整体GPU计时，与阶段求和按同负载分组对照；15%作为需调查的覆盖审计阈值，超出不直接判统计错误，不伪补数据，世界GPU及原性能目标保持。
 - 记录三组非嵌套采样、共同帧标识/失配处理、跨帧统计与draw不包含extract预热的边界；总量代码尚未实施。
-- 本轮仅通过IDEA同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读；没有源码修改、编译、Data、测试或游戏/BenchMod/Debug。片段备份：build/agent-backups/20261025-measurement-choice-a/before.json；原5项暂存保留。
+- 本轮仅通过IDEA同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读；没有源码修改、编译、Data、测试或游戏/BenchMod/Debug。片段备份：历史材料已清理；原5项暂存保留。
 
 ## 2026-10-25：确认本轮不新增尸体重组动画
 
 - 用户选择A：继续静态尸体优化，不新增尸体自身重组动画、动作资源或对应客户端同步；保留现有施术清道夫动画、服务端重组进度、复活流程及反向躺倒变换。
 - 仅通过IDEA局部同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读，移除执行文档中本轮新增尸体重组动画的实现和验收要求；未修改源码。
-- 未编译、Data、测试或启动游戏/BenchMod/Debug；片段备份：build/agent-backups/20261025-corpse-animation-choice-a/before.json，保留其他WIP及原5项暂存。
+- 未编译、Data、测试或启动游戏/BenchMod/Debug；片段备份：历史材料已清理，保留其他WIP及原5项暂存。
 
 ## 2026-10-25：确认保留尸体基础跟踪范围
 
 - 用户对尸体距离选择B：保留5区块（80格）基础跟踪，不扩大服务器下发；180格仅作为客户端已收到尸体的常规静态渲染上限，复杂/动画尸体仍为32格，实际仍受原版跟踪和视距限制。
 - 仅经IDEA局部同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md与本记录并回读；尸体跟踪与渲染源码均未修改，运行门禁保持未执行。
-- 没有编译、Data、测试、游戏、BenchMod或Debug；片段备份：build/agent-backups/20261025-corpse-tracking-choice-b/before.json，保留其他WIP和原5项暂存。
+- 没有编译、Data、测试、游戏、BenchMod或Debug；片段备份：历史材料已清理，保留其他WIP和原5项暂存。
 
 ## 2026-10-25：确认继续代码实施与测试授权分离
 
 - 用户选择执行顺序A：已确认代码按实现依赖继续，不等待前置实机门禁；运行门禁保留未执行，验收目标不降低。尚未确认的关键取舍继续逐项询问。
 - 游戏、BenchMod Client/Server和Debug仍禁止，必须另行明确授权；本次A回复不构成测试许可。
-- 仅经IDEA同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读；未改源码，未编译、Data或测试。修改前片段备份：build/agent-backups/20261025-execution-choice-a/before.json；不夹带其他WIP与暂存内容。
+- 仅经IDEA同步horde-issues.md、horde-index.md、horde-extreme-execution-plan.md及本记录并回读；未改源码，未编译、Data或测试。修改前片段备份：历史材料已清理；不夹带其他WIP与暂存内容。
 
 ## 2026-10-25：确认分割平滑优先方案
 
 - 用户对EX-13选择B：每tick位移≤0.75格；瞬移、区域新增或扩张导致包围时允许多tick退出，期间不隐藏，正常横摆仍避免进入，退出后保持原3格净空目标。
 - 仅通过IDEA局部同步horde-issues.md、horde-index.md及horde-extreme-execution-plan.md，取消原1tick纠正归零条款；源码未改，未将决定写成实现完成。
-- 本轮仅回读文档，没有编译、Data、测试、游戏、BenchMod或Debug。修改前片段备份：build/agent-backups/20261025-ex13-choice-b/before.json；原有WIP与5项暂存保留。
+- 本轮仅回读文档，没有编译、Data、测试、游戏、BenchMod或Debug。修改前片段备份：历史材料已清理；原有WIP与5项暂存保留。
 
 ## 2026-10-25：极端优化首批代码与禁止游戏测试边界
 
@@ -317,7 +457,7 @@
 - EX-10：HordeLightField 区段、槽位与集合改为原生 long；输入不变跳过去重，区段集合不变跳过常规槽位扫描，保留每 tick 装载判断、5 tick 光照更新和 120 绘制周期闲置回收；GPU 光照格式与原版天空光回退保持。
 - EX-11：HordeMeshCache 增加 request/advance/ready，资源、解析、骨骼、静态 cube、动画帧/cube 分步准备，跨步不残留共享骨骼状态；HordeClient 在 header 到达时排队、提取时推进；HordeGpuRenderer 依协作预算预编译七种管线和反向深度变体，再分步上传完整模型/Iris 帧，未就绪不绘制半成品，重载清理代际。Region/Terrain/Spatial/IrisAnimation 暴露本类预编译入口。
 - 3ms 仅为步骤间协作预算，JSON 解析、驱动编译和单次上传不能抢占；首可见帧≤100ms、光照 P95≤0.5ms、三轮±5%以及60FPS均未验证。EX-13 瞬移深度/位移上限冲突、EX-15/16 尸体事实纠正、世界与阶段计时口径集中记录到唯一问题清单；不擅自改变3格净空、数量、动画或LOD。
-- 编辑和新增备份仅经 IDEA，保留本轮外排版及已有 WIP；原字节 Base64 与 SHA256 清单位于 build/agent-backups/20261025-extreme-code/，修改记录原前缀另存，原完整内容在 HEAD 66e843e30ebdd41d34599e690d24f46308546d5e 可恢复。本轮未创建游戏或探针进程，Git 后台命令由工具管理并正常结束。
+- 编辑和新增备份仅经 IDEA，保留本轮外排版及已有 WIP；原字节 Base64 与 SHA256 清单位于 历史材料已清理，修改记录原前缀另存，原完整内容在 HEAD 66e843e30ebdd41d34599e690d24f46308546d5e 可恢复。本轮未创建游戏或探针进程，Git 后台命令由工具管理并正常结束。
 - 统一 IDEA 静态检查完成：12 份 Java 全部 analyzed、0 错误；修正3项本轮提示后两文件复查0警告，剩余11项为GeckoLib内部API、既有可空引用/注解、借用世界资源提示及冗余抑制，未扩大清理。未执行编译、Data、单元测试、游戏、BenchMod 或 Debug，所有运行门禁未执行。 可独立提交范围仅含本轮新建 HordeBenchmarkEnvironment、开始时干净的 PhotonFrameCapture 和 changes.md；其余 Horde 源码/总览/问题页与既有 WIP 或未跟踪文件重叠，不能整份夹带提交，按 H20 保留工作区差异及原5项暂存。源码混合既有 WIP 的提交边界仍按 H20 处理，不覆盖原5项暂存。
 
 

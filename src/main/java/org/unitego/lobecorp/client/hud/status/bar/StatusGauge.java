@@ -1,13 +1,8 @@
 package org.unitego.lobecorp.client.hud.status.bar;
 
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.util.client.gui.GuiUtil;
 
-/// 状态条的背景、浮点填充、损失拖尾和两段闪光；不承担玩家数据或宿主生命周期。
-///
-/// 坐标由调用方按组件布局传入，本类只绘制相对该坐标的局部内容。
+/// 状态条的插值、拖尾和闪光状态；只保存数字时间与宽度，不持有纹理或绘制对象。
 @NullMarked
 public class StatusGauge {
 	private static final float VALUE_LERP_SPEED = 1.5F;
@@ -17,9 +12,7 @@ public class StatusGauge {
 	private static final float TRAIL_VALUE_THRESHOLD = 1;
 	private final int width;
 	private final int height;
-	private TextureLayer bottom;
-	private TextureLayer internal;
-	private TextureLayer light;
+	private final int internalWidth;
 	private float currentValue;
 	private float renderedValue;
 	private float maximum;
@@ -28,12 +21,10 @@ public class StatusGauge {
 	private float pendingVisibleDelta;
 	private boolean hasPendingVisibleDelta;
 
-	public StatusGauge(int width, int height, TextureLayer bottom, TextureLayer internal, TextureLayer light) {
+	public StatusGauge(int width, int height, int internalWidth) {
 		this.width = width;
 		this.height = height;
-		this.bottom = bottom;
-		this.internal = internal;
-		this.light = light;
+		this.internalWidth = internalWidth;
 	}
 
 	public void advance(float next, float nextMaximum, float delta, boolean visible) {
@@ -78,46 +69,34 @@ public class StatusGauge {
 			return;
 		}
 
-		float change = Math.clamp((oldValue - newValue) / maximum * internal.width(), -internal.width(), internal.width());
+		float change = Math.clamp((oldValue - newValue) / maximum * internalWidth, -internalWidth, internalWidth);
 		lightWidth = Math.max(0, lightWidth + change);
 		currentValue = Math.clamp(newValue, 0, maximum);
 	}
 
-	public void render(GuiGraphicsExtractor graphics, float x, float y) {
-		drawLayer(graphics, bottom, x, y);
-		renderInternal(graphics, x, y);
-		if (lightTicks > 1.5F || lightTicks > 0 && lightTicks <= 0.5F) {
-			drawLayer(graphics, light, x, y);
-		}
+	/// 当前填充比例，范围 0～1。
+	public float getFill() {
+		return maximum > 0 ? Math.clamp(renderedValue / maximum, 0, 1) : 0;
 	}
 
-	private void renderInternal(GuiGraphicsExtractor graphics, float x, float y) {
-		if (maximum <= 0) {
-			return;
-		}
-
-		float fillWidth = Math.clamp(renderedValue / maximum, 0, 1) * internal.width();
-		float left = x + internal.x();
-		float top = y + internal.y();
-		if (lightWidth > 0) {
-			float trailStart = Math.clamp(currentValue / maximum * internal.width(), 0, internal.width());
-			float trailEnd = Math.clamp(trailStart + lightWidth, 0, internal.width());
-			GuiUtil.fill(graphics, left + trailStart, top, left + trailEnd, top + internal.height(),
-					lightTicks > 0 ? -1 : TRAIL_COLOR);
-		}
-
-		GuiUtil.blitSprite(graphics, internal.texture(), internal.width(), internal.height(),
-				0, 0, left, top, fillWidth, internal.height());
+	/// 损失拖尾起点，相对填充区域宽度。
+	public float getTrailStart() {
+		return maximum > 0 ? Math.clamp(currentValue / maximum * internalWidth, 0, internalWidth) : 0;
 	}
 
-	private void drawLayer(GuiGraphicsExtractor graphics, TextureLayer layer, float x, float y) {
-		GuiUtil.blitSprite(graphics, layer.texture(), x + layer.x(), y + layer.y(), layer.width(), layer.height());
+	/// 当前损失拖尾宽度，已限制在填充区域内。
+	public float getTrailWidth() {
+		return Math.clamp(getTrailStart() + lightWidth, 0, internalWidth) - getTrailStart();
 	}
 
-	public void setLayers(TextureLayer bottom, TextureLayer internal, TextureLayer light) {
-		this.bottom = bottom;
-		this.internal = internal;
-		this.light = light;
+	/// 拖尾颜色：闪光期间使用白色，普通损失使用半透明白色。
+	public int getTrailColor() {
+		return lightTicks > 0 ? -1 : TRAIL_COLOR;
+	}
+
+	/// 闪光在当前帧是否可见，保持旧状态条两段闪烁。
+	public boolean isFlashing() {
+		return lightTicks > 1.5F || lightTicks > 0 && lightTicks <= 0.5F;
 	}
 
 	public float getRenderedValue() {
@@ -150,6 +129,4 @@ public class StatusGauge {
 		hasPendingVisibleDelta = false;
 	}
 
-	public record TextureLayer(Identifier texture, float x, float y, float width, float height) {
-	}
 }

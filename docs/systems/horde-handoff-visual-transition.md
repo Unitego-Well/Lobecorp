@@ -4,7 +4,7 @@
 
 ## 重写结果（2026-10-27，取代下方排查结论）
 
-- 用户要求「先备份、全部重写、先按进度的潮、再分割、加大量调试信息」。备份：Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`）与 `build/agent-backups/20261027-pre-rewrite/`。
+- 用户要求「先备份、全部重写、先按进度的潮、再分割、加大量调试信息」。备份：Git 快照 `refs/heads/backup-20261027-pre-rewrite`（`0c4ffb08`）与 历史材料已清理。
 - 「无过渡重填」的机制已删除：单位位置不再来自 GPU 历史纹理，改为 `HordeTide` 纯函数；历史失效后回落解析锚点的路径不存在。
 - 「进入后被清除」的机制已删除：`horde_motion.fsh` 不再输出 `-1`，光照区段缺失回退露天亮度并保留单位。
 - 分割改为确定性让步：`horde_split.glsl` + `HordeSplitState`（CPU 平滑圆表），无速度积分、无空间位图、无左右端点状态。

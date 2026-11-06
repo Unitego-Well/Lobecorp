@@ -1,28 +1,29 @@
 package org.unitego.lobecorp.client.hud.status;
 
-import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import dev.vfyjxf.taffy.style.TaffyPosition;
 import net.minecraft.client.Minecraft;
+import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 import net.minecraft.client.player.LocalPlayer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.api.LcDamageType;
-import org.unitego.lobecorp.client.hud.host.HudFrame;
 import org.unitego.lobecorp.client.hud.status.bar.HealthBarComponent;
 import org.unitego.lobecorp.client.hud.status.bar.RationalityBarComponent;
 import org.unitego.lobecorp.client.hud.status.bar.ShieldBarComponent;
+import org.unitego.lobecorp.config.client.HealthBarStyle;
+import org.unitego.lobecorp.config.client.HudStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/// 玩家状态条视图：先在宿主布局前刷新状态并计算局部槽位，再由各组件绘制自身内容。
+/// 玩家状态条视图：先刷新状态并计算槽位，再按原版图层提交各组件内容。
 @NullMarked
-public class PlayerStatusHudView extends UIElement {
+public class PlayerStatusHudView extends ContainerHudRenderer {
 	private static final int LEFT_OFFSET = 105;
 	private static final int BOTTOM_OFFSET = 30;
 	private final List<StatusBarComponent> components;
+	private @Nullable StatusHudLayout frameLayout;
 
 	public PlayerStatusHudView() {
 		var health = new HealthBarComponent();
@@ -36,28 +37,32 @@ public class PlayerStatusHudView extends UIElement {
 		components.add(health);
 		components.add(rationality);
 		components.addAll(shields);
-		lss("position", "absolute");
-		layout(layout -> layout.positionType(TaffyPosition.ABSOLUTE).widthPercent(100).heightPercent(100));
 		for (var component : components) {
-			addChild(component);
+			add(component);
 		}
 	}
 
-	/// 刷新当帧数值和槽位；必须在 ModularUI 本帧布局计算前调用。
-	public void prepare(HudFrame frame) {
-		var player = frame.player();
-		var layout = layout(frame.screenWidth(), frame.screenHeight(), player);
+	/// 刷新当帧数值与可见性；必须在绘制前调用。
+	public void prepare(@Nullable LocalPlayer player, int screenWidth, int screenHeight, float delta) {
+		setSize(screenWidth, screenHeight);
+		setVisible(true);
+		frameLayout = layout(screenWidth, screenHeight, player);
+
 		for (int index = 0; index < components.size(); index++) {
-			var slot = layout.slots().get(index);
-			components.get(index).place(slot.left(), slot.top(), slot.visible());
+			var slot = frameLayout.slots().get(index);
+			components.get(index).setPosition(slot.left(), slot.top());
+			components.get(index).setVisible(slot.visible());
+			components.get(index).updateFrameVisibility(slot.visible());
 		}
 
 		for (var component : components) {
-			component.prepare(frame);
+			component.prepare(player, delta);
 		}
 	}
 
 	public void clear() {
+		frameLayout = null;
+		setVisible(false);
 		for (var component : components) {
 			component.clear();
 		}
@@ -89,16 +94,17 @@ public class PlayerStatusHudView extends UIElement {
 			return 5;
 		}
 
-		return PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get() ? 0 : -10;
+		return PlayerHudConfig.HEALTH_STYLE.get() == HealthBarStyle.VANILLA ? -10 : 0;
 	}
 
 	private static List<StatusHudLayout.Bar> bars(@Nullable LocalPlayer player) {
 		var bars = new ArrayList<StatusHudLayout.Bar>(2 + LcDamageType.values().length);
-		bars.add(new StatusHudLayout.Bar(90, 9, survivalVisible(player) && PlayerHudConfig.ENABLE_NEW_HEALTH_BAR.get()));
-		bars.add(new StatusHudLayout.Bar(93, 11, playerVisible(player)));
+		bars.add(new StatusHudLayout.Bar(90, 9,
+				survivalVisible(player) && PlayerHudConfig.HEALTH_STYLE.get() == HealthBarStyle.DEFAULT));
+		bars.add(new StatusHudLayout.Bar(93, 11, playerVisible(player) && PlayerHudConfig.RATIONALITY_STYLE.get() == HudStyle.DEFAULT));
 		for (var type : LcDamageType.values()) {
 			bars.add(new StatusHudLayout.Bar(93, 11,
-					survivalVisible(player) && player.hasEffect(LcShieldUtil.effect(type))));
+					survivalVisible(player) && !PlayerHudConfig.usesNewShield(type) && player.hasEffect(LcShieldUtil.effect(type))));
 		}
 
 		return bars;

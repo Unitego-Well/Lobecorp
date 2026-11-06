@@ -5,8 +5,8 @@ import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
-import org.unitego.lobecorp.client.hud.status.bar.StatusGauge.TextureLayer;
-import org.unitego.lobecorp.util.client.gui.GuiUtil;
+import org.unitego.lobecorp.client.hud.TextureLayer;
+import net.minecraft.client.renderer.RenderPipelines;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
 /// 理智条组件；低理智动态纹理和档位切换保持旧状态条行为。
@@ -18,7 +18,8 @@ public class RationalityBarComponent extends StatusBarComponent {
 	private String appearance = "";
 
 	public RationalityBarComponent() {
-		super(new StatusGauge(93, 11, bottom("rationality"), internal("rationality"), light("rationality")));
+		super(new StatusGauge(93, 11, 78),
+				new StatusGaugeView(bottom("rationality"), internal("rationality"), light("rationality")));
 	}
 
 	@Override
@@ -33,28 +34,37 @@ public class RationalityBarComponent extends StatusBarComponent {
 
 	@Override
 	protected void updateAppearance() {
-		float ratio = maximumValue > 0 ? gauge.getRenderedValue() / maximumValue : 1;
-		String next = ratio >= HIGH_RATIO ? "rationality_tall" : ratio < LOW_RATIO ? "rationality_low" : "rationality";
+		String next = switch (textureRow(gauge.getRenderedValue(), maximumValue)) {
+			case 0 -> "rationality_tall";
+			case 1 -> "rationality_low";
+			default -> "rationality";
+		};
 		if (!next.equals(appearance)) {
 			appearance = next;
-			gauge.setLayers(bottom(next), internal(next), light(next));
+			gaugeView.setLayers(bottom(next), internal(next), light(next));
 		}
 	}
 
 	@Override
-	protected void renderGauge(GuiGraphicsExtractor graphics, float left, float top) {
-		if (maximumValue > 0 && currentValue <= 0) {
-			GuiUtil.blitSprite(graphics, DYNAMIC, left - 3, top - 1, 98, 14);
+	protected void renderGauge(GuiGraphicsExtractor graphics, float x, float y) {
+		boolean dynamic = maximumValue > 0 && currentValue <= 0;
+		if (dynamic) {
+			graphics.lobecorp$blitSprite(RenderPipelines.GUI_TEXTURED, DYNAMIC, x - 3, y - 1, 98, 14);
 			return;
 		}
 
-		super.renderGauge(graphics, left, top);
+		super.renderGauge(graphics, x, y);
 	}
 
 	@Override
 	public void clear() {
 		super.clear();
 		appearance = "";
+	}
+
+	public static int textureRow(float value, float maximum) {
+		float ratio = maximum > 0 ? value / maximum : 1;
+		return ratio >= HIGH_RATIO ? 0 : ratio < LOW_RATIO ? 1 : 2;
 	}
 
 	private static TextureLayer bottom(String name) {
@@ -71,6 +81,6 @@ public class RationalityBarComponent extends StatusBarComponent {
 	}
 
 	private static Identifier texture(String name) {
-		return Lobecorp.id("hud_bar/rationality/" + name);
+		return Lobecorp.id("hud/bar/rationality/" + name);
 	}
 }

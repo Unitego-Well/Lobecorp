@@ -18,7 +18,7 @@
 
 ## 2026-10-28 实际路径失败后的几何合成修正（当前，17项数值回归通过）
 
-2026-10-28 路径实测修正（当前）：原16项测试3失败已保留；弱压力渐入端把完整左右需求缩成≤.25格的“平手”，加上两侧前导范围不同，导致远侧误锁，原核心外单位也被推入核心。现改左右共用farDelta提前量、按未乘pressure的几何并集需求选侧；已锁侧保持。运动目标改用连续需求并集U，较小需求不会平均削弱外侧需求；个体有效半径.8–1.35、跨列补偿.45保留分散外缘。Python -B最终17项全部通过（55.862秒，退出0）：单圆speed.25/.75中心占据比均0、全核心.004989/0；三圆中心0、全核心.015272，中位横移6.644/6.664/8.591格，外缘跨度2.822/3.040/3.499格；原门槛不放宽。新增弱渐入选侧回归。仅本轮GLSL/路径测试与文档修改，Java不变；数值通过不等于普通/Iris实机验收。报告见.agent/reports/20261028-horde-soft-pressure.md，累计源码补丁同目录20261028-horde-core-distribution.patch。
+2026-10-28 路径实测修正（当前）：原16项测试3失败已保留；弱压力渐入端把完整左右需求缩成≤.25格的“平手”，加上两侧前导范围不同，导致远侧误锁，原核心外单位也被推入核心。现改左右共用farDelta提前量、按未乘pressure的几何并集需求选侧；已锁侧保持。运动目标改用连续需求并集U，较小需求不会平均削弱外侧需求；个体有效半径.8–1.35、跨列补偿.45保留分散外缘。Python -B最终17项全部通过（55.862秒，退出0）：单圆speed.25/.75中心占据比均0、全核心.004989/0；三圆中心0、全核心.015272，中位横移6.644/6.664/8.591格，外缘跨度2.822/3.040/3.499格；原门槛不放宽。新增弱渐入选侧回归。仅本轮GLSL/路径测试与文档修改，Java不变；数值通过不等于普通/Iris实机验收。报告见历史材料已清理，累计源码补丁同目录20261028-horde-core-distribution.patch。
 
 ### 实测根因与修复
 
@@ -70,7 +70,7 @@ core/centre是同一横截面时间窗的占据样本数相对无分割基线比
 
 ## 2026-10-28 中心明确排开与外缘散布（当前实现，未运行验收）
 
-2026-10-28 中心分流修正（覆盖此前软压力版）：07被用户判为视觉失败；HUD圆数/字数为0已定位为提取时清零、GUI先于世界绘制读取的统计时序，不能据此判漏上传。主路线origin=center+(250,0,0)，三牛局部(-250,0/±3.473)、minimumY0与夹具一致，NoAI/NoGravity不设置noPhysics；不改筛选。当前中心改用独立个体有效半径0.9–1.25、强度1.2–1.45及0.97–1缓慢呼吸，重叠混合D/(1+M)，跨列补偿0.65保留散度，纵横压力独立渐变。提前量按增强需求、0.7横速及1.8倍渐入时间计算。仅HordeDebugState/HordeGpuRenderer修正HUD统计；GPU四字状态、0.7积分、3倍sway、CPU区域职责与服务端不变。新增实际积分路径密度/核心占据/位移分位数检查，未执行。详见 .agent/reports/20261028-horde-soft-pressure.md 的当前交付节；补丁同目录20261028-horde-core-distribution.patch。
+2026-10-28 中心分流修正（覆盖此前软压力版）：07被用户判为视觉失败；HUD圆数/字数为0已定位为提取时清零、GUI先于世界绘制读取的统计时序，不能据此判漏上传。主路线origin=center+(250,0,0)，三牛局部(-250,0/±3.473)、minimumY0与夹具一致，NoAI/NoGravity不设置noPhysics；不改筛选。当前中心改用独立个体有效半径0.9–1.25、强度1.2–1.45及0.97–1缓慢呼吸，重叠混合D/(1+M)，跨列补偿0.65保留散度，纵横压力独立渐变。提前量按增强需求、0.7横速及1.8倍渐入时间计算。仅HordeDebugState/HordeGpuRenderer修正HUD统计；GPU四字状态、0.7积分、3倍sway、CPU区域职责与服务端不变。新增实际积分路径密度/核心占据/位移分位数检查，未执行。详见 历史材料已清理 的当前交付节；补丁同目录20261028-horde-core-distribution.patch。
 
 ### 公式与可预期位移
 
@@ -106,7 +106,7 @@ tools/horde_path_contract_test.py仍直接转译生产avoidanceTarget和helper�
 - 初选仍比较左右目标成本、近似平手用seed，已有锁侧只算原侧。control.y严格0/1、锁侧/phase仍0或±1，不能把pressure写成分数锁侧。零压力返回natural，已有位移/速度按原积分平滑退场。
 - 四字状态布局、身份迁移、窗口、dt、heading、Java生命周期、CPU区域提交、服务端判断、数量/范围、方向片和原WIP均不改。仅本轮两份GLSL、Python验证入口及四份系统文档/.agent索引报告调整。
 - 测试改为直接读取生产helper及avoidanceTarget正文，检查柔和压力/渐入渐出、seed多样、natural加法、单圆及64重叠圆下不同base列仍分散、平滑重叠、严格flag和不跳边；移除绝对不穿透/9.164近侧门禁，保留长dt/速度预算/heading等验证，原Java身份测试保持。当前只做IDEA静态检查，所有测试留父代理运行。
-- 本轮报告：.agent/reports/20261028-horde-soft-pressure.md；37f0b3f增量及原字节备份清单：build/agent-backups/20261028-horde-soft-pressure/。辅助图片识别接口401已由父代理说明，采用原生视觉，不改任何/.env/API配置。
+- 本轮报告：历史材料已清理；37f0b3f增量及原字节备份清单：历史材料已清理。辅助图片识别接口401已由父代理说明，采用原生视觉，不改任何/.env/API配置。
 
 ## 2026-10-28 每事件 GPU 状态避让（当前实现）
 
@@ -120,9 +120,9 @@ tools/horde_path_contract_test.py仍直接转译生产avoidanceTarget和helper�
 - **最终XZ朝向**：位置与 heading 共用 motionXZ；只在3/5/6分量调用 motionVelocityXZ，对 actualStation±forwardVelocity×0.125tick、total±stateTotalVelocity×0.125tick 作两次XZ-only采样，再取局部速度。总侧速已含sway，一阶上等价于 offsetVelocity=stateTotalVelocity−swayVelocity 再合并自然摆动。两次样本使用同一当前terrain场、同一lateral输入，只取flow分量2，不取Y/height、不扫圆、不增逐单位XZ字段，纳入空间flow梯度及曲线side基旋转。terrain本身的时间变化没有历史样本，只能近似，不能宣称读取了前帧terrain。追加直线flow梯度、弯道非零offset的两个数值测试，遵守最新指令未运行。
 - **提前容量与初选侧审查**：16格内远侧不可达的圆，只要处于沿向前导范围就预先计算近侧容量，不等待当前position进入圆。容量本身不设置遭遇；无其它遭遇时返回natural。未锁侧时同一扫描共享圆数据，比较左右完整目标能否容纳及横移成本，成本差≤0.25格才用seed打平；锁侧后只处理原侧。两个同站程圆 across=5/14、radius=3.636、modelRadius=.75 的实际 avoidanceTarget 正文数值适配检查先复现9.836>9.164，再验证已锁+侧提前限至9.164、1000步不越界、初选改为左侧零横移；这1项定向检查按后续明确要求运行并通过，未扩成全局路径搜索。其余初选/锁侧新测试未运行。
 - **成本和验证边界**：row tag 分量在圆扫描前返回，另外3分量各自读取同一旧源作控制，64圆×77k单位上界约1478万次外层circle visit/事件更新，未锁侧的双候选数学分支最坏约2956万次，圆数据在候选间共享；Motion8不再扫圆，heading只采XZ/flow、不取Y/height，needsPoint最多5个分量计算位置。此为源码成本估计，不是实机性能结果。镜头完全离开且无 prepared 批次时事件不提交更新；再见时用实际dt和旧窗迁移，不是隐藏时的逐帧轨迹重放。
-- **检查与交付**：本轮禁止测试前已执行6项直接读取生产标量函数的数值回归（退出0），新增 HordeAvoidanceStateTest 的3项生产窗口方法检查留给父代理运行；此前静态草稿10项不作为新状态验收。未构建/Data/游戏/Debug/提交/推送/同步。三份新文件由 IDEA 自动暂存且有后续未暂存修改，保留索引交父代理隔离核验。完整说明见 .agent/reports/20261028-horde-gpu-state.md；原字节备份与增量补丁在 build/agent-backups/20261028-horde-gpu-state/。
+- **检查与交付**：本轮禁止测试前已执行6项直接读取生产标量函数的数值回归（退出0），新增 HordeAvoidanceStateTest 的3项生产窗口方法检查留给父代理运行；此前静态草稿10项不作为新状态验收。未构建/Data/游戏/Debug/提交/推送/同步。三份新文件由 IDEA 自动暂存且有后续未暂存修改，保留索引交父代理隔离核验。完整说明见 历史材料已清理；原字节备份与增量补丁在 历史材料已清理。
 
-2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 .agent/reports/20261028-horde-path-correction.md；最新补丁/清单在 build/agent-backups/20261028-horde-path-correction/。此结果不是游戏或硬件 GLSL 验收。
+2026-10-28 路径反例修正（覆盖下文旧幅度说明）：band 仅用于前后引导，不再计入横向安全半径；移除外侧 activation。圆只生成远离自身中心的候选，单遍扫描收集左右包络/导数及朝向圆的近侧容量，优先随机侧、不可容纳完整幅度时尝试另一侧；双侧均不可用时不新增分割横移。原 radius=3.636、band=9.2、across=14 反例偏移为 0。needsPoint 将坐标计算限制到最多 5 个分量，heading 不再额外采样地面。10 项无游戏数值测试退出 0，含 231120 个普通单圆样本；静态无新增问题。详见 历史材料已清理；最新补丁/清单在 历史材料已清理。此结果不是游戏或硬件 GLSL 验收。
 
 ### 修正后的几何与边界
 
@@ -143,7 +143,7 @@ needsPoint = component<3 || component==4 || (component==7 && FrameLod.x>0)。位
 - 分割在原 sway/地形流位置计算后沿线路侧向添加，Y 按最终横移重采样。静态直线、有效高度重叠、成熟圆且所需幅度 ≤16 时，平台在圆前完成横移，1.5 格余量覆盖 sway；不同横向采样的地形流、路线弯曲/端点裁剪、动态圆/高度变化仍需实机。高度和横向影响筛选、fade 中的小圆及超出 16 格的大圆不保证所有净空；不进行复杂多圆通道寻优。
 - 16 格分割上限、MAX_VISUAL_OFFSET=64、实例数量、采样范围、片大小与预烘焙选片架构均不变。动态圆移动/变径与随机 sway 等附加速度不受上述静态分割上界保证。CPU RegionBox.contourDistance 仍是原轮廓提示，未扩成新 GPU 路径的精确 CPU 副本。
 - 新增独立入口：python tools/horde_path_contract_test.py。测试读取并执行生产 GLSL 标量函数及既有 Java sway/random/mix 参考，检查提前绕行、两侧实际 sway 下的核心避让、聚合静态速度/16 上限、解析导数/退出连续、归零 fade 与 3 倍频率。适配器采用双精度，不等同硬件 float/GLSL 验收。
-- 本次不运行测试、构建、Data、游戏或 Debug，不暂存/提交/推送/同步。原字节备份及本次补丁：build/agent-backups/20261028-horde-path/；最终静态诊断与精确文件清单见 .agent/reports/20261028-horde-path.md。上述说明覆盖下文旧 radial push 与两次累加的描述。
+- 本次不运行测试、构建、Data、游戏或 Debug，不暂存/提交/推送/同步。原字节备份及本次补丁：历史材料已清理；最终静态诊断与精确文件清单见 历史材料已清理。上述说明覆盖下文旧 radial push 与两次累加的描述。
 
 2026-10-28 集成检查：IDEA 静态诊断无新增错误，`BenchMod Compile` 与 `Data` 均退出 0；生成的中英文资源均含 `visual.single_card_distance`。`HordeSplitTransitionTest`、`HordeCardProjectionTest`、`HordeOptimizationTest`、`HordeRenderFrameTest` 均退出 0。旧 `HordeMeshReductionTest` 两项失败：仍访问已在本轮前移除的简化模型槽 `models[2]`，本次未改其生产代码或测试。未启动游戏，硬件 GLSL、Iris 画面、连续过渡与性能均未验收。
 
@@ -157,7 +157,7 @@ needsPoint = component<3 || component==4 || (component==7 && FrameLod.x>0)。位
 - CPU 粒子核心与轮廓查询改读平滑圆，轮廓的固定外扩和引导长度随半径归零。仅共享平滑圆与 fade 权重；GPU 保留固定 reach 并缩放 push，CPU 缩小轮廓引导带，不代表完整几何一致。`HordeTide` / `HordeParticleSamples` 本身不读取 regions 或平滑圆，仍生成解析候选；本次只修复后续核心/轮廓筛选，没有补齐 I49 的 GPU 分割位移等既有位置差异。
 - 修改文件：`HordeClient`、`HordeSplitState`、`horde_split.glsl`；新增 `HordeSplitTransitionTest` 的 4 项无 GPU 回归，覆盖三类键零起步、精确退场、复入/反转及 CPU 小圆轮廓。测试待父代理统一运行。
 - 已完成 IDEA 本次行格式化与统一静态诊断：生产 Java/GLSL 和新测试均 0 错误；两份生产 Java 合计 5 项既有警告，无新增警告。未执行构建、Data、测试、游戏或 Debug；未暂存、提交或推送。服务端代码与方向片文件不在本次修改内。
-- 修改前原字节备份：`build/agent-backups/20261028-horde-client-split/`；已有空圆纹理初始化 3 行 WIP 保留，父代理提交时须排除该旧 hunk。
+- 修改前原字节备份：历史材料已清理；已有空圆纹理初始化 3 行 WIP 保留，父代理提交时须排除该旧 hunk。
 
 ## 2026-10-28 方向片剔除与超远单片
 
@@ -167,7 +167,7 @@ needsPoint = component<3 || component==4 || (component==7 && FrameLod.x>0)。位
 - 六方向片、动画帧与图集继续在资源准备阶段预烘焙、上传并常驻缓存；保留源模型六向 24 顶点帧，不改投影尺度或图集比例。`Prepared.verticesPerInstance` 仅按 geometry tier 返回片档 12 或完整模型顶点数，统一原版索引数、Iris 实例上限、工作集布局、展开范围与合批绘制数量。`AnimationInfo.x` 保留源模型 24 顶点帧跨度，输出跨度通过闲置的 `FrameLod.w` 传递；Iris 的 UV、法线、切线和 mid-texcoord 跟随被选中的原始面。
 - **新增方向与单片选择全部在 GPU**：`FrameLod.y` 传独立单片距离，GPU 按每实例最终 `point + OriginTime.xyz` 的三维距离严格 `>64` 判定；`-1` 关闭，恰好 64 格保留普通片。超远实例保留一个主方向 quad，另两个 quad 的四角均映射为同一顶点而成为零面积，不进入片段着色。CPU 沿用区域批量提交，保留相机相对原点 `OriginTime.xyz=event.origin-camera`、区域行列、时钟及既有必要参数，不新增按批次距离选顶点数、逐实例距离/方向计算或逐帧 CPU 几何构造；原完整模型/片批次 LOD 与数量范围不变。
 - 已完成 IDEA 本次 Java 行格式化和五份 Java/GLSL 静态诊断：0 错误；渲染器 11 项既有警告，其余无警告。未执行 Compile、Data、测试、游戏、Debug、同步、暂存、提交或推送；硬件 GLSL、视觉与性能未验证。
-- 保留 `HordeMeshReduction`、`HordeCardBake` 和分割实现的全部既有 WIP，不修改投影比例、图集烘焙、发光材质或阴影阶段跳过。原字节备份：`build/agent-backups/20261028-horde-card-culling/`；文档基线另存 `post-split-docs/`，包含此前分割记录。
+- 保留 `HordeMeshReduction`、`HordeCardBake` 和分割实现的全部既有 WIP，不修改投影比例、图集烘焙、发光材质或阴影阶段跳过。原字节备份：历史材料已清理；文档基线另存 `post-split-docs/`，包含此前分割记录。
 
 ## 2026-10-27 按进度的潮与确定性分割（当前实现）
 

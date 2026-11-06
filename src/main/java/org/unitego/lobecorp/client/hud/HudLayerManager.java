@@ -4,6 +4,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.gui.GuiLayer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.hud.host.HudFrame;
@@ -49,6 +50,12 @@ public final class HudLayerManager {
 		}
 	}
 
+	/// 提供薄图层适配，显隐与会话清理仍使用同一登记项。
+	public GuiLayer layer(Identifier id) {
+		requireEntry(id);
+		return (graphics, deltaTracker) -> render(id, graphics, deltaTracker);
+	}
+
 	/// 返回是否已注册该 ID。
 	public boolean contains(Identifier id) {
 		return entries.containsKey(id);
@@ -91,12 +98,13 @@ public final class HudLayerManager {
 	}
 
 	private void synchronizeSession(HudSession nextSession) {
-		if (session.update(nextSession)) {
-			try {
-				releaseAll();
-			} finally {
-				resetTemporaryState();
-			}
+		if (!session.update(nextSession)) {
+			return;
+		}
+		try {
+			releaseAll();
+		} finally {
+			resetTemporaryState();
 		}
 	}
 
@@ -133,25 +141,23 @@ public final class HudLayerManager {
 	}
 
 	private void ensureHost(Entry entry, int screenWidth, int screenHeight) {
-		if (entry.host == null) {
-			var created = Objects.requireNonNull(entry.factory.get(), "HUD 宿主工厂返回 null");
-			try {
-				created.ensureInitialized(screenWidth, screenHeight);
-				entry.host = created;
-			} catch (RuntimeException exception) {
-				try {
-					created.release();
-				} catch (RuntimeException cleanupFailure) {
-					exception.addSuppressed(cleanupFailure);
-				}
-
-				throw exception;
-			}
-
+		if (entry.host != null) {
+			entry.host.ensureInitialized(screenWidth, screenHeight);
 			return;
 		}
+		var created = Objects.requireNonNull(entry.factory.get(), "HUD 宿主工厂返回 null");
+		try {
+			created.ensureInitialized(screenWidth, screenHeight);
+			entry.host = created;
+		} catch (RuntimeException exception) {
+			try {
+				created.release();
+			} catch (RuntimeException cleanupFailure) {
+				exception.addSuppressed(cleanupFailure);
+			}
 
-		entry.host.ensureInitialized(screenWidth, screenHeight);
+			throw exception;
+		}
 	}
 
 	private void resetTemporaryState() {

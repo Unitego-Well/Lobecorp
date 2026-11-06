@@ -1,6 +1,6 @@
 # Horde 极端情况优化 · GPT 执行文档
 
-2026-10-26 第三轮更新（HORDE-RETEST-03）：补回清道夫背后罐子与红色。核对模型 can/biomass 与红刀面 UV，新增 PART_CAN，中景 5 盒=腿脚/躯干/双臂(合并)/头/罐子（136 顶点不变）、远景 2 盒 48，bestFace 只在罐子/上身背面取红色、其余面保持灰色，修复 NativeImage 提前关闭。游戏内 can-A3/B3 截图见 build/agent-backups/20261026-appearance-can/。运行受外部抢焦点与并行 GPU 负载影响：一次场景级世界 GPU 14.620ms，两次 valid 轮 25.472/33.229ms，新构建尚无干净三轮，性能暂引用同顶点档位上一轮数据。Sodium 全程启用直到手动关闭；测试必须截屏；详细记录见 benchmod.md 第三轮节。
+2026-10-26 第三轮更新（HORDE-RETEST-03）：补回清道夫背后罐子与红色。核对模型 can/biomass 与红刀面 UV，新增 PART_CAN，中景 5 盒=腿脚/躯干/双臂(合并)/头/罐子（136 顶点不变）、远景 2 盒 48，bestFace 只在罐子/上身背面取红色、其余面保持灰色，修复 NativeImage 提前关闭。游戏内 can-A3/B3 截图见 历史材料已清理。运行受外部抢焦点与并行 GPU 负载影响：一次场景级世界 GPU 14.620ms，两次 valid 轮 25.472/33.229ms，新构建尚无干净三轮，性能暂引用同顶点档位上一轮数据。Sodium 全程启用直到手动关闭；测试必须截屏；详细记录见 benchmod.md 第三轮节。
 
 2026-10-26 第二轮更新（HORDE-RETEST-02）：按“先测试、再修改、再测试”完成关闭光影组复测与失焦防护、外观改善。基线光影 13.889/17.863ms、世界GPU 13.305ms，普通 3.402/5.690ms、世界GPU 2.026ms。修改：BenchWindow 每tick防失焦并计数、MEASURE 失焦硬门禁与环境字段；中景 5盒136、远景 2盒48，近景520与4帧动画不变，新增按档实例计数。复测光影三轮 14.365/15.059/15.026ms、P99 18.064/18.624/17.971ms、世界GPU 13.834/14.398/14.534ms，目标仍满足；普通两轮有效帧 6.168/6.184ms（165Hz地板）、世界GPU 2.026/1.897ms，另两轮因焦点被抢被门禁/BenchMod环境拒绝。截图与限制见[BenchMod 2026-10-26 第二轮节](benchmod.md#2026-10-26-第二轮失焦防护外观改善与普通光影复测)。仍未完成 E4、区域净空定量、普通稳定第三轮与LOD切换录像。
 
@@ -213,7 +213,7 @@ tasks:
 3. 确认工作区静止（10 分钟内无源码改动）；若用户仍在编辑，**停止并上报**，不要在其未完成的树上跑基准。
 4. 确认 BenchMod 可用：IDEA run configuration `BenchMod Client`；产物目录 `build/modBench/raw-results/default/client/`；失败时产物在 `artifacts/screenshots/failure-*.png` 与 `artifacts/thread-dumps/`。
 5. 记录 GPU 空载状态：`nvidia-smi --query-gpu=clocks.sm,power.draw,temperature.gpu,utilization.gpu --format=csv,noheader`。
-6. 备份本轮将修改的文件到 `build/agent-backups/<date>-<task>/`（构建目录，不污染源码）。
+6. 备份本轮将修改的文件到 历史材料已清理（构建目录，不污染源码）。
 
 ---
 
@@ -551,7 +551,7 @@ tasks:
 
 统一检查：37份Java/GLSL错误诊断全部analyzed，修复两处本轮错误后0错误；23份Java警告审阅69项（含借用/跨帧资源拥有者、GeckoLib Internal、既有空值/注解及未使用项），不声称0警告。补查8份原有Horde接入文件0错误。IDEA BenchMod Compile退出0，compileJava/compileBenchJava及生产包隔离通过；Data退出0，23份实际生成资源只更新两份中英文语言，另有两份缓存变更，新增9组翻译键，未删除资源。未执行JUnit、游戏、BenchMod Client/Server或Debug；IDE GLSL诊断不等于真实驱动编译。
 
-所有任务共同的A/B记录：A、B的frame mean/P95/P99、世界/Horde总量/阶段GPU、passes/copies、显存峰值、首帧、GPU频率/功耗/温度均 **未采集**，截图/哈希/夜间发光/动画/重载/三轮一致性均 **未执行**。原因是用户禁止游戏测试，性能阈值保持原值，无60FPS结论。修改前字节/哈希/原暂存补丁及检查摘要：build/agent-backups/20261025-extreme-confirmed/；首批备份仍保留在20261025-extreme-code/。
+所有任务共同的A/B记录：A、B的frame mean/P95/P99、世界/Horde总量/阶段GPU、passes/copies、显存峰值、首帧、GPU频率/功耗/温度均 **未采集**，截图/哈希/夜间发光/动画/重载/三轮一致性均 **未执行**。原因是用户禁止游戏测试，性能阈值保持原值，无60FPS结论。修改前字节/哈希/原暂存补丁及检查摘要：历史材料已清理；首批备份仍保留在20261025-extreme-code/。
 
 ### 任务：EX-01
 

@@ -4,5 +4,8 @@
 	],
 	"net/minecraft/world/entity/LivingEntity": [
 		"org/unitego/lobecorp/api/ILivingEntityExpand"
+	],
+	"net/minecraft/client/gui/GuiGraphicsExtractor": [
+		"org/unitego/lobecorp/api/client/gui/IGuiGraphicsExtractorExpand"
 	]
 }

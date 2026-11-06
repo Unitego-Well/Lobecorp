@@ -54,8 +54,8 @@
 
 ### 2.3 证据位置
 
-- 矩阵总表：`build/agent-backups/20261026-matrix12/matrix.md`、`matrix.csv`（最终版，含修复说明与无效尝试清单）。
-- 每轮归档：`build/agent-backups/20261026-matrix12/<轮次>/`（summary/report/artifacts/config 快照/round.json/focus.json/metrics.csv/sha256.txt）；截图在 `artifacts/screenshots/`（horde 轮有 `horde-render.png`、`-off`、`pass-a`、`pass-b`）。
+- 矩阵总表：历史材料已清理、`matrix.csv`（最终版，含修复说明与无效尝试清单）。
+- 每轮归档：历史材料已清理（summary/report/artifacts/config 快照/round.json/focus.json/metrics.csv/sha256.txt）；截图在 `artifacts/screenshots/`（horde 轮有 `horde-render.png`、`-off`、`pass-a`、`pass-b`）。
 - 无效尝试全部保留未计入：焦点丢失（07/09/10/11/12 多次）、Spark bytebin 上传失败、warden 生成失败、NPE 崩溃、并发编译 `NoClassDefFoundError`、covers 前作废轮。备份：`matrix-20261026-1900-pre-covers.md/.csv`、`matrix-20261026-1810-frozen.*`。
 
 ### 2.4 文档与提交状态（下一个会话务必先核对 `git status`）
@@ -82,7 +82,7 @@ cd E:\xm\mc\mod\Unitego-Well\Lobecorp\.workspace\lobecorp_horde
 - 场景 ID：`lobecorp.sweeper30-ai`、`lobecorp.sweeper30-noai`、`lobecorp.corpse-render`、`lobecorp.corpse-random100`、`lobecorp.horde-render`（horde 轮由 `hordeWardens=0/10` 切换合成/真实事件）。
 - horde properties：`hordeWidth=500 hordeLength=500 hordeMeasureTicks=2400 hordePlayerStation=400 hordeSpeed=0.75 hordeWardens=0|10`；**不要** pin `entitySyncTimeoutTicks`（默认 600）。
 - 光影开关：`build/modBench/runs/default/client/config/iris.properties` 的 `enableShaders`；每轮重启客户端。
-- 结果：`build/modBench/raw-results/default/client/`（summary/report/artifacts）+ 归档到 `build/agent-backups/<日期>-<主题>/`，附 sha256 与配置快照。
+- 结果：`build/modBench/raw-results/default/client/`（summary/report/artifacts）+ 归档到 历史材料已清理，附 sha256 与配置快照。
 - 坑：
   - **客户端运行期间绝对不要 `gradle compile*`**（会出现陈旧 class 的 `NoClassDefFoundError`/NPE 假崩溃）。
   - 焦点被外部程序（QQ/explorer/剪映等）抢占的轮次必须重跑，不得当作有效数据；`BenchWindow.losses()>0` 即 INVALID。

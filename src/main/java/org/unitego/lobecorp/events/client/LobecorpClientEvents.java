@@ -27,7 +27,6 @@ import org.unitego.lobecorp.registry.conductor.client.ConductorHudRegistration;
 import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
 import org.unitego.lobecorp.registry.conductor.client.ConductorPortraitRegistration;
 import org.unitego.lobecorp.registry.conductor.client.ConductorRenderStateRegistration;
-import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class LobecorpClientEvents {
@@ -108,7 +107,6 @@ public class LobecorpClientEvents {
 	public static void registerHud(RegisterGuiLayersEvent event) {
 		ConductorHudRegistration.register(event);
 		ScreenParticleRegistration.register(event);
-		RuntimeOverlayHud.INSTANCE.register();
 		PlayerHudRegistration.register(event);
 	}
 }

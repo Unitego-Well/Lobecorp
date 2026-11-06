@@ -30,7 +30,7 @@
 | spatial_words / levels | 1,980 / 1 | 1,800 / 1 | 674,678 / 3 |
 
 - **结论：展开微优化无可测收益**（expand 差 +0.005 ms ≈ 0.1%，世界 GPU 差 −0.042 ms，均在噪声内），驱动/编译器已消除这些冗余读取。结论成立后**已把着色器还原为原字节**（`sha256 251bf9fa…`），本轮不保留生产代码改动。
-- 两轮均 PASSED、焦点门禁通过、Spark 链接与截图齐全（基线轮产物见 `build/agent-backups/20261026-i41-expand-opt/baseline-reverted/`）。
+- 两轮均 PASSED、焦点门禁通过、Spark 链接与截图齐全（基线轮产物见 历史材料已清理）。
 
 ### 口径修正（重要）
 - 本轮早前按 `gpu_sample_ns` 汇总阶段开销，那是“每周期只采一个阶段”的轮换采样，不等于阶段总和；**完整阶段以 `gpu_frame_sum_ns` 为准**。第 09 轮完整均值为 expand 4.262、units 2.743、base 2.336、spatial 1.701 ms。
@@ -96,10 +96,10 @@
 - 监守者轮：10 个真实服务端监守者（AI 全部保留、leash=32、Pose.STANDING/清 IS_EMERGING/长 DIG_COOLDOWN、血量 100000），真实事件自行生成清道夫与其交战；玩家旁观者模式、每 5 tick 服务端锁位，teardown 恢复游戏模式。
 - `HordeEvent.covers` 修复：目标必须落在当前波带 `[tail, head]` 内才被事件覆盖，消除“潮未到就提前生成清道夫/粒子”（11 截图 `horde-render.png` 浪潮仍在地平线且玩家附近无清道夫，`pass-a/b` 到达后才交战）。
 - 限制：11/12 的 `warden_respawn_count/issues≈20` 为全 AI 移动下审计重复补生成的记录（最终 10/10、spawn_failure=0）；09/11 光影轮世界GPU 19–21ms 未达 15ms 目标。
-- 数据同时导出 `build/agent-backups/20261026-matrix12/matrix.md`、`matrix.csv`（含 Spark/截图/焦点/无效尝试次数）。
+- 数据同时导出 历史材料已清理、`matrix.csv`（含 Spark/截图/焦点/无效尝试次数）。
 
 ### 证据与限制
-- 每轮归档：`build/agent-backups/20261026-matrix12/<轮次>/`（summary/report/artifacts/config 快照/round.json/focus.json/metrics.csv/sha256.txt）；截图在每轮 `artifacts/screenshots/`（horde 轮含 `horde-render.png`、`horde-render-off.png`、`horde-render-pass-a/-b.png`；sweeper/corpse 轮各自 `*-render.png`）。
+- 每轮归档：历史材料已清理（summary/report/artifacts/config 快照/round.json/focus.json/metrics.csv/sha256.txt）；截图在每轮 `artifacts/screenshots/`（horde 轮含 `horde-render.png`、`horde-render-off.png`、`horde-render-pass-a/-b.png`；sweeper/corpse 轮各自 `*-render.png`）。
 - 无效尝试全部保留且未计入：01 服务端同步 29/30；07/09/10/11/12 焦点被外部窗口抢占（focus-monitor CSV 显示 QQ/资源管理器/剪映/搜索等前台切换）；10 attempt1 Spark bytebin 上传失败（回退本地 `.sparkprofile`）；11/12 首轮 warden 在 peaceful 世界被每 tick 移除（根因 difficulty=peaceful，已修为 normal）。旧 09/10（非 cutout 代码）改名 `-attempt1-oldbench` 保留。
 - 判定：12 轮均 PASSED、焦点 losses=0、Spark 链接齐全；但 horde 光影轮（09 合成 19.196/22.989/25.037ms、世界GPU 19.082；11 真实事件 20.814/26.035/30.115ms、世界GPU 20.652）**未达 16.7/20/15 ms 目标**，非光影轮（10/12）达标；`HordeEvent.covers` 波带修复后 11 截图确认浪潮到前无清道夫/粒子。片 cutout+颜色修复后 P95/P99 明显改善（旧卡 09 为 43.2/58.7 ms，新卡约 23.0/25.0 ms）。
 - 限制：多人/多事件、移动镜头、真实事件（非夹具）连续录像与定量未做；片 cutout 下透明区域会透出背景（用户明确要求透明渲染，非半透明）；E4 换包/重载与光源变化未复验。
@@ -119,7 +119,7 @@
 - PASSED、10000 实例、焦点 0 失焦；模型档位 520/136/48/24。
 - 片档 72 块 / 4673 实例；中景 4741、远景 584；展开顶点 785,071（原 2 盒远档 898k）。
 - 帧 13.079/14.291/14.915 ms（均/P95/P99），世界 GPU 12.702 ms，draw 7.254 ms——**GPU 阶段明显低于 2 盒远档**，但本轮环境正常，不能直接当稳态目标结论。
-- 截图：`build/agent-backups/20261026-card-lod/artifacts/screenshots/horde-render.png`；配置与 summary 同目录。
+- 截图：历史材料已清理；配置与 summary 同目录。
 
 ### 限制
 - 当前“片”是 **6 方向面片盒（UV 方向映射 + 逐帧包围盒动画）**，还不是离屏把 6 个方向渲染成视图图集的真正烘焙 imposter；外观真实性仍需下一步实现与验收。
@@ -129,12 +129,12 @@
 ### 真6方向烘焙与两档化（WIP，2026-10-26）
 - 已实现 CPU 软件光栅烘焙：模型完整帧按盒面 6 方向各渲染 64×64 tile、每方向 20 帧，拼成 384×1280 图集（`HordeCardBake`）；tier3 几何 UV 编码 `(方向*2+角点)/12`，Iris/原版顶点着色器按方向+帧取图集 tile；图集缓存为 `DynamicTexture` 并随模型清理关闭。
 - 按要求**移除中景/远景简化盒**：`HordeMeshReduction` 只产出完整模型与片（tier0/tier3），`selectLod` 仅在“到相机距离≥cardDistance”时切到片，否则完整模型；不再有 136/48 盒。
-- 验证 `client-1792987990655` PASSED：片 4672 实例，但 `cardDistance=100` 让近处完整模型范围过大，展开顶点 2,882,499、horde 34.435/118.543ms——说明两档化后片的距离要明显更近（32–48 格）才有性能意义；截图见 `build/agent-backups/20261026-card-bake/`。
+- 验证 `client-1792987990655` PASSED：片 4672 实例，但 `cardDistance=100` 让近处完整模型范围过大，展开顶点 2,882,499、horde 34.435/118.543ms——说明两档化后片的距离要明显更近（32–48 格）才有性能意义；截图见 历史材料已清理。
 - 外观仍有问题：远片出现偏蓝/偏暗的颜色与光照差异（烘焙采样/通道/光照需继续校准），不是最终验收画面。
 - 配置默认仍为 `cardDistance=-1`（不使用片）与 `frameDistance=-1`（不降帧）；关闭片时只剩完整模型，10000 实例会非常重，实际使用需把 cardDistance 设为 32–48 左右。
-- 按用户设定 `cardDistance=32, frameDistance=10, animationFrames=20` 复测 `client-1792988762923` PASSED：**10000 全部走片**，展开顶点 240,000（24×10000），draw 5.450ms、世界 GPU 11.065ms、帧 13.054/23.695/27.035ms——几何/GPU 明显变轻，但 P99 仍偏高；片颜色偏蓝偏暗的视觉问题仍在（调试图集本身灰/红正常，说明是采样/光照而非烘焙数据），需继续校准；截图与图集在 `build/agent-backups/20261026-card32-retest/`。
+- 按用户设定 `cardDistance=32, frameDistance=10, animationFrames=20` 复测 `client-1792988762923` PASSED：**10000 全部走片**，展开顶点 240,000（24×10000），draw 5.450ms、世界 GPU 11.065ms、帧 13.054/23.695/27.035ms——几何/GPU 明显变轻，但 P99 仍偏高；片颜色偏蓝偏暗的视觉问题仍在（调试图集本身灰/红正常，说明是采样/光照而非烘焙数据），需继续校准；截图与图集在 历史材料已清理。
 - 片在光影下偏蓝/偏暗是当前光影本身的效果，按用户要求**不再改光影**；需要正常颜色时用非光影组测试。
-- `maximumVisible=-1` 现在按**真正无限**跑（不再按 10000 折算）：`client-1792989806860` PASSED，事件宽 512/长 320 实际生成 **29,456** 实例且全部走片，展开 706,956、draw 11.011ms、帧 17.358/20.462/24.163ms；归档 `build/agent-backups/20261026-unlimited/`。
+- `maximumVisible=-1` 现在按**真正无限**跑（不再按 10000 折算）：`client-1792989806860` PASSED，事件宽 512/长 320 实际生成 **29,456** 实例且全部走片，展开 706,956、draw 11.011ms、帧 17.358/20.462/24.163ms；归档 历史材料已清理。
 
 ## 优化前后参数与结果对照（2026-10-26 汇总）
 
@@ -188,7 +188,7 @@
 
 ### 说明
 - “优化后”性能列取 520/136/48 档位的三轮干净数据；当前第三轮只改了代理盒组成与罐子 UV（顶点数仍 136/48），尚无干净三轮，一次场景级 `client-1792980328267` 世界 GPU 14.620 ms 但整轮因外部抢焦点 INCONCLUSIVE，另有 valid 轮被并行 GPU 负载拖到 23–33 ms，均不计达标。
-- 普通组帧间隔受当前 165Hz 刷新地板影响，比较以世界 GPU/draw 为准；所有轮次原始 summary、GPU、Spark 链接、截图和 SHA256 在 `build/agent-backups/`。
+- 普通组帧间隔受当前 165Hz 刷新地板影响，比较以世界 GPU/draw 为准；所有轮次原始 summary、GPU、Spark 链接、截图和 SHA256 在 历史材料已清理。
 
 
 ## 2026-10-26 第三轮：罐子/红色元素补回、Spark 全程采样与测试环境记录
@@ -206,7 +206,7 @@
 - 近景 520 全精度、4 帧动画、发光 pass、LOD 迟滞不变；中景双臂由两个盒合并为一个，换取罐子独立盒（顶点预算不变）。
 
 ### 视觉证据
-- `build/agent-backups/20261026-appearance-can/can-A3.png`、`can-B3.png`（2560×1494，游戏内真实事件 96 宽，模型三档 520/136/48）：红色罐体/红刀面已保留，从背面看几乎每个单位都有红色罐体。
+- 历史材料已清理、`can-B3.png`（2560×1494，游戏内真实事件 96 宽，模型三档 520/136/48）：红色罐体/红刀面已保留，从背面看几乎每个单位都有红色罐体。
 - 若认为“过红”或罐体轮廓应更接近原模型的灰色外壳，请指出，我再按同一 UV 选择逻辑改为灰壳优先、局部红面。
 
 ### 本轮运行与环境（不冒充达标数据）
@@ -219,7 +219,7 @@
 - 因此本构建只有一次场景级 14.620ms 世界 GPU 的数据；同顶点档位（520/136/48）的干净三轮仍是上一轮的 14.365/15.059/15.026ms、世界 GPU 13.834/14.398/14.534ms。**新构建缺少干净的三轮达标证据**，不写成已达标；待 GPU 空闲时补跑。
 
 - `client-1792983163376`（Spark 全程覆盖 + 灰罐体局部红）：PASSED，帧 25.097/32.433/34.945ms、世界 GPU 23.013ms（并行负载），Spark 链接 `https://spark.lucko.me/1kvmGBN9y2` 已写入 `artifacts/spark/horde-profile.txt`，模型三档 520/136/48；该轮同样不能作为性能达标。
-- 视觉证据：`build/agent-backups/20261026-appearance-can/can-A3.png`、`can-B3.png` 是“整体红罐”旧版；`build/agent-backups/20261026-appearance-spark/artifacts/screenshots/horde-render.png` 是修正后的灰身体/灰罐体+局部红。
+- 视觉证据：历史材料已清理、`can-B3.png` 是“整体红罐”旧版；历史材料已清理 是修正后的灰身体/灰罐体+局部红。
 
 ### 规则记录
 - Spark 全程采样：进入浪潮测试后开启，测试结束后停止并等待上传链接落盘，再允许关闭客户端；Sodium 保持加载，不为了对比关闭。每轮测试必须截屏并交付路径（见原始项目 `AGENTS.md`/`workflow.md` 的焦点与截屏规则）。
@@ -264,8 +264,8 @@
 普通组帧间隔出现约 6.15 ms 的一致地板：当前显示器为 2560×1600@165Hz（1/165≈6.06 ms），而早前同代码普通基线在刷新/呈现条件不同时为 3.40 ms，故普通组帧间隔不与早前直接可比；GPU 阶段（世界 GPU 2.03→1.90–2.03、draw 1.51→1.23–1.36）显示外观增加顶点没有让普通组变差。
 
 ### 截图（本轮交付）
-- 基准制品：各轮 `artifacts/screenshots/horde-render.png`、`horde-render-off.png`、`sweeper-render.png`、`corpse-render.png`（例如 `build/agent-backups/20261026-appearance-final/iris-run3/artifacts/screenshots/`）。
-- 游戏内铺满取景（光影开启，2560×1494）：`build/agent-backups/20261026-appearance-final/in-game-fill/fill-D.png`（人群填满全屏、左右出屏）、`fill-F.png`（大范围铺满）、`fill-night.png`（夜间发光）。实机 overlay 显示 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
+- 基准制品：各轮 `artifacts/screenshots/horde-render.png`、`horde-render-off.png`、`sweeper-render.png`、`corpse-render.png`（例如 历史材料已清理）。
+- 游戏内铺满取景（光影开启，2560×1494）：历史材料已清理（人群填满全屏、左右出屏）、`fill-F.png`（大范围铺满）、`fill-night.png`（夜间发光）。实机 overlay 显示 submitted/GPU instances 5247–9481、batches=2、modelBuilds=3、irisMiWords=16。
 - 取景说明：基准固定相机位于上方 64 格、后方 100 格，用于一次容纳全部 10000 实例做可重复测量，因此基准截图不是“贴脸铺满”视角；游戏内把相机放到人群内部即可看到从屏幕外到屏幕外的铺满效果，计数仍为真实事件规模。
 
 ### 限制
@@ -326,7 +326,7 @@
 - 00:59–01:08 另一并行 Photon 工作区基准占用了同一 GPU/窗口，期间启动的一轮样本终止并丢弃，不影响上表（上表各轮均为独占采样）。
 
 ### 证据与限制
-- 原始 summary、GPU 捕获、JFR、阶段 JSONL、截图及 SHA256：`build/agent-backups/20261026-runs/`（iris-1/2/3、iris-A4…A9、ordinary-1/B2、iris-A6-256 尸体）；修改前源码/着色器备份：`build/agent-backups/20261026-horde-opt/`。
+- 原始 summary、GPU 捕获、JFR、阶段 JSONL、截图及 SHA256：历史材料已清理（iris-1/2/3、iris-A4…A9、ordinary-1/B2、iris-A6-256 尸体）；修改前源码/着色器备份：历史材料已清理。
 - 本轮未完成：E4 换包/重载/窗口变化；区域 3 格净空与平滑退出的游戏内定量（俯视截图未形成可测净空，仅契约单测通过）；首帧≤100 ms（STABILIZE 仍 216–341 ms）；LOD 外观美术接受。真实事件已取得发光/近中远/动画/镜头移动部分证据。不能以本轮 PASSED 或数值代替这些门禁。
 - 世界 GPU 为 GameRenderer 30 s 独立捕获均值，帧间隔为完整 MEASURE；两组窗口不同，不能相减或相加做成本分摊。`expand/copy` 为整 draw 内阶段和，跨版本单次轮换样本不可直接比较。
 
@@ -337,7 +337,7 @@
 - Debug 求值：`HordeVisualConfig` 动画帧/LOD/ENABLED=`4/true/true`；`HordeGpuRenderer.statistics()` 为 `modelBuilds=3, irisMiWords=16, irisSlots=2, lightSections=374`；`HordeClient.batches()` 合计 9434，说明三档模型与双缓冲工作集在真实事件路径建立。
 - 画面：夜间单位红色发光可见；近/中/远三档取景均可见单位；同机位 650ms 两帧位姿变化而计数稳定；镜头 x=110→60 移动后单位持续可见。未做量化区域净空、E4 换包/重载与真实事件 256 尸体。
 - 回归单测：IDEA JUnit 配置 `HordeRegionTest`（含 `bodyGapKeepsThreeBlockClearanceWithoutExpandingHeight`、`interruptedEntryAndExitRemainContinuous`、`integerRegionCoversNegativeCoordinatesAtEverySubmissionTier`）、`HordeSpatialFieldTest`、`HordeRulesTest`、`HordeCleanupTest`（200tick 尸体规则）、`HordeOptimizationTest` 均退出 0，未出现失败；它们是契约级证据，不替代游戏内区域定量观察。
-- 限制与清理：期间一个用户临时断点（ClientRuntimeEvents:95）多次暂停线程导致截图超时，采用会话级断点静音后恢复 false，未删除用户断点；事件用 `/lobecorp horde clear` 清除、平台方块回填空气、测试牛清理、保存退出到标题，Debug 会话停止，游戏进程退出。截图与说明：`build/agent-backups/20261026-runtime-event/`。
+- 限制与清理：期间一个用户临时断点（ClientRuntimeEvents:95）多次暂停线程导致截图超时，采用会话级断点静音后恢复 false，未删除用户断点；事件用 `/lobecorp horde clear` 清除、平台方块回填空气、测试牛清理、保存退出到标题，Debug 会话停止，游戏进程退出。截图与说明：历史材料已清理。
 
 ## 2026-10-25极端优化实机测试与历史对照
 

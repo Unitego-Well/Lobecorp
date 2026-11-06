@@ -256,7 +256,13 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 			}
 			var createScope = diagnostic ? PhotonFXLoadDiagnosticsUtil.begin(Stage.TEMPLATE_CREATE) : null;
 			try {
-				candidate = PhotonSpawnTemplateUtil.create(this);
+				program = PhotonSpawnTemplateUtil.program(this);
+				candidate = PhotonSpawnTemplateUtil.instantiate(this, program);
+
+				if (program != null && program.reusable()) {
+					preparedProgram = program;
+				}
+
 				if (diagnostic) {
 					createScope.returned(candidate);
 				}

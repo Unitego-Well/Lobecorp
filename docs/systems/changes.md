@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-11-07：模型特效演示与编辑器依赖适配
+
+- 新增独立星环花瓣模型工程 assets/lobecorp/fx/demos/queen_starbloom.mfxproj，使用31部件、931四边面及90tick循环片段，未替换女皇技能资源。通过游戏内模型事务验证、保存及三个阶段截图，当前仅编辑器演示，不作战斗或性能验收。
+- 修复 LDLib2 26.1.2.45 编辑器菜单方法迁移后两处 Mixin 目标失效：ViewMenu 缩放回调改为 lambda$addScaleLeaf$1，AppearanceSettings 窗口分支改为 applyScreenScale。通过依赖源码/字节码核对、编译及实际创建模型编辑器验证。
+
 ## 2026-11-07：女皇工作区同步与构建恢复
 
 - Gradle 端口来源增加项目属性，女皇分支在 gradle.properties 指定19879，避免未设置环境变量时因缺少本机 .codex/config.toml 阻断配置。环境变量仍优先，其他工作区合并时保留各自端口。

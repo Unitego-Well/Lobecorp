@@ -10,6 +10,17 @@ MCP `effect_capabilities` 直接枚举原生 `PhotonRegistries.MATERIALS` 和 `M
 
 文档中的 [Sections](https://low-drag-mc.github.io/LowDragMC-Doc/zh/photon2/timeline/sections.html) 标注自 2.2.11；实际 `26.1.2.10` 的 `FXRuntime` 没有 `sections()`，依赖中也无 `SectionControl`。本轮不以该页面为由删除命名播放、参数绑定和子窗口控制，不宣称已接入区段播放。
 
+其余候选按实际 `.10` API 核对后的边界：
+
+| 自有职责 | 原生能力 | 本轮处理 |
+|---|---|---|
+| 材质和模型来源类型发现 | `PhotonRegistries.MATERIALS` / `MODEL_SOURCES`，包括原生 `kila_material` | MCP直接枚举，现有事务继续使用原生Codec；不另写Kila材质实现 |
+| 动态模型与可编辑 `.mfxproj` | `IDynamicMesh` 提供拓扑、revision、CPU/GPU几何，`DynamicMeshSource` 是运行覆盖 | 保留编辑、持久化、部件片段和事务能力；动态网格接口本身不能等价替代文件与编辑契约 |
+| 子效果生成与独立生命周期 | `FXInstanceObject` 放置来源效果、保留覆盖与嵌套时间轴 | 保留 `PhotonChildSpawner` 的 PROJECT模板、间隔/速率生成、实例配额和独立寿命；不把静态放置当成等价生成器 |
+| 命名播放、阶段保持与参数绑定 | 本分支无Sections；普通Timeline与Signal仍可用 | 保留现有功能和资源，不做缺乏对应API的删除 |
+
+GUI无需外观调整，但格式、生命周期、revision和MCP写入保护仍是功能契约，不能因降低外观验收标准而移除。
+
 验证：IDEA 同步成功，`compileJava compileBenchJava jar` 成功；两份修改 Java 文件无错误，保留既有未使用方法、Stream 写法和借用 Prepared 等警告。用户要求游戏搁置，本轮不启动客户端，不进行 GUI 外观、实际 MCP 调用、游戏视觉或性能验收。API 编译和静态接线不能替代实际调用。
 
 ## 2026-11-01 主工作区版本同步

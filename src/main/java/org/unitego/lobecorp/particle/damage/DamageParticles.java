@@ -6,6 +6,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -21,13 +23,19 @@ public class DamageParticles {
 
 	@SuppressWarnings("resource")
 	public static void onDamage(LivingDamageEvent.Post event) {
-		var target = event.getEntity();
-		float amount = event.getHealthDamage();
+		send(event.getEntity(), event.getSource(), healthAndAbsorption(event), DamageParticlePayload.DAMAGE);
+	}
+
+	public static float healthAndAbsorption(LivingDamageEvent.Post event) {
+		return event.getHealthDamage() + Math.max(0.0F,
+				Math.min(event.getReduction(DamageContainer.Reduction.ABSORPTION), event.getInflictedDamage()));
+	}
+
+	public static void send(LivingEntity target, DamageSource source, float amount, int kind) {
 		if (!(target.level() instanceof ServerLevel level) || !Float.isFinite(amount) || amount <= 0.0F) {
 			return;
 		}
 
-		DamageSource source = event.getSource();
 		Identifier damageType = level.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getKey(source.type());
 		if (damageType == null) {
 			return;
@@ -38,7 +46,7 @@ public class DamageParticles {
 		Entity causingEntity = source.getEntity();
 		Optional<UUID> attacker = causingEntity == null ? Optional.empty() : Optional.of(causingEntity.getUUID());
 		var payload = new DamageParticlePayload(level.dimension(), target.getUUID(), attacker,
-				damageType, position, amount, target.getMaxHealth(), hit.melee());
+				damageType, position, amount, target.getMaxHealth(), hit.melee(), kind);
 		PacketDistributor.sendToPlayersNear(level, null, position.x, position.y, position.z, SYNC_RANGE, payload);
 	}
 

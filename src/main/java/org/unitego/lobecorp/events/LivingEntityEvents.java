@@ -10,6 +10,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
@@ -33,6 +34,12 @@ import org.unitego.lobecorp.world.horde.HordeRuntime;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LivingEntityEvents {
+	@SubscribeEvent
+	public static void onLivingKnockBack(LivingKnockBackEvent event) {
+		if (event.getEntity().lobecorp$isShieldBlocked()) {
+			event.setCanceled(true);
+		}
+	}
 	@SubscribeEvent
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {
@@ -83,7 +90,7 @@ public class LivingEntityEvents {
 			}
 		}
 		DamageParticles.onDamage(event);
-		if (event.getEntity().lobecorp$getDamageContext() == null && event.getHealthDamage() > 0) {
+		if (event.getEntity().lobecorp$getDamageContext() == null && DamageParticles.healthAndAbsorption(event) > 0) {
 			PlayerDamageFilterPayload.send(event.getEntity(), 1);
 		}
 	}

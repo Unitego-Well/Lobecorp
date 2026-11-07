@@ -8,6 +8,21 @@ import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
 
 /// 通过 Interface Injection 暴露生物资源和当前伤害上下文；运行态由 LivingEntityMixin 实现。
 public interface ILivingEntityExpand {
+	default boolean lobecorp$isShieldBlocked() {
+		throw new NoMixinException();
+	}
+
+	default void lobecorp$setShieldBlocked(boolean blocked) {
+		throw new NoMixinException();
+	}
+
+	default boolean lobecorp$isCapturingShieldBlock() {
+		throw new NoMixinException();
+	}
+
+	default void lobecorp$setCapturingShieldBlock(boolean capture) {
+		throw new NoMixinException();
+	}
 	default float lobecorp$getRationality() {
 		return LcDamageUtil.getRationality((LivingEntity) this);
 	}

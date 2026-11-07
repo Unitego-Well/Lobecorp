@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.particle.screen;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -49,7 +50,7 @@ public class ScreenParticles {
 		var player = Minecraft.getInstance().player;
 		boolean centered = payload.melee() && player != null
 				&& payload.attacker().filter(player.getUUID()::equals).isPresent();
-		var key = new MergeKey(payload.attacker(), payload.target(), payload.damageType());
+		var key = new MergeKey(payload.attacker(), payload.target(), payload.damageType(), payload.feedbackKind());
 		int lifetime = DamageParticleConfig.LIFETIME_TICKS.get();
 		boolean mergeEnabled = DamageParticleConfig.MERGE_ENABLED.get();
 		if (!mergeEnabled) {
@@ -59,6 +60,7 @@ public class ScreenParticles {
 		}
 
 		var entry = acquire(payload.position(), centered, lifetime);
+		entry.feedbackKind = payload.feedbackKind();
 		entry.amount = payload.amount();
 		entry.lastHitTick = clientTick;
 		updateDamageRatio(entry, payload.maxHealth());
@@ -120,8 +122,7 @@ public class ScreenParticles {
 			}
 
 			if (entry.formattedAmount != null && entry.outlineColor != outlineColor) {
-				entry.outlineColor = outlineColor;
-				entry.content = new ScreenTextContent(Component.literal(entry.formattedAmount), outlineColor);
+				updateDamageContent(entry);
 			}
 		}
 
@@ -139,6 +140,17 @@ public class ScreenParticles {
 		ScreenParticleRenderer.beginFrame(graphics);
 		// 使用本地客户端时钟的部分刻；该接口仍会在暂停时返回固定的暂停残余值。
 		float partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
+		float totalWidth = 0;
+		Vec3 meleeAnchor = null;
+		for (var entry : ACTIVE) {
+			if (entry.centered && entry.formattedAmount != null && entry.expiresTick - clientTick - partialTick > 0) {
+				if (meleeAnchor == null) {
+					meleeAnchor = entry.renderAnchor == null ? ScreenParticleRenderer.centerAnchor(entry.position) : entry.renderAnchor;
+				}
+				totalWidth += ScreenParticleRenderer.layoutWidth(entry.content, entry.damageRatio);
+			}
+		}
+		float cursor = -totalWidth / 2;
 		for (var entry : ACTIVE) {
 			float age = clientTick - entry.bornTick + partialTick;
 			float remaining = entry.expiresTick - clientTick - partialTick;
@@ -153,9 +165,19 @@ public class ScreenParticles {
 				}
 			}
 
+			float offset = 0;
+			if (entry.centered && entry.formattedAmount != null) {
+				if (meleeAnchor == null) {
+					continue;
+				}
+				entry.renderAnchor = meleeAnchor;
+				float width = ScreenParticleRenderer.layoutWidth(entry.content, entry.damageRatio);
+				offset = cursor + width / 2;
+				cursor += width;
+			}
 			float impactAge = clientTick - entry.lastHitTick + partialTick;
 			ScreenParticleRenderer.render(graphics, entry.content, entry.renderAnchor, age, remaining,
-					entry.damageRatio, impactAge);
+					entry.damageRatio, impactAge, offset);
 		}
 	}
 
@@ -217,11 +239,12 @@ public class ScreenParticles {
 
 	/// 使用最近命中的生命上限快照；无效分母只停用冲击强度，不丢弃已结算数字。
 	private static void updateDamageRatio(Entry entry, float maxHealth) {
-		entry.damageRatio = Float.isFinite(maxHealth) && maxHealth > 0 ? (float) (entry.amount / maxHealth) : 0;
+		entry.damageRatio = entry.feedbackKind == DamageParticlePayload.SHIELD || recovery(entry.feedbackKind) ? Float.NaN
+				: Float.isFinite(maxHealth) && maxHealth > 0 ? (float) (entry.amount / maxHealth) : 0;
 	}
 
 	private static void updateDamageContent(Entry entry) {
-		String formatted = DAMAGE_FORMAT.format(entry.amount);
+		String formatted = (recovery(entry.feedbackKind) ? "+" : "") + DAMAGE_FORMAT.format(entry.amount);
 		int outlineColor = DamageParticleConfig.OUTLINE_COLOR.get();
 		if (formatted.equals(entry.formattedAmount) && entry.outlineColor == outlineColor) {
 			return;
@@ -229,7 +252,16 @@ public class ScreenParticles {
 
 		entry.formattedAmount = formatted;
 		entry.outlineColor = outlineColor;
-		entry.content = new ScreenTextContent(Component.literal(formatted), outlineColor);
+		var text = Component.literal(formatted);
+		if (recovery(entry.feedbackKind)) {
+			text.withStyle(ChatFormatting.GREEN);
+		}
+		entry.content = new ScreenTextContent(text, outlineColor);
+	}
+
+	private static boolean recovery(int kind) {
+		return kind == DamageParticlePayload.RECOVERY || kind == DamageParticlePayload.RECOVERY_SPIRIT
+				|| kind == DamageParticlePayload.RECOVERY_SOUL;
 	}
 
 	private static Entry acquire(Vec3 position, boolean centered, int lifetime) {
@@ -289,7 +321,7 @@ public class ScreenParticles {
 		}
 	}
 
-	private record MergeKey(Optional<UUID> attacker, UUID target, Identifier damageType) {
+	private record MergeKey(Optional<UUID> attacker, UUID target, Identifier damageType, int feedbackKind) {
 	}
 
 	private static class Entry {
@@ -302,6 +334,7 @@ public class ScreenParticles {
 		private long expiresTick;
 		private long lastHitTick;
 		private double amount;
+		private int feedbackKind;
 		/// NaN 表示非伤害内容，使用普通尺寸且不施加伤害震动。
 		private float damageRatio = Float.NaN;
 		private String formattedAmount;
@@ -317,6 +350,7 @@ public class ScreenParticles {
 			expiresTick = 0;
 			lastHitTick = 0;
 			amount = 0;
+			feedbackKind = DamageParticlePayload.DAMAGE;
 			damageRatio = Float.NaN;
 			formattedAmount = null;
 			outlineColor = 0;

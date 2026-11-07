@@ -1,6 +1,9 @@
 package org.unitego.lobecorp.util.entity.damage;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import net.minecraft.world.entity.Entity;
+import java.util.function.BooleanSupplier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -15,8 +18,29 @@ import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
 import org.unitego.lobecorp.world.entity.damage.LcResourceState;
+import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
 
 public class LcDamageUtil {
+	/// 调用方只捕获紧邻伤害调用的结果，返回后立即恢复目标的运行态。
+	public static boolean captureShieldBlock(Entity target, BooleanSupplier hurt, LocalBooleanRef blocked) {
+		blocked.set(false);
+		if (!(target instanceof LivingEntity living)) {
+			return hurt.getAsBoolean();
+		}
+
+		boolean previousCapture = living.lobecorp$isCapturingShieldBlock();
+		boolean previousBlocked = living.lobecorp$isShieldBlocked();
+		living.lobecorp$setCapturingShieldBlock(true);
+		try {
+			boolean result = hurt.getAsBoolean();
+			blocked.set(result && living.lobecorp$isShieldBlocked());
+			return result;
+		} finally {
+			living.lobecorp$setCapturingShieldBlock(previousCapture);
+			living.lobecorp$setShieldBlocked(previousBlocked);
+		}
+	}
 	public static LcResourceState fullResources(IAttachmentHolder holder) {
 		if (holder instanceof LivingEntity entity) {
 			float rationality = getMaxRationality(entity);
@@ -56,6 +80,12 @@ public class LcDamageUtil {
 	public static void applyResourceDamage(LivingEntity entity, LcDamageType type, float damage, DamageSource source) {
 		float current = type == LcDamageType.SPIRIT ? getRationality(entity) : getTheSoul(entity);
 		setResource(entity, type, current - damage, source);
+		float after = type == LcDamageType.SPIRIT ? getRationality(entity) : getTheSoul(entity);
+		boolean spirit = type == LcDamageType.SPIRIT;
+		int kind = after > current
+				? (spirit ? DamageParticlePayload.RECOVERY_SPIRIT : DamageParticlePayload.RECOVERY_SOUL)
+				: (spirit ? DamageParticlePayload.DAMAGE_SPIRIT : DamageParticlePayload.DAMAGE_SOUL);
+		DamageParticles.send(entity, source, Math.abs(after - current), kind);
 	}
 
 	public static void refreshResources(LivingEntity entity) {
@@ -136,6 +166,9 @@ public class LcDamageUtil {
 	public static float afterDamagePre(LivingEntity entity, DamageContainer container, float damage) {
 		LcDamageContext context = entity.lobecorp$getDamageContext();
 		if (context == null || !context.isPrepared()) {
+			if (damage > 0) {
+				entity.lobecorp$setShieldBlocked(false);
+			}
 			return damage;
 		}
 

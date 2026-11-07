@@ -108,8 +108,23 @@ public class ScreenParticleRenderer {
 		return anchor.isFinite() ? anchor : null;
 	}
 
+	/// 覆盖当前数字的描边、弹出峰值与震动边界，供原有列表并排布局。
+	public static float layoutWidth(IScreenParticleContent content, float damageRatio) {
+		boolean damage = !Float.isNaN(damageRatio);
+		float ratio = damage ? Mth.clamp(damageRatio, 0, MAX_DAMAGE_RATIO) : 0;
+		float peak = PEAK_SCALE * (damage ? damageScale(ratio) : 1);
+		float shake = damage ? ratio / MAX_DAMAGE_RATIO : 0;
+		return peak * (content.width() + content.height() * (float) Math.sin(MAX_SHAKE_ANGLE * shake))
+				+ 2 * MAX_SHAKE_PIXELS * shake + 2;
+	}
+
 	public static void render(GuiGraphicsExtractor graphics, IScreenParticleContent content, Vec3 position,
 	                          float ageTicks, float remainingTicks, float damageRatio, float impactAge) {
+		render(graphics, content, position, ageTicks, remainingTicks, damageRatio, impactAge, 0);
+	}
+
+	public static void render(GuiGraphicsExtractor graphics, IScreenParticleContent content, Vec3 position,
+	                          float ageTicks, float remainingTicks, float damageRatio, float impactAge, float offsetX) {
 		if (!(remainingTicks > 0) || !project(position)) {
 			return;
 		}
@@ -131,7 +146,7 @@ public class ScreenParticleRenderer {
 		var pose = graphics.pose();
 		pose.pushMatrix();
 		try {
-			pose.translate(x + shakeX, y - drift + shakeY);
+			pose.translate(x + offsetX + shakeX, y - drift + shakeY);
 			pose.rotate(shakeAngle);
 			pose.scale(scale);
 			if (intersectsScreen(pose, content.width(), content.height())) {

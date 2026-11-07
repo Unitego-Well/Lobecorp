@@ -4,6 +4,9 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -30,6 +33,30 @@ import java.util.Stack;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin implements ILivingEntityExpand {
+	@Unique
+	private boolean lobecorp$shieldBlocked;
+	@Unique
+	private boolean lobecorp$capturingShieldBlock;
+
+	@Override
+	public boolean lobecorp$isShieldBlocked() {
+		return lobecorp$shieldBlocked;
+	}
+
+	@Override
+	public void lobecorp$setShieldBlocked(boolean blocked) {
+		lobecorp$shieldBlocked = blocked;
+	}
+
+	@Override
+	public boolean lobecorp$isCapturingShieldBlock() {
+		return lobecorp$capturingShieldBlock;
+	}
+
+	@Override
+	public void lobecorp$setCapturingShieldBlock(boolean capture) {
+		lobecorp$capturingShieldBlock = capture;
+	}
 	@Shadow
 	protected Stack<DamageContainer> damageContainers;
 	@Unique
@@ -56,11 +83,47 @@ public abstract class LivingEntityMixin implements ILivingEntityExpand {
 	@WrapMethod(method = "hurtServer")
 	private boolean lobecorp$withDamageContext(ServerLevel level, DamageSource source, float damage, Operation<Boolean> original) {
 		LcDamageContext previous = lobecorp$damageContext;
+		boolean previousBlocked = lobecorp$shieldBlocked;
+		boolean captureThis = lobecorp$capturingShieldBlock;
+		lobecorp$capturingShieldBlock = false;
+		lobecorp$shieldBlocked = false;
 		lobecorp$damageContext = LcDamageContext.create(source);
 		try {
 			return original.call(level, source, damage);
 		} finally {
 			lobecorp$damageContext = previous;
+			lobecorp$capturingShieldBlock = captureThis;
+			if (!captureThis) {
+				lobecorp$shieldBlocked = previousBlocked;
+			}
+		}
+	}
+
+	@WrapOperation(method = "hurtServer", at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/LivingEntity;hurtTime:I", opcode = 181))
+	private void lobecorp$shieldHurtTime(LivingEntity entity, int value, Operation<Void> original) {
+		if (!lobecorp$shieldBlocked) {
+			original.call(entity, value);
+		}
+	}
+
+	@WrapOperation(method = "hurtServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;broadcastDamageEvent(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;)V"))
+	private void lobecorp$shieldBroadcast(ServerLevel level, Entity entity, DamageSource source, Operation<Void> original) {
+		if (!lobecorp$shieldBlocked) {
+			original.call(level, entity, source);
+		}
+	}
+
+	@WrapOperation(method = "hurtServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;indicateDamage(DD)V"))
+	private void lobecorp$shieldIndication(LivingEntity entity, double x, double z, Operation<Void> original) {
+		if (!lobecorp$shieldBlocked) {
+			original.call(entity, x, z);
+		}
+	}
+
+	@WrapOperation(method = "hurtServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;markHurt()V"))
+	private void lobecorp$shieldImpact(LivingEntity entity, Operation<Void> original) {
+		if (!lobecorp$shieldBlocked) {
+			original.call(entity);
 		}
 	}
 
@@ -115,6 +178,18 @@ public abstract class LivingEntityMixin implements ILivingEntityExpand {
 		if (StunMobEffect.preventsActions((LivingEntity) (Object) this)) {
 			cir.setReturnValue(false);
 		}
+	}
+
+	@WrapOperation(method = "stabAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;hurtServer(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)Z"))
+	private boolean lobecorp$captureStabShieldBlock(Entity target, ServerLevel level, DamageSource source, float damage,
+	                                               Operation<Boolean> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
+		return LcDamageUtil.captureShieldBlock(target, () -> original.call(target, level, source, damage), blocked);
+	}
+
+	@WrapOperation(method = "stabAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;causeExtraKnockback(Lnet/minecraft/world/entity/Entity;FLnet/minecraft/world/phys/Vec3;)V"))
+	private void lobecorp$shieldStabKnockback(LivingEntity entity, Entity target, float strength, Vec3 movement,
+	                                         Operation<Void> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
+		original.call(entity, target, blocked.get() ? 0.0F : strength, movement);
 	}
 
 	/// 原版死亡流程直接清空效果表，因此需要在清空前主动移除效果提供的属性修饰符。

@@ -24,7 +24,14 @@ import static org.unitego.lobecorp.Lobecorp.id;
 /// 一次已结算伤害的不可变快照；最大生命值取自此次服务端伤害结算，位置冻结在发生世界。
 public record DamageParticlePayload(ResourceKey<Level> dimension, UUID target, Optional<UUID> attacker,
                                     Identifier damageType, Vec3 position, float amount, float maxHealth,
-                                    boolean melee) implements IToClientPayload {
+                                    boolean melee, int feedbackKind) implements IToClientPayload {
+	public static final int DAMAGE = 0, SHIELD = 1, RECOVERY = 2, RECOVERY_SPIRIT = 3,
+			RECOVERY_SOUL = 4, DAMAGE_SPIRIT = 5, DAMAGE_SOUL = 6;
+
+	public DamageParticlePayload(ResourceKey<Level> dimension, UUID target, Optional<UUID> attacker,
+	                             Identifier damageType, Vec3 position, float amount, float maxHealth, boolean melee) {
+		this(dimension, target, attacker, damageType, position, amount, maxHealth, melee, DAMAGE);
+	}
 	public static final Type<DamageParticlePayload> TYPE = new Type<>(id("damage_particle"));
 	public static final StreamCodec<RegistryFriendlyByteBuf, DamageParticlePayload> STREAM_CODEC = StreamCodec.composite(
 			ResourceKey.streamCodec(Registries.DIMENSION), DamageParticlePayload::dimension,
@@ -34,8 +41,11 @@ public record DamageParticlePayload(ResourceKey<Level> dimension, UUID target, O
 			Vec3.STREAM_CODEC, DamageParticlePayload::position,
 			ByteBufCodecs.FLOAT, DamageParticlePayload::amount,
 			ByteBufCodecs.FLOAT, DamageParticlePayload::maxHealth,
-			ByteBufCodecs.BOOL, DamageParticlePayload::melee,
-			DamageParticlePayload::new);
+			ByteBufCodecs.VAR_INT, payload -> payload.feedbackKind() << 1 | (payload.melee() ? 1 : 0),
+			(dimension, target, attacker, damageType, position, amount, maxHealth, presentation) ->
+					new DamageParticlePayload(dimension, target, attacker, damageType, position, amount, maxHealth,
+							(presentation & 1) != 0, presentation >>> 1));
+
 
 	@Override
 	public @NonNull Type<? extends CustomPacketPayload> type() {

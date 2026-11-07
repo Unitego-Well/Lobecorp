@@ -7,6 +7,8 @@ import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
 import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
+import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -24,6 +26,7 @@ public class LcDamageContext {
 	private boolean prepared;
 	private boolean accepted;
 	private int filterChannels;
+	private boolean shieldAbsorbed;
 
 	private LcDamageContext(Set<LcDamageType> types) {
 		this.types = types;
@@ -121,6 +124,7 @@ public class LcDamageContext {
 		float erosion = positive - physics;
 		physics = LcShieldUtil.absorb(entity, LcDamageType.PHYSICS, physics);
 		erosion = LcShieldUtil.absorb(entity, LcDamageType.EROSION, erosion);
+		shieldAbsorbed |= physics + erosion < positive;
 		if (physics > 0) {
 			filterChannels |= 1 << LcDamageType.PHYSICS.ordinal();
 		}
@@ -139,11 +143,15 @@ public class LcDamageContext {
 		}
 
 		if (pendingHealing > 0.0F) {
+			float before = entity.getHealth();
 			entity.heal(pendingHealing);
+			DamageParticles.send(entity, source, entity.getHealth() - before, DamageParticlePayload.RECOVERY);
 		}
 
 		if (spiritDamage != 0.0F) {
+			float beforeShield = spiritDamage;
 			spiritDamage = LcShieldUtil.absorb(entity, LcDamageType.SPIRIT, spiritDamage);
+			shieldAbsorbed |= beforeShield > 0 && spiritDamage < beforeShield;
 			LcDamageUtil.applyResourceDamage(entity, LcDamageType.SPIRIT, spiritDamage, source);
 			if (spiritDamage > 0) {
 				filterChannels |= 1 << LcDamageType.SPIRIT.ordinal();
@@ -151,13 +159,16 @@ public class LcDamageContext {
 		}
 
 		if (soulDamage != 0.0F) {
+			float beforeShield = soulDamage;
 			soulDamage = LcShieldUtil.absorb(entity, LcDamageType.THE_SOUL, soulDamage);
+			shieldAbsorbed |= beforeShield > 0 && soulDamage < beforeShield;
 			LcDamageUtil.applyResourceDamage(entity, LcDamageType.THE_SOUL, soulDamage, source);
 			if (soulDamage > 0) {
 				filterChannels |= 1 << LcDamageType.THE_SOUL.ordinal();
 			}
 		}
 
+		entity.lobecorp$setShieldBlocked(shieldAbsorbed && filterChannels == 0);
 		PlayerDamageFilterPayload.send(entity, filterChannels);
 	}
 }

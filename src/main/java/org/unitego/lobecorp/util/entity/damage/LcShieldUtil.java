@@ -5,6 +5,8 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import org.unitego.lobecorp.api.LcDamageType;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
+import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
 import org.unitego.lobecorp.config.server.ShieldConfig;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.effect.LcMobEffects;
@@ -98,8 +100,12 @@ public class LcShieldUtil {
 		}
 
 		float absorbed = Math.min(damage, pool.amount());
+		var container = entity.lobecorp$getDamageContainer();
 		float left = pool.amount() - absorbed;
 		entity.setData(LcAttachmentTypes.LC_SHIELDS, state.with(type, new LcShieldState.Pool(left, pool.maximum())));
+		if (container != null) {
+			DamageParticles.send(entity, container.getSource(), absorbed, DamageParticlePayload.SHIELD);
+		}
 		if (left <= 0) {
 			entity.removeEffect(effect(type));
 			if (ShieldConfig.ENABLE_SHIELD_DAMAGE_IMMUNITY.get()) {
@@ -112,10 +118,12 @@ public class LcShieldUtil {
 
 	/// 沿用旧项目：没有四色标记的普通伤害依次经过当前持有的护盾。
 	public static float absorbUntyped(LivingEntity entity, float damage) {
+		float incoming = damage;
 		for (var type : LcDamageType.values()) {
 			damage = absorb(entity, type, damage);
 		}
 
+		entity.lobecorp$setShieldBlocked(incoming > 0 && damage <= 0);
 		return damage;
 	}
 }

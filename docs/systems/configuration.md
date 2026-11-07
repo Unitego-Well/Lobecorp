@@ -17,6 +17,7 @@ Lobecorp仅注册一个CLIENT与一个SERVER ModConfig。ClientConfig管理lobec
   - particles：近处粒子、生成间隔/组数与范围。
   - debug：统计叠层。
 - hud/statusBars：自定义生命条。
+- hud/events/midnight_cleanup/style：深夜清扫事件整体HUD样式，DEFAULT/NEW，默认DEFAULT；独立于timerStyle。当前仅配置预留，尚未接入整体事件渲染切换，选择NEW不改变现有显示。
 - hud/filters：受伤四色与低理智滤镜。
 - damageParticles/display、merge、capacity、appearance：启用/寿命、合并、实例容量、描边。
 - visualQuality/animations、models、cache：实体动画、模型、缓存；距离迟滞仍属visualQuality根。

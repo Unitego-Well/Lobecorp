@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-11-07：预留深夜清扫事件整体HUD样式配置
+
+- PlayerHudConfig新增MIDNIGHT_CLEANUP_STYLE，键hud.events.midnight_cleanup.style，复用HudStyle.DEFAULT/NEW，默认DEFAULT。保留独立timerStyle，不改事件渲染或注册。
+- 补充中英文配置名称，通过Data生成翻译；Java25编译与IDEA检查通过，Data共23文件、写入2、删除0，中英文键值已核对；生成目录遵守原有Git忽略。未执行测试/游戏，不把配置预留当作第二种样式已经实现。保留用户头像与事件纹理WIP，不推送。
+
 ## 2026-11-07：调整玩家面板数值格式与显隐
 
 - PanelStatusBar改为当前/最大，灰色加号，理智高蓝低红（沿用0.7与1/3阈值）。

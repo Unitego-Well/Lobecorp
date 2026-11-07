@@ -7,7 +7,7 @@ import org.unitego.lobecorp.api.LcDamageType;
 public class PlayerHudConfig {
 	public static final String PLAYER_HUD_STYLE_TRANSLATION = "lobecorp.configuration.client.hud.style.";
 	public static final ModConfigSpec.EnumValue<HealthBarStyle> HEALTH_STYLE;
-	public static final ModConfigSpec.EnumValue<HudStyle> RATIONALITY_STYLE, SHIELD_STYLE, TIMER_STYLE;
+	public static final ModConfigSpec.EnumValue<HudStyle> RATIONALITY_STYLE, SHIELD_STYLE, TIMER_STYLE, MIDNIGHT_CLEANUP_STYLE;
 	public static final ModConfigSpec.BooleanValue ENABLE_LOW_RATIONALITY_FILTER;
 	public static final ModConfigSpec.BooleanValue ENABLE_LC_COLOR_DAMAGE_FILTER;
 
@@ -29,6 +29,9 @@ public class PlayerHudConfig {
 					.defineEnum("shieldStyle", HudStyle.DEFAULT);
 			builder.pop().translation(ClientConfig.translation("hud.events", "Events", "事件")).push("events");
 			builder.translation(ClientConfig.translation("hud.events.midnight_cleanup", "Midnight cleanup", "深夜清扫")).push("midnight_cleanup");
+			MIDNIGHT_CLEANUP_STYLE = builder.comment("深夜清扫事件整体 HUD 样式；配置预留，待渲染实现接入。")
+					.translation(ClientConfig.translation("hud.events.midnight_cleanup.style", "Event HUD style", "事件界面样式"))
+					.defineEnum("style", HudStyle.DEFAULT);
 			TIMER_STYLE = builder.comment("深夜清扫计时器显示样式。")
 					.translation(ClientConfig.translation("hud.timerStyle", "Timer style", "计时器样式"))
 					.defineEnum("timerStyle", HudStyle.DEFAULT);

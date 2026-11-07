@@ -3,7 +3,7 @@
 > 通用规则使用[共享全局工作协议](C:/Users/wang_/.agents/AGENTS.md)；本文件维护当前目录的项目专属约束，用户当前明确指令优先。工具选择使用[智能路由](C:/Users/wang_/.agents/skills/windows-jvm-smart-routing/SKILL.md)。  
 > 嵌套仓库（例如 `run/client/*`）内部的 `AGENTS.md` 只对其自身仓库生效。
 
-本入口与所链接的项目正文供读取它们的客户端共享。GPT/Codex 的模型委派按其全局规则执行，不作为 DS/DeepSeek Harness 的模型要求；DS/DeepSeek-Harness 必须同时执行[DS 执行规则](docs/standards/ds-execution-rules.md)；工具能力以各客户端实际提供的接口为准。
+本入口与所链接的项目正文供读取它们的客户端共享。GPT子代理按其全局规则委派，不冒称DS；DS调用入口遵守[通用规则版本化快照](docs/standards/ds-collaboration.md)；DS/DeepSeek-Harness 必须同时执行[DS 执行规则](docs/standards/ds-execution-rules.md)；工具能力以各客户端实际提供的接口为准。
 
 ## 开始任务前
 

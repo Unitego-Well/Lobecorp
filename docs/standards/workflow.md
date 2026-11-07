@@ -145,7 +145,4 @@
 
 ## DS 辅助模型与路由
 
-- DS 辅助使用软件现有模型目录中的 `deepseek-v4.1-flash（DeepSeek 中转站）`，选择模型支持的最低推理档；2026-10-31 核对的实际 ID 为 `ccs-deepseek-2/deepseek-v4.1-flash`，最低档为 `low`。每次分派前核对显示名称与实际 ID，不手填固定路由、不创建自定义模型；目录变化时仍须符合用户指定的中转站与模型。
-- 不使用旧的 `deepseek-flash`、标注为“DeepSeek”的其他提供方条目、Pro 或其他模型替代指定的 `deepseek-v4.1-flash（DeepSeek 中转站）`；不可用时如实报告，不自动回退。
-- 子代理列表看不到该 DS 时，使用用户授权的独立 DS 辅助对话；不冒称其他模型为 DS，不自行切换主对话模型或修改全局模型、代理配置。
-- 故障与余额判断必须对应实际提供方和路由，不将另一条路由的报错推断为“DeepSeek 中转站”不可用。
+DS调用入口、指定中转Flash/low偏好、实际profile/provider/model核对与不可用时的接手边界统一遵守[DS协作规则版本化快照](ds-collaboration.md#当前已确认的中转模型)。本项目不保留独立Codex DS聊天、Codex DS子代理或直连API兜底。

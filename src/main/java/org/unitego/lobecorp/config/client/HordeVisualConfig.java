@@ -43,7 +43,7 @@ public class HordeVisualConfig {
 			SOUND_RANGE = b.comment("环境声最大距离，实际还受事件订阅范围限制；不增加可见模型或粒子范围。")
 					.translation(HordeLang.config("visual.sound_range", "Ambient sound range", "环境音效范围"))
 					.defineInRange("soundRange", 256, 16, 1024);
-			SOUND_MAX_ACTIVE = b.translation(HordeLang.config("visual.sound_max_active", "Maximum concurrent ambient sounds", "环境音效并发上限"))
+			SOUND_MAX_ACTIVE = b.translation(HordeLang.config("visual.sound_max_active", "Base ambient sound concurrency", "环境音效基础并发额度"))
 					.defineInRange("soundMaxActive", 4, 1, 16);
 			EVENT_SHAKE = b.translation(HordeLang.config("visual.event_shake", "Wave camera shake", "浪潮镜头震动")).define("eventShake", true);
 			LANDING_SHAKE = b.translation(HordeLang.config("visual.landing_shake", "Sweeper landing shake", "清道夫落地震动")).define("landingShake", true);

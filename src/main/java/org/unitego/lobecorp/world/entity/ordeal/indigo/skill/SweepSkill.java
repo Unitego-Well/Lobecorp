@@ -97,7 +97,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel && runtime.activeTicks() > 0 && runtime.activeTicks() % 12 == 0) {
+		if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
 			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
 		}
 		Entity target = runtime.target();

@@ -52,6 +52,11 @@ public interface SweeperSkills {
 					.recoveryTicks(CLEANUP_RECOVERY_TICKS)
 					.cooldownTicks(10));
 
+	/// 清扫进行声为原每12刻的2.2倍：每60刻11次，用整数累计保持5/6刻节奏。
+	static boolean cleanupSoundTick(int activeTick) {
+		return activeTick > 0 && (long) activeTick * 11 / 60 != (long) (activeTick - 1) * 11 / 60;
+	}
+
 	/// 强制初始化清道夫技能注册声明。
 	static void init() {
 	}

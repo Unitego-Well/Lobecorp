@@ -38,12 +38,11 @@ public class PlayerAvatar extends BasicHudRenderer {
 		}
 
 		var skin = player.getSkin().body().texturePath();
-		float faceInset = headSize / 2F;
+		float faceInset = (headSize * hatScale - headSize) / 2F;
 		float hatSize = headSize * hatScale;
-		float hatInset = hatSize / 2F;
 		graphics.lobecorp$blit(RenderPipelines.GUI_TEXTURED, skin, x + faceInset, y + faceInset,
 				8, 8, headSize, headSize, 8, 8, 64, 64);
-		graphics.lobecorp$blit(RenderPipelines.GUI_TEXTURED, skin, x + hatInset, y + hatInset,
+		graphics.lobecorp$blit(RenderPipelines.GUI_TEXTURED, skin, x, y,
 				40, 8, hatSize, hatSize, 8, 8, 64, 64);
 	}
 }

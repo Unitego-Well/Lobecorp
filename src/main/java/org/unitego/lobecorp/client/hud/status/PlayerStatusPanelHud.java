@@ -31,7 +31,7 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 		var background = TextureHudRenderer.sprite(AVATAR_BOX);
 		background.setSize(AVATAR_SIZE, AVATAR_SIZE);
 		add(background);
-		avatar.setPosition(0, 0);
+		avatar.setPosition((AVATAR_SIZE - avatar.getWidth()) / 2F, (AVATAR_SIZE - avatar.getHeight()) / 2F);
 		healthBar.setPosition(AVATAR_SIZE, 8);
 		rationalityBar.setPosition(AVATAR_SIZE, 25);
 		add(avatar);

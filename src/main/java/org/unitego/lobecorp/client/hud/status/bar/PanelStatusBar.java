@@ -67,6 +67,7 @@ public class PanelStatusBar extends StatusBarComponent {
 		segments = new Segment[rationality ? 2 : 4];
 		numberAmounts = new float[segments.length];
 		numbers.setVisible(false);
+		numbers.setShadow(true);
 		for (int index = 0; index < segments.length; index++) {
 			segments[index] = new Segment(index == 0 ? gauge : new StatusGauge(valueWidth, BAR_HEIGHT, valueWidth),
 					TextureHudRenderer.sprite(valueTexture(rationality, 0)));
@@ -146,15 +147,16 @@ public class PanelStatusBar extends StatusBarComponent {
 			case 1 -> ChatFormatting.RED;
 			default -> ChatFormatting.WHITE;
 		} : ChatFormatting.WHITE;
-		var text = Component.literal(format(currentValue) + " / " + format(maximumValue)).withStyle(valueColor);
+		var text = Component.literal(format(currentValue)).withStyle(valueColor);
 		if (absorption > 0) {
-			text.append(Component.literal(" + ").withStyle(ChatFormatting.GRAY))
+			text.append(Component.literal("+").withStyle(ChatFormatting.DARK_GRAY))
 					.append(Component.literal(format(absorption)).withStyle(ChatFormatting.WHITE));
 		}
 		if (shieldTotal > 0) {
-			text.append(Component.literal(" + ").withStyle(ChatFormatting.GRAY))
+			text.append(Component.literal("+").withStyle(ChatFormatting.DARK_GRAY))
 					.append(Component.literal(format(shieldTotal)).withStyle(ChatFormatting.WHITE));
 		}
+		text.append(Component.literal(" / " + format(maximumValue)).withStyle(ChatFormatting.WHITE));
 		numbers.setText(text);
 		numbers.layout();
 	}
@@ -231,6 +233,7 @@ public class PanelStatusBar extends StatusBarComponent {
 		numberMaximum = 0;
 		numberTicks = 0;
 		numbers.setVisible(false);
+		numbers.setShadow(true);
 		frameWidth = boxWidth;
 		box.setSize(frameWidth, 15);
 		for (var segment : segments) {

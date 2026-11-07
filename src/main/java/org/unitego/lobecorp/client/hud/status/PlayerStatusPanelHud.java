@@ -5,13 +5,13 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
+import org.unitego.lobecorp.client.hud.TextureHudRenderer;
 import org.unitego.lobecorp.client.hud.status.bar.PanelStatusBar;
+import org.unitego.lobecorp.client.hud.widget.PlayerAvatar;
 import org.unitego.lobecorp.config.client.HealthBarStyle;
 import org.unitego.lobecorp.config.client.HudStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
-import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
-import org.unitego.lobecorp.client.hud.TextureHudRenderer;
-import org.unitego.lobecorp.client.hud.widget.PlayerAvatar;
 
 /// 事件上方的玩家头像与状态条框。
 @NullMarked
@@ -21,9 +21,9 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 	private static final Identifier HEALTH_ICON = sprite("bar/health/icon");
 	private static final Identifier RATIONALITY_BOX = sprite("bar/rationality/box");
 	private static final Identifier RATIONALITY_ICON = sprite("bar/rationality/icon");
+	private static final int AVATAR_SIZE = 50;
 	private final PanelStatusBar healthBar = new PanelStatusBar(false, HEALTH_BOX, HEALTH_ICON);
 	private final PanelStatusBar rationalityBar = new PanelStatusBar(true, RATIONALITY_BOX, RATIONALITY_ICON);
-	private static final int AVATAR_SIZE = 50;
 	private final PlayerAvatar avatar = new PlayerAvatar(26, 1.1F);
 
 	public PlayerStatusPanelHud() {
@@ -31,7 +31,7 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 		var background = TextureHudRenderer.sprite(AVATAR_BOX);
 		background.setSize(AVATAR_SIZE, AVATAR_SIZE);
 		add(background);
-		avatar.setPosition(-1, -1);
+		avatar.setPosition(0, 0);
 		healthBar.setPosition(AVATAR_SIZE, 8);
 		rationalityBar.setPosition(AVATAR_SIZE, 25);
 		add(avatar);

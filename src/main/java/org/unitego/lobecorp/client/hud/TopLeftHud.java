@@ -8,7 +8,7 @@ import org.unitego.lobecorp.client.hud.status.PlayerStatusPanelHud;
 @NullMarked
 public class TopLeftHud extends AbstractHud {
 	public static final TopLeftHud INSTANCE = new TopLeftHud();
-	private static final int EDGE_MARGIN = 4;
+	private static final int EDGE_MARGIN = 8;
 	private static final int ELEMENT_GAP = 4;
 	private final PlayerStatusPanelHud statusPanel = new PlayerStatusPanelHud();
 

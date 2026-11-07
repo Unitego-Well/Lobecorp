@@ -509,6 +509,12 @@ public class PhotonEffectAutomation {
 		}
 
 		result.add("emitterTypes", types);
+		var materials = new JsonArray();
+		PhotonRegistries.MATERIALS.keys().forEach(materials::add);
+		result.add("materialTypes", materials);
+		var modelSources = new JsonArray();
+		PhotonRegistries.MODEL_SOURCES.keys().forEach(modelSources::add);
+		result.add("modelSourceTypes", modelSources);
 		result.addProperty("customRuntimeAvailable", false);
 		result.addProperty("modelProjectsAvailable", true);
 		result.addProperty("modelFileSupport", "validated_embedded_v1");

@@ -1,5 +1,17 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-07 女皇工作区升级
+
+本节仅适用于 `codex/queen-of-hatred`。Photon 从 `26.1.2.9` 升为官方 Maven 当前 26.1 分支发布的 `26.1.2.10`；LDLib2 `26.1.2.45`、KilaGraph `26.1.0.16.a`、Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java 25 保持。版本目录与 IDEA 实际解析均指向 `.10`，不是把 1.21.1 的 2.x 版本号直接写入本工程。
+
+依据[官方预加载接口](https://low-drag-mc.github.io/LowDragMC-Doc/zh/photon2/java-api/preloading.html)及实际 `.10` 的 `FXPreloader.SyncSink` / `walk`，根效果的 `preloadNow` 已经通过 `PreloadContext.fx` 递归准备子效果。女皇准备入口改为只对每个根执行原生预加载；后续自有遍历只读取定义、核对缺失来源并准备可选编译模式，不对子效果重复执行整套原生预热。保留自有模型和 PROJECT 模板的 `preload` 钩子，不能把自定义类型首次准备全部交给上游猜测。
+
+MCP `effect_capabilities` 直接枚举原生 `PhotonRegistries.MATERIALS` 和 `MODEL_SOURCES`，返回 `materialTypes` / `modelSourceTypes`。原生材质可通过现有 renderer SNBT/模型材质槽事务使用，原生对象和时间轴类型继续来自 Photon 注册表，不再维护一份平行类型清单。接口名称与桥接协议保持，未增加新的外部 MCP 工具。
+
+文档中的 [Sections](https://low-drag-mc.github.io/LowDragMC-Doc/zh/photon2/timeline/sections.html) 标注自 2.2.11；实际 `26.1.2.10` 的 `FXRuntime` 没有 `sections()`，依赖中也无 `SectionControl`。本轮不以该页面为由删除命名播放、参数绑定和子窗口控制，不宣称已接入区段播放。
+
+验证：IDEA 同步成功，`compileJava compileBenchJava jar` 成功；两份修改 Java 文件无错误，保留既有未使用方法、Stream 写法和借用 Prepared 等警告。用户要求游戏搁置，本轮不启动客户端，不进行 GUI 外观、实际 MCP 调用、游戏视觉或性能验收。API 编译和静态接线不能替代实际调用。
+
 ## 2026-11-01 主工作区版本同步
 
 按用户澄清，仅同步Photon工作区的PhotonMod版本升级及必需API兼容，不合入整个工作区、资源调度架构、性能工具或分支进度。版本目录三项增量来自acfbf85b，通过Git apply --3way --index应用，其他依赖版本保持。

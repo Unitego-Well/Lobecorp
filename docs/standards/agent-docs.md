@@ -18,8 +18,8 @@
 
 - 工作区根 `.agent/`：跨项目、跨仓库的报告、交接、计划与记忆。
 - `Lobecorp/.agent/`：本仓库及各 Lobecorp 工作区可共用的报告、记忆、经验与代理资料的统一正文；不提交 Git。`minecraft-mcp/.agent/` 仍仅保存其仓库内容。
-- `Lobecorp/.workspace/lobecorp_photon/.agent/`、`Lobecorp/.workspace/lobecorp_horde/.agent/`：保留所属工作的专属进度、问题、验收与原始证据；通用材料归集到原始 `Lobecorp/.agent/`，原位置保留引用。
-- 现有五个文档中心：工作区根 `.agent/`、`Lobecorp/.agent/`、`Lobecorp/.workspace/lobecorp_photon/.agent/`、`Lobecorp/.workspace/lobecorp_horde/.agent/`、`minecraft-mcp/.agent/`。
+- 历史 `Lobecorp/.workspace/lobecorp_photon/.agent/`、`Lobecorp/.workspace/lobecorp_horde/.agent/`：两工作区已于2026-11-06退役，其专属进度、问题和证据保存在完整本地归档，不再作为当前写入目标。通用正文仍在原始根 `.agent/`，恢复历史目录须另有明确授权。
+- 文档中心按实际存在目录及职责使用：上级工作区根 `.agent/` 管跨项目，原始 `Lobecorp/.agent/` 管本项目；独立 `minecraft-mcp/.agent/` 仍仅管其自身仓库。Photon/Horde历史路径不计为活动中心，不能为维护索引擅自重建。
 - 每个 `.agent/` 固定包含 `reports/`、`handoffs/`、`plans/`、`memory/`、`archive/` 与 `README.md` 索引。
 - `.agent/` 以点开头，整体不提交；各仓库根 `.gitignore` 忽略 `/.agent/`。
 

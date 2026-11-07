@@ -4,7 +4,7 @@
 
 ## 安装与运行
 
-当前工作区的 MCP 配置复用原始项目已构建的 CLI，显式 workspace-root 指向本工作区，数据和输出保持隔离；不依赖本工作区尚不存在的 dist。下列依赖安装和构建仅在明确授权维护本包时执行。
+当前仅维护原始 dev，CLI 与 workspace-root 均指向当前检出；不引用已退役子工作区。以下绝对路径为本机示例，迁移时替换为真实仓库根；数据和输出仍按显式根隔离。下列依赖安装和构建仅在明确授权维护本包时执行。
 
 需要 Node.js 22 或更新版本。仅在本包目录执行：
 
@@ -12,7 +12,7 @@
 npm ci
 npm run build
 npm run verify:protocol
-node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' serve --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde'
+node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' serve --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp'
 ```
 
 最后一条启动标准输入输出 MCP 服务；stdout 只传输协议。客户端连接配置的 command 使用 node，args 使用 CLI 的绝对路径、serve、--workspace-root 和明确仓库路径。此文档提供配置示例，不自动注册服务：
@@ -24,7 +24,7 @@ node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js'
     "E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js",
     "serve",
     "--workspace-root",
-    "E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde"
+    "E:/xm/mc/mod/Unitego-Well/Lobecorp"
   ]
 }
 ```
@@ -36,10 +36,10 @@ node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js'
 以下命令会创建或更新架构数据，需要明确要求生成架构后再执行。本包交付时不会自动为 Lobecorp 初始化数据：
 
 ```powershell
-node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' init --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde' --project lobecorp
-node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' validate --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde' --project lobecorp --args '{"repoRoot":"E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde"}'
-node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' build --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde' --project lobecorp
-node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' render --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp/.workspace/lobecorp_horde' --project lobecorp
+node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' init --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp' --project lobecorp
+node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' validate --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp' --project lobecorp --args '{"repoRoot":"E:/xm/mc/mod/Unitego-Well/Lobecorp"}'
+node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' build --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp' --project lobecorp
+node 'E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/lobecorp-normify/dist/src/cli.js' render --workspace-root 'E:/xm/mc/mod/Unitego-Well/Lobecorp' --project lobecorp
 ```
 
 init 只建立结构数据目录与规则；模块仍须通过工具写入。build 指结构数据编译，生成 tree.json、api-index.json、outline.md、receipt.json，不是 Java/Gradle 构建。render 读取 tree.json 生成独立 normify.html。sync 仅生成漂移报告，不改源码。

@@ -154,8 +154,7 @@ resetLayout只重置瞬态，不清当前视图引用；宿主释放通过ViewSl
 [ConductorHud](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorHud.java) 作为 LDLib2
 `ModularHudLayer` 注册在其他 HUD 图层上方，提供成员卡、技能卡、搜索、选中单位及操作按钮；技能展示按 BASIC → ATTACK → SUPPORT
 稳定排序。[ConductorLdlibScreen](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorLdlibScreen.java)
-使用代码创建团队、单位和远程操作页；[ConductorScreen](../../src/main/java/org/unitego/lobecorp/client/conductor/hud/ConductorScreen.java)
-是另一个原生 Screen 实现，当前 `openPanel` 调用选择 LDLib2 页面。
+使用代码创建团队、单位和远程操作页，当前 `openPanel` 调用选择该 LDLib2 页面。
 
 | 管理项                                  | 来源                                                                                                                                                                                                                                                                                                                                                                                                               |
 |-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

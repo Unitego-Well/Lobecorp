@@ -10,9 +10,10 @@ import org.lwjgl.system.windows.MONITORINFOEX;
 import org.lwjgl.system.windows.User32;
 import org.lwjgl.system.windows.WindowProc;
 
-/// 开发窗口的非激活铺满与本窗口最小化命令保护；不捕获或移动系统鼠标。
+/// 显式测试入口的非激活铺满与最小化保护；普通启动默认关闭，不捕获或移动系统鼠标。
 public class DevelopmentWindowPolicy {
 	private static final Logger LOGGER = LogUtils.getLogger();
+	private static final String ENABLE_PROPERTY = "lobecorp.developmentWindowTestPolicy";
 	private final long hwnd;
 	private final long previousProc;
 	private final boolean hadMinimizeBox;
@@ -69,7 +70,7 @@ public class DevelopmentWindowPolicy {
 	}
 
 	public static DevelopmentWindowPolicy install(long handle, boolean fullscreen) {
-		if (Platform.get() != Platform.WINDOWS) {
+		if (!Boolean.getBoolean(ENABLE_PROPERTY) || Platform.get() != Platform.WINDOWS) {
 			return null;
 		}
 

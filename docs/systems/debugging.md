@@ -1,6 +1,6 @@
 # 非 Photon 游戏调试开关
 
-更新：2026-11-03。适用当前 Horde 工作区非 Photon 游戏 Java 调试日志。
+更新：2026-11-07。适用当前原始 dev；非 Photon 类别日志与 Photon 专项诊断分别维护，不借用历史分支成绩。
 
 ## 统一类别开关
 
@@ -19,7 +19,7 @@
 - 单类别显式 `false` 覆盖全局 `true`，例如 `-Dlobecorp.debug=true -Dlobecorp.debug.animation=false` 只关闭动画。
 - 属性解析使用标准 `Boolean.parseBoolean`：缺失时全局为 false、分项继承全局；存在空串或非 `true` 文本为 false。
 
-日志级别沿用现有实现：技能、动画、附着正常边沿为 INFO；动画采样失败保留 ERROR。动画日志仍只在 revision 或 stopped 变化时输出，不逐帧刷屏。
+日志级别沿用现有实现：技能、动画、附着正常边沿为 INFO；动画服务初始化耗时也纳入 ANIMATION 类别，默认不打印。动画采样失败保留 ERROR。动画状态日志仍只在 revision 或 stopped 变化时输出，不逐帧刷屏。
 
 ## 命令
 
@@ -39,6 +39,15 @@
 - 集成服务器客户端与服务端在同一 JVM，两侧共用同一开关；远程客户端不能通过该命令改变远端服务端日志，远端管理员可在服务端控制台执行。
 - 命令只改运行期内存值，重启后重新按启动属性初始化，不持久化、不新增网络包。
 - `/lobecorp` 根下追加 `debug`，保留既有 `animation`、`horde` 和 Photon 客户端命令；客户端本地优先，未知命令仍回退服务端。
+
+## Photon 诊断与常规启动
+
+- `lobecorp.photon.diag.cast=true` 开启 CASTPROF/FXLOAD，以及光束预热、队列drain和完成摘要；默认关闭。保留诊断字段，失败warn/error不受该开关抑制。
+- `lobecorp.photon.diag.material=true` 独立开启CASTMATERIAL账本；它不是功能预热开关。`prewarmBeam`和`prewarmRender`原默认行为保持，不因关闭日志而取消预热。
+- 性能命令、采集面板及工具分析保留显式调用边界，不在启动时自动运行测试。普通开发入口已有MC_DEBUG/F3启动属性未在本轮擅自重置，见构建runs配置。
+- 常规Client不会自动安装Win32铺满/防最小化策略；`lobecorp.developmentWindowTestPolicy`默认false，仅明确测试入口设true。Gradle bench运行配置显式设定，手写IDE/脚本profile须自行明确，不依赖启动环境猜测。
+- 不改变鼠标接管、后台节流、maxFps、VSync或Options。本轮仅源码/构建与静态核对，窗口状态及实际帧率未实机验收。
+- 测试/Bench/工具测试的职责、编译及未执行边界见[测试与验证入口](../tooling/testing.md)；通用脚本见[工具使用手册](../tooling/dev-scripts.md)。
 
 ## 与原版 F3 的关系
 

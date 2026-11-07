@@ -240,6 +240,9 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
             logLevel = org.slf4j.event.Level.DEBUG
+            if (name.startsWith("bench")) {
+                systemProperty("lobecorp.developmentWindowTestPolicy", "true")
+            }
             if (name == "benchClient" && photonBenchEnabled.get()) {
                 systemProperty("mcp.port", minecraftMcpGamePort.get())
             }

@@ -1,5 +1,22 @@
 # 系统修改记录
 
+## 2026-11-07：全项目调试、测试、脚本与文档整理
+
+- 机器盘点1007份主Java、111份测试Java与70份Bench Java，保留测试/诊断职责；新增[测试与验证入口](../tooling/testing.md)和[工具分类索引](../../tools/README.md)，不批量删除测试、日志、历史runner、独特契约或业务资源。
+- DevelopmentWindowPolicy改为显式测试属性才安装；Gradle bench入口设true，普通Client不设定。保持回调释放、鼠标、AFK、maxFps/VSync与Options边界。QueenBeamEffects两处预热摘要沿用既有PhotonCastProfiler开关；动画初始化耗时纳入既有ANIMATION类别。队列drain原本已有门禁，复核后未保留重复修改，失败warn/error保留。
+- 修复五处死导航；缺失Photon计划的重复索引移除，现有历史结果正文保留；旧ConductorScreen说明及EventHudView链接按当前实现修正。Normify示例改当前dev根，代理文档中心去掉退役目录的活动身份，分类索引补齐26项，共119个独立入口。
+- 实际使用通用脚本新建文档时发现Windows硬链接权限失败，1.0.1改为独占创建，不覆盖并发创建；真实新文档已成功写入并核对，手册同步失败边界，不把语法检查当作全部行为验收。
+- Java25统一编译compileJava、compileBenchJava、compileTestJava及jar成功，显式排除test；17份Python、18份JavaScript、4份PowerShell语法检查无错误。三份变更Java和工具脚本IDEA诊断无报错；build.gradle.kts诊断超时，编译脚本由Gradle实际编译通过。不运行单元/集成测试、Data或游戏，不宣称视觉、鼠标、窗口或性能验收。
+- 本次jar根条目未发现测试源码对应类或Bench包；不能外推嵌套依赖或运行行为。文档相对路径检查从五处缺失修复为零，锚点与完整Markdown语法不在该检查范围。
+- 本轮基线、源码/脚本清单、构建日志、静态诊断、jar与链接证据在.local/project-normalization-20261107/，原四项未暂存/六项暂存及期间出现的用户HUD改动保留；.gitignore与workflow混合文件仅提交本次新增hunk，重复ignore规则去重，钩子禁用，不推送。
+
+## 2026-11-07：通用外部终端脚本首版
+
+- 新增tools/dev的Python核心与PowerShell入口，外部终端执行读查、语义查询与批处理，连接复用后关闭；默认有界JSON、分页及按需schema，目标为减少重复上下文与工具往返，未测量Token节省率。
+- 新增[使用手册](../tooling/dev-scripts.md)。用户明确“只有需要idea的才用”后，普通文本读写/替换/有序补丁使用CLI，已有文件要求hash及无未保存内容前置事实、保留编码与统一换行并备份；符号查询和重构使用IDEA。重构apply绑定重新预览及报告文件hash，不宣称IDE原子事务。未支持的读写引用分类/自动生成override见[问题汇总](../issues.md)。
+- Python编译语法、PowerShell解析及新增脚本IDEA诊断无报错；实际外部入口doctor、文件读查、成员/引用/调用查询和重命名dry-run成功。脚本已实际用于本次文档rewrite/patch并核对结果；未执行重构apply行为验收、单元/集成测试、游戏、Data或业务构建。
+- 用户另行确认将新路由写入共享协议、智能路由Skill与项目workflow，取消普通文本必须IDEA的冲突条款，保留语义/未保存Document边界。共享文件备份及原始WIP/index基线保存在.local/dev-script-toolkit-20261107/；混合workflow仅提交本次增量，不推送、不触发工作区同步。
+
 ## 2026-11-06：撤销已集成子工作区与会话
 
 - 用户确认后，为Photon、Horde分别制作完整本地ZIP归档，包含未提交配置/规范、忽略资料、存档、编辑资产、运行证据和Git索引；逐文件SHA256及删除前原目录复核通过，源提交/WIP另有恢复引用。

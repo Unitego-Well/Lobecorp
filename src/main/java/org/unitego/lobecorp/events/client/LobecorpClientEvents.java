@@ -19,6 +19,8 @@ import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorCommand;
 import org.unitego.lobecorp.registry.photon.client.PhotonModelResourceRegistration;
 import org.unitego.lobecorp.registry.animation.client.LcClientAnimationResourceRegistration;
 import org.unitego.lobecorp.registry.command.LcDebugCommand;
+import org.unitego.lobecorp.util.debug.LcDebugUtil;
+import org.unitego.lobecorp.util.debug.LcDebugUtil.Category;
 import org.unitego.lobecorp.registry.animation.client.LcPlayerAnimationRegistration;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
 import org.unitego.lobecorp.registry.entity.client.EntityCorpseReverse;
@@ -42,10 +44,13 @@ public class LobecorpClientEvents {
 		VisualQualityConfigScreens.register();
 
 		event.enqueueWork(() -> {
-			var startedNs = System.nanoTime();
+			boolean diagnostic = LcDebugUtil.isEnabled(Category.ANIMATION);
+			long startedNs = diagnostic ? System.nanoTime() : 0;
 			Objects.requireNonNull(GeckoLibClientServices.EVENTS);
 			Objects.requireNonNull(GeckoLibClientServices.ITEM_RENDERING);
-			Lobecorp.LOGGER.info("客户端动画服务初始化完成，耗时 {} ns", System.nanoTime() - startedNs);
+			if (diagnostic) {
+				Lobecorp.LOGGER.info("客户端动画服务初始化完成，耗时 {} ns", System.nanoTime() - startedNs);
+			}
 		});
 	}
 

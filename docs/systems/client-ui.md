@@ -98,9 +98,7 @@ ModularUI，按成员/选择/技能变化挂载卡片；[ConductorLdlibScreen](.
 代码创建团队、单位和远程页。[ConductorControls](../../src/main/java/org/unitego/lobecorp/client/conductor/ConductorControls.java)
 的 `openPanel` 选择该页面并请求最新目录。
 
-当前另有 [ConductorScreen](../../src/main/java/org/unitego/lobecorp/client/conductor/hud/ConductorScreen.java) 原生
-Screen
-实现。[resources/ldlib2](../../resources/ldlib2) 中 XML 和 UI NBT 是项目现有资产；所核对的 HUD/LDLib 页面 `createLayout`
+[resources/ldlib2](../../resources/ldlib2) 中 XML 和 UI NBT 是项目现有资产；所核对的 HUD/LDLib 页面 `createLayout`
 使用 Java，不应假设编辑资产即可改变这两个运行界面。
 
 当前界面使用本地输入与缓存，权威命令通过已有 Payload 提交。新增界面先判断是否只操作客户端本地状态、已有命令是否足够，或需要真正

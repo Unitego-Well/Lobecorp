@@ -152,7 +152,6 @@ Photon、Horde 已停止旧回合并在各自工作区保存交接，新负责�
 | [系统修改记录](systems/changes.md) | 保留独有技术清单、未完成项或阶段证据 |
 | [G1 全部代码优先实施记录](systems/photon-g1-code-stage-20261021.md) | 保留独有技术清单、未完成项或阶段证据 |
 | [Photon 重设计实施进度](systems/photon-redesign-progress.md) | 保留独有技术清单、未完成项或阶段证据 |
-| [自建 Photon 特效、渲染与模型系统移除计划](systems/photon-removal-plan.md) | 保留独有技术清单、未完成项或阶段证据 |
 | [Photon 自建系统移除实施记录](systems/photon-removal-result.md) | 保留独有技术清单、未完成项或阶段证据 |
 
 ### 资料快照、研究与外部来源（11份）

@@ -403,7 +403,7 @@ public class LcAnimationInstance {
 		return new LcAnimationSnapshot(id, sourceEntity == null ? -1 : sourceEntity.getId(), definitionId, content,
 				definition.animationName(), timeSeconds, speed, paused, stopped, pose, context().snapshotParameters(),
 				ownerTarget.transform(), root == null ? null : root.bone(),
-				root == null ? Set.of() : root.axes(), playerPolicy, playerPolicy == null ? 0 : level.getGameTime(), playbackRevision,
+				root == null ? Set.of() : root.axes(), playerPolicy, level.getGameTime(), playbackRevision,
 				startedTick, stoppedTick, termination, poseOverrides);
 	}
 

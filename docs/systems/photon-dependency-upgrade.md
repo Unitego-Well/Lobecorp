@@ -1,5 +1,15 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-08 女皇工作区升级至 26.1.2.11
+
+当前 `codex/queen-of-hatred` 使用 Photon `26.1.2.11`、LDLib2 `26.1.2.46`，KilaGraph 保持 `26.1.0.16.a`。版本来自官方 Maven 26.1 模块元数据，IDEA 实际解析与版本目录一致；Minecraft、NeoForge 与 Java 版本不变。
+
+本次制品已包含 `FXRuntime.sections()` 和 `SectionControl`，支持名称查询、jumpTo、queue、advance、release 等原生区段接口。下方 `.10` 无 Sections 的结论仅属于先前版本。此次只完成依赖升级与必要兼容，不迁移既有命名动画或新增 MCP 区段控制工具。
+
+新版 `emit(effect, delay)` 转发到 `emit(effect, delay, startSection)`，真正的发射与时间轴启动已移到三参数入口。现有 FXRuntimeMixin 的命名准备、预览恢复与发射跟踪统一改为注入三参数入口，完整传递 startSection；普通发射仍经转发调用，不重复执行。通过依赖源码核对两条播放路径，并确认 LDLib2 视图菜单及缩放 Mixin 的调用目标仍存在。
+
+验证：IDEA Gradle 同步成功；`compileJava compileBenchJava jar` 最终成功。修改 Mixin 的 IDEA 检查无错误，保留既有 Mixin 强转与参数名提示。未执行测试、Data、游戏、GUI 显示或 MCP 实际调用验收，未恢复演示资源。
+
 ## 2026-11-07 女皇工作区升级
 
 本节仅适用于 `codex/queen-of-hatred`。Photon 从 `26.1.2.9` 升为官方 Maven 当前 26.1 分支发布的 `26.1.2.10`；LDLib2 `26.1.2.45`、KilaGraph `26.1.0.16.a`、Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java 25 保持。版本目录与 IDEA 实际解析均指向 `.10`，不是把 1.21.1 的 2.x 版本号直接写入本工程。

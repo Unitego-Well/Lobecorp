@@ -32,7 +32,7 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 
 
-	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("RETURN"))
+	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;ILjava/lang/String;)V", at = @At("RETURN"))
 	private void lobecorp$previewAfterRestart(CallbackInfo ci) {
 		if (lobecorp$named != null) {
 			lobecorp$named.begin();
@@ -51,7 +51,7 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 		return lobecorp$named;
 	}
 
-	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V", at = @At("HEAD"))
+	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;ILjava/lang/String;)V", at = @At("HEAD"))
 	private void lobecorp$prepareNamed(CallbackInfo ci) {
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
@@ -148,14 +148,14 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 	@Unique
 	private long lobecorp$profileGeneration;
 
-	@WrapMethod(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;I)V")
-	private void lobecorp$captureEmission(IEffectExecutor executor, int delay, Operation<Void> original) {
+	@WrapMethod(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;ILjava/lang/String;)V")
+	private void lobecorp$captureEmission(IEffectExecutor executor, int delay, @Nullable String startSection, Operation<Void> original) {
 		boolean diagnostic = PhotonCastProfiler.enabled();
 		long started = diagnostic ? System.nanoTime() : 0;
 		boolean emissionCompleted = false;
 		try {
 			if (!PhotonPerformanceTraceUtil.enabled(Stage.FX_EMIT)) {
-				original.call(executor, delay);
+				original.call(executor, delay, startSection);
 				emissionCompleted = true;
 				return;
 			}
@@ -165,7 +165,7 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 			long scope = PhotonPerformanceTraceUtil.begin(Stage.FX_EMIT, node);
 			boolean completed = false;
 			try {
-				original.call(executor, delay);
+				original.call(executor, delay, startSection);
 				completed = true;
 				emissionCompleted = true;
 			} finally {

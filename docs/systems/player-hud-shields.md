@@ -1,5 +1,12 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-07 NEW面板数值显示
+
+数值按“当前值 / 最大值”显示，吸收与护盾加号灰色。理智文字复用既有高低阈值：比例≥0.7蓝色、<1/3红色，中间白色；其他附加数值白色。初次加载只建立基线，默认隐藏。当前值、最大值或任一段数值变化后重置提示：保持40游戏tick（2秒），随后5tick（0.25秒）仅淡出，无淡入；暂停沿现有HUD时间暂停。按住Shift直接全显，不设置持续或淡出；松开时只有未结束的变化提示继续，否则立即隐藏。每条独立计时，切换玩家/清理会话时重置，不改条动画或用户头像改动。
+
+本轮仅构建/静态检查，不代表已完成游戏内颜色、Shift或淡出视觉验收。
+
+
 ## 2026-11-06 NEW 独立纹理与 nine_slice
 
 生命组合图按原像素拆为 full、poisioned、withered、frozen、absorbing、physic_shield_bar、erosion_shield_bar、null（各38×7）；理智拆为 rationality_tall、rationality_low、rationality、spirit_shield_bar（各20×7）。null只保留占位，不接入灵魂护盾。12张输出已逐像素核对；源图原字节备份位于 build/agent-backups/20261106-newhud-texture-split，确认无代码引用后删除两张旧value.png。

@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.hud.status.bar;
 
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -31,6 +33,9 @@ public class PanelStatusBar extends StatusBarComponent {
 	private static final float MAX_FRAME_SCALE = 3;
 	/// 数值减少后的白色闪光持续时间，单位 tick。
 	private static final float WHITE_FLASH_TICKS = 2;
+	/// 变化提示保持两秒，再以四分之一秒淡出；时间单位为游戏 tick。
+	private static final float NUMBER_HOLD_TICKS = 40;
+	private static final float NUMBER_FADE_TICKS = 5;
 	private final boolean rationality;
 	private final int boxWidth;
 	private final int valueWidth;
@@ -41,6 +46,10 @@ public class PanelStatusBar extends StatusBarComponent {
 	private final TextHudRenderer numbers = new TextHudRenderer();
 	private final StatusBarShake shake = new StatusBarShake();
 	private float absorptionPeak;
+	private final float[] numberAmounts;
+	private float numberMaximum;
+	private float numberTicks;
+	private boolean numbersSampled;
 
 	public PanelStatusBar(boolean rationality, Identifier boxTexture, Identifier iconTexture) {
 		super(new StatusGauge(rationality ? 48 : 66, 15, rationality ? 20 : 38),
@@ -56,6 +65,8 @@ public class PanelStatusBar extends StatusBarComponent {
 		icon.setPosition(8, 3);
 		icon.setSize(10, 10);
 		segments = new Segment[rationality ? 2 : 4];
+		numberAmounts = new float[segments.length];
+		numbers.setVisible(false);
 		for (int index = 0; index < segments.length; index++) {
 			segments[index] = new Segment(index == 0 ? gauge : new StatusGauge(valueWidth, BAR_HEIGHT, valueWidth),
 					TextureHudRenderer.sprite(valueTexture(rationality, 0)));
@@ -102,15 +113,7 @@ public class PanelStatusBar extends StatusBarComponent {
 			shieldTotal = segments[2].amount + segments[3].amount;
 		}
 		shake.trigger(loss);
-		String text = format(maximumValue) + " / " + format(currentValue);
-		if (absorption > 0) {
-			text += " + " + format(absorption);
-		}
-		if (shieldTotal > 0) {
-			text += " + " + format(shieldTotal);
-		}
-		numbers.setText(Component.literal(text));
-		numbers.layout();
+		updateNumbers(absorption, shieldTotal);
 		float total = 0;
 		for (var segment : segments) {
 			total += Math.max(0, segment.animation.getRenderedValue());
@@ -119,7 +122,41 @@ public class PanelStatusBar extends StatusBarComponent {
 		frameWidth = boxWidth * scale;
 		box.setSize(frameWidth, 15);
 		numbers.setPosition(frameWidth + 4, 3);
-		setSize(frameWidth + 4 + numbers.getWidth(), 15);
+		setSize(frameWidth + (numbers.isVisible() ? 4 + numbers.getWidth() : 0), 15);
+	}
+
+	private void updateNumbers(float absorption, float shieldTotal) {
+		numberTicks = Math.max(0, numberTicks - Math.max(0, frameDelta));
+		boolean changed = numbersSampled && Float.compare(numberMaximum, maximumValue) != 0;
+		for (int index = 0; index < segments.length; index++) {
+			changed |= numbersSampled && Float.compare(numberAmounts[index], segments[index].amount) != 0;
+			numberAmounts[index] = segments[index].amount;
+		}
+		numberMaximum = maximumValue;
+		numbersSampled = true;
+		if (changed) {
+			numberTicks = NUMBER_HOLD_TICKS + NUMBER_FADE_TICKS;
+		}
+
+		float alpha = Minecraft.getInstance().hasShiftDown() ? 1 : Math.min(1, numberTicks / NUMBER_FADE_TICKS);
+		numbers.setVisible(Math.round(alpha * 255) >= 4);
+		numbers.setColor(Math.round(alpha * 255) << 24 | 0xFFFFFF);
+		ChatFormatting valueColor = rationality ? switch (RationalityBarComponent.textureRow(currentValue, maximumValue)) {
+			case 0 -> ChatFormatting.BLUE;
+			case 1 -> ChatFormatting.RED;
+			default -> ChatFormatting.WHITE;
+		} : ChatFormatting.WHITE;
+		var text = Component.literal(format(currentValue) + " / " + format(maximumValue)).withStyle(valueColor);
+		if (absorption > 0) {
+			text.append(Component.literal(" + ").withStyle(ChatFormatting.GRAY))
+					.append(Component.literal(format(absorption)).withStyle(ChatFormatting.WHITE));
+		}
+		if (shieldTotal > 0) {
+			text.append(Component.literal(" + ").withStyle(ChatFormatting.GRAY))
+					.append(Component.literal(format(shieldTotal)).withStyle(ChatFormatting.WHITE));
+		}
+		numbers.setText(text);
+		numbers.layout();
 	}
 
 	private float updateShield(int index, LcDamageType type, int row) {
@@ -190,6 +227,10 @@ public class PanelStatusBar extends StatusBarComponent {
 	public void clear() {
 		super.clear();
 		absorptionPeak = 0;
+		numbersSampled = false;
+		numberMaximum = 0;
+		numberTicks = 0;
+		numbers.setVisible(false);
 		frameWidth = boxWidth;
 		box.setSize(frameWidth, 15);
 		for (var segment : segments) {

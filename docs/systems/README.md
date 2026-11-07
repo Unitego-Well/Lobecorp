@@ -4,6 +4,8 @@
 
 导航核对：2026-11-07。本页属于原始 dev 工作；[原始总览](../README.md)与[原始问题汇总](../issues.md)独立维护。Photon 和 Horde 的总览、问题与验收仅按[历史工作入口](../README.md#独立工作入口)阅读，不再调度退役工作区，本页仅保留原始分支已有系统契约。按任务选择下表匹配入口，只读适用章节；不默认加载全部系统文档、案例、changes.md 或所有 Skill 参考。文档可能过时，当前源码、IDEA 解析和锁定依赖优先。
 
+清道夫音效副本、七组资源事件及26份源文件对应见[音效资源](sweeper-sounds.md)。
+
 ## 项目工具链
 
 外部终端常用读查与语义操作入口见[通用开发脚本](../tooling/dev-scripts.md)，实际可用范围与受阻能力在手册中分别标明。
@@ -95,7 +97,7 @@
 
 ## 全部保留文档分类索引
 
-范围：项目自有 Markdown，排除运行/构建输出、缓存、备份及符号链接目录。以下 119 份文档保留；系统计划与报告按各自历史边界读取，不因导航整理视为已完成。许可证、程序读取夹具与第三方原文不修改。
+范围：项目自有 Markdown，排除运行/构建输出、缓存、备份及符号链接目录。以下 120 份文档保留；系统计划与报告按各自历史边界读取，不因导航整理视为已完成。许可证、程序读取夹具与第三方原文不修改。
 
 ### 项目入口、规范与设计
 
@@ -232,3 +234,4 @@
 - [tools/README.md](../../tools/README.md)
 - [tools/dev/README.md](../../tools/dev/README.md)
 - [tools/photon/performance/README.md](../../tools/photon/performance/README.md)
+- [docs/systems/sweeper-sounds.md](../../docs/systems/sweeper-sounds.md)

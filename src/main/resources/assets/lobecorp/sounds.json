@@ -130,5 +130,137 @@
 				"attenuation_distance": 64
 			}
 		]
+	},
+	"event.midnight_cleanup.move": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/move1",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move2",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move3",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move4",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move5",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move6",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move7",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move8",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move9",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move10",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move11",
+				"attenuation_distance": 256
+			},
+			{
+				"name": "lobecorp:sweeper/move12",
+				"attenuation_distance": 256
+			}
+		]
+	},
+	"event.midnight_cleanup.attack": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/attack1",
+				"attenuation_distance": 160
+			},
+			{
+				"name": "lobecorp:sweeper/attack2",
+				"attenuation_distance": 160
+			},
+			{
+				"name": "lobecorp:sweeper/attack3",
+				"attenuation_distance": 160
+			},
+			{
+				"name": "lobecorp:sweeper/attack4",
+				"attenuation_distance": 160
+			}
+		]
+	},
+	"event.midnight_cleanup.clear_start": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/clear_start1",
+				"attenuation_distance": 96
+			},
+			{
+				"name": "lobecorp:sweeper/clear_start2",
+				"attenuation_distance": 96
+			}
+		]
+	},
+	"event.midnight_cleanup.clear_loop": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/clear_loop1",
+				"attenuation_distance": 128
+			},
+			{
+				"name": "lobecorp:sweeper/clear_loop2",
+				"attenuation_distance": 128
+			},
+			{
+				"name": "lobecorp:sweeper/clear_loop3",
+				"attenuation_distance": 128
+			}
+		]
+	},
+	"event.midnight_cleanup.clear_end": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/clear_end1",
+				"attenuation_distance": 160
+			}
+		]
+	},
+	"event.midnight_cleanup.jump": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/jump1",
+				"attenuation_distance": 96
+			},
+			{
+				"name": "lobecorp:sweeper/jump2",
+				"attenuation_distance": 96
+			}
+		]
+	},
+	"event.midnight_cleanup.land": {
+		"sounds": [
+			{
+				"name": "lobecorp:sweeper/land1",
+				"attenuation_distance": 192
+			},
+			{
+				"name": "lobecorp:sweeper/land2",
+				"attenuation_distance": 192
+			}
+		]
 	}
 }

@@ -6,13 +6,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.ParticleOptions;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
-import org.unitego.lobecorp.registry.LcSoundEvents;
+import org.unitego.lobecorp.Lobecorp;
 import java.util.Comparator;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -20,7 +19,6 @@ import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.HashSet;
 import java.util.UUID;
@@ -33,14 +31,17 @@ public class HordeAmbient {
 	private static final List<Vec3> AUDIO_POINTS = new ArrayList<>();
 	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
 	private static long nextMove, nextAttack, nextCleanup, nextJump, nextLoop, landingAt;
-	private static int cleanupStage, loopsLeft, voiceCursor;
+	private static int cleanupStage, loopsLeft;
 	private static boolean pendingLanding;
 	private static float previousRumble, rumble;
 	private static final int SOUND_BATCH_MULTIPLIER = 3;
 	private static final int SOUND_FREQUENCY_MULTIPLIER = 10;
-	// 声音位置上限沿用soundVoices的16；副本共享每秒一次的遮挡检查。
-	private static final long[] AUDIO_CHECKED_AT = new long[16];
-	private static final boolean[] AUDIO_BLOCKED = new boolean[16];
+	/// 每次在最近事件内取声源，区域半径与最大可听距离均以格为单位。
+	private static final double SOUND_REGION_RADIUS = 32;
+	private static final double MAX_SOUND_RANGE = 256;
+	private static final String[] SOUND_TYPES = {"move", "attack", "clear_start", "clear_loop", "clear_end", "jump", "land"};
+	private static HordeClient.ClientEvent soundEvent;
+	private static Vec3 soundCenter;
 	private static long tick;
 	private static long nextSlashTick;
 	private static int selectedAreas;
@@ -79,15 +80,21 @@ public class HordeAmbient {
 
 	private static void updateAudio() {
 		var minecraft = Minecraft.getInstance();
+		var player = minecraft.player;
+		if (player == null) {
+			return;
+		}
+
 		var listener = minecraft.gameRenderer.getMainCamera().isInitialized()
-				? minecraft.gameRenderer.getMainCamera().position() : minecraft.player.getEyePosition();
+				? minecraft.gameRenderer.getMainCamera().position() : player.getEyePosition();
 		selectAudioPoints(listener);
+		selectSoundRegion(player.position());
 		previousRumble = rumble;
 		float target = AUDIO_POINTS.isEmpty() || !HordeVisualConfig.EVENT_SHAKE.get() ? 0
 				: envelope(AUDIO_POINTS.getFirst().distanceTo(listener), HordeVisualConfig.EVENT_SHAKE_RANGE.get());
 		rumble += (target - rumble) * 0.25F;
 		SOURCES.removeIf(source -> {
-			if (source.isStopped() || tick - source.born > 10 && !minecraft.getSoundManager().isActive(source)) {
+			if (tick - source.born > 10 && !minecraft.getSoundManager().isActive(source)) {
 				source.end();
 				return true;
 			}
@@ -96,16 +103,22 @@ public class HordeAmbient {
 		while (SOURCES.size() > soundBudget()) {
 			var source = SOURCES.stream().filter(voice -> voice.kind == 0).findFirst().orElse(SOURCES.getFirst());
 			source.end();
-			minecraft.getSoundManager().stop(source);
 			SOURCES.remove(source);
 		}
-		if (AUDIO_POINTS.isEmpty() || !HordeVisualConfig.SOUND.get() || HordeVisualConfig.SOUND_VOICES.get() <= 0) {
+		if (!HordeVisualConfig.SOUND.get() || HordeVisualConfig.SOUND_VOICES.get() <= 0) {
 			stopSounds();
 			cleanupStage = 0;
 			pendingLanding = false;
 			nextMove = nextAttack = nextCleanup = nextJump = tick * SOUND_FREQUENCY_MULTIPLIER;
 			return;
 		}
+		if (soundEvent == null) {
+			cleanupStage = 0;
+			pendingLanding = false;
+			nextMove = nextAttack = nextCleanup = nextJump = tick * SOUND_FREQUENCY_MULTIPLIER;
+			return;
+		}
+
 		for (int step = 0; step < SOUND_FREQUENCY_MULTIPLIER; step++) {
 			advanceAudio(tick * SOUND_FREQUENCY_MULTIPLIER + step);
 		}
@@ -198,33 +211,101 @@ public class HordeAmbient {
 		return low + Minecraft.getInstance().level.getRandom().nextInt(high - low + 1);
 	}
 
+	private static void selectSoundRegion(Vec3 player) {
+		soundEvent = null;
+		soundCenter = null;
+		double closest = Math.pow(Math.min(MAX_SOUND_RANGE, HordeVisualConfig.SOUND_RANGE.get()), 2);
+		for (var event : HordeClient.events()) {
+			if (!event.ready || event.failed || event.tide == null || event.columns <= 0) {
+				continue;
+			}
+
+			double time = event.time(0);
+			double head = Math.min(event.length, time * event.speed);
+			double tail = Math.max(0, (time - event.stop) * event.speed);
+			if (head <= tail) {
+				continue;
+			}
+
+			double nearest = Math.clamp(event.tide.stationOf(player), tail, head);
+			for (double offset : new double[]{0, -8, 8, -32, 32, -64, 64, -128, 128}) {
+				double station = Math.clamp(nearest + offset, tail, head);
+				var center = event.tide.world(station, 0);
+				var forward = event.tide.forward(station);
+				double lateral = (player.x - center.x) * -forward.z + (player.z - center.z) * forward.x;
+				double half = Math.max(0, (event.columns - 1) * event.columnSpacing() / 2);
+				var point = event.tide.world(station, Math.clamp(lateral, -half, half));
+				double distance = point.distanceToSqr(player);
+				if (point.isFinite() && distance < closest
+						&& HordeParticleFlow.clear(event.split.circles(), event.origin, point, event.entityHeight)) {
+					closest = distance;
+					soundEvent = event;
+					soundCenter = point;
+				}
+			}
+		}
+	}
+
+	private static Vec3 soundPoint() {
+		var event = soundEvent;
+		if (event == null || soundCenter == null) {
+			return null;
+		}
+
+		var minecraft = Minecraft.getInstance();
+		var level = minecraft.level;
+		var player = minecraft.player;
+		if (level == null || player == null) {
+			return null;
+		}
+
+		var random = level.getRandom();
+		double time = event.time(0);
+		double head = Math.min(event.length, time * event.speed);
+		double tail = Math.max(0, (time - event.stop) * event.speed);
+		double station = Math.clamp(event.tide.stationOf(soundCenter), tail, head);
+		var center = event.tide.world(station, 0);
+		var forward = event.tide.forward(station);
+		double lateral = (soundCenter.x - center.x) * -forward.z + (soundCenter.z - center.z) * forward.x;
+		double half = Math.max(0, (event.columns - 1) * event.columnSpacing() / 2);
+		double range = Math.min(MAX_SOUND_RANGE, HordeVisualConfig.SOUND_RANGE.get());
+		for (int attempt = 0; attempt < 8; attempt++) {
+			var point = event.tide.world(
+					Math.clamp(station + (random.nextDouble() * 2 - 1) * SOUND_REGION_RADIUS, tail, head),
+					Math.clamp(lateral + (random.nextDouble() * 2 - 1) * SOUND_REGION_RADIUS, -half, half));
+			if (point.isFinite() && point.distanceToSqr(soundCenter) <= SOUND_REGION_RADIUS * SOUND_REGION_RADIUS
+					&& point.distanceToSqr(player.position()) < range * range
+					&& HordeParticleFlow.clear(event.split.circles(), event.origin, point, event.entityHeight)) {
+				return point;
+			}
+		}
+
+		return null;
+	}
+
 	private static boolean play(int kind) {
-		if (SOURCES.size() + SOUND_BATCH_MULTIPLIER > soundBudget()) {
+		var level = Minecraft.getInstance().level;
+		if (level == null || SOURCES.size() + SOUND_BATCH_MULTIPLIER > soundBudget()) {
 			return false;
 		}
-		int count = Math.min(HordeVisualConfig.SOUND_VOICES.get(), AUDIO_POINTS.size());
-		if (count <= 0) {
-			return false;
-		}
+
+		var points = new ArrayList<Vec3>();
 		for (int copy = 0; copy < SOUND_BATCH_MULTIPLIER; copy++) {
-			var source = new Source(kind, voiceCursor++ % count, Minecraft.getInstance().level);
+			var point = soundPoint();
+			if (point == null) {
+				return false;
+			}
+
+			points.add(point);
+		}
+
+		for (var point : points) {
+			var source = new Source(kind, point, level.getRandom());
 			SOURCES.add(source);
 			Minecraft.getInstance().getSoundManager().play(source);
 		}
-		return true;
-	}
 
-	private static SoundEvent sound(int kind) {
-		return switch (kind) {
-			case 0 -> LcSoundEvents.SWEEPER_MOVE.get();
-			case 1 -> LcSoundEvents.SWEEPER_ATTACK.get();
-			case 2 -> LcSoundEvents.SWEEPER_CLEAR_START.get();
-			case 3 -> LcSoundEvents.SWEEPER_CLEAR_LOOP.get();
-			case 4 -> LcSoundEvents.SWEEPER_CLEAR_END.get();
-			case 5 -> LcSoundEvents.SWEEPER_JUMP.get();
-			case 6 -> LcSoundEvents.SWEEPER_LAND.get();
-			default -> throw new IllegalArgumentException("Unknown sweeper ambient sound");
-		};
+		return true;
 	}
 
 	private static float envelope(double distance, double range) {
@@ -244,7 +325,6 @@ public class HordeAmbient {
 	private static void stopSounds() {
 		for (var source : SOURCES) {
 			source.end();
-			Minecraft.getInstance().getSoundManager().stop(source);
 		}
 		SOURCES.clear();
 	}
@@ -498,11 +578,11 @@ public class HordeAmbient {
 	public static void clear() {
 		stopSounds();
 		AUDIO_POINTS.clear();
-		Arrays.fill(AUDIO_CHECKED_AT, 0);
-		Arrays.fill(AUDIO_BLOCKED, false);
+		soundEvent = null;
+		soundCenter = null;
 		previousRumble = rumble = 0;
 		nextMove = nextAttack = nextCleanup = nextJump = nextLoop = landingAt = 0;
-		cleanupStage = loopsLeft = voiceCursor = 0;
+		cleanupStage = loopsLeft = 0;
 		pendingLanding = false;
 		tick = 0;
 		nextSlashTick = 0;
@@ -510,52 +590,20 @@ public class HordeAmbient {
 		emittedParticles = 0;
 	}
 
-	/// 原版短音效实例，只由现有聚合入口拥有，结束时关闭自身而非全局声音。
-	private static class Source extends AbstractTickableSoundInstance {
+	/// 固定世界坐标的普通音效，只由现有入口持有并停止自身。
+	private static class Source extends SimpleSoundInstance {
 		private final int kind;
-		private final int slot;
-		private final ClientLevel world;
 		private final long born = HordeAmbient.tick;
 
-		private Source(int kind, int slot, ClientLevel world) {
-			super(HordeAmbient.sound(kind), SoundSource.HOSTILE, world.getRandom());
+		private Source(int kind, Vec3 point, RandomSource random) {
+			super(Lobecorp.id("event.midnight_cleanup." + SOUND_TYPES[kind]), SoundSource.AMBIENT,
+					VOICE_GAIN[kind], 1, random, false, 0,
+					Attenuation.LINEAR, point.x, point.y, point.z, false);
 			this.kind = kind;
-			this.slot = slot;
-			this.world = world;
-			attenuation = Attenuation.NONE;
-			relative = false;
-			pitch = 1;
-			tick();
-		}
-
-		@Override
-		public void tick() {
-			var minecraft = Minecraft.getInstance();
-			if (world != minecraft.level || AUDIO_POINTS.isEmpty() || !HordeVisualConfig.SOUND.get()
-					|| HordeVisualConfig.SOUND_VOICES.get() <= 0) {
-				stop();
-				return;
-			}
-			if (minecraft.isPaused()) {
-				return;
-			}
-			var point = AUDIO_POINTS.get(Math.min(slot, AUDIO_POINTS.size() - 1));
-			x = point.x;
-			y = point.y;
-			z = point.z;
-			var camera = minecraft.gameRenderer.getMainCamera().position();
-			if (AUDIO_CHECKED_AT[slot] == 0 || HordeAmbient.tick - AUDIO_CHECKED_AT[slot] >= 20) {
-				AUDIO_BLOCKED[slot] = world.clip(new ClipContext(camera, point.add(0, 1, 0), ClipContext.Block.COLLIDER,
-						ClipContext.Fluid.NONE, minecraft.player)).getType() != HitResult.Type.MISS;
-				AUDIO_CHECKED_AT[slot] = HordeAmbient.tick;
-			}
-			float target = envelope(point.distanceTo(camera), HordeVisualConfig.SOUND_RANGE.get())
-					* VOICE_GAIN[kind] * (AUDIO_BLOCKED[slot] ? 0.3F : 1);
-			volume += (target - volume) * 0.3F;
 		}
 
 		private void end() {
-			stop();
+			Minecraft.getInstance().getSoundManager().stop(this);
 		}
 	}
 }

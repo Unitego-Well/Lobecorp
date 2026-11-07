@@ -40,7 +40,7 @@ public class HordeVisualConfig {
 			b.pop().translation(ClientConfig.translation("horde.sound", "Sound", "声音")).push("sound");
 			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate sweeper sounds", "聚合清道夫音效")).define("sound", true);
 			SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);
-			SOUND_RANGE = b.comment("环境声最大距离，实际还受事件订阅范围限制；不增加可见模型或粒子范围。")
+			SOUND_RANGE = b.comment("客户端位置音效的生成距离上限，最多256格；各类可听距离由sounds.json分别定义，受环境音量影响。不增加模型或粒子范围。")
 					.translation(HordeLang.config("visual.sound_range", "Ambient sound range", "环境音效范围"))
 					.defineInRange("soundRange", 256, 16, 1024);
 			SOUND_MAX_ACTIVE = b.translation(HordeLang.config("visual.sound_max_active", "Base ambient sound concurrency", "环境音效基础并发额度"))

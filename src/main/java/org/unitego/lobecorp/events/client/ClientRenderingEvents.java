@@ -6,6 +6,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 import org.unitego.lobecorp.client.horde.HordeRendering;
@@ -45,9 +46,12 @@ public class ClientRenderingEvents {
 
 	@SubscribeEvent
 	public static void onGui(RenderGuiEvent.Post event) {
-		if (Minecraft.getInstance().level != null) {
-			ConductorRendering.onGui(event.getGuiGraphics());
+		if (!MidnightCleanupCinematic.hidesHud()) {
+			if (Minecraft.getInstance().level != null) {
+				ConductorRendering.onGui(event.getGuiGraphics());
+			}
+			RuntimeOverlayHud.INSTANCE.render(event);
 		}
-		RuntimeOverlayHud.INSTANCE.render(event);
+		MidnightCleanupCinematic.render(event.getGuiGraphics());
 	}
 }

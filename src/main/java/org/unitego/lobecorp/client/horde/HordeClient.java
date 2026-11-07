@@ -12,6 +12,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.hud.event.EventHud;
 import org.unitego.lobecorp.client.hud.event.MidnightCleanupHud;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
@@ -60,6 +61,10 @@ public class HordeClient {
 		}
 		try {
 			String kind = packet.getStringOr("kind", "");
+			if (kind.equals("presentation")) {
+				MidnightCleanupCinematic.receive(packet.getCompoundOrEmpty("body"));
+				return;
+			}
 			if (kind.equals("remove")) {
 				closeEvent(EVENTS.remove(id));
 				SNAPSHOT_REQUESTS.remove(id);
@@ -359,6 +364,7 @@ public class HordeClient {
 		HordeRendering.clear();
 		HordeMeshCache.clear();
 		HordeAmbient.clear();
+		MidnightCleanupCinematic.clear();
 		HordeDebugState.reset();
 	}
 

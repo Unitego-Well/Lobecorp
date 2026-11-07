@@ -114,6 +114,16 @@ public class HordeEvent {
 				<= Math.pow(rules.width() / 2 + rules.margin(), 2);
 	}
 
+	/// 尾部通过当前位置不足五秒时，不再预约或生成新的真实参战者。
+	public boolean canSpawnAt(Vec3 point) {
+		if (finished() || !covers(point)) {
+			return false;
+		}
+
+		double station = route.nearest(point, 0, route.length());
+		return stopAt + station / speed - tick >= 5 * 20;
+	}
+
 	public double station(Vec3 point) {
 		return Math.clamp(route.nearest(point, 0, route.length()), tail(), head());
 	}

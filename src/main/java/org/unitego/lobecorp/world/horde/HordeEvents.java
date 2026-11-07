@@ -62,6 +62,7 @@ public class HordeEvents {
 					rules, route);
 			var data = HordeSavedData.get(level.getServer());
 			data.events().put(id, event);
+			HordeRuntime.get(level.getServer()).open(event);
 			data.setDirty();
 			return new HordeStartResult(id, "群体事件已启动");
 		} catch (IllegalArgumentException exception) {
@@ -76,8 +77,8 @@ public class HordeEvents {
 			return new HordeStopResult(false, "事件不存在");
 		}
 		event.stop();
-		HordeRuntime.get(server).stop(event, mode);
 		if (mode == HordeStopMode.CLEAR) {
+			HordeRuntime.get(server).stop(event, mode);
 			data.events().remove(id);
 		}
 		data.setDirty();

@@ -8,6 +8,9 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.AngleArgument;
+import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import java.util.List;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -23,6 +26,13 @@ import java.util.UUID;
 
 public class HordeCommand {
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("事件")
+				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+				.then(Commands.literal("模板触发").then(Commands.literal("深夜清扫")
+						.executes(context -> template(context, false))
+						.then(Commands.argument("位置", Vec3Argument.vec3())
+								.then(Commands.argument("方向", AngleArgument.angle())
+										.executes(context -> template(context, true))))))));
 		var start = Commands.literal("start")
 				.then(Commands.argument("profile", IdentifierArgument.id())
 						.then(Commands.argument("from", Vec3Argument.vec3())
@@ -53,6 +63,37 @@ public class HordeCommand {
 							HordeRuntime.get(context.getSource().getServer()).statistics()), false);
 					return 1;
 				}))));
+	}
+
+	private static int template(CommandContext<CommandSourceStack> context, boolean explicit)
+			throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+		var source = context.getSource();
+		var from = explicit ? Vec3Argument.getVec3(context, "位置") : source.getPosition();
+		float yaw = explicit ? AngleArgument.getAngle(context, "方向") : source.getRotation().y;
+		double angle = Math.toRadians(yaw);
+		var to = from.add(-Math.sin(angle) * MidnightCleanup.TEMPLATE_LENGTH, 0,
+				Math.cos(angle) * MidnightCleanup.TEMPLATE_LENGTH);
+		var profile = HordeEvents.profile(MidnightCleanup.ID);
+		if (profile == null) {
+			return 0;
+		}
+
+		int travel = (int) Math.ceil(MidnightCleanup.TEMPLATE_LENGTH / profile.movementSpeed());
+		int generation = MidnightCleanup.TEMPLATE_TICKS - travel;
+		if (generation < 20) {
+			source.sendFailure(Component.translatable("horde.lobecorp.template_too_slow"));
+			return 0;
+		}
+
+		var result = HordeEvents.start(source.getLevel(), MidnightCleanup.ID,
+				new HordeStartRequest(from, to, List.of(), generation, MidnightCleanup.TEMPLATE_WIDTH));
+		if (!result.started()) {
+			source.sendFailure(Component.translatable("horde.lobecorp.start_failed", result.message()));
+			return 0;
+		}
+
+		source.sendSuccess(() -> Component.translatable("horde.lobecorp.started", result.eventId().toString()), true);
+		return 1;
 	}
 
 	private static int start(CommandContext<CommandSourceStack> context, int depth) throws com.mojang.brigadier.exceptions.CommandSyntaxException {

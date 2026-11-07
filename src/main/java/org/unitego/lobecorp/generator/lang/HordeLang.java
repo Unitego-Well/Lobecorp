@@ -17,6 +17,11 @@ public class HordeLang {
 		add("horde.lobecorp.start_failed", "Cannot start horde: %s", "无法启动群体事件：%s");
 		add("horde.lobecorp.started", "Horde started: %s", "群体事件已启动：%s");
 		add("horde.lobecorp.stopped", "Horde %s: %s", "群体事件 %s：%s");
+		add("horde.lobecorp.template_too_slow", "The route cannot finish within three minutes at this speed", "当前速度无法在三分钟内通过模板线路");
+		add("horde.lobecorp.banner.title", "The Noon of Indigo", "靛蓝色的正午");
+		add("horde.lobecorp.banner.name", "The Sweepers", "清道夫");
+		add("horde.lobecorp.banner.start", "When night falls, they quietly arrive in the Backstreets...", "夜幕降临之际，他们“悄悄地”来到后巷……");
+		add("horde.lobecorp.banner.end", "When the sun rises, not a trace will remain...", "旭日东升之时，半点痕迹都不会剩下……");
 		add("horde.lobecorp.midnight_cleanup", "Midnight Cleanup", "深夜清扫");
 		add("lobecorp.configuration.lobecorp-horde-events.toml", "Horde events (server)", "群体事件（服务端）");
 		add("lobecorp.configuration.lobecorp-horde-visuals.toml", "Horde visuals", "群体浪潮视觉");

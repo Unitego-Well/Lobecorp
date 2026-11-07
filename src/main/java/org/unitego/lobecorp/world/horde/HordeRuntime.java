@@ -48,6 +48,7 @@ public class HordeRuntime {
 	// 只限制归档清理；目标有效性、成员与战斗计时仍逐tick检查。
 	private static final int CHECK_INTERVAL = 20;
 	private final HordeSync sync = new HordeSync();
+	private final MidnightCleanupOpening opening = new MidnightCleanupOpening();
 	private boolean stopping;
 	private long ticksNanos;
 	private long spawned;
@@ -78,7 +79,10 @@ public class HordeRuntime {
 	}
 
 	public static void clear(MinecraftServer server) {
-		RUNTIMES.remove(server);
+		var runtime = RUNTIMES.remove(server);
+		if (runtime != null) {
+			runtime.opening.clear();
+		}
 	}
 
 	public static @Nullable LivingEntity assignedTarget(Mob mob) {
@@ -102,7 +106,7 @@ public class HordeRuntime {
 		if (!mob.isAlive()) {
 			return true;
 		}
-		if (event == null || !event.running() || !registered || state.fading()) {
+		if (event == null || event.finished() || !registered || state.fading()) {
 			return false;
 		}
 		loaded.put(mob.getUUID(), mob);
@@ -158,8 +162,13 @@ public class HordeRuntime {
 		}
 	}
 
+	public void open(HordeEvent event) {
+		opening.start(server, event);
+	}
+
 	public void tick() {
 		var data = HordeSavedData.get(server);
+		opening.tick(server, data);
 		if (data.events().isEmpty() && loaded.isEmpty()) {
 			sync.tick(server, data, this);
 			prune(data);
@@ -184,7 +193,7 @@ public class HordeRuntime {
 			if (event.route().refresh(level)) {
 				event.changed();
 			}
-			if (event.tick() == event.stopAt() || event.finished()) {
+			if (event.finished()) {
 				stop(event, HordeStopMode.GRACEFUL);
 			}
 			if (event.finished()) {
@@ -221,7 +230,7 @@ public class HordeRuntime {
 				continue;
 			}
 			var event = data.events().get(participant.eventUuid());
-			if (event == null || !event.running()) {
+			if (event == null || event.finished()) {
 				fade(mob);
 				continue;
 			}
@@ -295,7 +304,7 @@ public class HordeRuntime {
 					}
 
 					for (var event : data.events().values()) {
-						if (!event.running() || !event.dimension().equals(level.dimension()) || !event.covers(target.position())) {
+						if (!event.canSpawnAt(target.position()) || !event.dimension().equals(level.dimension())) {
 							continue;
 						}
 
@@ -433,7 +442,7 @@ public class HordeRuntime {
 			return null;
 		}
 		var position = living.position();
-		return data.events().values().stream().filter(HordeEvent::running).filter(event -> {
+		return data.events().values().stream().filter(event -> event.canSpawnAt(position)).filter(event -> {
 			var profile = HordeEvents.profile(event.profile());
 			return profile != null && domain(event, profile).equals(target.domain)
 					&& living.level().dimension().equals(event.dimension()) && event.covers(position);
@@ -453,9 +462,9 @@ public class HordeRuntime {
 			var level = event == null ? null : server.getLevel(event.dimension());
 			var target = targetEntity(request.target);
 			var profile = event == null ? null : HordeEvents.profile(event.profile());
-			if (event == null || !event.running() || level == null || target == null || target.level() != level
+			if (event == null || level == null || target == null || target.level() != level
 					|| profile == null || !domain(event, profile).equals(request.target.domain)
-					|| !event.covers(target.position())
+					|| !event.canSpawnAt(target.position())
 					|| !profile.acceptsTarget(new HordeTargetContext(level, target.position(), profile.faction()), target)
 					|| request.target.occupied() > Math.min(request.target.quota, HordeRules.MAXIMUM_TARGET_QUOTA)) {
 				cancel(request);
@@ -625,6 +634,9 @@ public class HordeRuntime {
 	}
 
 	public void stop(HordeEvent event, HordeStopMode mode) {
+		if (mode == HordeStopMode.CLEAR || event.finished()) {
+			opening.finish(server, event);
+		}
 		for (var request : List.copyOf(requests.values())) {
 			if (request.event.equals(event.id())) {
 				cancel(request);

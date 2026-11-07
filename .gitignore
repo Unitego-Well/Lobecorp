@@ -49,7 +49,6 @@ repo/
 /.cursor/
 /.claude/
 /memory/
-/.agent/
 /.codex/
 /.backups/
 /.agent/

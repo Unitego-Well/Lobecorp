@@ -19,7 +19,7 @@
    - 全局：先看 `~/.dsh/skills/index.md`，再按任务读 `~/.dsh/skills/<名称>/SKILL.md`；常用入口为 dev-standards、skills-manager、intellij-idea-jvm-development、java-development-standards、mc-mod-operations、minecraft-entity-behavior、minecraft-entity-visual-sync、game-vfx-authoring。
    - 项目：读 `Lobecorp/.agents/skills/*/SKILL.md` 中适用的入口，当前有 lobecorp-normify、lobecorp-mcp-background-control、lobecorp-workspace-sync；lobecorp-isolated-workspace 目录当前没有 SKILL.md，不得当作可用技能或据此创建环境。
    - 当前 DS 会话的 `skill` 工具可能不可用：2026-10-27 实测它对全局 `dev-standards` 与项目 `lobecorp-normify` 均返回 unknown。此时按上述路径直接读文件，不得以“技能不可用”为由跳过；文件缺失时记录到[问题汇总](../issues.md)并报告。
-5. 用 IDEA MCP 只读核对现有源码、文档、引用与诊断；IDEA 当前打开的 Lobecorp 路径为 `E:/xm/mc/mod/Unitego-Well/Lobecorp`。Minecraft 操作先确认当前游戏实例与端口，再调用 minecraft MCP。
+5. 按[智能路由](C:/Users/wang_/.agents/skills/windows-jvm-smart-routing/SKILL.md)核对现有源码、文档、引用与诊断，使用任务真实工作区，不将固定路径当作当前打开实例。Minecraft 操作先确认游戏实例与端口。
 6. 在可见消息报告自检结果：已读文件、已读技能、使用的 MCP、记录位置、本次步骤与疑问。自检未完成不得开始修改。
 
 ## 二、提问与异议

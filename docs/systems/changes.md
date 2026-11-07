@@ -1,5 +1,10 @@
 # 系统修改记录
 
+## 2026-11-07：深夜清扫文本框精灵平铺
+
+- text_box.png.mcmeta按原图17×10配置nine_slice：左3、右5、上下0，stretch_inner=false使中部平铺。PNG原字节保持，其他事件纹理及删除暂存不包含本次提交。
+- 对照当前GuiSpriteScaling.NineSlice源码核对字段/默认值，JSON与边界尺寸检查通过；未运行游戏、测试或视觉验收。
+
 ## 2026-11-07：预留深夜清扫事件整体HUD样式配置
 
 - PlayerHudConfig新增MIDNIGHT_CLEANUP_STYLE，键hud.events.midnight_cleanup.style，复用HudStyle.DEFAULT/NEW，默认DEFAULT。保留独立timerStyle，不改事件渲染或注册。

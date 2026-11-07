@@ -15,6 +15,7 @@ import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.server.ServerConfig;
 import org.unitego.lobecorp.generator.lang.HordeLang;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 import org.unitego.lobecorp.registry.block.LcBlocks;
@@ -49,6 +50,7 @@ public class Lobecorp {
 		LcSensorTypes.init(iEventBus);
 		LcMobEffects.init(iEventBus);
 		LcParticleTypes.init(iEventBus);
+		LcSoundEvents.init(iEventBus);
 		LcAttributes.init(iEventBus);
 		LcEntityDataSerializers.init(iEventBus);
 		LcEntityTypes.init(iEventBus);

@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 
 import net.minecraft.server.level.ServerLevel;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import org.unitego.lobecorp.conductor.data.ConductorData;
@@ -55,6 +56,9 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.REASSEMBLE);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+		}
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
 
@@ -66,11 +70,17 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		}
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		if (entity.level() instanceof ServerLevel && runtime.activeTicks() > 0 && runtime.activeTicks() % 12 == 0) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		}
 		EntityCorpse<?> corpse = runtime.target(EntityCorpse.class);
 		faceTarget(entity, corpse);
 		if (!(entity.level() instanceof ServerLevel level)) {
@@ -159,6 +169,9 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+		}
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 

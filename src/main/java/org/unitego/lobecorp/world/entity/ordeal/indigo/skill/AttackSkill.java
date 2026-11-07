@@ -2,6 +2,7 @@ package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.server.level.ServerLevel;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -165,6 +166,9 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_ATTACK.get(), 0.8F, 1);
+		}
 		float yaw = entity.getYRot();
 		runtime.setData(LOCKED_YAW, yaw);
 		lockFacing(entity, runtime);

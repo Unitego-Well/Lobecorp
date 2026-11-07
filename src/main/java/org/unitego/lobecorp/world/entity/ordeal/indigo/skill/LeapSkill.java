@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
@@ -308,6 +309,7 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 		entity.setDeltaMovement(solution.trajectory().movement());
 		createFlightHitbox(entity, runtime, level);
 		spawnTakeoffParticles(level, entity);
+		entity.playSound(LcSoundEvents.SWEEPER_JUMP.get(), 0.8F, 1);
 	}
 
 	@Override
@@ -319,6 +321,7 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 		}
 
 		if (runtime.activeTicks() >= MIN_LANDING_CHECK_TICKS && entity.onGround()) {
+			entity.playSound(LcSoundEvents.SWEEPER_LAND.get(), 1, 1);
 			EntitySkillUtil.endSkill(entity, this);
 			return;
 		}

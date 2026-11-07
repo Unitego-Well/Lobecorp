@@ -10,6 +10,9 @@ public class HordeVisualConfig {
 	public static final int MAXIMUM_PARTICLE_RANGE = 64;
 	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE, FRAGMENT_GROUPS;
 	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
+	public static final ModConfigSpec.IntValue SOUND_RANGE, SOUND_MAX_ACTIVE, EVENT_SHAKE_RANGE, LANDING_SHAKE_RANGE;
+	public static final ModConfigSpec.BooleanValue EVENT_SHAKE, LANDING_SHAKE;
+	public static final ModConfigSpec.DoubleValue SHAKE_STRENGTH;
     public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES, LOD_ENABLED;
     public static final ModConfigSpec.DoubleValue ROW_SPACING, COLUMN_SPACING;
     public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, CARD_DISTANCE, SINGLE_CARD_DISTANCE, FRAME_DISTANCE;
@@ -35,8 +38,21 @@ public class HordeVisualConfig {
 			SINGLE_CARD_DISTANCE = b.translation(HordeLang.config("visual.single_card_distance", "Single card distance (blocks, -1 off)", "单方向片距离（格，-1：关闭）")).defineInRange("singleCardDistance", 64, -1, 4096);
 		FRAME_DISTANCE = b.translation(HordeLang.config("visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）")).defineInRange("frameDistance", 10, -1, 4096);
 			b.pop().translation(ClientConfig.translation("horde.sound", "Sound", "声音")).push("sound");
-			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate footsteps", "聚合脚步声")).define("sound", true);
+			SOUND = b.translation(HordeLang.config("visual.sound", "Aggregate sweeper sounds", "聚合清道夫音效")).define("sound", true);
 			SOUND_VOICES = b.translation(HordeLang.config("visual.sound_voices", "Sound voices", "聚合声源上限")).defineInRange("soundVoices", 2, 0, 16);
+			SOUND_RANGE = b.comment("环境声最大距离，实际还受事件订阅范围限制；不增加可见模型或粒子范围。")
+					.translation(HordeLang.config("visual.sound_range", "Ambient sound range", "环境音效范围"))
+					.defineInRange("soundRange", 256, 16, 1024);
+			SOUND_MAX_ACTIVE = b.translation(HordeLang.config("visual.sound_max_active", "Maximum concurrent ambient sounds", "环境音效并发上限"))
+					.defineInRange("soundMaxActive", 4, 1, 16);
+			EVENT_SHAKE = b.translation(HordeLang.config("visual.event_shake", "Wave camera shake", "浪潮镜头震动")).define("eventShake", true);
+			LANDING_SHAKE = b.translation(HordeLang.config("visual.landing_shake", "Sweeper landing shake", "清道夫落地震动")).define("landingShake", true);
+			EVENT_SHAKE_RANGE = b.translation(HordeLang.config("visual.event_shake_range", "Wave shake range", "浪潮震动范围"))
+					.defineInRange("eventShakeRange", 64, 1, 256);
+			LANDING_SHAKE_RANGE = b.translation(HordeLang.config("visual.landing_shake_range", "Landing shake range", "落地震动范围"))
+					.defineInRange("landingShakeRange", 24, 1, 64);
+			SHAKE_STRENGTH = b.translation(HordeLang.config("visual.shake_strength", "Camera shake strength", "镜头震动强度"))
+					.defineInRange("shakeStrength", 1.0, 0.0, 2.0);
 			b.pop().translation(ClientConfig.translation("horde.particles", "Particles", "粒子")).push("particles");
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
 			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("仅在浪潮边界、分割接合和多潮接合生成碎屑与灰尘；刀光独立每1至4刻成批生成。").defineInRange("particleIntervalTicks", 1, 1, 1200);

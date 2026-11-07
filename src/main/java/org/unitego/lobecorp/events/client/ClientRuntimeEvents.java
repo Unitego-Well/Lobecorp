@@ -1,6 +1,13 @@
 package org.unitego.lobecorp.events.client;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -40,6 +47,63 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRuntimeEvents {
+	private static double landingAt = Double.NEGATIVE_INFINITY;
+	private static float landingPower;
+	private static ResourceKey<Level> landingDimension;
+
+	@SubscribeEvent
+	public static void onSweeperLandingSound(PlaySoundEvent event) {
+		var sound = event.getSound();
+		var minecraft = Minecraft.getInstance();
+		if (sound == null || HordeAmbient.ambientSound(sound) || minecraft.level == null
+				|| !HordeVisualConfig.LANDING_SHAKE.get()
+				|| !sound.getIdentifier().equals(LcSoundEvents.SWEEPER_LAND.get().location())) {
+			return;
+		}
+		var camera = minecraft.gameRenderer.getMainCamera();
+		if (!camera.isInitialized()) {
+			return;
+		}
+		double distance = camera.position().distanceTo(new Vec3(sound.getX(), sound.getY(), sound.getZ()));
+		float power = (float) Math.clamp(1 - distance / HordeVisualConfig.LANDING_SHAKE_RANGE.get(), 0, 1);
+		if (power <= 0) {
+			return;
+		}
+		double now = minecraft.level.getGameTime();
+		float remaining = landingDimension == minecraft.level.dimension()
+				? landingPower * (float) Math.clamp(1 - (now - landingAt) / 6, 0, 1) : 0;
+		landingPower = Math.max(remaining, power);
+		landingAt = now;
+		landingDimension = minecraft.level.dimension();
+	}
+
+	@SubscribeEvent
+	public static void onSweeperCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+		var minecraft = Minecraft.getInstance();
+		if (minecraft.level == null || minecraft.player == null) {
+			return;
+		}
+		float partial = (float) event.getPartialTick();
+		double now = minecraft.level.getGameTime() + partial;
+		float scale = HordeVisualConfig.SHAKE_STRENGTH.get().floatValue();
+		float wave = HordeVisualConfig.EVENT_SHAKE.get() ? HordeAmbient.shakeStrength(partial) : 0;
+		double age = now - landingAt;
+		float impact = HordeVisualConfig.LANDING_SHAKE.get() && landingDimension == minecraft.level.dimension()
+				&& age >= 0 ? landingPower * (float) Math.clamp(1 - age / 6, 0, 1) * scale : 0;
+		if (wave <= 0 && impact <= 0) {
+			return;
+		}
+		double hitAge = impact > 0 ? age : 0;
+		float cap = 0.8F * scale;
+		event.setPitch(event.getPitch() + Math.clamp((float) Math.sin(now * 2.2) * 0.2F * wave
+				+ (float) Math.sin(hitAge * 2.8) * 0.8F * impact, -cap, cap));
+		event.setYaw(event.getYaw() + Math.clamp((float) Math.sin(now * 1.5) * 0.1F * wave
+				+ (float) Math.sin(hitAge * 2.1) * 0.2F * impact, -cap, cap));
+		event.setRoll(event.getRoll() + Math.clamp((float) Math.sin(now * 1.8) * 0.35F * wave
+				+ (float) Math.sin(hitAge * 2.5) * 0.4F * impact, -cap, cap));
+	}
+
+
 	@SubscribeEvent
 	public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
 		HordeClient.clear();
@@ -58,6 +122,9 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+		landingAt = Double.NEGATIVE_INFINITY;
+		landingPower = 0;
+		landingDimension = null;
 		HordeClient.clear();
 		clearHud();
 		ScreenParticles.clear();
@@ -178,6 +245,9 @@ public class ClientRuntimeEvents {
 
 	/// 清理所有 HUD 会话状态；管理器只保留指挥家等 LDLib2 消费者。
 	private static void clearHud() {
+		landingAt = Double.NEGATIVE_INFINITY;
+		landingPower = 0;
+		landingDimension = null;
 		HudLayerManager.INSTANCE.clear();
 		PlayerStatusHud.INSTANCE.clear();
 		TopLeftHud.INSTANCE.clear();

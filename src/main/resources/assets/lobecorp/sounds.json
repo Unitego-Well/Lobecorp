@@ -1,56 +1,134 @@
 {
 	"entity.sweeper.move": {
 		"sounds": [
-			"lobecorp:sweeper/move1",
-			"lobecorp:sweeper/move2",
-			"lobecorp:sweeper/move3",
-			"lobecorp:sweeper/move4",
-			"lobecorp:sweeper/move5",
-			"lobecorp:sweeper/move6",
-			"lobecorp:sweeper/move7",
-			"lobecorp:sweeper/move8",
-			"lobecorp:sweeper/move9",
-			"lobecorp:sweeper/move10",
-			"lobecorp:sweeper/move11",
-			"lobecorp:sweeper/move12"
+			{
+				"name": "lobecorp:sweeper/move1",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move2",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move3",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move4",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move5",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move6",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move7",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move8",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move9",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move10",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move11",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/move12",
+				"attenuation_distance": 32
+			}
 		]
 	},
 	"entity.sweeper.attack": {
 		"sounds": [
-			"lobecorp:sweeper/attack1",
-			"lobecorp:sweeper/attack2",
-			"lobecorp:sweeper/attack3",
-			"lobecorp:sweeper/attack4"
+			{
+				"name": "lobecorp:sweeper/attack1",
+				"attenuation_distance": 48
+			},
+			{
+				"name": "lobecorp:sweeper/attack2",
+				"attenuation_distance": 48
+			},
+			{
+				"name": "lobecorp:sweeper/attack3",
+				"attenuation_distance": 48
+			},
+			{
+				"name": "lobecorp:sweeper/attack4",
+				"attenuation_distance": 48
+			}
 		]
 	},
 	"entity.sweeper.clear_start": {
 		"sounds": [
-			"lobecorp:sweeper/clear_start1",
-			"lobecorp:sweeper/clear_start2"
+			{
+				"name": "lobecorp:sweeper/clear_start1",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/clear_start2",
+				"attenuation_distance": 32
+			}
 		]
 	},
 	"entity.sweeper.clear_loop": {
 		"sounds": [
-			"lobecorp:sweeper/clear_loop1",
-			"lobecorp:sweeper/clear_loop2",
-			"lobecorp:sweeper/clear_loop3"
+			{
+				"name": "lobecorp:sweeper/clear_loop1",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/clear_loop2",
+				"attenuation_distance": 32
+			},
+			{
+				"name": "lobecorp:sweeper/clear_loop3",
+				"attenuation_distance": 32
+			}
 		]
 	},
 	"entity.sweeper.clear_end": {
 		"sounds": [
-			"lobecorp:sweeper/clear_end1"
+			{
+				"name": "lobecorp:sweeper/clear_end1",
+				"attenuation_distance": 48
+			}
 		]
 	},
 	"entity.sweeper.jump": {
 		"sounds": [
-			"lobecorp:sweeper/jump1",
-			"lobecorp:sweeper/jump2"
+			{
+				"name": "lobecorp:sweeper/jump1",
+				"attenuation_distance": 48
+			},
+			{
+				"name": "lobecorp:sweeper/jump2",
+				"attenuation_distance": 48
+			}
 		]
 	},
 	"entity.sweeper.land": {
 		"sounds": [
-			"lobecorp:sweeper/land1",
-			"lobecorp:sweeper/land2"
+			{
+				"name": "lobecorp:sweeper/land1",
+				"attenuation_distance": 64
+			},
+			{
+				"name": "lobecorp:sweeper/land2",
+				"attenuation_distance": 64
+			}
 		]
 	}
 }

@@ -10,6 +10,9 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.state.BlockState;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.Profiler;
@@ -58,6 +61,13 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 /// 清道夫
 public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCustomAnimatable, IIndigoOrdeal,
 		IEntityTarget, IEntityStateHolder, IEntitySkillHolder, ICombatant {
+	@Override
+	protected void playStepSound(BlockPos position, BlockState state) {
+		if (level() instanceof ServerLevel) {
+			playSound(LcSoundEvents.SWEEPER_MOVE.get(), 0.65F, 1);
+		}
+	}
+
 	// 攻击属性标识
 
 	/// 普通攻击临时伤害倍率属性的唯一标识

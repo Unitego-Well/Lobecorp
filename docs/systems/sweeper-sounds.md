@@ -2,7 +2,7 @@
 
 导入：2026-11-07。原文件位于E:/Downloads/清道夫音频/音频，名称与字节未改。仅根据文件名分类，未试听判定动作内容；导入副本为OGG Vorbis、单声道48kHz、质量5，不额外裁剪或响度处理。数字后缀区分同类变种，不推断括号序号代表音质或版本。
 
-资源目录：src/main/resources/assets/lobecorp/sounds/sweeper/；sounds.json定义七组可用资源事件，无Java触发逻辑。clear_loop仅表示清扫进行阶段，不自动循环；何时触发/随机/循环由后续动作逻辑明确。
+资源目录：src/main/resources/assets/lobecorp/sounds/sweeper/；sounds.json七组资源事件已在LcSoundEvents注册并接入实体和环境调度。clear_loop资源本身不自动循环，重复由动作/环境入口控制。以下文件对应表保留导入来源，不重复放置音频。
 
 | 分类 | 事件ID | 变种 |
 |---|---|---|
@@ -13,6 +13,20 @@
 | 清扫结束 | `lobecorp:entity.sweeper.clear_end` | 1 |
 | 飞扑起跳 | `lobecorp:entity.sweeper.jump` | 2 |
 | 飞扑落地 | `lobecorp:entity.sweeper.land` | 2 |
+
+## 2026-11-07 接入契约
+
+实体：移动使用脚步入口；每次攻击前摇一次；清扫/重组开始、进行、结束跟随既有技能，进行声每12tick；飞扑仅在实际设置起跳速度后播放jump，仅确认onGround的结束分支播放land，空中取消不伪造落地。均由服务端播放，客户端只消费声音，避免双侧重复。实体声音为32-64格的普通位置音效，不全部放大至256格。
+
+环境：复用HordeAmbient，从已同步ClientEvent与当前活动波头/波尾取路线采样，避开分割空区，不依赖可见渲染batches。默认2个位置采样，soundVoices仍可调；总在播默认4。move每7-13tick、attack每30-70tick，长攻击未结束不重入；清扫小段每160-240tick开始，进行声3-6次、每8-16tick，结束一次；飞扑对每240-400tick，模拟落地在起跳结束后衔接。所有频率是环境总量，不乘虚拟单位数；满额时落地/收尾优先，普通声跳过而非积压。
+
+既有Source扩为原版AbstractTickableSoundInstance，更新位置和音量；只保留本功能在播引用，自然结束/关闭/切世界时结束并停止自身，不stopAll。环境使用位置声方向、无原生距离衰减，再按相机到采样点的距离做平滑增益与遮挡衰减，volume不靠大于1扩大范围；最大默认256格，实际仍受收到事件范围限制，不增加可见模型/粒子数。没有额外全局音效管理器或逐虚拟单位音源。
+
+震动：复用NeoForge ComputeCameraAngles，仅叠加渲染yaw/pitch/roll，不改变玩家朝向、位置、FOV或输入。浪潮默认64格内按距离连续轻震；真实落地默认24格、6tick（0.3秒）短促震动。客户端通过PlaySoundEvent消费服务端真实落地声，排除环境Source的模拟落地，不加网络包或相机Mixin；手动播放同一land声音也视为同一表现事件。多次落地取有界最大余量，不按数量无限叠加。
+
+配置均在events.midnight_cleanup.wave.sound：sound、soundVoices沿用；新增soundRange=256、soundMaxActive=4、eventShake=true、landingShake=true、eventShakeRange=64、landingShakeRange=24、shakeStrength=1。声音与震动独立开关；落地震动开关作用于真实清道夫，不要求存在浪潮。暂停沿游戏时间冻结，恢复不补播积压。所有范围/强度仅为初始建议，未听觉/画面调校。
+
+Java25主/Bench/测试源码编译、Data与jar通过，Data23文件写2删0，10份变更Java的IDEA检查无错误；调度复核后再次编译打包通过。未执行单元/集成、游戏、实际声音/震动或性能验收，不声称效果达标。证据.local/sweeper-audio-integration-20261107/。
 
 ## 文件对应
 

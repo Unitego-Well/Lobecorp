@@ -3,6 +3,7 @@ package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -81,15 +82,24 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.SWEEP);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+		}
 	}
 
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		}
 	}
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		if (entity.level() instanceof ServerLevel && runtime.activeTicks() > 0 && runtime.activeTicks() % 12 == 0) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		}
 		Entity target = runtime.target();
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return;
@@ -159,6 +169,9 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
+		if (entity.level() instanceof ServerLevel) {
+			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+		}
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 

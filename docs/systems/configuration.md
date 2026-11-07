@@ -13,7 +13,7 @@ Lobecorp仅注册一个CLIENT与一个SERVER ModConfig。ClientConfig管理lobec
 - 根corpseBatch：批量绘制冻结尸体，默认true，供CorpseBatchRenderer使用。
 - events/midnight_cleanup/wave：浪潮启用。
   - display：数量、范围、Iris、动画/片距离、rowSpacing、columnSpacing。
-  - sound：聚合脚步与声源上限。
+  - sound：聚合清道夫七类音效；sound/soundVoices沿用，soundRange=256、soundMaxActive=4；eventShake/landingShake默认true，eventShakeRange=64、landingShakeRange=24、shakeStrength=1。声音和震动分别可关闭，真实落地震动不要求存在浪潮。完整频率/距离及未验收边界见[音效契约](sweeper-sounds.md#2026-11-07-接入契约)。
   - particles：近处粒子、生成间隔/组数与范围。
   - debug：统计叠层。
 - hud/statusBars：自定义生命条。

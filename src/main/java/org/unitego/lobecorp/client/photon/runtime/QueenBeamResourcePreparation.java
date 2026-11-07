@@ -130,6 +130,9 @@ public class QueenBeamResourcePreparation {
 			}
 			var visited = new HashSet<Identifier>();
 			for (var id : resources) {
+				if (FXHelper.preloadNow(id) == null) {
+					throw new IllegalArgumentException("技能资源缺失：" + id);
+				}
 				prepare(id, visited);
 			}
 			GATE.complete(stamp);
@@ -149,7 +152,8 @@ public class QueenBeamResourcePreparation {
 		if (!visited.add(id)) {
 			return;
 		}
-		FX fx = FXHelper.preloadNow(id);
+		// 原生预加载已递归准备子效果；这里只核对定义并准备本模组的可选编译模式。
+		FX fx = FXHelper.getFX(id);
 		if (fx == null) {
 			throw new IllegalArgumentException("技能资源缺失：" + id);
 		}

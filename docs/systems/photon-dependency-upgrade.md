@@ -1,5 +1,38 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-08 女皇工作区升级至 26.1.2.11
+
+当前 `codex/queen-of-hatred` 使用 Photon `26.1.2.11`、LDLib2 `26.1.2.46`，KilaGraph 保持 `26.1.0.16.a`。版本来自官方 Maven 26.1 模块元数据，IDEA 实际解析与版本目录一致；Minecraft、NeoForge 与 Java 版本不变。
+
+本次制品已包含 `FXRuntime.sections()` 和 `SectionControl`，支持名称查询、jumpTo、queue、advance、release 等原生区段接口。下方 `.10` 无 Sections 的结论仅属于先前版本。此次只完成依赖升级与必要兼容，不迁移既有命名动画或新增 MCP 区段控制工具。
+
+新版 `emit(effect, delay)` 转发到 `emit(effect, delay, startSection)`，真正的发射与时间轴启动已移到三参数入口。现有 FXRuntimeMixin 的命名准备、预览恢复与发射跟踪统一改为注入三参数入口，完整传递 startSection；普通发射仍经转发调用，不重复执行。通过依赖源码核对两条播放路径，并确认 LDLib2 视图菜单及缩放 Mixin 的调用目标仍存在。
+
+验证：IDEA Gradle 同步成功；`compileJava compileBenchJava jar` 最终成功。修改 Mixin 的 IDEA 检查无错误，保留既有 Mixin 强转与参数名提示。未执行测试、Data、游戏、GUI 显示或 MCP 实际调用验收，未恢复演示资源。
+
+## 2026-11-07 女皇工作区升级
+
+本节仅适用于 `codex/queen-of-hatred`。Photon 从 `26.1.2.9` 升为官方 Maven 当前 26.1 分支发布的 `26.1.2.10`；LDLib2 `26.1.2.45`、KilaGraph `26.1.0.16.a`、Minecraft `26.1.2`、NeoForge `26.1.2.100` 和 Java 25 保持。版本目录与 IDEA 实际解析均指向 `.10`，不是把 1.21.1 的 2.x 版本号直接写入本工程。
+
+依据[官方预加载接口](https://low-drag-mc.github.io/LowDragMC-Doc/zh/photon2/java-api/preloading.html)及实际 `.10` 的 `FXPreloader.SyncSink` / `walk`，根效果的 `preloadNow` 已经通过 `PreloadContext.fx` 递归准备子效果。女皇准备入口改为只对每个根执行原生预加载；后续自有遍历只读取定义、核对缺失来源并准备可选编译模式，不对子效果重复执行整套原生预热。保留自有模型和 PROJECT 模板的 `preload` 钩子，不能把自定义类型首次准备全部交给上游猜测。
+
+MCP `effect_capabilities` 直接枚举原生 `PhotonRegistries.MATERIALS` 和 `MODEL_SOURCES`，返回 `materialTypes` / `modelSourceTypes`。原生材质可通过现有 renderer SNBT/模型材质槽事务使用，原生对象和时间轴类型继续来自 Photon 注册表，不再维护一份平行类型清单。接口名称与桥接协议保持，未增加新的外部 MCP 工具。
+
+文档中的 [Sections](https://low-drag-mc.github.io/LowDragMC-Doc/zh/photon2/timeline/sections.html) 标注自 2.2.11；实际 `26.1.2.10` 的 `FXRuntime` 没有 `sections()`，依赖中也无 `SectionControl`。本轮不以该页面为由删除命名播放、参数绑定和子窗口控制，不宣称已接入区段播放。
+
+其余候选按实际 `.10` API 核对后的边界：
+
+| 自有职责 | 原生能力 | 本轮处理 |
+|---|---|---|
+| 材质和模型来源类型发现 | `PhotonRegistries.MATERIALS` / `MODEL_SOURCES`，包括原生 `kila_material` | MCP直接枚举，现有事务继续使用原生Codec；不另写Kila材质实现 |
+| 动态模型与可编辑 `.mfxproj` | `IDynamicMesh` 提供拓扑、revision、CPU/GPU几何，`DynamicMeshSource` 是运行覆盖 | 保留编辑、持久化、部件片段和事务能力；动态网格接口本身不能等价替代文件与编辑契约 |
+| 子效果生成与独立生命周期 | `FXInstanceObject` 放置来源效果、保留覆盖与嵌套时间轴 | 保留 `PhotonChildSpawner` 的 PROJECT模板、间隔/速率生成、实例配额和独立寿命；不把静态放置当成等价生成器 |
+| 命名播放、阶段保持与参数绑定 | 本分支无Sections；普通Timeline与Signal仍可用 | 保留现有功能和资源，不做缺乏对应API的删除 |
+
+GUI无需外观调整，但格式、生命周期、revision和MCP写入保护仍是功能契约，不能因降低外观验收标准而移除。
+
+验证：IDEA 同步成功，`compileJava compileBenchJava jar` 成功；两份修改 Java 文件无错误，保留既有未使用方法、Stream 写法和借用 Prepared 等警告。用户要求游戏搁置，本轮不启动客户端，不进行 GUI 外观、实际 MCP 调用、游戏视觉或性能验收。API 编译和静态接线不能替代实际调用。
+
 ## 2026-11-01 主工作区版本同步
 
 按用户澄清，仅同步Photon工作区的PhotonMod版本升级及必需API兼容，不合入整个工作区、资源调度架构、性能工具或分支进度。版本目录三项增量来自acfbf85b，通过Git apply --3way --index应用，其他依赖版本保持。

@@ -22,7 +22,7 @@ public abstract class AppearanceSettingsMixin {
 		original.call(settings, editor);
 	}
 
-	@WrapOperation(method = "onApply", at = @At(value = "INVOKE",
+	@WrapOperation(method = "applyScreenScale", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/lowdraglib2/editor/ui/EditorWindow;isInOsWindow()Z"))
 	private boolean lobecorp$allowViewScale(EditorWindow window, Operation<Boolean> original, Editor editor) {
 		return original.call(window) && !PhotonEditorViewScaleUtil.isApplyingViewScale(editor);

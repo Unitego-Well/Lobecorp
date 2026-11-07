@@ -233,13 +233,12 @@ public class LcClientAnimations {
 			if (phase == Phase.OUTPUT.ordinal()) {
 				return 1;
 			}
-			double tick = gameTime() + (double) partialTick;
+			double tick = snapshot.paused() ? snapshot.serverTick() : renderServerTick(frame, partialTick);
 			var fps = codeSampleFps(frame);
 			if (fps > 0) {
 				tick = Math.floor(tick * fps / LcAnimationInstance.TICKS_PER_SECOND) * LcAnimationInstance.TICKS_PER_SECOND / fps;
 			}
-			var age = frame.ageOffset + tick;
-			var elapsed = age - values.getOrDefault(TheQueenOfHatredBeamAnimation.PHASE_STARTED_AGE, age);
+			var elapsed = Math.max(0, tick - values.getOrDefault(TheQueenOfHatredBeamAnimation.PHASE_STARTED_TICK, tick));
 			var ticks = values.getOrDefault(phase == Phase.RECOVERY.ordinal()
 					? TheQueenOfHatredBeamAnimation.RECOVERY_TICKS : TheQueenOfHatredBeamAnimation.WINDUP_TICKS, 0.0);
 			var progress = ticks <= 0 ? 1 : Math.clamp(elapsed / ticks, 0, 1);

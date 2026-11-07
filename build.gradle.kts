@@ -27,7 +27,8 @@ tasks.wrapper {
 val photonBenchEnabled = providers.gradleProperty("photonBench").map(String::toBoolean).orElse(false)
 val minecraftMcpJar = files("lib/minecraft-mcp-0.3.0.jar")
 val minecraftMcpBridge = layout.projectDirectory.dir("lib/minecraft-mcp/bridge")
-val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT").orElse(
+val minecraftMcpGamePort = providers.environmentVariable("MC_MCP_PORT")
+    .orElse(providers.gradleProperty("MC_MCP_PORT")).orElse(
     providers.fileContents(layout.projectDirectory.file(".codex/config.toml")).asText.map { config ->
         Regex("""(?m)^MC_MCP_PORT\s*=\s*"(\d+)"""").find(config)?.groupValues?.get(1)
             ?: error("Configure an explicit workspace MC_MCP_PORT")

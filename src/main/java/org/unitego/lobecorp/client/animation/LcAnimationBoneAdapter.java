@@ -5,13 +5,10 @@ import com.geckolib.constant.DataTickets;
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.geckolib.renderer.base.RenderPassInfo;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
-import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.unitego.lobecorp.animation.LcAnimationControllerIntegration;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
 
 /// 公共姿态使用格和向前 +Z；这里只转换 GeckoLib 5.5.2 的动画增量字段。
@@ -51,13 +48,7 @@ public class LcAnimationBoneAdapter {
 
 		var beam = LcClientAnimations.snapshotForEntity(id.intValue(), value -> TheQueenOfHatredAnimationDefinitions.isBeam(value.definitionId()));
 		if (beam != null) {
-			LcAnimationControllerIntegration.apply(renderPassInfo, snapshots);
 			float weight = beamWeight(beam, partialTick);
-			var level = Minecraft.getInstance().level;
-			var owner = level == null ? null : level.getEntity(id.intValue());
-			if (owner != null && LcClientAnimationResources.visualClip(beam.content(), beam.animationName()) != null) {
-				pose = TheQueenOfHatredAnimationDefinitions.aimPose(pose, owner.getViewXRot(partialTick));
-			}
 			apply(pose, snapshots, weight);
 		} else {
 			apply(pose, snapshots);
@@ -66,19 +57,7 @@ public class LcAnimationBoneAdapter {
 	}
 
 	private static float beamWeight(LcAnimationSnapshot beam, float partialTick) {
-		var parameters = beam.parameters();
-		if (!parameters.containsKey(TheQueenOfHatredBeamAnimation.PHASE_STARTED_TICK)) {
-			return 0;
-		}
-		double phase = parameters.getOrDefault(TheQueenOfHatredBeamAnimation.PHASE, 0.0);
-        double now = beam.paused() ? beam.serverTick() : LcClientAnimations.renderServerTick(beam.instanceId(), partialTick);
-        double elapsed = Math.max(0, now - parameters.get(TheQueenOfHatredBeamAnimation.PHASE_STARTED_TICK));
-		double duration = parameters.getOrDefault(phase == TheQueenOfHatredBeamAnimation.Phase.RECOVERY.ordinal()
-				? TheQueenOfHatredBeamAnimation.RECOVERY_TICKS : TheQueenOfHatredBeamAnimation.WINDUP_TICKS, 0.0);
-		float progress = duration <= 0 ? 1 : (float) Math.clamp(elapsed / duration, 0, 1);
-		float weight = phase == TheQueenOfHatredBeamAnimation.Phase.OUTPUT.ordinal() ? 1
-				: phase == TheQueenOfHatredBeamAnimation.Phase.RECOVERY.ordinal() ? 1 - progress : progress;
-		return weight * weight * (3 - 2 * weight);
+		return (float) LcClientAnimations.beamPoseWeight(beam.ownerEntityId(), partialTick);
 	}
 
     private static void apply(LcSkeletalPose pose, BoneSnapshots snapshots, float weight) {

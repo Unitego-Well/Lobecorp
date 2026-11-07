@@ -12,6 +12,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.event.EventHud;
+import org.unitego.lobecorp.client.hud.event.MidnightCleanupHud;
+import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
@@ -96,6 +99,7 @@ public class HordeClient {
 	private static void closeEvent(ClientEvent event) {
 		if (event != null) {
 			event.split.close();
+			EventHud.INSTANCE.hide(event.id);
 		}
 	}
 
@@ -112,6 +116,7 @@ public class HordeClient {
 	}
 
 	public static void tick() {
+		synchronizeHud();
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null || EVENTS.isEmpty() || !HordeVisualConfig.ENABLED.get()) {
 			return;
@@ -128,6 +133,22 @@ public class HordeClient {
 		}
 	}
 
+
+	/// HUD只消费同步事件，不受虚拟模型显示开关或视锥裁剪影响。
+	private static void synchronizeHud() {
+		for (var event : EVENTS.values()) {
+			double time = event.time(0);
+			double remaining = event.speed > 0 ? event.stop + Math.ceil(event.length / event.speed) - time : 0;
+			if (!event.ready || event.failed || !MidnightCleanup.ID.equals(event.profile) || remaining <= 0) {
+				EventHud.INSTANCE.hide(event.id);
+				continue;
+			}
+
+			if (EventHud.INSTANCE.show(MidnightCleanup.ID, event.id) instanceof MidnightCleanupHud hud) {
+				hud.update(remaining, time);
+			}
+		}
+	}
 
 	/// 视觉分割只读客户端实际碰撞状态；实体间硬碰撞资格不能代表普通生物的物理体积。
 	private static boolean hasVisualCollision(LivingEntity entity) {
@@ -352,6 +373,7 @@ public class HordeClient {
 
 	public static class ClientEvent {
 		public final UUID id;
+		public Identifier profile;
 		public HordeRules rules;
 		/// 本地显示间距在接收事件头时固定，不参与服务端规则或同步。
 		private double rowSpacing = 1.8;
@@ -437,6 +459,7 @@ public class HordeClient {
 				rowSpacing = HordeVisualConfig.ROW_SPACING.get();
 				columnSpacing = HordeVisualConfig.COLUMN_SPACING.get();
 			}
+			profile = Identifier.parse(tag.getStringOr("profile", ""));
 			rules = nextRules;
 			clock.synchronize(tag.getLongOr("tick", 0), level.getGameTime());
 			stop = tag.getLongOr("stop", nextRules.duration());

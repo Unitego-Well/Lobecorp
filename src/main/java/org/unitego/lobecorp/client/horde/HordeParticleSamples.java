@@ -26,7 +26,7 @@ public class HordeParticleSamples implements AutoCloseable {
     private final HordeParticleFlow flow = new HordeParticleFlow();
 
 	/// 位序为纵横偏移(-1,-1)至(1,1)，跳过中心；位值来自未分割浪潮包络的邻域探针。
-	/// 不依赖稀疏代表点的身份邻接；出生前仍须核对当前分割与可见性。
+	/// 不依赖稀疏代表点的身份邻接；出生前仅核对活动波带、距离和已加载区块。
 	/// 每行的粗略变形包络；最终出生偏移也必须落在此包络中。
 	public record Envelope(Vec3 center, Vec3 forward, double station,
 	                       double low, double high, double tail, double head) {
@@ -99,7 +99,7 @@ public class HordeParticleSamples implements AutoCloseable {
         ACTIVE.clear();
     }
 
-    /// 每事件 10 Hz 采样；批次参数不扩大事件代表点预算。
+    /// 客户端事件独立10 Hz采样；保留旧批次参数签名，不依赖可见绘制。
     public void capture(HordeClient.ClientEvent event, double time, long serial,
                         long firstRow, int firstColumn, int columns) {
         var tide = event.tide;

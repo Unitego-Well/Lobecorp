@@ -9,16 +9,12 @@ import org.unitego.lobecorp.Lobecorp;
 import java.util.Comparator;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashSet;
-import java.util.UUID;
 
 /// 聚合声源，以及由短时 CPU 粗略流场快照驱动的边界扬尘和潮内刀光。
 public class HordeAmbient {
@@ -69,10 +65,11 @@ public class HordeAmbient {
 		}
 		tick++;
 		updateAudio();
-		if (HordeVisualConfig.DUST.get()) {
+		if (HordeVisualConfig.ENABLED.get() && HordeVisualConfig.DUST.get()) {
 			double range = HordeVisualConfig.PARTICLE_RANGE.get();
-			var particleAreas = HordeClient.batches().stream()
-					.filter(batch -> batch.block().bounds().distanceToSqr(minecraft.player.position()) < range * range).toList();
+			var particleAreas = HordeClient.events().stream()
+					.filter(event -> event.ready && !event.failed && event.tide != null
+							&& event.blocks.stream().anyMatch(block -> block.bounds().distanceToSqr(minecraft.player.position()) < range * range)).toList();
 			var ground = HordeGroundParticles.tick(particleAreas, tick);
 			selectedAreas += ground.groups();
 			emittedParticles += ground.particles();
@@ -338,47 +335,32 @@ public class HordeAmbient {
 	public static void queueCleanup(double x, double y, double z) {
 	}
 
-	private static boolean inView(Vec3 point) {
+	private static boolean withinParticleRange(Vec3 point) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		var player = minecraft.player;
 		return player != null && level != null
 				&& point.distanceToSqr(minecraft.gameRenderer.getMainCamera().position()) <= Math.pow(HordeVisualConfig.PARTICLE_RANGE.get(), 2)
-				&& level.getChunkSource().hasChunk((int) Math.floor(point.x / 16), (int) Math.floor(point.z / 16))
-				&& HordeClient.ambientVisible(point);
+				&& level.getChunkSource().hasChunk((int) Math.floor(point.x / 16), (int) Math.floor(point.z / 16));
 	}
 
-	private static boolean unobstructed(Vec3 point) {
-		var minecraft = Minecraft.getInstance();
-		var level = minecraft.level;
-		var player = minecraft.player;
-		return level != null && player != null && inView(point)
-				&& level.clip(new ClipContext(minecraft.gameRenderer.getMainCamera().position(),
-				point, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE,
-				player)).getType() == HitResult.Type.MISS;
-	}
-
-	private static void emitVisibleAreas(List<HordeClient.Batch> nearest) {
+	private static void emitVisibleAreas(List<HordeClient.ClientEvent> nearest) {
 		var level = Minecraft.getInstance().level;
 		if (level == null) {
 			return;
 		}
 
 		var samples = new ArrayList<LocatedSample>();
-		var events = new HashSet<UUID>();
-		for (var batch : nearest) {
-			if (!events.add(batch.event().id)) {
-				continue;
-			}
-
-			var snapshot = HordeParticleSamples.latest(batch.event(), batch.time());
+		for (var event : nearest) {
+			double time = event.time(0);
+			event.particleSamples.capture(event, time, tick, 0, 0, event.columns);
+			var snapshot = HordeParticleSamples.latest(event, time);
 			if (snapshot != null) {
-				var event = batch.event();
 				for (var sample : snapshot.samples()) {
-					if (activeRow(event, batch.time(), sample.row()) && sample.inWave(Math.max(0, (batch.time() - event.stop) * event.speed),
-							Math.min(event.length, batch.time() * event.speed))
-							&& inView(sample.ground())) {
-						samples.add(new LocatedSample(batch.event(), batch.time(), sample));
+					if (activeRow(event, time, sample.row()) && sample.inWave(Math.max(0, (time - event.stop) * event.speed),
+							Math.min(event.length, time * event.speed))
+							&& withinParticleRange(sample.ground())) {
+						samples.add(new LocatedSample(event, time, sample));
 					}
 				}
 			}
@@ -504,7 +486,7 @@ public class HordeAmbient {
 		double station = envelope.stationAt(point);
 		double tail = Math.max(0, (located.time() - event.stop) * event.speed);
 		double head = Math.min(event.length, located.time() * event.speed);
-		return station >= tail && station <= head && unobstructed(point);
+		return station >= tail && station <= head && withinParticleRange(point);
 	}
 
 	private static boolean allowed() {
@@ -514,7 +496,7 @@ public class HordeAmbient {
 			return false;
 		}
 
-		// 坐标和射线由 visibleSpawn 每出生位置检查一次，设置仍逐粒筛选。
+		// 出生位置核对活动波带、视距和已加载区块，设置仍逐粒筛选。
 		var setting = minecraft.options.particles().get();
 		return setting != ParticleStatus.MINIMAL
 				&& (setting != ParticleStatus.DECREASED || level.getRandom().nextInt(3) != 0);

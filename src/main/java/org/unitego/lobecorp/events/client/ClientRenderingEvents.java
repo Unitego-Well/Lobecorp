@@ -27,6 +27,7 @@ public class ClientRenderingEvents {
 		ConductorRendering.onExtract(event);
 		LcAnimationDisplays.onExtract(event);
 		HordeRendering.extract(event);
+		HordeRedSky.extract(event);
 	}
 
 	@SubscribeEvent

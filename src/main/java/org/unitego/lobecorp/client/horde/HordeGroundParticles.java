@@ -6,9 +6,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ParticleStatus;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
@@ -32,7 +30,7 @@ public class HordeGroundParticles {
 	private record Cell(UUID event, int x, int z) {
 	}
 
-	public static Emission tick(List<HordeClient.Batch> batches, long tick) {
+	public static Emission tick(List<HordeClient.ClientEvent> events, long tick) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		var player = minecraft.player;
@@ -64,10 +62,8 @@ public class HordeGroundParticles {
 		int firstX = (int) Math.floor(camera.x / CELL_SIZE) - radius;
 		int firstZ = (int) Math.floor(camera.z / CELL_SIZE) - radius;
 		int count = side * side, groups = 0, particles = 0;
-		var seen = new HashSet<UUID>();
-		for (var batch : batches) {
-			var event = batch.event();
-			if (!event.ready || event.failed || !seen.add(event.id)) {
+		for (var event : events) {
+			if (!event.ready || event.failed || event.tide == null) {
 				continue;
 			}
 
@@ -149,9 +145,7 @@ public class HordeGroundParticles {
 		var shape = level.getBlockState(surfacePos).getCollisionShape(level, surfacePos);
 		double surfaceY = shape.isEmpty() ? y : y - 1 + shape.max(Direction.Axis.Y);
 		var point = new Vec3(candidate.x, surfaceY + 0.02, candidate.z);
-		if (point.distanceToSqr(camera) > range * range || !HordeClient.ambientVisible(point)
-				|| level.clip(new ClipContext(camera, point.add(0, 0.15, 0), ClipContext.Block.COLLIDER,
-						ClipContext.Fluid.NONE, player)).getType() != HitResult.Type.MISS) {
+		if (point.distanceToSqr(camera) > range * range) {
 			return null;
 		}
 		return point;

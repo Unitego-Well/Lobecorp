@@ -18,21 +18,23 @@ void main() {
     float farDepth = PhaseDepth.y > 0.5 ? 0.0 : 1.0;
     vec3 ray = normalize((InverseViewProjection * vec4(skyUv * 2.0 - 1.0, farDepth, 1.0)).xyz);
     if (ray.y < -0.035) discard;
-    vec2 horizontal = ray.xz / max(length(ray.xz), 0.0001);
-    float bearing = dot(horizontal, normalize(DirectionStrength.xz));
-    float angular = smoothstep(-0.25, 0.9, bearing);
-    float strength = DirectionStrength.w;
-    float angle = atan(ray.z, ray.x);
-    float front = mix(0.28, 1.02, smoothstep(0.10, 0.72, strength));
-    front += 0.035 * sin(angle * 3.0 + PhaseDepth.x * 0.008)
-        + 0.015 * sin(angle * 7.0 - PhaseDepth.x * 0.012);
-    float vertical = 1.0 - smoothstep(front - 0.12, front + 0.08, ray.y);
+    vec3 source = normalize(vec3(DirectionStrength.x, 0.0, DirectionStrength.z));
+    vec3 side = vec3(-source.z, 0.0, source.x);
+    float along = dot(ray, source);
+    float across = dot(ray, side);
+    float coverage = clamp(PhaseDepth.w, 0.0, 1.0);
+    // 三维方向场在天顶连续，不使用方位角或归一化水平分量。
+    float wisps = 0.06 * sin(dot(ray, vec3(3.1, 2.3, -1.7)) + PhaseDepth.x * 0.003)
+        + 0.025 * sin(dot(ray, vec3(-5.2, 3.7, 2.1)) - PhaseDepth.x * 0.005);
+    float field = along + mix(0.15, 1.15, coverage) * ray.y + 0.10 * across * ray.y + wisps;
+    float edge = mix(0.85, 0.25, coverage);
+    float veil = smoothstep(edge - 0.24, edge + 0.24, field);
     float horizon = smoothstep(-0.035, 0.025, ray.y);
-    float leading = exp(-abs(ray.y - front + 0.12) * 18.0) * 0.22;
-    vec3 crimson = mix(vec3(0.2902, 0.0549, 0.0941), vec3(0.5490, 0.1216, 0.1490),
-        clamp(bearing * 0.6 + leading, 0.0, 1.0));
-    crimson = mix(crimson, vec3(0.1647, 0.0706, 0.1882), 1.0 - angular);
-    float alpha = clamp(strength * angular * vertical * horizon, 0.0, 0.78);
+    float warm = smoothstep(-0.15, 0.95, along) * (0.8 + 0.2 * sin(ray.y * 4.0 + across * 2.0));
+    vec3 crimson = mix(vec3(0.16, 0.025, 0.045), vec3(0.34, 0.075, 0.085), warm);
+    float fringe = 1.0 - smoothstep(edge - 0.12, edge + 0.35, field);
+    crimson = mix(crimson, vec3(0.12, 0.035, 0.15), fringe * 0.65);
+    float alpha = clamp(DirectionStrength.w * veil * horizon, 0.0, 0.78);
     if (alpha <= 0.001) discard;
     fragColor = vec4(crimson, alpha);
 }

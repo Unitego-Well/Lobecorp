@@ -125,7 +125,6 @@ public class HordeGpuRenderer {
 	private static int nextPipeline;
 	private static boolean pipelineIrisMode;
 	private static int pipelineGeneration;
-	private static long drawSerial;
 	private static final Map<HordeVisualDefinition, GeometryKey[]> MODEL_KEYS = new HashMap<>();
 	private static final Map<UUID, Map<Integer, Integer>> LOD_STATES = new HashMap<>();
 
@@ -332,7 +331,6 @@ public class HordeGpuRenderer {
 	}
 
 	public static void draw(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
-		drawSerial++;
 		HordeRenderMetrics.beginFrame(HordeIrisShadows.active());
 		HordeRenderMetrics.set(HordeRenderMetrics.Counter.PARTICLE_AREAS, HordeAmbient.selectedAreas());
 		HordeRenderMetrics.set(HordeRenderMetrics.Counter.PARTICLES, HordeAmbient.emittedParticles());
@@ -401,15 +399,7 @@ public class HordeGpuRenderer {
 		}
 		HordeDebugState.setGroups(groupCount);
 		HordeDebugState.drawn(drawn);
-		var sampled = new HashSet<EventData>();
-		for (var item : prepared) {
-			if (sampled.add(item.event())) {
-				// 借用事件缓存；由remove/clear释放，采样不取得其资源所有权。
-				@SuppressWarnings("resource") var event = item.event();
-				event.particleSamples.capture(item.batch().event(), item.batch().time(), drawSerial,
-						item.batch().firstRow(), item.batch().block().firstColumn(), item.batch().block().columns());
-			}
-		}
+
 	}
 
 	// EventData 由 EVENTS 持有；此处借用其 GPU 状态与采样资源。
@@ -894,10 +884,6 @@ public class HordeGpuRenderer {
 	public static void clearModels() {
 		HordeRedSky.clear();
 		HordeParticleSamples.invalidate();
-		for (var event : EVENTS.values()) {
-			event.particleSamples.close();
-			event.particleSamples = new HordeParticleSamples();
-		}
 		GEOMETRY.values().forEach(geometry -> {
 			geometry.vertices.close();
 			geometry.animation.close();
@@ -923,7 +909,6 @@ public class HordeGpuRenderer {
 		EVENTS.clear();
 		clearModels();
 		LOD_STATES.clear();
-		drawSerial = 0;
 		LIGHT.close();
 		IRIS.close();
 		if (motionView != null) {
@@ -1350,7 +1335,6 @@ public class HordeGpuRenderer {
 		private final HordeDataTexture heights;
 		private final HordeTerrainState terrain = new HordeTerrainState();
 		private final HordeAvoidanceState avoidance = new HordeAvoidanceState();
-		private HordeParticleSamples particleSamples = new HordeParticleSamples();
 
 		private EventData(HordeClient.ClientEvent event) {
 			route = new HordeDataTexture("Horde fixed route " + event.id, event.routeData);
@@ -1388,7 +1372,6 @@ public class HordeGpuRenderer {
 			heights.close();
 			terrain.close();
 			avoidance.close();
-			particleSamples.close();
 		}
 	}
 }

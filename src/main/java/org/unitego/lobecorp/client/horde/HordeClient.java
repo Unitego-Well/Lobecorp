@@ -104,6 +104,7 @@ public class HordeClient {
 	private static void closeEvent(ClientEvent event) {
 		if (event != null) {
 			event.split.close();
+			event.particleSamples.close();
 			EventHud.INSTANCE.hide(event.id);
 		}
 	}
@@ -443,6 +444,8 @@ public class HordeClient {
 		public HordeTide tide;
 		/// 分割割圆表：CPU 平滑后上传，GPU 只做连续让步。
 		public final HordeSplitState split = new HordeSplitState();
+		/// 粒子快照随客户端事件拥有，不依赖可见GPU批次。
+		public final HordeParticleSamples particleSamples = new HordeParticleSamples();
 		public long stop;
 		public int columns;
 		public boolean ready;

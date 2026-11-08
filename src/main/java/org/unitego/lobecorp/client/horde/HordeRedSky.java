@@ -34,8 +34,7 @@ import java.util.OptionalInt;
 public class HordeRedSky {
 	private static final int PARAMETER_BYTES = 96;
 	private static final double MAXIMUM_OPACITY = 0.92;
-	/// 到达前二十秒起染，到达即满；仅在当地尾波通过后三秒淡出，单位为刻。
-	private static final double APPROACH_TICKS = 20 * 20, TAIL_FADE_TICKS = 60;
+	/// 天空前沿和事件内持续包络由HordeEventAtmosphere共同提供。
 	private static final int CLOUD_TINT = 0x64182A;
 	private static final float CLOUD_BLEND = 0.60f;
 	private static final float FOG_RED = 0.19F, FOG_GREEN = 0.027F, FOG_BLUE = 0.055F;
@@ -74,6 +73,7 @@ public class HordeRedSky {
 			memory = MemoryUtil.memAlloc(PARAMETER_BYTES);
 			prepared = true;
 			HordeCloudRim.prepare();
+			HordeEventAtmosphere.prepare();
 		} catch (RuntimeException failure) {
 			failed = true;
 			Lobecorp.LOGGER.error("停止本代际深夜清扫天空表现，其它事件表现继续", failure);
@@ -95,7 +95,7 @@ public class HordeRedSky {
 		}
 
 		float partial = Minecraft.getInstance().isPaused() ? 0 : event.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		frameAtmosphere = atmosphere(event.getCamera().position(), partial);
+		frameAtmosphere = atmosphere(partial);
 		if (frameAtmosphere == null) {
 			return;
 		}
@@ -103,7 +103,7 @@ public class HordeRedSky {
 		event.getCamera().getViewRotationProjectionMatrix(frameInverse).invert();
 		int original = event.getRenderState().cloudColor;
 		int tint = original & 0xFF000000 | CLOUD_TINT;
-		float blend = (float) (CLOUD_BLEND * frameAtmosphere.strength() / MAXIMUM_OPACITY);
+		float blend = (float) (CLOUD_BLEND * frameAtmosphere.strength() * frameAtmosphere.coverage() / MAXIMUM_OPACITY);
 		event.getRenderState().cloudColor = ARGB.srgbLerp(blend, original, tint);
 	}
 
@@ -121,12 +121,12 @@ public class HordeRedSky {
 		}
 
 		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
-		var atmosphere = atmosphere(camera.position(), partial);
+		var atmosphere = atmosphere(partial);
 		if (atmosphere == null) {
 			return;
 		}
 
-		float blend = (float) (atmosphere.strength() / MAXIMUM_OPACITY);
+		float blend = (float) (atmosphere.strength() * atmosphere.coverage() / MAXIMUM_OPACITY);
 		event.setRed(event.getRed() + (FOG_RED - event.getRed()) * blend);
 		event.setGreen(event.getGreen() + (FOG_GREEN - event.getGreen()) * blend);
 		event.setBlue(event.getBlue() + (FOG_BLUE - event.getBlue()) * blend);
@@ -140,7 +140,7 @@ public class HordeRedSky {
 
 	public static void drawCloudRim(RenderPass pass, int cellX, int cellZ, int baseVertex, int firstIndex, int indexCount, int instanceCount) {
 		try {
-			HordeCloudRim.draw(pass, frameAtmosphere.direction(), frameAtmosphere.strength(), frameAtmosphere.time(),
+			HordeCloudRim.draw(pass, frameAtmosphere.direction(), frameAtmosphere.strength() * frameAtmosphere.coverage(), frameAtmosphere.time(),
 					cellX, cellZ, baseVertex, firstIndex, indexCount, instanceCount);
 		} catch (RuntimeException exception) {
 			HordeCloudRim.clear();
@@ -189,40 +189,14 @@ public class HordeRedSky {
 		}
 	}
 
-	private static Atmosphere atmosphere(Vec3 camera, float partial) {
-		Atmosphere result = null;
-		for (var event : HordeClient.events()) {
-			if (!event.ready || event.failed || event.tide == null || !MidnightCleanup.ID.equals(event.profile)) {
-				continue;
-			}
-
-			double time = event.time(partial), station = event.tide.particleStation(camera);
-			var center = event.tide.world(station, 0);
-			var forward = event.tide.forward(station);
-			double lateral = Math.abs(-(camera.x - center.x) * forward.z + (camera.z - center.z) * forward.x);
-			double along = (camera.x - center.x) * forward.x + (camera.z - center.z) * forward.z;
-			double endDistance = station <= 0 ? Math.max(0, -along) : station >= event.length ? Math.max(0, along) : 0;
-			double outside = Math.hypot(Math.max(0, lateral - event.rules.width() / 2), endDistance);
-			double range = Math.clamp(1 - outside / 256, 0, 1);
-			double arrival = station / event.speed - time;
-			double departure = event.stop + station / event.speed - time;
-			double approaching = Math.clamp(1 - Math.max(0, arrival) / APPROACH_TICKS, 0, 1);
-			double approach = approaching * approaching * (3 - 2 * approaching);
-			double fade = Math.clamp((departure + TAIL_FADE_TICKS) / TAIL_FADE_TICKS, 0, 1);
-			float strength = (float) (MAXIMUM_OPACITY * range * approach * fade);
-			float coverage = (float) approach;
-			if (strength <= 0 || result != null && result.strength() >= strength) {
-				continue;
-			}
-
-			var entry = event.tide.world(0, 0).subtract(camera).multiply(1, 0, 1);
-			var direction = entry.lengthSqr() > 1 ? entry.normalize() : event.tide.forward(0).scale(-1);
-			result = new Atmosphere(direction, strength, (float) time, coverage);
-		}
-		return result;
+	private static Atmosphere atmosphere(float partial) {
+		var sky = HordeEventAtmosphere.sky(partial);
+		return sky == null ? null : new Atmosphere(sky.direction(), (float) (MAXIMUM_OPACITY * sky.strength()),
+				sky.time(), sky.coverage());
 	}
 
 	public static void clear() {
+		HordeEventAtmosphere.clear();
 		HordeCloudRim.clear();
 		if (parameters != null) {
 			parameters.close();

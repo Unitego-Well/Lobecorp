@@ -24,21 +24,15 @@ float cloudNoise(vec3 p) {
                    mix(hash3(cell + vec3(0, 1, 1)), hash3(cell + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
-// 横向圆弧浪冠接续为更窄的浪舌和短尾，不把前沿简化为整屏透明度。
+// 世界来向的远处低天先起染，再以错落的柔前缘逐渐推进到上空。
 float waveContour(float across, float elevation, float phase, float progress) {
-    float advance = mix(1.34, -0.34, progress);
-    float sway = sin(phase * 0.0017) * 0.035;
-    float crest = 1.0 - smoothstep(0.48, 0.64,
-            length(vec2((across - sway) * 0.70, (elevation - advance - 0.43) * 0.85)));
-    float tongueA = 1.0 - smoothstep(0.27, 0.39,
-            length(vec2((across + 0.23 - sway) * 0.92, (elevation - advance - 0.13) * 1.18)));
-    float tongueB = 1.0 - smoothstep(0.23, 0.35,
-            length(vec2((across - 0.30 - sway) * 1.12, (elevation - advance - 0.22) * 1.15)));
-    float tail = 1.0 - smoothstep(0.12, 0.22,
-            length(vec2((across + 0.14 - sway) * 1.40, (elevation - advance + 0.12) * 1.65)));
-    float upperMass = smoothstep(advance + 0.30, advance + 0.56, elevation)
-            * (1.0 - smoothstep(0.60, 0.90, abs(across - sway)));
-    return max(upperMass, max(crest, max(tongueA, max(tongueB, tail))));
+    float reach = mix(-0.08, 1.65, progress);
+    float arch = 0.11 * sqrt(max(0.0, 1.0 - across * across));
+    float irregular = sin(across * 5.2 + phase * 0.0017) * 0.045
+            + sin(across * 9.1 - phase * 0.0011) * 0.022;
+    float boundary = reach + arch + irregular;
+    float front = 1.0 - smoothstep(boundary - 0.065, boundary + 0.065, elevation);
+    return front * smoothstep(0.0, 0.10, progress);
 }
 
 void main() {

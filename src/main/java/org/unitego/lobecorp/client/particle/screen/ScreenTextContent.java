@@ -64,6 +64,10 @@ public class ScreenTextContent implements IScreenParticleContent {
 		reloadEpoch++;
 	}
 
+	public static long layoutEpoch() {
+		return reloadEpoch;
+	}
+
 	@Override
 	public float width() {
 		ensurePrepared();

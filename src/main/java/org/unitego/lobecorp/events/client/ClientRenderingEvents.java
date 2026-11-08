@@ -12,6 +12,7 @@ import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 import org.unitego.lobecorp.client.horde.HordeRendering;
 import org.unitego.lobecorp.client.horde.HordeRedSky;
+import org.unitego.lobecorp.client.horde.HordeEventAtmosphere;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 
@@ -27,6 +28,11 @@ public class ClientRenderingEvents {
 		ConductorRendering.onExtract(event);
 		LcAnimationDisplays.onExtract(event);
 		HordeRendering.extract(event);
+		if (!Minecraft.getInstance().isPaused()) {
+			HordeEventAtmosphere.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false));
+		} else {
+			HordeEventAtmosphere.extract(0);
+		}
 		HordeRedSky.extract(event);
 	}
 

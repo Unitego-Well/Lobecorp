@@ -98,6 +98,10 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onSweeperCameraAngles(ViewportEvent.ComputeCameraAngles event) {
+		if (MidnightCleanupCinematic.camera(event)) {
+			return;
+		}
+
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null) {
 			return;

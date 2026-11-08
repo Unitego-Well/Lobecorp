@@ -4,7 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
 import java.util.ArrayDeque;
@@ -12,19 +14,23 @@ import java.util.UUID;
 
 /// 独立于普通HUD可见性的开闭幕表现；不写入用户选项。
 public class MidnightCleanupCinematic {
-	/// 完整开幕200刻，开闭幕横幅共用50刻；警告条先到位，再显示中央内容。
+	/// 完整开幕保持200刻；补播和闭幕仍为50刻且不接管镜头。
 	private static final int CLOSING_TICKS = 50;
-	private static final int INDIGO = 0x4565FF;
+	private static final int INDIGO = 0x7770BD;
+	private static final CinematicText CHAPTER = new CinematicText("horde.lobecorp.banner.title", 0x8E85CF);
+	private static final CinematicText NAME = new CinematicText("horde.lobecorp.banner.name", 0xD4C8FF);
+	private static final CinematicText START = new CinematicText("horde.lobecorp.banner.start", 0xAEA2C5);
+	private static final CinematicText END = new CinematicText("horde.lobecorp.banner.end", 0xAEA2C5);
 	private static ClientLevel world;
 	private static long began;
 	private static int duration;
 	private static boolean opening;
 	private static boolean bannerOnly;
-	private static float lockedYaw, lockedPitch;
+	private static float startYaw, startPitch, targetYaw, targetPitch;
 	private static UUID eventId;
 	private static final ArrayDeque<Presentation> pending = new ArrayDeque<>();
 
-	private record Presentation(UUID event, boolean opening, boolean bannerOnly) {
+	private record Presentation(UUID event, boolean opening, boolean bannerOnly, float yaw, float pitch) {
 	}
 
 	public static void receive(UUID event, CompoundTag body) {
@@ -37,7 +43,8 @@ public class MidnightCleanupCinematic {
 		}
 
 		var incoming = new Presentation(event, body.getBooleanOr("opening", true),
-				body.getBooleanOr("banner_only", false));
+				body.getBooleanOr("banner_only", false), body.getFloatOr("target_yaw", 0),
+				body.getFloatOr("target_pitch", 0));
 		if (active() && opening && !bannerOnly && (!incoming.opening() || incoming.bannerOnly())) {
 			if (!event.equals(eventId)) {
 				// 其它事件的弱横幅不能覆盖正在锁速的完整开幕。
@@ -67,9 +74,10 @@ public class MidnightCleanupCinematic {
 		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
 		var player = Minecraft.getInstance().player;
 		if (opening && !bannerOnly && player != null) {
-			// 原版LookAt包先于表现包到达，保存服务端给定的入场朝向。
-			lockedYaw = player.getYRot();
-			lockedPitch = player.getXRot();
+			startYaw = player.getYRot();
+			startPitch = player.getXRot();
+			targetYaw = Float.isFinite(presentation.yaw()) ? presentation.yaw() : startYaw;
+			targetPitch = Float.isFinite(presentation.pitch()) ? presentation.pitch() : startPitch;
 		}
 	}
 
@@ -83,11 +91,32 @@ public class MidnightCleanupCinematic {
 			return;
 		}
 
-		player.setYRot(lockedYaw);
-		player.setXRot(lockedPitch);
-		player.setYHeadRot(lockedYaw);
-		player.yRotO = lockedYaw;
-		player.xRotO = lockedPitch;
+		float age = world.getGameTime() - began;
+		var current = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
+		var previous = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age - 1);
+		player.setYRot(current.yaw());
+		player.setXRot(current.pitch());
+		player.setYHeadRot(current.yaw());
+		player.yRotO = previous.yaw();
+		player.xRotO = previous.pitch();
+	}
+
+	/// 完整过场独占镜头合成，读字时不叠加普通浪潮和落地强震。
+	public static boolean camera(ViewportEvent.ComputeCameraAngles event) {
+		if (!hidesHud()) {
+			return false;
+		}
+
+		var minecraft = Minecraft.getInstance();
+		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
+		float age = world.getGameTime() - began + partial;
+		var angles = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
+		float impact = HordeVisualConfig.EVENT_SHAKE.get()
+				? (1 - MidnightCleanupViewUtil.phase(age, 0, MidnightCleanupViewUtil.IMPACT_END))
+				* HordeVisualConfig.SHAKE_STRENGTH.get().floatValue() : 0;
+		event.setYaw(angles.yaw() + (float) Math.sin(age * 1.9) * 1.2F * impact);
+		event.setPitch(angles.pitch() + (float) Math.sin(age * 2.4) * 2.2F * impact);
+		return true;
 	}
 
 	private static boolean active() {
@@ -113,96 +142,32 @@ public class MidnightCleanupCinematic {
 		}
 
 		var minecraft = Minecraft.getInstance();
-		if (minecraft.level == null) {
-			return;
-		}
-
 		float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		float age = minecraft.level.getGameTime() - began + partial;
-		float width = graphics.guiWidth(), height = graphics.guiHeight();
-		if (opening && !bannerOnly) {
-			float barEnter = smooth(Math.clamp(age / 20, 0, 1));
-			float barLeave = smooth(Math.clamp((age - (duration - 10)) / 10, 0, 1));
-			float bars = height * 0.12F * (barEnter - barLeave);
-			graphics.lobecorp$fill(0, 0, width, bars, 0xFF000000);
-			graphics.lobecorp$fill(0, height - bars, width, height, 0xFF000000);
+		float age = world.getGameTime() - began + partial;
+		boolean full = opening && !bannerOnly;
+		float enterAt = full ? MidnightCleanupViewUtil.CENTER_END : 0;
+		float readyAt = full ? MidnightCleanupViewUtil.TEXT_READY : 5;
+		float alpha = MidnightCleanupViewUtil.phase(age, enterAt, readyAt);
+		float dissolve = full ? Math.clamp((age - MidnightCleanupViewUtil.DISSOLVE_START)
+				/ (duration - (float) MidnightCleanupViewUtil.DISSOLVE_START), 0, 1) : 0;
+		if (!full) {
+			alpha *= 1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration);
 		}
-
-		// 开幕横幅复用结束横幅的50刻时间轴，黑幕与输入锁仍持续完整200刻。
-		if (age >= CLOSING_TICKS) {
-			return;
-		}
-
-		float enterTicks = bannerOnly ? 0 : 10;
-		float exitAt = CLOSING_TICKS - 10;
-		float enter = enterTicks == 0 ? 1 : smooth(Math.clamp(age / enterTicks, 0, 1));
-		float leave = smooth(Math.clamp((age - exitAt) / 10, 0, 1));
-		float bannerHeight = Math.min(height * 0.4F, 90);
-		float left = width * 0.025F, right = width - left;
-		float top = (height - bannerHeight) / 2;
-		float slide = (1 - enter + leave) * width;
-		if (!bannerOnly) {
-			warning(graphics, left - slide, top, right - left, false);
-			warning(graphics, left + slide, top + bannerHeight - 5, right - left, true);
-		}
-		// 中央内容严格等待警告条到位；退出时先淡出，再撤走警告条。
-		float fadeTicks = 5;
-		float alpha = Math.min(Math.clamp((age - enterTicks) / fadeTicks, 0, 1),
-				Math.clamp((exitAt - age) / fadeTicks, 0, 1));
 		if (alpha <= 0) {
 			return;
 		}
 
-		int tint = Math.round(alpha * 255) << 24 | INDIGO;
-		graphics.lobecorp$fill(left, top + 5, right, top + bannerHeight - 5, Math.round(alpha * 240) << 24);
-		graphics.lobecorp$fill(left, top + 5, left + 1, top + bannerHeight - 5, tint);
-		graphics.lobecorp$fill(right - 1, top + 5, right, top + bannerHeight - 5, tint);
-		line(graphics, Component.translatable("horde.lobecorp.banner.title"), width / 2, top + bannerHeight * 0.22F,
-				0.8F, right - left - 12, tint);
-		line(graphics, Component.translatable("horde.lobecorp.banner.name"), width / 2, top + bannerHeight * 0.45F,
-				1.8F, right - left - 12, tint);
-		line(graphics, Component.translatable(opening ? "horde.lobecorp.banner.start" : "horde.lobecorp.banner.end"),
-				width / 2, top + bannerHeight * 0.77F, 0.8F, right - left - 12, tint);
-	}
-
-	private static void warning(GuiGraphicsExtractor graphics, float left, float top, float width, boolean reverse) {
-		if (left + width <= 0 || left >= graphics.guiWidth()) {
-			return;
+		float width = graphics.guiWidth(), height = graphics.guiHeight();
+		float center = width / 2, titleY = height * 0.67F;
+		float gap = Math.min(24, height * 0.10F);
+		CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, dissolve);
+		NAME.extract(graphics, center, titleY, 2.6F, width * 0.72F, alpha, dissolve);
+		(opening ? START : END).extract(graphics, center, titleY + gap, 0.85F, width * 0.84F, alpha, dissolve);
+		float accent = alpha * (1 - dissolve);
+		if (accent > 0.01F) {
+			graphics.lobecorp$fill(center - 8, titleY + gap * 0.60F, center + 8, titleY + gap * 0.60F + 1,
+					Math.round(accent * 255) << 24 | INDIGO);
 		}
-
-		graphics.enableScissor((int) Math.max(0, left), (int) top,
-				(int) Math.min(graphics.guiWidth(), left + width), (int) top + 5);
-		try {
-			graphics.lobecorp$fill(left, top, left + width, top + 5, 0xFF000000);
-			for (int row = 0; row < 5; row++) {
-				for (float x = left - 12; x < left + width + 12; x += 12) {
-					float offset = reverse ? row : -row;
-					graphics.lobecorp$fill(x + offset, top + row, x + offset + 6, top + row + 1, 0xFF000000 | INDIGO);
-				}
-			}
-		} finally {
-			graphics.disableScissor();
-		}
-	}
-
-	private static void line(GuiGraphicsExtractor graphics, Component text, float x, float y,
-	                         float scale, float available, int color) {
-		var font = Minecraft.getInstance().font;
-		int width = font.width(text);
-		float fitted = Math.min(scale, available / Math.max(1, width));
-		var pose = graphics.pose();
-		pose.pushMatrix();
-		try {
-			pose.translate(x, y);
-			pose.scale(fitted, fitted);
-			graphics.text(font, text, -width / 2, -font.lineHeight / 2, color, false);
-		} finally {
-			pose.popMatrix();
-		}
-	}
-
-	private static float smooth(float value) {
-		return value * value * (3 - 2 * value);
 	}
 
 	public static void clear() {

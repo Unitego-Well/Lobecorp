@@ -1,6 +1,5 @@
 package org.unitego.lobecorp.world.horde;
 
-import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -11,6 +10,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,10 +57,11 @@ public class MidnightCleanupOpening {
 				speed.addTransientModifier(new AttributeModifier(SPEED_ID, -1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
 			var toward = event.route().direction(station).scale(-1);
-			player.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition().add(toward.scale(16)));
+			float targetYaw = (float) Math.toDegrees(Math.atan2(toward.z, toward.x)) - 90;
+			float targetPitch = (float) -Math.toDegrees(Math.atan2(toward.y, toward.horizontalDistance()));
 			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanup.OPENING_TICKS,
-					player.getYRot(), player.getXRot()));
-			send(player, event.id(), true, false);
+					player.getYRot(), player.getXRot(), targetYaw, targetPitch));
+			send(player, event.id(), true, false, targetYaw, targetPitch);
 		}
 	}
 
@@ -76,9 +77,11 @@ public class MidnightCleanupOpening {
 				return true;
 			}
 
-			player.setYRot(lock.yaw());
-			player.setXRot(lock.pitch());
-			player.setYHeadRot(lock.yaw());
+			float age = MidnightCleanup.OPENING_TICKS - (lock.until() - server.getTickCount());
+			var angles = MidnightCleanupViewUtil.sample(lock.startYaw(), lock.startPitch(), lock.yaw(), lock.pitch(), age);
+			player.setYRot(angles.yaw());
+			player.setXRot(angles.pitch());
+			player.setYHeadRot(angles.yaw());
 			return false;
 		});
 		played.keySet().removeIf(id -> !data.events().containsKey(id));
@@ -135,12 +138,18 @@ public class MidnightCleanupOpening {
 	}
 
 	private static void send(ServerPlayer player, UUID event, boolean opening, boolean bannerOnly) {
+		send(player, event, opening, bannerOnly, player.getYRot(), player.getXRot());
+	}
+
+	private static void send(ServerPlayer player, UUID event, boolean opening, boolean bannerOnly, float yaw, float pitch) {
 		var tag = new CompoundTag();
 		tag.putString("id", event.toString());
 		tag.putString("kind", "presentation");
 		var body = new CompoundTag();
 		body.putBoolean("opening", opening);
 		body.putBoolean("banner_only", bannerOnly);
+		body.putFloat("target_yaw", yaw);
+		body.putFloat("target_pitch", pitch);
 		tag.put("body", body);
 		PacketDistributor.sendToPlayer(player, new HordeStatePayload(tag));
 	}
@@ -151,6 +160,6 @@ public class MidnightCleanupOpening {
 		played.clear();
 	}
 
-	private record Lock(UUID event, int until, float yaw, float pitch) {
+	private record Lock(UUID event, int until, float startYaw, float startPitch, float yaw, float pitch) {
 	}
 }

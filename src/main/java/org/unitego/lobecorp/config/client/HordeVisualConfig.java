@@ -50,11 +50,11 @@ public class HordeVisualConfig {
 			EVENT_SHAKE = b.translation(HordeLang.config("visual.event_shake", "Wave camera shake", "浪潮镜头震动")).define("eventShake", true);
 			LANDING_SHAKE = b.translation(HordeLang.config("visual.landing_shake", "Sweeper landing shake", "清道夫落地震动")).define("landingShake", true);
 			EVENT_SHAKE_RANGE = b.translation(HordeLang.config("visual.event_shake_range", "Wave shake range", "浪潮震动范围"))
-					.defineInRange("eventShakeRange", 64, 1, 256);
+					.defineInRange("eventShakeRange", 128, 1, 256);
 			LANDING_SHAKE_RANGE = b.translation(HordeLang.config("visual.landing_shake_range", "Landing shake range", "落地震动范围"))
 					.defineInRange("landingShakeRange", 24, 1, 64);
 			SHAKE_STRENGTH = b.translation(HordeLang.config("visual.shake_strength", "Camera shake strength", "镜头震动强度"))
-					.defineInRange("shakeStrength", 1.0, 0.0, 2.0);
+					.defineInRange("shakeStrength", 1.4, 0.0, 2.0);
 			b.pop().translation(ClientConfig.translation("horde.particles", "Particles", "粒子")).push("particles");
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
 			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("方块碎屑按活动浪潮的地面网格持续补发；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；单轮生成组数在原基础上乘2。尘雾独立由Photon体积雾提交，不发射烟雾粒子。").defineInRange("particleIntervalTicks", 1, 1, 1200);

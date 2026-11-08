@@ -28,6 +28,8 @@ public class MidnightCleanup implements IHordeEventProfile {
 	public static final String FACTION = "horde_indigo";
 	/// 模板覆盖完整线路，总时长包含最后一段浪潮通过的时间。
 	public static final int TEMPLATE_TICKS = 3 * 60 * 20, OPENING_TICKS = 10 * 20;
+	/// 入场与倒计时显示共用到达前十秒窗口。
+	public static final int ARRIVAL_WARNING_TICKS = 10 * 20;
 	public static final double TEMPLATE_WIDTH = 500, TEMPLATE_LENGTH = 1000;
 
 	@Override

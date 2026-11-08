@@ -25,10 +25,10 @@ import java.util.UUID;
 
 /// 聚合声源，以及由短时 CPU 粗略流场快照驱动的边界扬尘和潮内刀光。
 public class HordeAmbient {
-	/// 刀光每批位置数加倍，保留原生成间隔和每处粒子数量。
+	/// 刀光原有每批位置数倍率，单轮组数倍率在此基础上叠加。
 	private static final int SLASH_POSITION_MULTIPLIER = 2;
-	/// 事件粒子独立提高频率与每次创建数量，不放大声音时钟。
-	private static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_AMOUNT_MULTIPLIER = 2;
+	/// 事件粒子独立提高频率与单轮组数，不复制同一粒子，不放大声音时钟。
+	private static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_GROUP_MULTIPLIER = 2;
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static final List<Vec3> AUDIO_POINTS = new ArrayList<>();
 	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
@@ -412,13 +412,12 @@ public class HordeAmbient {
 			return;
 		}
 
-		var selected = new HashSet<BlockPos>();
-		int limit = Math.clamp(groups, 0, 100);
+		long limit = (long) groups * PARTICLE_GROUP_MULTIPLIER;
 		int start = level.getRandom().nextInt(candidates.size());
-		for (int i = 0; i < candidates.size() && selected.size() < limit; i++) {
-			var located = candidates.get((start + i) % candidates.size());
+		for (long i = 0; i < limit; i++) {
+			var located = candidates.get((int) ((start + i) % candidates.size()));
 			var point = located.sample().ground().add(0, 0.05, 0);
-			if (!selected.add(BlockPos.containing(point.scale(4))) || !visibleSpawn(located, point)) {
+			if (!visibleSpawn(located, point)) {
 				continue;
 			}
 
@@ -496,9 +495,9 @@ public class HordeAmbient {
 		}
 
 		var random = level.getRandom();
-		int count = SLASH_POSITION_MULTIPLIER * (4 + random.nextInt(7));
+		int count = PARTICLE_GROUP_MULTIPLIER * SLASH_POSITION_MULTIPLIER * (4 + random.nextInt(7));
 		int start = random.nextInt(interior.size());
-		for (int i = 0; i < Math.min(count, interior.size()); i++) {
+		for (int i = 0; i < count; i++) {
 			var located = interior.get((start + i) % interior.size());
 			var point = located.sample().ground().add(0, 1.7, 0);
 			if (!currentInterior(located) || !visibleSpawn(located, point)) {
@@ -560,16 +559,14 @@ public class HordeAmbient {
 	}
 
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz, float scale) {
-		for (int copy = 0; copy < PARTICLE_AMOUNT_MULTIPLIER; copy++) {
-			if (!allowed()) {
-				continue;
-			}
+		if (!allowed()) {
+			return;
+		}
 
-			var particle = Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz);
-			if (particle != null) {
-				particle.scale(scale);
-				emittedParticles++;
-			}
+		var particle = Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz);
+		if (particle != null) {
+			particle.scale(scale);
+			emittedParticles++;
 		}
 	}
 

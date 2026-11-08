@@ -6,7 +6,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
-import org.unitego.lobecorp.Lobecorp;
 
 import java.util.ArrayDeque;
 import java.util.UUID;
@@ -39,8 +38,6 @@ public class MidnightCleanupCinematic {
 
 		var incoming = new Presentation(event, body.getBooleanOr("opening", true),
 				body.getBooleanOr("banner_only", false));
-		Lobecorp.LOGGER.debug("深夜清扫表现接收：event={}, opening={}, bannerOnly={}",
-				event, incoming.opening(), incoming.bannerOnly());
 		if (active() && opening && !bannerOnly && (!incoming.opening() || incoming.bannerOnly())) {
 			if (!event.equals(eventId)) {
 				// 其它事件的弱横幅不能覆盖正在锁速的完整开幕。

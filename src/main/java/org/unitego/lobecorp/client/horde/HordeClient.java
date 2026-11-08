@@ -142,12 +142,27 @@ public class HordeClient {
 
 	/// HUD只消费同步事件，不受虚拟模型显示开关或视锥裁剪影响。
 	private static void synchronizeHud() {
+		var player = Minecraft.getInstance().player;
+		if (player == null) {
+			return;
+		}
+
 		for (var event : EVENTS.values()) {
 			double time = event.time(0);
 			double remaining = event.speed > 0 ? event.stop + Math.ceil(event.length / event.speed) - time : 0;
 			if (!event.ready || event.failed || !MidnightCleanup.ID.equals(event.profile) || remaining <= 0) {
 				EventHud.INSTANCE.hide(event.id);
 				continue;
+			}
+
+			if (!event.hudStarted) {
+				double arrival = event.tide.stationOf(player.position()) / event.speed - time;
+				if (arrival > MidnightCleanup.ARRIVAL_WARNING_TICKS) {
+					EventHud.INSTANCE.hide(event.id);
+					continue;
+				}
+
+				event.hudStarted = true;
 			}
 
 			if (EventHud.INSTANCE.show(MidnightCleanup.ID, event.id) instanceof MidnightCleanupHud hud) {
@@ -430,6 +445,7 @@ public class HordeClient {
 		public long stop;
 		public int columns;
 		public boolean ready;
+		private boolean hudStarted;
 		public boolean failed;
 		public long regionVersion;
 		private AABB routeBounds;

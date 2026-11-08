@@ -24,7 +24,6 @@ public class MidnightCleanupOpening {
 	private final Map<ServerPlayer, Lock> locks = new HashMap<>();
 	/// 每位玩家在同一事件中只触发一次，离开范围或重连不重置。
 	private final Map<UUID, Set<UUID>> played = new HashMap<>();
-	private static final int ARRIVAL_WARNING_TICKS = 15 * 20;
 
 	public void start(MinecraftServer server, HordeEvent event) {
 		if (!MidnightCleanup.ID.equals(event.profile())) {
@@ -38,7 +37,7 @@ public class MidnightCleanupOpening {
 
 			double station = event.route().nearest(player.position(), 0, event.route().length());
 			double arrival = station / event.movementSpeed() - event.tick();
-			if (event.finished() || arrival > ARRIVAL_WARNING_TICKS) {
+			if (event.finished() || arrival > MidnightCleanup.ARRIVAL_WARNING_TICKS) {
 				continue;
 			}
 
@@ -47,8 +46,6 @@ public class MidnightCleanupOpening {
 				continue;
 			}
 
-			Lobecorp.LOGGER.debug("深夜清扫入场判定：event={}, player={}, etaTicks={}, bannerOnly={}",
-					event.id(), player.getUUID(), arrival, arrival <= 0);
 			if (arrival <= 0) {
 				send(player, event.id(), true, true);
 				continue;

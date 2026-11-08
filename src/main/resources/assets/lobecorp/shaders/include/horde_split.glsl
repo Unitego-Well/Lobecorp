@@ -18,8 +18,6 @@ const float HORDE_AVOID_MAX_RADIUS = 1.35;
 const float HORDE_AVOID_ACROSS_COMPENSATION = 0.45;
 const float HORDE_AVOID_UNION_WIDTH = 0.25;
 const float HORDE_AVOID_LATERAL_CORE = 0.5;
-// 渐进压力在前导段尚未满强度，预留额外时间而不提高横向速度。
-const float HORDE_AVOID_LEAD_TIME_SCALE = 1.8;
 const float HORDE_AVOID_PULSE_RATE = 0.07;
 const float HORDE_AVOID_PHASE_SHIFT = 0.2;
 const float HORDE_AVOID_DELTA_WIDTH = 0.6;
@@ -32,7 +30,7 @@ const int HORDE_AVOID_WORDS = 4;
 float hordeAvoidanceLead(float distance, float speed, float driftBound, float band) {
     float limit = HORDE_AVOID_SPEED_RATIO * speed;
     return (speed + driftBound) * (distance / max(limit, 0.000001) + HORDE_AVOID_ACCEL_TICKS)
-    * HORDE_AVOID_LEAD_TIME_SCALE + band;
+    + band;
 }
 
 float hordeAvoidanceClearance(float radius, float modelRadius, float fade) {

@@ -21,6 +21,8 @@ public class HordeSplitState implements AutoCloseable {
     private static final double RETIRE_TICKS = 40;
     /// 中心与半径的连续逼近速率（1/秒）。
     private static final double SMOOTHING = 6.0;
+    /// 纵向缓冲带：基础格数、速度系数及用户指定的整体倍率。
+    private static final double BASE_BAND = 3.2, SPEED_BAND = 8.0, BAND_SCALE = 0.8;
     // 与 horde_split.glsl 同步；最小成员圆达到全强度，零半径时引导带也失去作用。
     private static final double FADE_RADIUS = 0.5;
     /// 两个源圆表面相距不足 2 格时逐渐建立局部软连接。
@@ -55,6 +57,11 @@ public class HordeSplitState implements AutoCloseable {
     public static double influence(double radius) {
         double weight = Math.clamp(radius / FADE_RADIUS, 0, 1);
         return weight * weight * (3 - 2 * weight);
+    }
+
+    /// 视觉纵向缓冲带，单位为格；CPU轮廓和GPU参数共用。
+    public static double band(double speed) {
+        return (BASE_BAND + speed * SPEED_BAND) * BAND_SCALE;
     }
 
     /// 每帧刷新：把本帧目标集合平滑成圆表并按需上传。

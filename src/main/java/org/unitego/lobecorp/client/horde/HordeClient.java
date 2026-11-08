@@ -901,7 +901,7 @@ public class HordeClient {
 			double across = -dx * direction.z + dz * direction.x;
 			double influence = HordeSplitState.influence(radius());
 			double radius = radius() + 0.45 * influence;
-			double band = (3.2 + speed * 8) * influence;
+			double band = HordeSplitState.band(speed) * influence;
 			double nearest = Math.clamp(along, -band - radius * 0.6, band * 0.6 + radius * 0.5);
 			return Math.hypot(along - nearest, across) - radius;
 		}

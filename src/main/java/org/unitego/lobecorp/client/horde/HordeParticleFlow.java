@@ -178,12 +178,12 @@ public class HordeParticleFlow {
 			double fade = HordeSplitState.influence(circle.radius());
 			double clearance = (circle.radius() + (0.45 + MODEL_RADIUS) * fade)
 					* radiusScale;
-			double band = (3.2 + field.speed() * 8) * fade;
+			double band = HordeSplitState.band(field.speed()) * fade;
 			double required = Math.min(softDelta(Math.abs(across), clearance, 1) * 1.45, MAXIMUM_OFFSET)
 					+ SWAY_MARGIN;
 			double lead = (field.speed() + driftBound)
 					* (required / Math.max(field.speed() * SPEED_RATIO, 0.000001) + ACCELERATION_TICKS)
-					* 1.8 + band;
+					+ band;
 			double pressure = pressure(along - phaseShift * clearance, across, clearance, lead, band);
 			left = union(left, pressure * fade * softDelta(across, clearance, -1));
 			right = union(right, pressure * fade * softDelta(across, clearance, 1));

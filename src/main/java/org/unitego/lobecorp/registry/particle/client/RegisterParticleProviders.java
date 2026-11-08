@@ -4,6 +4,7 @@ import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 import org.unitego.lobecorp.client.particle.BloodParticle;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
 import org.unitego.lobecorp.client.particle.ShortSmokeParticle;
+import org.unitego.lobecorp.client.particle.HordeGroundSmokeParticle;
 import org.unitego.lobecorp.client.particle.SweeperStrikeParticle;
 import org.unitego.lobecorp.client.particle.QueenRepelWaveParticle;
 import org.unitego.lobecorp.client.particle.QueenLaserParticle;
@@ -23,6 +24,7 @@ public class RegisterParticleProviders {
 		event.registerSpriteSet(LcParticleTypes.SIMPLE_SHORT_SLASH.get(), SweeperStrikeParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.BLOOD.get(), BloodParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.SHORT_SMOKE.get(), ShortSmokeParticle.Provider::new);
+		event.registerSpriteSet(LcParticleTypes.HORDE_GROUND_SMOKE.get(), HordeGroundSmokeParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.QUEEN_REPEL_WAVE.get(), QueenRepelWaveParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.QUEEN_LASER.get(), QueenLaserParticle.Provider::new);
 		event.registerSpriteSet(LcParticleTypes.QUEEN_CHANNEL_LASER.get(), QueenChannelLaserParticle.Provider::new);

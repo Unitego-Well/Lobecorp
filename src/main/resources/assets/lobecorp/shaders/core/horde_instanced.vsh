@@ -46,6 +46,7 @@ void main() {
     vec3 point = vector3(HordeMotion, cached);
     vec2 heading = vec2(scalar(HordeMotion, cached + 5), scalar(HordeMotion, cached + 6));
     mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
+    float instanceScale = hordeInstanceScale(gl_InstanceID);
     vec3 position = Position;
     vec3 normal = Normal;
     int frameStart = int(scalar(HordeMotion, cached + 7));
@@ -53,9 +54,10 @@ void main() {
     if (FrameLod.z > 0.5) {
         vec3 center = (vector3(HordeAnimation, frameStart * 6)
         + vector3(HordeAnimation, (frameStart + 2) * 6)) * 0.5;
-        vertex = hordeCardVertex(vertex, point, yaw, center);
+        vertex = hordeCardVertex(vertex, point, yaw, center * instanceScale);
     }
     animate(vertex, frameStart, position, normal);
+    position *= instanceScale;
     position.xz = yaw * position.xz;
     normal.xz = yaw * normal.xz;
     normal = length(normal) > 0.0001 ? normalize(normal) : vec3(0.0, 1.0, 0.0);

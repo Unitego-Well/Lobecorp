@@ -127,6 +127,19 @@ float motionRandom(float seed, float salt) {
 }
 
 // 稳定个体种子派生不同频率和幅度；基础速度不变，连续加减速且不反向。
+// 固定行列身份决定个体尺寸；普通、Iris和卡片共用，不能使用帧号。
+float hordeInstanceScale(int localInstance) {
+    int ordinal = localInstance + int(RowColumns.w);
+    int row = ordinal / int(RowColumns.z);
+    int column = int(RowColumns.y) + ordinal % int(RowColumns.z);
+    uint identity = uint(mod(WorldSection.w + float(row), 1024.0)) * 1664525u
+        + uint(column) * 1013904223u + 37u;
+    identity ^= identity >> 16u;
+    identity *= 2246822519u;
+    identity ^= identity >> 13u;
+    return mix(1.0, 1.2, float(identity & 0x00ffffffu) / 16777215.0);
+}
+
 float motionDrift(float time, float seed) {
     float a = motionRandom(seed, 1.0);
     float b = motionRandom(seed, 2.0);

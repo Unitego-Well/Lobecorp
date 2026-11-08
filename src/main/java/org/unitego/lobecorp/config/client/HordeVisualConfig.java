@@ -8,6 +8,10 @@ import org.unitego.lobecorp.generator.lang.HordeLang;
 public class HordeVisualConfig {
 	/// 扩大粒子覆盖但不提高生成组数或候选预算，单位为格。
 	public static final int MAXIMUM_PARTICLE_RANGE = 64;
+	/// 虚拟模型最大等比尺寸，与horde_motion.glsl的稳定个体缩放一致。
+	public static final float MAXIMUM_INSTANCE_SCALE = 1.2F;
+	/// 地面发射与刀光共用既有频率和单轮组数倍率。
+	public static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_GROUP_MULTIPLIER = 2;
 	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE, FRAGMENT_GROUPS;
 	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
 	public static final ModConfigSpec.IntValue SOUND_RANGE, SOUND_MAX_ACTIVE, EVENT_SHAKE_RANGE, LANDING_SHAKE_RANGE;
@@ -55,8 +59,8 @@ public class HordeVisualConfig {
 					.defineInRange("shakeStrength", 1.0, 0.0, 2.0);
 			b.pop().translation(ClientConfig.translation("horde.particles", "Particles", "粒子")).push("particles");
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
-			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("仅在浪潮边界、分割接合和多潮接合生成碎屑与灰尘；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；单轮生成组数在原基础上乘2，不复制同一粒子。").defineInRange("particleIntervalTicks", 1, 1, 1200);
-			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Boundary particle groups per batch", "单轮边界粒子组数")).comment("基础组数；每轮按2倍组数生成，每组含方块碎屑和灰尘，0关闭。不设额外组数上限，仍受原版粒子设置与生成范围限制（最大64格）。").defineInRange("fragmentGroups", 40, 0, Integer.MAX_VALUE);
+			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("烟雾和方块碎屑按可见活动浪潮的地面网格持续补发；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；单轮生成组数在原基础上乘2，不复制同一粒子。").defineInRange("particleIntervalTicks", 1, 1, 1200);
+			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Ground particle groups per batch", "单轮地面粒子组数")).comment("基础地面发射组数；每轮按2倍组数分散补发碎屑，烟雾按各网格寿命错峰续接，0关闭。不设额外组数上限，仍受原版粒子设置与生成范围限制（最大64格）。").defineInRange("fragmentGroups", 40, 0, Integer.MAX_VALUE);
 			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", MAXIMUM_PARTICLE_RANGE, 1, MAXIMUM_PARTICLE_RANGE);
 			b.pop();
 			b.translation(ClientConfig.translation("horde.debug", "Debug", "调试")).push("debug");

@@ -20,6 +20,7 @@ public class ParticleGenerator extends ParticleDescriptionProvider {
 		spriteSet(LcParticleTypes.SIMPLE_DOUBLE_SLASH.get(), Lobecorp.id("simple/double_slash"), 6, false);
 		spriteSet(LcParticleTypes.BLOOD.get(), Lobecorp.id("blood"));
 		spriteSet(LcParticleTypes.SHORT_SMOKE.get(), Identifier.withDefaultNamespace("big_smoke"), 12, false);
+		spriteSet(LcParticleTypes.HORDE_GROUND_SMOKE.get(), Identifier.withDefaultNamespace("big_smoke"), 12, false);
 	}
 
 	protected void spriteSet(DeferredHolder<ParticleType<?>, ParticleType<?>> type, int numOfTextures, boolean reverse) {

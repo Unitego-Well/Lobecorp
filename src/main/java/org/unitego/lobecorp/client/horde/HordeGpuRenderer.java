@@ -212,6 +212,9 @@ public class HordeGpuRenderer {
 		preparePipeline(started);
 		prepareVisuals(started);
 		HordeMeshCache.advance(PREPARATION_BUDGET_NS - (System.nanoTime() - started));
+		if (System.nanoTime() - started < PREPARATION_BUDGET_NS) {
+			HordeRedSky.prepare();
+		}
 	}
 
 	private static void preparePipeline(long started) {
@@ -889,6 +892,7 @@ public class HordeGpuRenderer {
 	}
 
 	public static void clearModels() {
+		HordeRedSky.clear();
 		HordeParticleSamples.invalidate();
 		for (var event : EVENTS.values()) {
 			event.particleSamples.close();

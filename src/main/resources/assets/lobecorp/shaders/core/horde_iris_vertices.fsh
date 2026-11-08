@@ -25,6 +25,7 @@ void main() {
     int vertex = ordinalVertex % verticesPerInstance;
     int instance = ordinalVertex / verticesPerInstance;
     int word = pixel % words;
+    float instanceScale = hordeInstanceScale(instance);
     int cached = (MotionInfo.x + instance) * HORDE_MOTION_VALUES;
     vec2 heading = vec2(scalar(HordeMotion, cached + 5), scalar(HordeMotion, cached + 6));
     mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
@@ -32,7 +33,7 @@ void main() {
         int frameStart = int(scalar(HordeMotion, cached + 7));
         vec3 center = (vector3(HordeIrisAnimation, frameStart * 10)
         + vector3(HordeIrisAnimation, (frameStart + 2) * 10)) * 0.5;
-        vertex = hordeCardVertex(vertex, vector3(HordeMotion, cached), yaw, center);
+        vertex = hordeCardVertex(vertex, vector3(HordeMotion, cached), yaw, center * instanceScale);
     }
     uint bits;
     if (word == 4 || word == 5) {
@@ -79,7 +80,7 @@ void main() {
                     vec2 rotated = yaw * vec2(scalar(HordeIrisAnimation, offset), scalar(HordeIrisAnimation, offset + 2));
                     position = word == 0 ? rotated.x : rotated.y;
                 }
-                bits = floatBitsToUint(position + scalar(HordeMotion, cached + word) + OriginTime[word]);
+                bits = floatBitsToUint(position * instanceScale + scalar(HordeMotion, cached + word) + OriginTime[word]);
             } else {
                 vec3 normal = vector3(HordeIrisAnimation, offset + 3);
                 normal = length(normal) > 0.0001 ? normalize(normal) : vec3(0.0, 1.0, 0.0);

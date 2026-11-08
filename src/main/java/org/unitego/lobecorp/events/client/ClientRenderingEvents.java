@@ -11,6 +11,7 @@ import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 import org.unitego.lobecorp.client.horde.HordeRendering;
+import org.unitego.lobecorp.client.horde.HordeRedSky;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 
@@ -33,6 +34,16 @@ public class ClientRenderingEvents {
 		ConductorRendering.onCustomGeometry(event);
 		LcAnimationDisplays.onSubmit(event);
 		HordeRendering.submit(event);
+	}
+
+	@SubscribeEvent
+	public static void onHordeSky(RenderLevelStageEvent.AfterSky event) {
+		HordeRedSky.draw(event, false);
+	}
+
+	@SubscribeEvent
+	public static void onHordeShaderSky(RenderLevelStageEvent.AfterLevel event) {
+		HordeRedSky.draw(event, true);
 	}
 
 	@SubscribeEvent

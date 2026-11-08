@@ -37,7 +37,7 @@ public class HordeClient {
 	private static final Map<UUID, Long> SNAPSHOT_REQUESTS = new TreeMap<>();
 	private static final double BLOCK_WIDTH = 16;
 	private static final int BLOCK_SEGMENTS = 16;
-	private static final double MODEL_PADDING = 6;
+	private static final double MODEL_PADDING = 6 * HordeVisualConfig.MAXIMUM_INSTANCE_SCALE;
 	// 圆核心按水平体型1.5倍，Y仍采用真实高度，避免高处误分割。
 	private static final double VISUAL_GAP_SCALE = 1.5;
 	// 从目标包围盒向外至少三格；GPU另加清道夫模型半径。
@@ -380,6 +380,7 @@ public class HordeClient {
 		HordeRendering.clear();
 		HordeMeshCache.clear();
 		HordeAmbient.clear();
+		HordeRedSky.clear();
 		MidnightCleanupCinematic.clear();
 		HordeDebugState.reset();
 	}

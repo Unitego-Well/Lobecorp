@@ -29,6 +29,8 @@ public class HordeAmbient {
 	private static final int SLASH_POSITION_MULTIPLIER = 2;
 	/// 事件粒子独立提高频率与单轮组数，不复制同一粒子，不放大声音时钟。
 	private static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_GROUP_MULTIPLIER = 2;
+	/// 每组在代表点周围三个行列间距内独立选点；失败不退回重复中心。
+	private static final int PARTICLE_SCATTER_CELLS = 3, PARTICLE_SCATTER_ATTEMPTS = 6;
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static final List<Vec3> AUDIO_POINTS = new ArrayList<>();
 	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
@@ -407,7 +409,7 @@ public class HordeAmbient {
 			return;
 		}
 
-		var candidates = samples.stream().filter(sample -> boundary(sample, samples)).toList();
+		var candidates = samples.stream().filter(sample -> boundary(sample, samples, sample.sample().ground())).toList();
 		if (candidates.isEmpty()) {
 			return;
 		}
@@ -416,8 +418,8 @@ public class HordeAmbient {
 		int start = level.getRandom().nextInt(candidates.size());
 		for (long i = 0; i < limit; i++) {
 			var located = candidates.get((int) ((start + i) % candidates.size()));
-			var point = located.sample().ground().add(0, 0.05, 0);
-			if (!visibleSpawn(located, point)) {
+			var point = scatterPoint(located, samples, false, 0.05);
+			if (point == null) {
 				continue;
 			}
 
@@ -442,13 +444,12 @@ public class HordeAmbient {
 		}
 	}
 
-	private static boolean boundary(LocatedSample located, List<LocatedSample> samples) {
+	private static boolean boundary(LocatedSample located, List<LocatedSample> samples, Vec3 point) {
 		var event = located.event();
 		var sample = located.sample();
-		var point = sample.ground();
-        double spacing = Math.max(event.rowSpacing(), event.columnSpacing());
+		double spacing = Math.max(event.rowSpacing(), event.columnSpacing());
 		// 探针在变形后坐标上判内；稀疏样本缺邻不会制造边缘。
-		if (sample.boundary()) {
+		if (point.equals(sample.ground()) && sample.boundary() || !currentInterior(located, point)) {
 			return true;
 		}
 
@@ -464,9 +465,8 @@ public class HordeAmbient {
 		return false;
 	}
 
-	private static boolean currentInterior(LocatedSample located) {
+	private static boolean currentInterior(LocatedSample located, Vec3 point) {
 		var event = located.event();
-		var point = located.sample().ground();
 		var circles = event.split.circles();
 		var forward = event.tide.forward(located.sample().station());
 		for (int row = -1; row <= 1; row++) {
@@ -474,7 +474,8 @@ public class HordeAmbient {
 				var probe = point.add(
 						forward.x * row * event.rowSpacing() - forward.z * column * event.columnSpacing(),
 						0, forward.z * row * event.rowSpacing() + forward.x * column * event.columnSpacing());
-				if (!HordeParticleFlow.clear(circles, event.origin, probe, event.entityHeight)) {
+				if (!located.sample().contains(probe)
+						|| !HordeParticleFlow.clear(circles, event.origin, probe, event.entityHeight)) {
 					return false;
 				}
 			}
@@ -499,8 +500,8 @@ public class HordeAmbient {
 		int start = random.nextInt(interior.size());
 		for (int i = 0; i < count; i++) {
 			var located = interior.get((start + i) % interior.size());
-			var point = located.sample().ground().add(0, 1.7, 0);
-			if (!currentInterior(located) || !visibleSpawn(located, point)) {
+			var point = scatterPoint(located, samples, true, 1.7);
+			if (point == null) {
 				continue;
 			}
 
@@ -515,6 +516,46 @@ public class HordeAmbient {
 				particle(slash, point, 0, 0, 0, 0.7f + random.nextFloat() * 0.5f);
 			}
 		}
+	}
+
+	private static Vec3 scatterPoint(LocatedSample located, List<LocatedSample> samples,
+	                                 boolean interior, double height) {
+		var level = Minecraft.getInstance().level;
+		var sample = located.sample();
+		var envelope = sample.envelope();
+		if (level == null || envelope == null) {
+			return null;
+		}
+
+		var event = located.event();
+		var random = level.getRandom();
+		var forward = envelope.forward();
+		for (int attempt = 0; attempt < PARTICLE_SCATTER_ATTEMPTS; attempt++) {
+			double along = (random.nextDouble() * 2 - 1) * event.rowSpacing() * PARTICLE_SCATTER_CELLS;
+			double across = (random.nextDouble() * 2 - 1) * event.columnSpacing() * PARTICLE_SCATTER_CELLS;
+			var candidate = sample.ground().add(forward.x * along - forward.z * across, 0,
+					forward.z * along + forward.x * across);
+			double station = envelope.stationAt(candidate);
+			if (station < envelope.tail() || station > envelope.head()) {
+				continue;
+			}
+
+			var center = event.tide.world(station, 0);
+			var direction = event.tide.forward(station);
+			double lateral = -(candidate.x - center.x) * direction.z + (candidate.z - center.z) * direction.x;
+			var ground = event.tide.world(station, lateral);
+			if (!ground.isFinite() || !sample.contains(ground)
+					|| (interior ? !currentInterior(located, ground) : !boundary(located, samples, ground))) {
+				continue;
+			}
+
+			var point = ground.add(0, height, 0);
+			if (visibleSpawn(located, point)) {
+				return point;
+			}
+		}
+
+		return null;
 	}
 
 	private static boolean activeRow(HordeClient.ClientEvent event, double time, long row) {

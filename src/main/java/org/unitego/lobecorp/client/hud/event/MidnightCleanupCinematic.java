@@ -12,7 +12,7 @@ import java.util.UUID;
 
 /// 独立于普通HUD可见性的开闭幕表现；不写入用户选项。
 public class MidnightCleanupCinematic {
-	/// 开幕200刻，结束横幅50刻；警告条先到位，再显示中央内容。
+	/// 完整开幕200刻，开闭幕横幅共用50刻；警告条先到位，再显示中央内容。
 	private static final int CLOSING_TICKS = 50;
 	private static final int INDIGO = 0x4565FF;
 	private static ClientLevel world;
@@ -120,16 +120,23 @@ public class MidnightCleanupCinematic {
 		float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		float age = minecraft.level.getGameTime() - began + partial;
 		float width = graphics.guiWidth(), height = graphics.guiHeight();
-		float enterTicks = bannerOnly ? 0 : opening ? 20 : 10;
-		float exitAt = duration - 10;
-		float enter = enterTicks == 0 ? 1 : smooth(Math.clamp(age / enterTicks, 0, 1));
-		float leave = smooth(Math.clamp((age - exitAt) / 10, 0, 1));
 		if (opening && !bannerOnly) {
-			float bars = height * 0.12F * (enter - leave);
+			float barEnter = smooth(Math.clamp(age / 20, 0, 1));
+			float barLeave = smooth(Math.clamp((age - (duration - 10)) / 10, 0, 1));
+			float bars = height * 0.12F * (barEnter - barLeave);
 			graphics.lobecorp$fill(0, 0, width, bars, 0xFF000000);
 			graphics.lobecorp$fill(0, height - bars, width, height, 0xFF000000);
 		}
 
+		// 开幕横幅复用结束横幅的50刻时间轴，黑幕与输入锁仍持续完整200刻。
+		if (age >= CLOSING_TICKS) {
+			return;
+		}
+
+		float enterTicks = bannerOnly ? 0 : 10;
+		float exitAt = CLOSING_TICKS - 10;
+		float enter = enterTicks == 0 ? 1 : smooth(Math.clamp(age / enterTicks, 0, 1));
+		float leave = smooth(Math.clamp((age - exitAt) / 10, 0, 1));
 		float bannerHeight = Math.min(height * 0.4F, 90);
 		float left = width * 0.025F, right = width - left;
 		float top = (height - bannerHeight) / 2;
@@ -139,7 +146,7 @@ public class MidnightCleanupCinematic {
 			warning(graphics, left + slide, top + bannerHeight - 5, right - left, true);
 		}
 		// 中央内容严格等待警告条到位；退出时先淡出，再撤走警告条。
-		float fadeTicks = opening && !bannerOnly ? 10 : 5;
+		float fadeTicks = 5;
 		float alpha = Math.min(Math.clamp((age - enterTicks) / fadeTicks, 0, 1),
 				Math.clamp((exitAt - age) / fadeTicks, 0, 1));
 		if (alpha <= 0) {

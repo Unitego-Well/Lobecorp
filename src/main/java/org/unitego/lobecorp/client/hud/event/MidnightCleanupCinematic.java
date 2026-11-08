@@ -147,6 +147,25 @@ public class MidnightCleanupCinematic {
 		return true;
 	}
 
+	/// 变焦只作用于世界配置视野，不改用户选项或把GUI文字一并放大。
+	public static void zoomFov(ViewportEvent.ComputeFov event) {
+		if (!event.usedConfiguredFov() || !active() || !opening || bannerOnly) {
+			return;
+		}
+
+		var minecraft = Minecraft.getInstance();
+		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
+		float age = world.getGameTime() - began + partial;
+		float factor = MidnightCleanupViewUtil.magnification(age);
+		float normal = event.getFOV();
+		if (factor <= 1 || !Float.isFinite(normal) || normal <= 0 || normal >= 179) {
+			return;
+		}
+
+		double halfAngle = Math.toRadians(normal) * 0.5;
+		event.setFOV((float) Math.toDegrees(2 * Math.atan(Math.tan(halfAngle) / factor)));
+	}
+
 	/// 仅剔除本任务锁速对FOV的贡献，保留飞行、拉弓与用户效果倍率。
 	public static void correctFov(ComputeFovModifierEvent event) {
 		var player = event.getPlayer();

@@ -37,7 +37,7 @@ public class MidnightCleanupOpening {
 
 			double station = event.route().nearest(player.position(), 0, event.route().length());
 			double arrival = station / event.movementSpeed() - event.tick();
-			if (event.finished() || arrival > MidnightCleanup.ARRIVAL_WARNING_TICKS) {
+			if (event.finished() || arrival > MidnightCleanup.OPENING_WARNING_TICKS) {
 				continue;
 			}
 

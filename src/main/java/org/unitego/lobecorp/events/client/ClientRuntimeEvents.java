@@ -232,6 +232,11 @@ public class ClientRuntimeEvents {
 	}
 
 	@SubscribeEvent
+	public static void onCinematicFov(ViewportEvent.ComputeFov event) {
+		MidnightCleanupCinematic.zoomFov(event);
+	}
+
+	@SubscribeEvent
 	public static void onFovModifier(ComputeFovModifierEvent event) {
 		MidnightCleanupCinematic.correctFov(event);
 	}

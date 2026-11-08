@@ -374,11 +374,9 @@ public class HordeAmbient {
 			var snapshot = HordeParticleSamples.latest(batch.event(), batch.time());
 			if (snapshot != null) {
 				var event = batch.event();
-				var circles = event.split.circles();
 				for (var sample : snapshot.samples()) {
 					if (activeRow(event, batch.time(), sample.row()) && sample.inWave(Math.max(0, (batch.time() - event.stop) * event.speed),
 							Math.min(event.length, batch.time() * event.speed))
-							&& HordeParticleFlow.clear(circles, event.origin, sample.ground(), event.entityHeight)
 							&& inView(sample.ground())) {
 						samples.add(new LocatedSample(batch.event(), batch.time(), sample));
 					}
@@ -431,7 +429,7 @@ public class HordeAmbient {
 						(level.getRandom().nextDouble() - 0.5) * 0.16, 1);
 			}
 
-			// 随机出生点独立检查一次，不能复用碎屑原点的空洞或射线结果。
+			// 随机出生点独立检查可见性，不能复用碎屑原点的射线结果。
 			var random = level.getRandom();
 			double speed = 0.04;
 			var smoke = point.add((random.nextDouble() * 2 - 1) * 0.6, (random.nextDouble() * 2 - 1) * 0.1,
@@ -467,15 +465,13 @@ public class HordeAmbient {
 
 	private static boolean currentInterior(LocatedSample located, Vec3 point) {
 		var event = located.event();
-		var circles = event.split.circles();
 		var forward = event.tide.forward(located.sample().station());
 		for (int row = -1; row <= 1; row++) {
 			for (int column = -1; column <= 1; column++) {
 				var probe = point.add(
 						forward.x * row * event.rowSpacing() - forward.z * column * event.columnSpacing(),
 						0, forward.z * row * event.rowSpacing() + forward.x * column * event.columnSpacing());
-				if (!located.sample().contains(probe)
-						|| !HordeParticleFlow.clear(circles, event.origin, probe, event.entityHeight)) {
+				if (!located.sample().contains(probe)) {
 					return false;
 				}
 			}
@@ -575,10 +571,7 @@ public class HordeAmbient {
 		double station = envelope.stationAt(point);
 		double tail = Math.max(0, (located.time() - event.stop) * event.speed);
 		double head = Math.min(event.length, located.time() * event.speed);
-		return station >= tail && station <= head
-				&& HordeParticleFlow.clear(event.split.circles(), event.origin, point,
-				Math.max(0, event.entityHeight - (point.y - sample.ground().y)))
-				&& HordeClient.ambientGapClear(point) && unobstructed(point);
+		return station >= tail && station <= head && unobstructed(point);
 	}
 
 	private static boolean allowed() {

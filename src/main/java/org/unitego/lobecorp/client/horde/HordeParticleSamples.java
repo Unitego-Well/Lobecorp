@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/// 有界 CPU 代表点快照：用同源割圆近似 GPU 分流，不代表 GPU 实际脚点。
+/// 有界 CPU 粒子代表点快照：按未分割浪潮采样，不代表 GPU 实际脚点。
 public class HordeParticleSamples implements AutoCloseable {
     public static final int CAPACITY = HordeParticleFlow.SAMPLE_LIMIT;
     private static final long CAPTURE_INTERVAL_NANOS = 100_000_000L;
@@ -25,7 +25,7 @@ public class HordeParticleSamples implements AutoCloseable {
     private long captureSerial;
     private final HordeParticleFlow flow = new HordeParticleFlow();
 
-	/// 位序为纵横偏移(-1,-1)至(1,1)，跳过中心；位值来自变形包络和圆空洞探针。
+	/// 位序为纵横偏移(-1,-1)至(1,1)，跳过中心；位值来自未分割浪潮包络的邻域探针。
 	/// 不依赖稀疏代表点的身份邻接；出生前仍须核对当前分割与可见性。
 	/// 每行的粗略变形包络；最终出生偏移也必须落在此包络中。
 	public record Envelope(Vec3 center, Vec3 forward, double station,
@@ -128,7 +128,7 @@ public class HordeParticleSamples implements AutoCloseable {
 	    var minecraft = Minecraft.getInstance();
 	    var player = minecraft.player;
 	    var camera = player != null ? player.position() : minecraft.gameRenderer.getMainCamera().position();
-	    var field = new HordeParticleFlow.Field(tide, event.origin, event.split.circles(), time, event.speed,
+	    var field = new HordeParticleFlow.Field(tide, event.origin, List.of(), time, event.speed,
                 event.stop, event.columns, event.rowSpacing(),
                 event.columnSpacing(), event.entityHeight);
 	    var samples = flow.sample(field, camera, ++captureSerial);

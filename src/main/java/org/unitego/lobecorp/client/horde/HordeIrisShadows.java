@@ -1,5 +1,8 @@
 package org.unitego.lobecorp.client.horde;
 
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderPass;
+import net.irisshaders.iris.vertices.ImmediateState;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
@@ -13,6 +16,22 @@ import net.neoforged.fml.ModList;
 
 /// 隔离可选Iris依赖，核对实际顶点布局、阴影阶段和深度方向。
 public class HordeIrisShadows {
+	/// 自有计算与合成管线不参与光影替换；实体材质管线仍使用 Iris 原有路由。
+	public static void setNativePipeline(RenderPass pass, RenderPipeline pipeline) {
+		if (!ModList.get().isLoaded("iris")) {
+			pass.setPipeline(pipeline);
+			return;
+		}
+
+		boolean previous = ImmediateState.bypass;
+		ImmediateState.bypass = true;
+		try {
+			pass.setPipeline(pipeline);
+		} finally {
+			ImmediateState.bypass = previous;
+		}
+	}
+
 	public static boolean active() {
 		return ModList.get().isLoaded("iris") && IrisApi.getInstance().isShaderPackInUse();
 	}

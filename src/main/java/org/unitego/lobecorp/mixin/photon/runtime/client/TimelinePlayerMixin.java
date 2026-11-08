@@ -119,8 +119,8 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 	}
 
-	@Inject(method = "evaluate", at = @At("HEAD"))
-	private void lobecorp$releaseActivation(double time, CallbackInfo ci) {
+	@Inject(method = "evaluate(DZ)V", at = @At("HEAD"))
+	private void lobecorp$releaseActivation(double time, boolean live, CallbackInfo ci) {
 		if (lobecorp$activation != null) {
 			lobecorp$activation.begin();
 		}
@@ -153,8 +153,12 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 
 
 
-	@Inject(method = "evaluate", at = @At("RETURN"))
-	private void lobecorp$previewParameters(double time, CallbackInfo ci) {
+	@Inject(method = "evaluate(DZ)V", at = @At("RETURN"))
+	private void lobecorp$previewParameters(double time, boolean live, CallbackInfo ci) {
+		if (!live) {
+			return;
+		}
+
 		var leaves = timeline.leafTracks(false);
 		boolean extended = !recording && leaves.stream().anyMatch(track -> track instanceof ActivatorTrack && !track.mute()
 				&& !((PhotonActivationTrackAccess) track).lobecorp$activationOptions().equals(PhotonActivationOptions.NATIVE));
@@ -228,17 +232,17 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 	}
 
-	@WrapMethod(method = "evaluate")
-	private void lobecorp$captureEvaluation(double time, Operation<Void> original) {
+	@WrapMethod(method = "evaluate(DZ)V")
+	private void lobecorp$captureEvaluation(double time, boolean live, Operation<Void> original) {
 		if (!PhotonPerformanceTraceUtil.enabled(Stage.ANIMATION)) {
-			original.call(time);
+			original.call(time, live);
 			return;
 		}
 		int node = PhotonPerformanceOwnerUtil.player((TimelinePlayer) (Object) this, runtime);
 		long scope = PhotonPerformanceTraceUtil.begin(Stage.ANIMATION, node, time);
 		boolean completed = false;
 		try {
-			original.call(time);
+			original.call(time, live);
 			completed = true;
 		} finally {
 			PhotonPerformanceTraceUtil.end(scope, completed);

@@ -1,5 +1,9 @@
 # Photon、LDLib2 与 KilaGraph 依赖升级
 
+## 2026-11-08 原始 dev 时间轴求值签名适配
+
+Photon `26.1.2.11` 的 `TimelinePlayer.evaluate` 为 `(double time, boolean live)`。`TimelinePlayerMixin` 的两个求值注入和性能包装统一锁定 `evaluate(DZ)V`，包装在开启、关闭跟踪时都透传 `live`。时间轴结束后的 `live=false` 不再执行扩展预览，避免重新激活轨道或子效果。LDLib2 的 `FXInstanceObject.TYPE` 加载失败在本次日志中由该 Mixin 应用失败引起，不单独修改注册。
+
 ## 2026-11-08 女皇工作区升级至 26.1.2.11
 
 当前 `codex/queen-of-hatred` 使用 Photon `26.1.2.11`、LDLib2 `26.1.2.46`，KilaGraph 保持 `26.1.0.16.a`。版本来自官方 Maven 26.1 模块元数据，IDEA 实际解析与版本目录一致；Minecraft、NeoForge 与 Java 版本不变。

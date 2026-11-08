@@ -551,7 +551,7 @@ public class HordeGpuRenderer {
 		try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
 				() -> card ? "Lobecorp GPU horde cards" : "Lobecorp GPU horde", colorTarget, OptionalInt.empty(),
 				depthTarget, OptionalDouble.empty())) {
-			pass.setPipeline(pipeline);
+			HordeIrisShadows.setNativePipeline(pass, pipeline);
 			RenderSystem.bindDefaultUniforms(pass);
 			pass.setUniform("DynamicTransforms", transforms);
 			pass.bindTexture("Sampler2", Minecraft.getInstance().gameRenderer.lightmap(), linear);
@@ -844,7 +844,7 @@ public class HordeGpuRenderer {
 		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
 				() -> "Lobecorp horde motion cache", motionView, OptionalInt.empty())) {
-			pass.setPipeline(MOTION);
+			HordeIrisShadows.setNativePipeline(pass, MOTION);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
 			pass.setViewport(0, 0, motionWidth, motionHeight);
 			pass.bindTexture("HordeLight", LIGHT.atlas().getTextureView(), nearest);
@@ -1150,7 +1150,7 @@ public class HordeGpuRenderer {
 			int rows = Math.ceilDiv(Math.multiplyExact(vertices, wordsPerVertex), slot.width);
 			long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.EXPAND, vertices);
 			try (var pass = encoder.createRenderPass(() -> "Horde Iris GPU vertex expansion", slot.view, OptionalInt.empty())) {
-				pass.setPipeline(BAKE);
+				HordeIrisShadows.setNativePipeline(pass, BAKE);
 				pass.setViewport(0, 0, slot.width, slot.height);
 				pass.bindTexture("HordeMotion", motionView, nearest);
 				HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);

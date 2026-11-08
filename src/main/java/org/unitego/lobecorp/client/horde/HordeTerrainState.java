@@ -63,7 +63,7 @@ public class HordeTerrainState implements AutoCloseable {
                 (long) event.nodes.length * event.heightColumns);
         try (var pass = encoder.createRenderPass(() -> "Horde smooth terrain field", writeView, OptionalInt.empty())) {
             var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-            pass.setPipeline(UPDATE);
+            HordeIrisShadows.setNativePipeline(pass, UPDATE);
             pass.setViewport(0, 0, width, height);
             pass.setUniform("TerrainParameters", parameters.slice());
             pass.bindTexture("TerrainTargets", targets.texture().getTextureView(), sampler);

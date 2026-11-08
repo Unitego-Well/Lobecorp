@@ -96,7 +96,7 @@ public class HordeRedSky {
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		encoder.writeToBuffer(parameters.slice(), memory);
 		try (var pass = encoder.createRenderPass(() -> "Horde directional crimson sky", color, OptionalInt.empty())) {
-			pass.setPipeline(SKY);
+			HordeIrisShadows.setNativePipeline(pass, SKY);
 			pass.setViewport(0, 0, target.width, target.height);
 			pass.setUniform("SkyParameters", parameters.slice());
 			pass.bindTexture("SkyDepth", depth, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));

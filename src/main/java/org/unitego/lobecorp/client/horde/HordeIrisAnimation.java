@@ -56,7 +56,7 @@ public class HordeIrisAnimation implements AutoCloseable {
 			try (GpuBuffer parameters = device.createBuffer(() -> "Horde Iris frame parameters", GpuBuffer.USAGE_UNIFORM, memory);
 			     var pass = device.createCommandEncoder().createRenderPass(() -> "Horde prepare Iris frames", view, OptionalInt.empty())) {
 				var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-				pass.setPipeline(PREPARE);
+				HordeIrisShadows.setNativePipeline(pass, PREPARE);
 				pass.setViewport(0, 0, layout.width(), layout.height());
 				pass.setUniform("IrisFrameParameters", parameters.slice());
 				pass.bindTexture("FrameAnimation", animation.texture().getTextureView(), sampler);

@@ -163,7 +163,7 @@ public class HordeAvoidanceState implements AutoCloseable {
 		HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, WINDOW_BYTES);
 		var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		try (var pass = encoder.createRenderPass(() -> "Horde avoidance integration", writeView, OptionalInt.empty())) {
-			pass.setPipeline(UPDATE);
+			HordeIrisShadows.setNativePipeline(pass, UPDATE);
 			pass.setViewport(0, 0, writeWidth, writeHeight);
 			pass.setUniform("HordeParameters", batchParameters);
 			pass.setUniform("AvoidanceWindow", window.slice());

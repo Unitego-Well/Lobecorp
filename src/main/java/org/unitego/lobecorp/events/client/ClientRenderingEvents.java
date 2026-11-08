@@ -38,6 +38,11 @@ public class ClientRenderingEvents {
 	}
 
 	@SubscribeEvent
+	public static void onHordeFog(ViewportEvent.ComputeFogColor event) {
+		HordeRedSky.fog(event);
+	}
+
+	@SubscribeEvent
 	public static void onHordeSky(RenderLevelStageEvent.AfterSky event) {
 		HordeRedSky.draw(event, false);
 	}

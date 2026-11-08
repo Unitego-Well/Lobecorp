@@ -31,6 +31,8 @@
 	],
 	"client": [
 		"minecraft.client.GuiGraphicsExtractorMixin",
+		"minecraft.client.CloudRendererMixin",
+		"minecraft.client.GroundSmokePipelineMixin",
 		"development.client.DevelopmentWindowMixin",
 		"development.client.DevelopmentThrottleMixin",
 		"development.client.DevelopmentPauseMixin",

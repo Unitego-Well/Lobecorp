@@ -6,12 +6,17 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.ARGB;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.material.FogType;
+import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -28,11 +33,12 @@ import java.util.OptionalInt;
 /// A2方向天空；普通路径在天空后绘制，光影路径在世界阶段末仅合成远平面像素。
 public class HordeRedSky {
 	private static final int PARAMETER_BYTES = 96;
-	private static final double MAXIMUM_OPACITY = 0.78;
-	/// 天空接近预告一分钟，事件起止淡入淡出两秒，局部尾波通过后淡出三秒，单位为刻。
-	private static final double APPROACH_TICKS = 60 * 20, EDGE_FADE_TICKS = 40, TAIL_FADE_TICKS = 60;
-	private static final int CLOUD_TINT = 0x62353F;
+	private static final double MAXIMUM_OPACITY = 0.92;
+	/// 到达前二十秒起染，到达即满；仅在当地尾波通过后三秒淡出，单位为刻。
+	private static final double APPROACH_TICKS = 20 * 20, TAIL_FADE_TICKS = 60;
+	private static final int CLOUD_TINT = 0x360A18;
 	private static final float CLOUD_BLEND = 0.72f;
+	private static final float FOG_RED = 0.10F, FOG_GREEN = 0.015F, FOG_BLUE = 0.035F;
 	private static final RenderPipeline SKY = RenderPipeline.builder()
 			.withLocation(Lobecorp.id("pipeline/horde_red_sky"))
 			.withVertexShader(Lobecorp.id("core/horde_red_sky"))
@@ -67,6 +73,7 @@ public class HordeRedSky {
 					GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, PARAMETER_BYTES);
 			memory = MemoryUtil.memAlloc(PARAMETER_BYTES);
 			prepared = true;
+			HordeCloudRim.prepare();
 		} catch (RuntimeException failure) {
 			failed = true;
 			Lobecorp.LOGGER.error("停止本代际深夜清扫天空表现，其它事件表现继续", failure);
@@ -98,6 +105,47 @@ public class HordeRedSky {
 		int tint = original & 0xFF000000 | CLOUD_TINT;
 		float blend = (float) (CLOUD_BLEND * frameAtmosphere.strength() / MAXIMUM_OPACITY);
 		event.getRenderState().cloudColor = ARGB.srgbLerp(blend, original, tint);
+	}
+
+	/// 只协调事件影响中的空气远雾，不改流体、特殊状态雾或距离参数。
+	public static void fog(ViewportEvent.ComputeFogColor event) {
+		var minecraft = Minecraft.getInstance();
+		var camera = event.getCamera();
+		var level = minecraft.level;
+		if (level == null || !HordeVisualConfig.ENABLED.get() || HordeIrisShadows.shadowPass()
+				|| level.dimensionType().skybox() != DimensionType.Skybox.OVERWORLD
+				|| camera.getFluidInCamera() != FogType.NONE && camera.getFluidInCamera() != FogType.ATMOSPHERIC
+				|| minecraft.gui.getBossOverlay().shouldCreateWorldFog()
+				|| camera.entity() instanceof LivingEntity living && (living.hasEffect(MobEffects.BLINDNESS) || living.hasEffect(MobEffects.DARKNESS))) {
+			return;
+		}
+
+		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
+		var atmosphere = atmosphere(camera.position(), partial);
+		if (atmosphere == null) {
+			return;
+		}
+
+		float blend = (float) (atmosphere.strength() / MAXIMUM_OPACITY);
+		event.setRed(event.getRed() + (FOG_RED - event.getRed()) * blend);
+		event.setGreen(event.getGreen() + (FOG_GREEN - event.getGreen()) * blend);
+		event.setBlue(event.getBlue() + (FOG_BLUE - event.getBlue()) * blend);
+	}
+
+	public static boolean cloudRimActive() {
+		return prepared && HordeVisualConfig.ENABLED.get() && frameLevel == Minecraft.getInstance().level
+				&& frameAtmosphere != null && frameAtmosphere.strength() > 0 && HordeCloudRim.ready()
+				&& !HordeIrisShadows.shadowPass();
+	}
+
+	public static void drawCloudRim(RenderPass pass, int cellX, int cellZ, int baseVertex, int firstIndex, int indexCount, int instanceCount) {
+		try {
+			HordeCloudRim.draw(pass, frameAtmosphere.direction(), frameAtmosphere.strength(), frameAtmosphere.time(),
+					cellX, cellZ, baseVertex, firstIndex, indexCount, instanceCount);
+		} catch (RuntimeException exception) {
+			HordeCloudRim.clear();
+			Lobecorp.LOGGER.error("停止本代际事件云缘，原云继续绘制", exception);
+		}
 	}
 
 	public static void draw(RenderLevelStageEvent event, boolean shaderPass) {
@@ -158,14 +206,11 @@ public class HordeRedSky {
 			double range = Math.clamp(1 - outside / 256, 0, 1);
 			double arrival = station / event.speed - time;
 			double departure = event.stop + station / event.speed - time;
-			double approach = Math.clamp(1 - Math.max(0, arrival) / APPROACH_TICKS, 0, 1);
-			double progress = Math.clamp(-arrival / Math.max(1, event.stop), 0, 1);
-			double crest = Math.sin(progress * Math.PI);
-			double fade = Math.clamp(time / EDGE_FADE_TICKS, 0, 1)
-					* Math.clamp((event.stop + Math.ceil(event.length / event.speed) - time) / EDGE_FADE_TICKS, 0, 1)
-					* Math.clamp((departure + TAIL_FADE_TICKS) / TAIL_FADE_TICKS, 0, 1);
-			float strength = (float) (MAXIMUM_OPACITY * range * approach * (0.65 + 0.35 * crest) * fade);
-			float coverage = (float) (approach * (0.4 + 0.6 * crest));
+			double approaching = Math.clamp(1 - Math.max(0, arrival) / APPROACH_TICKS, 0, 1);
+			double approach = approaching * approaching * (3 - 2 * approaching);
+			double fade = Math.clamp((departure + TAIL_FADE_TICKS) / TAIL_FADE_TICKS, 0, 1);
+			float strength = (float) (MAXIMUM_OPACITY * range * approach * fade);
+			float coverage = (float) approach;
 			if (strength <= 0 || result != null && result.strength() >= strength) {
 				continue;
 			}
@@ -178,6 +223,7 @@ public class HordeRedSky {
 	}
 
 	public static void clear() {
+		HordeCloudRim.clear();
 		if (parameters != null) {
 			parameters.close();
 			parameters = null;

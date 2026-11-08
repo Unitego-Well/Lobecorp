@@ -27,6 +27,8 @@ import java.util.UUID;
 public class HordeAmbient {
 	/// 刀光每批位置数加倍，保留原生成间隔和每处粒子数量。
 	private static final int SLASH_POSITION_MULTIPLIER = 2;
+	/// 事件粒子独立提高频率与每次创建数量，不放大声音时钟。
+	private static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_AMOUNT_MULTIPLIER = 2;
 	private static final List<Source> SOURCES = new ArrayList<>();
 	private static final List<Vec3> AUDIO_POINTS = new ArrayList<>();
 	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
@@ -386,13 +388,16 @@ public class HordeAmbient {
 			return;
 		}
 
-		if (tick % HordeVisualConfig.PARTICLE_INTERVAL.get() == 0) {
-			emitFragments(samples, HordeVisualConfig.FRAGMENT_GROUPS.get());
-		}
+		for (int step = 0; step < PARTICLE_FREQUENCY_MULTIPLIER; step++) {
+			long now = tick * PARTICLE_FREQUENCY_MULTIPLIER + step;
+			if (now % HordeVisualConfig.PARTICLE_INTERVAL.get() == 0) {
+				emitFragments(samples, HordeVisualConfig.FRAGMENT_GROUPS.get());
+			}
 
-		if (tick >= nextSlashTick) {
-			nextSlashTick = tick + 1 + level.getRandom().nextInt(4);
-			emitSlashes(samples);
+			if (now >= nextSlashTick) {
+				nextSlashTick = now + 1 + level.getRandom().nextInt(4);
+				emitSlashes(samples);
+			}
 		}
 	}
 
@@ -551,24 +556,20 @@ public class HordeAmbient {
 
 	/// 不改变粒子自身缩放；仅用于复用其它系统已有的粒子外观与行为。
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz) {
-		if (!allowed()) {
-			return;
-		}
-
-		if (Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz) != null) {
-			emittedParticles++;
-		}
+		particle(type, point, dx, dy, dz, 1);
 	}
 
 	private static void particle(ParticleOptions type, Vec3 point, double dx, double dy, double dz, float scale) {
-		if (!allowed()) {
-			return;
-		}
+		for (int copy = 0; copy < PARTICLE_AMOUNT_MULTIPLIER; copy++) {
+			if (!allowed()) {
+				continue;
+			}
 
-		var particle = Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz);
-		if (particle != null) {
-			particle.scale(scale);
-			emittedParticles++;
+			var particle = Minecraft.getInstance().particleEngine.createParticle(type, point.x, point.y, point.z, dx, dy, dz);
+			if (particle != null) {
+				particle.scale(scale);
+				emittedParticles++;
+			}
 		}
 	}
 

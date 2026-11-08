@@ -2,7 +2,7 @@
 
 ## 2026-11-08 深夜清扫倒计时HUD（当前）
 
-使用既有event.MidnightCleanupHud与事件容器，hud.events.midnight_cleanup.style切换DEFAULT/NEW，运行时调整尺寸和堆叠高度。HordeClient消费现有header.profile、tick、stop、length、speed，按UUID显示/更新/隐藏对应组件，不增加网络字段。倒计时取事件结束时刻stop+ceil(length/speed)，包含最后一段浪潮通过；秒数向上取整，最低00:00、最高99:59，结束或移除时隐藏。不依赖模型启用开关或可见batches。隐藏GUI及旁观时不绘制，切世界释放已有实例。
+使用既有event.MidnightCleanupHud与事件容器，hud.events.midnight_cleanup.timerStyle切换DEFAULT/NEW，运行时调整尺寸和堆叠高度。HordeClient消费现有header.profile、tick、stop、length、speed，按UUID显示/更新/隐藏对应组件，不增加网络字段。倒计时取事件结束时刻stop+ceil(length/speed)，包含最后一段浪潮通过；秒数向上取整，最低00:00、最高99:59，结束或移除时隐藏。不依赖模型启用开关或可见batches。隐藏GUI及旁观时不绘制，切世界释放已有实例。
 
 框的Y由事件HUD堆叠决定。DEFAULT框左边贴屏幕x=0，使用timer.png原尺寸61×31；text_box在框内(12,21)，原尺寸17×10。NEW框保留正常事件堆叠的X/Y，使用timer_box.png原尺寸67×48，不新增文本框。new资源原box.png→timer_box.png，text.png→digits.png，仅改名、字节不变。
 
@@ -13,7 +13,7 @@
 
 两套digits均按:0123456789排列、UV从0开始，字符格宽7、纹理格间隔1，u步长8，总宽87。数字n的u=(n+1)×8。DEFAULT屏幕字符无间隔；NEW数字间隔3、冒号左右各间隔1。显示MM:SS、不足补零。两套冒号按同步事件时间每20tick一周期，前10tick显示、后10tick隐藏；隐藏时保留原占位，暂停时间冻结。
 
-TIMER_STYLE历史配置保留，本次完整布局只由MIDNIGHT_CLEANUP_STYLE决定。默认纹理消费当前用户工作区版本，不提交用户已有PNG修改或暂存删除。原文件备份和本轮验证见.local/midnight-hud-20261108/；未启动游戏或进行视觉验收。下方早期空组件、未接入计时器的描述属于历史状态。
+2026-11-08合并样式选项：只保留TIMER_STYLE（计时器样式），统一决定完整布局；MIDNIGHT_CLEANUP_STYLE及重复style配置已移除。默认纹理消费当前用户工作区版本，不提交用户已有PNG修改或暂存删除。原文件备份和本轮验证见.local/midnight-hud-20261108/；未启动游戏或进行视觉验收。下方早期空组件、未接入计时器的描述属于历史状态。
 
 
 ## 2026-11-07 吸收伤害与滤镜

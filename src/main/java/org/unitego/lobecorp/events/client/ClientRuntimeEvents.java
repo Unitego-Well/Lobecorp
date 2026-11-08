@@ -17,6 +17,7 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
@@ -202,8 +203,19 @@ public class ClientRuntimeEvents {
 		ConductorClient.tick();
 		ConductorControls.onTick(event);
 		QueenBeamEffects.tick();
+		MidnightCleanupCinematic.holdView();
 		HordeClient.tick();
 		HordeAmbient.tick();
+	}
+
+	@SubscribeEvent
+	public static void onPlayerTurn(CalculatePlayerTurnEvent event) {
+		if (MidnightCleanupCinematic.hidesHud()) {
+			// 原版按(sensitivity*0.6F+0.2F)的三次方缩放输入，抵消常数后实际转向为零。
+			event.setMouseSensitivity(-0.2F / (double) 0.6F);
+			event.setCinematicCameraEnabled(false);
+			MidnightCleanupCinematic.holdView();
+		}
 	}
 
 	@SubscribeEvent

@@ -55,7 +55,7 @@ public class HordeVisualConfig {
 					.defineInRange("shakeStrength", 1.0, 0.0, 2.0);
 			b.pop().translation(ClientConfig.translation("horde.particles", "Particles", "粒子")).push("particles");
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
-			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("仅在浪潮边界、分割接合和多潮接合生成碎屑与灰尘；刀光独立每1至4刻成批生成。").defineInRange("particleIntervalTicks", 1, 1, 1200);
+			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("仅在浪潮边界、分割接合和多潮接合生成碎屑与灰尘；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；实际粒子数在原基础上再乘2。").defineInRange("particleIntervalTicks", 1, 1, 1200);
 			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Boundary particle groups per tick", "每刻边界粒子组数")).comment("每组在同一点生成方块碎屑和灰尘；0关闭，最多100组。受原版粒子设置与粒子生成范围配置限制（最大64格）。").defineInRange("fragmentGroups", 40, 0, 100);
 			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", MAXIMUM_PARTICLE_RANGE, 1, MAXIMUM_PARTICLE_RANGE);
 			b.pop();

@@ -41,7 +41,7 @@ public class MidnightCleanupHud extends EventHudComponent {
 
 	@Override
 	public void layout() {
-		boolean modern = PlayerHudConfig.MIDNIGHT_CLEANUP_STYLE.get() == HudStyle.NEW;
+		boolean modern = PlayerHudConfig.TIMER_STYLE.get() == HudStyle.NEW;
 		setSize(modern ? 67 : 61, modern ? 48 : 31);
 	}
 
@@ -52,7 +52,7 @@ public class MidnightCleanupHud extends EventHudComponent {
 			return;
 		}
 
-		boolean modern = PlayerHudConfig.MIDNIGHT_CLEANUP_STYLE.get() == HudStyle.NEW;
+		boolean modern = PlayerHudConfig.TIMER_STYLE.get() == HudStyle.NEW;
 		float left = modern ? x : 0;
 		int boxWidth = modern ? 67 : 61;
 		int boxHeight = modern ? 48 : 31;

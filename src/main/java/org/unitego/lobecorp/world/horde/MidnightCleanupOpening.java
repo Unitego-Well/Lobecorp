@@ -24,7 +24,7 @@ public class MidnightCleanupOpening {
 	private final Map<ServerPlayer, Lock> locks = new HashMap<>();
 	/// 每位玩家在同一事件中只触发一次，离开范围或重连不重置。
 	private final Map<UUID, Set<UUID>> played = new HashMap<>();
-	private static final int ARRIVAL_WARNING_TICKS = 20 * 20;
+	private static final int ARRIVAL_WARNING_TICKS = 15 * 20;
 
 	public void start(MinecraftServer server, HordeEvent event) {
 		if (!MidnightCleanup.ID.equals(event.profile())) {
@@ -59,9 +59,10 @@ public class MidnightCleanupOpening {
 				speed.removeModifier(SPEED_ID);
 				speed.addTransientModifier(new AttributeModifier(SPEED_ID, -1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
-			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanup.OPENING_TICKS));
 			var toward = event.route().direction(station).scale(-1);
 			player.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition().add(toward.scale(16)));
+			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanup.OPENING_TICKS,
+					player.getYRot(), player.getXRot()));
 			send(player, event.id(), true, false);
 		}
 	}
@@ -78,6 +79,9 @@ public class MidnightCleanupOpening {
 				return true;
 			}
 
+			player.setYRot(lock.yaw());
+			player.setXRot(lock.pitch());
+			player.setYHeadRot(lock.yaw());
 			return false;
 		});
 		played.keySet().removeIf(id -> !data.events().containsKey(id));
@@ -150,6 +154,6 @@ public class MidnightCleanupOpening {
 		played.clear();
 	}
 
-	private record Lock(UUID event, int until) {
+	private record Lock(UUID event, int until, float yaw, float pitch) {
 	}
 }

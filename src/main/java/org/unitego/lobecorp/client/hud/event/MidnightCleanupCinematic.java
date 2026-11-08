@@ -11,7 +11,7 @@ import org.unitego.lobecorp.Lobecorp;
 import java.util.ArrayDeque;
 import java.util.UUID;
 
-/// 独立于普通HUD可见性的开闭幕表现；不写入用户选项或玩家输入。
+/// 独立于普通HUD可见性的开闭幕表现；不写入用户选项。
 public class MidnightCleanupCinematic {
 	/// 开幕200刻，结束横幅50刻；警告条先到位，再显示中央内容。
 	private static final int CLOSING_TICKS = 50;
@@ -21,6 +21,7 @@ public class MidnightCleanupCinematic {
 	private static int duration;
 	private static boolean opening;
 	private static boolean bannerOnly;
+	private static float lockedYaw, lockedPitch;
 	private static UUID eventId;
 	private static final ArrayDeque<Presentation> pending = new ArrayDeque<>();
 
@@ -67,10 +68,29 @@ public class MidnightCleanupCinematic {
 		opening = presentation.opening();
 		bannerOnly = presentation.bannerOnly();
 		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
+		var player = Minecraft.getInstance().player;
+		if (opening && !bannerOnly && player != null) {
+			// 原版LookAt包先于表现包到达，保存服务端给定的入场朝向。
+			lockedYaw = player.getYRot();
+			lockedPitch = player.getXRot();
+		}
 	}
 
 	public static boolean hidesHud() {
 		return active() && opening && !bannerOnly;
+	}
+
+	public static void holdView() {
+		var player = Minecraft.getInstance().player;
+		if (!hidesHud() || player == null) {
+			return;
+		}
+
+		player.setYRot(lockedYaw);
+		player.setXRot(lockedPitch);
+		player.setYHeadRot(lockedYaw);
+		player.yRotO = lockedYaw;
+		player.xRotO = lockedPitch;
 	}
 
 	private static boolean active() {

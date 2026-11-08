@@ -36,9 +36,9 @@ public class HordeRedSky {
 	private static final double MAXIMUM_OPACITY = 0.92;
 	/// 到达前二十秒起染，到达即满；仅在当地尾波通过后三秒淡出，单位为刻。
 	private static final double APPROACH_TICKS = 20 * 20, TAIL_FADE_TICKS = 60;
-	private static final int CLOUD_TINT = 0x360A18;
-	private static final float CLOUD_BLEND = 0.72f;
-	private static final float FOG_RED = 0.10F, FOG_GREEN = 0.015F, FOG_BLUE = 0.035F;
+	private static final int CLOUD_TINT = 0x64182A;
+	private static final float CLOUD_BLEND = 0.60f;
+	private static final float FOG_RED = 0.19F, FOG_GREEN = 0.027F, FOG_BLUE = 0.055F;
 	private static final RenderPipeline SKY = RenderPipeline.builder()
 			.withLocation(Lobecorp.id("pipeline/horde_red_sky"))
 			.withVertexShader(Lobecorp.id("core/horde_red_sky"))

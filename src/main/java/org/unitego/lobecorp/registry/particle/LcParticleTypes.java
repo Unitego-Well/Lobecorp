@@ -27,7 +27,6 @@ public interface LcParticleTypes {
 	DeferredHolder<ParticleType<?>, SimpleParticleType> HORDE_CLEANUP = register("horde_cleanup", false);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> BLOOD = register("blood", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> SHORT_SMOKE = register("short_smoke", true);
-	DeferredHolder<ParticleType<?>, SimpleParticleType> HORDE_GROUND_SMOKE = register("horde_ground_smoke", false);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_REPEL_WAVE = register("queen_repel_wave", true);
 	DeferredHolder<ParticleType<?>, SimpleParticleType> QUEEN_LASER = register("queen_laser", true);
 	DeferredHolder<ParticleType<?>, ParticleType<QueenChannelLaserParticleOptions>> QUEEN_CHANNEL_LASER = register(

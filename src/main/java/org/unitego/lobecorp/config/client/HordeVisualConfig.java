@@ -17,9 +17,9 @@ public class HordeVisualConfig {
 	public static final ModConfigSpec.IntValue SOUND_RANGE, SOUND_MAX_ACTIVE, EVENT_SHAKE_RANGE, LANDING_SHAKE_RANGE;
 	public static final ModConfigSpec.BooleanValue EVENT_SHAKE, LANDING_SHAKE;
 	public static final ModConfigSpec.DoubleValue SHAKE_STRENGTH;
-    public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES, LOD_ENABLED;
+    public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES;
     public static final ModConfigSpec.DoubleValue ROW_SPACING, COLUMN_SPACING;
-    public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, CARD_DISTANCE, SINGLE_CARD_DISTANCE, FRAME_DISTANCE;
+    public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, SINGLE_CARD_DISTANCE, FRAME_DISTANCE;
 
 	static {
 		synchronized (ClientConfig.class) {
@@ -37,8 +37,6 @@ public class HordeVisualConfig {
 			IRIS_MERGE_MATERIALS = b.translation(HordeLang.config("visual.iris_merge_materials", "Merge Iris material passes", "合并Iris材质通道")).define("irisMergeMaterials", true);
 			REDUCE_HIDDEN_FACES = b.translation(HordeLang.config("visual.reduce_hidden_faces", "Remove covered model faces", "剔除模型隐藏面")).define("reduceHiddenFaces", true);
 			ANIMATION_FRAMES = b.translation(HordeLang.config("visual.animation_frames", "Uniform animation samples", "动画等距采样帧数")).defineInRange("animationFrames", 20, 4, 20);
-			LOD_ENABLED = b.translation(HordeLang.config("visual.lod_enabled", "Distance model quality", "按距离调整模型精度")).define("lodEnabled", true);
-		CARD_DISTANCE = b.translation(HordeLang.config("visual.card_distance", "Card distance (blocks, -1 off)", "使用片的距离（格，-1：不使用）")).defineInRange("cardDistance", 32, -1, 4096);
 			SINGLE_CARD_DISTANCE = b.translation(HordeLang.config("visual.single_card_distance", "Single card distance (blocks, -1 off)", "单方向片距离（格，-1：关闭）")).defineInRange("singleCardDistance", 64, -1, 4096);
 		FRAME_DISTANCE = b.translation(HordeLang.config("visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）")).defineInRange("frameDistance", 10, -1, 4096);
 			b.pop().translation(ClientConfig.translation("horde.sound", "Sound", "声音")).push("sound");
@@ -59,8 +57,8 @@ public class HordeVisualConfig {
 					.defineInRange("shakeStrength", 1.0, 0.0, 2.0);
 			b.pop().translation(ClientConfig.translation("horde.particles", "Particles", "粒子")).push("particles");
 			DUST = b.translation(HordeLang.config("visual.dust", "Path particles", "近处清扫粒子")).define("dust", true);
-			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("烟雾和方块碎屑按可见活动浪潮的地面网格持续补发；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；单轮生成组数在原基础上乘2，不复制同一粒子。").defineInRange("particleIntervalTicks", 1, 1, 1200);
-			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Ground particle groups per batch", "单轮地面粒子组数")).comment("基础地面发射组数；每轮按2倍组数分散补发碎屑，烟雾按各网格寿命错峰续接，0关闭。不设额外组数上限，仍受原版粒子设置与生成范围限制（最大64格）。").defineInRange("fragmentGroups", 40, 0, Integer.MAX_VALUE);
+			PARTICLE_INTERVAL = b.translation(HordeLang.config("visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）")).comment("方块碎屑按活动浪潮的地面网格持续补发；刀光独立每1至4个粒子逻辑刻成批生成，逻辑频率为游戏刻的5倍；单轮生成组数在原基础上乘2。尘雾独立由Photon体积雾提交，不发射烟雾粒子。").defineInRange("particleIntervalTicks", 1, 1, 1200);
+			FRAGMENT_GROUPS = b.translation(HordeLang.config("visual.fragment_groups", "Ground particle groups per batch", "单轮地面粒子组数")).comment("基础地面碎屑发射组数；每轮按2倍组数分散补发，0关闭碎屑。不设额外组数上限，仍受原版粒子设置与生成范围限制（最大64格），不控制Photon体积雾数量。").defineInRange("fragmentGroups", 40, 0, Integer.MAX_VALUE);
 			PARTICLE_RANGE = b.translation(HordeLang.config("visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）")).defineInRange("particleRange", MAXIMUM_PARTICLE_RANGE, 1, MAXIMUM_PARTICLE_RANGE);
 			b.pop();
 			b.translation(ClientConfig.translation("horde.debug", "Debug", "调试")).push("debug");

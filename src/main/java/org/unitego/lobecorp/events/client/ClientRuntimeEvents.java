@@ -40,6 +40,8 @@ import org.unitego.lobecorp.client.hud.filter.RationalityFilter;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
+import org.unitego.lobecorp.client.horde.HordeGroundCache;
+import net.neoforged.neoforge.event.level.ChunkEvent;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
 import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
@@ -51,6 +53,22 @@ public class ClientRuntimeEvents {
 	private static double landingAt = Double.NEGATIVE_INFINITY;
 	private static float landingPower;
 	private static ResourceKey<Level> landingDimension;
+
+	@SubscribeEvent
+	public static void onGroundChunkLoad(ChunkEvent.Load event) {
+		if (event.getLevel() == Minecraft.getInstance().level) {
+			var position = event.getChunk().getPos();
+			HordeGroundCache.invalidateChunk(position.x(), position.z());
+		}
+	}
+
+	@SubscribeEvent
+	public static void onGroundChunkUnload(ChunkEvent.Unload event) {
+		if (event.getLevel() == Minecraft.getInstance().level) {
+			var position = event.getChunk().getPos();
+			HordeGroundCache.invalidateChunk(position.x(), position.z());
+		}
+	}
 
 	@SubscribeEvent
 	public static void onSweeperLandingSound(PlaySoundEvent event) {

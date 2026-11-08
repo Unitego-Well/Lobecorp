@@ -28,9 +28,10 @@ public class HordeAvoidanceState implements AutoCloseable {
 			.withVertexShader(Lobecorp.id("core/horde_motion"))
 			.withFragmentShader(Lobecorp.id("core/horde_avoidance"))
 			.withSampler("HordeRoute").withSampler("HordeTerrain").withSampler("HordeSplit")
-			.withSampler("AvoidancePrevious")
+			.withSampler("AvoidancePrevious").withSampler("HordeNearTerrain")
 			.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
 			.withUniform("AvoidanceWindow", UniformType.UNIFORM_BUFFER)
+			.withUniform("HordeNearTerrainParameters", UniformType.UNIFORM_BUFFER)
 			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)
 			.withCull(false).withColorTargetState(ColorTargetState.DEFAULT).build();
 	private GpuTexture read;
@@ -152,6 +153,7 @@ public class HordeAvoidanceState implements AutoCloseable {
 			return;
 		}
 
+		HordeNearTerrain.prepare();
 		int relative = windowShift(firstRow, previousFirstRow);
 		memory.clear();
 		memory.putInt(relative).putInt(previousRows).putInt(columns).putInt(rows)
@@ -167,6 +169,8 @@ public class HordeAvoidanceState implements AutoCloseable {
 			pass.setViewport(0, 0, writeWidth, writeHeight);
 			pass.setUniform("HordeParameters", batchParameters);
 			pass.setUniform("AvoidanceWindow", window.slice());
+			pass.setUniform("HordeNearTerrainParameters", HordeNearTerrain.parameters());
+			pass.bindTexture("HordeNearTerrain", HordeNearTerrain.view(), sampler);
 			pass.bindTexture("HordeRoute", route, sampler);
 			pass.bindTexture("HordeTerrain", terrain, sampler);
 			pass.bindTexture("HordeSplit", split, sampler);

@@ -35,17 +35,22 @@ void main() {
     }
     float value;
     if (component < 3) {
-        value = point[component];
-    } else if (component == 3 || component == 5 || component == 6) {
+        value = point[component] + OriginTime[component];
+    } else if (component == 3) {
+        value = hordeInstanceScale(local);
+    } else if (component == 5 || component == 6) {
         float lateralSpeed = scalar(HordeAvoidance, stateAt + 1);
         vec2 velocity = motionVelocityXZ(finalStation, lateral, seed, scalar(HordeAvoidance, stateAt), lateralSpeed);
         vec2 direction = hordeSafeNormalize(velocity,
                 routeForward(finalStation + motionDrift(OriginTime.w, seed)));
-        value = component == 3 ? atan(direction.x, direction.y) : component == 5 ? direction.x : direction.y;
+        value = component == 5 ? direction.x : direction.y;
     } else if (component == 4) {
         vec2 light = lightAt(point);
         // 光照区段缺失时回退到事件级亮度：宁可亮度不准，也不把单位整批隐藏。
         value = light.x < 0.0 ? DebugInfo.x + DebugInfo.y * 16.0 : light.x + light.y * 16.0;
+        if (station < SegmentRegions.x || station >= SegmentRegions.y || station < 0.0 || station >= SpacingLength.w) {
+            value = -1.0;
+        }
     } else {
         float phase = fract((WorldSection.w + float(row)) * 0.375 + float(column) * 0.625);
         float frame = fract(OriginTime.w / (20.0 * AnimationInfo.z) + phase) * AnimationInfo.y;
@@ -64,7 +69,7 @@ void main() {
         }
         int sampled = effective > 1 ? int(floor(float(raw) * float(effective) / float(frames))) : 0;
         int mapped = effective > 1 ? int(round(float(sampled) * float(frames - 1) / float(effective - 1))) : 0;
-        value = float(mapped * int(AnimationInfo.x));
+        value = float(mapped);
     }
     uint bits = floatBitsToUint(value);
     fragColor = vec4(uvec4(bits & 255u, (bits >> 8u) & 255u,

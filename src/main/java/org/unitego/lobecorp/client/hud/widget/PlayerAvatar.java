@@ -12,12 +12,10 @@ import net.minecraft.client.renderer.RenderPipelines;
 @NullMarked
 public class PlayerAvatar extends BasicHudRenderer {
 	private @Nullable LocalPlayer player;
-	private final int headSize;
 	private final float hatScale;
 
 	public PlayerAvatar(int headSize, float hatScale) {
 		setSize(headSize * hatScale, headSize * hatScale);
-		this.headSize = headSize;
 		this.hatScale = hatScale;
 	}
 
@@ -38,10 +36,11 @@ public class PlayerAvatar extends BasicHudRenderer {
 		}
 
 		var skin = player.getSkin().body().texturePath();
-		float faceInset = (headSize * hatScale - headSize) / 2F;
-		float hatSize = headSize * hatScale;
+		float hatSize = getWidth();
+		float faceSize = hatSize / hatScale;
+		float faceInset = (hatSize - faceSize) / 2F;
 		graphics.lobecorp$blit(RenderPipelines.GUI_TEXTURED, skin, x + faceInset, y + faceInset,
-				8, 8, headSize, headSize, 8, 8, 64, 64);
+				8, 8, faceSize, faceSize, 8, 8, 64, 64);
 		graphics.lobecorp$blit(RenderPipelines.GUI_TEXTURED, skin, x, y,
 				40, 8, hatSize, hatSize, 8, 8, 64, 64);
 	}

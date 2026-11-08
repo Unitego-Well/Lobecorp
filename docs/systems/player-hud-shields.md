@@ -1,5 +1,9 @@
 # 玩家 HUD、屏幕滤镜与四色护盾
 
+## 2026-11-08 NEW头像实际外层扩展
+
+保留当前16像素基础脸及1.1帽层比例，NEW面板在创建时将实际外层17.6×17.6扩为23.6×23.6，四边各加3像素；脸与帽层同比放大，沿原50像素头像框居中。`PlayerAvatar`绘制消费当前尺寸，避免只扩大容器却不放大纹理。外框、状态条和其他HUD位置不动。静态/构建已通过，未进行游戏视觉验收。
+
 ## 2026-11-08 深夜清扫倒计时HUD（当前）
 
 使用既有event.MidnightCleanupHud与事件容器，hud.events.midnight_cleanup.timerStyle切换DEFAULT/NEW，运行时调整尺寸和堆叠高度。HordeClient消费现有header.profile、tick、stop、length、speed，按UUID显示/更新/隐藏对应组件，不增加网络字段。倒计时取事件结束时刻stop+ceil(length/speed)，包含最后一段浪潮通过；秒数向上取整，最低00:00、最高99:59，结束或移除时隐藏。不依赖模型启用开关或可见batches。隐藏GUI及旁观时不绘制，切世界释放已有实例。

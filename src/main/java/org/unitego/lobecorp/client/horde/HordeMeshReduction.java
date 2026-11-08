@@ -120,8 +120,9 @@ public class HordeMeshReduction {
 			}
 		}
 		var full = select(source, indices.toIntArray(), 0);
-		// 只保留完整模型与拼接片：中景/远景简化盒不再生成，避免额外烘焙与显存。
-		return new HordeMeshCache.Model[]{full, null, null,
+		// 近区未获高精度名额的单位复用上下两盒模型；远区继续使用方向片。
+		return new HordeMeshCache.Model[]{full, null,
+				proxy(source, full, cubes, bones, rigidGroups, visible, 2),
 				proxy(source, full, cubes, bones, rigidGroups, visible, 3)};
 	}
 

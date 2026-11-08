@@ -56,6 +56,8 @@ public class HordeAmbient {
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null) {
 			stopSounds();
+			HordeGroundFog.clear();
+			HordeGroundCache.clear();
 			AUDIO_POINTS.clear();
 			previousRumble = rumble = 0;
 			return;
@@ -64,18 +66,22 @@ public class HordeAmbient {
 			return;
 		}
 		tick++;
+		HordeGroundCache.tick();
 		updateAudio();
 		if (HordeVisualConfig.ENABLED.get() && HordeVisualConfig.DUST.get()) {
 			double range = HordeVisualConfig.PARTICLE_RANGE.get();
+			var camera = minecraft.gameRenderer.getMainCamera().position();
 			var particleAreas = HordeClient.events().stream()
 					.filter(event -> event.ready && !event.failed && event.tide != null
-							&& event.blocks.stream().anyMatch(block -> block.bounds().distanceToSqr(minecraft.player.position()) < range * range)).toList();
+							&& event.blocks.stream().anyMatch(block -> block.bounds().distanceToSqr(camera) < range * range)).toList();
+			HordeGroundFog.tick(particleAreas);
 			var ground = HordeGroundParticles.tick(particleAreas, tick);
 			selectedAreas += ground.groups();
 			emittedParticles += ground.particles();
 			emitVisibleAreas(particleAreas);
 		} else {
 			HordeGroundParticles.clear();
+			HordeGroundFog.clear();
 		}
 	}
 
@@ -520,6 +526,8 @@ public class HordeAmbient {
 
 	public static void clear() {
 		stopSounds();
+		HordeGroundFog.clear();
+		HordeGroundCache.clear();
 		HordeGroundParticles.clear();
 		AUDIO_POINTS.clear();
 		soundEvent = null;

@@ -10,8 +10,8 @@ public record HordeRules(int duration, double width, double margin,
                          int maximumMultiplier, int reinforceTicks, int unreachableTicks, int retryTicks,
                          int outsideTicks, int scanTicks, int fadeTicks, int transitionTicks,
                          double regionMargin, int splitTicks, double spawnDistance) {
-	/// 单个目标的有效参战人数硬上限，包含待生成预约。
-	public static final int MAXIMUM_TARGET_QUOTA = 10;
+	/// 每四十点最大生命值提供一个参战名额，包含待生成预约。
+	private static final double HEALTH_PER_TARGET_QUOTA = 40;
 
 	public HordeRules {
 		if (!Double.isFinite(width) || width <= 0) {
@@ -21,14 +21,10 @@ public record HordeRules(int duration, double width, double margin,
 				|| !Double.isFinite(spawnDistance) || spawnDistance <= 0) {
 			throw new IllegalArgumentException("群体区域余量与出生距离必须为有效有限数");
 		}
-		long quota = (long) initialQuota * maximumMultiplier;
-		if (quota < Integer.MIN_VALUE || quota > Integer.MAX_VALUE) {
-			throw new IllegalArgumentException("群体参战配额乘积超出整数范围");
-		}
 	}
 
-	public int maximumQuota() {
-		return Math.min(MAXIMUM_TARGET_QUOTA, initialQuota * maximumMultiplier);
+	public static int maximumQuota(float maxHealth) {
+		return Math.clamp(Math.round(maxHealth / HEALTH_PER_TARGET_QUOTA), 2, Integer.MAX_VALUE);
 	}
 
 	public static HordeRules configured() {

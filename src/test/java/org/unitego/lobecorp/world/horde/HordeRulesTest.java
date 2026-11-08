@@ -55,11 +55,9 @@ public class HordeRulesTest {
 	}
 
 	@Test
-	public void nonfiniteGeometryAndOverflowingQuotasAreRejected() {
+	public void nonfiniteGeometryIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 8,
 				1, 3, 100, 100, 100, 40, 20, 5, 20, Double.NaN, 40, 4));
-		assertThrows(IllegalArgumentException.class, () -> new HordeRules(6000, 64, 8,
-				Integer.MAX_VALUE, 2, 100, 100, 100, 40, 20, 5, 20, 8, 40, 4));
 	}
 
 	@Test
@@ -76,25 +74,30 @@ public class HordeRulesTest {
 		var high = new HordeRules(6000, 64, 8, 16, 10, 100, 100, 100,
 				40, 1, 5, 20, 8, 40, 4);
 		var target = new HordeTargetAssignment("target", "domain", UUID.randomUUID(), Vec3.ZERO, high);
-		assertEquals(10, high.maximumQuota());
-		assertEquals(10, target.quota);
+		assertEquals(2, HordeRules.maximumQuota(20));
+		assertEquals(3, HordeRules.maximumQuota(100));
+		assertEquals(5, HordeRules.maximumQuota(200));
+		assertEquals(20, HordeRules.maximumQuota(800));
+		target.maximumQuota = HordeRules.maximumQuota(800);
+		assertEquals(16, target.quota);
 		for (int index = 0; index < 20; index++) {
 			target.death();
 		}
-		assertEquals(10, target.quota);
-		for (int index = 0; index < 9; index++) {
+		assertEquals(20, target.quota);
+		for (int index = 0; index < 19; index++) {
 			target.members.add(UUID.randomUUID());
 		}
 		target.reservations = 1;
 		assertEquals(0, target.missing());
 		target.quota = 100;
 		assertEquals(0, target.missing());
-		assertEquals(10, HordeTargetAssignment.load(target.save()).quota);
+		assertEquals(100, HordeTargetAssignment.load(target.save()).quota);
 	}
 
 	@Test
 	public void deathRaisesQuotaAndResetsReinforcementClock() {
 		var target = new HordeTargetAssignment("target", "domain", UUID.randomUUID(), Vec3.ZERO, rules());
+		target.maximumQuota = HordeRules.maximumQuota(100);
 		target.fightTicks = 99;
 		target.death();
 		assertEquals(2, target.quota);
@@ -107,6 +110,7 @@ public class HordeRulesTest {
 	@Test
 	public void transferredExcessDoesNotRequestMoreOrRemoveMembers() {
 		var target = new HordeTargetAssignment("target", "domain", UUID.randomUUID(), Vec3.ZERO, rules());
+		target.maximumQuota = HordeRules.maximumQuota(100);
 		target.quota = 3;
 		for (int i = 0; i < 5; i++) {
 			target.members.add(UUID.randomUUID());

@@ -33,7 +33,8 @@ void main() {
     int row = ordinal / int(RowColumns.z);
     int column = int(RowColumns.y) + ordinal % int(RowColumns.z);
     float station = RowColumns.x - float(row) * SpacingLength.x;
-    if (station < SegmentRegions.x || station >= SegmentRegions.y || station < 0.0 || station >= SpacingLength.w) {
+    int lodInstance = hordeLodInstance(gl_InstanceID);
+    if (lodInstance < 0 || (DebugInfo.z < 0.5 && (station < SegmentRegions.x || station >= SegmentRegions.y || station < 0.0 || station >= SpacingLength.w))) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         texCoord = UV0;
         lighting = vec4(0.0);
@@ -42,14 +43,14 @@ void main() {
         glowing = 0.0;
         return;
     }
-    int cached = (MotionInfo.x + gl_InstanceID) * HORDE_MOTION_VALUES;
+    int cached = lodInstance * HORDE_MOTION_VALUES;
     vec3 point = vector3(HordeMotion, cached);
     vec2 heading = vec2(scalar(HordeMotion, cached + 5), scalar(HordeMotion, cached + 6));
     mat2 yaw = mat2(-heading.y, heading.x, -heading.x, -heading.y);
-    float instanceScale = hordeInstanceScale(gl_InstanceID);
+    float instanceScale = scalar(HordeMotion, cached + 3);
     vec3 position = Position;
     vec3 normal = Normal;
-    int frameStart = int(scalar(HordeMotion, cached + 7));
+    int frameStart = int(scalar(HordeMotion, cached + 7)) * int(AnimationInfo.x);
     int vertex = gl_VertexID;
     if (FrameLod.z > 0.5) {
         vec3 center = (vector3(HordeAnimation, frameStart * 6)
@@ -61,7 +62,7 @@ void main() {
     position.xz = yaw * position.xz;
     normal.xz = yaw * normal.xz;
     normal = length(normal) > 0.0001 ? normalize(normal) : vec3(0.0, 1.0, 0.0);
-    vec3 relative = position + point + OriginTime.xyz;
+    vec3 relative = position + point;
     gl_Position = ProjMat * ModelViewMat * vec4(relative, 1.0);
     sphericalDistance = length(relative);
     cylindricalDistance = max(length(relative.xz), abs(relative.y));
@@ -79,7 +80,7 @@ void main() {
         int corner = vertex % 4;
         float face = float(vertex / 4);
         float cornerU = corner == 1 || corner == 2 ? 1.0 : 0.0;
-        int frame = int(scalar(HordeMotion, cached + 7)) / int(AnimationInfo.x);
+        int frame = int(scalar(HordeMotion, cached + 7));
         texCoord = vec2((face + cornerU) / 6.0, (float(frame) + (corner >= 2 ? 1.0 : 0.0)) / AnimationInfo.y);
     }
 }

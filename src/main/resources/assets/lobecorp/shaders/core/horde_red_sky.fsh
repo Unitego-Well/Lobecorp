@@ -24,6 +24,23 @@ float cloudNoise(vec3 p) {
                    mix(hash3(cell + vec3(0, 1, 1)), hash3(cell + vec3(1, 1, 1)), f.x), f.y), f.z);
 }
 
+// 横向圆弧浪冠接续为更窄的浪舌和短尾，不把前沿简化为整屏透明度。
+float waveContour(float across, float elevation, float phase, float progress) {
+    float advance = mix(1.34, -0.34, progress);
+    float sway = sin(phase * 0.0017) * 0.035;
+    float crest = 1.0 - smoothstep(0.48, 0.64,
+            length(vec2((across - sway) * 0.70, (elevation - advance - 0.43) * 0.85)));
+    float tongueA = 1.0 - smoothstep(0.27, 0.39,
+            length(vec2((across + 0.23 - sway) * 0.92, (elevation - advance - 0.13) * 1.18)));
+    float tongueB = 1.0 - smoothstep(0.23, 0.35,
+            length(vec2((across - 0.30 - sway) * 1.12, (elevation - advance - 0.22) * 1.15)));
+    float tail = 1.0 - smoothstep(0.12, 0.22,
+            length(vec2((across + 0.14 - sway) * 1.40, (elevation - advance + 0.12) * 1.65)));
+    float upperMass = smoothstep(advance + 0.30, advance + 0.56, elevation)
+            * (1.0 - smoothstep(0.60, 0.90, abs(across - sway)));
+    return max(upperMass, max(crest, max(tongueA, max(tongueB, tail))));
+}
+
 void main() {
     if (PhaseDepth.z > 0.5) {
         float depth = texture(SkyDepth, skyUv).r;
@@ -41,21 +58,28 @@ void main() {
     vec3 p = vec3(along * 1.6 + across * 0.7, ray.y * 4.2 - across * 1.1, across * 2.0) + wind;
     float broad = cloudNoise(p);
     float density = smoothstep(0.22, 0.83, broad * 0.78 + cloudNoise(p * 2.15 + vec3(7.1, 2.0, -3.7)) * 0.22);
-    float field = along + mix(0.15, 1.15, coverage) * ray.y + across * ray.y * 0.10 + (broad - 0.5) * 0.18;
-    float edge = mix(0.85, 0.25, coverage);
-    float veil = smoothstep(edge - 0.24, edge + 0.24, field);
+    float contourNoise = (cloudNoise(p * 1.3 + vec3(2.1, 8.7, -4.0)) - 0.5) * 0.08;
+    float primary = waveContour(across, ray.y + contourNoise, PhaseDepth.x, coverage);
+    float following = waveContour(across + 0.11, ray.y + contourNoise - 0.24,
+            PhaseDepth.x + 170.0, coverage * 0.91);
+    float directionMask = smoothstep(-0.22, 0.32, along + ray.y * 0.35);
+    float veil = max(primary, following * 0.74) * directionMask;
     float lowerSky = smoothstep(-0.20, -0.12, ray.y);
     float sourceSide = smoothstep(-0.25, 0.95, along);
     float redMass = density * (0.38 + sourceSide * 0.62);
-    vec3 crimson = mix(vec3(0.071, 0.031, 0.067), vec3(0.227, 0.027, 0.082), redMass);
-    crimson = mix(crimson, vec3(0.475, 0.059, 0.133), smoothstep(0.42, 0.92, redMass) * 0.85);
+    vec3 crimson = mix(vec3(0.24, 0.039, 0.082), vec3(0.49, 0.072, 0.135), redMass);
+    // 近黑只留于窄浪谷，主体保持可读的猩红中间调。
+    float trough = smoothstep(0.77, 0.94, density) * smoothstep(0.72, 0.96, primary);
+    crimson = mix(crimson, vec3(0.10, 0.019, 0.047), trough * 0.52);
+    float crestLight = (1.0 - smoothstep(0.12, 0.43, primary)) * smoothstep(0.01, 0.16, primary);
+    crimson = mix(crimson, vec3(0.65, 0.12, 0.19), crestLight * 0.52);
     // 亮红略高于天地接触线，来源侧错落增强，贴地仍为暗酒红。
     float lowBand = exp(-pow((ray.y - 0.055) / 0.075, 2.0)) * sourceSide;
     float hotspot = lowBand * smoothstep(0.28, 0.8, broad);
     crimson = mix(crimson, vec3(0.57, 0.075, 0.16), hotspot * 0.6);
-    crimson = mix(vec3(0.10, 0.015, 0.035), crimson, smoothstep(-0.07, 0.025, ray.y));
+    crimson = mix(vec3(0.19, 0.027, 0.055), crimson, smoothstep(-0.07, 0.025, ray.y));
     float horizonSeal = (1.0 - smoothstep(0.015, 0.15, abs(ray.y))) * (0.35 + sourceSide * 0.65);
-    float alpha = clamp(DirectionStrength.w * max(veil, horizonSeal) * lowerSky, 0.0, 0.94);
+    float alpha = clamp(DirectionStrength.w * max(veil, horizonSeal * coverage) * lowerSky, 0.0, 0.94);
     if (alpha <= 0.001) discard;
     fragColor = vec4(crimson, alpha);
 }

@@ -203,6 +203,7 @@ public class HordeRuntime {
 		}
 		scan(data);
 		refreshSpatial(data);
+		refreshQuotas(data);
 		tickParticipants(data);
 		clearDebris(data);
 		tickTargets(data);
@@ -394,23 +395,46 @@ public class HordeRuntime {
 		return false;
 	}
 
-	private void tickTargets(HordeSavedData data) {
-		for (var allocation : data.targets().values()) {
-			allocation.quota = Math.min(allocation.quota, allocation.rules.maximumQuota());
-			if (allocation.members.size() > HordeRules.MAXIMUM_TARGET_QUOTA) {
-				for (var excess : allocation.members.stream().sorted().skip(HordeRules.MAXIMUM_TARGET_QUOTA).toList()) {
+	private void refreshQuotas(HordeSavedData data) {
+		var retained = new HashMap<UUID, Integer>();
+		for (var allocation : data.targets().values().stream()
+				.sorted(Comparator.comparing(target -> target.key)).toList()) {
+			var target = targetEntity(allocation);
+			if (target == null) {
+				continue;
+			}
+			allocation.maximumQuota = HordeRules.maximumQuota(target.getMaxHealth());
+			allocation.quota = Math.min(allocation.quota, allocation.maximumQuota);
+			int available = Math.max(0, allocation.maximumQuota - retained.getOrDefault(allocation.target, 0));
+			if (allocation.occupied() > available) {
+				var request = requests.get(allocation.key);
+				if (request != null) {
+					cancel(request);
+				}
+				for (var excess : allocation.members.stream().sorted().skip(available).toList()) {
 					var mob = loaded.get(excess);
 					if (mob != null) {
 						fade(mob);
 					}
 				}
 			}
+			retained.merge(allocation.target, allocation.occupied(), Integer::sum);
+		}
+	}
+
+	private int occupied(HordeTargetAssignment target, HordeSavedData data) {
+		return data.targets().values().stream().filter(candidate -> candidate.target.equals(target.target))
+				.mapToInt(HordeTargetAssignment::occupied).sum();
+	}
+
+	private void tickTargets(HordeSavedData data) {
+		for (var allocation : data.targets().values()) {
 
 			boolean present = allocation.members.stream().anyMatch(loaded::containsKey);
 			if (allocation.engaged && present && allocation.retryUntil <= data.clock()) {
 				allocation.fightTicks++;
 				if (allocation.fightTicks >= allocation.rules.reinforceTicks()) {
-					allocation.quota = Math.min(allocation.rules.maximumQuota(), allocation.quota + 1);
+					allocation.quota = (int) Math.min(allocation.maximumQuota, (long) allocation.quota + 1);
 					allocation.fightTicks = 0;
 				}
 			}
@@ -429,7 +453,7 @@ public class HordeRuntime {
 				continue;
 			}
 			String key = target.key;
-			if (!requests.containsKey(key)) {
+			if (!requests.containsKey(key) && occupied(target, data) < target.maximumQuota) {
 				target.reservations++;
 				requests.put(key, new SpawnRequest(selected.id(), target));
 			}
@@ -466,7 +490,8 @@ public class HordeRuntime {
 					|| profile == null || !domain(event, profile).equals(request.target.domain)
 					|| !event.canSpawnAt(target.position())
 					|| !profile.acceptsTarget(new HordeTargetContext(level, target.position(), profile.faction()), target)
-					|| request.target.occupied() > Math.min(request.target.quota, HordeRules.MAXIMUM_TARGET_QUOTA)) {
+					|| request.target.occupied() > Math.min(request.target.quota, request.target.maximumQuota)
+					|| occupied(request.target, data) > HordeRules.maximumQuota(target.getMaxHealth())) {
 				cancel(request);
 				continue;
 			}
@@ -570,7 +595,7 @@ public class HordeRuntime {
 		var next = previous == null ? null : data.targets().values().stream()
 				.filter(candidate -> candidate != previous && candidate.domain.equals(previous.domain)
 						&& candidate.region.equals(previous.region) && candidate.retryUntil <= data.clock()
-						&& candidate.occupied() < HordeRules.MAXIMUM_TARGET_QUOTA
+						&& occupied(candidate, data) < candidate.maximumQuota
 						&& (allowExcess || candidate.missing() > 0))
 				.filter(candidate -> {
 					var target = targetEntity(candidate);

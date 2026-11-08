@@ -22,6 +22,8 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 	private static final Identifier RATIONALITY_BOX = sprite("bar/rationality/box");
 	private static final Identifier RATIONALITY_ICON = sprite("bar/rationality/icon");
 	private static final int AVATAR_SIZE = 50;
+	/// 当前17.6像素帽层四边各扩3像素，实际显示尺寸为23.6。
+	private static final float AVATAR_OUTER_SIZE = 23.6F;
 	private final PanelStatusBar healthBar = new PanelStatusBar(false, HEALTH_BOX, HEALTH_ICON);
 	private final PanelStatusBar rationalityBar = new PanelStatusBar(true, RATIONALITY_BOX, RATIONALITY_ICON);
 	private final PlayerAvatar avatar = new PlayerAvatar(26, 1.1F);
@@ -31,6 +33,7 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 		var background = TextureHudRenderer.sprite(AVATAR_BOX);
 		background.setSize(AVATAR_SIZE, AVATAR_SIZE);
 		add(background);
+		avatar.setSize(AVATAR_OUTER_SIZE, AVATAR_OUTER_SIZE);
 		avatar.setPosition((AVATAR_SIZE - avatar.getWidth()) / 2F, (AVATAR_SIZE - avatar.getHeight()) / 2F);
 		healthBar.setPosition(AVATAR_SIZE, 8);
 		rationalityBar.setPosition(AVATAR_SIZE, 25);

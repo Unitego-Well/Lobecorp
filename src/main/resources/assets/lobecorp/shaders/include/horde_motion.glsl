@@ -1,4 +1,4 @@
-// 与HordeGpuRenderer.MOTION_VALUES一致：位置、角度、光照、sin/cos和帧顶点基址。
+// 与HordeGpuRenderer.MOTION_VALUES一致：相机相对位置、缩放、光照、sin/cos和帧编号。
 const int HORDE_MOTION_VALUES = 8;
 const float HORDE_HEADING_STEP = 0.125;
 
@@ -32,8 +32,51 @@ uniform sampler2D HordeLightIndex;
 uniform sampler2D HordeSplit;
 uniform sampler2D HordeMotion;
 uniform sampler2D HordeAvoidance;
+uniform sampler2D HordeLodSelected;
+uniform sampler2D HordeLodCompact;
 
 #moj_import <lobecorp:horde_data.glsl>
+
+layout(std140) uniform HordeNearTerrainParameters {
+    ivec4 NearTerrainInfo;
+};
+uniform sampler2D HordeNearTerrain;
+
+vec2 hordeNearGround(vec2 localXZ) {
+    vec2 worldXZ = localXZ + vec2(WorldSection.x, WorldSection.z) * 16.0 + WidthFraction.yw;
+    ivec2 cell = ivec2(floor(worldXZ));
+    if (any(lessThan(cell, NearTerrainInfo.xy))
+            || any(greaterThanEqual(cell, NearTerrainInfo.xy + ivec2(NearTerrainInfo.z)))) {
+        return vec2(0.0, -1.0);
+    }
+    ivec2 uv = ((cell % NearTerrainInfo.z) + NearTerrainInfo.z) % NearTerrainInfo.z;
+    int at = (uv.y * NearTerrainInfo.z + uv.x) * NearTerrainInfo.w;
+    float y = scalar(HordeNearTerrain, at);
+    if (isnan(y) || scalar(HordeNearTerrain, at + 2) != float(cell.x)
+            || scalar(HordeNearTerrain, at + 3) != float(cell.y)) {
+        return vec2(0.0, -1.0);
+    }
+    return vec2(y - (WorldSection.y * 16.0 + WidthFraction.z), scalar(HordeNearTerrain, at + 1));
+}
+
+// 高模只消费每材质128容量的密集表；-1槽在任何动画读取前退出。
+int hordeLodInstance(int instance) {
+    if (DebugInfo.z > 0.5) {
+        return integer(HordeLodCompact, (int(DebugInfo.z) - 1) * 128 + MotionInfo.x + instance);
+    }
+    int index = MotionInfo.x + instance;
+    if (DebugInfo.w > 0.5) {
+        if (integer(HordeLodSelected, index) != 0) {
+            return -1;
+        }
+        vec3 relative = vector3(HordeMotion, index * HORDE_MOTION_VALUES);
+        bool far = dot(relative, relative) >= 16384.0;
+        if (far != (FrameLod.z > 0.5)) {
+            return -1;
+        }
+    }
+    return index;
+}
 
 float terrainAt(int node, float lateral, int component) {
     float column = clamp(lateral / WidthFraction.x + 0.5, 0.0, 1.0) * (ProbeInfo.y - 1.0);
@@ -214,7 +257,10 @@ float motionGroundHeight(float station, float lateral, float lateralDelta, float
     float base = lateral;
     float flow = mix(terrainAt(node, base, 2), terrainAt(node + 1, base, 2), weight);
     float adjusted = base + flow + lateralDelta;
-    return mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
+    float coarse = mix(heightAt(node, adjusted), heightAt(node + 1, adjusted), weight);
+    vec2 finalXZ = motionXZ(s, lateral, lateralDelta);
+    vec2 near = hordeNearGround(finalXZ);
+    return near.y >= 0.0 ? near.x : coarse;
 }
 
 // 光照区段缺失时返回负值，由调用方回退到事件级亮度而不是隐藏单位。

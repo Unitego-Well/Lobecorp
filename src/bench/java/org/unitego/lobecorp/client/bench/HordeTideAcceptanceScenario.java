@@ -25,6 +25,7 @@ import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.horde.HordeAmbient;
 import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.horde.HordeLodSelection;
 import org.unitego.lobecorp.client.horde.HordeParticleSamples;
 import org.unitego.lobecorp.client.horde.HordeRenderMetrics;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
@@ -935,8 +936,8 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		result.addProperty("count", HordeVisualConfig.MAX_VISIBLE.get());
 		result.addProperty("range", HordeVisualConfig.DISTANCE.get());
 		result.addProperty("animation_frames", HordeVisualConfig.ANIMATION_FRAMES.get());
-		result.addProperty("lod", HordeVisualConfig.LOD_ENABLED.get());
-		result.addProperty("card_distance", HordeVisualConfig.CARD_DISTANCE.get());
+		result.addProperty("lod", true);
+		result.addProperty("card_distance", HordeLodSelection.MAX_DISTANCE);
 		result.addProperty("frame_distance", HordeVisualConfig.FRAME_DISTANCE.get());
 		result.addProperty("iris_material_merge", HordeVisualConfig.IRIS_MERGE_MATERIALS.get());
 		result.addProperty("iris_double_buffer", HordeVisualConfig.IRIS_DOUBLE_BUFFER.get());

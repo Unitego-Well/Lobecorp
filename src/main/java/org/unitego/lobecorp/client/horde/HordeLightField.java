@@ -255,14 +255,15 @@ public class HordeLightField implements AutoCloseable {
 		}
 		var replacement = new DynamicTexture("Horde block and sky light", TILE_WIDTH * TILES_PER_ROW, height, true);
 		if (atlas != null) {
+			// 槽位坐标在扩容时不变，保留已有光值，避免全部区段再次查询天空光。
+			var oldPixels = atlas.getPixels();
+			oldPixels.copyRect(replacement.getPixels(), 0, 0, 0, 0,
+					oldPixels.getWidth(), oldPixels.getHeight(), false, false);
+			replacement.upload();
 			atlas.close();
 		}
 		atlas = replacement;
 		capacity = size;
-		slots.values().forEach(slot -> {
-			slot.updated = Long.MIN_VALUE / 2;
-			slot.uploaded = false;
-		});
 	}
 
 	private void rebuildLookup() {

@@ -20,6 +20,7 @@ public class HordeTargetAssignment {
 	public Vec3 position;
 	public UUID region;
 	public int quota;
+	public int maximumQuota = Integer.MAX_VALUE;
 	public int reservations;
 	public boolean engaged;
 	public int fightTicks;
@@ -35,7 +36,7 @@ public class HordeTargetAssignment {
 		this.position = position;
 		this.rules = rules;
 		this.region = regionId(domain, target);
-        this.quota = Math.min(rules.initialQuota(), rules.maximumQuota());
+        this.quota = rules.initialQuota();
 	}
 
 	public int occupied() {
@@ -47,11 +48,11 @@ public class HordeTargetAssignment {
 	}
 
 	public int missing() {
-		return Math.max(0, Math.min(quota, HordeRules.MAXIMUM_TARGET_QUOTA) - occupied());
+		return Math.max(0, Math.min(quota, maximumQuota) - occupied());
 	}
 
 	public void death() {
-		quota = Math.min(rules.maximumQuota(), quota + 1);
+		quota = (int) Math.min(maximumQuota, (long) quota + 1);
 		fightTicks = 0;
 	}
 
@@ -78,7 +79,7 @@ public class HordeTargetAssignment {
 				UUID.fromString(tag.getStringOr("target", "")), tag.read("position", Vec3.CODEC).orElse(Vec3.ZERO),
 				HordeRules.load(tag.getCompoundOrEmpty("rules")));
 		result.region = UUID.fromString(tag.getStringOr("region", result.target.toString()));
-		result.quota = Math.clamp(tag.getIntOr("quota", result.rules.initialQuota()), 1, result.rules.maximumQuota());
+		result.quota = Math.max(1, tag.getIntOr("quota", result.rules.initialQuota()));
 		result.engaged = tag.getBooleanOr("engaged", false);
 		result.fightTicks = Math.max(0, tag.getIntOr("fight_ticks", 0));
 		result.retryUntil = tag.getLongOr("retry", 0);

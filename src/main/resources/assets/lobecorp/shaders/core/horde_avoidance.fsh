@@ -15,7 +15,7 @@ vec4 avoidanceEncode(uint bits) {
 }
 
 // 只改变控制目标；动态圆穿过中线不会直接改写位移或已锁定侧。
-vec3 avoidanceTarget(float station, float lateral, float position, float preferred, float natural, float seed, float locked) {
+vec3 avoidanceSplitTarget(float station, float lateral, float position, float preferred, float natural, float seed, float locked) {
     float heldSide = mix(preferred, locked, abs(locked));
     if (int(SplitInfo.x) <= 0) {
         return vec3(natural, 0.0, heldSide);
@@ -83,6 +83,37 @@ vec3 avoidanceTarget(float station, float lateral, float position, float preferr
     // 遭遇标志只取0/1，不能把连续pressure写成分数锁侧。
     float target = natural + selectedSide * displacements[selected];
     return vec3(clamp(target, -SplitShape.z, SplitShape.z), 1.0, selectedSide);
+}
+
+bool terrainSafe(vec2 from, vec2 to) {
+    return from.y >= 0.0 && to.y > 0.5 && to.x - from.x <= 1.0 && from.x - to.x <= 3.0;
+}
+
+// 地形只改变控制目标，沿用既有侧向速度、加速度与稳定行身份。
+vec3 avoidanceTarget(float station, float lateral, float position, float preferred, float natural, float seed, float locked) {
+    vec3 control = avoidanceSplitTarget(station, lateral, position, preferred, natural, seed, locked);
+    vec2 forward = routeForward(station);
+    vec2 side = vec2(-forward.y, forward.x);
+    vec2 point = motionXZ(station, lateral, position);
+    vec2 ground = hordeNearGround(point);
+    float lead = clamp(CameraSpeed.w * HORDE_AVOID_ACCEL_TICKS + 3.0, 3.0, 6.0);
+    vec2 ahead = hordeNearGround(point + forward * lead);
+    if (ground.y < 0.0 || ahead.y < 0.0 || terrainSafe(ground, ahead)) {
+        return control;
+    }
+    // 侧路中间与前端都必须安全；未知列不充当可通行证据。
+    vec2 left = hordeNearGround(point - side * 2.0);
+    vec2 right = hordeNearGround(point + side * 2.0);
+    vec2 leftAhead = hordeNearGround(point + forward * lead - side * 2.0);
+    vec2 rightAhead = hordeNearGround(point + forward * lead + side * 2.0);
+    bool leftSafe = terrainSafe(ground, left) && terrainSafe(left, leftAhead);
+    bool rightSafe = terrainSafe(ground, right) && terrainSafe(right, rightAhead);
+    if (!leftSafe && !rightSafe) {
+        return control;
+    }
+    float selected = leftSafe && (!rightSafe || abs(leftAhead.x - ground.x) < abs(rightAhead.x - ground.x)) ? -1.0 : 1.0;
+    float target = clamp(position + selected * 2.0, -SplitShape.z, SplitShape.z);
+    return vec3(target, 1.0, selected);
 }
 
 void main() {

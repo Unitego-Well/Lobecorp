@@ -2,14 +2,11 @@ package org.unitego.lobecorp.client.horde;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ParticleStatus;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,17 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/// 地面覆盖单元按世界坐标固定；烟雾错峰续接，碎屑独立分散补发。
+/// 地面覆盖单元按世界坐标固定；碎屑独立分散补发。
 public class HordeGroundParticles {
 	private static final double CELL_SIZE = 3;
-	private static final int CELL_STRIDE = 137, SMOKE_INTERVAL = 24;
+	private static final int CELL_STRIDE = 137;
 	private static final Map<UUID, Long> cursors = new HashMap<>();
-	private static final Map<Cell, Long> nextSmoke = new HashMap<>();
 
 	public record Emission(int groups, int particles) {
-	}
-
-	private record Cell(UUID event, int x, int z) {
 	}
 
 	public static Emission tick(List<HordeClient.ClientEvent> events, long tick) {
@@ -48,9 +41,6 @@ public class HordeGroundParticles {
 		var camera = minecraft.gameRenderer.getMainCamera().position();
 		double range = HordeVisualConfig.PARTICLE_RANGE.get();
 		cursors.keySet().removeIf(id -> !present.contains(id));
-		nextSmoke.keySet().removeIf(cell -> !present.contains(cell.event())
-				|| Math.pow((cell.x() + 0.5) * CELL_SIZE - camera.x, 2)
-				+ Math.pow((cell.z() + 0.5) * CELL_SIZE - camera.z, 2) > Math.pow(range + CELL_SIZE * 2, 2));
 		int due = 0;
 		for (int step = 0; step < HordeVisualConfig.PARTICLE_FREQUENCY_MULTIPLIER; step++) {
 			if ((tick * HordeVisualConfig.PARTICLE_FREQUENCY_MULTIPLIER + step) % HordeVisualConfig.PARTICLE_INTERVAL.get() == 0) {
@@ -71,7 +61,7 @@ public class HordeGroundParticles {
 			for (long emitted = 0; emitted < budget; emitted++) {
 				int index = (int) ((cursor++ % count) * CELL_STRIDE % count);
 				int x = firstX + index % side, z = firstZ + index / side;
-				var emission = emitCell(event, x, z, camera, range, tick);
+				var emission = emitCell(event, x, z, camera, range);
 				groups += emission.groups();
 				particles += emission.particles();
 			}
@@ -80,7 +70,7 @@ public class HordeGroundParticles {
 		return new Emission(groups, particles);
 	}
 
-	private static Emission emitCell(HordeClient.ClientEvent event, int x, int z, Vec3 camera, double range, long tick) {
+	private static Emission emitCell(HordeClient.ClientEvent event, int x, int z, Vec3 camera, double range) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		if (level == null || minecraft.options.particles().get() == ParticleStatus.MINIMAL) {
@@ -98,7 +88,8 @@ public class HordeGroundParticles {
 				(random.nextDouble() - 0.5) * CELL_SIZE * 0.8);
 		var debris = ground(event, debrisCandidate, camera, range);
 		if (debris != null && allowed()) {
-			var surface = level.getBlockState(BlockPos.containing(debris.add(0, -0.05, 0)));
+			var sampled = HordeGroundCache.sample(debris.x, debris.z);
+			var surface = sampled == null ? level.getBlockState(BlockPos.containing(debris.add(0, -0.05, 0))) : sampled.state();
 			if (!surface.isAir() && surface.getFluidState().isEmpty()
 					&& minecraft.particleEngine.createParticle(new BlockParticleOption(ParticleTypes.BLOCK, surface),
 						debris.x, debris.y + 0.04, debris.z, (random.nextDouble() - 0.5) * 0.12, 0.035,
@@ -107,19 +98,15 @@ public class HordeGroundParticles {
 			}
 		}
 
-		var cell = new Cell(event.id, x, z);
-		if (tick >= nextSmoke.getOrDefault(cell, Long.MIN_VALUE) && allowed()) {
-			if (minecraft.particleEngine.createParticle(LcParticleTypes.HORDE_GROUND_SMOKE.get(), point.x,
-					point.y + 0.3, point.z, (random.nextDouble() - 0.5) * 0.012, 0,
-					(random.nextDouble() - 0.5) * 0.012) != null) {
-				particles++;
-				nextSmoke.put(cell, tick + SMOKE_INTERVAL + random.nextInt(8));
-			}
-		}
 		return new Emission(1, particles);
 	}
 
 	private static Vec3 ground(HordeClient.ClientEvent event, Vec3 candidate, Vec3 camera, double range) {
+		double dx = candidate.x - camera.x, dz = candidate.z - camera.z;
+		if (dx * dx + dz * dz > range * range) {
+			return null;
+		}
+
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		var player = minecraft.player;
@@ -140,11 +127,12 @@ public class HordeGroundParticles {
 			return null;
 		}
 
-		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, (int) Math.floor(candidate.x), (int) Math.floor(candidate.z));
-		var surfacePos = new BlockPos((int) Math.floor(candidate.x), y - 1, (int) Math.floor(candidate.z));
-		var shape = level.getBlockState(surfacePos).getCollisionShape(level, surfacePos);
-		double surfaceY = shape.isEmpty() ? y : y - 1 + shape.max(Direction.Axis.Y);
-		var point = new Vec3(candidate.x, surfaceY + 0.02, candidate.z);
+		var sample = HordeGroundCache.sample(candidate.x, candidate.z);
+		if (sample == null) {
+			return null;
+		}
+
+		var point = new Vec3(candidate.x, sample.height() + 0.02, candidate.z);
 		if (point.distanceToSqr(camera) > range * range) {
 			return null;
 		}
@@ -161,6 +149,5 @@ public class HordeGroundParticles {
 
 	public static void clear() {
 		cursors.clear();
-		nextSmoke.clear();
 	}
 }

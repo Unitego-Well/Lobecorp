@@ -24,12 +24,15 @@ void main() {
     float ground = scalar(TerrainTargets, sampleIndex);
     float left = scalar(TerrainTargets, first + max(0, column - 1));
     float right = scalar(TerrainTargets, first + min(TerrainShape.y - 1, column + 1));
-    float obstacle = smoothstep(1.0, 3.0, ground - min(left, right));
+    // 上跨一格、下落三格以内才作为安全侧；不能一律滑向最低侧。
+    bool leftSafe = column > 0 && left - ground <= 1.0 && ground - left <= 3.0;
+    bool rightSafe = column + 1 < TerrainShape.y && right - ground <= 1.0 && ground - right <= 3.0;
     float spacing = TerrainUpdate.z / float(max(1, TerrainShape.y - 1));
-    float preferredSide = abs(left - right) < 0.1
-    ? (column * 2 < TerrainShape.y ? -1.0 : 1.0) : (left < right ? -1.0 : 1.0);
+    float preferredSide = leftSafe && (!rightSafe || abs(left - ground) < abs(right - ground)) ? -1.0 : 1.0;
+    float obstacle = leftSafe != rightSafe ? 1.0 : 0.0;
     float radius = obstacle * spacing * 0.5;
-    float flow = radius > 0.0 ? preferredSide * hordeGapPush(0.0, 0.0, radius, spacing, preferredSide) : 0.0;
+    float flow = (leftSafe || rightSafe) && radius > 0.0
+            ? preferredSide * hordeGapPush(0.0, 0.0, radius, spacing, preferredSide) : 0.0;
     flow = clamp(flow, -TerrainUpdate.w, TerrainUpdate.w);
     bool heightComponent = component < 2;
     int base = sampleIndex * 4 + (heightComponent ? 0 : 2);

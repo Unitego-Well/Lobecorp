@@ -6,30 +6,33 @@ import net.minecraft.util.Mth;
 public class MidnightCleanupViewUtil {
 
 	public static final int IMPACT_END = 12;
-	public static final int LEFT_END = 26, RIGHT_START = 30, RIGHT_END = 46;
-	public static final int CENTER_START = 50, CENTER_END = 68;
-	public static final int TEXT_READY = 78, DISSOLVE_START = 156;
+	public static final int FIRST_CENTER_END = 28;
+	public static final int LEFT_END = 40, RIGHT_START = 44, RIGHT_END = 58;
+	public static final int CENTER_START = 62, CENTER_END = 80;
+	public static final int TEXT_READY = 90, DISSOLVE_START = 156;
 	private static final float LOOK_ANGLE = 55;
 
 	public record Angles(float yaw, float pitch) {
 	}
 
 	public static Angles sample(float startYaw, float startPitch, float targetYaw, float targetPitch, float age) {
-		float left = startYaw + Mth.wrapDegrees(targetYaw - LOOK_ANGLE - startYaw);
+		float center = startYaw + Mth.wrapDegrees(targetYaw - startYaw);
+		float left = center - LOOK_ANGLE;
 		float right = left + LOOK_ANGLE * 2;
-		float center = left + LOOK_ANGLE;
 		float yaw;
 		if (age < IMPACT_END) {
 			yaw = startYaw;
+		} else if (age < FIRST_CENTER_END) {
+			yaw = turn(startYaw, center, phase(age, IMPACT_END, FIRST_CENTER_END));
 		} else if (age < RIGHT_START) {
-			yaw = turn(startYaw, left, phase(age, IMPACT_END, LEFT_END));
+			yaw = turn(center, left, phase(age, FIRST_CENTER_END, LEFT_END));
 		} else if (age < CENTER_START) {
 			yaw = turn(left, right, phase(age, RIGHT_START, RIGHT_END));
 		} else {
 			yaw = turn(right, center, phase(age, CENTER_START, CENTER_END));
 		}
 
-		float pitch = Mth.lerp(phase(age, IMPACT_END, CENTER_END), startPitch, targetPitch);
+		float pitch = Mth.lerp(phase(age, IMPACT_END, FIRST_CENTER_END), startPitch, targetPitch);
 		return new Angles(yaw, Math.clamp(pitch, -85, 85));
 	}
 

@@ -153,11 +153,19 @@ public class MidnightCleanupCinematic {
 		if (!full) {
 			alpha *= 1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration);
 		}
+		float width = graphics.guiWidth(), height = graphics.guiHeight();
+		if (full) {
+			float bars = height * 0.12F * MidnightCleanupViewUtil.phase(age, 0, 20)
+					* (1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration));
+			if (bars > 0) {
+				graphics.lobecorp$fill(0, 0, width, bars, 0xFF000000);
+				graphics.lobecorp$fill(0, height - bars, width, height, 0xFF000000);
+			}
+		}
 		if (alpha <= 0) {
 			return;
 		}
 
-		float width = graphics.guiWidth(), height = graphics.guiHeight();
 		float center = width / 2, titleY = height * 0.67F;
 		float gap = Math.min(24, height * 0.10F);
 		CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, dissolve);

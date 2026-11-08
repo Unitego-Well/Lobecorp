@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.config.server.HordeEventConfig;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
 import org.unitego.lobecorp.world.horde.HordeEvents;
@@ -27,7 +28,7 @@ public class HordeSync {
 	public static void request(ServerPlayer player, UUID eventId) {
 		var data = HordeSavedData.get(player.level().getServer());
 		var event = data.events().get(eventId);
-		if (event == null || !interested(player, event, true)) {
+		if (event == null || !interested(player, event, true, null)) {
 			return;
 		}
 		var events = REQUESTS.computeIfAbsent(player, _ -> new HashMap<>());
@@ -42,17 +43,19 @@ public class HordeSync {
 		var connected = server.getPlayerList().getPlayers();
 		players.keySet().removeIf(id -> connected.stream().noneMatch(player -> player.getUUID().equals(id)));
 		for (var player : connected) {
+			var projections = new HashMap<UUID, Projection>();
 			var subscriptions = players.computeIfAbsent(player.getUUID(), _ -> new HashMap<>());
 			int remaining = HordeEventConfig.SEND_BYTES.get();
 			for (UUID id : List.copyOf(subscriptions.keySet())) {
 				var event = data.events().get(id);
-				if (event == null || !interested(player, event, true)) {
+				if (event == null || !interested(player, event, true, projections)) {
 					send(player, id, subscriptions.get(id), "remove", new CompoundTag(), data.clock());
 					subscriptions.remove(id);
 				}
 			}
-			var events = data.events().values().stream().filter(event -> interested(player, event, subscriptions.containsKey(event.id())))
-					.sorted(Comparator.comparingDouble(event -> distance(player, event))).toList();
+			var events = data.events().values().stream()
+					.filter(event -> interested(player, event, subscriptions.containsKey(event.id()), projections))
+					.sorted(Comparator.comparingDouble(event -> projection(player, event, projections).distance())).toList();
 			for (var event : events) {
 				if (remaining <= 0) {
 					break;
@@ -119,7 +122,7 @@ public class HordeSync {
 				}
 
 				int first = subscription.first, last = subscription.last;
-				int center = event.route().segment(event.route().nearest(player.position(), 0, event.route().length()));
+				int center = event.route().segment(projection(player, event, projections).station());
 				int previousMaximum = 2 * Math.max(subscription.center - first, last - subscription.center);
 				if (subscription.scanRevision == Long.MIN_VALUE
 						|| Math.abs(center - subscription.center) >= HordeEventConfig.MAX_SEGMENTS_PER_PACKET.get()
@@ -160,20 +163,27 @@ public class HordeSync {
 		}
 	}
 
-	private static double distance(ServerPlayer player, HordeEvent event) {
+	private static Projection projection(ServerPlayer player, HordeEvent event, @Nullable Map<UUID, Projection> cache) {
+		if (cache != null) {
+			return cache.computeIfAbsent(event.id(), _ -> projection(player, event, null));
+		}
+
 		double station = event.route().nearest(player.position(), 0, event.route().length());
-		return event.route().point(station, 0)
-				.distanceTo(player.position());
+		return new Projection(station, event.route().point(station, 0).distanceTo(player.position()));
 	}
 
 	private static double subscriptionDistance(ServerPlayer player) {
 		return Math.max(HordeEventConfig.SUBSCRIBE_DISTANCE.get(), player.requestedViewDistance() * 16d);
 	}
 
-	private static boolean interested(ServerPlayer player, HordeEvent event, boolean already) {
-		return player.level().dimension().equals(event.dimension()) && distance(player, event)
+	private static boolean interested(ServerPlayer player, HordeEvent event, boolean already,
+	                                  @Nullable Map<UUID, Projection> cache) {
+		return player.level().dimension().equals(event.dimension()) && projection(player, event, cache).distance()
 				<= subscriptionDistance(player) + event.rules().width() / 2
 				+ (already ? HordeEventConfig.SUBSCRIBE_HYSTERESIS.get() : 0);
+	}
+
+	private record Projection(double station, double distance) {
 	}
 
 	private static void send(ServerPlayer player, UUID id, Subscription subscription, String kind, CompoundTag body, long clock) {

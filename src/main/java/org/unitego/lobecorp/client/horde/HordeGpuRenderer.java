@@ -1424,8 +1424,11 @@ public class HordeGpuRenderer {
 				event.lookupChanged = false;
 			}
 
-			for (int node = event.changedHeights.nextSetBit(0); node >= 0; node = event.changedHeights.nextSetBit(node + 1)) {
-				heights.update(node * event.heightColumns, event.heightData, node * event.heightColumns, event.heightColumns);
+			for (int first = event.changedHeights.nextSetBit(0); first >= 0; ) {
+				int last = event.changedHeights.nextClearBit(first);
+				heights.update(first * event.heightColumns, event.heightData, first * event.heightColumns,
+						(last - first) * event.heightColumns);
+				first = event.changedHeights.nextSetBit(last);
 			}
 			event.changedHeights.clear();
 		}

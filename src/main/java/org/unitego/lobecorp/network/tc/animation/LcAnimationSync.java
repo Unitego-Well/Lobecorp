@@ -21,6 +21,7 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItemSnapshot;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +38,10 @@ public class LcAnimationSync {
 	private static final Map<Entity, Set<UUID>> TRACKERS = new WeakHashMap<>();
 	// 死亡重生会替换 ServerPlayer，同一连接仍须保留已发送实例以删除旧帧。
 	private static final Map<ServerGamePacketListenerImpl, PlayerState> PLAYERS = new WeakHashMap<>();
+	/// 只缓存不可变内容编码；连接发送基线仍由各玩家持有。
+	private static final int CONTENT_CACHE_BYTES = 8 * 1024 * 1024, CONTENT_CACHE_ENTRIES = 64;
+	private static final Map<String, EncodedContent> ENCODED_CONTENT = new LinkedHashMap<>(16, 0.75F, true);
+	private static int encodedBytes;
 
 	public static void track(ServerPlayer player, Entity entity) {
 		TRACKERS.computeIfAbsent(entity, _ -> new HashSet<>()).add(player.getUUID());
@@ -93,7 +98,7 @@ public class LcAnimationSync {
 
 			state.snapshots.clear();
 			state.snapshots.putAll(visible);
-			syncAttachments(level, player, state, snapshots, attachments, items);
+			syncAttachments(level, player, state, visible.keySet(), attachments, items);
 		}
 	}
 
@@ -146,6 +151,8 @@ public class LcAnimationSync {
 	public static void clear(MinecraftServer server) {
 		TRACKERS.keySet().removeIf(entity -> entity.level() instanceof ServerLevel level && level.getServer() == server);
 		PLAYERS.keySet().removeIf(connection -> connection.player.level().getServer() == server);
+		ENCODED_CONTENT.clear();
+		encodedBytes = 0;
 	}
 
 	private static boolean visibleTo(ServerLevel level, ServerPlayer player, LcAnimationSnapshot snapshot) {
@@ -161,47 +168,66 @@ public class LcAnimationSync {
 		var level = player.level();
 		var state = state(player);
 		var animations = LcServerAnimations.snapshots(level);
+		var visible = new HashSet<UUID>();
 		for (var snapshot : animations) {
-			if (visibleTo(level, player, snapshot) && !snapshot.equals(state.snapshots.get(snapshot.instanceId()))) {
-				send(player, snapshot);
+			if (visibleTo(level, player, snapshot)) {
+				visible.add(snapshot.instanceId());
+				if (!snapshot.equals(state.snapshots.get(snapshot.instanceId()))) {
+					send(player, snapshot);
+				}
 			}
 		}
 
-		syncAttachments(level, player, state, animations,
+		syncAttachments(level, player, state, visible,
 				LcAttachments.snapshots(level), LcAttachedItems.snapshots(level));
 	}
 
 	private static void syncAttachments(ServerLevel level, ServerPlayer player, PlayerState state,
-	                                    List<LcAnimationSnapshot> animations, List<LcAttachmentSnapshot> attachments,
+	                                    Set<UUID> animations, List<LcAttachmentSnapshot> attachments,
 	                                    List<LcAttachedItemSnapshot> items) {
+		boolean full = !state.attachmentsInitialized;
 		Map<UUID, LcAttachmentSnapshot> visible = new LinkedHashMap<>();
+		var descriptions = new HashMap<UUID, LcAttachedItemSnapshot>();
+		items.forEach(item -> descriptions.put(item.bindingId(), item));
+		var updates = new ArrayList<LcAttachmentSnapshot>();
+		var updatedItems = new ArrayList<LcAttachedItemSnapshot>();
 		for (var snapshot : attachments) {
 			if (visibleTo(level, player, snapshot, animations)) {
 				visible.put(snapshot.id(), snapshot);
+				var item = descriptions.get(snapshot.id());
+				var previousItem = state.items.get(snapshot.id());
+				boolean itemChanged = item == null ? previousItem != null : !item.sameDisplay(previousItem);
+				if (full || !snapshot.equals(state.attachments.get(snapshot.id())) || itemChanged) {
+					updates.add(snapshot);
+					if (item != null) {
+						updatedItems.add(item);
+					}
+				}
 			}
 		}
 
-		var removed = new HashSet<>(state.attachments);
+		var removed = new HashSet<>(state.attachments.keySet());
 		removed.removeAll(visible.keySet());
-		if (!state.attachmentsInitialized || !visible.isEmpty() || !removed.isEmpty()) {
-			var visibleItems = items.stream().filter(item -> visible.containsKey(item.bindingId())).toList();
-			PacketDistributor.sendToPlayer(player, new LcAttachmentStatePayload(!state.attachmentsInitialized,
-					level.getGameTime(), List.copyOf(visible.values()), removed, visibleItems));
+		if (full || !updates.isEmpty() || !removed.isEmpty()) {
+			PacketDistributor.sendToPlayer(player, new LcAttachmentStatePayload(full,
+					level.getGameTime(), updates, removed, updatedItems));
 		}
 
 		state.attachments.clear();
-		state.attachments.addAll(visible.keySet());
+		state.attachments.putAll(visible);
+		descriptions.keySet().retainAll(visible.keySet());
+		state.items.clear();
+		state.items.putAll(descriptions);
 		state.attachmentsInitialized = true;
 	}
 
 	private static boolean visibleTo(ServerLevel level, ServerPlayer player, LcAttachmentSnapshot snapshot,
-	                                 List<LcAnimationSnapshot> animations) {
+	                                 Set<UUID> animations) {
 		var anchor = snapshot.anchor();
 		var visible = switch (anchor.kind()) {
 			case WORLD -> true;
 			case ENTITY -> visibleEntity(level, player, anchor.entityId(), anchor.sourceId());
-			case ANIMATION -> animations.stream().anyMatch(animation ->
-					animation.instanceId().equals(anchor.sourceId()) && visibleTo(level, player, animation));
+			case ANIMATION -> animations.contains(anchor.sourceId());
 		};
 		if (!visible) {
 			return false;
@@ -226,6 +252,7 @@ public class LcAnimationSync {
 		if (!player.level().dimension().equals(state.dimension)) {
 			state.snapshots.clear();
 			state.attachments.clear();
+			state.items.clear();
 			state.attachmentsInitialized = false;
 			state.dimension = player.level().dimension();
 		}
@@ -244,24 +271,53 @@ public class LcAnimationSync {
 	}
 
 	private static void sendContent(ServerPlayer player, LcAnimationContent content) {
+		var encoded = encodeContent(content);
+		for (int index = 0; index < encoded.parts().size(); index++) {
+			PacketDistributor.sendToPlayer(player, new LcAnimationContentPayload(content.modelId(), content.animationId(),
+					content.version(), index, encoded.parts().size(), encoded.parts().get(index)));
+		}
+	}
+
+	private static EncodedContent encodeContent(LcAnimationContent content) {
+		var cached = ENCODED_CONTENT.get(content.version());
+		if (cached != null) {
+			return cached;
+		}
+
 		var json = new JsonObject();
 		json.addProperty("model", content.modelJson());
 		json.addProperty("animation", content.animationJson());
 		var bytes = json.toString().getBytes(StandardCharsets.UTF_8);
 		var count = Math.ceilDiv(bytes.length, LcAnimationContentPayload.CHUNK_BYTES);
+		var parts = new ArrayList<byte[]>(count);
 		for (int index = 0; index < count; index++) {
 			var start = index * LcAnimationContentPayload.CHUNK_BYTES;
 			var part = Arrays.copyOfRange(bytes, start, Math.min(bytes.length, start + LcAnimationContentPayload.CHUNK_BYTES));
-			PacketDistributor.sendToPlayer(player, new LcAnimationContentPayload(content.modelId(), content.animationId(),
-					content.version(), index, count, part));
+			parts.add(part);
 		}
+		var encoded = new EncodedContent(List.copyOf(parts), bytes.length);
+		if (bytes.length <= CONTENT_CACHE_BYTES) {
+			while (!ENCODED_CONTENT.isEmpty() && (encodedBytes + bytes.length > CONTENT_CACHE_BYTES
+					|| ENCODED_CONTENT.size() >= CONTENT_CACHE_ENTRIES)) {
+				var oldest = ENCODED_CONTENT.entrySet().iterator();
+				encodedBytes -= oldest.next().getValue().bytes();
+				oldest.remove();
+			}
+			ENCODED_CONTENT.put(content.version(), encoded);
+			encodedBytes += bytes.length;
+		}
+		return encoded;
+	}
+
+	private record EncodedContent(List<byte[]> parts, int bytes) {
 	}
 
 	private static class PlayerState {
 		private @Nullable ResourceKey<Level> dimension;
 		private final Set<String> content = new HashSet<>();
 		private final Map<UUID, LcAnimationSnapshot> snapshots = new HashMap<>();
-		private final Set<UUID> attachments = new HashSet<>();
+		private final Map<UUID, LcAttachmentSnapshot> attachments = new HashMap<>();
+		private final Map<UUID, LcAttachedItemSnapshot> items = new HashMap<>();
 		private boolean attachmentsInitialized;
 	}
 }

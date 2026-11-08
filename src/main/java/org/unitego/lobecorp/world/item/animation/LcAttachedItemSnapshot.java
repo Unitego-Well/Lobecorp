@@ -30,4 +30,13 @@ public record LcAttachedItemSnapshot(UUID bindingId, ItemStack stack, ItemDispla
 	public ItemStack stack() {
 		return stack.copy();
 	}
+
+	/// 比较显示与播放状态，不把同步采样时钟当作内容变化。
+	public boolean sameDisplay(@Nullable LcAttachedItemSnapshot other) {
+		return other != null && bindingId.equals(other.bindingId)
+				&& ItemStack.matches(stack, other.stack) && displayContext == other.displayContext
+				&& Objects.equals(animationId, other.animationId) && Objects.equals(bone, other.bone)
+				&& transitions.equals(other.transitions) && startedTick == other.startedTick
+				&& stoppingTick == other.stoppingTick;
+	}
 }

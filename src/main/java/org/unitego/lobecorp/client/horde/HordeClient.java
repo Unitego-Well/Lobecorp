@@ -25,6 +25,7 @@ import org.unitego.lobecorp.world.horde.HordeRules;
 import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -610,12 +611,18 @@ public class HordeClient {
 				lookupChanged = true;
 			}
 
+			var dirtyGroups = new BitSet();
+			var dirtyRouteNodes = new BitSet();
 			for (int index = changed.nextSetBit(0); index >= 0; index = changed.nextSetBit(index + 1)) {
-				for (int neighbor = Math.max(0, index - 1); neighbor <= Math.min(nodeCount - 1, index + 1); neighbor++) {
-					updateRouteNode(neighbor);
-				}
+				dirtyRouteNodes.set(Math.max(0, index - 1), Math.min(nodeCount, index + 2));
 				updateHeights(index);
+				dirtyGroups.set(Math.max(0, index - 1) / BLOCK_SEGMENTS,
+						Math.min(nodes.length - 2, index) / BLOCK_SEGMENTS + 1);
 			}
+			for (int node = dirtyRouteNodes.nextSetBit(0); node >= 0; node = dirtyRouteNodes.nextSetBit(node + 1)) {
+				updateRouteNode(node);
+			}
+			updateBlocks(dirtyGroups);
 		}
 
 		private void updateRouteNode(int index) {
@@ -702,8 +709,15 @@ public class HordeClient {
 				heightData[index * heightColumns + h] = (float) (nodes[index].height((h / (double) (heightColumns - 1) - 0.5) * width) - origin.y);
 			}
 			changedHeights.set(index);
+		}
+
+		private void updateBlocks(BitSet dirtyGroups) {
+			if (dirtyGroups.isEmpty()) {
+				return;
+			}
+
 			var updated = new ArrayList<>(blocks);
-			for (int group = Math.max(0, index - 1) / BLOCK_SEGMENTS; group <= Math.min(nodes.length - 2, index) / BLOCK_SEGMENTS; group++) {
+			for (int group = dirtyGroups.nextSetBit(0); group >= 0; group = dirtyGroups.nextSetBit(group + 1)) {
 				var replacements = new ArrayList<Block>();
 				prepareBlocks(group * BLOCK_SEGMENTS, replacements);
 				for (var block : replacements) {

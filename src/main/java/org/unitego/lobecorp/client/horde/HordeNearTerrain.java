@@ -56,16 +56,33 @@ public class HordeNearTerrain {
 		}
 
 		int start = cursor, count = Math.min(PREPARE_COLUMNS, SIDE * SIDE - start);
+		int firstChanged = -1, lastChanged = -1;
 		for (int i = start; i < start + count; i++) {
 			int x = minX + Math.floorMod(i % SIDE - minX, SIDE);
 			int z = minZ + Math.floorMod(i / SIDE - minZ, SIDE);
 			var sample = HordeGroundCache.sample(x, z);
-			values[i * WORDS] = sample == null ? Float.NaN : (float) sample.height();
-			values[i * WORDS + 1] = sample != null && sample.passable() ? 1 : 0;
-			values[i * WORDS + 2] = x;
-			values[i * WORDS + 3] = z;
+			float height = sample == null ? Float.NaN : (float) sample.height();
+			float passable = sample != null && sample.passable() ? 1 : 0;
+			int at = i * WORDS;
+			if (Float.floatToRawIntBits(values[at]) == Float.floatToRawIntBits(height)
+					&& Float.floatToRawIntBits(values[at + 1]) == Float.floatToRawIntBits(passable)
+					&& Float.floatToRawIntBits(values[at + 2]) == Float.floatToRawIntBits((float) x)
+					&& Float.floatToRawIntBits(values[at + 3]) == Float.floatToRawIntBits((float) z)) {
+				continue;
+			}
+			values[at] = height;
+			values[at + 1] = passable;
+			values[at + 2] = x;
+			values[at + 3] = z;
+			if (firstChanged < 0) {
+				firstChanged = i;
+			}
+			lastChanged = i;
 		}
-		texture.update(start * WORDS, values, start * WORDS, count * WORDS);
+		if (firstChanged >= 0) {
+			int firstWord = firstChanged * WORDS;
+			texture.update(firstWord, values, firstWord, (lastChanged - firstChanged + 1) * WORDS);
+		}
 		cursor = (start + count) % (SIDE * SIDE);
 	}
 

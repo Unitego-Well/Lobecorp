@@ -101,7 +101,7 @@ public class LcClientAttachments {
 
 	public static double renderTick(LcAttachedItemSnapshot item, float partialTick) {
 		return SERVER_ITEMS.containsKey(item.bindingId())
-				? item.serverTick() + Math.max(0, gameTime() - receivedServerTick + partialTick)
+				? lastServerTick + Math.max(0, gameTime() - receivedServerTick + partialTick)
 				: item.serverTick() + partialTick;
 	}
 
@@ -271,6 +271,7 @@ public class LcClientAttachments {
 		RENDER_ANCHORS.clear();
 		CORRECTIONS.clear();
 		lastServerTick = Long.MIN_VALUE;
+		receivedServerTick = 0;
 		LcAttachments.clearClientWorlds();
 	}
 

@@ -478,6 +478,7 @@ public class HordeRuntime {
 	private void processRequests(HordeSavedData data) {
 		var work = new HashMap<ServerLevel, Integer>();
 		var creates = new HashMap<ServerLevel, Integer>();
+		var livingCounts = new HashMap<ServerLevel, Long>();
 		var sorted = new ArrayList<>(requests.values());
 		sorted.sort(Comparator.comparingInt((SpawnRequest request) -> request.target.occupied())
 				.thenComparingLong(request -> request.lastServed));
@@ -500,8 +501,8 @@ public class HordeRuntime {
 				request.pause();
 				continue;
 			}
-			long livingCount = loaded.values().stream().filter(mob -> mob.level() == level && mob.isAlive()
-					&& !HordeParticipant.get(mob).fading()).count();
+			long livingCount = livingCounts.computeIfAbsent(level, current -> loaded.values().stream()
+					.filter(mob -> mob.level() == current && mob.isAlive() && !HordeParticipant.get(mob).fading()).count());
 			if (livingCount >= HordeEventConfig.SOFT_BUDGET.get() && request.target.occupied() > 1
 					&& creates.getOrDefault(level, 0) >= Math.max(1, HordeEventConfig.CREATES_PER_TICK.get() / 2)) {
 				request.pause();
@@ -536,6 +537,8 @@ public class HordeRuntime {
 				continue;
 			}
 			Mob mob;
+			// 创建及其事件回调可能改变成员；后续请求必须重新统计。
+			livingCounts.clear();
 			try {
 				mob = profile.createParticipant(level,
 						new HordeSpawnContext(event.id(), target, request.fallback));

@@ -47,6 +47,10 @@ public class HordeDataTexture implements AutoCloseable {
 	}
 
 	private void updateWords(int first, int length, IntUnaryOperator words) {
+		if (length <= 0) {
+			return;
+		}
+
 		var image = texture.getPixels();
 		int width = image.getWidth();
 		for (int copied = 0; copied < length; ) {
@@ -55,11 +59,29 @@ public class HordeDataTexture implements AutoCloseable {
 			int y = at / width;
 			int count = Math.min(width - x, length - copied);
 			for (int i = 0; i < count; i++) {
-                image.setPixelABGR(x + i, y, words.applyAsInt(copied + i));
+				image.setPixelABGR(x + i, y, words.applyAsInt(copied + i));
 			}
-			RenderSystem.getDevice().createCommandEncoder().writeToTexture(texture.getTexture(), image,
-					0, 0, x, y, count, 1, x, y);
 			copied += count;
+		}
+
+		// 覆盖区只分首段、完整行矩形和尾段三次提交，避免逐行产生碎片命令。
+		int x = first % width;
+		var encoder = RenderSystem.getDevice().createCommandEncoder();
+		int copied = 0;
+		if (x != 0) {
+			int firstCount = Math.min(width - x, length);
+			encoder.writeToTexture(texture.getTexture(), image, 0, 0, x, first / width, firstCount, 1, x, first / width);
+			copied = firstCount;
+		}
+		int rows = (length - copied) / width;
+		if (rows > 0) {
+			int y = (first + copied) / width;
+			encoder.writeToTexture(texture.getTexture(), image, 0, 0, 0, y, width, rows, 0, y);
+			copied += rows * width;
+		}
+		if (copied < length) {
+			int tailY = (first + copied) / width;
+			encoder.writeToTexture(texture.getTexture(), image, 0, 0, 0, tailY, length - copied, 1, 0, tailY);
 		}
 	}
 

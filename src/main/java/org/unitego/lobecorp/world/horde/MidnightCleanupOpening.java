@@ -59,7 +59,7 @@ public class MidnightCleanupOpening {
 			var toward = event.route().direction(station).scale(-1);
 			float targetYaw = (float) Math.toDegrees(Math.atan2(toward.z, toward.x)) - 90;
 			float targetPitch = (float) -Math.toDegrees(Math.atan2(toward.y, toward.horizontalDistance()));
-			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanup.OPENING_TICKS,
+			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanupViewUtil.CENTER_END,
 					player.getYRot(), player.getXRot(), targetYaw, targetPitch));
 			send(player, event.id(), true, false, targetYaw, targetPitch);
 		}
@@ -73,11 +73,16 @@ public class MidnightCleanupOpening {
 			if (server.getTickCount() >= lock.until() || !player.isAlive() || player.isSpectator()
 					|| server.getPlayerList().getPlayer(player.getUUID()) != player || event == null
 					|| !player.level().dimension().equals(event.dimension())) {
+				if (server.getTickCount() >= lock.until() && player.isAlive() && !player.isSpectator()) {
+					player.setYRot(lock.yaw());
+					player.setXRot(lock.pitch());
+					player.setYHeadRot(lock.yaw());
+				}
 				release(player);
 				return true;
 			}
 
-			float age = MidnightCleanup.OPENING_TICKS - (lock.until() - server.getTickCount());
+			float age = MidnightCleanupViewUtil.CENTER_END - (lock.until() - server.getTickCount());
 			var angles = MidnightCleanupViewUtil.sample(lock.startYaw(), lock.startPitch(), lock.yaw(), lock.pitch(), age);
 			player.setYRot(angles.yaw());
 			player.setXRot(angles.pitch());
@@ -128,6 +133,10 @@ public class MidnightCleanupOpening {
 
 		double dx = point.x - center.x, dz = point.z - center.z;
 		return dx * dx + dz * dz <= event.rules().width() * event.rules().width() / 4;
+	}
+
+	public static Identifier speedModifierId() {
+		return SPEED_ID;
 	}
 
 	private static void release(ServerPlayer player) {

@@ -18,6 +18,8 @@ import net.neoforged.neoforge.event.GameShuttingDownEvent;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.horde.HordeEventAtmosphere;
+import net.neoforged.bus.api.EventPriority;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
@@ -98,9 +100,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onSweeperCameraAngles(ViewportEvent.ComputeCameraAngles event) {
-		if (MidnightCleanupCinematic.camera(event)) {
-			return;
-		}
+		MidnightCleanupCinematic.camera(event);
 
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null) {
@@ -202,8 +202,9 @@ public class ClientRuntimeEvents {
 		PhotonOwnedEffectResources.closePreparation();
 	}
 
-	@SubscribeEvent
+	@SubscribeEvent(priority = EventPriority.HIGHEST)
 	public static void onVisualFrameEnd(RenderFrameEvent.Post event) {
+		HordeEventAtmosphere.frameEnd();
 		LcModelLodUtil.endFrame();
 		PhotonRuntimeFactory.onFrameEnd();
 	}
@@ -231,8 +232,13 @@ public class ClientRuntimeEvents {
 	}
 
 	@SubscribeEvent
+	public static void onFovModifier(ComputeFovModifierEvent event) {
+		MidnightCleanupCinematic.correctFov(event);
+	}
+
+	@SubscribeEvent
 	public static void onPlayerTurn(CalculatePlayerTurnEvent event) {
-		if (MidnightCleanupCinematic.hidesHud()) {
+		if (MidnightCleanupCinematic.controlsView()) {
 			// 原版按(sensitivity*0.6F+0.2F)的三次方缩放输入，抵消常数后实际转向为零。
 			event.setMouseSensitivity(-0.2F / (double) 0.6F);
 			event.setCinematicCameraEnabled(false);

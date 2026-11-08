@@ -1,6 +1,7 @@
 #version 330
 
 #moj_import <lobecorp:horde_data.glsl>
+#moj_import <lobecorp:horde_lod_priority.glsl>
 #moj_import <minecraft:projection.glsl>
 
 uniform sampler2D HordeMotion;
@@ -89,7 +90,8 @@ void main() {
         if (distanceSquared < 16384.0 && inFrustum(viewProjection, relative, radius)
                 && notOccluded(viewProjection, relative, radius)
                 && scalar(HordeMotion, (LodMotion.x + local) * LodMotion.y + 4) >= 0.0) {
-            bits = pixel % 2 == 0 ? floatBitsToUint(distanceSquared) : uint(ordinal);
+            float edge = scalar(HordeMotion, (LodMotion.x + local) * LodMotion.y + 8);
+            bits = pixel % 2 == 0 ? hordeLodKey(distanceSquared, edge) : uint(ordinal);
         }
     }
     fragColor = vec4(uvec4(bits & 255u, (bits >> 8u) & 255u,

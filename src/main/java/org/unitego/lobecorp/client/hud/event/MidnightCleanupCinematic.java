@@ -5,7 +5,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.neoforged.neoforge.client.event.ViewportEvent;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
+import org.unitego.lobecorp.client.horde.HordeEventAtmosphere;
+import org.unitego.lobecorp.world.horde.MidnightCleanupOpening;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.util.Mth;
 import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
@@ -26,6 +31,7 @@ public class MidnightCleanupCinematic {
 	private static int duration;
 	private static boolean opening;
 	private static boolean bannerOnly;
+	private static boolean released;
 	private static float startYaw, startPitch, targetYaw, targetPitch;
 	private static UUID eventId;
 	private static final ArrayDeque<Presentation> pending = new ArrayDeque<>();
@@ -71,6 +77,10 @@ public class MidnightCleanupCinematic {
 		eventId = presentation.event();
 		opening = presentation.opening();
 		bannerOnly = presentation.bannerOnly();
+		released = false;
+		if (opening) {
+			HordeEventAtmosphere.start(presentation.event(), presentation.yaw());
+		}
 		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
 		var player = Minecraft.getInstance().player;
 		if (opening && !bannerOnly && player != null) {
@@ -82,12 +92,33 @@ public class MidnightCleanupCinematic {
 	}
 
 	public static boolean hidesHud() {
-		return active() && opening && !bannerOnly;
+		return controlsView();
+	}
+
+	public static boolean controlsView() {
+		if (!active() || !opening || bannerOnly) {
+			return false;
+		}
+		if (world.getGameTime() - began < MidnightCleanupViewUtil.CENTER_END) {
+			return true;
+		}
+		if (!released) {
+			var player = Minecraft.getInstance().player;
+			if (player != null) {
+				player.setYRot(targetYaw);
+				player.setXRot(targetPitch);
+				player.setYHeadRot(targetYaw);
+				player.yRotO = targetYaw;
+				player.xRotO = targetPitch;
+			}
+			released = true;
+		}
+		return false;
 	}
 
 	public static void holdView() {
 		var player = Minecraft.getInstance().player;
-		if (!hidesHud() || player == null) {
+		if (!controlsView() || player == null) {
 			return;
 		}
 
@@ -101,9 +132,9 @@ public class MidnightCleanupCinematic {
 		player.xRotO = previous.pitch();
 	}
 
-	/// 完整过场独占镜头合成，读字时不叠加普通浪潮和落地强震。
+	/// 观察阶段只接管基础角度，事件浪潮震动由共同入口继续叠加。
 	public static boolean camera(ViewportEvent.ComputeCameraAngles event) {
-		if (!hidesHud()) {
+		if (!controlsView()) {
 			return false;
 		}
 
@@ -111,12 +142,29 @@ public class MidnightCleanupCinematic {
 		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
 		float age = world.getGameTime() - began + partial;
 		var angles = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
-		float impact = HordeVisualConfig.EVENT_SHAKE.get()
-				? (1 - MidnightCleanupViewUtil.phase(age, 0, MidnightCleanupViewUtil.IMPACT_END))
-				* HordeVisualConfig.SHAKE_STRENGTH.get().floatValue() : 0;
-		event.setYaw(angles.yaw() + (float) Math.sin(age * 1.9) * 1.2F * impact);
-		event.setPitch(angles.pitch() + (float) Math.sin(age * 2.4) * 2.2F * impact);
+		event.setYaw(angles.yaw());
+		event.setPitch(angles.pitch());
 		return true;
+	}
+
+	/// 仅剔除本任务锁速对FOV的贡献，保留飞行、拉弓与用户效果倍率。
+	public static void correctFov(ComputeFovModifierEvent event) {
+		var player = event.getPlayer();
+		var speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
+		float walking = player.getAbilities().getWalkingSpeed();
+		if (speed == null || walking == 0 || !speed.hasModifier(MidnightCleanupOpening.speedModifierId())) {
+			return;
+		}
+
+		var unlocked = new AttributeInstance(Attributes.MOVEMENT_SPEED, _ -> {});
+		unlocked.replaceFrom(speed);
+		unlocked.removeModifier(MidnightCleanupOpening.speedModifierId());
+		float actualFactor = ((float) speed.getValue() / walking + 1) / 2;
+		float unlockedFactor = ((float) unlocked.getValue() / walking + 1) / 2;
+		float corrected = event.getFovModifier() * unlockedFactor / actualFactor;
+		float delta = Mth.lerp(event.getFovScale(), 1, corrected)
+				- Mth.lerp(event.getFovScale(), 1, event.getFovModifier());
+		event.setNewFovModifier(event.getNewFovModifier() + delta);
 	}
 
 	private static boolean active() {
@@ -154,14 +202,7 @@ public class MidnightCleanupCinematic {
 			alpha *= 1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration);
 		}
 		float width = graphics.guiWidth(), height = graphics.guiHeight();
-		if (full) {
-			float bars = height * 0.12F * MidnightCleanupViewUtil.phase(age, 0, 20)
-					* (1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration));
-			if (bars > 0) {
-				graphics.lobecorp$fill(0, 0, width, bars, 0xFF000000);
-				graphics.lobecorp$fill(0, height - bars, width, height, 0xFF000000);
-			}
-		}
+
 		if (alpha <= 0) {
 			return;
 		}

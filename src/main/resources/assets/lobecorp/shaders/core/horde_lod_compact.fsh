@@ -1,5 +1,6 @@
 #version 330
 #moj_import <lobecorp:horde_data.glsl>
+#moj_import <lobecorp:horde_lod_priority.glsl>
 uniform sampler2D HordeLodSource;
 uniform sampler2D HordeLodRanges;
 layout(std140) uniform HordeLodParameters { ivec4 LodRange; };
@@ -10,7 +11,7 @@ void main() {
     int accepted = 0;
     uint bits = 0xffffffffu;
     for (int rank = 0; rank < 128; rank++) {
-        float squared = scalar(HordeLodSource, rank * 2);
+        float squared = hordeLodDistance(rawWord(HordeLodSource, rank * 2));
         uint identity = rawWord(HordeLodSource, rank * 2 + 1);
         if (identity == 0xffffffffu || squared >= 16384.0) {
             break;

@@ -66,6 +66,7 @@ public class HordeClient {
 				return;
 			}
 			if (kind.equals("remove")) {
+				HordeEventAtmosphere.remove(id);
 				closeEvent(EVENTS.remove(id));
 				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);

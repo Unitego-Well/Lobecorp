@@ -1,5 +1,6 @@
-// 与HordeGpuRenderer.MOTION_VALUES一致：相机相对位置、缩放、光照、sin/cos和帧编号。
-const int HORDE_MOTION_VALUES = 8;
+// 与HordeGpuRenderer.motionValues一致，末字为近处分割边缘标记。
+#moj_import <lobecorp:horde_lod_priority.glsl>
+const int HORDE_MOTION_VALUES = 9;
 const float HORDE_HEADING_STEP = 0.125;
 
 // 16个vec4，与HordeGpuRenderer.PARAMETER_BYTES一致。

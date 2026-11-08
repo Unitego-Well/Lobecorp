@@ -107,7 +107,7 @@ public class HordeLodSelection implements AutoCloseable {
 		visibilityUpload.putFloat(depth.getWidth(0)).putFloat(depth.getHeight(0)).putFloat(0).putFloat(0).flip();
 		RenderSystem.getDevice().createCommandEncoder().writeToBuffer(visibilityParameters.slice(), visibilityUpload);
 		HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, VISIBILITY_BYTES);
-		write(width, capacity, 0, count, 8);
+		write(width, capacity, 0, count, HordeGpuRenderer.motionValues());
 		render(CANDIDATES, sorting[0], motion, null);
 		int current = 0;
 		// 先各128候选排序，再逐层只合并两表的最近128；总像素工作量随候选线性增长。
@@ -128,7 +128,7 @@ public class HordeLodSelection implements AutoCloseable {
 				current = 1 - current;
 			}
 		}
-		write(width, count, 0, 0, 0);
+		write(width, count, 0, 0, HordeGpuRenderer.motionValues());
 		render(CLASSIFY, selected, motion, sorting[current].view);
 		if (!Arrays.equals(previousRanges, ranges)) {
 			if (materialRanges != null) {

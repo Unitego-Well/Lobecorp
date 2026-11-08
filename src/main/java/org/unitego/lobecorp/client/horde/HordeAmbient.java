@@ -97,8 +97,7 @@ public class HordeAmbient {
 		selectAudioPoints(listener);
 		selectSoundRegion(player.position());
 		previousRumble = rumble;
-		float target = AUDIO_POINTS.isEmpty() || !HordeVisualConfig.EVENT_SHAKE.get() ? 0
-				: envelope(AUDIO_POINTS.getFirst().distanceTo(listener), HordeVisualConfig.EVENT_SHAKE_RANGE.get());
+		float target = HordeVisualConfig.EVENT_SHAKE.get() ? eventRumble(listener) : 0;
 		rumble += (target - rumble) * 0.25F;
 		SOURCES.removeIf(source -> {
 			if (tick - source.born > 10 && !minecraft.getSoundManager().isActive(source)) {
@@ -313,6 +312,31 @@ public class HordeAmbient {
 		}
 
 		return true;
+	}
+
+	/// 震源取活动浪潮的最近横向位置，不依赖声源额度或入场特效。
+	private static float eventRumble(Vec3 listener) {
+		float strongest = 0;
+		for (var event : HordeClient.events()) {
+			if (!event.ready || event.failed || event.tide == null || event.columns <= 0) {
+				continue;
+			}
+			double time = event.time(0);
+			if (time >= event.stop + event.length / event.speed) {
+				continue;
+			}
+			double head = Math.clamp(time * event.speed, 0, event.length);
+			double tail = Math.clamp((time - event.stop) * event.speed, 0, head);
+			double station = Math.clamp(event.tide.particleStation(listener), tail, head);
+			var center = event.tide.world(station, 0);
+			var forward = event.tide.forward(station);
+			double across = (listener.x - center.x) * -forward.z + (listener.z - center.z) * forward.x;
+			double half = Math.max(0, (event.columns - 1) * event.columnSpacing() / 2);
+			var source = event.tide.world(station, Math.clamp(across, -half, half));
+			float faded = envelope(source.distanceTo(listener), HordeVisualConfig.EVENT_SHAKE_RANGE.get());
+			strongest = Math.max(strongest, (float) Math.sqrt(faded));
+		}
+		return strongest;
 	}
 
 	private static float envelope(double distance, double range) {

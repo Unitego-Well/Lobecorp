@@ -1,15 +1,17 @@
 #version 330
 #moj_import <lobecorp:horde_data.glsl>
+#moj_import <lobecorp:horde_lod_priority.glsl>
 uniform sampler2D HordeMotion;
 uniform sampler2D HordeLodSource;
-layout(std140) uniform HordeLodParameters { ivec4 LodRange; };
+layout(std140) uniform HordeLodParameters { ivec4 LodRange; ivec4 LodMotion; };
 out vec4 fragColor;
 void main() {
     int ordinal = int(gl_FragCoord.y) * LodRange.x + int(gl_FragCoord.x);
     uint selected = 0u;
     if (ordinal < LodRange.y) {
-        vec3 point = vector3(HordeMotion, ordinal * 8);
-        uint distanceBits = floatBitsToUint(dot(point, point));
+        vec3 point = vector3(HordeMotion, ordinal * LodMotion.y);
+        float edge = scalar(HordeMotion, ordinal * LodMotion.y + 8);
+        uint distanceBits = hordeLodKey(dot(point, point), edge);
         int low = 0;
         int high = 128;
         while (low < high) {

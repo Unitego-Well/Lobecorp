@@ -64,8 +64,8 @@ public class HordeGpuRenderer {
 	private static final int PARAMETER_BYTES = 256;
     private static final int VERTEX_BYTES = 28;
     private static final int INSTANCES_PER_DRAW = 65536;
-	// 相机相对位置、个体缩放、光照、sin/cos和动画帧编号，与GLSL布局一致。
-	private static final int MOTION_VALUES = 8;
+	// 位置、缩放、光照、方向、帧编号及近处分割边缘标记，与GLSL布局一致。
+	private static final int MOTION_VALUES = 9;
 	// 分割让步的推出强度、提前参数与单侧最大偏移（格）。
 	private static final float SPLIT_STRENGTH = 1.0f;
 	private static final float SPLIT_LEAD = 2.5f;
@@ -737,6 +737,10 @@ public class HordeGpuRenderer {
 	/// 迎潮侧提前分流的带宽（格）：随浪潮速度增大，低速时仍保留基础宽度。
 	private static float splitBand(double speed) {
 		return (float) HordeSplitState.band(speed);
+	}
+
+	public static int motionValues() {
+		return MOTION_VALUES;
 	}
 
 	private static void put(float a, float b, float c, float d) {

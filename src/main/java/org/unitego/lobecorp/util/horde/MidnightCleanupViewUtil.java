@@ -7,9 +7,9 @@ public class MidnightCleanupViewUtil {
 
 	public static final int IMPACT_END = 12;
 	public static final int FIRST_CENTER_END = 28;
-	public static final int LEFT_END = 40, RIGHT_START = 44, RIGHT_END = 58;
-	public static final int CENTER_START = 62, CENTER_END = 80;
-	public static final int TEXT_READY = 90, DISSOLVE_START = 156;
+	public static final int LEFT_END = 40, RIGHT_START = 52, RIGHT_END = 66;
+	public static final int CENTER_START = 78, CENTER_END = 96;
+	public static final int TEXT_READY = 106, DISSOLVE_START = 168;
 	private static final float LOOK_ANGLE = 55;
 
 	public record Angles(float yaw, float pitch) {

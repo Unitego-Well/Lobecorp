@@ -5,7 +5,7 @@
 out vec4 fragColor;
 
 // 前进站程保持纯函数；总横向位移、速度读取每事件独立 GPU 行窗。
-// Motion8 是批次输出缓存，不承担稳定身份或运动历史。
+// 运动缓存不承担稳定身份或运动历史，末字只描述本帧LOD优先级。
 void main() {
     int pixel = int(gl_FragCoord.y) * MotionInfo.z + int(gl_FragCoord.x);
     int local = pixel / HORDE_MOTION_VALUES - MotionInfo.x;
@@ -24,12 +24,12 @@ void main() {
     float finalStation = station;
     // 总侧移已经包含自然摆动；这里不能再调用 movingLocation 叠加第二次 sway。
     vec3 point = vec3(0.0);
-    bool needsPoint = component < 3 || component == 4 || (component == 7 && FrameLod.x > 0.0);
+    bool needsPoint = component < 3 || component == 4 || component == 8 || (component == 7 && FrameLod.x > 0.0);
     if (needsPoint) {
         float totalLateral = scalar(HordeAvoidance, stateAt) + motionSway(OriginTime.w, seed);
         vec2 horizontal = motionXZ(finalStation + motionDrift(OriginTime.w, seed), lateral, totalLateral);
         point = vec3(horizontal.x, 0.0, horizontal.y);
-        if (component == 1 || component == 4 || component == 7) {
+        if (component == 1 || component == 4 || component == 7 || component == 8) {
             point.y = motionGroundHeight(finalStation, lateral, totalLateral, seed);
         }
     }
@@ -50,6 +50,28 @@ void main() {
         value = light.x < 0.0 ? DebugInfo.x + DebugInfo.y * 16.0 : light.x + light.y * 16.0;
         if (station < SegmentRegions.x || station >= SegmentRegions.y || station < 0.0 || station >= SpacingLength.w) {
             value = -1.0;
+        }
+    } else if (component == 8) {
+        value = 0.0;
+        vec3 relative = point + OriginTime.xyz;
+        // 每个距离档内优先同事件分割边缘，不跨档抢占更近实例的额度。
+        if (dot(relative, relative) < HORDE_LOD_EDGE_NEAR_SQUARED) {
+            float modelScale = hordeInstanceScale(local);
+            for (int slot = 0; slot < int(SplitInfo.x); slot++) {
+                int at = slot * 5;
+                float radius = scalar(HordeSplit, at + 2);
+                float yMin = scalar(HordeSplit, at + 3);
+                float yMax = scalar(HordeSplit, at + 4);
+                if (radius <= 0.01 || point.y >= yMax || point.y + LightRoute.w * modelScale <= yMin) {
+                    continue;
+                }
+                vec2 center = vec2(scalar(HordeSplit, at), scalar(HordeSplit, at + 1));
+                float edgeDistance = abs(length(point.xz - center) - radius);
+                if (edgeDistance <= max(2.0, SplitShape.w * 2.0 + radius * 0.35)) {
+                    value = 1.0;
+                    break;
+                }
+            }
         }
     } else {
         float phase = fract((WorldSection.w + float(row)) * 0.375 + float(column) * 0.625);

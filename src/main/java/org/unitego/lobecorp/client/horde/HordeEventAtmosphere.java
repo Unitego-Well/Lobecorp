@@ -9,7 +9,9 @@ import com.lowdragmc.lowdraglib2.nodegraphtookit.model.node.NodeOption;
 import com.lowdragmc.lowdraglib2.nodegraphtookit.api.variable.VariableKind;
 import com.lowdragmc.lowdraglib2.nodegraphtookit.model.variable.VariableDeclarationModelBase;
 import com.lowdragmc.lowdraglib2.nodegraphtookit.api.type.TypeHandles;
-import com.lowdragmc.photon.client.postfx.PhotonPostFX;
+import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
+import com.lowdragmc.photon.client.postfx.runtime.RenderGraphExecutor;
+import com.lowdragmc.photon.client.postfx.runtime.SceneBlit;
 import com.lowdragmc.photon.client.postfx.shadergraph.FullscreenShaderGraph;
 import com.lowdragmc.photon.client.postfx.shadergraph.runtime.FullscreenGraphRuntime;
 import com.lowdragmc.photon.gui.editor.resource.FullscreenShaderGraphResource;
@@ -21,16 +23,20 @@ import org.joml.Vector2f;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 
 /// 事件走廊中的持续氛围；标题寿命、当地尾波与全屏后期请求彼此独立。
 public class HordeEventAtmosphere {
 
-	private static final double APPROACH_TICKS = 400, ENTER_TICKS = 20, LEAVE_TICKS = 30;
+	private static final double ENTER_TICKS = 20, LEAVE_TICKS = 30;
+	private static final Map<UUID, Double> started = new HashMap<>();
+	private static final PostEffectStack SCREEN = new PostEffectStack();
 	private static ClientLevel world;
 	private static double sampledAt = Double.NaN;
 	private static UUID selected;
@@ -60,20 +66,66 @@ public class HordeEventAtmosphere {
 		}
 	}
 
-	/// 在世界后期消费前提交；不依赖被完整开幕取消的GUI Post事件。
-	public static void extract(float partial) {
-		if (HordeIrisShadows.shadowPass()) {
+	/// 入场包是天空和屏幕效果的共同起点，不提前消费世界后期。
+	public static void start(UUID event, float yaw) {
+		var level = Minecraft.getInstance().level;
+		if (level == null) {
 			return;
 		}
-		update(partial);
-		if (strength <= 0) {
-			return;
+		if (world != level) {
+			resetPresence();
+			world = level;
 		}
+		if (!started.containsKey(event)) {
+			started.put(event, (double) level.getGameTime());
+			selected = event;
+			coverage = 0;
+			double radians = Math.toRadians(yaw);
+			direction = new Vec3(-Math.sin(radians), 0, Math.cos(radians));
+		}
+	}
 
-		prepare();
-		if (!failed && effect != null) {
-			float time = (float) sampledAt / 20;
-			PhotonPostFX.submit(effect, Map.of("Time", time), strength);
+	public static void remove(UUID event) {
+		started.remove(event);
+	}
+
+	public static void extract(float partial) {
+		if (!HordeIrisShadows.shadowPass()) {
+			update(partial);
+		}
+	}
+
+	/// GUI和手绘制之后、窗口提交之前，用Photon独立栈处理最终画面。
+	public static void frameEnd() {
+		try {
+			var minecraft = Minecraft.getInstance();
+			if (minecraft.level == null || minecraft.player == null || HordeIrisShadows.shadowPass()) {
+				return;
+			}
+			if (minecraft.gameRenderer.getGameRenderState().windowRenderState.isMinimized) {
+				return;
+			}
+			float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+			update(partial);
+			if (strength <= 0) {
+				return;
+			}
+			prepare();
+			var color = minecraft.getMainRenderTarget().getColorTextureView();
+			if (failed || effect == null || color == null) {
+				return;
+			}
+
+			SCREEN.submit(effect, Map.of("Time", (float) sampledAt / 20), strength);
+			var output = SCREEN.consumeAndExecute(RenderGraphExecutor.FrameInputs.of(color, null), null);
+			if (output != null) {
+				SceneBlit.writeBack(output, color);
+			}
+		} catch (RuntimeException exception) {
+			failed = true;
+			Lobecorp.LOGGER.error("停止本代际清道夫最终屏幕效果，天空和事件继续", exception);
+		} finally {
+			SCREEN.onFrameEnd();
 		}
 	}
 
@@ -102,17 +154,27 @@ public class HordeEventAtmosphere {
 
 		double elapsed = Double.isNaN(sampledAt) ? 0 : Math.clamp(now - sampledAt, 0, 5);
 		sampledAt = now;
+		var events = HordeClient.events();
 		HordeClient.ClientEvent chosen = null;
 		double chosenCoverage = -1;
 		if (HordeVisualConfig.ENABLED.get() && player.isAlive() && !player.isSpectator()) {
-			for (var event : HordeClient.events()) {
+			for (var event : events) {
 				if (!event.ready || event.failed || event.tide == null || !MidnightCleanup.ID.equals(event.profile)
 						|| event.time(partial) >= event.stop + event.length / event.speed || !inside(event, player.position())) {
 					continue;
 				}
 
 				double arrival = event.tide.particleStation(player.position()) / event.speed - event.time(partial);
-				double value = Math.clamp(1 - Math.max(0, arrival) / APPROACH_TICKS, 0, 1);
+				Double began = started.get(event.id);
+				if (began == null) {
+					if (arrival > 0) {
+						continue;
+					}
+					// 已到达的重连/迟到快照恢复既有氛围，不补播镜头。
+					began = now - MidnightCleanupViewUtil.CENTER_END;
+					started.put(event.id, began);
+				}
+				double value = Math.clamp((now - began) / MidnightCleanupViewUtil.CENTER_END, 0, 1);
 				value = value * value * (3 - 2 * value);
 				if (chosen == null || event.id.equals(selected) || !chosen.id.equals(selected) && value > chosenCoverage) {
 					chosen = event;
@@ -121,7 +183,17 @@ public class HordeEventAtmosphere {
 			}
 		}
 
-		float target = chosen == null ? 0 : 1;
+		UUID pending = null;
+		if (chosen == null && HordeVisualConfig.ENABLED.get() && player.isAlive() && !player.isSpectator()) {
+			for (var entry : started.entrySet()) {
+				if (now - entry.getValue() < MidnightCleanup.OPENING_TICKS
+						&& events.stream().noneMatch(event -> event.id.equals(entry.getKey()) && event.ready)) {
+					pending = entry.getKey();
+					break;
+				}
+			}
+		}
+		float target = chosen == null && pending == null ? 0 : 1;
 		strength = (float) (target > strength ? Math.min(target, strength + elapsed / ENTER_TICKS)
 				: Math.max(target, strength - elapsed / LEAVE_TICKS));
 		if (chosen != null) {
@@ -129,6 +201,9 @@ public class HordeEventAtmosphere {
 			selected = chosen.id;
 			var entry = chosen.tide.world(0, 0).subtract(player.position()).multiply(1, 0, 1);
 			direction = entry.lengthSqr() > 1 ? entry.normalize() : chosen.tide.forward(0).scale(-1);
+		} else if (pending != null) {
+			selected = pending;
+			coverage = MidnightCleanupViewUtil.phase((float) (now - started.get(pending)), 0, MidnightCleanupViewUtil.CENTER_END);
 		} else if (strength == 0) {
 			selected = null;
 			coverage = 0;
@@ -149,11 +224,15 @@ public class HordeEventAtmosphere {
 		world = null;
 		sampledAt = Double.NaN;
 		selected = null;
+		started.clear();
 		strength = coverage = 0;
 	}
 
 	public static void clear() {
-		resetPresence();
+		if (world != Minecraft.getInstance().level || HordeClient.events().isEmpty()) {
+			resetPresence();
+		}
+		SCREEN.onFrameEnd();
 		if (effect != null) {
 			FullscreenGraphRuntime.invalidate(effect);
 		}
@@ -184,15 +263,15 @@ public class HordeEventAtmosphere {
 					float shade = smoothstep(0.30, 0.98, radius) * 0.58;
 					// 管面轻微弯曲，屏外像素归黑，不把边缘拉伸成固定色条。
 					vec2 tube = uv * 2.0 - 1.0;
-					vec2 curved = tube * (1.0 + 0.025 * dot(tube, tube)) * 0.5 + 0.5;
+					vec2 curved = tube * (1.0 + 0.004 * dot(tube, tube)) * 0.5 + 0.5;
 					float visible = step(0.0, curved.x) * step(curved.x, 1.0)
 					        * step(0.0, curved.y) * step(curved.y, 1.0);
 					float cycle = floor(time * 0.34);
 					float band = 1.0 - smoothstep(0.006, 0.024, abs(uv.y - fract(cycle * 0.381 + 0.19)));
-					float tear = step(0.95, fract(time * 0.34)) * band * 0.0045;
+					float tear = step(0.95, fract(time * 0.34)) * band * 0.0020;
 					float rolling = 1.0 - smoothstep(0.025, 0.075, abs(uv.y - fract(time * 0.18)));
-					float wave = sin(uv.y * 38.0 + time * 2.1) * 0.00038
-					        + rolling * sin(time * 17.0) * 0.0009;
+					float wave = sin(uv.y * 38.0 + time * 2.1) * 0.00012
+					        + rolling * sin(time * 17.0) * 0.00025;
 					vec2 sampleUv = clamp(curved + vec2(wave + tear, 0.0), vec2(0.0), vec2(1.0));
 					vec4 scene = texture(source, sampleUv);
 					vec2 chroma = vec2((1.05 + 0.35 * sin(time * 1.7)) / size.x, 0.0);

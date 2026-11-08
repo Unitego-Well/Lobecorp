@@ -11,8 +11,6 @@ import org.unitego.lobecorp.world.horde.HordeEvent;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,24 +53,17 @@ public class HordeSync {
 			}
 			var events = data.events().values().stream().filter(event -> interested(player, event, subscriptions.containsKey(event.id())))
 					.sorted(Comparator.comparingDouble(event -> distance(player, event))).toList();
-			if (!events.isEmpty()) {
-				var ordered = new ArrayList<>(events);
-				Collections.rotate(ordered, -(int) (data.clock() % ordered.size()));
-				events = ordered;
-			}
 			for (var event : events) {
 				if (remaining <= 0) {
 					break;
 				}
 				var subscription = subscriptions.computeIfAbsent(event.id(), _ -> new Subscription());
-				int center = event.route().segment(event.station(player.position()));
 				if (subscription.reset || data.clock() - subscription.lastHeader >= 20) {
 					subscription.first = 0;
 					subscription.last = event.route().size() - 1;
 				}
 				int first = subscription.first;
 				int last = subscription.last;
-				center = Math.clamp(center, first, last);
 				var requested = REQUESTS.get(player);
 				if (requested != null && requested.getOrDefault(event.id(), Long.MIN_VALUE) > subscription.requestSeen) {
 					subscription.requestSeen = requested.get(event.id());
@@ -82,6 +73,10 @@ public class HordeSync {
 				}
 				if (subscription.reset || data.clock() - subscription.lastHeader >= 20 || subscription.wasRunning != event.running()) {
 					var header = event.header();
+					header.putInt("format", 2);
+					if (subscription.reset) {
+						header.put("overview", event.route().overview(8));
+					}
 					header.putBoolean("reset", subscription.reset);
 					header.putInt("scope_first", first);
 					header.putInt("scope_last", last);
@@ -94,6 +89,14 @@ public class HordeSync {
                         header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
                         header.putDouble("entity_height", profile.dimensions().height());
 					}
+					// 低预算先减少粗略锚点，范围和端点仍在首包中。
+					if (subscription.reset) {
+						int intervals = 8;
+						while (header.sizeInBytes() + ENVELOPE_BUDGET > remaining && intervals > 1) {
+							intervals /= 2;
+							header.put("overview", event.route().overview(intervals));
+						}
+					}
 					if (header.sizeInBytes() + ENVELOPE_BUDGET > remaining) {
 						continue;
 					}
@@ -103,7 +106,24 @@ public class HordeSync {
 					subscription.reset = false;
 					subscription.wasRunning = event.running();
 				}
-				if (subscription.scanRevision != event.revision()) {
+			}
+			// 所有范围首包优先于细节，避免近处路线耗尽预算后远处事件仍不可见。
+			for (var event : events) {
+				if (remaining <= 0) {
+					break;
+				}
+
+				var subscription = subscriptions.get(event.id());
+				if (subscription == null || subscription.reset) {
+					continue;
+				}
+
+				int first = subscription.first, last = subscription.last;
+				int center = event.route().segment(event.route().nearest(player.position(), 0, event.route().length()));
+				int previousMaximum = 2 * Math.max(subscription.center - first, last - subscription.center);
+				if (subscription.scanRevision == Long.MIN_VALUE
+						|| Math.abs(center - subscription.center) >= HordeEventConfig.MAX_SEGMENTS_PER_PACKET.get()
+						|| subscription.scanOffset > previousMaximum && subscription.scanRevision != event.revision()) {
 					subscription.scanRevision = event.revision();
 					subscription.scanOffset = 0;
 					subscription.center = center;
@@ -141,7 +161,7 @@ public class HordeSync {
 	}
 
 	private static double distance(ServerPlayer player, HordeEvent event) {
-		double station = event.station(player.position());
+		double station = event.route().nearest(player.position(), 0, event.route().length());
 		return event.route().point(station, 0)
 				.distanceTo(player.position());
 	}

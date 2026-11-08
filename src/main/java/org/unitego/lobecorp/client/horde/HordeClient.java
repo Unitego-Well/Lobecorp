@@ -121,6 +121,7 @@ public class HordeClient {
 	}
 
 	public static void tick() {
+		EVENTS.values().forEach(ClientEvent::refine);
 		synchronizeHud();
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null || EVENTS.isEmpty() || !HordeVisualConfig.ENABLED.get()) {
@@ -400,6 +401,15 @@ public class HordeClient {
 		public int heightColumns;
 		public double groundWidth;
 		public final java.util.BitSet changedHeights = new java.util.BitSet();
+		public final java.util.BitSet changedRoute = new java.util.BitSet();
+		public boolean lookupChanged;
+		private final Map<Integer, Refinement> refinements = new TreeMap<>();
+		private boolean distancesExact;
+		/// 粗略数据在五个游戏刻内靠近精确样本，暂停时冻结。
+		private static final int REFINEMENT_TICKS = 5;
+
+		private record Refinement(HordeRoute.Node from, HordeRoute.Node to, long began) {
+		}
 		public List<Block> blocks = List.of();
 		public final Map<String, RegionBox> regions = new TreeMap<>();
 		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
@@ -440,7 +450,7 @@ public class HordeClient {
 
 		private void header(CompoundTag tag) {
 			var level = Minecraft.getInstance().level;
-			if (level == null || tag.getIntOr("format", 0) != 1) {
+			if (level == null || tag.getIntOr("format", 0) != 2) {
 				throw new IllegalArgumentException("不支持的群体事件同步版本");
 			}
 			if (!tag.getStringOr("dimension", "").equals(level.dimension().identifier().toString())) {
@@ -480,39 +490,138 @@ public class HordeClient {
 			visual = nextVisual;
 			HordeGpuRenderer.requestResources(nextVisual);
 			columns = Math.max(1, (int) Math.floor(rules.width() / columnSpacing()));
+			if (!ready) {
+				prepareOverview(tag.getCompoundOrEmpty("overview"));
+			}
+		}
+
+		private void prepareOverview(CompoundTag overview) {
+			int count = overview.getIntOr("height_columns", 0);
+			if (count < 2 || count > 1025) {
+				throw new IllegalArgumentException("粗略路线高度列数无效");
+			}
+
+			nodes = new HordeRoute.Node[nodeCount];
+			HordeRoute.Node previous = null;
+			int previousIndex = -1;
+			for (var element : overview.getListOrEmpty("anchors")) {
+				if (!(element instanceof CompoundTag anchor)) {
+					continue;
+				}
+
+				int index = anchor.getIntOr("index", -1);
+				if (index <= previousIndex || index >= nodeCount || previous == null && index != 0) {
+					throw new IllegalArgumentException("粗略路线锚点索引无效");
+				}
+
+				var node = HordeRoute.Node.load(anchor);
+				if (previous == null) {
+					nodes[0] = HordeRoute.Node.blend(node, node, 1, count, node.distance());
+				} else {
+					for (int fill = previousIndex + 1; fill <= index; fill++) {
+						double ratio = (fill - previousIndex) / (double) (index - previousIndex);
+						nodes[fill] = HordeRoute.Node.blend(previous, node, ratio, count,
+								previous.distance() * (1 - ratio) + node.distance() * ratio);
+					}
+				}
+				previousIndex = index;
+				previous = node;
+			}
+			if (previousIndex != nodeCount - 1) {
+				throw new IllegalArgumentException("粗略路线缺少终点");
+			}
+
+			prepareRoute();
+			var min = overview.read("min", Vec3.CODEC).orElse(nodes[0].at());
+			var max = overview.read("max", Vec3.CODEC).orElse(nodes[nodeCount - 1].at());
+			double padding = rules.width() / 2 + rules.regionMargin() + HordeSamplingUtil.MAX_VISUAL_OFFSET + MODEL_PADDING;
+			routeBounds = routeBounds.minmax(new AABB(min, max).inflate(padding));
+			ready = true;
 		}
 
 		private void route(CompoundTag page) {
+			var level = Minecraft.getInstance().level;
+			if (!ready || level == null) {
+				return;
+			}
+
 			int index = page.getIntOr("first", 0);
 			for (var element : page.getListOrEmpty("nodes")) {
 				if (element instanceof CompoundTag node && index >= 0 && index < nodeCount) {
 					var replacement = HordeRoute.Node.load(node);
-					if (ready) {
-						if (replacement.revision() > nodes[index].revision()) {
-							var previous = nodes[index];
-							if (replacement.heightCount() != heightColumns || replacement.sampleWidth() != groundWidth
-									|| replacement.distance() != previous.distance()
-									|| replacement.at().x != previous.at().x || replacement.at().z != previous.at().z) {
-								throw new IllegalArgumentException("线路结构变化需要完整快照");
-							}
-							nodes[index] = replacement;
-							updateHeights(index);
-						}
-					} else {
+					var previous = received.get(index);
+					if (replacement.heightCount() != heightColumns || replacement.sampleWidth() != groundWidth) {
+						throw new IllegalArgumentException("线路采样结构变化需要完整快照");
+					}
+					if (previous == null || replacement.revision() > previous.revision()) {
 						received.put(index, replacement);
+						refinements.put(index, new Refinement(nodes[index], replacement, level.getGameTime()));
 					}
 					index++;
 				}
 			}
-			if (!ready && received.size() == nodeCount) {
-				prepareRoute();
-				received.clear();
-				ready = true;
+		}
+
+		private void refine() {
+			var level = Minecraft.getInstance().level;
+			if (!ready || level == null || refinements.isEmpty()) {
+				return;
+			}
+
+			var changed = new java.util.BitSet();
+			refinements.entrySet().removeIf(entry -> {
+				int index = entry.getKey();
+				var refinement = entry.getValue();
+				double ratio = Math.clamp((level.getGameTime() - refinement.began()) / (double) REFINEMENT_TICKS, 0, 1);
+				ratio = ratio * ratio * (3 - 2 * ratio);
+				nodes[index] = HordeRoute.Node.blend(refinement.from(), refinement.to(), ratio, heightColumns,
+						refinement.from().distance());
+				changed.set(index);
+				return ratio >= 1;
+			});
+			if (!distancesExact && refinements.isEmpty() && received.size() == nodeCount) {
+				for (int index = 0; index < nodeCount; index++) {
+					nodes[index] = received.get(index);
+				}
+				distancesExact = true;
+				changed.set(0, nodeCount);
+				refreshLookup();
+				lookupChanged = true;
+			}
+
+			for (int index = changed.nextSetBit(0); index >= 0; index = changed.nextSetBit(index + 1)) {
+				for (int neighbor = Math.max(0, index - 1); neighbor <= Math.min(nodeCount - 1, index + 1); neighbor++) {
+					updateRouteNode(neighbor);
+				}
+				updateHeights(index);
+			}
+		}
+
+		private void updateRouteNode(int index) {
+			var point = nodes[index].at().subtract(origin);
+			var direction = nodes[Math.min(nodeCount - 1, index + 1)].at()
+					.subtract(nodes[Math.max(0, index - 1)].at()).multiply(1, 0, 1).normalize();
+			int at = index * 16;
+			routeData[at] = (float) point.x;
+			routeData[at + 1] = (float) point.y;
+			routeData[at + 2] = (float) point.z;
+			routeData[at + 3] = (float) nodes[index].distance();
+			routeData[at + 4] = (float) direction.x;
+			routeData[at + 5] = (float) direction.z;
+			changedRoute.set(index);
+		}
+
+		private void refreshLookup() {
+			int segment = 0;
+			for (int index = 0; index <= (int) Math.ceil(length); index++) {
+				while (segment + 2 < nodeCount && nodes[segment + 1].distance() <= index) {
+					segment++;
+				}
+				routeData[nodeCount * 16 + index] = segment;
 			}
 		}
 
 		private void prepareRoute() {
-			nodes = received.values().toArray(HordeRoute.Node[]::new);
 			origin = nodes[0].at();
 			heightColumns = nodes[0].heightCount();
 			groundWidth = nodes[0].sampleWidth();

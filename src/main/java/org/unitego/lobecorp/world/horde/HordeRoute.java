@@ -351,6 +351,38 @@ public class HordeRoute {
 		return tag;
 	}
 
+	/// 首包发送至多九个稀疏锚点与完整范围，细节仍走原有分页。
+	public CompoundTag overview(int intervals) {
+		var tag = new CompoundTag();
+		var anchors = new ListTag();
+		int stride = Math.max(1, Math.ceilDiv(nodes.size() - 1, intervals));
+		for (int index = 0; ; index = Math.min(nodes.size() - 1, index + stride)) {
+			var node = nodes.get(index);
+			var coarse = Node.blend(node, node, 1, 3, node.distance()).save();
+			coarse.putInt("index", index);
+			anchors.add(coarse);
+			if (index == nodes.size() - 1) {
+				break;
+			}
+		}
+
+		tag.put("anchors", anchors);
+		tag.putInt("height_columns", heightColumns);
+		double minX = Double.POSITIVE_INFINITY, minY = minX, minZ = minX;
+		double maxX = Double.NEGATIVE_INFINITY, maxY = maxX, maxZ = maxX;
+		for (var node : nodes) {
+			minX = Math.min(minX, node.position.x);
+			minY = Math.min(minY, node.position.y);
+			minZ = Math.min(minZ, node.position.z);
+			maxX = Math.max(maxX, node.position.x);
+			maxY = Math.max(maxY, node.position.y);
+			maxZ = Math.max(maxZ, node.position.z);
+		}
+		tag.store("min", Vec3.CODEC, new Vec3(minX, minY, minZ));
+		tag.store("max", Vec3.CODEC, new Vec3(maxX, maxY, maxZ));
+		return tag;
+	}
+
 	public CompoundTag slice(int first, int count) {
 		var tag = new CompoundTag();
 		tag.putInt("first", first);
@@ -408,6 +440,19 @@ public class HordeRoute {
 			this.position = position;
 			this.distance = distance;
 			this.heights = new double[]{position.y, position.y, position.y, position.y, position.y};
+		}
+
+		/// 客户端粗略高度及五刻细化共用插值；距离单独传入以保持查找表单调。
+		public static Node blend(Node from, Node to, double ratio, int columns, double distance) {
+			var node = new Node(from.position.lerp(to.position, ratio), distance);
+			node.width = to.width;
+			node.revision = to.revision;
+			node.heights = new double[columns];
+			for (int column = 0; column < columns; column++) {
+				double lateral = (column / (double) (columns - 1) - 0.5) * node.width;
+				node.heights[column] = from.height(lateral) * (1 - ratio) + to.height(lateral) * ratio;
+			}
+			return node;
 		}
 
 		public double distance() {

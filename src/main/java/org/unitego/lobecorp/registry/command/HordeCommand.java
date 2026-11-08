@@ -26,12 +26,12 @@ import java.util.UUID;
 
 public class HordeCommand {
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("事件")
+		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("event")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-				.then(Commands.literal("模板触发").then(Commands.literal("深夜清扫")
+				.then(Commands.literal("template").then(Commands.literal("midnight_cleanup")
 						.executes(context -> template(context, false))
-						.then(Commands.argument("位置", Vec3Argument.vec3())
-								.then(Commands.argument("方向", AngleArgument.angle())
+						.then(Commands.argument("center", Vec3Argument.vec3(false))
+								.then(Commands.argument("yaw", AngleArgument.angle())
 										.executes(context -> template(context, true))))))));
 		var start = Commands.literal("start")
 				.then(Commands.argument("profile", IdentifierArgument.id())
@@ -68,11 +68,12 @@ public class HordeCommand {
 	private static int template(CommandContext<CommandSourceStack> context, boolean explicit)
 			throws com.mojang.brigadier.exceptions.CommandSyntaxException {
 		var source = context.getSource();
-		var from = explicit ? Vec3Argument.getVec3(context, "位置") : source.getPosition();
-		float yaw = explicit ? AngleArgument.getAngle(context, "方向") : source.getRotation().y;
+		var center = explicit ? Vec3Argument.getVec3(context, "center") : source.getPosition();
+		float yaw = explicit ? AngleArgument.getAngle(context, "yaw") : source.getRotation().y;
 		double angle = Math.toRadians(yaw);
-		var to = from.add(-Math.sin(angle) * MidnightCleanup.TEMPLATE_LENGTH, 0,
-				Math.cos(angle) * MidnightCleanup.TEMPLATE_LENGTH);
+		var offset = new Vec3(-Math.sin(angle), 0, Math.cos(angle)).scale(MidnightCleanup.TEMPLATE_LENGTH / 2);
+		var from = center.subtract(offset);
+		var to = center.add(offset);
 		var profile = HordeEvents.profile(MidnightCleanup.ID);
 		if (profile == null) {
 			return 0;

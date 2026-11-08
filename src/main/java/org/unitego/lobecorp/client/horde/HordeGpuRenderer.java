@@ -1360,6 +1360,18 @@ public class HordeGpuRenderer {
 		}
 
 		private void updateHeights(HordeClient.ClientEvent event) {
+			for (int first = event.changedRoute.nextSetBit(0); first >= 0; ) {
+				int last = event.changedRoute.nextClearBit(first);
+				route.update(first * 16, event.routeData, first * 16, (last - first) * 16);
+				first = event.changedRoute.nextSetBit(last);
+			}
+			event.changedRoute.clear();
+			if (event.lookupChanged) {
+				int first = event.nodes.length * 16;
+				route.update(first, event.routeData, first, event.routeData.length - first);
+				event.lookupChanged = false;
+			}
+
 			for (int node = event.changedHeights.nextSetBit(0); node >= 0; node = event.changedHeights.nextSetBit(node + 1)) {
 				heights.update(node * event.heightColumns, event.heightData, node * event.heightColumns, event.heightColumns);
 			}

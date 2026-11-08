@@ -3,6 +3,7 @@ package org.unitego.lobecorp.events.client;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
@@ -42,6 +43,15 @@ public class ClientRenderingEvents {
 	@SubscribeEvent
 	public static void onHand(RenderHandEvent event) {
 		ConductorRendering.onHand(event);
+	}
+
+	/// 完整开幕在总GUI入口接管，取消后NeoForge不会再分发普通图层或Post。
+	@SubscribeEvent(priority = EventPriority.HIGHEST)
+	public static void onGuiPre(RenderGuiEvent.Pre event) {
+		if (MidnightCleanupCinematic.hidesHud()) {
+			MidnightCleanupCinematic.render(event.getGuiGraphics());
+			event.setCanceled(true);
+		}
 	}
 
 	@SubscribeEvent

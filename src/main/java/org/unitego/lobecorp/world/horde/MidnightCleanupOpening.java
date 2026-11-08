@@ -47,6 +47,8 @@ public class MidnightCleanupOpening {
 				continue;
 			}
 
+			Lobecorp.LOGGER.debug("深夜清扫入场判定：event={}, player={}, etaTicks={}, bannerOnly={}",
+					event.id(), player.getUUID(), arrival, arrival <= 0);
 			if (arrival <= 0) {
 				send(player, event.id(), true, true);
 				continue;

@@ -17,7 +17,6 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
@@ -214,10 +213,6 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onGuiLayer(RenderGuiLayerEvent.Pre event) {
-		if (MidnightCleanupCinematic.hidesHud()) {
-			event.setCanceled(true);
-			return;
-		}
 		ConductorControls.onGuiLayer(event);
 	}
 

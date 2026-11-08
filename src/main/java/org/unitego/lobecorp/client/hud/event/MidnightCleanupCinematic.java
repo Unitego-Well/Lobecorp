@@ -6,6 +6,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.Lobecorp;
+
+import java.util.ArrayDeque;
+import java.util.UUID;
 
 /// 独立于普通HUD可见性的开闭幕表现；不写入用户选项或玩家输入。
 public class MidnightCleanupCinematic {
@@ -17,27 +21,73 @@ public class MidnightCleanupCinematic {
 	private static int duration;
 	private static boolean opening;
 	private static boolean bannerOnly;
+	private static UUID eventId;
+	private static final ArrayDeque<Presentation> pending = new ArrayDeque<>();
 
-	public static void receive(CompoundTag body) {
+	private record Presentation(UUID event, boolean opening, boolean bannerOnly) {
+	}
+
+	public static void receive(UUID event, CompoundTag body) {
 		var level = Minecraft.getInstance().level;
 		if (level == null) {
 			return;
 		}
+		if (world != level) {
+			clear();
+		}
 
-		world = level;
-		began = level.getGameTime();
-		opening = body.getBooleanOr("opening", true);
-		bannerOnly = body.getBooleanOr("banner_only", false);
+		var incoming = new Presentation(event, body.getBooleanOr("opening", true),
+				body.getBooleanOr("banner_only", false));
+		Lobecorp.LOGGER.debug("深夜清扫表现接收：event={}, opening={}, bannerOnly={}",
+				event, incoming.opening(), incoming.bannerOnly());
+		if (active() && opening && !bannerOnly && (!incoming.opening() || incoming.bannerOnly())) {
+			if (!event.equals(eventId)) {
+				// 其它事件的弱横幅不能覆盖正在锁速的完整开幕。
+				pending.removeIf(queued -> queued.event().equals(event));
+				pending.addLast(incoming);
+				return;
+			}
+			if (incoming.opening()) {
+				return;
+			}
+		}
+
+		pending.removeIf(queued -> queued.event().equals(event));
+		begin(incoming);
+	}
+
+	private static void begin(Presentation presentation) {
+		world = Minecraft.getInstance().level;
+		if (world == null) {
+			return;
+		}
+
+		began = world.getGameTime();
+		eventId = presentation.event();
+		opening = presentation.opening();
+		bannerOnly = presentation.bannerOnly();
 		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
 	}
 
 	public static boolean hidesHud() {
-		return opening && !bannerOnly && active();
+		return active() && opening && !bannerOnly;
 	}
 
 	private static boolean active() {
 		var level = Minecraft.getInstance().level;
-		return duration > 0 && world == level && level != null && level.getGameTime() - began < duration;
+		if (level == null || world != level) {
+			clear();
+			return false;
+		}
+		if (duration > 0 && level.getGameTime() - began < duration) {
+			return true;
+		}
+		if (!pending.isEmpty()) {
+			begin(pending.removeFirst());
+			return true;
+		}
+
+		return false;
 	}
 
 	public static void render(GuiGraphicsExtractor graphics) {
@@ -136,5 +186,7 @@ public class MidnightCleanupCinematic {
 		duration = 0;
 		opening = false;
 		bannerOnly = false;
+		eventId = null;
+		pending.clear();
 	}
 }

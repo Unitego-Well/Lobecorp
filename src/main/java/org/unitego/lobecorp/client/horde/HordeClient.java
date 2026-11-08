@@ -62,7 +62,7 @@ public class HordeClient {
 		try {
 			String kind = packet.getStringOr("kind", "");
 			if (kind.equals("presentation")) {
-				MidnightCleanupCinematic.receive(packet.getCompoundOrEmpty("body"));
+				MidnightCleanupCinematic.receive(id, packet.getCompoundOrEmpty("body"));
 				return;
 			}
 			if (kind.equals("remove")) {

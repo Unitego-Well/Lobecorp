@@ -14,12 +14,17 @@ import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 /// 服务端开幕状态，仅拥有本次临时属性，不改变基础速度或已有修饰符。
 public class MidnightCleanupOpening {
 	private static final Identifier SPEED_ID = Lobecorp.id("midnight_cleanup/opening_speed");
 	private final Map<ServerPlayer, Lock> locks = new HashMap<>();
+	/// 每位玩家在同一事件中只触发一次，离开范围或重连不重置。
+	private final Map<UUID, Set<UUID>> played = new HashMap<>();
+	private static final int ARRIVAL_WARNING_TICKS = 20 * 20;
 
 	public void start(MinecraftServer server, HordeEvent event) {
 		if (!MidnightCleanup.ID.equals(event.profile())) {
@@ -27,7 +32,23 @@ public class MidnightCleanupOpening {
 		}
 
 		for (var player : server.getPlayerList().getPlayers()) {
-			if (!inside(player, event) || player.isSpectator()) {
+			if (!inside(player, event) || player.isSpectator() || !player.isAlive()) {
+				continue;
+			}
+
+			double station = event.route().nearest(player.position(), 0, event.route().length());
+			double arrival = station / event.movementSpeed() - event.tick();
+			if (event.finished() || arrival > ARRIVAL_WARNING_TICKS) {
+				continue;
+			}
+
+			var seen = played.computeIfAbsent(event.id(), _ -> new HashSet<>());
+			if (!seen.add(player.getUUID())) {
+				continue;
+			}
+
+			if (arrival <= 0) {
+				send(player, event.id(), true, true);
 				continue;
 			}
 
@@ -37,9 +58,9 @@ public class MidnightCleanupOpening {
 				speed.addTransientModifier(new AttributeModifier(SPEED_ID, -1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
 			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanup.OPENING_TICKS));
-			var toward = event.route().direction(0).scale(-1);
+			var toward = event.route().direction(station).scale(-1);
 			player.lookAt(EntityAnchorArgument.Anchor.EYES, player.getEyePosition().add(toward.scale(16)));
-			send(player, event.id(), true);
+			send(player, event.id(), true, false);
 		}
 	}
 
@@ -57,6 +78,10 @@ public class MidnightCleanupOpening {
 
 			return false;
 		});
+		played.keySet().removeIf(id -> !data.events().containsKey(id));
+		for (var event : data.events().values()) {
+			start(server, event);
+		}
 	}
 
 	public void finish(MinecraftServer server, HordeEvent event) {
@@ -64,6 +89,7 @@ public class MidnightCleanupOpening {
 			return;
 		}
 
+		played.remove(event.id());
 		locks.entrySet().removeIf(entry -> {
 			if (entry.getValue().event().equals(event.id())) {
 				release(entry.getKey());
@@ -74,7 +100,7 @@ public class MidnightCleanupOpening {
 		});
 		for (var player : server.getPlayerList().getPlayers()) {
 			if (inside(player, event) && !player.isSpectator()) {
-				send(player, event.id(), false);
+				send(player, event.id(), false, false);
 			}
 		}
 	}
@@ -105,12 +131,13 @@ public class MidnightCleanupOpening {
 		}
 	}
 
-	private static void send(ServerPlayer player, UUID event, boolean opening) {
+	private static void send(ServerPlayer player, UUID event, boolean opening, boolean bannerOnly) {
 		var tag = new CompoundTag();
 		tag.putString("id", event.toString());
 		tag.putString("kind", "presentation");
 		var body = new CompoundTag();
 		body.putBoolean("opening", opening);
+		body.putBoolean("banner_only", bannerOnly);
 		tag.put("body", body);
 		PacketDistributor.sendToPlayer(player, new HordeStatePayload(tag));
 	}
@@ -118,6 +145,7 @@ public class MidnightCleanupOpening {
 	public void clear() {
 		locks.keySet().forEach(MidnightCleanupOpening::release);
 		locks.clear();
+		played.clear();
 	}
 
 	private record Lock(UUID event, int until) {

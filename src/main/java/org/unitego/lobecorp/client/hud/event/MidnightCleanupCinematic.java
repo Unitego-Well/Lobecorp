@@ -16,6 +16,7 @@ public class MidnightCleanupCinematic {
 	private static long began;
 	private static int duration;
 	private static boolean opening;
+	private static boolean bannerOnly;
 
 	public static void receive(CompoundTag body) {
 		var level = Minecraft.getInstance().level;
@@ -26,11 +27,12 @@ public class MidnightCleanupCinematic {
 		world = level;
 		began = level.getGameTime();
 		opening = body.getBooleanOr("opening", true);
-		duration = opening ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
+		bannerOnly = body.getBooleanOr("banner_only", false);
+		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
 	}
 
 	public static boolean hidesHud() {
-		return opening && active();
+		return opening && !bannerOnly && active();
 	}
 
 	private static boolean active() {
@@ -51,11 +53,11 @@ public class MidnightCleanupCinematic {
 		float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		float age = minecraft.level.getGameTime() - began + partial;
 		float width = graphics.guiWidth(), height = graphics.guiHeight();
-		float enterTicks = opening ? 20 : 10;
+		float enterTicks = bannerOnly ? 0 : opening ? 20 : 10;
 		float exitAt = duration - 10;
-		float enter = smooth(Math.clamp(age / enterTicks, 0, 1));
+		float enter = enterTicks == 0 ? 1 : smooth(Math.clamp(age / enterTicks, 0, 1));
 		float leave = smooth(Math.clamp((age - exitAt) / 10, 0, 1));
-		if (opening) {
+		if (opening && !bannerOnly) {
 			float bars = height * 0.12F * (enter - leave);
 			graphics.lobecorp$fill(0, 0, width, bars, 0xFF000000);
 			graphics.lobecorp$fill(0, height - bars, width, height, 0xFF000000);
@@ -65,10 +67,12 @@ public class MidnightCleanupCinematic {
 		float left = width * 0.025F, right = width - left;
 		float top = (height - bannerHeight) / 2;
 		float slide = (1 - enter + leave) * width;
-		warning(graphics, left - slide, top, right - left, false);
-		warning(graphics, left + slide, top + bannerHeight - 5, right - left, true);
+		if (!bannerOnly) {
+			warning(graphics, left - slide, top, right - left, false);
+			warning(graphics, left + slide, top + bannerHeight - 5, right - left, true);
+		}
 		// 中央内容严格等待警告条到位；退出时先淡出，再撤走警告条。
-		float fadeTicks = opening ? 10 : 5;
+		float fadeTicks = opening && !bannerOnly ? 10 : 5;
 		float alpha = Math.min(Math.clamp((age - enterTicks) / fadeTicks, 0, 1),
 				Math.clamp((exitAt - age) / fadeTicks, 0, 1));
 		if (alpha <= 0) {
@@ -131,5 +135,6 @@ public class MidnightCleanupCinematic {
 		world = null;
 		duration = 0;
 		opening = false;
+		bannerOnly = false;
 	}
 }

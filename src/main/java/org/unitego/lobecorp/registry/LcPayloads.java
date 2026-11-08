@@ -22,7 +22,7 @@ import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "25";
+	private static final String NETWORK_VERSION = "26";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);

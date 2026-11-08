@@ -1,5 +1,13 @@
 # BenchMod 基准工具链
 
+## 2026-11-08 开幕右摆诊断准备（未运行）
+
+新增独立场景lobecorp.horde-camera-diagnostic，按显式modBench.scenarios选择，复用HordeRenderScenario工作负载/Spark/逐帧与GPU阶段采集，不修改原horde-render场景。世界和玩家就绪、screen/overlay消失连续10秒后才调用原夹具setup；30秒捕获内计划两次真实客户端presentation回放，并标注左/右/回修/回中/望远/读字/消散阶段，额外保存按render_frame_id关联的tick相机样本。它不验证服务端入场触发/移动锁，tick快照和渲染时钟请求不能冒充逐帧精确游戏阶段。
+
+两份隔离环境计划分别为普通和ComplementaryReimagined_r5.9.3，复制当前run/client的Options和相关配置/选定shader到新gameDir，不写原环境；通过一次性IDE启动覆盖参数、cwd和已验证的_JAVA_OPTIONS覆盖运行属性，原始端口19878。需要后续核对实际profile、Sodium、窗口、Spark输出和采集归属后才能判有效，不因准备完成而标PASSED。
+
+诊断类和注册入口已编译通过25秒，IDEA错误检查无ERROR。启动前发现一份非本项目Zulu21游戏进程，未操控/结束；用户明确要求今天停在准备完成。没有启动诊断客户端、Spark或JFR，没有实测结果、GPU独占保证或卡顿原因。临时verify断点已撤除，用户原断点保留。恢复时先重新核对GPU/端口/HEAD与编译指纹，使用新批次/attempt，不覆盖本次准备目录和任何旧结果。
+
 接入日期：2026-10-22，原始 dev。上游：[zhongbai2333/BenchMod](https://github.com/zhongbai2333/BenchMod)，固定 JitPack 0.1.5-beta，MIT 许可。采用其 Minecraft 26.1.2／26.1 适配线；本项目保留 NeoForge 26.1.2.100、ModDev 2.0.142、Java 25 与现有 Gradle wrapper，不为安装降级。上游基线为 NeoForge 26.1.2.76，具体本地兼容性以本次实际编译和运行结果为准。
 
 当前测试规则以[后台输入与测试边界](../standards/workflow.md#后台输入与测试边界)为准：2026-11-01 用户强调不抢实体鼠标，不强制前置或恢复焦点；仅在开发窗口生命周期初始化一次非激活铺满，后续只读记录焦点和原生窗口状态。具体实现及平台边界见[后台控制](minecraft-mcp-background-control.md#2026-11-01-开发测试窗口与鼠标边界)。Spark覆盖完整测试，输出落盘后关闭客户端，Sodium保持加载，每轮归档截图。以下旧日期的焦点恢复、最大化硬门禁、数据与配置是历史记录，不恢复为当前规则。

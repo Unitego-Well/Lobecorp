@@ -11,6 +11,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.Sweeper30RenderScenario;
 import org.unitego.lobecorp.client.bench.HordeRenderScenario;
+import org.unitego.lobecorp.client.bench.HordeCameraDiagnosticScenario;
 import org.unitego.lobecorp.client.bench.HordeTideAcceptanceScenario;
 import org.unitego.lobecorp.client.bench.CorpseRenderScenario;
 import org.unitego.lobecorp.client.bench.RandomCorpseRenderScenario;
@@ -62,6 +63,12 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 	@Override
 	public void registerClient(BenchClientRegistrar registrar) {
 		var selectedProperty = System.getProperty("modBench.scenarios", "");
+		if (HordeCameraDiagnosticScenario.ID.equals(selectedProperty)) {
+			registrar.register(new ScenarioDescriptor(HordeCameraDiagnosticScenario.ID, "开幕右摆帧耗时诊断",
+					Set.of("client", "horde", "camera", "diagnostic"), Duration.ofMinutes(6)),
+					_ -> new HordeCameraDiagnosticScenario());
+			return;
+		}
 		var run = PhotonRunMatrixCapture.Variant.selected();
 		if (run != null) {
 			registrar.register(new ScenarioDescriptor(run.id(), "轻量 Run 矩阵",

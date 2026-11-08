@@ -120,9 +120,8 @@ public class HordeMeshReduction {
 			}
 		}
 		var full = select(source, indices.toIntArray(), 0);
-		// 近区未获高精度名额的单位复用上下两盒模型；远区继续使用方向片。
-		return new HordeMeshCache.Model[]{full, null,
-				proxy(source, full, cubes, bones, rigidGroups, visible, 2),
+		// 未获高精度名额的单位统一复用原有方向片，不建立中间简化模型。
+		return new HordeMeshCache.Model[]{full, null, null,
 				proxy(source, full, cubes, bones, rigidGroups, visible, 3)};
 	}
 

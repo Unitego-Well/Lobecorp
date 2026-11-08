@@ -116,10 +116,10 @@ public class HordeGpuRenderer {
 	private static long preparations;
 	private static final long PREPARATION_BUDGET_NS = 3_000_000L;
 	private static final Set<GeometryKey> PENDING_VISUALS = new LinkedHashSet<>();
-	// 0=MOTION，1=Iris顶点烘焙，2=地形，3=Iris动画，4/5=原生模型，6/7=片，8=避让，9～13=LOD选择。
-	private static final int PIPELINE_COUNT = 14;
-	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 1, 8, 0, 9, 10, 11, 12, 13, 4, 5, 6, 7};
-	private static final int[] IRIS_PIPELINE_ORDER = {1, 3, 2, 8, 0, 9, 10, 11, 12, 13, 4, 5, 6, 7};
+	// 0=MOTION，1=Iris顶点烘焙，2=地形，3=Iris动画，4/5=原生模型，6/7=片，8=避让，9～14=LOD与深度筛选。
+	private static final int PIPELINE_COUNT = 15;
+	private static final int[] NATIVE_PIPELINE_ORDER = {2, 3, 1, 8, 0, 9, 10, 11, 12, 13, 14, 4, 5, 6, 7};
+	private static final int[] IRIS_PIPELINE_ORDER = {1, 3, 2, 8, 0, 9, 10, 11, 12, 13, 14, 4, 5, 6, 7};
 	private static final boolean[] COMPILED_PIPELINES = new boolean[PIPELINE_COUNT];
 	private static final int[] PIPELINE_FAILURES = new int[PIPELINE_COUNT];
 	private static final long[] PIPELINE_RETRY_AT = new long[PIPELINE_COUNT];
@@ -177,7 +177,7 @@ public class HordeGpuRenderer {
 
 	public static void requestResources(HordeVisualDefinition visual) {
 		HordeMeshCache.request(visual);
-		int[] tiers = {0, 2, 3};
+		int[] tiers = {0, 3};
 		for (int tier : tiers) {
 			var key = meshKey(visual, tier);
 			if (!GEOMETRY.containsKey(key) || irisPath() && !IRIS_ANIMATIONS.containsKey(key)) {
@@ -227,7 +227,7 @@ public class HordeGpuRenderer {
 					case 6 -> device.precompilePipeline(CARD_NORMAL).isValid();
 					case 7 -> device.precompilePipeline(CARD_REVERSE).isValid();
 					case 8 -> HordeAvoidanceState.precompile();
-					case 9, 10, 11, 12, 13 -> HordeLodSelection.precompile(index - 9);
+					case 9, 10, 11, 12, 13, 14 -> HordeLodSelection.precompile(index - 9);
 					default -> throw new IllegalStateException("群体管线预热步骤无效");
 				};
 				if (!valid) {
@@ -374,7 +374,7 @@ public class HordeGpuRenderer {
 		long motionStarted = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.MOTION);
 		try {
 			prepareFrameMotion(prepared);
-			detailed = selectFrameLod(prepared);
+			detailed = selectFrameLod(prepared, modelView, depthTarget, reverse);
 		} finally {
 			HordeRenderMetrics.end(HordeRenderMetrics.Stage.MOTION, motionStarted);
 		}
@@ -387,13 +387,6 @@ public class HordeGpuRenderer {
 			}
 			var group = prepared.subList(first, last);
 			drawGroup(group, modelView, reverse, colorTarget, depthTarget);
-			var cards = new ArrayList<Prepared>();
-			for (var item : group) {
-				var geometry = GEOMETRY.get(meshKey(item.batch().event().visual, 3));
-				cards.add(new Prepared(item.batch(), geometry, item.event(), item.offset(), item.count(),
-						verticesPerInstance(geometry), item.motionOffset(), -2));
-			}
-			drawGroup(cards, modelView, reverse, colorTarget, depthTarget);
 			groupCount++;
 			first = last;
 		}
@@ -435,9 +428,11 @@ public class HordeGpuRenderer {
 		}
 	}
 
-	private static List<Prepared> selectFrameLod(List<Prepared> prepared) {
+	private static List<Prepared> selectFrameLod(List<Prepared> prepared, Matrix4fc modelView,
+	                                             GpuTextureView depth, boolean reverse) {
 		var detailed = new ArrayList<Prepared>();
 		var materials = new LinkedHashMap<GeometryKey, Integer>();
+		float visibilityRadius = 0;
 		int[] ranges = new int[prepared.size() * 3];
 		for (int i = 0; i < prepared.size(); i++) {
 			var item = prepared.get(i);
@@ -449,6 +444,7 @@ public class HordeGpuRenderer {
 			ranges[i * 3 + 2] = material;
 			if (firstMaterial) {
 				var geometry = GEOMETRY.get(key);
+				visibilityRadius = Math.max(visibilityRadius, geometry.visibilityRadius());
 				int vertices = verticesPerInstance(geometry);
 				int limit = irisPath() ? IRIS.instanceLimit(vertices) : HordeLodSelection.CAPACITY;
 				for (int slot = 0; slot < HordeLodSelection.CAPACITY; ) {
@@ -459,7 +455,8 @@ public class HordeGpuRenderer {
 				}
 			}
 		}
-		LOD.select(motionView, prepared.stream().mapToInt(Prepared::count).sum(), materials.size(), ranges);
+		LOD.select(motionView, prepared.stream().mapToInt(Prepared::count).sum(), materials.size(), ranges,
+				modelView, visibilityRadius, depth, reverse);
 		return detailed;
 	}
 
@@ -619,7 +616,7 @@ public class HordeGpuRenderer {
 			if (event.failed) {
 				continue;
 			}
-			int tier = 2;
+			int tier = 3;
 			var key = meshKey(event.visual, tier);
 			try {
 				if (HordeMeshCache.ready(event.visual, tier) == null) {
@@ -645,8 +642,8 @@ public class HordeGpuRenderer {
 				requestResources(event.visual);
 				continue;
 			}
-			HordeRenderMetrics.add(HordeRenderMetrics.Counter.LOD_FAR_BLOCKS, 1);
-			HordeRenderMetrics.add(HordeRenderMetrics.Counter.LOD_FAR_INSTANCES, batch.count());
+			HordeRenderMetrics.add(HordeRenderMetrics.Counter.LOD_CARD_BLOCKS, 1);
+			HordeRenderMetrics.add(HordeRenderMetrics.Counter.LOD_CARD_INSTANCES, batch.count());
 			var data = EVENTS.computeIfAbsent(event.id, _ -> new EventData(event));
 			data.updateHeights(event);
 			if (splitUpdates == null) {
@@ -754,8 +751,13 @@ public class HordeGpuRenderer {
 		HordeDataTexture uvs = null;
 		var uvData = new float[model.vertexCount() * 4];
 		float radius = 0;
+		float visibilityRadius = 0;
 		for (int at = 0; at < model.frameVertices().length; at += 6) {
 			radius = Math.max(radius, (float) Math.hypot(model.frameVertices()[at], model.frameVertices()[at + 2]));
+			visibilityRadius = Math.max(visibilityRadius, (float) Math.sqrt(
+					model.frameVertices()[at] * model.frameVertices()[at]
+							+ model.frameVertices()[at + 1] * model.frameVertices()[at + 1]
+							+ model.frameVertices()[at + 2] * model.frameVertices()[at + 2]));
 		}
 		try {
 			for (int i = 0; i < vertices.length; i += HordeMeshCache.VERTEX_STRIDE) {
@@ -821,7 +823,7 @@ public class HordeGpuRenderer {
 				}
 			}
 			preparations++;
-			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius, cardAtlas, cardGlowAtlas);
+			return new Geometry(buffer, vertices.length / HordeMeshCache.VERTEX_STRIDE / 4 * 6, animation, uvs, model, base, glow, hasGlow, radius, visibilityRadius, cardAtlas, cardGlowAtlas);
 		} catch (RuntimeException exception) {
 			if (buffer != null) {
 				buffer.close();
@@ -1046,6 +1048,7 @@ public class HordeGpuRenderer {
 	private record Geometry(GpuBuffer vertices, int indices, HordeDataTexture animation, HordeDataTexture uvs,
 	                        HordeMeshCache.Model model,
 	                        AbstractTexture base, AbstractTexture glow, boolean hasGlow, float radius,
+	                        float visibilityRadius,
 	                        @Nullable DynamicTexture cardAtlas, @Nullable DynamicTexture cardGlowAtlas) {
 	}
 

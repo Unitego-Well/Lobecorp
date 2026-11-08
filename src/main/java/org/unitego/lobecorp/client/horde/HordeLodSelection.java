@@ -12,10 +12,12 @@ import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import org.lwjgl.system.MemoryUtil;
+import org.joml.Matrix4fc;
 import org.unitego.lobecorp.Lobecorp;
 
 import java.util.OptionalInt;
 import java.util.Arrays;
+import java.util.Objects;
 import java.nio.ByteBuffer;
 
 /// 最终运动位置上的全局距离排序与材质紧凑索引；不回读 CPU。
@@ -25,7 +27,8 @@ public class HordeLodSelection implements AutoCloseable {
 	public static final int MAX_DISTANCE = 128;
 	public static final int DISTANCE_STEP = 16;
 	private static final int PARAMETER_BYTES = 48;
-	private static final RenderPipeline CANDIDATES = pipeline("horde_lod_candidates", "HordeMotion");
+	private static final int VISIBILITY_BYTES = 96;
+	private static final RenderPipeline CANDIDATES = pipeline("horde_lod_candidates", "HordeMotion", "HordeDepthEven", "HordeDepthOdd");
 	private static final RenderPipeline SORT = pipeline("horde_lod_sort", "HordeLodSource");
 	private static final RenderPipeline MERGE = pipeline("horde_lod_merge", "HordeLodSource");
 	private static final RenderPipeline CLASSIFY = pipeline("horde_lod_classify", "HordeMotion", "HordeLodSource");
@@ -35,13 +38,20 @@ public class HordeLodSelection implements AutoCloseable {
 	private final Target[] sorting = {new Target(), new Target()};
 	private final Target selected = new Target();
 	private final Target compact = new Target();
+	private final HordeDepthPyramid depthPyramid = new HordeDepthPyramid();
 	private GpuBuffer parameters;
 	private ByteBuffer parameterUpload;
+	private GpuBuffer visibilityParameters;
+	private ByteBuffer visibilityUpload;
 	private HordeDataTexture materialRanges;
 	private int[] previousRanges;
 	private int activeCandidates;
 
 	public static boolean precompile(int step) {
+		if (step == 5) {
+			return HordeDepthPyramid.precompile();
+		}
+
 		var pipeline = switch (step) {
 			case 0 -> CANDIDATES;
 			case 1 -> SORT;
@@ -64,10 +74,15 @@ public class HordeLodSelection implements AutoCloseable {
 		for (var sampler : samplers) {
 			builder.withSampler(sampler);
 		}
+		if (shader.equals("horde_lod_candidates")) {
+			builder.withUniform("HordeVisibility", UniformType.UNIFORM_BUFFER);
+			builder.withUniform("Projection", UniformType.UNIFORM_BUFFER);
+		}
 		return builder.build();
 	}
 
-	public void select(GpuTextureView motion, int count, int materials, int[] ranges) {
+	public void select(GpuTextureView motion, int count, int materials, int[] ranges,
+	                   Matrix4fc modelView, float radius, GpuTextureView depth, boolean reverse) {
 		int capacity = Math.max(CAPACITY, Integer.highestOneBit(Math.max(1, count - 1)) * 2);
 		int width = Math.min(1024, RenderSystem.getDevice().getMaxTextureSize());
 		int height = Math.ceilDiv(Math.multiplyExact(capacity, 2), width);
@@ -79,7 +94,19 @@ public class HordeLodSelection implements AutoCloseable {
 			parameters = RenderSystem.getDevice().createBuffer(() -> "Horde LOD parameters",
 					GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, PARAMETER_BYTES);
 			parameterUpload = MemoryUtil.memCalloc(PARAMETER_BYTES);
+			visibilityParameters = RenderSystem.getDevice().createBuffer(() -> "Horde visibility parameters",
+					GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, VISIBILITY_BYTES);
+			visibilityUpload = MemoryUtil.memAlloc(VISIBILITY_BYTES);
 		}
+		depthPyramid.prepare(depth, reverse);
+		visibilityUpload.clear();
+		modelView.get(visibilityUpload);
+		visibilityUpload.position(64);
+		visibilityUpload.putFloat(radius).putFloat(reverse ? 1 : 0)
+				.putFloat(RenderSystem.getDevice().isZZeroToOne() ? 1 : 0).putFloat(depthPyramid.levels());
+		visibilityUpload.putFloat(depth.getWidth(0)).putFloat(depth.getHeight(0)).putFloat(0).putFloat(0).flip();
+		RenderSystem.getDevice().createCommandEncoder().writeToBuffer(visibilityParameters.slice(), visibilityUpload);
+		HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, VISIBILITY_BYTES);
 		write(width, capacity, 0, count, 8);
 		render(CANDIDATES, sorting[0], motion, null);
 		int current = 0;
@@ -137,6 +164,12 @@ public class HordeLodSelection implements AutoCloseable {
 			} else {
 				pass.bindTexture("HordeLodSource", first, nearest);
 			}
+			if (pipeline == CANDIDATES) {
+				pass.setUniform("HordeVisibility", visibilityParameters.slice());
+				pass.setUniform("Projection", Objects.requireNonNull(RenderSystem.getProjectionMatrixBuffer()));
+				pass.bindTexture("HordeDepthEven", depthPyramid.view(0), nearest);
+				pass.bindTexture("HordeDepthOdd", depthPyramid.view(1), nearest);
+			}
 			if (pipeline == CLASSIFY) {
 				pass.bindTexture("HordeLodSource", second, nearest);
 			} else if (pipeline == COMPACT) {
@@ -176,6 +209,15 @@ public class HordeLodSelection implements AutoCloseable {
 			materialRanges = null;
 		}
 		previousRanges = null;
+		depthPyramid.close();
+		if (visibilityParameters != null) {
+			visibilityParameters.close();
+			visibilityParameters = null;
+		}
+		if (visibilityUpload != null) {
+			MemoryUtil.memFree(visibilityUpload);
+			visibilityUpload = null;
+		}
 	}
 
 	private static class Target implements AutoCloseable {

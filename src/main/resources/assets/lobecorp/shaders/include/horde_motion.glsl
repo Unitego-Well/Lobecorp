@@ -69,11 +69,6 @@ int hordeLodInstance(int instance) {
         if (integer(HordeLodSelected, index) != 0) {
             return -1;
         }
-        vec3 relative = vector3(HordeMotion, index * HORDE_MOTION_VALUES);
-        bool far = dot(relative, relative) >= 16384.0;
-        if (far != (FrameLod.z > 0.5)) {
-            return -1;
-        }
     }
     return index;
 }

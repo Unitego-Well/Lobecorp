@@ -23,7 +23,7 @@ void main() {
             }
         }
         int allowance = max(0, 128 - int(floor(length(point) / 16.0)) * 16);
-        selected = low < allowance ? 1u : 0u;
+        selected = low < allowance && rawWord(HordeLodSource, low * 2 + 1) == uint(ordinal) ? 1u : 0u;
     }
     fragColor = vec4(float(selected) / 255.0, 0.0, 0.0, 0.0);
 }

@@ -6,6 +6,7 @@
 
 | 问题 | 当前证据与状态 | 下一步 |
 |---|---|---|
+| 完整模型未显示的深度缓存修复待复核 | 用户反馈39号包全为片；已有日志含GL1286帧缓冲不完整，源码确认非正方形完整mip链短边会为0，已改正方形保证末级1×1。主/Bench编译及IDEA检查通过，未打包；39号包仍为旧实现。 | 用户明确要求打包或运行后，再验证近处可见完整模型、普通/Iris及不同窗口比例；未实机复验不标关闭。 |
 | Photon 时间轴与 Horde 管线修复待运行复核 | 2026-11-08 已适配 Photon `.11` 的 `evaluate(DZ)V` 回调与包装，并为 Horde 自有管线添加局部 Iris bypass；源码检查不等于实际 Mixin 应用或驱动验证。 | 获得运行授权后复核时间轴加载/结束状态及 Horde 管线日志，契约见[依赖适配](systems/photon-dependency-upgrade.md)与[渲染实现](systems/horde-rendering-implementation.md)。 |
 | 当前光影包的硫磺洞穴变量未解析 | 用户日志显示 ComplementaryReimagined_r5.9.3.zip 的 `inSulfurCaves` 表达式引用未定义的 `BIOME_SULFUR_CAVES`，由 Iris 自定义 uniform 解析报告；本轮不修改第三方光影包。 | 后续核对光影包与 Iris 的版本兼容及该变量定义，不用 Lobecorp 常量或屏蔽日志代替第三方修复。 |
 | Photon尘雾、波浪天空与相机精度待实机验收 | 2026-11-08 已实现Photon体积雾替代烟粒、波浪轮廓和128起每16格减16。后续按用户更正取消中间简化模型，其余全用已有方向片；高精度优先视锥内且未被保守深度判定完全遮挡的实例。主/Bench编译、静态与39号包通过；此前Data/测试源码编译通过，未执行游戏或驱动验证。 | 按[当前契约](systems/midnight-atmosphere.md)复核连续尘雾、脚底及普通/Iris精度切换，部分露出/遮挡、窗口变化和反向深度；核对天空及Complementary目标包深度/曝光/云层，不以静态检查代替。 |

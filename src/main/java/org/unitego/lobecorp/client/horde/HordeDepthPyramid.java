@@ -43,9 +43,9 @@ public class HordeDepthPyramid implements AutoCloseable {
 	}
 
 	public void prepare(GpuTextureView sceneDepth, boolean reverse) {
-		int nextWidth = nextPowerOfTwo(Math.ceilDiv(sceneDepth.getWidth(0), 2));
-		int nextHeight = nextPowerOfTwo(Math.ceilDiv(sceneDepth.getHeight(0), 2));
-		ensure(nextWidth, nextHeight);
+		// 当前OpenGL后端逐级直接右移宽高；正方形保证完整mip链的末级仍为1×1。
+		int side = nextPowerOfTwo(Math.ceilDiv(Math.max(sceneDepth.getWidth(0), sceneDepth.getHeight(0)), 2));
+		ensure(side, side);
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		for (int level = 0; level < levels; level++) {

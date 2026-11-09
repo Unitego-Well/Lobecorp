@@ -11,6 +11,10 @@ import org.unitego.lobecorp.world.horde.MidnightCleanupOpening;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.client.conductor.ConductorControls;
 import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
@@ -19,9 +23,8 @@ import java.util.UUID;
 
 /// 独立于普通HUD可见性的开闭幕表现；不写入用户选项。
 public class MidnightCleanupCinematic {
-	/// 完整开幕保持200刻；补播和闭幕仍为50刻且不接管镜头。
+	/// 完整开幕十四秒；补播和闭幕仍为50刻且不接管镜头。
 	private static final int CLOSING_TICKS = 50;
-	private static final int INDIGO = 0x7770BD;
 	private static final CinematicText CHAPTER = new CinematicText("horde.lobecorp.banner.title", 0x8E85CF);
 	private static final CinematicText NAME = new CinematicText("horde.lobecorp.banner.name", 0xD4C8FF);
 	private static final CinematicText START = new CinematicText("horde.lobecorp.banner.start", 0xAEA2C5);
@@ -105,11 +108,11 @@ public class MidnightCleanupCinematic {
 		if (!released) {
 			var player = Minecraft.getInstance().player;
 			if (player != null) {
-				player.setYRot(targetYaw);
-				player.setXRot(targetPitch);
-				player.setYHeadRot(targetYaw);
-				player.yRotO = targetYaw;
-				player.xRotO = targetPitch;
+				player.setYRot(startYaw);
+				player.setXRot(startPitch);
+				player.setYHeadRot(startYaw);
+				player.yRotO = startYaw;
+				player.xRotO = startPitch;
 			}
 			released = true;
 		}
@@ -144,7 +147,31 @@ public class MidnightCleanupCinematic {
 		var angles = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
 		event.setYaw(angles.yaw());
 		event.setPitch(angles.pitch());
+		event.setRoll(event.getRoll() + MidnightCleanupViewUtil.roll(age));
 		return true;
+	}
+
+	/// 只偏移本帧相机，不移动玩家；遇到实心方块时缩短偏移。
+	public static Vec3 cameraPosition(Vec3 normal, float partial) {
+		var minecraft = Minecraft.getInstance();
+		if (!controlsView() || ConductorControls.active() || minecraft.player == null) {
+			return normal;
+		}
+		float age = world.getGameTime() - began + (minecraft.isPaused() ? 0 : partial);
+		double yaw = Math.toRadians(targetYaw);
+		float side = MidnightCleanupViewUtil.side(age);
+		float forward = MidnightCleanupViewUtil.forward(age);
+		var desired = normal.add(Math.cos(yaw) * side - Math.sin(yaw) * forward,
+				MidnightCleanupViewUtil.height(age), Math.sin(yaw) * side + Math.cos(yaw) * forward);
+		var hit = world.clip(new ClipContext(normal, desired, ClipContext.Block.VISUAL,
+				ClipContext.Fluid.NONE, minecraft.player));
+		if (hit.getType() == HitResult.Type.MISS) {
+			return desired;
+		}
+		var offset = desired.subtract(normal);
+		double length = offset.length();
+		return length < 0.001 ? normal : normal.add(offset.scale(Math.max(0,
+				(normal.distanceTo(hit.getLocation()) - 0.15) / length)));
 	}
 
 	/// 变焦只作用于世界配置视野，不改用户选项或把GUI文字一并放大。
@@ -158,7 +185,7 @@ public class MidnightCleanupCinematic {
 		float age = world.getGameTime() - began + partial;
 		float factor = MidnightCleanupViewUtil.magnification(age);
 		float normal = event.getFOV();
-		if (factor <= 1 || !Float.isFinite(normal) || normal <= 0 || normal >= 179) {
+		if (!Float.isFinite(normal) || normal <= 0 || normal >= 179) {
 			return;
 		}
 
@@ -192,6 +219,11 @@ public class MidnightCleanupCinematic {
 			clear();
 			return false;
 		}
+		var player = Minecraft.getInstance().player;
+		if (player == null || !player.isAlive() || player.isSpectator()) {
+			clear();
+			return false;
+		}
 		if (duration > 0 && level.getGameTime() - began < duration) {
 			return true;
 		}
@@ -211,31 +243,66 @@ public class MidnightCleanupCinematic {
 		var minecraft = Minecraft.getInstance();
 		float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		float age = world.getGameTime() - began + partial;
-		boolean full = opening && !bannerOnly;
-		float enterAt = full ? MidnightCleanupViewUtil.CENTER_END : 0;
-		float readyAt = full ? MidnightCleanupViewUtil.TEXT_READY : 5;
-		float alpha = MidnightCleanupViewUtil.phase(age, enterAt, readyAt);
-		float dissolve = full ? Math.clamp((age - MidnightCleanupViewUtil.DISSOLVE_START)
-				/ (duration - (float) MidnightCleanupViewUtil.DISSOLVE_START), 0, 1) : 0;
-		if (!full) {
-			alpha *= 1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration);
-		}
 		float width = graphics.guiWidth(), height = graphics.guiHeight();
-
-		if (alpha <= 0) {
+		boolean full = opening && !bannerOnly;
+		if (!full) {
+			float alpha = MidnightCleanupViewUtil.phase(age, 0, 5)
+					* (1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration));
+			float center = width / 2, titleY = height * 0.67F;
+			float gap = Math.min(24, height * 0.10F);
+			CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, 0);
+			NAME.extract(graphics, center, titleY, 2.6F, width * 0.72F, alpha, 0);
+			(opening ? START : END).extract(graphics, center, titleY + gap, 0.85F, width * 0.84F, alpha, 0);
+			if (alpha > 0.01F) {
+				graphics.lobecorp$fill(center - 8, titleY + gap * 0.60F, center + 8, titleY + gap * 0.60F + 1,
+						Math.round(alpha * 255) << 24 | 0x7770BD);
+			}
 			return;
 		}
 
-		float center = width / 2, titleY = height * 0.67F;
-		float gap = Math.min(24, height * 0.10F);
-		CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, dissolve);
-		NAME.extract(graphics, center, titleY, 2.6F, width * 0.72F, alpha, dissolve);
-		(opening ? START : END).extract(graphics, center, titleY + gap, 0.85F, width * 0.84F, alpha, dissolve);
-		float accent = alpha * (1 - dissolve);
-		if (accent > 0.01F) {
-			graphics.lobecorp$fill(center - 8, titleY + gap * 0.60F, center + 8, titleY + gap * 0.60F + 1,
-					Math.round(accent * 255) << 24 | INDIGO);
+		float ambience = envelope(age, 0, 124, 212, MidnightCleanupViewUtil.CENTER_END);
+		fill(graphics, width, height, ambience * 0.10F, 0x301020);
+		float edge = height * 0.18F;
+		if (ambience > 0) {
+			int shade = Math.round(ambience * 60) << 24;
+			graphics.lobecorp$fillGradient(0, 0, width, edge, shade, 0);
+			graphics.lobecorp$fillGradient(0, height - edge, width, height, 0, shade);
 		}
+		float blackout = MidnightCleanupViewUtil.blackout(age);
+		fill(graphics, width, height, blackout, 0);
+		float chapter = envelope(age, 10, 22, 88, 112);
+		float name = envelope(age, 128, 140, MidnightCleanupViewUtil.DISSOLVE_START, 236);
+		float subtitle = envelope(age, 172, MidnightCleanupViewUtil.TEXT_READY, 208, 228);
+		float rise = MidnightCleanupViewUtil.phase(age, 208, 240);
+		drawText(graphics, width, height, height * 0.44F - rise * 3,
+				chapter, name, subtitle, rise);
+		float bar = height * MidnightCleanupViewUtil.letterbox(age);
+		if (bar > 0) {
+			graphics.lobecorp$fill(0, 0, width, bar, 0xFF000000);
+			graphics.lobecorp$fill(0, height - bar, width, height, 0xFF000000);
+		}
+	}
+
+	private static float envelope(float age, float enter, float ready, float exit, float gone) {
+		return MidnightCleanupViewUtil.phase(age, enter, ready)
+				* (1 - MidnightCleanupViewUtil.phase(age, exit, gone));
+	}
+
+	private static void fill(GuiGraphicsExtractor graphics, float width, float height, float opacity, int color) {
+		if (opacity > 0) {
+			graphics.lobecorp$fill(0, 0, width, height, Math.round(opacity * 255) << 24 | color);
+		}
+	}
+
+	private static void drawText(GuiGraphicsExtractor graphics, float width, float height, float titleY,
+	                             float chapter, float name, float subtitle, float rise) {
+		float center = width / 2;
+		float gap = Math.min(28, height * 0.10F);
+		float scale = Math.clamp(height / 220F, 0.75F, 1.3F);
+		CHAPTER.extract(graphics, center, titleY - gap, scale, width * 0.72F, chapter, 0);
+		NAME.extract(graphics, center, titleY, scale * 3, width * 0.72F, name, 0);
+		(opening ? START : END).extract(graphics, center, titleY + gap - rise,
+				scale * 0.9F, width * 0.84F, subtitle, 0);
 	}
 
 	public static void clear() {

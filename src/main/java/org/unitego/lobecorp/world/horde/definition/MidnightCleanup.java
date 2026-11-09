@@ -27,10 +27,10 @@ public class MidnightCleanup implements IHordeEventProfile {
 	public static final Identifier ID = Lobecorp.id("midnight_cleanup");
 	public static final String FACTION = "horde_indigo";
 	/// 模板覆盖完整线路，总时长包含最后一段浪潮通过的时间。
-	public static final int TEMPLATE_TICKS = 3 * 60 * 20, OPENING_TICKS = 10 * 20;
-	/// 倒计时显示保留到达前十秒；入场单独提前一秒，不拉长动画。
+	public static final int TEMPLATE_TICKS = 3 * 60 * 20, OPENING_TICKS = 14 * 20;
+	/// 倒计时仍提前十秒；完整入场提前十五秒，恢复完成后浪潮抵达。
 	public static final int ARRIVAL_WARNING_TICKS = 10 * 20;
-	public static final int OPENING_WARNING_TICKS = 11 * 20;
+	public static final int OPENING_WARNING_TICKS = 15 * 20;
 	public static final double TEMPLATE_WIDTH = 500, TEMPLATE_LENGTH = 1000;
 
 	@Override

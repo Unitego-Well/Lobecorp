@@ -56,6 +56,7 @@
 		"conductor.client.ConductorClientLevelMixin",
 		"conductor.client.ConductorEntityRendererMixin",
 		"conductor.client.CameraMixin",
+		"horde.client.OpeningCameraMixin",
 		"input.client.ClientInputAccessor",
 		"conductor.client.ConductorKeyboardMixin",
 		"geckolib.AnimationControllerMaskMixin",

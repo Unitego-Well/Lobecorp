@@ -74,9 +74,9 @@ public class MidnightCleanupOpening {
 					|| server.getPlayerList().getPlayer(player.getUUID()) != player || event == null
 					|| !player.level().dimension().equals(event.dimension())) {
 				if (server.getTickCount() >= lock.until() && player.isAlive() && !player.isSpectator()) {
-					player.setYRot(lock.yaw());
-					player.setXRot(lock.pitch());
-					player.setYHeadRot(lock.yaw());
+					player.setYRot(lock.startYaw());
+					player.setXRot(lock.startPitch());
+					player.setYHeadRot(lock.startYaw());
 				}
 				release(player);
 				return true;

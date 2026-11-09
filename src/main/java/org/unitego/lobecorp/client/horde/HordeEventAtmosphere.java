@@ -171,10 +171,10 @@ public class HordeEventAtmosphere {
 						continue;
 					}
 					// 已到达的重连/迟到快照恢复既有氛围，不补播镜头。
-					began = now - MidnightCleanupViewUtil.CENTER_END;
+					began = now - MidnightCleanupViewUtil.ATMOSPHERE_END;
 					started.put(event.id, began);
 				}
-				double value = Math.clamp((now - began) / MidnightCleanupViewUtil.CENTER_END, 0, 1);
+				double value = Math.clamp((now - began) / MidnightCleanupViewUtil.ATMOSPHERE_END, 0, 1);
 				value = value * value * (3 - 2 * value);
 				if (chosen == null || event.id.equals(selected) || !chosen.id.equals(selected) && value > chosenCoverage) {
 					chosen = event;
@@ -203,7 +203,7 @@ public class HordeEventAtmosphere {
 			direction = entry.lengthSqr() > 1 ? entry.normalize() : chosen.tide.forward(0).scale(-1);
 		} else if (pending != null) {
 			selected = pending;
-			coverage = MidnightCleanupViewUtil.phase((float) (now - started.get(pending)), 0, MidnightCleanupViewUtil.CENTER_END);
+			coverage = MidnightCleanupViewUtil.phase((float) (now - started.get(pending)), 0, MidnightCleanupViewUtil.ATMOSPHERE_END);
 		} else if (strength == 0) {
 			selected = null;
 			coverage = 0;

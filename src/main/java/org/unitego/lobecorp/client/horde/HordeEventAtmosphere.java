@@ -22,8 +22,9 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector2f;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.client.visual.sky.DirectionalSkyCoverage;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
-import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
+import org.unitego.lobecorp.util.visual.TimelineUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,9 @@ import java.util.UUID;
 public class HordeEventAtmosphere {
 
 	private static final double ENTER_TICKS = 20, LEAVE_TICKS = 30;
+	/// 覆盖由24至512格的实际距离推进，横向内缘128格渐强，8刻响应消除位置更新跳变。
+	private static final DirectionalSkyCoverage SKY = new DirectionalSkyCoverage(
+			new DirectionalSkyCoverage.Profile(0.025F, 24, 512, 128, 8));
 	private static final Map<UUID, Double> started = new HashMap<>();
 	private static final PostEffectStack SCREEN = new PostEffectStack();
 	private static ClientLevel world;
@@ -78,10 +82,13 @@ public class HordeEventAtmosphere {
 		}
 		if (!started.containsKey(event)) {
 			started.put(event, (double) level.getGameTime());
-			selected = event;
-			coverage = 0;
-			double radians = Math.toRadians(yaw);
-			direction = new Vec3(-Math.sin(radians), 0, Math.cos(radians));
+			if (strength == 0) {
+				selected = event;
+				double radians = Math.toRadians(yaw);
+				direction = new Vec3(-Math.sin(radians), 0, Math.cos(radians));
+				SKY.reset(direction);
+				coverage = SKY.minimum(direction).coverage();
+			}
 		}
 	}
 
@@ -156,6 +163,7 @@ public class HordeEventAtmosphere {
 		sampledAt = now;
 		var events = HordeClient.events();
 		HordeClient.ClientEvent chosen = null;
+		DirectionalSkyCoverage.Sample chosenSky = null;
 		double chosenCoverage = -1;
 		if (HordeVisualConfig.ENABLED.get() && player.isAlive() && !player.isSpectator()) {
 			for (var event : events) {
@@ -171,14 +179,15 @@ public class HordeEventAtmosphere {
 						continue;
 					}
 					// 已到达的重连/迟到快照恢复既有氛围，不补播镜头。
-					began = now - MidnightCleanupViewUtil.ATMOSPHERE_END;
+					began = now;
 					started.put(event.id, began);
 				}
-				double value = Math.clamp((now - began) / MidnightCleanupViewUtil.ATMOSPHERE_END, 0, 1);
-				value = value * value * (3 - 2 * value);
+				var sample = sampleSky(event, player.position(), partial);
+				double value = sample.coverage();
 				if (chosen == null || event.id.equals(selected) || !chosen.id.equals(selected) && value > chosenCoverage) {
 					chosen = event;
 					chosenCoverage = value;
+					chosenSky = sample;
 				}
 			}
 		}
@@ -197,17 +206,33 @@ public class HordeEventAtmosphere {
 		strength = (float) (target > strength ? Math.min(target, strength + elapsed / ENTER_TICKS)
 				: Math.max(target, strength - elapsed / LEAVE_TICKS));
 		if (chosen != null) {
-			coverage = chosen.id.equals(selected) ? Math.max(coverage, (float) chosenCoverage) : (float) chosenCoverage;
 			selected = chosen.id;
-			var entry = chosen.tide.world(0, 0).subtract(player.position()).multiply(1, 0, 1);
-			direction = entry.lengthSqr() > 1 ? entry.normalize() : chosen.tide.forward(0).scale(-1);
+			var sample = SKY.update(chosenSky, elapsed);
+			direction = sample.direction();
+			coverage = sample.coverage();
 		} else if (pending != null) {
 			selected = pending;
-			coverage = MidnightCleanupViewUtil.phase((float) (now - started.get(pending)), 0, MidnightCleanupViewUtil.ATMOSPHERE_END);
+			var sample = SKY.update(SKY.minimum(direction), elapsed);
+			direction = sample.direction();
+			coverage = sample.coverage();
 		} else if (strength == 0) {
 			selected = null;
 			coverage = 0;
+			SKY.reset(direction);
 		}
+	}
+
+	private static DirectionalSkyCoverage.Sample sampleSky(HordeClient.ClientEvent event, Vec3 observer, float partial) {
+		double time = event.time(partial);
+		double head = Math.clamp(HordeTide.head(time, event.speed), 0, event.length);
+		double tail = Math.clamp(HordeTide.head(time - event.stop, event.speed), 0, head);
+		double station = Math.clamp(event.tide.particleStation(observer), tail, head);
+		var sample = SKY.sample(observer, event.tide.world(head, 0), event.tide.world(station, 0),
+				event.tide.forward(station), event.rules.width() / 2);
+		double arrival = event.tide.particleStation(observer) / event.speed - time;
+		float approach = TimelineUtil.phase((float) arrival, MidnightCleanup.OPENING_WARNING_TICKS, 0);
+		float limit = 0.025F + 0.975F * approach * approach;
+		return new DirectionalSkyCoverage.Sample(sample.direction(), Math.min(sample.coverage(), limit));
 	}
 
 	private static boolean inside(HordeClient.ClientEvent event, Vec3 point) {
@@ -226,6 +251,7 @@ public class HordeEventAtmosphere {
 		selected = null;
 		started.clear();
 		strength = coverage = 0;
+		SKY.reset(new Vec3(0, 0, 1));
 	}
 
 	public static void clear() {

@@ -4,6 +4,7 @@ import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -60,6 +61,10 @@ public class HordeRuntime {
 
 	public static HordeRuntime get(MinecraftServer server) {
 		return RUNTIMES.computeIfAbsent(server, HordeRuntime::new);
+	}
+
+	public void skipOpening(ServerPlayer player, UUID eventId) {
+		opening.skip(player, eventId);
 	}
 
 	public static void blockUpdated(ServerLevel level, BlockPos position) {

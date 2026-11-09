@@ -1,6 +1,8 @@
 package org.unitego.lobecorp.events.client;
 
 import net.minecraft.client.Minecraft;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -100,7 +102,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onSweeperCameraAngles(ViewportEvent.ComputeCameraAngles event) {
-		MidnightCleanupCinematic.camera(event);
+		CameraControl.angles(event);
 
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null) {
@@ -159,6 +161,8 @@ public class ClientRuntimeEvents {
 		LcPlayerAnimationRuntime.clear();
 		LcClientAnimations.clear();
 		ConductorControls.clearSession();
+		CameraControl.clear();
+		PlayerInteractionControl.clear();
 		QueenBeamEffects.clear();
 		PhotonRuntimeFactory.invalidateWorld();
 		PhotonFrameCapture.cancel();
@@ -172,6 +176,8 @@ public class ClientRuntimeEvents {
 		}
 		if (event.getLevel().isClientSide()) {
 			ConductorControls.clearSession();
+			CameraControl.clear();
+			PlayerInteractionControl.clear();
 		}
 
 		if (event.getLevel() instanceof ClientLevel level) {
@@ -233,7 +239,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onCinematicFov(ViewportEvent.ComputeFov event) {
-		MidnightCleanupCinematic.zoomFov(event);
+		CameraControl.fov(event);
 	}
 
 	@SubscribeEvent
@@ -243,7 +249,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onPlayerTurn(CalculatePlayerTurnEvent event) {
-		if (MidnightCleanupCinematic.controlsView()) {
+		if (PlayerInteractionControl.turnBlocked()) {
 			// 原版按(sensitivity*0.6F+0.2F)的三次方缩放输入，抵消常数后实际转向为零。
 			event.setMouseSensitivity(-0.2F / (double) 0.6F);
 			event.setCinematicCameraEnabled(false);

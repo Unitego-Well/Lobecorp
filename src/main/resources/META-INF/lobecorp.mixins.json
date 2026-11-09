@@ -58,6 +58,8 @@
 		"conductor.client.CameraMixin",
 		"horde.client.OpeningCameraMixin",
 		"input.client.ClientInputAccessor",
+		"input.client.PlayerInteractionMixin",
+		"input.client.PlayerMouseInteractionMixin",
 		"conductor.client.ConductorKeyboardMixin",
 		"geckolib.AnimationControllerMaskMixin",
 		"debug.client.DebugRendererMixin",

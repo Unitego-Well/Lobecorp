@@ -3,18 +3,16 @@ package org.unitego.lobecorp.client.conductor;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Camera;
 import net.minecraft.client.KeyMapping;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.player.ClientInput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
@@ -35,7 +33,6 @@ import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.mixin.input.client.ClientInputAccessor;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
 import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
@@ -426,6 +423,12 @@ public class ConductorControls {
 			exit(minecraft);
 			return;
 		}
+		if (PlayerInteractionControl.keyboardBlocked()) {
+			clearCameraKeys();
+			rightPressed = false;
+			rightDragging = false;
+			return;
+		}
 
 		if (minecraft.player.tickCount % ConductorRules.VIEW_SYNC_INTERVAL_TICKS == 0) {
 			syncView(minecraft, true);
@@ -483,6 +486,8 @@ public class ConductorControls {
 
 	private static void enter(Minecraft minecraft) {
 		active = true;
+		PlayerInteractionControl.acquire(ConductorControls.class, 100, () -> active,
+				PlayerInteractionControl.Policy.OBSERVER, () -> {});
 		clearCameraKeys();
 		KeyMapping.releaseAll();
 		ConductorHud.INSTANCE.resetLayout();
@@ -508,6 +513,7 @@ public class ConductorControls {
 	/// 卸载和注销只清理本地状态，不重新抓取鼠标或向已关闭连接发送消息。
 	private static void clearSessionState() {
 		active = false;
+		PlayerInteractionControl.release(ConductorControls.class);
 		cancelFollowing();
 		lastClickedUnit = null;
 		clearCameraKeys();
@@ -535,13 +541,7 @@ public class ConductorControls {
 	}
 
 	public static void onMovement(MovementInputUpdateEvent event) {
-		if (!active) {
-			return;
-		}
-
-		ClientInput input = event.getInput();
-		input.keyPresses = Input.EMPTY;
-		((ClientInputAccessor) input).lobecorp$setMoveVector(Vec2.ZERO);
+		PlayerInteractionControl.movement(event);
 	}
 
 	public static void onScroll(InputEvent.MouseScrollingEvent event) {

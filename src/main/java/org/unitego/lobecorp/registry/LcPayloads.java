@@ -19,10 +19,11 @@ import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
+import org.unitego.lobecorp.network.ts.horde.HordeOpeningSkipPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "31";
+	private static final String NETWORK_VERSION = "32";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
@@ -35,6 +36,7 @@ public class LcPayloads {
 		playToServer(registrar, ConductorCommandPayload.TYPE, ConductorCommandPayload.STREAM_CODEC);
 		playToServer(registrar, ConductorViewPayload.TYPE, ConductorViewPayload.STREAM_CODEC);
 		playToServer(registrar, HordeSnapshotRequestPayload.TYPE, HordeSnapshotRequestPayload.STREAM_CODEC);
+		playToServer(registrar, HordeOpeningSkipPayload.TYPE, HordeOpeningSkipPayload.STREAM_CODEC);
 	}
 
 	private static void client(PayloadRegistrar registrar) {

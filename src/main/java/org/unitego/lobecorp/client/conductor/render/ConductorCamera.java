@@ -12,6 +12,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.client.visual.camera.CameraControl.Frame;
+import org.unitego.lobecorp.client.conductor.ConductorControls;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
+import org.unitego.lobecorp.client.visual.camera.ICameraController;
 
 import java.util.UUID;
 
@@ -70,6 +74,14 @@ public class ConductorCamera {
 		displayedHeading = heading;
 		displayedZoom = zoom;
 		lastFrame = System.nanoTime();
+		CameraControl.register(ConductorCamera.class, 100,
+				() -> valid(Minecraft.getInstance()) && ConductorControls.active(), new ICameraController() {
+			@Override
+			public @Nullable Frame independent(float partial) {
+				var view = ConductorControls.cameraFrame(partial);
+				return view == null ? null : new Frame(view.position(), view.yaw(), view.pitch(), 0);
+			}
+		});
 	}
 
 	public static boolean valid(Minecraft minecraft) {
@@ -77,6 +89,7 @@ public class ConductorCamera {
 	}
 
 	public static void close() {
+		CameraControl.unregister(ConductorCamera.class);
 		owner = null;
 		world = null;
 		pivot = Vec3.ZERO;

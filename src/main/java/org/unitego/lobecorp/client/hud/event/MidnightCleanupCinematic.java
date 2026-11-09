@@ -1,6 +1,12 @@
 package org.unitego.lobecorp.client.hud.event;
 
 import net.minecraft.client.Minecraft;
+import org.unitego.lobecorp.client.visual.PresentationTimeline;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
+import org.unitego.lobecorp.client.visual.camera.ICameraController;
+import org.unitego.lobecorp.network.ts.horde.HordeOpeningSkipPayload;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.nbt.CompoundTag;
@@ -14,7 +20,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.client.conductor.ConductorControls;
 import org.unitego.lobecorp.util.horde.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
 
@@ -31,6 +36,7 @@ public class MidnightCleanupCinematic {
 	private static final CinematicText END = new CinematicText("horde.lobecorp.banner.end", 0xAEA2C5);
 	private static ClientLevel world;
 	private static long began;
+	private static final PresentationTimeline timeline = new PresentationTimeline();
 	private static int duration;
 	private static boolean opening;
 	private static boolean bannerOnly;
@@ -71,6 +77,7 @@ public class MidnightCleanupCinematic {
 	}
 
 	private static void begin(Presentation presentation) {
+		timeline.cancel();
 		world = Minecraft.getInstance().level;
 		if (world == null) {
 			return;
@@ -85,13 +92,60 @@ public class MidnightCleanupCinematic {
 			HordeEventAtmosphere.start(presentation.event(), presentation.yaw());
 		}
 		duration = opening && !bannerOnly ? MidnightCleanup.OPENING_TICKS : CLOSING_TICKS;
+		timeline.start(world.getGameTime(), duration, MidnightCleanupCinematic::releaseControl);
 		var player = Minecraft.getInstance().player;
 		if (opening && !bannerOnly && player != null) {
 			startYaw = player.getYRot();
 			startPitch = player.getXRot();
 			targetYaw = Float.isFinite(presentation.yaw()) ? presentation.yaw() : startYaw;
 			targetPitch = Float.isFinite(presentation.pitch()) ? presentation.pitch() : startPitch;
+			PlayerInteractionControl.acquire(MidnightCleanupCinematic.class, 200, MidnightCleanupCinematic::controlsView,
+					PlayerInteractionControl.Policy.CINEMATIC, MidnightCleanupCinematic::skip);
+			CameraControl.register(MidnightCleanupCinematic.class, 200, MidnightCleanupCinematic::controlsView, new ICameraController() {
+				@Override
+				public Vec3 position(Vec3 normal, float partial) {
+					return cameraPosition(normal, partial);
+				}
+
+				@Override
+				public void angles(ViewportEvent.ComputeCameraAngles event) {
+					camera(event);
+				}
+
+				@Override
+				public void fov(ViewportEvent.ComputeFov event) {
+					zoomFov(event);
+				}
+			});
 		}
+	}
+
+	public static void skip() {
+		if (!controlsView()) {
+			return;
+		}
+		ClientPacketDistributor.sendToServer(new HordeOpeningSkipPayload(eventId));
+		releaseControl();
+		bannerOnly = true;
+		duration = CLOSING_TICKS;
+		began = world.getGameTime();
+		timeline.start(began, duration, MidnightCleanupCinematic::releaseControl);
+	}
+
+	private static void releaseControl() {
+		if (!released && opening && !bannerOnly && world == Minecraft.getInstance().level) {
+			var player = Minecraft.getInstance().player;
+			if (player != null) {
+				player.setYRot(startYaw);
+				player.setXRot(startPitch);
+				player.setYHeadRot(startYaw);
+				player.yRotO = startYaw;
+				player.xRotO = startPitch;
+			}
+		}
+		released = true;
+		PlayerInteractionControl.release(MidnightCleanupCinematic.class);
+		CameraControl.unregister(MidnightCleanupCinematic.class);
 	}
 
 	public static boolean hidesHud() {
@@ -102,20 +156,10 @@ public class MidnightCleanupCinematic {
 		if (!active() || !opening || bannerOnly) {
 			return false;
 		}
-		if (world.getGameTime() - began < MidnightCleanupViewUtil.CENTER_END) {
+		if (timeline.time(world.getGameTime()) < MidnightCleanupViewUtil.CENTER_END) {
 			return true;
 		}
-		if (!released) {
-			var player = Minecraft.getInstance().player;
-			if (player != null) {
-				player.setYRot(startYaw);
-				player.setXRot(startPitch);
-				player.setYHeadRot(startYaw);
-				player.yRotO = startYaw;
-				player.xRotO = startPitch;
-			}
-			released = true;
-		}
+		releaseControl();
 		return false;
 	}
 
@@ -125,7 +169,7 @@ public class MidnightCleanupCinematic {
 			return;
 		}
 
-		float age = world.getGameTime() - began;
+		float age = timeline.time(world.getGameTime());
 		var current = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
 		var previous = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age - 1);
 		player.setYRot(current.yaw());
@@ -143,7 +187,7 @@ public class MidnightCleanupCinematic {
 
 		var minecraft = Minecraft.getInstance();
 		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
-		float age = world.getGameTime() - began + partial;
+		float age = timeline.time(world.getGameTime() + partial);
 		var angles = MidnightCleanupViewUtil.sample(startYaw, startPitch, targetYaw, targetPitch, age);
 		event.setYaw(angles.yaw());
 		event.setPitch(angles.pitch());
@@ -154,10 +198,10 @@ public class MidnightCleanupCinematic {
 	/// 只偏移本帧相机，不移动玩家；遇到实心方块时缩短偏移。
 	public static Vec3 cameraPosition(Vec3 normal, float partial) {
 		var minecraft = Minecraft.getInstance();
-		if (!controlsView() || ConductorControls.active() || minecraft.player == null) {
+		if (!controlsView() || minecraft.player == null) {
 			return normal;
 		}
-		float age = world.getGameTime() - began + (minecraft.isPaused() ? 0 : partial);
+		float age = timeline.time(world.getGameTime() + (minecraft.isPaused() ? 0 : partial));
 		double yaw = Math.toRadians(targetYaw);
 		float side = MidnightCleanupViewUtil.side(age);
 		float forward = MidnightCleanupViewUtil.forward(age);
@@ -182,7 +226,7 @@ public class MidnightCleanupCinematic {
 
 		var minecraft = Minecraft.getInstance();
 		float partial = minecraft.isPaused() ? 0 : (float) event.getPartialTick();
-		float age = world.getGameTime() - began + partial;
+		float age = timeline.time(world.getGameTime() + partial);
 		float factor = MidnightCleanupViewUtil.magnification(age);
 		float normal = event.getFOV();
 		if (!Float.isFinite(normal) || normal <= 0 || normal >= 179) {
@@ -224,7 +268,7 @@ public class MidnightCleanupCinematic {
 			clear();
 			return false;
 		}
-		if (duration > 0 && level.getGameTime() - began < duration) {
+		if (duration > 0 && timeline.active(level.getGameTime())) {
 			return true;
 		}
 		if (!pending.isEmpty()) {
@@ -242,17 +286,17 @@ public class MidnightCleanupCinematic {
 
 		var minecraft = Minecraft.getInstance();
 		float partial = minecraft.isPaused() ? 0 : minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		float age = world.getGameTime() - began + partial;
+		float age = timeline.time(world.getGameTime() + partial);
 		float width = graphics.guiWidth(), height = graphics.guiHeight();
 		boolean full = opening && !bannerOnly;
 		if (!full) {
-			float alpha = MidnightCleanupViewUtil.phase(age, 0, 5)
-					* (1 - MidnightCleanupViewUtil.phase(age, duration - 10, duration));
+			float alpha = MidnightCleanupViewUtil.phase(age, 0, 5);
+			float dissolve = MidnightCleanupViewUtil.phase(age, duration - 18, duration);
 			float center = width / 2, titleY = height * 0.67F;
 			float gap = Math.min(24, height * 0.10F);
-			CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, 0);
-			NAME.extract(graphics, center, titleY, 2.6F, width * 0.72F, alpha, 0);
-			(opening ? START : END).extract(graphics, center, titleY + gap, 0.85F, width * 0.84F, alpha, 0);
+			CHAPTER.extract(graphics, center, titleY - gap, 0.9F, width * 0.72F, alpha, dissolve);
+			NAME.extract(graphics, center, titleY, 2.6F, width * 0.72F, alpha, dissolve);
+			(opening ? START : END).extract(graphics, center, titleY + gap, 0.85F, width * 0.84F, alpha, dissolve);
 			if (alpha > 0.01F) {
 				graphics.lobecorp$fill(center - 8, titleY + gap * 0.60F, center + 8, titleY + gap * 0.60F + 1,
 						Math.round(alpha * 255) << 24 | 0x7770BD);
@@ -260,7 +304,8 @@ public class MidnightCleanupCinematic {
 			return;
 		}
 
-		float ambience = envelope(age, 0, 124, 212, MidnightCleanupViewUtil.CENTER_END);
+		float ambience = MidnightCleanupViewUtil.phase(age, 0, 124)
+				* (1 - MidnightCleanupViewUtil.phase(age, 212, MidnightCleanupViewUtil.CENTER_END));
 		fill(graphics, width, height, ambience * 0.10F, 0x301020);
 		float edge = height * 0.18F;
 		if (ambience > 0) {
@@ -270,22 +315,17 @@ public class MidnightCleanupCinematic {
 		}
 		float blackout = MidnightCleanupViewUtil.blackout(age);
 		fill(graphics, width, height, blackout, 0);
-		float chapter = envelope(age, 10, 22, 88, 112);
-		float name = envelope(age, 128, 140, MidnightCleanupViewUtil.DISSOLVE_START, 236);
-		float subtitle = envelope(age, 172, MidnightCleanupViewUtil.TEXT_READY, 208, 228);
+		float chapter = MidnightCleanupViewUtil.phase(age, 10, 22);
+		float name = MidnightCleanupViewUtil.phase(age, 128, 140);
+		float subtitle = MidnightCleanupViewUtil.phase(age, 172, MidnightCleanupViewUtil.TEXT_READY);
 		float rise = MidnightCleanupViewUtil.phase(age, 208, 240);
 		drawText(graphics, width, height, height * 0.44F - rise * 3,
-				chapter, name, subtitle, rise);
+				chapter, name, subtitle, rise, age);
 		float bar = height * MidnightCleanupViewUtil.letterbox(age);
 		if (bar > 0) {
 			graphics.lobecorp$fill(0, 0, width, bar, 0xFF000000);
 			graphics.lobecorp$fill(0, height - bar, width, height, 0xFF000000);
 		}
-	}
-
-	private static float envelope(float age, float enter, float ready, float exit, float gone) {
-		return MidnightCleanupViewUtil.phase(age, enter, ready)
-				* (1 - MidnightCleanupViewUtil.phase(age, exit, gone));
 	}
 
 	private static void fill(GuiGraphicsExtractor graphics, float width, float height, float opacity, int color) {
@@ -295,17 +335,21 @@ public class MidnightCleanupCinematic {
 	}
 
 	private static void drawText(GuiGraphicsExtractor graphics, float width, float height, float titleY,
-	                             float chapter, float name, float subtitle, float rise) {
+	                             float chapter, float name, float subtitle, float rise, float age) {
 		float center = width / 2;
 		float gap = Math.min(28, height * 0.10F);
 		float scale = Math.clamp(height / 220F, 0.75F, 1.3F);
-		CHAPTER.extract(graphics, center, titleY - gap, scale, width * 0.72F, chapter, 0);
-		NAME.extract(graphics, center, titleY, scale * 3, width * 0.72F, name, 0);
+		CHAPTER.extract(graphics, center, titleY - gap, scale, width * 0.72F, chapter,
+				MidnightCleanupViewUtil.phase(age, 88, 112));
+		NAME.extract(graphics, center, titleY, scale * 3, width * 0.72F, name,
+				MidnightCleanupViewUtil.phase(age, MidnightCleanupViewUtil.DISSOLVE_START, 236));
 		(opening ? START : END).extract(graphics, center, titleY + gap - rise,
-				scale * 0.9F, width * 0.84F, subtitle, 0);
+				scale * 0.9F, width * 0.84F, subtitle, MidnightCleanupViewUtil.phase(age, 208, 228));
 	}
 
 	public static void clear() {
+		timeline.cancel();
+		releaseControl();
 		world = null;
 		duration = 0;
 		opening = false;

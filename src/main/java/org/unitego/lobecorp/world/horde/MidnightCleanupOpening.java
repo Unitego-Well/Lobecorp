@@ -24,6 +24,8 @@ public class MidnightCleanupOpening {
 	private final Map<ServerPlayer, Lock> locks = new HashMap<>();
 	/// 每位玩家在同一事件中只触发一次，离开范围或重连不重置。
 	private final Map<UUID, Set<UUID>> played = new HashMap<>();
+	private final Map<UUID, Map<UUID, Observation>> observations = new HashMap<>();
+	private static final double SUBTITLE_WIDTH_FACTOR = 1.5;
 
 	public void start(MinecraftServer server, HordeEvent event) {
 		if (!MidnightCleanup.ID.equals(event.profile())) {
@@ -31,12 +33,19 @@ public class MidnightCleanupOpening {
 		}
 
 		for (var player : server.getPlayerList().getPlayers()) {
-			if (!inside(player, event) || player.isSpectator() || !player.isAlive()) {
+			if (!inside(player, event, SUBTITLE_WIDTH_FACTOR) || player.isSpectator() || !player.isAlive()) {
+				var previous = observations.get(event.id());
+				if (previous != null) {
+					previous.remove(player.getUUID());
+				}
 				continue;
 			}
 
 			double station = event.route().nearest(player.position(), 0, event.route().length());
 			double arrival = station / event.movementSpeed() - event.tick();
+			boolean originalCorridor = inside(player, event);
+			var previous = observations.computeIfAbsent(event.id(), _ -> new HashMap<>())
+					.put(player.getUUID(), new Observation(event.tick(), arrival, originalCorridor));
 			if (event.finished() || arrival > MidnightCleanup.OPENING_WARNING_TICKS) {
 				continue;
 			}
@@ -46,7 +55,11 @@ public class MidnightCleanupOpening {
 				continue;
 			}
 
-			if (arrival <= 0) {
+			boolean crossedWindow = previous != null && previous.tick() == event.tick() - 1
+					&& previous.inside() && previous.arrival() > MidnightCleanup.OPENING_WARNING_TICKS;
+			boolean initialWindow = previous == null && event.tick() <= 1
+					&& arrival >= MidnightCleanup.OPENING_WARNING_TICKS - 1;
+			if (arrival <= 0 || !originalCorridor || !crossedWindow && !initialWindow || locks.containsKey(player)) {
 				send(player, event.id(), true, true);
 				continue;
 			}
@@ -90,6 +103,7 @@ public class MidnightCleanupOpening {
 			return false;
 		});
 		played.keySet().removeIf(id -> !data.events().containsKey(id));
+		observations.keySet().removeIf(id -> !data.events().containsKey(id));
 		for (var event : data.events().values()) {
 			start(server, event);
 		}
@@ -101,6 +115,7 @@ public class MidnightCleanupOpening {
 		}
 
 		played.remove(event.id());
+		observations.remove(event.id());
 		locks.entrySet().removeIf(entry -> {
 			if (entry.getValue().event().equals(event.id())) {
 				release(entry.getKey());
@@ -117,6 +132,10 @@ public class MidnightCleanupOpening {
 	}
 
 	private static boolean inside(ServerPlayer player, HordeEvent event) {
+		return inside(player, event, 1);
+	}
+
+	private static boolean inside(ServerPlayer player, HordeEvent event, double widthFactor) {
 		if (!player.level().dimension().equals(event.dimension())) {
 			return false;
 		}
@@ -132,11 +151,24 @@ public class MidnightCleanupOpening {
 		}
 
 		double dx = point.x - center.x, dz = point.z - center.z;
-		return dx * dx + dz * dz <= event.rules().width() * event.rules().width() / 4;
+		double halfWidth = event.rules().width() * widthFactor / 2;
+		return dx * dx + dz * dz <= halfWidth * halfWidth;
 	}
 
 	public static Identifier speedModifierId() {
 		return SPEED_ID;
+	}
+
+	public void skip(ServerPlayer player, UUID eventId) {
+		var lock = locks.get(player);
+		if (lock == null || !lock.event().equals(eventId)) {
+			return;
+		}
+		locks.remove(player);
+		player.setYRot(lock.startYaw());
+		player.setXRot(lock.startPitch());
+		player.setYHeadRot(lock.startYaw());
+		release(player);
 	}
 
 	private static void release(ServerPlayer player) {
@@ -167,6 +199,10 @@ public class MidnightCleanupOpening {
 		locks.keySet().forEach(MidnightCleanupOpening::release);
 		locks.clear();
 		played.clear();
+		observations.clear();
+	}
+
+	private record Observation(long tick, double arrival, boolean inside) {
 	}
 
 	private record Lock(UUID event, int until, float startYaw, float startPitch, float yaw, float pitch) {

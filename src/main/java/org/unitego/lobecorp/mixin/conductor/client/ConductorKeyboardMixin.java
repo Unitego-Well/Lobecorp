@@ -11,12 +11,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 
 @Mixin(KeyboardHandler.class)
 public class ConductorKeyboardMixin {
 	@Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$handleConductorKey(long handle, int action, KeyEvent event, CallbackInfo ci) {
-		if (ConductorControls.handleKeyboard(handle, event, action)) {
+		if (PlayerInteractionControl.keyboard(handle, action, event) || ConductorControls.handleKeyboard(handle, event, action)) {
 			ci.cancel();
 		}
 	}
@@ -33,7 +34,7 @@ public class ConductorKeyboardMixin {
 
 	@Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$handleConductorChar(long handle, CharacterEvent event, CallbackInfo ci) {
-		if (ConductorControls.handleCharTyped(handle, event)) {
+		if (PlayerInteractionControl.keyboardBlocked() || ConductorControls.handleCharTyped(handle, event)) {
 			ci.cancel();
 		}
 	}

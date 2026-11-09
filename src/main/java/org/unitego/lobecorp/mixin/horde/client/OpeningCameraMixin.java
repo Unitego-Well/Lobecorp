@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
 
 @Mixin(Camera.class)
 public abstract class OpeningCameraMixin {
@@ -20,6 +20,6 @@ public abstract class OpeningCameraMixin {
 
 	@Inject(method = "alignWithEntity", at = @At("TAIL"))
 	private void lobecorp$openingPosition(float partialTicks, CallbackInfo callback) {
-		setPosition(MidnightCleanupCinematic.cameraPosition(position(), partialTicks));
+		setPosition(CameraControl.position(position(), partialTicks));
 	}
 }

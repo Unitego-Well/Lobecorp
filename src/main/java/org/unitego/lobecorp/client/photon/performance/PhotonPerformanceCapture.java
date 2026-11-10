@@ -11,7 +11,7 @@ import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
@@ -54,7 +54,7 @@ public class PhotonPerformanceCapture {
 	public static void start(String label, double seconds, Mode mode) {
 		RenderSystem.assertOnRenderThread();
 		if (!(Minecraft.getInstance().gameRenderer instanceof IPhotonPerformanceInstrumentation)) {
-			throw new IllegalStateException(PhotonPerformanceTextUtil.key("restart_required"));
+			throw new IllegalStateException(PhotonPerformanceTranslations.key("restart_required"));
 		}
 		if (managed || PhotonPerformanceTraceUtil.active()) {
 			throw new IllegalStateException("performance_capture_already_active");

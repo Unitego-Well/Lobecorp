@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.events.client;
 
 import net.minecraft.client.Minecraft;
+import org.unitego.lobecorp.client.encounter.EncounterClient;
 import org.unitego.lobecorp.client.visual.camera.CameraControl;
 import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 import net.minecraft.resources.ResourceKey;
@@ -9,7 +10,6 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ViewportEvent;
 import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -19,8 +19,8 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
-import org.unitego.lobecorp.client.horde.HordeEventAtmosphere;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAtmosphere;
 import net.neoforged.bus.api.EventPriority;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.client.attachment.LcClientAttachments;
@@ -41,9 +41,10 @@ import org.unitego.lobecorp.client.hud.PlayerStatusHud;
 import org.unitego.lobecorp.client.hud.TopLeftHud;
 import org.unitego.lobecorp.client.hud.filter.DamageFilter;
 import org.unitego.lobecorp.client.hud.filter.RationalityFilter;
+import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.horde.HordeClient;
-import org.unitego.lobecorp.client.horde.HordeAmbient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
 import org.unitego.lobecorp.client.horde.HordeGroundCache;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
@@ -78,9 +79,9 @@ public class ClientRuntimeEvents {
 	public static void onSweeperLandingSound(PlaySoundEvent event) {
 		var sound = event.getSound();
 		var minecraft = Minecraft.getInstance();
-		if (sound == null || HordeAmbient.ambientSound(sound) || minecraft.level == null
+		if (sound == null || MidnightCleanupAmbient.ambientSound(sound) || minecraft.level == null
 				|| !HordeVisualConfig.LANDING_SHAKE.get()
-				|| !sound.getIdentifier().equals(LcSoundEvents.SWEEPER_LAND.get().location())) {
+				|| !sound.getIdentifier().equals(SweeperSoundEvents.SWEEPER_LAND.get().location())) {
 			return;
 		}
 		var camera = minecraft.gameRenderer.getMainCamera();
@@ -111,7 +112,7 @@ public class ClientRuntimeEvents {
 		float partial = (float) event.getPartialTick();
 		double now = minecraft.level.getGameTime() + partial;
 		float scale = HordeVisualConfig.SHAKE_STRENGTH.get().floatValue();
-		float wave = HordeVisualConfig.EVENT_SHAKE.get() ? HordeAmbient.shakeStrength(partial) : 0;
+		float wave = HordeVisualConfig.EVENT_SHAKE.get() ? MidnightCleanupAmbient.shakeStrength(partial) : 0;
 		double age = now - landingAt;
 		float impact = HordeVisualConfig.LANDING_SHAKE.get() && landingDimension == minecraft.level.dimension()
 				&& age >= 0 ? landingPower * (float) Math.clamp(1 - age / 6, 0, 1) * scale : 0;
@@ -210,7 +211,7 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent(priority = EventPriority.HIGHEST)
 	public static void onVisualFrameEnd(RenderFrameEvent.Post event) {
-		HordeEventAtmosphere.frameEnd();
+		MidnightCleanupAtmosphere.frameEnd();
 		LcModelLodUtil.endFrame();
 		PhotonRuntimeFactory.onFrameEnd();
 	}
@@ -234,7 +235,8 @@ public class ClientRuntimeEvents {
 		QueenBeamEffects.tick();
 		MidnightCleanupCinematic.holdView();
 		HordeClient.tick();
-		HordeAmbient.tick();
+		EncounterClient.tick();
+		MidnightCleanupAmbient.tick();
 	}
 
 	@SubscribeEvent

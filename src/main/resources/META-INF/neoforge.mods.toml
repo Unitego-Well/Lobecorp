@@ -17,6 +17,21 @@ ${mod_description}
 [[mixins]]
 config = "META-INF/${mod_id}.mixins.json"
 
+[[mixins]]
+config = "META-INF/${mod_id}.neoforge.mixins.json"
+
+[[mixins]]
+config = "META-INF/${mod_id}.photon.mixins.json"
+
+[[mixins]]
+config = "META-INF/${mod_id}.ldlib2.mixins.json"
+
+[[mixins]]
+config = "META-INF/${mod_id}.geckolib.mixins.json"
+
+[[mixins]]
+config = "META-INF/${mod_id}.kilagraph.mixins.json"
+
 [[accessTransformers]]
 file = "META-INF/accesstransformer.cfg"
 

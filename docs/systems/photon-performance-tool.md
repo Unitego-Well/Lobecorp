@@ -137,7 +137,7 @@ GPU 查询只读 available，不等待、不 glFinish、不结束其他组件的
 | conductor_hud_sections-3-13833229722700，15 s      | 静止 HUD 每帧约 6 次 update，update 平均 1.676 ms/次；技能栏平均 3.861 ms/次；帧间隔平均 22.706 ms/P99 41.523 ms；每帧分配平均 30.095 MB | 新增分段后的优化前样本，14 节点、零丢样/覆盖                                                                                                  |
 | conductor_hud_lookup_direct-4-14043295369500，15 s | 单项能力查询走已有注册表后，update 平均 0.406 ms/次、技能栏 1.086 ms/次；帧间隔平均 10.169 ms/P99 19.362 ms；每帧分配平均 9.855 MB       | 同世界/窗口/相机/选择/模式，无活动特效；14 节点、零丢样，原始事件环形覆盖 14459，整会话聚合仍保留；一次前后对照，尚未做交错重复和关闭工具校准 |
 
-优化没有缓存资格：`ConductorUtil.ability` 经 `IConductorUnitControl.ability` 查询，注册表控制器复用 `RegisterConductorAbilitiesEvent.get`，自定义控制器默认仍从现有列表查询。运行时检查客户端 17 项已拥有能力逐项对象一致，缺失 ID 返回 null；动态增删、服务端和自定义控制器仍待补充验收。持续 GUI 压力有改善，不代表激光首次峰值已解决。
+优化没有缓存资格：`ConductorUtil.ability` 经 `IConductorUnitControl.ability` 查询，注册表控制器复用 `ConductorAbilities.get`，自定义控制器默认仍从现有列表查询。运行时检查客户端 17 项已拥有能力逐项对象一致，缺失 ID 返回 null；动态增删、服务端和自定义控制器仍待补充验收。持续 GUI 压力有改善，不代表激光首次峰值已解决。
 
 原始文件位于 `run/client/performance/<上述会话>/`，各含 session.json、frames.csv、objects.csv、operations.jsonl 与 traces；这是本地开发运行产物，不保证随 Git 文档分发。
 

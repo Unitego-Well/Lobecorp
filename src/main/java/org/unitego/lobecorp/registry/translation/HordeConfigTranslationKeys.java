@@ -1,0 +1,55 @@
+package org.unitego.lobecorp.registry.translation;
+
+import static org.unitego.lobecorp.registry.translation.TranslationRegistry.register;
+
+public interface HordeConfigTranslationKeys {
+	String VISUAL_ENABLED = register("lobecorp.configuration.horde.visual.enabled", "Enabled", "启用虚拟浪潮");
+	String VISUAL_ROW_SPACING = register("lobecorp.configuration.horde.visual.row_spacing", "Row spacing (blocks)", "纵向间距（格）");
+	String VISUAL_COLUMN_SPACING = register("lobecorp.configuration.horde.visual.column_spacing", "Column spacing (blocks)", "横向间距（格）");
+	String VISUAL_MAX_VISIBLE = register("lobecorp.configuration.horde.visual.max_visible", "Maximum visible (-1: unlimited)", "同时显示上限（-1：无限）");
+	String VISUAL_DISTANCE = register("lobecorp.configuration.horde.visual.distance", "Display range in chunks (-1: view distance)", "显示范围（区块，-1：视野距离）");
+	String VISUAL_IRIS_WORKSET_WORDS = register("lobecorp.configuration.horde.visual.iris_workset_words", "Iris workset (MiWords)", "Iris工作集（MiWords）");
+	String VISUAL_IRIS_DOUBLE_BUFFER = register("lobecorp.configuration.horde.visual.iris_double_buffer", "Iris double buffering", "Iris双缓冲");
+	String VISUAL_IRIS_MERGE_MATERIALS = register("lobecorp.configuration.horde.visual.iris_merge_materials", "Merge Iris material passes", "合并Iris材质通道");
+	String VISUAL_REDUCE_HIDDEN_FACES = register("lobecorp.configuration.horde.visual.reduce_hidden_faces", "Remove covered model faces", "剔除模型隐藏面");
+	String VISUAL_ANIMATION_FRAMES = register("lobecorp.configuration.horde.visual.animation_frames", "Uniform animation samples", "动画等距采样帧数");
+	String VISUAL_SINGLE_CARD_DISTANCE = register("lobecorp.configuration.horde.visual.single_card_distance", "Single card distance (blocks, -1 off)", "单方向片距离（格，-1：关闭）");
+	String VISUAL_FRAME_DISTANCE = register("lobecorp.configuration.horde.visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）");
+	String VISUAL_SOUND = register("lobecorp.configuration.horde.visual.sound", "Aggregate sweeper sounds", "聚合清道夫音效");
+	String VISUAL_SOUND_VOICES = register("lobecorp.configuration.horde.visual.sound_voices", "Sound voices", "聚合声源上限");
+	String VISUAL_SOUND_RANGE = register("lobecorp.configuration.horde.visual.sound_range", "Ambient sound range", "环境音效范围");
+	String VISUAL_SOUND_MAX_ACTIVE = register("lobecorp.configuration.horde.visual.sound_max_active", "Base ambient sound concurrency", "环境音效基础并发额度");
+	String VISUAL_EVENT_SHAKE = register("lobecorp.configuration.horde.visual.event_shake", "Wave camera shake", "浪潮镜头震动");
+	String VISUAL_LANDING_SHAKE = register("lobecorp.configuration.horde.visual.landing_shake", "Sweeper landing shake", "清道夫落地震动");
+	String VISUAL_EVENT_SHAKE_RANGE = register("lobecorp.configuration.horde.visual.event_shake_range", "Wave shake range", "浪潮震动范围");
+	String VISUAL_LANDING_SHAKE_RANGE = register("lobecorp.configuration.horde.visual.landing_shake_range", "Landing shake range", "落地震动范围");
+	String VISUAL_SHAKE_STRENGTH = register("lobecorp.configuration.horde.visual.shake_strength", "Camera shake strength", "镜头震动强度");
+	String VISUAL_DUST = register("lobecorp.configuration.horde.visual.dust", "Path particles", "近处清扫粒子");
+	String VISUAL_PARTICLE_INTERVAL = register("lobecorp.configuration.horde.visual.particle_interval", "Boundary particle interval (ticks)", "边界粒子生成间隔（刻）");
+	String VISUAL_FRAGMENT_GROUPS = register("lobecorp.configuration.horde.visual.fragment_groups", "Ground particle groups per batch", "单轮地面粒子组数");
+	String VISUAL_PARTICLE_RANGE = register("lobecorp.configuration.horde.visual.particle_range", "Particle range (blocks)", "粒子生成范围（格）");
+	String VISUAL_STATISTICS = register("lobecorp.configuration.horde.visual.statistics", "Debug overlay", "性能调试叠层");
+	String SERVER_DURATION = register("lobecorp.configuration.horde.server.duration", "Generation ticks", "生成阶段刻数");
+	String SERVER_WIDTH = register("lobecorp.configuration.horde.server.width", "Width", "浪潮宽度");
+	String SERVER_MARGIN = register("lobecorp.configuration.horde.server.margin", "Corridor margin", "线路走廊余量");
+	String SERVER_COMBAT = register("lobecorp.configuration.horde.server.combat", "Combat", "战斗");
+	String SERVER_INITIAL_QUOTA = register("lobecorp.configuration.horde.server.initial_quota", "Initial quota", "初始参战配额");
+	String SERVER_MAXIMUM_MULTIPLIER = register("lobecorp.configuration.horde.server.maximum_multiplier", "Maximum multiplier", "最大配额倍率");
+	String SERVER_REINFORCE = register("lobecorp.configuration.horde.server.reinforce", "Reinforcement ticks", "增援间隔刻数");
+	String SERVER_UNREACHABLE = register("lobecorp.configuration.horde.server.unreachable", "Unreachable timeout", "无法接敌超时");
+	String SERVER_RETRY = register("lobecorp.configuration.horde.server.retry", "Retry cooldown", "重试冷却刻数");
+	String SERVER_OUTSIDE = register("lobecorp.configuration.horde.server.outside", "Outside grace", "连续出界宽限");
+	String SERVER_FADE = register("lobecorp.configuration.horde.server.fade", "Fade ticks", "淡入淡出刻数");
+	String SERVER_REGION_MARGIN = register("lobecorp.configuration.horde.server.region_margin", "Region margin", "战斗区域余量");
+	String SERVER_SPLIT = register("lobecorp.configuration.horde.server.split", "Region split ticks", "区域拆分迟滞");
+	String SERVER_SPAWN_DISTANCE = register("lobecorp.configuration.horde.server.spawn_distance", "Spawn distance", "接敌出生距离");
+	String SERVER_SOFT_BUDGET = register("lobecorp.configuration.horde.server.soft_budget", "Soft entity budget", "正常实体软预算");
+	String SERVER_CREATES_PER_TICK = register("lobecorp.configuration.horde.server.creates_per_tick", "Creates per tick", "每刻实体创建上限");
+	String SERVER_WORK_PER_TICK = register("lobecorp.configuration.horde.server.work_per_tick", "Spawn work per tick", "每刻出生检测工作额度");
+	String SERVER_NETWORK = register("lobecorp.configuration.horde.server.network", "Network", "网络");
+	String SERVER_SUBSCRIBE_DISTANCE = register("lobecorp.configuration.horde.server.subscribe_distance", "Subscription distance", "事件订阅距离");
+	String SERVER_SUBSCRIBE_HYSTERESIS = register("lobecorp.configuration.horde.server.subscribe_hysteresis", "Subscription hysteresis", "订阅距离迟滞");
+	String SERVER_SEND_BYTES = register("lobecorp.configuration.horde.server.send_bytes", "Bytes per player tick", "每玩家每刻发送字节预算");
+	String SERVER_MAX_SEGMENTS_PER_PACKET = register("lobecorp.configuration.horde.server.max_segments_per_packet", "Nodes per packet", "每包路线节点上限");
+	String SERVER_STATISTICS = register("lobecorp.configuration.horde.server.statistics", "Performance statistics", "服务端性能统计");
+}

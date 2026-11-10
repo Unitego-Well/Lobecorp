@@ -30,7 +30,7 @@ import org.joml.Vector4f;
 import com.mojang.blaze3d.systems.RenderSystem;
 import org.unitego.lobecorp.mixin.photon.editor.client.WorldSceneRendererProjectionAccessor;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPolygonUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditUtil;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditUtil.Edge;
@@ -198,9 +198,9 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 
 	public UIElement tools() {
 		var tools = new UIElement();
-		tools.addChild(new Label().setText(PhotonModelTextUtil.key("mesh.tools")));
+		tools.addChild(new Label().setText(PhotonModelTranslations.MESH_TOOLS));
 		var selection = new Selector<SelectionMode>().setCandidates(List.of(SelectionMode.values()))
-				.setSelected(mode, false).setCandidateUIProvider(value -> new Label().setText(PhotonModelTextUtil.key(value.name().toLowerCase(Locale.ROOT))))
+				.setSelected(mode, false).setCandidateUIProvider(value -> new Label().setText(PhotonModelTranslations.key(value.name().toLowerCase(Locale.ROOT))))
 				.setOnValueChanged(value -> {
 					cancel();
 					mode = value;
@@ -242,7 +242,7 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 		button(tools, "mesh.dissolve", () -> change(value -> PhotonModelTopologyUtil.dissolve(value, new LinkedHashSet<>(edges))));
 		button(tools, "mesh.face", () -> change(value -> PhotonModelTopologyUtil.createFace(value, part, selectedVertices(value))));
 		button(tools, "mesh.triangulate", () -> change(value -> PhotonModelTopologyUtil.triangulate(value, new ArrayList<>(selectedFaces(value)))));
-		tools.addChild(new BooleanConfigurator(PhotonModelTextUtil.key("editor.edit_pivot"), () -> pivot,
+		tools.addChild(new BooleanConfigurator(PhotonModelTranslations.EDITOR_EDIT_PIVOT, () -> pivot,
 				value -> {
 					pivot = value;
 					cancel();
@@ -261,11 +261,11 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 			int target = axis;
 			button(tools, "axis_" + "xyz".charAt(axis), () -> change(value -> PhotonModelEditUtil.projectUV(value, selectedFaces(value), target)));
 		}
-		tools.addChild(new BooleanConfigurator(PhotonModelTextUtil.key("loop_cut.uniform"), () -> loopUniform, value -> loopUniform = value, false, false));
-		tools.addChild(new BooleanConfigurator(PhotonModelTextUtil.key("loop_cut.follow"), () -> loopFollow, value -> loopFollow = value, true, false));
-		tools.addChild(new NumberConfigurator(PhotonModelTextUtil.key("loop_cut.count"), () -> cuts, value -> cuts = value.intValue(), 1, false)
+		tools.addChild(new BooleanConfigurator(PhotonModelTranslations.LOOP_CUT_UNIFORM, () -> loopUniform, value -> loopUniform = value, false, false));
+		tools.addChild(new BooleanConfigurator(PhotonModelTranslations.LOOP_CUT_FOLLOW, () -> loopFollow, value -> loopFollow = value, true, false));
+		tools.addChild(new NumberConfigurator(PhotonModelTranslations.LOOP_CUT_COUNT, () -> cuts, value -> cuts = value.intValue(), 1, false)
 				.setRange(1, PhotonModelLoopCutUtil.MAX_CUTS));
-		tools.addChild(new NumberConfigurator(PhotonModelTextUtil.key("loop_cut.percent"), () -> cutPercent, value -> cutPercent = value.floatValue(), 50, false)
+		tools.addChild(new NumberConfigurator(PhotonModelTranslations.LOOP_CUT_PERCENT, () -> cutPercent, value -> cutPercent = value.floatValue(), 50, false)
 				.setRange(1, 99));
 		button(tools, "loop_cut.preview", () -> {
 			cancel();
@@ -280,15 +280,15 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 	}
 
 	private static void button(UIElement parent, String key, Runnable action) {
-		parent.addChild(new Button().setText(PhotonModelTextUtil.key(key)).setOnClick(_ -> action.run()));
+		parent.addChild(new Button().setText(PhotonModelTranslations.key(key)).setOnClick(_ -> action.run()));
 	}
 
 	private static void number(UIElement parent, String key, Supplier<Number> getter, Consumer<Number> setter) {
-		parent.addChild(new NumberConfigurator(PhotonModelTextUtil.key(key), getter, setter, 0, false).setRange(-Float.MAX_VALUE, Float.MAX_VALUE));
+		parent.addChild(new NumberConfigurator(PhotonModelTranslations.key(key), getter, setter, 0, false).setRange(-Float.MAX_VALUE, Float.MAX_VALUE));
 	}
 
 	private static void vector(UIElement parent, String key, Vector3f vector) {
-		parent.addChild(new Label().setText(PhotonModelTextUtil.key(key)));
+		parent.addChild(new Label().setText(PhotonModelTranslations.key(key)));
 		for (int index = 0; index < 3; index++) {
 			int axis = index;
 			number(parent, "axis_" + "xyz".charAt(index), () -> vector.get(axis), value -> vector.setComponent(axis, value.floatValue()));
@@ -300,23 +300,23 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 		float[] dimensions = {defaults.radius(), defaults.width(), defaults.height(), defaults.angle(), defaults.verticalAngle()};
 		int[] counts = {defaults.segments(), defaults.rings()};
 		String expected = session.revision();
-		var dialog = new Dialog().setTitle(PhotonModelTextUtil.key(shape.name().toLowerCase(Locale.ROOT)));
+		var dialog = new Dialog().setTitle(PhotonModelTranslations.key(shape.name().toLowerCase(Locale.ROOT)));
 		String[] names = {"primitive.radius", "width", "primitive.height", "primitive.angle", "primitive.vertical_angle"};
 		for (int index = 0; index < dimensions.length; index++) {
 			int component = index;
-			dialog.addContent(new NumberConfigurator(PhotonModelTextUtil.key(names[index]), () -> dimensions[component],
+			dialog.addContent(new NumberConfigurator(PhotonModelTranslations.key(names[index]), () -> dimensions[component],
 					value -> dimensions[component] = value.floatValue(), dimensions[index], false));
 		}
-		dialog.addContent(new NumberConfigurator(PhotonModelTextUtil.key("primitive.segments"), () -> counts[0],
+		dialog.addContent(new NumberConfigurator(PhotonModelTranslations.PRIMITIVE_SEGMENTS, () -> counts[0],
 				value -> counts[0] = value.intValue(), counts[0], false).setRange(PhotonModelPrimitiveUtil.MIN_SEGMENTS, PhotonModelPrimitiveUtil.MAX_SEGMENTS));
-		dialog.addContent(new NumberConfigurator(PhotonModelTextUtil.key("primitive.rings"), () -> counts[1],
+		dialog.addContent(new NumberConfigurator(PhotonModelTranslations.PRIMITIVE_RINGS, () -> counts[1],
 				value -> counts[1] = value.intValue(), counts[1], false).setRange(1, PhotonModelPrimitiveUtil.MAX_RINGS));
-		dialog.addButton(new Button().setText(PhotonModelTextUtil.key("apply")).setOnClick(_ -> {
+		dialog.addButton(new Button().setText(PhotonModelTranslations.APPLY).setOnClick(_ -> {
 			changeAt(expected, value -> PhotonModelPrimitiveUtil.add(value, shape, new PhotonModelPrimitiveUtil.Parameters(
 					dimensions[0], dimensions[1], dimensions[2], dimensions[3], dimensions[4], counts[0], counts[1])));
 			dialog.close();
 		}));
-		dialog.addButton(new Button().setText(PhotonModelTextUtil.key("cancel")).setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(PhotonModelTranslations.CANCEL).setOnClick(_ -> dialog.close()));
 		dialogs.add(dialog);
 		dialog.setOnClose(() -> dialogs.remove(dialog));
 		dialog.show(editor);
@@ -324,7 +324,7 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 
 	private static void requireTopology(PhotonModelEditMesh value) {
 		if (!value.morphs.isEmpty()) {
-			throw new IllegalArgumentException(Component.translatable(PhotonModelTextUtil.key("topology_locked")).getString());
+			throw new IllegalArgumentException(Component.translatable(PhotonModelTranslations.TOPOLOGY_LOCKED).getString());
 		}
 	}
 
@@ -587,7 +587,7 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 				float ratio = loopUniform ? -1 : loopFollow ? Math.clamp(hit.ratio(), 0.01f, 0.99f) : cutPercent / 100;
 				loopPlan = PhotonModelLoopCutUtil.plan(mesh, part, hit.edge(), ratio, cuts);
 			} catch (IllegalArgumentException invalid) {
-				editor.sceneView.sceneEditor.setScreenTips(Component.translatable(PhotonModelTextUtil.key("loop_cut.invalid")).getString());
+				editor.sceneView.sceneEditor.setScreenTips(Component.translatable(PhotonModelTranslations.LOOP_CUT_INVALID).getString());
 			}
 		}
 	}
@@ -668,7 +668,7 @@ public class PhotonModelWorkspaceMesh extends SceneObject implements ISceneRende
 			candidate.validate();
 			preview = candidate;
 		} catch (IllegalArgumentException invalid) {
-			editor.sceneView.sceneEditor.setScreenTips(Component.translatable(PhotonModelTextUtil.key("editor.invalid_geometry")).getString());
+			editor.sceneView.sceneEditor.setScreenTips(Component.translatable(PhotonModelTranslations.EDITOR_INVALID_GEOMETRY).getString());
 		}
 	}
 

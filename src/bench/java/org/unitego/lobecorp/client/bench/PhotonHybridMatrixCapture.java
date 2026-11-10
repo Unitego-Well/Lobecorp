@@ -21,7 +21,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceCapture;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.bench.plugin.BenchMixinPlugin;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 
@@ -131,7 +131,7 @@ public class PhotonHybridMatrixCapture {
 	public static void setup(BenchClientContext context, boolean queen) {
 		var value = current();
 		value.require(queen == value.queen, "entry_variant_mismatch");
-		value.require(PhotonBenchMixinPlugin.preservedWindowApplied(), "entry_window_mixin_not_loaded");
+		value.require(BenchMixinPlugin.preservedWindowApplied(), "entry_window_mixin_not_loaded");
 		value.require(PhotonRuntimeFactory.mode() == PhotonRuntimeFactory.Mode.HYBRID, "hybrid_requires_hybrid_creation");
 		value.require(QueenOwnedLaserEffects.enabled(), "hybrid_requires_owned_laser");
 		value.setupNs = System.nanoTime();

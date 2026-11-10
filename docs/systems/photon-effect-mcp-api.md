@@ -4,7 +4,7 @@
 
 女皇工作区使用 Photon `26.1.2.10`。`effect_capabilities` 新增 `materialTypes` 与 `modelSourceTypes`，分别直接读取原生材质和模型来源注册表；可与已有 `emitterTypes`、`timelineTypes` 共同确定实际可用类型。材质值通过现有 `set_model_renderer` 的 SNBT、完整模型资产的材质槽或原生对象参数事务传入，不把注册类型可见解释为所有资源与运行表现已验收。未新增桥接工具，命令名、revision 与写入保护保持。版本与未验证边界见[依赖升级](photon-dependency-upgrade.md#2026-11-07-女皇工作区升级)。
 
-核对日期：2026-10-23，范围仅为 photon 工作区当前源码。入口由 [LcPhotonMcpCommands](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonMcpCommands.java) 注册，[PhotonEffectAutomation](../../src/main/java/org/unitego/lobecorp/client/photon/editor/automation/PhotonEffectAutomation.java) 调度。桥接只消费 [lib 制品](minecraft-mcp-artifacts.md)，没有本地 MCP 源码子项目。本页补齐原先缺失的接口索引，不声称恢复了旧版 API 文档或完成了运行验收。
+核对日期：2026-10-23，范围仅为 photon 工作区当前源码。入口由 [LcPhotonMcpCommands](../../src/main/java/org/unitego/lobecorp/registry/client/photon/LcPhotonMcpCommands.java) 注册，[PhotonEffectAutomation](../../src/main/java/org/unitego/lobecorp/client/photon/editor/automation/PhotonEffectAutomation.java) 调度。桥接只消费 [lib 制品](minecraft-mcp-artifacts.md)，没有本地 MCP 源码子项目。本页补齐原先缺失的接口索引，不声称恢复了旧版 API 文档或完成了运行验收。
 
 ## 使用顺序
 

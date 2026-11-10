@@ -14,7 +14,7 @@ import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -86,11 +86,11 @@ public class PhotonResourceClipboardUtil {
 		}
 
 		if (path != null && container.getCanCopy().test(path)) {
-			menu.leaf(PhotonEditorTextUtil.key("copy_system"), () -> copy(container, path));
+			menu.leaf(PhotonEditorTranslations.COPY_SYSTEM, () -> copy(container, path));
 		}
 
 		if (compatible(container)) {
-			menu.leaf(PhotonEditorTextUtil.key("paste_system"), () -> paste(container));
+			menu.leaf(PhotonEditorTranslations.PASTE_SYSTEM, () -> paste(container));
 		}
 	}
 
@@ -143,6 +143,6 @@ public class PhotonResourceClipboardUtil {
 	}
 
 	private static void invalid(ResourceProviderContainer<?> container) {
-		Dialog.showNotification(PhotonEditorTextUtil.key("clipboard"), PhotonEditorTextUtil.key("clipboard_invalid"), null).show(container.getEditor());
+		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(container.getEditor());
 	}
 }

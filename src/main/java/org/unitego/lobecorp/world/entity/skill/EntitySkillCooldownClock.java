@@ -2,7 +2,7 @@ package org.unitego.lobecorp.world.entity.skill;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -13,7 +13,7 @@ public class EntitySkillCooldownClock {
 	public static final Codec<EntitySkillCooldownClock> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			Codec.LONG.fieldOf("last_tick").forGetter(clock -> clock.lastTick),
 			Codec.DOUBLE.fieldOf("last_speed").forGetter(clock -> clock.lastSpeed),
-			Codec.unboundedMap(LcRegistrys.ENTITY_SKILL.byNameCodec(), Codec.DOUBLE)
+			Codec.unboundedMap(LcRegistries.ENTITY_SKILL.byNameCodec(), Codec.DOUBLE)
 					.fieldOf("fractions").forGetter(clock -> clock.fractions)
 	).apply(instance, EntitySkillCooldownClock::new));
 

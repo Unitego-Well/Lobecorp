@@ -20,7 +20,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonActivationTrackAccess;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions.StartBehavior;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions.EndBehavior;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -139,6 +139,6 @@ public class PhotonActivationPanel {
 	}
 
 	private static String key(String suffix) {
-		return PhotonEditorTextUtil.key(suffix);
+		return PhotonEditorTranslations.key(suffix);
 	}
 }

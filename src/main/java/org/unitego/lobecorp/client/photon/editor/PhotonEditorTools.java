@@ -30,7 +30,7 @@ import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.PhotonParticleManager;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
 import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
@@ -56,12 +56,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorActions;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorActions;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
@@ -99,9 +99,9 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			Map.entry("fit_selected", "fit"), Map.entry("fit_all", "fit"),
 			Map.entry("step_back", "step"), Map.entry("step_forward", "step"),
 			Map.entry("step_back_large", "step"), Map.entry("step_forward_large", "step"),
-			Map.entry("duplicate", PhotonEditorTextUtil.PRECISE_FEATURE), Map.entry("move", "batch_move"), Map.entry("scale", "time_scale"),
+			Map.entry("duplicate", PhotonEditorTranslations.PRECISE_FEATURE), Map.entry("move", "batch_move"), Map.entry("scale", "time_scale"),
 			Map.entry("range_in", "range_preview"), Map.entry("range_out", "range_preview"),
-			Map.entry("range_loop", "range_preview"), Map.entry("solo", "solo"), Map.entry("cancel", PhotonEditorTextUtil.PRECISE_FEATURE));
+			Map.entry("range_loop", "range_preview"), Map.entry("solo", "solo"), Map.entry("cancel", PhotonEditorTranslations.PRECISE_FEATURE));
 	private FXEditor editor;
 	private long previewStart;
 	private long previewEnd;
@@ -332,7 +332,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 	}
 
 	private static String key(String name) {
-		return PhotonEditorTextUtil.key(name);
+		return PhotonEditorTranslations.key(name);
 	}
 
 	public static @Nullable PhotonEditorTools of(Editor editor) {
@@ -397,15 +397,15 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		menu.leaf(PhotonNamedLibraryPanel.TITLE, () -> PhotonNamedLibraryPanel.open(editor));
 		menu.leaf(key("control"), () -> PhotonActivationPanel.open(editor));
 		menu.leaf(PhotonProjectPreviewPanel.TITLE, () -> PhotonProjectPreviewPanel.open(editor));
-		menu.leaf(PhotonPerformanceTextUtil.key("title"), () -> PhotonPerformancePanel.open(editor));
-		if (enabled(PhotonEditorTextUtil.TEST_FEATURE)) {
+		menu.leaf(PhotonPerformanceTranslations.key("title"), () -> PhotonPerformancePanel.open(editor));
+		if (enabled(PhotonEditorTranslations.TEST_FEATURE)) {
 			PhotonEditorTestMenu.append(editor, menu);
 		}
 
 
-		leaf(menu, PhotonEditorTextUtil.PRECISE_FEATURE, () -> editSelection(false));
+		leaf(menu, PhotonEditorTranslations.PRECISE_FEATURE, () -> editSelection(false));
 		leaf(menu, "time_scale", () -> editSelection(true));
-		leaf(menu, PhotonEditorTextUtil.BATCH_EASING_FEATURE, this::chooseEasing);
+		leaf(menu, PhotonEditorTranslations.BATCH_EASING_FEATURE, this::chooseEasing);
 
 		if (enabled("fit")) {
 			menu.leaf(key("action.fit_selected"), () -> safely(() -> fit(false)));
@@ -535,7 +535,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			throw new IllegalArgumentException();
 		}
 
-		if (enabled(PhotonEditorTextUtil.SCALE_LINK_FEATURE)) {
+		if (enabled(PhotonEditorTranslations.SCALE_LINK_FEATURE)) {
 			return result.stream().map(selection -> new PhotonCurveEditUtil.Selection(
 					selection.track(), selection.property(),
 					PhotonScaleCurveUtil.linkedKeys(selection.property(), selection.keys()))).toList();
@@ -597,7 +597,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		var runtime = editor.runtime;
 		var model = PhotonEditorTimelineUtil.of(view);
 		var snapshots = PhotonCurveEasingUtil.captureSelection(selection);
-		PhotonCurveEasingUtil.choose(view, "batch_curve_easing", "batch_curve_easing_tip", preset -> {
+		PhotonCurveEasingUtil.choose(view, PhotonEditorTranslations.BATCH_CURVE_EASING, PhotonEditorTranslations.BATCH_CURVE_EASING_TIP, preset -> {
 			if (editor.runtime != runtime || timeline() != view || PhotonEditorTimelineUtil.of(view) != model
 					|| !PhotonCurveEasingUtil.selectionUnchanged(model, selection, snapshots)) {
 				throw new IllegalArgumentException();

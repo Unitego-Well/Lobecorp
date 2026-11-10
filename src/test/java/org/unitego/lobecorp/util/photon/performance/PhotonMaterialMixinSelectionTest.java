@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.util.photon.performance;
 
 import org.junit.jupiter.api.Test;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.launch.plugin.PhotonMixinPlugin;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -21,7 +21,7 @@ public class PhotonMaterialMixinSelectionTest {
     public void materialHooksRequireExplicitFlagAndRestorePriorProperty() {
         var prior = System.getProperty(PROPERTY);
         try {
-            var plugin = new PhotonBenchMixinPlugin();
+            var plugin = new PhotonMixinPlugin();
             System.clearProperty(PROPERTY);
             for (var mixin : MIXINS) {
                 assertFalse(plugin.shouldApplyMixin("unused", fullName(mixin)), mixin);
@@ -47,7 +47,7 @@ public class PhotonMaterialMixinSelectionTest {
 
     @Test
     public void productionMetadataRemainsInstalledWithoutMaterialDiagnostics() {
-        var plugin = new PhotonBenchMixinPlugin();
+        var plugin = new PhotonMixinPlugin();
         assertTrue(plugin.shouldApplyMixin("unused",
                 "org.unitego.lobecorp.mixin.photon.performance.client.PhotonPersistedMetadataMixin"));
     }

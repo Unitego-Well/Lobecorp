@@ -5,7 +5,7 @@ import net.minecraft.client.renderer.debug.DebugRenderer;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
+import org.unitego.lobecorp.registry.client.entity.LcDebugEntries;
 
 @Mixin(DebugRenderer.class)
 public abstract class DebugRendererMixin {

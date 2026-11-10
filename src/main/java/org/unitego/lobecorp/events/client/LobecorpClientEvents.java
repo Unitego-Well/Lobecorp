@@ -2,8 +2,8 @@ package org.unitego.lobecorp.events.client;
 
 import com.geckolib.GeckoLibClientServices;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import org.unitego.lobecorp.registry.client.VisualQualityConfigScreens;
-import org.unitego.lobecorp.registry.client.PlayerHudRegistration;
+import org.unitego.lobecorp.registry.client.config.VisualQualityConfigScreens;
+import org.unitego.lobecorp.registry.client.hud.PlayerHudRegistration;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -14,26 +14,27 @@ import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonMcpCommands;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorCommand;
-import org.unitego.lobecorp.registry.photon.client.PhotonModelResourceRegistration;
-import org.unitego.lobecorp.registry.animation.client.LcClientAnimationResourceRegistration;
+import org.unitego.lobecorp.registry.client.encounter.resource.MidnightCleanupResources;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonMcpCommands;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorCommand;
+import org.unitego.lobecorp.registry.client.photon.PhotonModelResourceRegistration;
+import org.unitego.lobecorp.registry.client.animation.LcClientAnimationResourceRegistration;
 import org.unitego.lobecorp.registry.command.LcDebugCommand;
 import org.unitego.lobecorp.util.debug.LcDebugUtil;
 import org.unitego.lobecorp.util.debug.LcDebugUtil.Category;
-import org.unitego.lobecorp.registry.animation.client.LcPlayerAnimationRegistration;
+import org.unitego.lobecorp.registry.client.animation.LcPlayerAnimationRegistration;
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
-import org.unitego.lobecorp.registry.entity.client.EntityCorpseReverse;
-import org.unitego.lobecorp.registry.entity.client.EntityRenderers;
-import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
-import org.unitego.lobecorp.registry.entity.client.RegisterRenderStateModifiers;
-import org.unitego.lobecorp.registry.particle.client.RegisterParticleProviders;
-import org.unitego.lobecorp.registry.particle.client.TextParticleRegistration;
-import org.unitego.lobecorp.registry.particle.client.ScreenParticleRegistration;
-import org.unitego.lobecorp.registry.conductor.client.ConductorHudRegistration;
-import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
-import org.unitego.lobecorp.registry.conductor.client.ConductorPortraitRegistration;
-import org.unitego.lobecorp.registry.conductor.client.ConductorRenderStateRegistration;
+import org.unitego.lobecorp.registry.client.entity.EntityCorpseReverse;
+import org.unitego.lobecorp.registry.client.entity.EntityRenderers;
+import org.unitego.lobecorp.registry.client.entity.LcDebugEntries;
+import org.unitego.lobecorp.registry.client.entity.RegisterRenderStateModifiers;
+import org.unitego.lobecorp.registry.client.particle.RegisterParticleProviders;
+import org.unitego.lobecorp.registry.client.particle.TextParticleRegistration;
+import org.unitego.lobecorp.registry.client.particle.ScreenParticleRegistration;
+import org.unitego.lobecorp.registry.client.conductor.ConductorHudRegistration;
+import org.unitego.lobecorp.registry.client.conductor.ConductorKeyMappings;
+import org.unitego.lobecorp.registry.client.conductor.ConductorPortraitRegistration;
+import org.unitego.lobecorp.registry.client.conductor.ConductorRenderStateRegistration;
 
 import java.util.Objects;
 
@@ -114,6 +115,7 @@ public class LobecorpClientEvents {
 		TextParticleRegistration.registerReload(event);
 		ScreenParticleRegistration.registerReload(event);
 		PhotonModelResourceRegistration.registerReload(event);
+		MidnightCleanupResources.registerReload(event);
 		LcClientAnimationResourceRegistration.registerReload(event);
 	}
 

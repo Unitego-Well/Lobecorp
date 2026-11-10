@@ -18,7 +18,6 @@ import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
@@ -26,7 +25,7 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedPlan;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Event;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
 
 import java.util.ArrayList;

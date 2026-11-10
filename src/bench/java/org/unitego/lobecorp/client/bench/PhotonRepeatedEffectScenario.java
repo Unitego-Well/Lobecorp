@@ -9,8 +9,8 @@ import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonMcpCommands;
+import org.unitego.lobecorp.bench.plugin.BenchMixinPlugin;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonMcpCommands;
 import net.neoforged.fml.ModList;
 
 import java.nio.file.Files;
@@ -39,7 +39,7 @@ public class PhotonRepeatedEffectScenario implements BenchClientScenario {
 	@Override
 	public void setup(BenchClientContext context) throws Exception {
 		if (!PhotonRepeatedEffectConfig.SCENARIO.equals(System.getProperty("modBench.scenarios", ""))
-				|| !PhotonBenchMixinPlugin.preservedWindowApplied()
+				|| !BenchMixinPlugin.preservedWindowApplied()
 				|| System.getProperty("modBench.resultDirectory", "").isBlank()
 				|| !ModList.get().isLoaded(LcPhotonMcpCommands.MOD_ID)
 				|| !Boolean.getBoolean("lobecorp.photon.diag.cast")

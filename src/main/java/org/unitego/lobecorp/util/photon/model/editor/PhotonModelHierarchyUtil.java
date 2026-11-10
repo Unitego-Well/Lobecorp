@@ -5,7 +5,7 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Part;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Transform;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -20,7 +20,7 @@ public class PhotonModelHierarchyUtil {
     public static void deletePart(PhotonModelEditMesh asset, String partId, boolean includeChildren) {
         asset.validate();
         var removed = asset.parts.stream().filter(part -> part.id.equals(partId)).findFirst()
-                .orElseThrow(() -> failure("editor.hierarchy.missing_part"));
+                .orElseThrow(() -> failure(PhotonModelTranslations.EDITOR_HIERARCHY_MISSING_PART));
         var deletedIds = deletedIds(asset, partId, includeChildren);
         var promoted = includeChildren ? Map.<String, Transform>of() : promotedTransforms(asset, removed);
         var candidates = new LinkedHashSet<Integer>();
@@ -87,7 +87,7 @@ public class PhotonModelHierarchyUtil {
         }
 
         if (asset.hasPartTracks(removed.id) || children.stream().anyMatch(child -> asset.hasPartTracks(child.id))) {
-            throw failure("editor.hierarchy.animated_parent");
+            throw failure(PhotonModelTranslations.EDITOR_HIERARCHY_ANIMATED_PARENT);
         }
 
         var parentLocal = localMatrix(removed);
@@ -116,7 +116,7 @@ public class PhotonModelHierarchyUtil {
         matrix.getScale(result.scale);
 
         if (!matrix.isFinite() || result.scale.x == 0 || result.scale.y == 0 || result.scale.z == 0) {
-            throw failure("editor.hierarchy.non_trs");
+            throw failure(PhotonModelTranslations.EDITOR_HIERARCHY_NON_TRS);
         }
 
         if (matrix.determinant() < 0) {
@@ -128,7 +128,7 @@ public class PhotonModelHierarchyUtil {
         var rebuilt = new Matrix4f().translationRotateScale(result.translation, result.rotation, result.scale);
 
         if (!rebuilt.isFinite()) {
-            throw failure("editor.hierarchy.non_trs");
+            throw failure(PhotonModelTranslations.EDITOR_HIERARCHY_NON_TRS);
         }
 
         for (int column = 0; column < 4; column++) {
@@ -138,7 +138,7 @@ public class PhotonModelHierarchyUtil {
                 float tolerance = TRS_EPSILON * Math.max(1f, Math.max(Math.abs(source), Math.abs(target)));
 
                 if (Math.abs(source - target) > tolerance) {
-                    throw failure("editor.hierarchy.non_trs");
+                    throw failure(PhotonModelTranslations.EDITOR_HIERARCHY_NON_TRS);
                 }
             }
         }
@@ -147,6 +147,6 @@ public class PhotonModelHierarchyUtil {
     }
 
     private static IllegalArgumentException failure(String key) {
-        return new IllegalArgumentException(Component.translatable(PhotonModelTextUtil.key(key)).getString());
+        return new IllegalArgumentException(Component.translatable(key).getString());
     }
 }

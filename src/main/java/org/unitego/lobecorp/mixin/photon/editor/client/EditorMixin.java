@@ -9,10 +9,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonEditorSettings;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorSettings;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonVisualQualityTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.visual.PhotonVisualQualityTranslations;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -60,7 +60,7 @@ public abstract class EditorMixin {
 			var element = pending.removeFirst();
 
 			if (element instanceof TreeList<?> tree) {
-				tree.setNodeUISupplier(TreeList.textTemplate(node -> PhotonVisualQualityTextUtil.navigation(node.toString())));
+				tree.setNodeUISupplier(TreeList.textTemplate(node -> PhotonVisualQualityTranslations.navigation(node.toString())));
 			} else {
 				pending.addAll(element.getChildren());
 			}

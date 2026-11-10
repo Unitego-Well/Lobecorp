@@ -9,14 +9,14 @@ import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
 import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 import org.unitego.lobecorp.generator.tag.DamageTypeTagGenerator;
 import org.unitego.lobecorp.generator.tag.EntityTypeTagGenerator;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.TranslationRegistry;
 
 import java.util.concurrent.CompletableFuture;
 
 @SuppressWarnings("UnusedReturnValue")
 public class ModGenerator {
 	public static void gatherData(GatherDataEvent.Client event) {
-		TranslationKeys.init();
+		TranslationRegistry.export();
 		build(event, EnUsLangGenerator::new);
 		build(event, ZhCnLangGenerator::new);
 		build(event, ParticleGenerator::new);

@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Face;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Weight;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPolygonUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditUtil.Edge;
 
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ import java.util.Set;
 public class PhotonModelTopologyUtil {
     /// UV 接缝、法线与同一平面纹理映射的浮点比较容差。
     private static final float ATTRIBUTE_EPSILON = 1.0e-5f;
-    private static final String INVALID = PhotonModelTextUtil.key("topology.invalid");
+    private static final String INVALID = PhotonModelTranslations.TOPOLOGY_INVALID;
 
     public enum MergeMode {
         CENTER, FIRST, LAST, DISTANCE

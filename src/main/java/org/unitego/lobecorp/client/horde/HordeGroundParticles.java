@@ -23,7 +23,7 @@ public class HordeGroundParticles {
 	public record Emission(int groups, int particles) {
 	}
 
-	public static Emission tick(List<HordeClient.ClientEvent> events, long tick) {
+	public static Emission tick(List<HordeClient.ClientHorde> events, long tick) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		var player = minecraft.player;
@@ -70,7 +70,7 @@ public class HordeGroundParticles {
 		return new Emission(groups, particles);
 	}
 
-	private static Emission emitCell(HordeClient.ClientEvent event, int x, int z, Vec3 camera, double range) {
+	private static Emission emitCell(HordeClient.ClientHorde event, int x, int z, Vec3 camera, double range) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		if (level == null || minecraft.options.particles().get() == ParticleStatus.MINIMAL) {
@@ -101,7 +101,7 @@ public class HordeGroundParticles {
 		return new Emission(1, particles);
 	}
 
-	private static Vec3 ground(HordeClient.ClientEvent event, Vec3 candidate, Vec3 camera, double range) {
+	private static Vec3 ground(HordeClient.ClientHorde event, Vec3 candidate, Vec3 camera, double range) {
 		double dx = candidate.x - camera.x, dz = candidate.z - camera.z;
 		if (dx * dx + dz * dz > range * range) {
 			return null;

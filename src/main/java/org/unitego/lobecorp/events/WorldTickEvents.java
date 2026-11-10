@@ -15,6 +15,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.world.ConductorChunkLoading;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
+import org.unitego.lobecorp.world.encounter.Encounters;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class WorldTickEvents {
@@ -39,6 +40,7 @@ public class WorldTickEvents {
 	@SubscribeEvent
 	public static void onServerTick(ServerTickEvent.Post event) {
 		ConductorChunkLoading.onServerTick(event);
+		Encounters.tick(event.getServer());
 		HordeRuntime.get(event.getServer()).tick();
 		LcServerAnimations.prune(event.getServer()).forEach(LcAnimationSync::clear);
 		LcAttachments.prune(event.getServer()).forEach(level -> {
@@ -58,6 +60,7 @@ public class WorldTickEvents {
 			LcAnimationSync.clear(event.getServer());
 			TextParticles.clear(event.getServer());
 			HordeRuntime.clear(event.getServer());
+			Encounters.clear(event.getServer());
 		}
 	}
 }

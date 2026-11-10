@@ -11,7 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
-import org.unitego.lobecorp.registry.animation.client.LcPlayerPoseSources;
+import org.unitego.lobecorp.registry.client.animation.LcPlayerPoseSources;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil;
 
 import java.util.ArrayList;

@@ -7,13 +7,12 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 import org.unitego.lobecorp.client.horde.HordeRendering;
-import org.unitego.lobecorp.client.horde.HordeRedSky;
-import org.unitego.lobecorp.client.horde.HordeEventAtmosphere;
-import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupSky;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAtmosphere;
 import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
@@ -29,11 +28,11 @@ public class ClientRenderingEvents {
 		LcAnimationDisplays.onExtract(event);
 		HordeRendering.extract(event);
 		if (!Minecraft.getInstance().isPaused()) {
-			HordeEventAtmosphere.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false));
+			MidnightCleanupAtmosphere.extract(event.getDeltaTracker().getGameTimeDeltaPartialTick(false));
 		} else {
-			HordeEventAtmosphere.extract(0);
+			MidnightCleanupAtmosphere.extract(0);
 		}
-		HordeRedSky.extract(event);
+		MidnightCleanupSky.extract(event);
 	}
 
 	@SubscribeEvent
@@ -45,17 +44,17 @@ public class ClientRenderingEvents {
 
 	@SubscribeEvent
 	public static void onHordeFog(ViewportEvent.ComputeFogColor event) {
-		HordeRedSky.fog(event);
+		MidnightCleanupSky.fog(event);
 	}
 
 	@SubscribeEvent
 	public static void onHordeSky(RenderLevelStageEvent.AfterSky event) {
-		HordeRedSky.draw(event, false);
+		MidnightCleanupSky.draw(event, false);
 	}
 
 	@SubscribeEvent
 	public static void onHordeShaderSky(RenderLevelStageEvent.AfterLevel event) {
-		HordeRedSky.draw(event, true);
+		MidnightCleanupSky.draw(event, true);
 	}
 
 	@SubscribeEvent

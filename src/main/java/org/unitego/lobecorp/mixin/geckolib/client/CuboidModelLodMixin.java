@@ -10,7 +10,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 @Mixin(CuboidGeoBone.class)

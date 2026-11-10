@@ -68,7 +68,7 @@ public class HordeAvoidanceState implements AutoCloseable {
 		return Math.clamp(first - previousFirst, Integer.MIN_VALUE, Integer.MAX_VALUE);
 	}
 
-	public void prepare(HordeClient.ClientEvent event, double time) {
+	public void prepare(HordeClient.ClientHorde event, double time) {
 		if (!Double.isNaN(preparedTime) && time <= preparedTime) {
 			return;
 		}

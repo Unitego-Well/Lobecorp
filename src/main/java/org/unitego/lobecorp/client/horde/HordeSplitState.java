@@ -65,7 +65,7 @@ public class HordeSplitState implements AutoCloseable {
     }
 
     /// 每帧刷新：把本帧目标集合平滑成圆表并按需上传。
-    public void update(HordeClient.ClientEvent event, double time) {
+    public void update(HordeClient.ClientHorde event, double time) {
         updateCircles(event.regions, event.origin, time);
         publish();
     }

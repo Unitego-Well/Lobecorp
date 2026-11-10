@@ -213,24 +213,24 @@ public class HordeSplitPreparationTest {
         return new HordeClient.RegionBox(x - radius, 0, z - radius, radius * 2, 2, radius * 2);
     }
 
-    private static HordeClient.ClientEvent event() throws ReflectiveOperationException {
-        var constructor = HordeClient.ClientEvent.class.getDeclaredConstructor(UUID.class);
+    private static HordeClient.ClientHorde event() throws ReflectiveOperationException {
+        var constructor = HordeClient.ClientHorde.class.getDeclaredConstructor(UUID.class);
         constructor.setAccessible(true);
         var event = constructor.newInstance(UUID.randomUUID());
         event.origin = Vec3.ZERO;
         return event;
     }
 
-    private static Object snapshot(HordeClient.ClientEvent event, double time) throws ReflectiveOperationException {
+    private static Object snapshot(HordeClient.ClientHorde event, double time) throws ReflectiveOperationException {
         var type = Class.forName("org.unitego.lobecorp.client.horde.HordeGpuRenderer$SplitPreparation");
-        var constructor = type.getDeclaredConstructor(HordeClient.ClientEvent.class, double.class);
+        var constructor = type.getDeclaredConstructor(HordeClient.ClientHorde.class, double.class);
         constructor.setAccessible(true);
         return constructor.newInstance(event, time);
     }
 
-    private static boolean matches(Object snapshot, HordeClient.ClientEvent event, double time)
+    private static boolean matches(Object snapshot, HordeClient.ClientHorde event, double time)
             throws ReflectiveOperationException {
-        var method = snapshot.getClass().getDeclaredMethod("matches", HordeClient.ClientEvent.class, double.class);
+        var method = snapshot.getClass().getDeclaredMethod("matches", HordeClient.ClientHorde.class, double.class);
         method.setAccessible(true);
         return (boolean) method.invoke(snapshot, event, time);
     }

@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
 
 /// 草稿只在提交时写入当前工程；播放实例继续持有原有不可变定义，不由制作事务重启。
 public class PhotonNamedAuthoringSession {
@@ -69,7 +70,7 @@ public class PhotonNamedAuthoringSession {
 		}
 
 		var committed = draft;
-		editor.timelineView.pushEdit("photon.lobecorp.animation.inspector_panel",
+		editor.timelineView.pushEdit(INSPECTOR_PANEL,
 				() -> restore(editor, project, controller, committed), () -> restore(editor, project, controller, original));
 		closed = true;
 	}

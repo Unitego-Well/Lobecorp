@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
+
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
@@ -26,6 +28,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DEFAULT;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.ACTION_DUPLICATE;
 
 /// 原工作区的动画、绑定、参数和规则四页检视，统一编辑同一原树草稿。
 public class PhotonNamedInspectorPages extends TabView {
@@ -60,7 +66,7 @@ public class PhotonNamedInspectorPages extends TabView {
 		scroll.layout(layout -> layout.widthPercent(100).flex(1).minHeight(0));
 		scroll.scrollerStyle(style -> style.adaptiveHeight(false));
 		scroll.addScrollViewChild(content);
-		addTab(new Tab().setText(Component.translatable("photon.lobecorp.animation." + name)), scroll);
+		addTab(new Tab().setText(Component.translatable(PhotonAnimationTranslations.key(name))), scroll);
 	}
 
 	public void refresh() {
@@ -83,13 +89,13 @@ public class PhotonNamedInspectorPages extends TabView {
 				group.configuratorContainer(container -> PhotonNamedEntryFields.build(container, () -> state.value, state::edit));
 				content.addChild(group);
 				var buttons = new UIElement().layout(layout -> layout.flexDirection(FlexDirection.ROW).gapAll(3));
-				buttons.addChild(new Button().setText("photon.lobecorp.animation.delete").setOnClick(_ -> state.remove()));
-				buttons.addChild(new Button().setText("photon.lobecorp.editor.action.duplicate").setOnClick(_ -> state.duplicate()));
+				buttons.addChild(new Button().setText(DELETE).setOnClick(_ -> state.remove()));
+				buttons.addChild(new Button().setText(ACTION_DUPLICATE).setOnClick(_ -> state.duplicate()));
 				buttons.addChild(new Button().setText(Component.literal("↑")).setOnClick(_ -> state.move(-1)));
 				buttons.addChild(new Button().setText(Component.literal("↓")).setOnClick(_ -> state.move(1)));
 				content.addChild(buttons);
 			}
-			content.addChild(new Button().setText("photon.lobecorp.animation.new").setOnClick(_ -> attempt(() -> {
+			content.addChild(new Button().setText(NEW).setOnClick(_ -> attempt(() -> {
 				var values = list(key).copy();
 				values.add(create(key, values));
 				update(key, values);
@@ -104,7 +110,7 @@ public class PhotonNamedInspectorPages extends TabView {
 		for (var value : session.document().library().getListOrEmpty("animations")) {
 			choices.add(((CompoundTag) value).getStringOr("name", ""));
 		}
-		content.addChild(new SelectorConfigurator<>("photon.lobecorp.animation.default",
+		content.addChild(new SelectorConfigurator<>(DEFAULT,
 				() -> session.document().library().getStringOr("defaultAnimation", ""),
 				value -> attempt(() -> session.edit(session.revision(), source -> PhotonNamedAuthoringUtil.defaultAnimation(source, value))),
 				"", false, choices, value -> value));

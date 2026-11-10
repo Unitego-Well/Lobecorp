@@ -5,7 +5,7 @@ import com.geckolib.renderer.base.GeoRenderState;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 
 public class TheQueenOfHatredModel extends GeoModel<TheQueenOfHatred> {
 	/// 憎恶皇后模型资源。

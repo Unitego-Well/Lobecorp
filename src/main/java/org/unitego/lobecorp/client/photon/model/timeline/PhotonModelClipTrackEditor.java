@@ -18,7 +18,7 @@ import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ public class PhotonModelClipTrackEditor extends ClipTrackEditor {
 		var slot = new UIElement().layout(layout -> layout.flex(1).heightPercent(100));
 		var label = new Label().bindDataSource(SupplierDataSource.of(() -> {
 			var model = bound(context, track);
-			return model == null ? Component.translatable(PhotonModelTextUtil.key("none")) : Component.literal(model.getName());
+			return model == null ? Component.translatable(PhotonModelTranslations.NONE) : Component.literal(model.getName());
 		}));
 		TimelineContext.styleLabel(label);
 		slot.addChild(label);
@@ -54,7 +54,7 @@ public class PhotonModelClipTrackEditor extends ClipTrackEditor {
 			}
 
 			var menu = TreeBuilder.Menu.start();
-			menu.leaf(PhotonModelTextUtil.key("none"), () -> context.bind(track, null));
+			menu.leaf(PhotonModelTranslations.NONE, () -> context.bind(track, null));
 
 			for (var object : runtime.objects.values()) {
 				if (object instanceof PhotonModelOutput model) {
@@ -122,19 +122,19 @@ public class PhotonModelClipTrackEditor extends ClipTrackEditor {
 		}
 
 		group.addConfigurators(
-				new SelectorConfigurator<>(PhotonModelTextUtil.key("clip"), () -> clip.animation,
+				new SelectorConfigurator<>(PhotonModelTranslations.CLIP, () -> clip.animation,
 						next -> edit(context, clip, () -> clip.animation = next), "", true, choices,
-						id -> id.isEmpty() ? PhotonModelTextUtil.key("none") : id),
-				new NumberConfigurator(PhotonModelTextUtil.key("playback_speed"), clip::speed,
+						id -> id.isEmpty() ? PhotonModelTranslations.NONE : id),
+				new NumberConfigurator(PhotonModelTranslations.PLAYBACK_SPEED, clip::speed,
 						next -> edit(context, clip, () -> clip.speed(next.floatValue())), 1f, true).setRange(0, Float.MAX_VALUE),
-				new NumberConfigurator(PhotonModelTextUtil.key("animation_offset"), () -> clip.offset,
+				new NumberConfigurator(PhotonModelTranslations.ANIMATION_OFFSET, () -> clip.offset,
 						next -> edit(context, clip, () -> clip.offset = next.doubleValue()), 0d, true).setRange(-Float.MAX_VALUE, Float.MAX_VALUE),
-				new BooleanConfigurator(PhotonModelTextUtil.key("animation_loop"), () -> clip.loop,
+				new BooleanConfigurator(PhotonModelTranslations.ANIMATION_LOOP, () -> clip.loop,
 						next -> edit(context, clip, () -> clip.loop = next), false, true),
-				new SelectorConfigurator<>(PhotonModelTextUtil.key("timeline.completion"), () -> clip.completion,
+				new SelectorConfigurator<>(PhotonModelTranslations.TIMELINE_COMPLETION, () -> clip.completion,
 						next -> edit(context, clip, () -> clip.completion = next), PhotonModelClip.Completion.RESTORE, true,
 						List.of(PhotonModelClip.Completion.values()),
-						next -> PhotonModelTextUtil.key("timeline.completion." + next.name().toLowerCase(Locale.ROOT))));
+						next -> PhotonModelTranslations.key("timeline.completion." + next.name().toLowerCase(Locale.ROOT))));
 	}
 
 	private static void edit(TimelineContext context, PhotonModelClip clip, Runnable change) {

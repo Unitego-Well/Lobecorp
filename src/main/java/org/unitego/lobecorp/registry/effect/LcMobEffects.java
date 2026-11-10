@@ -11,7 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.world.effect.BasicMobEffect;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.LangHandler;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 
 import java.util.function.BiFunction;

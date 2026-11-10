@@ -11,7 +11,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
 
@@ -41,7 +41,7 @@ public class PhotonEditorSettings implements Settings {
 	public static final Codec<PhotonEditorSettings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("keys", Map.of()).forGetter(s -> s.keys),
 			Codec.unboundedMap(Codec.STRING, CompoundTag.CODEC).optionalFieldOf("presets", Map.of()).forGetter(s -> s.presets),
-			Codec.STRING.optionalFieldOf("curveEasingPreset", PhotonEditorTextUtil.DEFAULT_CURVE_EASING_PRESET).forGetter(PhotonEditorSettings::curveEasingPreset)
+			Codec.STRING.optionalFieldOf("curveEasingPreset", PhotonEditorTranslations.DEFAULT_CURVE_EASING_PRESET).forGetter(PhotonEditorSettings::curveEasingPreset)
 	).apply(instance, PhotonEditorSettings::new));
 
 	/// 仅保留旧设置的读取入口；迁移成功后删除对应项，恢复原生默认时不再次导入。
@@ -54,7 +54,7 @@ public class PhotonEditorSettings implements Settings {
 	}
 
 	public PhotonEditorSettings(Map<String, String> keys, Map<String, CompoundTag> presets) {
-		this(keys, presets, PhotonEditorTextUtil.DEFAULT_CURVE_EASING_PRESET);
+		this(keys, presets, PhotonEditorTranslations.DEFAULT_CURVE_EASING_PRESET);
 	}
 
 	public PhotonEditorSettings(Map<String, String> keys, Map<String, CompoundTag> presets, String curveEasingPreset) {
@@ -77,8 +77,8 @@ public class PhotonEditorSettings implements Settings {
 	}
 
 	public void setCurveEasingPreset(String value) {
-		curveEasingPreset = value != null && PhotonEditorTextUtil.CURVE_EASING_PRESETS.contains(value)
-				? value : PhotonEditorTextUtil.DEFAULT_CURVE_EASING_PRESET;
+		curveEasingPreset = value != null && PhotonEditorTranslations.CURVE_EASING_PRESETS.contains(value)
+				? value : PhotonEditorTranslations.DEFAULT_CURVE_EASING_PRESET;
 	}
 
 	@Override
@@ -122,10 +122,10 @@ public class PhotonEditorSettings implements Settings {
 
 	@Override
 	public void buildConfigurator(ConfiguratorGroup father) {
-		var easing = new SelectorConfigurator<>(PhotonEditorTextUtil.key("curve_easing_default"), this::curveEasingPreset,
-				this::setCurveEasingPreset, PhotonEditorTextUtil.DEFAULT_CURVE_EASING_PRESET, false,
-				PhotonEditorTextUtil.CURVE_EASING_PRESETS, PhotonEditorTextUtil::key);
-		PhotonEditorTooltipUtil.tips(easing, PhotonEditorTextUtil.key("curve_easing_tip"));
+		var easing = new SelectorConfigurator<>(PhotonEditorTranslations.CURVE_EASING_DEFAULT, this::curveEasingPreset,
+				this::setCurveEasingPreset, PhotonEditorTranslations.DEFAULT_CURVE_EASING_PRESET, false,
+				PhotonEditorTranslations.CURVE_EASING_PRESETS, PhotonEditorTranslations::key);
+		PhotonEditorTooltipUtil.tips(easing, PhotonEditorTranslations.CURVE_EASING_TIP);
 		father.addConfigurator(easing);
 	}
 }

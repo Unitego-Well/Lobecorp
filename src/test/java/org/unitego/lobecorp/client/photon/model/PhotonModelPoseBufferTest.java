@@ -4,7 +4,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.launch.plugin.PhotonMixinPlugin;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Anchor;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector2;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Vector3;
@@ -375,7 +375,7 @@ public class PhotonModelPoseBufferTest {
 	public void bufferBuilderMixinRequiresTheExplicitPackedProperty() {
 		var property = PhotonPackedVertexUtil.ENABLE_PROPERTY;
 		var previous = System.getProperty(property);
-		var plugin = new PhotonBenchMixinPlugin();
+		var plugin = new PhotonMixinPlugin();
 		var target = "com.mojang.blaze3d.vertex.BufferBuilder";
 		var mixin = "org.unitego.lobecorp.mixin.minecraft.client.BufferBuilderMixin";
 

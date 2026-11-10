@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.model;
 
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
+
 import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigValueType;
@@ -72,7 +74,7 @@ public class PhotonModelBindings {
 
 	private void add(String path, String label, ConfigValueType type, Object value) {
 		slots.put(path, new RuntimeValue<>(() -> value));
-		bindings.put(path, new RuntimeBinding(path, "photon.lobecorp.model." + label, type,
+		bindings.put(path, new RuntimeBinding(path, PhotonModelTranslations.key(label), type,
 				object -> ((PhotonModelOutput) object).slot(path)));
 	}
 

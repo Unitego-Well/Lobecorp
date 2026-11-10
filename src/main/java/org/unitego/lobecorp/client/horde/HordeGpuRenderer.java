@@ -31,6 +31,7 @@ import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
 import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
@@ -193,7 +194,7 @@ public class HordeGpuRenderer {
 		prepareVisuals(started);
 		HordeMeshCache.advance(PREPARATION_BUDGET_NS - (System.nanoTime() - started));
 		if (System.nanoTime() - started < PREPARATION_BUDGET_NS) {
-			HordeRedSky.prepare();
+			HordeClientHooks.prepare();
 		}
 	}
 
@@ -314,8 +315,7 @@ public class HordeGpuRenderer {
 
 	public static void draw(List<HordeClient.Batch> source, Matrix4fc modelView, boolean reverse) {
 		HordeRenderMetrics.beginFrame(HordeIrisShadows.active());
-		HordeRenderMetrics.set(HordeRenderMetrics.Counter.PARTICLE_AREAS, HordeAmbient.selectedAreas());
-		HordeRenderMetrics.set(HordeRenderMetrics.Counter.PARTICLES, HordeAmbient.emittedParticles());
+		HordeClientHooks.metrics();
 		drawn = 0;
 		uploadedBytes = 0;
 		try {
@@ -609,7 +609,7 @@ public class HordeGpuRenderer {
 		var prepared = new ArrayList<Prepared>();
 		// 只在本次准备中复用成功的分割更新，重入或下一次准备仍重新更新。
 		var splitUpdates = SPLIT_DEDUPLICATION
-				? new IdentityHashMap<HordeClient.ClientEvent, SplitPreparation>()
+				? new IdentityHashMap<HordeClient.ClientHorde, SplitPreparation>()
 				: null;
 		for (var batch : source) {
 			var event = batch.event();
@@ -681,11 +681,11 @@ public class HordeGpuRenderer {
 
 	private record SplitPreparation(double time, Vec3 origin,
 	                                Map<String, HordeClient.RegionBox> regions) {
-		private SplitPreparation(HordeClient.ClientEvent event, double time) {
+		private SplitPreparation(HordeClient.ClientHorde event, double time) {
 			this(time, event.origin, Map.copyOf(event.regions));
 		}
 
-		private boolean matches(HordeClient.ClientEvent event, double nextTime) {
+		private boolean matches(HordeClient.ClientHorde event, double nextTime) {
 			return time == nextTime && origin.equals(event.origin) && regions.equals(event.regions);
 		}
 	}
@@ -935,7 +935,7 @@ public class HordeGpuRenderer {
 	}
 
 	public static void clearModels() {
-		HordeRedSky.clear();
+		HordeClientHooks.releaseResources();
 		HordeGroundFog.clear();
 		HordeNearTerrain.clear();
 		LOD.close();
@@ -1401,7 +1401,7 @@ public class HordeGpuRenderer {
 		private final HordeTerrainState terrain = new HordeTerrainState();
 		private final HordeAvoidanceState avoidance = new HordeAvoidanceState();
 
-		private EventData(HordeClient.ClientEvent event) {
+		private EventData(HordeClient.ClientHorde event) {
 			route = new HordeDataTexture("Horde fixed route " + event.id, event.routeData);
 			try {
 				heights = new HordeDataTexture("Horde ground heights " + event.id, event.heightData);
@@ -1411,7 +1411,7 @@ public class HordeGpuRenderer {
 			}
 		}
 
-		private void updateHeights(HordeClient.ClientEvent event) {
+		private void updateHeights(HordeClient.ClientHorde event) {
 			for (int first = event.changedRoute.nextSetBit(0); first >= 0; ) {
 				int last = event.changedRoute.nextClearBit(first);
 				route.update(first * 16, event.routeData, first * 16, (last - first) * 16);

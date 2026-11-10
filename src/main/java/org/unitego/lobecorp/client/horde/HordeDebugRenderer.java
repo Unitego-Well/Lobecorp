@@ -8,7 +8,7 @@ import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
 import net.minecraft.util.debug.DebugValueAccess;
 import org.jspecify.annotations.NonNull;
-import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
+import org.unitego.lobecorp.registry.client.entity.LcDebugEntries;
 
 /// 浪潮调试 Gizmo：线路包围、分割割圆与潮头潮尾采样点，复用原版调试管线。
 public class HordeDebugRenderer implements DebugRenderer.SimpleDebugRenderer {

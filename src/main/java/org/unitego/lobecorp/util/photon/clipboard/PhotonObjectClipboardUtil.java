@@ -18,7 +18,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.core.UUIDUtil;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -158,7 +158,7 @@ public class PhotonObjectClipboardUtil {
 			var selected = view.treeList.getSelected();
 			var father = selected.size() == 1 ? selected.iterator().next().getKey().transform().parent() : null;
 			var destination = father == null ? runtime.root.transform() : father;
-			view.fxEditor.historyView.pushHistory(Component.translatable(PhotonEditorTextUtil.key("paste_system")), EditAction.of(() -> {
+			view.fxEditor.historyView.pushHistory(Component.translatable(PhotonEditorTranslations.PASTE_SYSTEM), EditAction.of(() -> {
 				for (int i = 0; i < objects.size(); i++) {
 					objects.get(i).transform().parent(parents.get(i) < 0 ? destination : objects.get(parents.get(i)).transform(), false);
 					view.addSceneObject(objects.get(i));
@@ -232,6 +232,6 @@ public class PhotonObjectClipboardUtil {
 	}
 
 	public static void invalid(FXHierarchyView view) {
-		Dialog.showNotification(PhotonEditorTextUtil.key("clipboard"), PhotonEditorTextUtil.key("clipboard_invalid"), null).show(view.fxEditor);
+		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(view.fxEditor);
 	}
 }

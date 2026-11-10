@@ -448,7 +448,7 @@ GPU边界：主浪潮分割、位移和动画仍在GPU；本轮指定的原版�
 | H26.2 | [EntityCorpse](../../src/main/java/org/unitego/lobecorp/world/entity/EntityCorpse.java) | 验证创建后199/200tick边界、保存重载、未加载期限、事件已结束及旧标记尸体；确认保留期不被路线扫描提前截断 |
 | H26.3 | [HordeRuntime.clearDebris/protectedFromCleanup](../../src/main/java/org/unitego/lobecorp/world/horde/HordeRuntime.java) | 战斗区域中到期尸体与掉落物仍保留，移出保护后清理；同时多目标/成员分配不漏保护 |
 | H26.4 | [HordeAmbient](../../src/main/java/org/unitego/lobecorp/client/horde/HordeAmbient.java) | 正常频率、不同间隔、正面/背面/遮挡/远处/未加载与暂停测试；三类粒子可见且没有超过配置范围生成 |
-| H26.5 | [粒子注册](../../src/main/java/org/unitego/lobecorp/registry/particle/client/RegisterParticleProviders.java) | 验证发射器协议、清扫刀光位置、多人追踪、提示合并及过期；对比主体CPU/GPU和粒子分配成本 |
+| H26.5 | [粒子注册](../../src/main/java/org/unitego/lobecorp/registry/client/particle/RegisterParticleProviders.java) | 验证发射器协议、清扫刀光位置、多人追踪、提示合并及过期；对比主体CPU/GPU和粒子分配成本 |
 | H26.6 | [RegionBox.forEntity](../../src/main/java/org/unitego/lobecorp/client/horde/HordeClient.java) | 至少3格净空/大体型余量与真实Y、不同体型/负坐标、移动目标平滑合流；GPU粒子替代不计为已完成 |
 
 本轮IDEA错误诊断11份文件均为零，BenchMod Compile退出0，HordeCleanupTest3/3、HordeRegionTest4/4通过；Data退出0，23份实际资源仅中英文语言两份更新，另有两份生成缓存变化。本次未启动、重启、接管游戏，未运行MC MCP、Debug或真实基准；上述动态验收不因静态诊断/规则回归通过而关闭。

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.function.Consumer;
 
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 import com.google.gson.JsonPrimitive;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
@@ -108,7 +108,7 @@ public class PhotonModelWorkspaceFields {
 			}
 			write(session, path, values);
 		};
-		String label = PhotonModelTextUtil.key(name.equals("translation") ? "position" : name);
+		String label = PhotonModelTranslations.key(name.equals("translation") ? "position" : name);
 		var row = new Configurator(label);
 		String[] axes = {"x", "y", "z"};
 		for (int index = 0; index < 3; index++) {

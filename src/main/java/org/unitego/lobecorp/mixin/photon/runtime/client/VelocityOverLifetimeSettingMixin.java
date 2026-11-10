@@ -12,17 +12,17 @@ import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(VelocityOverLifetimeSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})
 public abstract class VelocityOverLifetimeSettingMixin implements PhotonLifetimeCycleAccess, PhotonCycleOffsetAccess, IToggleConfigurable {
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
 	private boolean lobecorp$lifetimeCycleEnabled;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
 	@ConfigNumber(range = {1, Integer.MAX_VALUE})
 	private int lobecorp$lifetimeCycleTicks = PhotonLifetimeCycleUtil.DEFAULT_CYCLE_TICKS;
 
@@ -63,12 +63,12 @@ public abstract class VelocityOverLifetimeSettingMixin implements PhotonLifetime
 	private float lobecorp$cycleOffsetCenterZ;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_RADIAL_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_RADIAL_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetRadial;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_MULTIPLIER_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_MULTIPLIER_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetMultiplier;
 
@@ -85,21 +85,21 @@ public abstract class VelocityOverLifetimeSettingMixin implements PhotonLifetime
 	@Override
 	public void buildConfigurator(ConfiguratorGroup father) {
 		IToggleConfigurable.super.buildConfigurator(father);
-		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_LINEAR_KEY,
+		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_LINEAR_KEY,
 				() -> new NumberFunction3(this.lobecorp$cycleOffsetX, this.lobecorp$cycleOffsetY, this.lobecorp$cycleOffsetZ),
 				value -> {
 					this.lobecorp$cycleOffsetX = value.x.get(0, () -> 0f).floatValue();
 					this.lobecorp$cycleOffsetY = value.y.get(0, () -> 0f).floatValue();
 					this.lobecorp$cycleOffsetZ = value.z.get(0, () -> 0f).floatValue();
 				}, this));
-		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ORBITAL_KEY,
+		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ORBITAL_KEY,
 				() -> new NumberFunction3(this.lobecorp$cycleOffsetOrbitalX, this.lobecorp$cycleOffsetOrbitalY, this.lobecorp$cycleOffsetOrbitalZ),
 				value -> {
 					this.lobecorp$cycleOffsetOrbitalX = value.x.get(0, () -> 0f).floatValue();
 					this.lobecorp$cycleOffsetOrbitalY = value.y.get(0, () -> 0f).floatValue();
 					this.lobecorp$cycleOffsetOrbitalZ = value.z.get(0, () -> 0f).floatValue();
 				}, this));
-		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_CENTER_KEY,
+		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_CENTER_KEY,
 				() -> new NumberFunction3(this.lobecorp$cycleOffsetCenterX, this.lobecorp$cycleOffsetCenterY, this.lobecorp$cycleOffsetCenterZ),
 				value -> {
 					this.lobecorp$cycleOffsetCenterX = value.x.get(0, () -> 0f).floatValue();

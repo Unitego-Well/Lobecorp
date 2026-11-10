@@ -32,9 +32,9 @@
 |---|---|
 | 注册与数据 | [注册、附件与数据契约](registration-data.md) |
 | 实体与 AI | [实体与 AI](entities-ai.md) |
-| 群体事件与清道夫浪潮 | [深夜清扫、固定间距、参战配额与配置](horde-events.md) |
+| Encounter 与通用 Horde API | [定义注册、倒计时与收尾、命令及翻译](encounters.md)； [深夜清扫、固定间距、参战配额与配置](horde-events.md) |
 | 清道夫地面粒子、个体大小与天空 | [持续铺地、固定随机缩放与A2普通/Iris方向天空](midnight-atmosphere.md) |
-| 群体事件渲染实现 | [固定线路、客户端目标区域检测、GPU让行、烘焙帧动画、区段光场](horde-rendering-implementation.md) |
+| Horde 渲染实现 | [固定线路、客户端目标区域检测、GPU让行、烘焙帧动画、区段光场](horde-rendering-implementation.md) |
 | 浪潮视觉过渡与战斗区域 | [圆核心、胶囊轮廓、真实脚点粒子与服务端方区](horde-visual-transition.md) |
 | 视觉过渡交接 | [本轮已完成、未解决问题与下一步](horde-handoff-visual-transition.md) |
 | Horde 问题汇总 | [缺陷、性能候选、验收与历史遗留的唯一清单](horde-issues.md) |

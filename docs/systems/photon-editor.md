@@ -40,7 +40,7 @@ Configurator、Dialog、菜单、事件及 Photon 编辑器接口扩展交互，
   组织工具、预览覆盖、快捷键，并按编辑器所属关系控制额外控件显示。
 - [FXEditorMixin](../../src/main/java/org/unitego/lobecorp/mixin/photon/editor/client/FXEditorMixin.java)
   安装工具，并在关闭、切换项目时清理预览状态。
-- [LcPhotonEditorSettings](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonEditorSettings.java)
+- [LcPhotonEditorSettings](../../src/main/java/org/unitego/lobecorp/registry/client/photon/LcPhotonEditorSettings.java)
   注册设置；配置、客户端实现、Mixin 和工具分别放在对应职责域。
 - 游戏中的效果播放、模型 locator 跟随和渲染边界见[粒子与渲染](particle-rendering.md)。编辑器预览不承担服务端伤害结算。
 - 独立“模型特效项目”从文件菜单新建／打开，提供轻量模型、UV 与动画编辑，默认 1×1×1 单纹理白模；发射器“编辑模型”同样打开独立标签。左侧为模型层级／UV／模型资源／动画列表，右侧保留原生检视／历史，中央固定原生 `SceneView`，底部保留原资源目录与模型时间轴；复用原生窗口、面板拖动停靠、最大化、浮动与布局保存。左侧只管理当前模型的基础材质槽与贴图引用，底部仍为共享材质／网格库。加载项目同时识别模型工程、模型定义和 OBJ；文件导出沿用原生定义／FXPack／管理 FXPack 菜单。入口与资产约定见 [Photon 模型特效](photon-model-effects.md)，保持原 OBJ 粒子支持。
@@ -210,7 +210,7 @@ Photon 函数贡献需要 ModList 初始化，放在加载后的动画运行回�
 | Escape                | 取消当前扩展拖动              |
 
 [PhotonEditorShortcutUtil](../../src/main/java/org/unitego/lobecorp/util/photon/editor/PhotonEditorShortcutUtil.java)
-与 [LcPhotonEditorActions](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonEditorActions.java)集中管理动作 ID、KeyChord 默认绑定及旧配置迁移，不再使用扩展字符串绑定表或独立按键分发器。模型复用原生撤销／重做、全选与复制动作 ID，模型框选、取消与删除注册各自作用域；几何／UV 动作优先于通用场景键，防止默认 B 同时切换 Bloom。空绑定、冲突显示和恢复默认沿用原生 Keymap，文本组件保留原输入逻辑。
+与 [LcPhotonEditorActions](../../src/main/java/org/unitego/lobecorp/registry/client/photon/LcPhotonEditorActions.java)集中管理动作 ID、KeyChord 默认绑定及旧配置迁移，不再使用扩展字符串绑定表或独立按键分发器。模型复用原生撤销／重做、全选与复制动作 ID，模型框选、取消与删除注册各自作用域；几何／UV 动作优先于通用场景键，防止默认 B 同时切换 Bloom。空绑定、冲突显示和恢复默认沿用原生 Keymap，文本组件保留原输入逻辑。
 
 ### 项目保存
 

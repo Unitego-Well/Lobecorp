@@ -26,7 +26,7 @@ public class HordeGroundFog {
 	private static final List<VisibleRegion> ACTIVE = new ArrayList<>();
 	private static ClientLevel boundLevel;
 
-	private record Region(HordeClient.ClientEvent event, double station, double lateral, long seed, double distance) {
+	private record Region(HordeClient.ClientHorde event, double station, double lateral, long seed, double distance) {
 	}
 
 	private static class VisibleRegion {
@@ -38,7 +38,7 @@ public class HordeGroundFog {
 		}
 	}
 
-	public static void tick(List<HordeClient.ClientEvent> events) {
+	public static void tick(List<HordeClient.ClientHorde> events) {
 		var minecraft = Minecraft.getInstance();
 		var level = minecraft.level;
 		if (boundLevel != level) {
@@ -99,7 +99,7 @@ public class HordeGroundFog {
 		}
 	}
 
-	private static void collect(HordeClient.ClientEvent event, Vec3 camera) {
+	private static void collect(HordeClient.ClientHorde event, Vec3 camera) {
 		double time = event.time(0);
 		double tail = Math.max(0, (time - event.stop) * event.speed);
 		double head = Math.min(event.length, time * event.speed);

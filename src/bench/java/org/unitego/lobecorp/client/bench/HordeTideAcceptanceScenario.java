@@ -23,7 +23,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
-import org.unitego.lobecorp.client.horde.HordeAmbient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeLodSelection;
 import org.unitego.lobecorp.client.horde.HordeParticleSamples;
@@ -31,7 +31,7 @@ import org.unitego.lobecorp.client.horde.HordeRenderMetrics;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
 import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
-import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -428,7 +428,7 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		if (!route.prepareDeferred(rules, point -> new Vec3(point.x, center.y, point.z))) {
 			throw new IllegalStateException("受控路线准备未完成");
 		}
-		var definition = new MidnightCleanup();
+		var definition = new MidnightCleanupEncounter();
 		var visual = definition.visuals();
 		var header = new CompoundTag();
 		header.putInt("format", 1);
@@ -550,8 +550,8 @@ public class HordeTideAcceptanceScenario implements BenchClientScenario {
 		value.addProperty("target_request_tick", requestTick);
 		value.addProperty("targets_synced", positionsSynced(context));
 		value.addProperty("gpu_failure_sequence", HordeRenderMetrics.failureSequence());
-		value.addProperty("selected_particle_areas", HordeAmbient.selectedAreas());
-		value.addProperty("emitted_particles_tick", HordeAmbient.emittedParticles());
+		value.addProperty("selected_particle_areas", MidnightCleanupAmbient.selectedAreas());
+		value.addProperty("emitted_particles_tick", MidnightCleanupAmbient.emittedParticles());
 		value.addProperty("focused", focused(context));
 		value.addProperty("maximized", maximized(context));
 		value.addProperty("iconified", iconified(context));

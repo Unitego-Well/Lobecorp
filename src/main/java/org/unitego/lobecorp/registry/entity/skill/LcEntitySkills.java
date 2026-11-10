@@ -6,14 +6,14 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.generator.lang.LangHandler;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.translation.LangHandler;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 public interface LcEntitySkills {
-	DeferredRegister<IEntitySkill<?>> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_KEY);
+	DeferredRegister<IEntitySkill<?>> REGISTER = Lobecorp.register(LcRegistries.ENTITY_SKILL_KEY);
 
 	static void init(IEventBus iEventBus) {
 		LcEntitySkillGroups.init(iEventBus);

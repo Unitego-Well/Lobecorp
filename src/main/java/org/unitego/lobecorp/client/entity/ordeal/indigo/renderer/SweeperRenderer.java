@@ -14,7 +14,7 @@ import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
 import org.unitego.lobecorp.client.renderer.AutoGlowingRenderLayer;
 import org.unitego.lobecorp.client.renderer.DynamicCubeGeoLayer;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 
 import java.util.List;

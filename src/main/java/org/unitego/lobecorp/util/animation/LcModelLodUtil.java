@@ -10,7 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
-import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 
 import java.util.ArrayList;
 import java.util.Collections;

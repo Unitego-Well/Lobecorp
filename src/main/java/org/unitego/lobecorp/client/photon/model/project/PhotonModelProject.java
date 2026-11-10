@@ -31,7 +31,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import com.mojang.logging.annotations.MethodsReturnNonnullByDefault;
 
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.editor.PhotonProjectRawAccess;
 import org.unitego.lobecorp.util.photon.compat.PhotonProjectNbtUtil;
@@ -39,6 +39,7 @@ import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
 import com.lowdragmc.photon.client.fx.FX;
 import net.minecraft.nbt.NbtOps;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.PROJECT_TYPE;
 
 /// 正式模型工程保留原data原树；原生FX仅承担预览，不代替工程文件的数据结构。
 @ParametersAreNonnullByDefault
@@ -56,7 +57,7 @@ public class PhotonModelProject extends FXProject implements PhotonProjectRawAcc
 		rawContainer = value.copy();
 	}
 
-	public static final ProjectType TYPE = ProjectType.of("photon.lobecorp.model.project.type", ".mfxproj", PhotonModelProject::new);
+	public static final ProjectType TYPE = ProjectType.of(PROJECT_TYPE, ".mfxproj", PhotonModelProject::new);
 	private CompoundTag source = new CompoundTag();
 	private CompoundTag metadata = new CompoundTag();
 	private PhotonModelOutput model;

@@ -32,7 +32,7 @@ import net.minecraft.client.gui.render.TextureSetup;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelCodec;
 import org.unitego.lobecorp.util.photon.model.PhotonModelTopologyUtil;
@@ -118,14 +118,14 @@ public class PhotonModelWorkspaceUV extends UIElement {
 		layout(layout -> layout.widthPercent(100).flex(1).minHeight(0).flexDirection(FlexDirection.COLUMN));
 		setOverflowVisible(false);
 		textures.setCandidateUIProvider(value -> new Label().setText(value == null || value.isEmpty()
-				? Component.translatable(PhotonModelTextUtil.key("none")) : Component.literal(value)));
+				? Component.translatable(PhotonModelTranslations.NONE) : Component.literal(value)));
 		textures.setOnValueChanged(this::selectTexture);
 		textures.layout(layout -> layout.widthPercent(100).minWidth(0));
 		addChild(textures);
 		feedback.layout(layout -> layout.widthPercent(100));
 		feedback.setDisplay(false);
 		addChild(feedback);
-		addChild(new BooleanConfigurator(PhotonModelTextUtil.key("uv_grid"), () -> grid, value -> grid = value, true, false));
+		addChild(new BooleanConfigurator(PhotonModelTranslations.UV_GRID, () -> grid, value -> grid = value, true, false));
 		canvas.layout(layout -> layout.widthPercent(100).flex(1).minHeight(80));
 		canvas.setOverflowVisible(false);
 		canvas.setFocusable(true);
@@ -158,7 +158,7 @@ public class PhotonModelWorkspaceUV extends UIElement {
 		String[] labels = {"uv_translate_u", "uv_translate_v", "uv_scale_u", "uv_scale_v", "uv_rotation"};
 		for (int index = 0; index < labels.length; index++) {
 			int component = index;
-			tools.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key(labels[index]),
+			tools.addScrollViewChild(new NumberConfigurator(PhotonModelTranslations.key(labels[index]),
 					() -> component < 2 ? uvTranslation.get(component) : component < 4 ? uvScale.get(component - 2) : uvRotation,
 					value -> {
 						if (component < 2) {
@@ -170,7 +170,7 @@ public class PhotonModelWorkspaceUV extends UIElement {
 						}
 					}, index == 2 || index == 3 ? 1 : 0, false).setRange(-Float.MAX_VALUE, Float.MAX_VALUE));
 		}
-		tools.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("apply")).setOnClick(_ -> transformSelection()));
+		tools.addScrollViewChild(new Button().setText(PhotonModelTranslations.APPLY).setOnClick(_ -> transformSelection()));
 		addChild(tools);
 		refresh();
 	}

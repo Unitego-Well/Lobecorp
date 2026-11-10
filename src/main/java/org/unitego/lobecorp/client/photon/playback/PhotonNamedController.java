@@ -6,7 +6,7 @@ import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import net.minecraft.nbt.CompoundTag;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonPlaybackTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonPlaybackTypes;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedPlaybackDefinitionUtil;
 
 import javax.annotation.Nullable;

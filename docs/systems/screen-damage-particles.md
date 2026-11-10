@@ -18,7 +18,7 @@ Java源码旧八参构造保留默认普通伤害；线格式最后用VarInt打�
 - [DamageParticlePayload](../../src/main/java/org/unitego/lobecorp/network/tc/damage/DamageParticlePayload.java)：一次伤害的维度、目标／攻击者 UUID、伤害类型、固定坐标、数值、目标最大生命值快照和近战标记；沿用 `IToClientPayload`。
 - [ScreenParticles](../../src/main/java/org/unitego/lobecorp/client/particle/screen/ScreenParticles.java)：客户端接收、合并、寿命、实例池及通用内容发射。
 - [ScreenParticleRenderer](../../src/main/java/org/unitego/lobecorp/client/particle/screen/ScreenParticleRenderer.java)：共享相机投影、首次中心反投影、屏幕范围剔除、比例大小与震动、缩放弹出、上浮与淡出。
-- [ScreenParticleRegistration](../../src/main/java/org/unitego/lobecorp/registry/particle/client/ScreenParticleRegistration.java)：GUI 图层与字体重载缓存失效登记；监听入口仍在既有 `events.client`。
+- [ScreenParticleRegistration](../../src/main/java/org/unitego/lobecorp/registry/client/particle/ScreenParticleRegistration.java)：GUI 图层与字体重载缓存失效登记；监听入口仍在既有 `events.client`。
 
 系统不创建 Minecraft 实体或世界 `Particle`，不保存到世界存档，也不在客户端重新结算伤害。服务端不依赖客户端粒子类。
 

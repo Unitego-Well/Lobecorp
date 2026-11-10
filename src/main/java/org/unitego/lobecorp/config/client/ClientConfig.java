@@ -1,27 +1,23 @@
 package org.unitego.lobecorp.config.client;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
-
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys;
 
 /// 四组客户端选项共用一份配置，避免配置界面出现多个客户端入口。
 public class ClientConfig {
 	public static final String FILE_NAME = "lobecorp-client.toml";
 	private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec.BooleanValue CORPSE_BATCH = BUILDER
-            .translation(translation("corpseBatch", "Batch frozen corpse models", "批量绘制冻结尸体"))
+            .translation(ClientConfigTranslationKeys.CORPSE_BATCH)
             .define("corpseBatch", true);
 
 	/// 调用方在同一监视器内完成整组定义，防止并行类初始化交错push/pop。
-	public static ModConfigSpec.Builder section(String key, String english, String chinese) {
-		return BUILDER.translation(translation(key, english, chinese)).push(key);
+	public static ModConfigSpec.Builder section(String key, String translationKey) {
+		return BUILDER.translation(translationKey).push(key);
 	}
 
-	public static String translation(String key, String english, String chinese) {
-		String translation = "lobecorp.configuration.client." + key;
-		LangHandler.creates(Lobecorp.NAMESPACE, translation, english, chinese);
-		return translation;
+	public static String translation(String key) {
+		return ClientConfigTranslationKeys.path(key);
 	}
 
 	public static ModConfigSpec specification() {

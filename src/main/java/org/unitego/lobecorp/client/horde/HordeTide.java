@@ -84,6 +84,10 @@ public final class HordeTide {
         return from + (to - from) * weight;
     }
 
+    private static double clamp(double value, double minimum, double maximum) {
+        return value < minimum ? minimum : Math.min(value, maximum);
+    }
+
     /// 单位在线路上的解析位置（世界坐标），不含分割让步。
     public Vec3 position(long row, int column, int columns, double time, double rowSpacing,
                          double columnSpacing, double speed) {
@@ -192,6 +196,26 @@ public final class HordeTide {
         return Math.clamp(node, 0, nodes - 1);
     }
 
+	/// 与服务端路线投影使用相同的三维线段距离，避免计数器按最近节点跳变。
+	public double projectedStation(Vec3 world) {
+		var point = world.subtract(origin);
+		double nearest = Double.POSITIVE_INFINITY;
+		double station = 0;
+		for (int node = 0; node + 1 < nodes; node++) {
+			int first = node * NODE_WORDS, second = first + NODE_WORDS;
+			var from = new Vec3(route[first], route[first + 1], route[first + 2]);
+			var to = new Vec3(route[second], route[second + 1], route[second + 2]);
+			var delta = to.subtract(from);
+			double weight = delta.lengthSqr() == 0 ? 0 : Math.clamp(point.subtract(from).dot(delta) / delta.lengthSqr(), 0, 1);
+			double distance = from.add(delta.scale(weight)).distanceToSqr(point);
+			if (distance < nearest) {
+				nearest = distance;
+				station = route[first + 3] + (route[second + 3] - route[first + 3]) * weight;
+			}
+		}
+		return station;
+	}
+
     /// 世界坐标在路线上的最近站程；供粒子与调试把相机位置换算成行号。
     ///
     /// 先按节点粗扫再在相邻节点内细化，代价与节点数成正比，只在采样时调用。
@@ -221,9 +245,5 @@ public final class HordeTide {
         double from = heights[base + low];
         double to = heights[base + Math.min(low + 1, heightColumns - 1)];
         return mix(from, to, column - low);
-    }
-
-    private static double clamp(double value, double minimum, double maximum) {
-        return value < minimum ? minimum : Math.min(value, maximum);
     }
 }

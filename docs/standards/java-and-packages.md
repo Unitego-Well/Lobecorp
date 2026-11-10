@@ -4,7 +4,7 @@
 
 本文件维护项目 Java、接口与包职责约束，仅按当前任务读取适用章节。通用授权与执行规则唯一正文为[共享全局工作协议](C:/Users/wang_/.agents/AGENTS.md)。
 
-状态与来源（2026-11-10，项目规范重整）：下述结构要求为用户已确认的目标规范，存量源码尚未据此完成整体重命名或迁移；不能把目标描述为已实现。Encounter 的领域边界见[Encounter 结构规范](encounter-structure.md)。
+状态与来源（2026-11-10，项目规范重整）：下述结构要求为用户已确认的项目规范，当前迁移结构见[Encounter 契约](../systems/encounters.md)；未涉及的存量源码不宣称全部符合。Encounter 的领域边界见[Encounter 结构规范](encounter-structure.md)。
 
 ## 常量、可见性与接口
 
@@ -19,6 +19,12 @@
 - 未明确要求时，不要私有化工具类的构造函数，也不要额外声明 `final` 类。
 - Java、C# 中可通过 `import` 或 `using` 引入的成员，使用简洁调用形式，不用完整限定名调用。
 - 编写或修改本次涉及的 Java lambda 时，优先使用安全等价的方法引用，省去冗余的单表达式代码块、`return` 和可推断参数类型；不得改变重载解析、泛型推断、构造时机、注册生命周期或异常语义，不扩大为无关清理。
+
+## 成员排列
+
+- 类成员必须依次为：常量、变量、构造函数、方法、内部类；字段全部放在类开头，不穿插在构造函数、方法或内部类之间。
+- 每一类成员内部先 `static`、后非 `static`，静态方法排在实例方法之前；内部类自身也遵守相同顺序。
+- 排列时保持字段及初始化块的依赖和副作用顺序；不能为满足排序改变注册或资源加载时机。
 
 ## 系统边界与依赖
 
@@ -61,6 +67,7 @@
 
 ## 包与职责分类
 
+- 通用注册入口只提供注册器、公共注册方法及功能域接入；具体实体的注册项放入独立注册类。例如 `LcSoundEvents` 负责通用声音注册，清道夫声音由 `SweeperSoundEvents` 声明，沿用原资源标识与参数。
 - 所有登记、注册表及注册声明统一归入 `registry`，按功能域和登记职责细分；运行时状态与生命周期不因方法名含 `register` 就成为注册声明。
 - 所有客户端登记统一采用 `registry.client.<功能>.<职责>`，不继续使用 `registry.<功能>.client` 或 `client` 下的平行登记入口；客户端类型不进入服务端注册签名、静态初始化或服务端可加载的公共配置/API。客户端实现仍按职责归入 `client`。
 - 所有客户端内容统一放入 `client` 包，但注册放入 `registry`，配置放入配置包，事件监听放入 `events` 包，Mod 自定义事件放入 `event` 包。
@@ -75,8 +82,11 @@
 
 ## 翻译归属
 
-- 翻译键按功能域拆分为各域的 `TranslationKeys`，统一归入 `translation` 及其功能子包；键声明与注册实现是不同职责。翻译登记随业务注册在 `registry` 对应入口完成，仅客户端登记采用 `registry.client.<功能>.<职责>`。不建立跨域巨型键表，不在业务调用处复制键字符串。
-- 登记项的业务翻译与其登记声明同处登记中英文，数据生成读取该来源；不再通过独立 `init` 补登。具体 Encounter 与现有 `HordeLang` 的归属见[Encounter 结构规范](encounter-structure.md#翻译登记)。
+- 全项目翻译键统一归入 `org.unitego.lobecorp.registry.translation`；对应类型的键类直接放入该包并命名为 `<类型>TranslationKeys`，例如 `HordeTranslationKeys`、`EncounterTranslationKeys`，不为各个 `TranslationKeys` 单独建立子包。其他有独立职责的翻译管理实现按实际职责组织；包括原 `translation`、`util` 和其他位置的键、文案登记与翻译工具，不在其他包保留平行正文。
+- 翻译键采用命名常量注册，中英文与键在声明处保持唯一来源，例如 `public static final String TITLE = register("key", "Title", "标题")`。需要用于注解的键保留编译期 `TITLE_KEY` 常量，并用对应的注册常量登记该键，不把方法调用结果作为注解实参。
+- 业务注册以命名常量引用对应翻译常量，使文案随注册项初始化登记；DataGen从统一翻译管理器导出已登记条目，不再独立重放另一份文案清单。具体 Encounter 归属见[Encounter 结构规范](encounter-structure.md#翻译登记)。
+- Encounter 定义类型与实现归 `world.encounter`，仿照 `world.item` 的领域分类；Definition 使用原版／NeoForge 注册表和标准注册生命周期，不以自建 Map 代替注册表。
+- Definition由独立管理器管理登记、查找与绑定；具体项仿照其他注册类以 `MIDNIGHT_CLEANUP = register(...)` 这样的常量声明，不另建 `EncounterRegistration.init()` 逐项创建和登记的专用流程类。初始化入口只负责绑定既有声明，不重放业务声明。
 - Java 类名、包名和翻译键的结构调整应分别列入迁移影响，不因类名改变擅自改变既有资源、存档和网络标识。
 
 ## Bench、Mixin 与辅助类

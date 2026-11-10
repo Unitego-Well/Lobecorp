@@ -4,7 +4,6 @@ import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -16,7 +15,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.config.server.HordeEventConfig;
+import org.unitego.lobecorp.config.server.HordeConfig;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
@@ -39,6 +38,8 @@ import java.util.WeakHashMap;
 @SuppressWarnings("resource")
 public class HordeRuntime {
 	private static final Map<MinecraftServer, HordeRuntime> RUNTIMES = new WeakHashMap<>();
+	// 只限制归档清理；目标有效性、成员与战斗计时仍逐tick检查。
+	private static final int CHECK_INTERVAL = 20;
 	private final MinecraftServer server;
 	private final Map<UUID, Mob> loaded = new LinkedHashMap<>();
 	private final Map<String, SpawnRequest> requests = new LinkedHashMap<>();
@@ -46,10 +47,7 @@ public class HordeRuntime {
 	private final Map<String, HordeTargetSpatialState> spatial = new HashMap<>();
 	private final List<List<HordeTargetAssignment>> regionGroups = new ArrayList<>();
 	private boolean regionsDirty;
-	// 只限制归档清理；目标有效性、成员与战斗计时仍逐tick检查。
-	private static final int CHECK_INTERVAL = 20;
 	private final HordeSync sync = new HordeSync();
-	private final MidnightCleanupOpening opening = new MidnightCleanupOpening();
 	private boolean stopping;
 	private long ticksNanos;
 	private long spawned;
@@ -61,10 +59,6 @@ public class HordeRuntime {
 
 	public static HordeRuntime get(MinecraftServer server) {
 		return RUNTIMES.computeIfAbsent(server, HordeRuntime::new);
-	}
-
-	public void skipOpening(ServerPlayer player, UUID eventId) {
-		opening.skip(player, eventId);
 	}
 
 	public static void blockUpdated(ServerLevel level, BlockPos position) {
@@ -84,10 +78,7 @@ public class HordeRuntime {
 	}
 
 	public static void clear(MinecraftServer server) {
-		var runtime = RUNTIMES.remove(server);
-		if (runtime != null) {
-			runtime.opening.clear();
-		}
+		RUNTIMES.remove(server);
 	}
 
 	public static @Nullable LivingEntity assignedTarget(Mob mob) {
@@ -97,6 +88,24 @@ public class HordeRuntime {
 		}
 		Entity target = level.getEntity(participant.targetUuid());
 		return target instanceof LivingEntity living && living.isAlive() ? living : null;
+	}
+
+	private static boolean isDebris(Entity entity) {
+		return entity instanceof ItemEntity || entity instanceof EntityCorpse<?> corpse
+				&& (corpse.eventCleanupAt() >= 0 || HordeParticipant.isEvent(corpse));
+	}
+
+	public static boolean withinActiveWave(ServerLevel level, Vec3 point) {
+		return HordeSavedData.get(level.getServer()).events().values().stream().anyMatch(event ->
+				event.dimension().equals(level.dimension()) && !event.finished() && event.covers(point));
+	}
+
+	public static boolean protectedFromCleanup(ServerLevel level, AABB bounds) {
+		return get(level.getServer()).protectedByCombat(HordeSavedData.get(level.getServer()), level, bounds);
+	}
+
+	private static String domain(HordeInstance event, IHordeProfile profile) {
+		return event.dimension().identifier() + "|" + profile.id() + "|" + profile.faction();
 	}
 
 	public boolean join(Mob mob) {
@@ -167,26 +176,21 @@ public class HordeRuntime {
 		}
 	}
 
-	public void open(HordeEvent event) {
-		opening.start(server, event);
-	}
-
 	public void tick() {
 		var data = HordeSavedData.get(server);
-		opening.tick(server, data);
 		if (data.events().isEmpty() && loaded.isEmpty()) {
 			sync.tick(server, data, this);
 			prune(data);
 			return;
 		}
-		long began = HordeEventConfig.STATISTICS.get() ? System.nanoTime() : 0;
+		long began = HordeConfig.STATISTICS.get() ? System.nanoTime() : 0;
 		data.advance();
 		var active = new ArrayList<>(data.events().values());
 		if (!active.isEmpty()) {
 			java.util.Collections.rotate(active, -(int) (data.clock() % active.size()));
 		}
 		for (var event : active) {
-			var profile = HordeEvents.profile(event.profile());
+			var profile = Hordes.profile(event.profile());
 			ServerLevel level = server.getLevel(event.dimension());
 			if (level == null || profile == null) {
 				stop(event, HordeStopMode.CLEAR);
@@ -314,7 +318,7 @@ public class HordeRuntime {
 							continue;
 						}
 
-						var profile = HordeEvents.profile(event.profile());
+						var profile = Hordes.profile(event.profile());
 						if (profile == null || !profile.acceptsTarget(new HordeTargetContext(level, target.position(), profile.faction()), target)) {
 							continue;
 						}
@@ -348,8 +352,11 @@ public class HordeRuntime {
 						continue;
 					}
 
-					boolean covered = data.events().values().stream().anyMatch(event ->
-							event.dimension().equals(level.dimension()) && !event.finished() && event.covers(entity.position()));
+					boolean covered = data.events().values().stream().anyMatch(event -> {
+						var profile = Hordes.profile(event.profile());
+						return profile != null && profile.clearsDebris(event) && event.dimension().equals(level.dimension())
+								&& !event.finished() && event.covers(entity.position());
+					});
 					if (!covered || protectedByCombat(data, level, entity.getBoundingBox())) {
 						continue;
 					}
@@ -361,20 +368,6 @@ public class HordeRuntime {
 				}
 			}
 		}
-	}
-
-	private static boolean isDebris(Entity entity) {
-		return entity instanceof ItemEntity || entity instanceof EntityCorpse<?> corpse
-				&& (corpse.eventCleanupAt() >= 0 || HordeParticipant.isEvent(corpse));
-	}
-
-	public static boolean withinActiveWave(ServerLevel level, Vec3 point) {
-		return HordeSavedData.get(level.getServer()).events().values().stream().anyMatch(event ->
-				event.dimension().equals(level.dimension()) && !event.finished() && event.covers(point));
-	}
-
-	public static boolean protectedFromCleanup(ServerLevel level, AABB bounds) {
-		return get(level.getServer()).protectedByCombat(HordeSavedData.get(level.getServer()), level, bounds);
 	}
 
 	private boolean protectedByCombat(HordeSavedData data, ServerLevel level, AABB bounds) {
@@ -465,19 +458,19 @@ public class HordeRuntime {
 		}
 	}
 
-	private @Nullable HordeEvent provider(HordeTargetAssignment target, HordeSavedData data) {
+	private @Nullable HordeInstance provider(HordeTargetAssignment target, HordeSavedData data) {
 		var living = targetEntity(target);
 		if (living == null) {
 			return null;
 		}
 		var position = living.position();
 		return data.events().values().stream().filter(event -> event.canSpawnAt(position)).filter(event -> {
-			var profile = HordeEvents.profile(event.profile());
+			var profile = Hordes.profile(event.profile());
 			return profile != null && domain(event, profile).equals(target.domain)
 					&& living.level().dimension().equals(event.dimension()) && event.covers(position);
-		}).min(Comparator.comparingDouble((HordeEvent event) -> event.route().point(event.station(position),
+		}).min(Comparator.comparingDouble((HordeInstance event) -> event.route().point(event.station(position),
 						0).distanceToSqr(position))
-				.thenComparing(HordeEvent::id)).orElse(null);
+				.thenComparing(HordeInstance::id)).orElse(null);
 	}
 
 	private void processRequests(HordeSavedData data) {
@@ -491,7 +484,7 @@ public class HordeRuntime {
 			var event = data.events().get(request.event);
 			var level = event == null ? null : server.getLevel(event.dimension());
 			var target = targetEntity(request.target);
-			var profile = event == null ? null : HordeEvents.profile(event.profile());
+			var profile = event == null ? null : Hordes.profile(event.profile());
 			if (event == null || level == null || target == null || target.level() != level
 					|| profile == null || !domain(event, profile).equals(request.target.domain)
 					|| !event.canSpawnAt(target.position())
@@ -501,15 +494,15 @@ public class HordeRuntime {
 				cancel(request);
 				continue;
 			}
-			if (work.getOrDefault(level, 0) >= HordeEventConfig.WORK_PER_TICK.get()
-					|| creates.getOrDefault(level, 0) >= HordeEventConfig.CREATES_PER_TICK.get()) {
+			if (work.getOrDefault(level, 0) >= HordeConfig.WORK_PER_TICK.get()
+					|| creates.getOrDefault(level, 0) >= HordeConfig.CREATES_PER_TICK.get()) {
 				request.pause();
 				continue;
 			}
 			long livingCount = livingCounts.computeIfAbsent(level, current -> loaded.values().stream()
 					.filter(mob -> mob.level() == current && mob.isAlive() && !HordeParticipant.get(mob).fading()).count());
-			if (livingCount >= HordeEventConfig.SOFT_BUDGET.get() && request.target.occupied() > 1
-					&& creates.getOrDefault(level, 0) >= Math.max(1, HordeEventConfig.CREATES_PER_TICK.get() / 2)) {
+			if (livingCount >= HordeConfig.SOFT_BUDGET.get() && request.target.occupied() > 1
+					&& creates.getOrDefault(level, 0) >= Math.max(1, HordeConfig.CREATES_PER_TICK.get() / 2)) {
 				request.pause();
 				continue;
 			}
@@ -588,7 +581,7 @@ public class HordeRuntime {
 		}
 	}
 
-	private void bind(Mob mob, LivingEntity target, HordeEvent event) {
+	private void bind(Mob mob, LivingEntity target, HordeInstance event) {
 		HordeSavedData.get(server).memberEvents().put(mob.getUUID(), event.id());
 		var state = HordeParticipant.get(mob);
 		HordeParticipant.set(mob, new HordeParticipant(event.id().toString(), target.getUUID().toString(),
@@ -598,7 +591,7 @@ public class HordeRuntime {
 		blockedSince.put(mob.getUUID(), HordeSavedData.get(server).clock());
 	}
 
-	private void transferOrFade(Mob mob, @Nullable HordeTargetAssignment previous, HordeEvent event, boolean allowExcess) {
+	private void transferOrFade(Mob mob, @Nullable HordeTargetAssignment previous, HordeInstance event, boolean allowExcess) {
 		var data = HordeSavedData.get(server);
 		var next = previous == null ? null : data.targets().values().stream()
 				.filter(candidate -> candidate != previous && candidate.domain.equals(previous.domain)
@@ -607,7 +600,7 @@ public class HordeRuntime {
 						&& (allowExcess || candidate.missing() > 0))
 				.filter(candidate -> {
 					var target = targetEntity(candidate);
-					var profile = HordeEvents.profile(event.profile());
+					var profile = Hordes.profile(event.profile());
 					var state = spatial.get(candidate.key);
 					return target != null && target.level() == mob.level() && event.covers(target.position())
 							&& profile != null && target.level() instanceof ServerLevel level
@@ -666,9 +659,12 @@ public class HordeRuntime {
 				mob.level().getGameTime(), state.fadeTicks()));
 	}
 
-	public void stop(HordeEvent event, HordeStopMode mode) {
+	public void stop(HordeInstance event, HordeStopMode mode) {
 		if (mode == HordeStopMode.CLEAR || event.finished()) {
-			opening.finish(server, event);
+			var profile = Hordes.profile(event.profile());
+			if (profile != null) {
+				profile.stopped(server, event);
+			}
 		}
 		for (var request : List.copyOf(requests.values())) {
 			if (request.event.equals(event.id())) {
@@ -697,7 +693,7 @@ public class HordeRuntime {
 		var state = HordeParticipant.get(mob);
 		var data = HordeSavedData.get(server);
 		var event = data.events().get(state.eventUuid());
-		var profile = event == null ? null : HordeEvents.profile(event.profile());
+		var profile = event == null ? null : Hordes.profile(event.profile());
 		if (profile != null) {
 			var indexed = data.targets().get(domain(event, profile) + "|" + state.targetId());
 			if (indexed != null && indexed.members.contains(mob.getUUID())) {
@@ -717,10 +713,6 @@ public class HordeRuntime {
 			}
 		}
 		return null;
-	}
-
-	private static String domain(HordeEvent event, IHordeEventProfile profile) {
-		return event.dimension().identifier() + "|" + profile.id() + "|" + profile.faction();
 	}
 
 	private void updateRegions(HordeSavedData data) {
@@ -789,7 +781,7 @@ public class HordeRuntime {
 			return;
 		}
 		var domains = data.events().values().stream().map(event -> {
-			var profile = HordeEvents.profile(event.profile());
+			var profile = Hordes.profile(event.profile());
 			return profile == null ? "" : domain(event, profile);
 		}).collect(java.util.stream.Collectors.toSet());
 		boolean removed = data.targets().values().removeIf(target -> {

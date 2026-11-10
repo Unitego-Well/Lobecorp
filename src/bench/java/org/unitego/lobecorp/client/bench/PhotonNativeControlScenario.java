@@ -31,7 +31,7 @@ import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.bench.plugin.BenchMixinPlugin;
 import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 
@@ -99,7 +99,7 @@ public class PhotonNativeControlScenario implements BenchClientScenario {
 			throw new IllegalStateException("本轮原生数据对照要求 Sodium、无光影及显式 shader=false。");
 		}
 
-		if (System.getProperty("modBench.resultDirectory", "").isBlank() || !PhotonBenchMixinPlugin.preservedWindowApplied()
+		if (System.getProperty("modBench.resultDirectory", "").isBlank() || !BenchMixinPlugin.preservedWindowApplied()
 				|| !PhotonSubmissionDiagnostics.probesRequested()) {
 			throw new IllegalStateException("缺少鼠标隔离、原窗口桥或实际作业诊断开关。");
 		}
@@ -561,7 +561,7 @@ public class PhotonNativeControlScenario implements BenchClientScenario {
 		report.addProperty("world_settled_ns", worldSettledNs);
 		report.addProperty("world_settle_required_ns", TimeUnit.SECONDS.toNanos(10));
 		report.addProperty("world_settle_elapsed_ns", worldSettledNs == 0 ? 0 : worldSettledNs - worldAvailableNs);
-		report.addProperty("window_geometry_preserved_by_bench_bridge", PhotonBenchMixinPlugin.preservedWindowApplied());
+		report.addProperty("window_geometry_preserved_by_bench_bridge", BenchMixinPlugin.preservedWindowApplied());
 		report.addProperty("bench_input_isolation_contract_active", !System.getProperty("modBench.resultDirectory", "").isBlank());
 		report.addProperty("bench_input_isolation_runtime_verification", "not_verified_by_source_contract");
 		report.addProperty("shaderpack_enabled", IrisCompat.isUsingShaderPack());

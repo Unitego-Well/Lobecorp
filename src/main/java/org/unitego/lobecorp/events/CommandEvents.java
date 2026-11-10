@@ -8,6 +8,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.registry.command.LcAnimationCommand;
 import org.unitego.lobecorp.registry.command.LcDebugCommand;
 import org.unitego.lobecorp.registry.command.HordeCommand;
+import org.unitego.lobecorp.registry.command.EncounterCommand;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class CommandEvents {
@@ -18,5 +19,6 @@ public class CommandEvents {
 			LcDebugCommand.registerServer(event.getDispatcher());
 		}
 		HordeCommand.register(event.getDispatcher());
+		EncounterCommand.register(event.getDispatcher());
 	}
 }

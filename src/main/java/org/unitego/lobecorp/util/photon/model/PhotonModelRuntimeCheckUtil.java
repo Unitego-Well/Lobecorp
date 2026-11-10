@@ -15,7 +15,7 @@ import net.minecraft.nbt.StringTag;
 import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClipTrack;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 

@@ -20,7 +20,7 @@
 
 ## 自定义注册表
 
-`LcRegistrys` 创建并在 `NewRegistryEvent` 注册两个同步注册表：
+`LcRegistries` 创建并在 `NewRegistryEvent` 注册两个同步注册表：
 
 - `lobecorp:entity_skill`：`IEntitySkill<?>`。
 - `lobecorp:entity_skill_group`：`EntitySkillGroup`。

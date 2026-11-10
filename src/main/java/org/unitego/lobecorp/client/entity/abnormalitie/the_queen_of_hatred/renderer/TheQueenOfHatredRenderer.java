@@ -11,7 +11,7 @@ import org.joml.Vector2f;
 import org.unitego.lobecorp.client.conductor.render.ConductorGeoOutlineLayer;
 import org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.model.TheQueenOfHatredModel;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.registry.animation.client.LcDataTickets;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;

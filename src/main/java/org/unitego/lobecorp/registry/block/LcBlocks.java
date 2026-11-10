@@ -6,7 +6,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.LangHandler;
 
 import java.util.function.Function;
 import java.util.function.UnaryOperator;

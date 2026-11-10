@@ -19,7 +19,7 @@ public class HordeParticleSamples implements AutoCloseable {
     private static final AtomicLong GENERATION = new AtomicLong();
     private volatile boolean closed;
     private volatile @Nullable Snapshot snapshot;
-    private HordeClient.ClientEvent owner;
+    private HordeClient.ClientHorde owner;
     private long lastCapture;
     private long captureGeneration = -1;
     private long captureSerial;
@@ -80,7 +80,7 @@ public class HordeParticleSamples implements AutoCloseable {
     }
 
     /// 返回不过期且不晚于调用方事件时钟的快照；无证据、卸载或重载均返回null。
-    public static @Nullable Snapshot latest(HordeClient.ClientEvent event, double eventTime) {
+    public static @Nullable Snapshot latest(HordeClient.ClientHorde event, double eventTime) {
         var source = ACTIVE.get(event.id);
         if (source == null || source.closed || source.owner != event) {
             return null;
@@ -100,7 +100,7 @@ public class HordeParticleSamples implements AutoCloseable {
     }
 
     /// 客户端事件独立10 Hz采样；保留旧批次参数签名，不依赖可见绘制。
-    public void capture(HordeClient.ClientEvent event, double time, long serial,
+    public void capture(HordeClient.ClientHorde event, double time, long serial,
                         long firstRow, int firstColumn, int columns) {
         var tide = event.tide;
         long now = System.nanoTime();

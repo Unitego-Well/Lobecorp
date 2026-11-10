@@ -18,6 +18,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
@@ -45,7 +46,6 @@ import java.util.HashSet;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
-	public static final String REMOVED_DATA_KEY = "removed_runtime_data";
 	private static final int MAX_DEPTH = 128;
 
 	public static boolean rejectOpen(Editor editor, IProject project, @Nullable File file) {
@@ -571,7 +571,7 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	public static String message() {
-		return Component.translatable(PhotonEditorTextUtil.key(REMOVED_DATA_KEY)).getString();
+		return Component.translatable(PhotonEditorTranslations.REMOVED_RUNTIME_DATA).getString();
 	}
 
 	private static void notifyUnsupported(Editor editor) {

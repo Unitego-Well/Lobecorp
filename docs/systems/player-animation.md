@@ -9,7 +9,7 @@
 - [LcAnimationDefinition](../../src/main/java/org/unitego/lobecorp/animation/definition/LcAnimationDefinition.java) 的 `playerAnimation(policy)` 显式启用本次播放的玩家姿态。
 - [LcPlayerAnimationPolicy](../../src/main/java/org/unitego/lobecorp/animation/player/LcPlayerAnimationPolicy.java) 声明来源权重、骨骼遮罩、TRS 通道遮罩、动画权重、优先级、过渡设置及第一人称手臂接管开关。
 - [LcAnimationInstance](../../src/main/java/org/unitego/lobecorp/animation/runtime/LcAnimationInstance.java) 的 `setPlayerPolicy` 修改本次策略，可由原有 `at/onTick` 驱动。
-- [LcPlayerAnimationRegistration](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcPlayerAnimationRegistration.java) 复用唯一客户端 render-state 注册事件；[LcPlayerAnimationRuntime](../../src/main/java/org/unitego/lobecorp/client/animation/player/LcPlayerAnimationRuntime.java) 在状态提取阶段冻结本帧输入。
+- [LcPlayerAnimationRegistration](../../src/main/java/org/unitego/lobecorp/registry/client/animation/LcPlayerAnimationRegistration.java) 复用唯一客户端 render-state 注册事件；[LcPlayerAnimationRuntime](../../src/main/java/org/unitego/lobecorp/client/animation/player/LcPlayerAnimationRuntime.java) 在状态提取阶段冻结本帧输入。
 
 未声明玩家接入的资源播放不会接管玩家姿态。第一人称默认执行完整原版手臂与持物流程；只有本帧存在 `firstPersonArms=true` 且策略 `weight>0` 的动画层时才启用独立双臂路径。无动画、未声明或权重为 0 时均沿用原版布局。已启用玩家动画时，默认完全覆盖且不混入原版或外部姿态。只有明确声明的来源参与混合。
 
@@ -105,7 +105,7 @@ NORMAL 在标准零绑定旋转骨架保留原始 Euler 圈数；复杂层级通
 
 ## 兼容接入
 
-通过 [LcPlayerPoseSources](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcPlayerPoseSources.java) 登记 `Identifier → ILcPlayerPoseSource`，再由策略显式请求该 ID。来源只在状态提取阶段采样，返回按原版部位命名的局部增量；位移单位为格，旋转使用原版模型轴。
+通过 [LcPlayerPoseSources](../../src/main/java/org/unitego/lobecorp/registry/client/animation/LcPlayerPoseSources.java) 登记 `Identifier → ILcPlayerPoseSource`，再由策略显式请求该 ID。来源只在状态提取阶段采样，返回按原版部位命名的局部增量；位移单位为格，旋转使用原版模型轴。
 
 未请求的来源不采样。第三方自定义模型可通过公开姿态桥接接口接入；未知模型或其他模组最终写入的姿态不会自动归类为已知原版来源。本轮不引入新的动画库依赖。
 

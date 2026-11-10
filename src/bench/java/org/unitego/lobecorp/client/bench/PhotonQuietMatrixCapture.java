@@ -35,7 +35,7 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.photon.runtime.QueenOwnedLaserEffects;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.bench.plugin.BenchMixinPlugin;
 import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
@@ -246,7 +246,7 @@ public class PhotonQuietMatrixCapture {
         var value = current();
         requireArtifactSet();
         value.require(visualDiagnostic() || variant == value.variant, "quiet_variant_mismatch");
-        value.require(PhotonBenchMixinPlugin.preservedWindowApplied(), "quiet_window_mixin_not_loaded");
+        value.require(BenchMixinPlugin.preservedWindowApplied(), "quiet_window_mixin_not_loaded");
         value.require(PhotonRuntimeFactory.mode() == PhotonRuntimeFactory.Mode.HYBRID, "quiet_requires_hybrid");
         if (variant.laser || visualDiagnostic()) {
             value.require(QueenOwnedLaserEffects.enabled(), "quiet_requires_owned_laser");

@@ -12,7 +12,6 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
-import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.Profiler;
@@ -37,6 +36,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
@@ -64,7 +64,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 	@Override
 	protected void playStepSound(BlockPos position, BlockState state) {
 		if (level() instanceof ServerLevel) {
-			playSound(LcSoundEvents.SWEEPER_MOVE.get(), 0.65F, 1);
+			playSound(SweeperSoundEvents.SWEEPER_MOVE.get(), 0.65F, 1);
 		}
 	}
 

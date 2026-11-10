@@ -12,10 +12,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
-import org.unitego.lobecorp.client.hud.event.EventHud;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupHud;
-import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
@@ -34,7 +31,7 @@ import java.util.UUID;
 
 /// 接收事件快照；每tick提交玩家模拟距离内的整数区域，GPU负责分割运动。
 public class HordeClient {
-	private static final Map<UUID, ClientEvent> EVENTS = new TreeMap<>();
+	private static final Map<UUID, ClientHorde> EVENTS = new TreeMap<>();
 	private static final Map<UUID, Long> SNAPSHOT_REQUESTS = new TreeMap<>();
 	private static final double BLOCK_WIDTH = 16;
 	private static final int BLOCK_SEGMENTS = 16;
@@ -62,12 +59,7 @@ public class HordeClient {
 		}
 		try {
 			String kind = packet.getStringOr("kind", "");
-			if (kind.equals("presentation")) {
-				MidnightCleanupCinematic.receive(id, packet.getCompoundOrEmpty("body"));
-				return;
-			}
 			if (kind.equals("remove")) {
-				HordeEventAtmosphere.remove(id);
 				closeEvent(EVENTS.remove(id));
 				SNAPSHOT_REQUESTS.remove(id);
 				HordeGpuRenderer.remove(id);
@@ -75,10 +67,10 @@ public class HordeClient {
 			}
 			long sequence = packet.getLongOr("sequence", 0);
 			CompoundTag body = packet.getCompoundOrEmpty("body");
-			ClientEvent event = EVENTS.get(id);
+			ClientHorde event = EVENTS.get(id);
 			boolean reset = kind.equals("header") && body.getBooleanOr("reset", false);
 			if (reset) {
-				var replacement = new ClientEvent(id);
+				var replacement = new ClientHorde(id);
 				replacement.header(body);
 				replacement.sequence = sequence;
 				closeEvent(EVENTS.put(id, replacement));
@@ -103,11 +95,10 @@ public class HordeClient {
 	}
 
 	/// 事件被替换或移除时释放它的分割圆表纹理。
-	private static void closeEvent(ClientEvent event) {
+	private static void closeEvent(ClientHorde event) {
 		if (event != null) {
 			event.split.close();
 			event.particleSamples.close();
-			EventHud.INSTANCE.hide(event.id);
 		}
 	}
 
@@ -124,8 +115,7 @@ public class HordeClient {
 	}
 
 	public static void tick() {
-		EVENTS.values().forEach(ClientEvent::refine);
-		synchronizeHud();
+		EVENTS.values().forEach(ClientHorde::refine);
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.level == null || minecraft.player == null || EVENTS.isEmpty() || !HordeVisualConfig.ENABLED.get()) {
 			return;
@@ -133,7 +123,7 @@ public class HordeClient {
 		var player = minecraft.player;
 		var area = simulationBounds();
 		var nearby = minecraft.level.getEntitiesOfClass(LivingEntity.class, area, HordeClient::hasVisualCollision);
-		var targets = nearby.stream().filter(entity -> entity != player && ClientEvent.isGapTarget(entity)).toList();
+		var targets = nearby.stream().filter(entity -> entity != player && ClientHorde.isGapTarget(entity)).toList();
 		var members = nearby.stream().filter(Mob.class::isInstance).map(Mob.class::cast).filter(HordeParticipant::isEvent).toList();
 		for (var event : EVENTS.values()) {
 			if (event.ready && !event.failed) {
@@ -142,37 +132,6 @@ public class HordeClient {
 		}
 	}
 
-
-	/// HUD只消费同步事件，不受虚拟模型显示开关或视锥裁剪影响。
-	private static void synchronizeHud() {
-		var player = Minecraft.getInstance().player;
-		if (player == null) {
-			return;
-		}
-
-		for (var event : EVENTS.values()) {
-			double time = event.time(0);
-			double remaining = event.speed > 0 ? event.stop + Math.ceil(event.length / event.speed) - time : 0;
-			if (!event.ready || event.failed || !MidnightCleanup.ID.equals(event.profile) || remaining <= 0) {
-				EventHud.INSTANCE.hide(event.id);
-				continue;
-			}
-
-			if (!event.hudStarted) {
-				double arrival = event.tide.stationOf(player.position()) / event.speed - time;
-				if (arrival > MidnightCleanup.ARRIVAL_WARNING_TICKS) {
-					EventHud.INSTANCE.hide(event.id);
-					continue;
-				}
-
-				event.hudStarted = true;
-			}
-
-			if (EventHud.INSTANCE.show(MidnightCleanup.ID, event.id) instanceof MidnightCleanupHud hud) {
-				hud.update(remaining, time);
-			}
-		}
-	}
 
 	/// 视觉分割只读客户端实际碰撞状态；实体间硬碰撞资格不能代表普通生物的物理体积。
 	private static boolean hasVisualCollision(LivingEntity entity) {
@@ -330,7 +289,7 @@ public class HordeClient {
 	}
 
 	/// 最终圆并集边界的有符号距离；引导带允许粒子，不作为硬空洞。
-	public static double ambientGapBoundaryDistance(ClientEvent event, Vec3 point, Vec3 forward) {
+	public static double ambientGapBoundaryDistance(ClientHorde event, Vec3 point, Vec3 forward) {
 		double distance = Double.POSITIVE_INFINITY;
 		for (var circle : event.split.circles()) {
 			double y = point.y - event.origin.y;
@@ -350,7 +309,7 @@ public class HordeClient {
 	}
 
 	/// 只读事件集合，供调试叠层与 Gizmo 读取当帧状态。
-	public static List<ClientEvent> events() {
+	public static List<ClientHorde> events() {
 		return List.copyOf(EVENTS.values());
 	}
 
@@ -382,9 +341,7 @@ public class HordeClient {
 		ambientFrustum = null;
 		HordeRendering.clear();
 		HordeMeshCache.clear();
-		HordeAmbient.clear();
-		HordeRedSky.clear();
-		MidnightCleanupCinematic.clear();
+		HordeClientHooks.closeSession();
 		HordeDebugState.reset();
 	}
 
@@ -394,10 +351,10 @@ public class HordeClient {
 	public record DebugRange(AABB bounds, int color) {
 	}
 
-	public record Batch(ClientEvent event, Block block, long firstRow, long offset, int count, double time) {
+	public record Batch(ClientHorde event, Block block, long firstRow, long offset, int count, double time) {
 	}
 
-	public static class ClientEvent {
+	public static class ClientHorde {
 		public final UUID id;
 		public Identifier profile;
 		public HordeRules rules;
@@ -451,7 +408,8 @@ public class HordeClient {
 		public long stop;
 		public int columns;
 		public boolean ready;
-		private boolean hudStarted;
+		public boolean presentationEnabled;
+		public int spawnCutoffTicks;
 		public boolean failed;
 		public long regionVersion;
 		private AABB routeBounds;
@@ -460,7 +418,7 @@ public class HordeClient {
 		private final HordeRenderClock clock = new HordeRenderClock();
 		private int nodeCount;
 
-		private ClientEvent(UUID id) {
+		private ClientHorde(UUID id) {
 			this.id = id;
 		}
 
@@ -498,6 +456,8 @@ public class HordeClient {
 				columnSpacing = HordeVisualConfig.COLUMN_SPACING.get();
 			}
 			profile = Identifier.parse(tag.getStringOr("profile", ""));
+			presentationEnabled = tag.getBooleanOr("presentation", false);
+			spawnCutoffTicks = tag.getIntOr("spawn_cutoff", 0);
 			rules = nextRules;
 			clock.synchronize(tag.getLongOr("tick", 0), level.getGameTime());
 			stop = tag.getLongOr("stop", nextRules.duration());

@@ -13,7 +13,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.server.ServerConfig;
-import org.unitego.lobecorp.generator.lang.HordeLang;
+import org.unitego.lobecorp.registry.encounter.LcEncounters;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.LcSoundEvents;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
@@ -40,7 +40,7 @@ public class Lobecorp {
 	public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
         modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.specification(), ClientConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.specification(), ServerConfig.FILE_NAME);
-		HordeLang.init();
+		LcEncounters.init(iEventBus);
 
 		LcAttachmentTypes.init(iEventBus);
 		LcTags.init();

@@ -2,7 +2,7 @@ package org.unitego.lobecorp.registry.tag;
 
 import net.minecraft.tags.TagKey;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 /// 实体技能的原版注册表标签。
 public interface LcEntitySkillTags {
@@ -30,7 +30,7 @@ public interface LcEntitySkillTags {
 	TagKey<IEntitySkill<?>> STATIONARY = create("stationary", "Stationary", "定身施放");
 
 	private static TagKey<IEntitySkill<?>> create(String name, String enUs, String zhCn) {
-		return LcTags.create(LcRegistrys.ENTITY_SKILL_KEY, name, enUs, zhCn);
+		return LcTags.create(LcRegistries.ENTITY_SKILL_KEY, name, enUs, zhCn);
 	}
 
 	/// 强制初始化本接口中的标签声明。

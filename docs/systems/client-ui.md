@@ -32,10 +32,10 @@ PlayerStatusHud、PlayerScreenFilters 使用 INSTANCE，绘制适配 26.1.2 的�
 | [LobecorpClientEvents](../../src/main/java/org/unitego/lobecorp/events/client/LobecorpClientEvents.java)                                                                                                                                                             | 限制 `Dist.CLIENT` 的注册事件分发：实体 Renderer、尸体翻转、render-state modifier、调试项、粒子 Provider、键位、头像和 HUD |
 | [ClientRuntimeEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRuntimeEvents.java)                                                                                                                                                               | 客户端 tick、移动/鼠标/滚轮、登录与登出/世界卸载；向指挥家输入与 Photon 表现分发                                           |
 | [ClientRenderingEvents](../../src/main/java/org/unitego/lobecorp/events/client/ClientRenderingEvents.java)                                                                                                                                                           | 名称、世界 render-state 提取、自定义几何、手部及 GUI 渲染分发                                                              |
-| [EntityRenderers](../../src/main/java/org/unitego/lobecorp/registry/entity/client/EntityRenderers.java)                                                                                                                                                              | 注册女皇、清道夫、尸体及三类魔法星 Renderer                                                                                |
-| [RegisterRenderStateModifiers](../../src/main/java/org/unitego/lobecorp/registry/entity/client/RegisterRenderStateModifiers.java)                                                                                                                                    | 给尸体 Renderer 写入翻转控制数据                                                                                           |
-| [ConductorRenderStateRegistration](../../src/main/java/org/unitego/lobecorp/registry/conductor/client/ConductorRenderStateRegistration.java)                                                                                                                         | 给实体渲染状态写入指挥选择显示数据                                                                                         |
-| [ConductorPortraitRegistration](../../src/main/java/org/unitego/lobecorp/registry/conductor/client/ConductorPortraitRegistration.java)、[ConductorHudRegistration](../../src/main/java/org/unitego/lobecorp/registry/conductor/client/ConductorHudRegistration.java) | 注册头像画中画 Renderer 和 `lobecorp:conductor_hud` 图层                                                                   |
+| [EntityRenderers](../../src/main/java/org/unitego/lobecorp/registry/client/entity/EntityRenderers.java)                                                                                                                                                              | 注册女皇、清道夫、尸体及三类魔法星 Renderer                                                                                |
+| [RegisterRenderStateModifiers](../../src/main/java/org/unitego/lobecorp/registry/client/entity/RegisterRenderStateModifiers.java)                                                                                                                                    | 给尸体 Renderer 写入翻转控制数据                                                                                           |
+| [ConductorRenderStateRegistration](../../src/main/java/org/unitego/lobecorp/registry/client/conductor/ConductorRenderStateRegistration.java)                                                                                                                         | 给实体渲染状态写入指挥选择显示数据                                                                                         |
+| [ConductorPortraitRegistration](../../src/main/java/org/unitego/lobecorp/registry/client/conductor/ConductorPortraitRegistration.java)、[ConductorHudRegistration](../../src/main/java/org/unitego/lobecorp/registry/client/conductor/ConductorHudRegistration.java) | 注册头像画中画 Renderer 和 `lobecorp:conductor_hud` 图层                                                                   |
 
 扩展客户端功能时先检查现有注册或分发入口。不要在表现类新增一套监听来重复驱动同一状态；注册期获取 DeferredHolder
 仅发生在正确的注册回调中，其他初始化继续使用延迟引用。
@@ -46,11 +46,11 @@ PlayerStatusHud、PlayerScreenFilters 使用 INSTANCE，绘制适配 26.1.2 的�
 |--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
 | 女皇   | [TheQueenOfHatredModel](../../src/main/java/org/unitego/lobecorp/client/entity/abnormalitie/the_queen_of_hatred/model/TheQueenOfHatredModel.java)、[TheQueenOfHatredRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/abnormalitie/the_queen_of_hatred/renderer/TheQueenOfHatredRenderer.java) | 模型/动画 ID `lobecorp:entity/the_queen_of_hatred`；根据 QUEEN_PHASE_TWO ticket 切换普通与歇斯底里纹理 |
 | 清道夫 | [SweeperModel](../../src/main/java/org/unitego/lobecorp/client/entity/ordeal/indigo/model/SweeperModel.java)、[SweeperRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/ordeal/indigo/renderer/SweeperRenderer.java)                                                                           | 变种模型/动画/纹理映射，当前 B/C/D 显式回退 A 资源；尸体使用单独模型/纹理，生物量与发光读渲染数据      |
-| 尸体   | [EntityCorpseRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/renderer/EntityCorpseRenderer.java)、[EntityCorpseReverse](../../src/main/java/org/unitego/lobecorp/registry/entity/client/EntityCorpseReverse.java)                                                                            | 复用原实体表现，翻转例外通过 EntityCorpseReverseEvent 与 modifier 提供                                 |
+| 尸体   | [EntityCorpseRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/renderer/EntityCorpseRenderer.java)、[EntityCorpseReverse](../../src/main/java/org/unitego/lobecorp/registry/client/entity/EntityCorpseReverse.java)                                                                            | 复用原实体表现，翻转例外通过 EntityCorpseReverseEvent 与 modifier 提供                                 |
 | 魔法星 | [MagicStarRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/projectile/renderer/MagicStarRenderer.java)、[MagicStarRenderState](../../src/main/java/org/unitego/lobecorp/client/entity/projectile/renderer/MagicStarRenderState.java)                                                          | 专用投射物 render state；具体资源和尺寸跟随原实体定义                                                  |
 
 模型类选择资源，Renderer
-从客户端实体状态提取当帧数据并提交绘制。[LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcDataTickets.java)
+从客户端实体状态提取当帧数据并提交绘制。[LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/client/animation/LcDataTickets.java)
 集中声明 GeckoLib DataTicket；清道夫 Renderer 提取变种、生物量比值等数据，模型及图层消费该数据。新视觉参数应明确权威来源、同步途径、默认值与失效处理，不用渲染缓存代替实体状态。
 
 手写资源位于 [assets/lobecorp](../../src/main/resources/assets/lobecorp) 的
@@ -71,7 +71,7 @@ packed light、overlay、颜色、深度、骨骼 pivot、UV 和额外 render pa
 
 ## 调试显示
 
-[LcDebugEntries](../../src/main/java/org/unitego/lobecorp/registry/entity/client/LcDebugEntries.java)
+[LcDebugEntries](../../src/main/java/org/unitego/lobecorp/registry/client/entity/LcDebugEntries.java)
 集中注册状态、技能、技能效果、命中框及原版调试开关，并按启用状态注册 Renderer。调试显示属于诊断消费端，不承担技能推进或命中结算。
 
 | 调试内容       | 实现                                                                                                                                            | 数据来源                                                    |
@@ -80,7 +80,7 @@ packed light、overlay、颜色、深度、骨骼 pivot、UV 和额外 render pa
 | 技能运行       | [EntitySkillDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/skill/debug/EntitySkillDebugRenderer.java)                    | 技能能力/当前同步运行态，用于观察技能阶段                   |
 | 技能效果       | [EntitySkillEffectDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/entity/skill/effect/debug/EntitySkillEffectDebugRenderer.java) | Level 的客户端命中框快照中携带的 EntitySkillEffectDebugInfo |
 | 命中框几何     | [HitboxDebugRenderer](../../src/main/java/org/unitego/lobecorp/client/hitbox/HitboxDebugRenderer.java)                                          | HITBOX_LEVEL_DATA 的客户端快照；不是客户端伤害检测          |
-| 本地 tick 监控 | [LcDebugRuntimeOptions](../../src/main/java/org/unitego/lobecorp/client/debug/LcDebugRuntimeOptions.java)                                       | 客户端向本地集成服务器传递的运行选项，保持配置默认值回退    |
+| 本地 tick 监控 | [LcDebugRuntimeOptions](../../src/main/java/org/unitego/lobecorp/debug/LcDebugRuntimeOptions.java)                                       | 客户端向本地集成服务器传递的运行选项，保持配置默认值回退    |
 
 新增调试项先复用 LcDebugEntries 和现有网络快照；只显示实际可取得的同步信息。不要把本地集成服务器专用选项当成远程服务器通信，也不要为普通同步字段重复增加载荷。
 
@@ -110,7 +110,7 @@ Menu-backed 交互；不要因为使用 LDLib2 就绕过服务器校验。
   内扩展完整使用原生编辑器样式，具体开关与交互见 [Photon 编辑器](photon-editor.md)。
 - 文本、元素
   ID、配置及资源路径使用现有集中定义；指挥家主题由 [ConductorHudTheme](../../src/main/java/org/unitego/lobecorp/client/conductor/hud/ConductorHudTheme.java)
-  、业务文本由 [ConductorTexts](../../src/main/java/org/unitego/lobecorp/client/conductor/hud/ConductorTexts.java) 管理。
+  、业务文本由 [ConductorTexts](../../src/main/java/org/unitego/lobecorp/registry/translation/conductor/ConductorTexts.java) 管理。
 - 动态挂载/重建只维护当前内容，避免重复监听和重复追加；有文本焦点时区分文本编辑与全局快捷键，窗口失焦时释放控制输入。
 - 滚动需要受限视口与真实内容高度；检查 ScrollerView、父容器尺寸和 adaptive height，不以“显示滚动条”作为滚动可用的证明。
 - 如果新页面实际使用 UITemplateElement，核对 provider 注册、资源路径、元素 ID、具体类型、local stylesheet、类名及 selector
@@ -137,7 +137,7 @@ Menu-backed 交互；不要因为使用 LDLib2 就绕过服务器校验。
 | 分类           | 管理位置                                                                                                                                                                     |
 |----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 客户端偏好     | [ConductorHudPreferences](../../src/main/java/org/unitego/lobecorp/client/conductor/hud/ConductorHudPreferences.java) 使用 config 下的 Properties；Photon 设置见独立系统文档 |
-| 游戏键位       | [ConductorKeyMappings](../../src/main/java/org/unitego/lobecorp/registry/conductor/client/ConductorKeyMappings.java)；键位注册与运行时输入处理分开                           |
+| 游戏键位       | [ConductorKeyMappings](../../src/main/java/org/unitego/lobecorp/registry/client/conductor/ConductorKeyMappings.java)；键位注册与运行时输入处理分开                           |
 | 模型/动画/纹理 | [手写客户端资源](../../src/main/resources/assets/lobecorp)；骨骼名及资源 ID 由对应模型/图层集中管理                                                                          |
 | UI/编辑器资产  | [resources/ldlib2](../../resources/ldlib2)；是否为运行时权威取决于具体加载代码                                                                                               |
 | 同步           | [LcPayloads](../../src/main/java/org/unitego/lobecorp/registry/LcPayloads.java)、实体同步数据/附件和既有 tc/ts 载荷；渲染只消费同步结果                                      |

@@ -7,7 +7,7 @@ import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonSpawnTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.PhotonFXResourceUtil;
 
 import java.io.IOException;

@@ -12,7 +12,7 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorDockedPanel;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.compat.PhotonEffectInventoryUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEffectLibraryTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 
 import javax.annotation.Nullable;
@@ -28,7 +28,7 @@ import java.util.Map;
 /// 面板本身不创建FX运行态；列表数据来自只读NBT索引，点选条目才调用编辑器工具挂一份预览。
 public class PhotonEffectLibraryPanel {
 	/// 面板标题的翻译键。
-	private static final String TITLE = PhotonEffectLibraryTextUtil.TYPE;
+	private static final String TITLE = PhotonEffectLibraryTranslations.TYPE;
 	/// 列表区的最大可见行数，超出滚动。
 	private static final int MAX_ROWS = 64;
 	private final PhotonEffectLibraryProject project;
@@ -48,9 +48,9 @@ public class PhotonEffectLibraryPanel {
 		panel.addContent(summary);
 		rows.layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.COLUMN));
 		panel.addContent(rows);
-		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTextUtil.RESCAN))
+		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslations.RESCAN))
 				.setOnClick(_ -> rescan()));
-		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTextUtil.CLEAR))
+		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslations.CLEAR))
 				.setOnClick(_ -> select(null)));
 		panel.setOnClose(this::close);
 	}
@@ -62,7 +62,7 @@ public class PhotonEffectLibraryPanel {
 			return;
 		}
 
-		Dialog.showNotification(PhotonEffectLibraryTextUtil.TYPE, PhotonEffectLibraryTextUtil.TIP, null).show(editor);
+		Dialog.showNotification(PhotonEffectLibraryTranslations.TYPE, PhotonEffectLibraryTranslations.TIP, null).show(editor);
 	}
 
 	/// 打开或切换到当前工程的面板；已存在同工程面板时复用，不重复扫描。
@@ -155,7 +155,7 @@ public class PhotonEffectLibraryPanel {
 			}
 		}
 
-		summary.setText(Component.translatable(PhotonEffectLibraryTextUtil.SUMMARY,
+		summary.setText(Component.translatable(PhotonEffectLibraryTranslations.SUMMARY,
 				scanned.size(), totalObjects, totalEmitters, totalBytes / 1024, unreadable));
 
 		for (var entry : scanned) {
@@ -167,7 +167,7 @@ public class PhotonEffectLibraryPanel {
 		}
 
 		if (scanned.isEmpty()) {
-			rows.addChild(new TextElement().setText(Component.translatable(PhotonEffectLibraryTextUtil.EMPTY)));
+			rows.addChild(new TextElement().setText(Component.translatable(PhotonEffectLibraryTranslations.EMPTY)));
 		}
 	}
 

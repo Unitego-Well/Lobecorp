@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.model.project;
 
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectAutomation;
@@ -23,6 +25,11 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 import com.lowdragmc.lowdraglib2.syncdata.ISubscription;
 
 import java.nio.charset.StandardCharsets;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.CLIP;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.EDITOR_MODEL_DATA;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.PROJECT_TYPE;
 
 /// 模型高级制作入口与MCP共用完整批事务；几何/UV/材质/动画原树始终可见并保留未知字段。
 public class PhotonModelAuthoringPanel {
@@ -35,7 +42,7 @@ public class PhotonModelAuthoringPanel {
 			branch.leaf(".mfxpack", () -> export(editor, "pack", ".mfxpack"));
 			branch.leaf("OBJ", () -> export(editor, "obj", ".obj"));
 			branch.leaf("JSON", () -> export(editor, "json", ".json"));
-			branch.leaf("photon.lobecorp.model.editor.model_data", () -> openAdvanced(editor));
+			branch.leaf(EDITOR_MODEL_DATA, () -> openAdvanced(editor));
 		}));
 	}
 
@@ -51,7 +58,7 @@ public class PhotonModelAuthoringPanel {
 					request.addProperty("path", file.getAbsolutePath());
 					request.addProperty("kind", kind);
 					PhotonEffectAutomation.exportFromEditor(handle, request, error ->
-							Dialog.showNotification("photon.lobecorp.model.project.type", error, null).show(editor));
+							Dialog.showNotification(PROJECT_TYPE, error, null).show(editor));
 				}).show(editor);
 	}
 
@@ -78,24 +85,24 @@ public class PhotonModelAuthoringPanel {
 		var config = project.model().config;
 		double[] numbers = {config.duration, config.startDelay, config.playbackSpeed, config.animationOffset};
 		boolean[] flags = {config.enabled, config.looping, config.paused};
-		var dialog = new Dialog().setTitle("photon.lobecorp.model.project.type").width(TaffyDimension.length(850));
+		var dialog = new Dialog().setTitle(PROJECT_TYPE).width(TaffyDimension.length(850));
 		dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
 		dialog.addContent(new StringConfigurator("asset", () -> texts[0], value -> texts[0] = value, texts[0], false));
 		dialog.addContent(new StringConfigurator("renderer", () -> texts[1], value -> texts[1] = value, texts[1], false));
-		dialog.addContent(new StringConfigurator("photon.lobecorp.model.clip", () -> texts[2], value -> texts[2] = value, texts[2], false));
+		dialog.addContent(new StringConfigurator(CLIP, () -> texts[2], value -> texts[2] = value, texts[2], false));
 		String[] keys = {"duration", "start_delay", "playback_speed", "animation_offset"};
 		for (int index = 0; index < numbers.length; index++) {
 			int slot = index;
-			dialog.addContent(new NumberConfigurator("photon.lobecorp.model." + keys[index], () -> numbers[slot], value -> numbers[slot] = value.doubleValue(), numbers[slot], false));
+			dialog.addContent(new NumberConfigurator(PhotonModelTranslations.key(keys[index]), () -> numbers[slot], value -> numbers[slot] = value.doubleValue(), numbers[slot], false));
 		}
 		String[] toggles = {"enabled", "looping", "pause"};
 		for (int index = 0; index < flags.length; index++) {
 			int slot = index;
-			dialog.addContent(new BooleanConfigurator("photon.lobecorp.model." + toggles[index], () -> flags[slot], value -> flags[slot] = value, flags[slot], false));
+			dialog.addContent(new BooleanConfigurator(PhotonModelTranslations.key(toggles[index]), () -> flags[slot], value -> flags[slot] = value, flags[slot], false));
 		}
 		var status = new TextElement();
 		dialog.addContent(status);
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
+		dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> {
 			try {
 				var operations = new JsonArray();
 				var assetOperation = new JsonObject();
@@ -129,7 +136,7 @@ public class PhotonModelAuthoringPanel {
 				status.setText(Component.literal(invalid.getMessage()));
 			}
 		}));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 		dialog.show(editor);
 	}
 }

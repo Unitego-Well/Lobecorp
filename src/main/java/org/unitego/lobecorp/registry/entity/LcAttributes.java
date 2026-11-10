@@ -9,7 +9,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.LangHandler;
 import org.unitego.lobecorp.world.entity.attribute.BasicAttribute;
 import org.unitego.lobecorp.world.entity.attribute.MaxAttribute;
 import org.unitego.lobecorp.world.entity.attribute.MinAttribute;

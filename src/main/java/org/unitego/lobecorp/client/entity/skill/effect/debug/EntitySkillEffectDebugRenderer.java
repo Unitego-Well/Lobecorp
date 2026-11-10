@@ -10,7 +10,7 @@ import net.minecraft.util.debug.DebugValueAccess;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.DebugTranslationKeys;
 import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 import org.unitego.lobecorp.world.hitbox.HitboxSnapshot;
 import org.unitego.lobecorp.registry.LcAttachmentTypes;
@@ -33,7 +33,7 @@ public class EntitySkillEffectDebugRenderer implements DebugRenderer.SimpleDebug
 
 	private static void emitLine(String key, String value, Vec3 position, int line) {
 		String text = Component.translatable(
-				LangHandler.translationKey("debug.lobecorp.skill_effect", key), value).getString();
+				key, value).getString();
 		Gizmos.billboardText(text, position.add(0.0, -line * TEXT_LINE_SPACING, 0.0),
 				TextGizmo.Style.forColorAndCentered(TEXT_COLOR));
 	}
@@ -59,12 +59,12 @@ public class EntitySkillEffectDebugRenderer implements DebugRenderer.SimpleDebug
 					? cylinder.height() / 2.0 + TEXT_HEIGHT_OFFSET : TEXT_HEIGHT_OFFSET;
 			Vec3 textPosition = snapshot.position().add(0.0, heightOffset, 0.0);
 			int ageTicks = debugInfo.lifetimeTicks() - snapshot.remainingTicks();
-			emitLine("name", debugInfo.name(), textPosition, 0);
-			emitLine("owner", debugInfo.owner(), textPosition, 1);
-			emitLine("skill", debugInfo.skill(), textPosition, 2);
-			emitLine("position", snapshot.position().toString(), textPosition, 3);
-			emitLine("lifetime", ageTicks + "/" + debugInfo.lifetimeTicks() + "t", textPosition, 4);
-			emitLine("hitbox", snapshot.size().toString(), textPosition, 5);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_NAME, debugInfo.name(), textPosition, 0);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_OWNER, debugInfo.owner(), textPosition, 1);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_SKILL, debugInfo.skill(), textPosition, 2);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_POSITION, snapshot.position().toString(), textPosition, 3);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_LIFETIME, ageTicks + "/" + debugInfo.lifetimeTicks() + "t", textPosition, 4);
+			emitLine(DebugTranslationKeys.DEBUG_LOBECORP_SKILL_EFFECT_LOBECORP_HITBOX, snapshot.size().toString(), textPosition, 5);
 		}
 	}
 }

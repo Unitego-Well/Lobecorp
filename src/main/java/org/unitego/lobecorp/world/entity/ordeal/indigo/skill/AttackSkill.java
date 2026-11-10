@@ -2,13 +2,13 @@ package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.control.ConductorController;
+import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
 import org.unitego.lobecorp.util.entity.EntityUtil;
@@ -167,7 +167,7 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_ATTACK.get(), 0.8F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_ATTACK.get(), 0.8F, 1);
 		}
 		float yaw = entity.getYRot();
 		runtime.setData(LOCKED_YAW, yaw);

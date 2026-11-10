@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
+
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ColorConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
@@ -27,6 +29,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.VALUE;
 
 /// 表单逐字段复制原 NBT 类型，未知复合数据保留；不以摘要重建参数、绑定或规则。
 public class PhotonNamedEntryFields {
@@ -42,7 +46,7 @@ public class PhotonNamedEntryFields {
 
 	public static void build(UIElement parent, Supplier<CompoundTag> current, Consumer<CompoundTag> change) {
 		if (current.get().getStringOr("type", "").equals("COLOR") && current.get().getListOrEmpty("defaults").size() == 4) {
-			parent.addChild(new ColorConfigurator("photon.lobecorp.animation.value", () -> color(current.get().getListOrEmpty("defaults")), value -> {
+			parent.addChild(new ColorConfigurator(VALUE, () -> color(current.get().getListOrEmpty("defaults")), value -> {
 				var copy = current.get().copy();
 				var rgba = new ListTag();
 				for (int shift : new int[]{16, 8, 0, 24}) {
@@ -138,7 +142,7 @@ public class PhotonNamedEntryFields {
 			});
 		}
 		if (key.equals("inputs")) {
-			group.configuratorContainer(container -> container.addChild(new Button().setText("photon.lobecorp.animation.new").setOnClick(_ -> {
+			group.configuratorContainer(container -> container.addChild(new Button().setText(NEW).setOnClick(_ -> {
 				var input = new CompoundTag();
 				input.putString("target", "");
 				input.putString("source", "");
@@ -167,7 +171,7 @@ public class PhotonNamedEntryFields {
 			case "offsetParameter" -> "offset_parameter";
 			default -> key;
 		};
-		return "photon.lobecorp.animation." + suffix;
+		return PhotonAnimationTranslations.key(suffix);
 	}
 
 	private static double minimum(Tag type) {

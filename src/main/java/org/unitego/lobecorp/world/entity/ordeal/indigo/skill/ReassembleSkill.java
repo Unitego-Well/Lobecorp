@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
@@ -57,7 +57,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 		entity.addEntityState(SweeperStates.REASSEMBLE);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
 		}
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
@@ -71,7 +71,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
 		}
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
@@ -79,7 +79,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
 		}
 		EntityCorpse<?> corpse = runtime.target(EntityCorpse.class);
 		faceTarget(entity, corpse);
@@ -170,7 +170,7 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
 		}
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}

@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.world.entity.skill;
 
 import com.mojang.serialization.Codec;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -13,7 +13,7 @@ import java.util.Set;
 public record EntitySkillState(Map<IEntitySkill<?>, Boolean> overrides) {
 	/// true 表示显式添加，false 表示显式移除；默认技能本身不写入附件。
 	public static final Codec<EntitySkillState> CODEC = Codec.dispatchedMap(
-					LcRegistrys.ENTITY_SKILL.byNameCodec(), _ -> Codec.BOOL)
+					LcRegistries.ENTITY_SKILL.byNameCodec(), _ -> Codec.BOOL)
 			.xmap(EntitySkillState::new, EntitySkillState::overrides);
 
 	public EntitySkillState {

@@ -33,7 +33,7 @@
 
 | 外部能力 | 项目入口 | 本地约束 |
 | --- | --- | --- |
-| 注册表 | `registry`、`LcRegistrys` 和各 `Lc*` 注册器 | 注册相关内容统一放入 `registry` |
+| 注册表 | `registry`、`LcRegistries` 和各 `Lc*` 注册器 | 注册相关内容统一放入 `registry` |
 | 事件 | `events`、`event` | 监听入口唯一；自定义事件与监听器分离 |
 | Payload | `network/tc`、`network/ts`、`network/tsc` | 使用对应的 `To...Payload` 接口，并在服务端重新校验 |
 | SavedData/Attachment | `conductor/data`、`registry`、实体技能附件 | 按持久化范围区分世界数据、实体附件和运行态 |

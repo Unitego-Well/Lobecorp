@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import javax.annotation.Nonnull;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.COPY;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.RENAME;
 
 /// 复用移除前列表的原生行、拖动条和右键菜单，排序通过现有 UUID 草稿事务提交。
 public class PhotonNamedOutline extends UIElement {
@@ -80,9 +83,9 @@ public class PhotonNamedOutline extends UIElement {
 					list.setSelected(item);
 					select.accept(definition.id());
 					var menu = TreeBuilder.Menu.start();
-					menu.leaf("photon.lobecorp.animation.copy", duplicate);
-					menu.leaf("photon.lobecorp.animation.rename", rename);
-					menu.leaf("photon.lobecorp.animation.delete", delete);
+					menu.leaf(COPY, duplicate);
+					menu.leaf(RENAME, rename);
+					menu.leaf(DELETE, delete);
 					editor.openMenu(this, event.x, event.y, menu);
 					event.stopPropagation();
 				}

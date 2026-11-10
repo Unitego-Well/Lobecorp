@@ -4,7 +4,7 @@ import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Face;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Part;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -70,7 +70,7 @@ public class PhotonModelPrimitiveUtil {
         try {
             mesh.validate();
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException(PhotonModelTextUtil.key("primitive.invalid"), exception);
+            throw new IllegalArgumentException(PhotonModelTranslations.PRIMITIVE_INVALID, exception);
         }
 
         int offset = asset.vertices.size();
@@ -88,7 +88,7 @@ public class PhotonModelPrimitiveUtil {
 
     private static void validate(Shape shape, Parameters parameters) {
         if (shape == null || parameters == null) {
-            throw new IllegalArgumentException(PhotonModelTextUtil.key("primitive.invalid"));
+            throw new IllegalArgumentException(PhotonModelTranslations.PRIMITIVE_INVALID);
         }
 
         boolean valid = size(parameters.radius) && size(parameters.width) && size(parameters.height)
@@ -103,7 +103,7 @@ public class PhotonModelPrimitiveUtil {
         valid &= shape != Shape.RING || parameters.rings >= MIN_SEGMENTS;
 
         if (!valid) {
-            throw new IllegalArgumentException(PhotonModelTextUtil.key("primitive.invalid"));
+            throw new IllegalArgumentException(PhotonModelTranslations.PRIMITIVE_INVALID);
         }
     }
 

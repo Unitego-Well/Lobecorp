@@ -8,14 +8,12 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.IdentifierArgument;
-import net.minecraft.commands.arguments.AngleArgument;
-import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
-import java.util.List;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.unitego.lobecorp.registry.translation.HordeTranslationKeys;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.world.horde.HordeEvents;
+import org.unitego.lobecorp.world.horde.Hordes;
 import org.unitego.lobecorp.world.horde.HordeStartRequest;
 import org.unitego.lobecorp.world.horde.HordeStopMode;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
@@ -26,13 +24,6 @@ import java.util.UUID;
 
 public class HordeCommand {
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("event")
-				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-				.then(Commands.literal("template").then(Commands.literal("midnight_cleanup")
-						.executes(context -> template(context, false))
-						.then(Commands.argument("center", Vec3Argument.vec3(false))
-								.then(Commands.argument("yaw", AngleArgument.angle())
-										.executes(context -> template(context, true))))))));
 		var start = Commands.literal("start")
 				.then(Commands.argument("profile", IdentifierArgument.id())
 						.then(Commands.argument("from", Vec3Argument.vec3())
@@ -65,38 +56,6 @@ public class HordeCommand {
 				}))));
 	}
 
-	private static int template(CommandContext<CommandSourceStack> context, boolean explicit)
-			throws com.mojang.brigadier.exceptions.CommandSyntaxException {
-		var source = context.getSource();
-		var center = explicit ? Vec3Argument.getVec3(context, "center") : source.getPosition();
-		float yaw = explicit ? AngleArgument.getAngle(context, "yaw") : source.getRotation().y;
-		double angle = Math.toRadians(yaw);
-		var offset = new Vec3(-Math.sin(angle), 0, Math.cos(angle)).scale(MidnightCleanup.TEMPLATE_LENGTH / 2);
-		var from = center.subtract(offset);
-		var to = center.add(offset);
-		var profile = HordeEvents.profile(MidnightCleanup.ID);
-		if (profile == null) {
-			return 0;
-		}
-
-		int travel = (int) Math.ceil(MidnightCleanup.TEMPLATE_LENGTH / profile.movementSpeed());
-		int generation = MidnightCleanup.TEMPLATE_TICKS - travel;
-		if (generation < 20) {
-			source.sendFailure(Component.translatable("horde.lobecorp.template_too_slow"));
-			return 0;
-		}
-
-		var result = HordeEvents.start(source.getLevel(), MidnightCleanup.ID,
-				new HordeStartRequest(from, to, List.of(), generation, MidnightCleanup.TEMPLATE_WIDTH));
-		if (!result.started()) {
-			source.sendFailure(Component.translatable("horde.lobecorp.start_failed", result.message()));
-			return 0;
-		}
-
-		source.sendSuccess(() -> Component.translatable("horde.lobecorp.started", result.eventId().toString()), true);
-		return 1;
-	}
-
 	private static int start(CommandContext<CommandSourceStack> context, int depth) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
 		var source = context.getSource();
 		var points = new ArrayList<Vec3>();
@@ -104,43 +63,43 @@ public class HordeCommand {
 			for (String point : StringArgumentType.getString(context, "waypoints").split(";")) {
 				String[] xyz = point.trim().split(",");
 				if (xyz.length != 3 || points.size() >= 126) {
-					source.sendFailure(Component.translatable("horde.lobecorp.invalid_waypoints"));
+					source.sendFailure(Component.translatable(HordeTranslationKeys.INVALID_WAYPOINTS));
 					return 0;
 				}
 				try {
 					points.add(new Vec3(Double.parseDouble(xyz[0]), Double.parseDouble(xyz[1]), Double.parseDouble(xyz[2])));
 				} catch (NumberFormatException exception) {
-					source.sendFailure(Component.translatable("horde.lobecorp.invalid_waypoints"));
+					source.sendFailure(Component.translatable(HordeTranslationKeys.INVALID_WAYPOINTS));
 					return 0;
 				}
 			}
 		}
 		Identifier profile = IdentifierArgument.getId(context, "profile");
 		if (profile == null) {
-			source.sendFailure(Component.translatable("horde.lobecorp.invalid_profile"));
+			source.sendFailure(Component.translatable(HordeTranslationKeys.INVALID_PROFILE));
 			return 0;
 		}
 		var request = new HordeStartRequest(Vec3Argument.getVec3(context, "from"), Vec3Argument.getVec3(context, "to"),
 				points,
 				depth >= 1 ? IntegerArgumentType.getInteger(context, "ticks") : 0,
 				depth >= 2 ? DoubleArgumentType.getDouble(context, "width") : 0);
-		var result = HordeEvents.start(source.getLevel(), profile, request);
+		var result = Hordes.start(source.getLevel(), profile, request);
 		if (!result.started()) {
-			source.sendFailure(Component.translatable("horde.lobecorp.start_failed", result.message()));
+			source.sendFailure(Component.translatable(HordeTranslationKeys.START_FAILED, result.message()));
 			return 0;
 		}
-		source.sendSuccess(() -> Component.translatable("horde.lobecorp.started", result.eventId().toString()), true);
+		source.sendSuccess(() -> Component.translatable(HordeTranslationKeys.STARTED, result.eventId().toString()), true);
 		return 1;
 	}
 
 	private static int stop(CommandContext<CommandSourceStack> context, HordeStopMode mode) {
 		try {
 			UUID id = UUID.fromString(StringArgumentType.getString(context, "event"));
-			var result = HordeEvents.stop(context.getSource().getServer(), id, mode);
-			context.getSource().sendSuccess(() -> Component.translatable("horde.lobecorp.stopped", id.toString(), result.message()), true);
+			var result = Hordes.stop(context.getSource().getServer(), id, mode);
+			context.getSource().sendSuccess(() -> Component.translatable(HordeTranslationKeys.STOPPED, id.toString(), result.message()), true);
 			return result.stopped() ? 1 : 0;
 		} catch (IllegalArgumentException exception) {
-			context.getSource().sendFailure(Component.translatable("horde.lobecorp.invalid_event"));
+			context.getSource().sendFailure(Component.translatable(HordeTranslationKeys.INVALID_EVENT));
 			return 0;
 		}
 	}

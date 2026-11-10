@@ -7,12 +7,12 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.conductor.ability.ConductorAbilities;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
 import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
@@ -82,17 +82,17 @@ public class ConductorCapabilities {
 
 		@Override
 		public Collection<IConductorAbility> abilities() {
-			return RegisterConductorAbilitiesEvent.forMob(mob);
+			return ConductorAbilities.forMob(mob);
 		}
 
 		@Override
 		public @Nullable IConductorAbility ability(Identifier id) {
-			return RegisterConductorAbilitiesEvent.get(mob, id);
+			return ConductorAbilities.get(mob, id);
 		}
 
 		@Override
 		public boolean cast(Identifier skill, Entity target, Vec3 position) {
-			IConductorAbility ability = RegisterConductorAbilitiesEvent.get(mob, skill);
+			IConductorAbility ability = ConductorAbilities.get(mob, skill);
 			return ability != null && ConductorController.canCast(mob, ability) && ability.cast(mob, target, position);
 		}
 	}
@@ -106,7 +106,7 @@ public class ConductorCapabilities {
 		public boolean supports(ConductorData.OrderType order) {
 			if (order == ConductorData.OrderType.CLEANUP || order == ConductorData.OrderType.REASSEMBLE) {
 				Identifier skill = order == ConductorData.OrderType.CLEANUP ? SweeperSkills.SWEEP.getId() : SweeperSkills.REASSEMBLE.getId();
-				return mob.isAlive() && RegisterConductorAbilitiesEvent.get(mob, skill) != null;
+				return mob.isAlive() && ConductorAbilities.get(mob, skill) != null;
 			}
 
 			return super.supports(order);

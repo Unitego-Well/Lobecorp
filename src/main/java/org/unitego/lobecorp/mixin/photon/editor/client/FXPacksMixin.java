@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtAccounter;
@@ -41,7 +42,7 @@ public abstract class FXPacksMixin {
 
 	@WrapOperation(method = "gc", at = @At(value = "INVOKE", target = "Lcom/lowdragmc/photon/client/fx/fxpack/FXPacks;mark(Lnet/minecraft/nbt/CompoundTag;Ljava/nio/file/FileSystem;Ljava/util/Set;Ljava/util/Set;)V"))
 	private static void lobecorp$markComposition(CompoundTag tag, FileSystem zip, Set<String> referenced,
-												 Set<String> visited, Operation<Void> original) throws IOException {
+	                                             Set<String> visited, Operation<Void> original) throws IOException {
 		var key = "assets/lobecorp/compositions/owned_laser.nbt";
 		var manifest = zip.getPath(key);
 		if (Files.isRegularFile(manifest) && referenced.add(key)) {
@@ -124,12 +125,6 @@ public abstract class FXPacksMixin {
 	private static RepositorySource lobecorp$isolatePackSource(RepositorySource original) {
 		return DevelopmentResourceUtil.isolatedFxPacks(original);
 	}
-
-
-
-
-
-
 
 	@Inject(method = "removeFx", at = @At("HEAD"))
 	private static void lobecorp$checkBeforeRemoving(File file, Identifier id, CallbackInfo ci) {

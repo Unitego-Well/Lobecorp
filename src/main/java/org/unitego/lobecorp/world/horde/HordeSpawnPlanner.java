@@ -25,7 +25,7 @@ public class HordeSpawnPlanner {
 	// 优先在目标后方较远处生成，失败时逐级缩短，避免 16 格附近不可达时完全不生成。
 	private static final double[] SPAWN_DISTANCES = {16, 12, 8, 4};
 
-	public static @Nullable Vec3 candidate(ServerLevel level, HordeEvent event, LivingEntity target, HordeCombatRegion region, int attempt, EntityDimensions dimensions) {
+	public static @Nullable Vec3 candidate(ServerLevel level, HordeInstance event, LivingEntity target, HordeCombatRegion region, int attempt, EntityDimensions dimensions) {
 		attempt = Math.floorMod(attempt, POSITION_ATTEMPTS);
 		double station = event.station(target.position());
 		Vec3 direction = event.route().direction(station);

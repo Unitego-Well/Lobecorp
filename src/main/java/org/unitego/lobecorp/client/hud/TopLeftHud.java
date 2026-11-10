@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.client.hud;
 
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.client.hud.event.EventHud;
+import org.unitego.lobecorp.client.hud.encounter.EncounterHud;
 import org.unitego.lobecorp.client.hud.status.PlayerStatusPanelHud;
 
 /// 左上区域只组合独立组件，堆叠和隐藏补位由通用容器处理。
@@ -19,7 +19,7 @@ public class TopLeftHud extends AbstractHud {
 		setGap(ELEMENT_GAP);
 		setAutoSize(true);
 		add(statusPanel);
-		add(EventHud.INSTANCE);
+		add(EncounterHud.INSTANCE);
 	}
 
 	@Override
@@ -28,19 +28,19 @@ public class TopLeftHud extends AbstractHud {
 		if (statusPanel.isVisible()) {
 			statusPanel.prepare(delta);
 		}
-		EventHud.INSTANCE.prepare(delta);
+		EncounterHud.INSTANCE.prepare(delta);
 	}
 
 	@Override
 	protected void onSessionChanged() {
 		statusPanel.clear();
-		EventHud.INSTANCE.synchronizeSession();
+		EncounterHud.INSTANCE.synchronizeSession();
 	}
 
 	@Override
 	public void clear() {
 		super.clear();
-		EventHud.INSTANCE.clear();
+		EncounterHud.INSTANCE.clear();
 	}
 
 	@Override

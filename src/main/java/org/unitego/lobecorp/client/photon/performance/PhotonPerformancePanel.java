@@ -16,7 +16,7 @@ import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowAnalysisUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil.CpuRow;
@@ -621,7 +621,7 @@ public class PhotonPerformancePanel {
 	}
 
 	private static String key(String name) {
-		return PhotonPerformanceTextUtil.key(name);
+		return PhotonPerformanceTranslations.key(name);
 	}
 
 	private static Component text(String name) {

@@ -3,12 +3,11 @@ package org.unitego.lobecorp.registry.item;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.generator.lang.LangHandler;
+import org.unitego.lobecorp.registry.translation.LangHandler;
 
 import java.util.function.UnaryOperator;
 
@@ -16,8 +15,8 @@ public interface LcCreativeModeTabs {
 	DeferredRegister<CreativeModeTab> REGISTER = Lobecorp.register(BuiltInRegistries.CREATIVE_MODE_TAB);
 
 	DeferredHolder<CreativeModeTab, CreativeModeTab> DEFAULT = register(REGISTER, "lobecorp", "Lobecorp", "脑叶公司", b -> b, (_, output) -> {
-		output.acceptAll(LcItems.REGISTER.getEntries().stream().map(DeferredHolder::get).map(Item::getDefaultInstance).toList());
-		output.acceptAll(SpawnEggItems.REGISTER.getEntries().stream().map(DeferredHolder::get).map(Item::getDefaultInstance).toList());
+		addRegistryItem(LcItems.REGISTER, output);
+		addRegistryItem(SpawnEggItems.REGISTER, output);
 	});
 
 	static void init(IEventBus iEventBus) {

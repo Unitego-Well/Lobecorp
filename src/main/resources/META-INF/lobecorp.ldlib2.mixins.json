@@ -1,0 +1,51 @@
+{
+	"required": true,
+	"package": "org.unitego.lobecorp.mixin",
+	"plugin": "org.unitego.lobecorp.launch.plugin.PhotonMixinPlugin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [],
+	"client": [
+		"photon.editor.client.PhotonSceneAutoReleaseAccessor",
+		"photon.editor.client.PhotonProjectLoadGuardMixin",
+		"photon.editor.client.EditorMixin",
+		"photon.editor.client.FileMenuMixin",
+		"photon.editor.client.PhotonEffectEditorAccessor",
+		"photon.editor.client.DialogMixin",
+		"photon.editor.client.LDLib2DevelopmentResourcesMixin",
+		"photon.editor.client.FilePathDevelopmentResourcesMixin",
+		"photon.editor.client.CustomResourcePackDevelopmentResourcesMixin",
+		"photon.editor.client.EditorLayoutStoreDevelopmentResourcesMixin",
+		"photon.editor.client.EditorProjectStoreDevelopmentResourcesMixin",
+		"photon.editor.client.ResourceTabLayoutStoreDevelopmentResourcesMixin",
+		"photon.editor.client.UIDebuggerWindowStateDevelopmentResourcesMixin",
+		"photon.editor.client.DialogSizeStoreDevelopmentResourcesMixin",
+		"photon.editor.client.EditorWindowMixin",
+		"photon.editor.client.FloatingViewRootMixin",
+		"photon.editor.client.ViewMenuMixin",
+		"photon.editor.client.AppearanceSettingsMixin",
+		"photon.editor.client.ModularUIWidgetMixin",
+		"photon.editor.client.ModularUIMixin",
+		"photon.editor.client.PhotonHistoryRuntimeMixin",
+		"photon.editor.client.ConfiguratorMixin",
+		"photon.performance.client.PhotonFactoryDeserializeDiagnosticsMixin",
+		"photon.performance.client.PhotonPersistedDeserializeDiagnosticsMixin",
+		"photon.material.client.ResourceMixin",
+		"photon.material.client.ResourceInstanceMixin",
+		"photon.performance.client.PhotonPersistedMetadataMixin",
+		"photon.performance.client.ModularUIMixin",
+		"photon.editor.client.WorldSceneRendererProjectionAccessor",
+		"photon.editor.client.ResourceProviderContainerMixin",
+		"photon.editor.client.AssetBrowserMixin",
+		"photon.editor.client.TextFieldMixin",
+		"photon.editor.client.TextAreaMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	},
+	"mixinextras": {
+		"minVersion": "0.5.0"
+	}
+}

@@ -35,7 +35,7 @@ import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
-import org.unitego.lobecorp.registry.conductor.client.ConductorKeyMappings;
+import org.unitego.lobecorp.registry.client.conductor.ConductorKeyMappings;
 
 import java.util.LinkedHashSet;
 import java.util.List;

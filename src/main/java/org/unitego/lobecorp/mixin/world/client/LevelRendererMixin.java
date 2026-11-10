@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.horde.HordeGroundCache;
-import org.unitego.lobecorp.registry.entity.client.LcDebugEntries;
+import org.unitego.lobecorp.registry.client.entity.LcDebugEntries;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {

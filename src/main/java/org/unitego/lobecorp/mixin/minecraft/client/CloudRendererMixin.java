@@ -9,7 +9,7 @@ import net.minecraft.client.renderer.CloudRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.client.horde.HordeRedSky;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupSky;
 
 @Mixin(CloudRenderer.class)
 public class CloudRendererMixin {
@@ -23,12 +23,12 @@ public class CloudRendererMixin {
 	private void lobecorp$cloudRim(RenderPass pass, int baseVertex, int firstIndex, int indexCount, int instanceCount,
 	                               Operation<Void> original, @Local(name = "renderPipeline") RenderPipeline renderPipeline) {
 		original.call(pass, baseVertex, firstIndex, indexCount, instanceCount);
-		if (!HordeRedSky.cloudRimActive()) {
+		if (!MidnightCleanupSky.cloudRimActive()) {
 			return;
 		}
 
 		try {
-			HordeRedSky.drawCloudRim(pass, prevCellX, prevCellZ, baseVertex, firstIndex, indexCount, instanceCount);
+			MidnightCleanupSky.drawCloudRim(pass, prevCellX, prevCellZ, baseVertex, firstIndex, indexCount, instanceCount);
 		} finally {
 			pass.setPipeline(renderPipeline);
 		}

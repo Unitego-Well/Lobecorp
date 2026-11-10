@@ -8,37 +8,37 @@ import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(ColorOverLifetimeSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})
 public abstract class ColorOverLifetimeSettingMixin implements PhotonLifetimeCycleAccess, PhotonCycleOffsetAccess {
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
 	private boolean lobecorp$lifetimeCycleEnabled;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
 	@ConfigNumber(range = {1, Integer.MAX_VALUE})
 	private int lobecorp$lifetimeCycleTicks = PhotonLifetimeCycleUtil.DEFAULT_CYCLE_TICKS;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_RED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_RED_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetRed;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_GREEN_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_GREEN_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetGreen;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_BLUE_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_BLUE_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetBlue;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_OFFSET_ALPHA_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_OFFSET_ALPHA_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetAlpha;
 

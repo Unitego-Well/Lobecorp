@@ -12,17 +12,17 @@ import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(SizeOverLifetimeSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})
 public abstract class SizeOverLifetimeSettingMixin implements PhotonLifetimeCycleAccess, PhotonCycleOffsetAccess, IToggleConfigurable {
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
 	private boolean lobecorp$lifetimeCycleEnabled;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
 	@ConfigNumber(range = {1, Integer.MAX_VALUE})
 	private int lobecorp$lifetimeCycleTicks = PhotonLifetimeCycleUtil.DEFAULT_CYCLE_TICKS;
 
@@ -51,7 +51,7 @@ public abstract class SizeOverLifetimeSettingMixin implements PhotonLifetimeCycl
 	@Override
 	public void buildConfigurator(ConfiguratorGroup father) {
 		IToggleConfigurable.super.buildConfigurator(father);
-		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_AXES_KEY,
+		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_AXES_KEY,
 				() -> new NumberFunction3(this.lobecorp$cycleOffsetX, this.lobecorp$cycleOffsetY, this.lobecorp$cycleOffsetZ),
 				value -> {
 					this.lobecorp$cycleOffsetX = value.x.get(0, () -> 0f).floatValue();

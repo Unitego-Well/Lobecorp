@@ -7,7 +7,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Tab;
 import org.jetbrains.annotations.Nullable;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import org.unitego.lobecorp.mixin.photon.editor.client.PhotonSceneAutoReleaseAccessor;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 
 /// 动画标签借用原模型场景，切换标签时保留同一世界、相机和粒子管理器。
 public class PhotonModelWorkspaceScene extends View {
@@ -20,7 +20,7 @@ public class PhotonModelWorkspaceScene extends View {
 	private boolean closed;
 
 	public PhotonModelWorkspaceScene(FXEditor owner, Runnable onEnter, Runnable onExit) {
-		super(PhotonModelTextUtil.key("animation"), owner.sceneView.getIcon());
+		super(PhotonModelTranslations.ANIMATION, owner.sceneView.getIcon());
 		this.owner = owner;
 		this.onEnter = onEnter;
 		this.onExit = onExit;

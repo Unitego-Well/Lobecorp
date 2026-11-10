@@ -18,12 +18,13 @@ import org.unitego.lobecorp.network.tc.text.TextParticleStatePayload;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
+import org.unitego.lobecorp.network.tc.encounter.EncounterStatePayload;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
-import org.unitego.lobecorp.network.ts.horde.HordeOpeningSkipPayload;
+import org.unitego.lobecorp.network.ts.encounter.EncounterSkipPayload;
 
 public class LcPayloads {
 	/// 当前客户端载荷协议版本。
-	private static final String NETWORK_VERSION = "32";
+	private static final String NETWORK_VERSION = "33";
 
 	public static void register(RegisterPayloadHandlersEvent event) {
 		PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
@@ -36,7 +37,7 @@ public class LcPayloads {
 		playToServer(registrar, ConductorCommandPayload.TYPE, ConductorCommandPayload.STREAM_CODEC);
 		playToServer(registrar, ConductorViewPayload.TYPE, ConductorViewPayload.STREAM_CODEC);
 		playToServer(registrar, HordeSnapshotRequestPayload.TYPE, HordeSnapshotRequestPayload.STREAM_CODEC);
-		playToServer(registrar, HordeOpeningSkipPayload.TYPE, HordeOpeningSkipPayload.STREAM_CODEC);
+		playToServer(registrar, EncounterSkipPayload.TYPE, EncounterSkipPayload.STREAM_CODEC);
 	}
 
 	private static void client(PayloadRegistrar registrar) {
@@ -56,6 +57,7 @@ public class LcPayloads {
 		playToClient(registrar, DamageParticlePayload.TYPE, DamageParticlePayload.STREAM_CODEC);
 		playToClient(registrar, PlayerDamageFilterPayload.TYPE, PlayerDamageFilterPayload.STREAM_CODEC);
 		playToClient(registrar, HordeStatePayload.TYPE, HordeStatePayload.STREAM_CODEC);
+		playToClient(registrar, EncounterStatePayload.TYPE, EncounterStatePayload.STREAM_CODEC);
 	}
 
 	private static void clientAndServer(PayloadRegistrar registrar) {

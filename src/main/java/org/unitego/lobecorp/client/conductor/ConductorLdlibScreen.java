@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.conductor;
 
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
+
 import com.lowdragmc.lowdraglib2.gui.holder.ModularUIScreen;
 import com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture;
 import com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture;
@@ -22,7 +24,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme;
-import org.unitego.lobecorp.client.conductor.hud.ConductorTexts;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
@@ -74,7 +75,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	private long tooltipSince;
 
 	private ConductorLdlibScreen(UI ui, Tab tab) {
-		super(ModularUI.of(ui), Component.translatable(ConductorTexts.TITLE));
+		super(ModularUI.of(ui), Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TITLE));
 		this.ui = ui;
 		modularUI.setDrawTooltips(false);
 		this.team = ConductorControls.selectedTeam();
@@ -154,50 +155,50 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 				.flexDirection(FlexDirection.COLUMN).gapAll(ROOT_GAP));
 		root.style(style -> style.backgroundTexture(surface(BG_1, LINE_OUTER)));
 
-		UIElement heading = row(label("", ConductorTexts.TITLE), label("selected-count", ConductorTexts.SELECTED));
+		UIElement heading = row(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TITLE), label("selected-count", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SELECTED));
 		heading.layout(layout -> layout.height(24));
 		root.addChild(heading);
-		root.addChild(row(button("tab-teams", ConductorTexts.TEAM_MANAGEMENT),
-				button("tab-units", ConductorTexts.CONTROLS),
-				button("tab-remote", ConductorTexts.REMOTE_ORDERS)));
+		root.addChild(row(button("tab-teams", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TEAM_MANAGEMENT),
+				button("tab-units", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_CONTROLS),
+				button("tab-remote", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_ORDERS)));
 
 		ScrollerView teams = page("page-teams");
-		teams.addScrollViewChild(row(newField("team-name"), button("create", ConductorTexts.CREATE)));
-		teams.addScrollViewChild(button(ConductorHudTheme.REDUCE_MOTION, ConductorTexts.REDUCE_MOTION_OFF));
-		teams.addScrollViewChild(label("", ConductorTexts.TEAM_MANAGEMENT));
+		teams.addScrollViewChild(row(newField("team-name"), button("create", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_CREATE)));
+		teams.addScrollViewChild(button(ConductorHudTheme.REDUCE_MOTION, ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REDUCE_MOTION_OFF));
+		teams.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TEAM_MANAGEMENT));
 		teams.addScrollViewChild(list("team-list"));
-		teams.addScrollViewChild(label("", ConductorTexts.COLOR));
-		teams.addScrollViewChild(row(newField("color-hex"), button("apply-color", ConductorTexts.APPLY_COLOR)));
-		teams.addScrollViewChild(label("", ConductorTexts.ENEMY_TEAM));
+		teams.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COLOR));
+		teams.addScrollViewChild(row(newField("color-hex"), button("apply-color", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_APPLY_COLOR)));
+		teams.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ENEMY_TEAM));
 		teams.addScrollViewChild(newField("enemy-team"));
-		teams.addScrollViewChild(row(button("war", ConductorTexts.WAR), button("peace", ConductorTexts.PEACE)));
-		teams.addScrollViewChild(button("force-load", ConductorTexts.LOAD_OFF));
-		teams.addScrollViewChild(row(button("assign", ConductorTexts.ASSIGN),
-				button("release", ConductorTexts.RELEASE)));
+		teams.addScrollViewChild(row(button("war", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_WAR), button("peace", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_PEACE)));
+		teams.addScrollViewChild(button("force-load", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_LOAD_OFF));
+		teams.addScrollViewChild(row(button("assign", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ASSIGN),
+				button("release", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_RELEASE)));
 
 		ScrollerView units = page("page-units");
-		units.addScrollViewChild(label("", ConductorTexts.BEHAVIOR_MODE));
-		units.addScrollViewChild(row(button("full", ConductorTexts.BEHAVIOR_ACTIVE),
-				button("passive", ConductorTexts.BEHAVIOR_PASSIVE), button("neutral", ConductorTexts.BEHAVIOR_NEUTRAL)));
-		units.addScrollViewChild(label("", ConductorTexts.ACTIVITY_MODE));
-		units.addScrollViewChild(row(button("command", ConductorTexts.COMMAND), button("soft", ConductorTexts.SOFT)));
-		units.addScrollViewChild(button("attack-mode", ConductorTexts.ATTACK_MODE));
-		units.addScrollViewChild(row(button("move", ConductorTexts.MOVE), button("attack", ConductorTexts.ATTACK)));
-		units.addScrollViewChild(label("", ConductorTexts.SKILLS));
+		units.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_MODE));
+		units.addScrollViewChild(row(button("full", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_ACTIVE),
+				button("passive", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_PASSIVE), button("neutral", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_NEUTRAL)));
+		units.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_MODE));
+		units.addScrollViewChild(row(button("command", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COMMAND), button("soft", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SOFT)));
+		units.addScrollViewChild(button("attack-mode", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_MODE));
+		units.addScrollViewChild(row(button("move", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_MOVE), button("attack", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK)));
+		units.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILLS));
 		units.addScrollViewChild(list("skill-list"));
 
 		ScrollerView remote = page("page-remote");
-		remote.addScrollViewChild(label("", ConductorTexts.REMOTE_ORDERS));
+		remote.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_ORDERS));
 		remote.addScrollViewChild(row(newField("x"), newField("y"), newField("z")));
-		remote.addScrollViewChild(button("remote-move", ConductorTexts.REMOTE_MOVE));
-		remote.addScrollViewChild(label("", ConductorTexts.TARGET_UUID));
+		remote.addScrollViewChild(button("remote-move", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_MOVE));
+		remote.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_UUID));
 		remote.addScrollViewChild(newField("target-uuid"));
-		remote.addScrollViewChild(button("remote-attack", ConductorTexts.REMOTE_ATTACK));
-		remote.addScrollViewChild(label("", ConductorTexts.SKILL_ID));
+		remote.addScrollViewChild(button("remote-attack", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_ATTACK));
+		remote.addScrollViewChild(label("", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_ID));
 		remote.addScrollViewChild(newField("skill-id"));
-		remote.addScrollViewChild(button("remote-cast", ConductorTexts.REMOTE_CAST));
+		remote.addScrollViewChild(button("remote-cast", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_CAST));
 
-		Button close = button("close", ConductorTexts.CLOSE);
+		Button close = button("close", ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_CLOSE);
 		close.layout(layout -> layout.height(CONTROL_HEIGHT));
 		root.addChildren(teams, units, remote, close);
 		return root;
@@ -262,14 +263,14 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 		field.textFieldStyle(style -> style.textColor(TEXT_COLOR).cursorColor(GOLD)
 				.errorColor(DANGER));
 		String placeholder = switch (id) {
-			case "team-name" -> ConductorTexts.TEAM;
-			case "color-hex" -> ConductorTexts.COLOR;
-			case "enemy-team" -> ConductorTexts.ENEMY_TEAM;
-			case "x" -> ConductorTexts.X;
-			case "y" -> ConductorTexts.Y;
-			case "z" -> ConductorTexts.Z;
-			case "target-uuid" -> ConductorTexts.TARGET_UUID;
-			case "skill-id" -> ConductorTexts.SKILL_ID;
+			case "team-name" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TEAM;
+			case "color-hex" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COLOR;
+			case "enemy-team" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ENEMY_TEAM;
+			case "x" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_X;
+			case "y" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_Y;
+			case "z" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_Z;
+			case "target-uuid" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_UUID;
+			case "skill-id" -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_ID;
 			default -> null;
 		};
 
@@ -294,7 +295,7 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 	private void updateMotionButton() {
 		ui.selectId(ConductorHudTheme.REDUCE_MOTION, Button.class).findFirst().orElseThrow().setText(
 				Component.translatable(ConductorHud.INSTANCE.reducedMotion()
-						? ConductorTexts.REDUCE_MOTION_ON : ConductorTexts.REDUCE_MOTION_OFF));
+						? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REDUCE_MOTION_ON : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REDUCE_MOTION_OFF));
 	}
 
 	private void setTab(Tab nextTab) {
@@ -481,13 +482,13 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 			Component title = Component.translatableWithFallback(
 					skill instanceof EntitySkillConductorAbility
-							? ConductorTexts.skillName(skill.id()) : ConductorTexts.abilityName(skill.id()),
+							? ConductorTranslationKeys.skillName(skill.id()) : ConductorTranslationKeys.abilityName(skill.id()),
 					skill.id().getPath());
-			Component text = total > 0 ? Component.translatable(ConductorTexts.SKILL_COOLDOWN, title,
+			Component text = total > 0 ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_COOLDOWN, title,
 					(total + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND) : title;
-			Button button = button("skill-" + skill.id(), ConductorTexts.SKILLS);
+			Button button = button("skill-" + skill.id(), ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILLS);
 			button.setText(text);
-			Component description = ConductorTexts.abilityDescription(skill.id());
+			Component description = ConductorTranslationKeys.abilityDescription(skill.id());
 			tooltips.put(button.getId(), description.getString().isEmpty() ? List.of(title) : List.of(title, description));
 			button.layout(layout -> layout.widthPercent(100).height(LIST_BUTTON_HEIGHT));
 			button.setOnClick(_ -> {
@@ -532,14 +533,14 @@ public class ConductorLdlibScreen extends ModularUIScreen {
 
 		ui.selectId("force-load", Button.class).findFirst().orElseThrow().setText(
 				Component.translatable(selected != null && selected.forceLoad()
-						? ConductorTexts.LOAD_ON : ConductorTexts.LOAD_OFF));
+						? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_LOAD_ON : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_LOAD_OFF));
 		ui.selectId("selected-count", Label.class).findFirst().orElseThrow().setText(
-				Component.translatable(ConductorTexts.SELECTED, ConductorControls.selected().size()));
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SELECTED, ConductorControls.selected().size()));
 		ConductorData.Unit first = firstSelectedUnit();
 		ui.selectId("attack-mode", Button.class).findFirst().orElseThrow().setText(Component.translatable(
-				first == null ? ConductorTexts.ATTACK_MODE
+				first == null ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_MODE
 						: first.attackState() == ConductorData.AttackState.MANUAL
-						? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI));
+						? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_BASIC : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_AI));
 	}
 
 	private List<IConductorAbility> selectedMobSkills() {

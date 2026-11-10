@@ -6,7 +6,7 @@ import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
 import org.unitego.lobecorp.client.photon.render.PhotonOcclusionAccess;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ public class PhotonFixedRenderSettings implements IConfigurable {
 		group.addConfigurator(new NumberConfigurator("photon.emitter.config.renderer.orderInLayer", renderer::getOrderInLayer,
 				value -> renderer.setOrderInLayer(value.intValue()), 0, true));
 		var config = ((PhotonOcclusionAccess) renderer).lobecorp$getOcclusionConfig();
-		group.addConfigurator(new NumberConfigurator(TranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_KEY, config::getAlphaCutoff,
+		group.addConfigurator(new NumberConfigurator(PhotonTranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_KEY, config::getAlphaCutoff,
 				value -> config.setAlphaCutoff(value.floatValue()), PhotonOcclusionConfig.DEFAULT_ALPHA_CUTOFF, true).setRange(0f, 1f));
 	}
 }

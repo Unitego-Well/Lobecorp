@@ -15,7 +15,7 @@ import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 
 import java.util.ArrayList;
@@ -357,6 +357,6 @@ public class PhotonTimelineClipboardUtil {
 	}
 
 	public static void invalid(TimelineContext ctx) {
-		Dialog.showNotification(PhotonEditorTextUtil.key("clipboard"), PhotonEditorTextUtil.key("clipboard_invalid"), null).show(ctx.editor());
+		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(ctx.editor());
 	}
 }

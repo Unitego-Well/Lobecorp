@@ -11,6 +11,7 @@ import org.joml.Vector2f;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonCurveViewAccess;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -282,7 +283,7 @@ public class PhotonCurveEditUtil {
 
 	private static void commit(FXTimelineView timeline, List<Selection> selections, Map<AnimatedProperty, AnimatedProperty> before,
 	                           Map<AnimatedProperty, AnimatedProperty> after) {
-		timeline.pushApplied(PhotonEditorTextUtil.key("feature.precise"),
+		timeline.pushApplied(PhotonEditorTranslations.FEATURE_PRECISE,
 				() -> {
 					restore(after);
 					syncColorSelection(timeline, selections);

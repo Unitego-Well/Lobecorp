@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.model;
 
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
+
 import com.lowdragmc.photon.client.fx.PreloadContext;
 import com.lowdragmc.lowdraglib2.configurator.ConfiguratorParser;
 import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
@@ -32,7 +34,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Tint;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonModelOutputTypes;
 import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
 import org.unitego.lobecorp.util.photon.model.PhotonModelGeometryUtil;
@@ -58,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.MODEL_STATUS;
 
 /// 独立模型输出复用Photon生命周期与原生材质批次；绘制回调只消费准备后的数据。
 @ParametersAreNonnullByDefault
@@ -706,9 +709,9 @@ public class PhotonModelOutput extends Emitter implements PhotonEmissionAccess {
 	public void inspectSceneInformation(SceneView view, UIElement container) {
 		super.inspectSceneInformation(view, container);
 		container.addChild(view.fxObjectInfoView.createInformation(
-				Component.translatable("photon.lobecorp.model.model_status"),
-				() -> Component.translatable("photon.lobecorp.model.status." +
-						(failures.current() != null ? "invalid" : sampler == null ? "missing" : "ok"))));
+				Component.translatable(MODEL_STATUS),
+				() -> Component.translatable(PhotonModelTranslations.key("status." +
+						(failures.current() != null ? "invalid" : sampler == null ? "missing" : "ok")))));
 		var failure = failures.current();
 
 		if (failure != null) {

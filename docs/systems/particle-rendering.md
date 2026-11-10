@@ -29,7 +29,7 @@
 ## 原版粒子注册、资源和同步
 
 [注册类型](../../src/main/java/org/unitego/lobecorp/registry/particle/LcParticleTypes.java)统一位于
-registry；[客户端 Provider 注册](../../src/main/java/org/unitego/lobecorp/registry/particle/client/RegisterParticleProviders.java)
+registry；[客户端 Provider 注册](../../src/main/java/org/unitego/lobecorp/registry/client/particle/RegisterParticleProviders.java)
 复用 RegisterParticleProvidersEvent，由项目客户端注册入口调用，不另建重复监听。
 
 简单粒子使用 SimpleParticleType；需要实体/技能实例、时间、半径等参数的粒子使用对应 ParticleOptions，提供 Codec 和

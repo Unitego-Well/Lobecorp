@@ -151,7 +151,7 @@ public final class HordeDebugState {
         return result;
     }
 
-    private static Vec3 position(HordeClient.ClientEvent event, long row, int column, double now) {
+    private static Vec3 position(HordeClient.ClientHorde event, long row, int column, double now) {
         return event.tide.position(row, column, event.columns, now, event.rowSpacing(),
                 event.columnSpacing(), event.speed);
     }

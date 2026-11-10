@@ -23,7 +23,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.phys.Vec3;
 import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
-import org.unitego.lobecorp.mixin.PhotonBenchMixinPlugin;
+import org.unitego.lobecorp.bench.plugin.BenchMixinPlugin;
 import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceFixture;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
@@ -182,7 +182,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 			throw new IllegalStateException("首次释放需要启动即生效的 BenchMod 原生鼠标隔离。");
 		}
 
-		if (singleCast && !PhotonBenchMixinPlugin.preservedWindowApplied()) {
+		if (singleCast && !BenchMixinPlugin.preservedWindowApplied()) {
 			throw new IllegalStateException("首次释放窗口保留桥未实际加载，禁止按完整夹具运行。");
 		}
 
@@ -731,7 +731,7 @@ public class PhotonModelRenderScenario implements BenchClientScenario {
 		var report = new JsonObject();
 		report.addProperty("label", label);
 		annotateEvidence(report);
-		report.addProperty("window_geometry_preserved_by_bench_bridge", PhotonBenchMixinPlugin.preservedWindowApplied());
+		report.addProperty("window_geometry_preserved_by_bench_bridge", BenchMixinPlugin.preservedWindowApplied());
 		report.addProperty("bench_input_isolation_contract_active", !System.getProperty("modBench.resultDirectory", "").isBlank());
 		report.addProperty("bench_input_isolation_source", "BenchInputIsolation.active_contract_BenchMod_0.1.5-beta_required_MouseHandlerMixin_InputConstantsMixin");
 		report.addProperty("bench_input_isolation_runtime_verification", "not_verified_by_source_contract");

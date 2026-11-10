@@ -12,7 +12,7 @@ import org.unitego.lobecorp.config.client.HealthBarStyle;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.config.client.HudStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
-import org.unitego.lobecorp.config.server.HordeEventConfig;
+import org.unitego.lobecorp.config.server.HordeConfig;
 import org.unitego.lobecorp.config.server.ServerConfig;
 import org.unitego.lobecorp.config.server.ShieldConfig;
 
@@ -115,8 +115,8 @@ public class ConfigStructureTest {
 		assertSame(spec, ServerConfig.specification());
 		assertEquals("lobecorp-server.toml", ServerConfig.FILE_NAME);
 		assertEquals(List.of("combat", "shields", "enable_multi_shield"), ShieldConfig.ENABLE_MULTI_SHIELD.getPath());
-		assertEquals(List.of("events", "midnight_cleanup", "wave", "width"), HordeEventConfig.WIDTH.getPath());
-		assertEquals(List.of("events", "budget", "spawnWorkPerTick"), HordeEventConfig.WORK_PER_TICK.getPath());
-		assertEquals(List.of("events", "network", "bytesPerPlayerTick"), HordeEventConfig.SEND_BYTES.getPath());
+		assertEquals(List.of("events", "midnight_cleanup", "wave", "width"), HordeConfig.WIDTH.getPath());
+		assertEquals(List.of("events", "budget", "spawnWorkPerTick"), HordeConfig.WORK_PER_TICK.getPath());
+		assertEquals(List.of("events", "network", "bytesPerPlayerTick"), HordeConfig.SEND_BYTES.getPath());
 	}
 }

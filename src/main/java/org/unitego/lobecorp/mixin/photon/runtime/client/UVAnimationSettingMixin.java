@@ -9,22 +9,22 @@ import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(UVAnimationSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})
 public abstract class UVAnimationSettingMixin extends ToggleGroup implements PhotonLifetimeCycleAccess, PhotonCycleOffsetAccess {
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_ENABLED_KEY)
 	private boolean lobecorp$lifetimeCycleEnabled;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_LIFETIME_CYCLE_TICKS_KEY)
 	@ConfigNumber(range = {1, Integer.MAX_VALUE})
 	private int lobecorp$lifetimeCycleTicks = PhotonLifetimeCycleUtil.DEFAULT_CYCLE_TICKS;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_UV_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_UV_KEY)
 	@ConfigNumber(range = {-Float.MAX_VALUE, Float.MAX_VALUE})
 	private float lobecorp$cycleOffsetUV;
 

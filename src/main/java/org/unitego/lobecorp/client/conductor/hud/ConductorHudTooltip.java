@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.conductor.hud;
 
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
@@ -111,10 +113,10 @@ public class ConductorHudTooltip {
 			lines.add(model.hints().get(id));
 
 			if (isDisabled(id, cards, model)) {
-				lines.add(Component.translatable(ConductorTexts.NO_SELECTION));
+				lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_SELECTION));
 			}
 		} else if (ConductorHudLayout.ROSTER_SEARCH.equals(id) || ConductorHudLayout.SKILL_SEARCH.equals(id)) {
-			lines.add(Component.translatable(ConductorHudLayout.ROSTER_SEARCH.equals(id) ? ConductorTexts.SEARCH : ConductorTexts.SEARCH_SKILLS));
+			lines.add(Component.translatable(ConductorHudLayout.ROSTER_SEARCH.equals(id) ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SEARCH : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SEARCH_SKILLS));
 		}
 
 		if (ConductorHudLayout.FOCUS_PORTRAIT.equals(id) && ConductorControls.selected().size() > 1) {
@@ -124,7 +126,7 @@ public class ConductorHudTooltip {
 			if (!known.isEmpty()) {
 				double average = known.stream().mapToDouble(entity -> Mth.clamp(
 						entity.getHealth() / Math.max(1, entity.getMaxHealth()), 0, 1)).average().orElse(0);
-				lines.add(Component.translatable(ConductorTexts.AVERAGE_HEALTH,
+				lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_AVERAGE_HEALTH,
 						Math.round(average * PERCENT), known.size(), ConductorControls.selected().size()));
 			}
 		}
@@ -174,30 +176,30 @@ public class ConductorHudTooltip {
 		Entity entity = level.getEntity(member);
 
 		if (entity instanceof LivingEntity living) {
-			lines.add(Component.translatable(ConductorTexts.HEALTH, (int) Math.ceil(living.getHealth()), (int) Math.ceil(living.getMaxHealth())));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_HEALTH, (int) Math.ceil(living.getHealth()), (int) Math.ceil(living.getMaxHealth())));
 			lines.add(attributes(living));
 			effects = sampleEffectIcons(living);
 		} else {
-			lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
-			lines.add(Component.translatable(ConductorTexts.UNKNOWN_ATTRIBUTES));
-			lines.add(Component.translatable(ConductorTexts.REMOTE_FOCUS));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_UNKNOWN_HEALTH));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_UNKNOWN_ATTRIBUTES));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_FOCUS));
 		}
 
 		ConductorData.Unit unit = ConductorClient.unit(member);
 		ConductorData.Team team = unit == null ? null : ConductorClient.snapshot().team(unit.team());
-		lines.add(team == null ? Component.translatable(ConductorTexts.NO_TEAM) : Component.literal(team.name()).withColor(team.color()));
+		lines.add(team == null ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_TEAM) : Component.literal(team.name()).withColor(team.color()));
 
 		if (unit != null && team != null) {
 			lines.add(Component.translatable(ConductorHudLayout.orderKey(unit.order())));
-			lines.add(Component.translatable(ConductorTexts.BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(unit.combatBehavior()))));
-			lines.add(Component.translatable(ConductorTexts.ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(unit.behaviorState()))));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(unit.combatBehavior()))));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(unit.behaviorState()))));
 			lines.add(Component.translatable(unit.attackState() == ConductorData.AttackState.MANUAL
-					? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI));
+					? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_BASIC : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_AI));
 			String result = switch (unit.moveResult()) {
 				case NONE -> null;
-				case ARRIVED -> ConductorTexts.MOVE_ARRIVED;
-				case UNREACHABLE -> ConductorTexts.MOVE_UNREACHABLE;
-				case CANCELED -> ConductorTexts.MOVE_CANCELED;
+				case ARRIVED -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_MOVE_ARRIVED;
+				case UNREACHABLE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_MOVE_UNREACHABLE;
+				case CANCELED -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_MOVE_CANCELED;
 			};
 
 			if (result != null) {
@@ -243,46 +245,46 @@ public class ConductorHudTooltip {
 		} else if (display.damageKind() == IConductorAbility.DamageKind.DYNAMIC) {
 			double basicDamage = mob.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE) ? mob.getAttributeValue(Attributes.ATTACK_DAMAGE) : 0;
 			damage = basicDamage > 0.0D ? Component.literal(Double.toString(basicDamage))
-					: Component.translatable(ConductorTexts.DAMAGE_DYNAMIC);
+					: Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DAMAGE_DYNAMIC);
 		} else {
-			damage = Component.translatable(ConductorTexts.DAMAGE_NONE);
+			damage = Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DAMAGE_NONE);
 		}
 
 		String typeKey = switch (display.abilityKind()) {
-			case BASIC -> ConductorTexts.TYPE_BASIC;
-			case ATTACK -> ConductorTexts.TYPE_ATTACK;
-			case SUPPORT -> ConductorTexts.TYPE_SUPPORT;
+			case BASIC -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TYPE_BASIC;
+			case ATTACK -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TYPE_ATTACK;
+			case SUPPORT -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TYPE_SUPPORT;
 		};
 		String targetKey = switch (ability.targetKind()) {
-			case SELF -> ConductorTexts.TARGET_SELF;
-			case ENTITY -> ConductorTexts.TARGET_ENTITY;
-			case POSITION -> ConductorTexts.TARGET_POSITION;
-			case EITHER -> ConductorTexts.TARGET_EITHER;
+			case SELF -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_SELF;
+			case ENTITY -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_ENTITY;
+			case POSITION -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_POSITION;
+			case EITHER -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET_EITHER;
 		};
 		double range = ability.displayRange(mob);
 		Component rangeText = ability instanceof EntitySkillConductorAbility.Laser
 				? Component.literal(String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, range))
 				: range > 0.0D ? Component.literal(Double.toString(range)) : Component.translatable(
 				ability.targetKind() == IConductorTargeting.TargetKind.SELF
-						? ConductorTexts.RANGE_SELF : ConductorTexts.RANGE_UNSPECIFIED);
+						? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_RANGE_SELF : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_RANGE_UNSPECIFIED);
 		int total = Math.max(ConductorClient.abilityCooldownTotalTicks(mob.getUUID(), ability.id()),
 				ability.totalCooldownTicks(mob));
 		int remaining = ConductorClient.abilityCooldownTicks(mob.getUUID(), ability.id());
 		List<Component> lines = List.of(
 				Component.translatableWithFallback(ability instanceof EntitySkillConductorAbility
-								? ConductorTexts.skillName(ability.id()) : ConductorTexts.abilityName(ability.id()),
+								? ConductorTranslationKeys.skillName(ability.id()) : ConductorTranslationKeys.abilityName(ability.id()),
 						ability.id().getPath()),
-				Component.translatable(ConductorTexts.DAMAGE, damage),
-				Component.translatable(ConductorTexts.TYPE, Component.translatable(typeKey)),
-				Component.translatable(ConductorTexts.TARGET, Component.translatable(targetKey)),
-				Component.translatable(ConductorTexts.RANGE, rangeText),
-				Component.translatable(ConductorTexts.COOLDOWN_TOTAL,
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DAMAGE, damage),
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TYPE, Component.translatable(typeKey)),
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TARGET, Component.translatable(targetKey)),
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_RANGE, rangeText),
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COOLDOWN_TOTAL,
 						String.format(Locale.ROOT, DECIMAL_FORMAT, total / (float) TICKS_PER_SECOND)),
-				remaining == 0 ? Component.translatable(ConductorTexts.READY) : Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
+				remaining == 0 ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_READY) : Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COOLDOWN_REMAINING,
 						String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND)));
 		List<Component> details = new ArrayList<>(lines);
 		appendSkillStatus(details, mob, ability, remaining);
-		Component description = ConductorTexts.abilityDescription(ability.id());
+		Component description = ConductorTranslationKeys.abilityDescription(ability.id());
 
 		if (!description.getString().isEmpty()) {
 			details.add(description);
@@ -295,15 +297,15 @@ public class ConductorHudTooltip {
 		boolean available = ability.isAvailable(mob);
 
 		if (remaining > 0) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
 		}
 
 		if (casting) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
 		}
 
 		if (!available) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
 		}
 
 		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
@@ -317,9 +319,9 @@ public class ConductorHudTooltip {
 		}
 
 		if (aim.rangeLimited()) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
 		} else if (!aim.valid() && remaining == 0 && available && !casting) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
 		}
 	}
 
@@ -414,7 +416,7 @@ public class ConductorHudTooltip {
 	private static Component memberDistance(UUID member) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		return Component.translatable(ConductorTexts.DISTANCE, entity == null ? UNKNOWN_MARK
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
 				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
 	}
 
@@ -422,7 +424,7 @@ public class ConductorHudTooltip {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
 		ConductorData.Unit unit = ConductorClient.unit(member);
-		return Component.translatable(ConductorTexts.DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
 				: unit == null ? UNKNOWN_MARK : unit.dimension());
 	}
 
@@ -437,7 +439,7 @@ public class ConductorHudTooltip {
 	private static Component attributes(LivingEntity living) {
 		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
 				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
-		return Component.translatable(ConductorTexts.ATTRIBUTES, attack, living.getArmorValue());
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
 	}
 
 	private static Component memberName(UUID member) {

@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.config.client;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
+import org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys;
 
 import java.util.List;
 
@@ -16,32 +17,32 @@ public class VisualQualityConfig {
 
 	static {
 		synchronized (ClientConfig.class) {
-			var b = ClientConfig.section("visualQuality", "Visual quality", "视觉质量");
-			b.translation(ClientConfig.translation("visualQuality.animations", "Animations", "动画")).push("animations");
-			ANIMATIONS = b.comment("只对通过工具方法显式接入的本模组实体控制器降低姿态采样率；事件继续推进。").translation(ClientConfig.translation("visualQuality.enabled", "Enabled", "启用")).define("enabled", true);
-			ANIMATION_NEAR = b.translation(ClientConfig.translation("visualQuality.nearDistance", "Near distance", "近距离阈值")).defineInRange("nearDistance", 50d, 0d, 4096d);
-			ANIMATION_FAR = b.translation(ClientConfig.translation("visualQuality.farDistance", "Far distance", "远距离阈值")).defineInRange("farDistance", 80d, 1d, 8192d);
-			MEDIUM_FPS = b.translation(ClientConfig.translation("visualQuality.mediumSampleFps", "Medium sample FPS", "中距离采样帧率")).defineInRange("mediumSampleFps", 30, 1, 240);
-			FAR_FPS = b.translation(ClientConfig.translation("visualQuality.farSampleFps", "Far sample FPS", "远距离采样帧率")).defineInRange("farSampleFps", 12, 1, 240);
-			ANIMATION_EXEMPT = b.comment("不降帧的实体注册ID。").translation(ClientConfig.translation("visualQuality.exemptEntities", "Exempt entities", "排除的实体")).defineListAllowEmpty("exemptEntities", List.of(), () -> "", v -> v instanceof String);
-			CONTROLLER_EXEMPT = b.comment("不降帧的控制器名称。").translation(ClientConfig.translation("visualQuality.exemptControllers", "Exempt controllers", "排除的控制器")).defineListAllowEmpty("exemptControllers", List.of(), () -> "", v -> v instanceof String);
-			b.pop().translation(ClientConfig.translation("visualQuality.models", "Models", "模型")).push("models");
-			MODELS = b.comment("显式接入的实体模型自动烘焙LOD。").translation(ClientConfig.translation("visualQuality.enabled", "Enabled", "启用")).define("enabled", true);
-			MODEL_NEAR = b.translation(ClientConfig.translation("visualQuality.nearDistance", "Near distance", "近距离阈值")).defineInRange("nearDistance", 50d, 0d, 4096d);
-			MODEL_FAR = b.translation(ClientConfig.translation("visualQuality.farDistance", "Far distance", "远距离阈值")).defineInRange("farDistance", 100d, 1d, 8192d);
+			var b = ClientConfig.section("visualQuality", ClientConfigTranslationKeys.VISUAL_QUALITY);
+			b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_ANIMATIONS).push("animations");
+			ANIMATIONS = b.comment("只对通过工具方法显式接入的本模组实体控制器降低姿态采样率；事件继续推进。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_ENABLED).define("enabled", true);
+			ANIMATION_NEAR = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_NEAR_DISTANCE).defineInRange("nearDistance", 50d, 0d, 4096d);
+			ANIMATION_FAR = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_FAR_DISTANCE).defineInRange("farDistance", 80d, 1d, 8192d);
+			MEDIUM_FPS = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MEDIUM_SAMPLE_FPS).defineInRange("mediumSampleFps", 30, 1, 240);
+			FAR_FPS = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_FAR_SAMPLE_FPS).defineInRange("farSampleFps", 12, 1, 240);
+			ANIMATION_EXEMPT = b.comment("不降帧的实体注册ID。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_EXEMPT_ENTITIES).defineListAllowEmpty("exemptEntities", List.of(), () -> "", v -> v instanceof String);
+			CONTROLLER_EXEMPT = b.comment("不降帧的控制器名称。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_EXEMPT_CONTROLLERS).defineListAllowEmpty("exemptControllers", List.of(), () -> "", v -> v instanceof String);
+			b.pop().translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MODELS).push("models");
+			MODELS = b.comment("显式接入的实体模型自动烘焙LOD。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_ENABLED).define("enabled", true);
+			MODEL_NEAR = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_NEAR_DISTANCE).defineInRange("nearDistance", 50d, 0d, 4096d);
+			MODEL_FAR = b.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_FAR_DISTANCE).defineInRange("farDistance", 100d, 1d, 8192d);
 			MEDIUM_CUBE_DETAIL = b.comment("中距离可省略的小细节尺寸，模型单位；16单位为1格，每个骨骼的主要几何保留。")
-					.translation(ClientConfig.translation("visualQuality.mediumCubeDetailSize", "Medium detail size", "中距离细节尺寸")).defineInRange("mediumCubeDetailSize", 0.5d, 0d, 32d);
+					.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MEDIUM_CUBE_DETAIL_SIZE).defineInRange("mediumCubeDetailSize", 0.5d, 0d, 32d);
 			FAR_CUBE_DETAIL = b.comment("远距离可省略的小细节尺寸，模型单位；零表示不省略。")
-					.translation(ClientConfig.translation("visualQuality.farCubeDetailSize", "Far detail size", "远距离细节尺寸")).defineInRange("farCubeDetailSize", 2d, 0d, 64d);
-			MIN_CUBES = b.comment("少于此立方体数量的GeckoLib模型保持原样。").translation(ClientConfig.translation("visualQuality.minimumEntityCubes", "Minimum cube count", "最小立方体数量")).defineInRange("minimumEntityCubes", 64, 1, 100000);
+					.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_FAR_CUBE_DETAIL_SIZE).defineInRange("farCubeDetailSize", 2d, 0d, 64d);
+			MIN_CUBES = b.comment("少于此立方体数量的GeckoLib模型保持原样。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MINIMUM_ENTITY_CUBES).defineInRange("minimumEntityCubes", 64, 1, 100000);
 			MODEL_EXEMPT = b.comment("不降模型精细度的实体注册ID。")
-					.translation(ClientConfig.translation("visualQuality.exemptModels", "Exempt models", "排除的模型")).defineListAllowEmpty("exemptModels", List.of(), () -> "", v -> v instanceof String);
-            b.pop().translation(ClientConfig.translation("visualQuality.cache", "Cache", "缓存")).push("cache");
-			CACHE_ENTRIES = b.comment("每个烘焙缓存的最大条目数；资源重载及退出清理。").translation(ClientConfig.translation("visualQuality.cacheEntries", "Cache entries", "缓存条目上限")).defineInRange("cacheEntries", 256, 1, 4096);
-			CACHE_MIB = b.comment("每种模型缓存的预算，单位MiB。").translation(ClientConfig.translation("visualQuality.cacheMiB", "Cache budget in MiB", "缓存预算（MiB）")).defineInRange("cacheMiB", 32, 1, 512);
-			MAX_BAKES = b.comment("每种缓存每帧最多新烘焙的模型数，超额临时绘制原模型。").translation(ClientConfig.translation("visualQuality.maxBakesPerFrame", "Bakes per frame", "每帧烘焙上限")).defineInRange("maxBakesPerFrame", 2, 1, 64);
+					.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_EXEMPT_MODELS).defineListAllowEmpty("exemptModels", List.of(), () -> "", v -> v instanceof String);
+            b.pop().translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE).push("cache");
+			CACHE_ENTRIES = b.comment("每个烘焙缓存的最大条目数；资源重载及退出清理。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE_ENTRIES).defineInRange("cacheEntries", 256, 1, 4096);
+			CACHE_MIB = b.comment("每种模型缓存的预算，单位MiB。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE_MI_B).defineInRange("cacheMiB", 32, 1, 512);
+			MAX_BAKES = b.comment("每种缓存每帧最多新烘焙的模型数，超额临时绘制原模型。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MAX_BAKES_PER_FRAME).defineInRange("maxBakesPerFrame", 2, 1, 64);
 			b.pop();
-			HYSTERESIS = b.comment("距离档位恢复迟滞，单位格。").translation(ClientConfig.translation("visualQuality.distanceHysteresis", "Distance hysteresis", "距离迟滞")).defineInRange("distanceHysteresis", 4d, 0d, 128d);
+			HYSTERESIS = b.comment("距离档位恢复迟滞，单位格。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_DISTANCE_HYSTERESIS).defineInRange("distanceHysteresis", 4d, 0d, 128d);
 			b.pop();
 		}
 

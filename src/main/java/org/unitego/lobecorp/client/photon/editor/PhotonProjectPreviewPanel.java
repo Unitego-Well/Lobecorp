@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
+
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
@@ -33,10 +35,25 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.AUTO_DURATION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.COMPLETION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DURATION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INVALID;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.LOOP;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NAME;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.PLAY;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.PRIORITY;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.STOP;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TEST_TIMELINE;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TIME;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.ACTION_DUPLICATE;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
 
 /// 工程测试的制作与定位入口；修改进入工程历史，不写入发布库。
 public class PhotonProjectPreviewPanel {
-	public static final String TITLE = "photon.lobecorp.animation.test_timeline";
+	public static final String TITLE = TEST_TIMELINE;
 	private final FXEditor editor;
 	private final FXProject project;
 	private final FXRuntime runtime;
@@ -66,16 +83,16 @@ public class PhotonProjectPreviewPanel {
 		content.addChild(new TextElement().setText(TITLE + ".tooltip")
 				.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
 				.layout(layout -> layout.widthPercent(100).flexShrink(0)));
-		content.addChild(new NumberConfigurator("photon.lobecorp.animation.time", () -> time,
+		content.addChild(new NumberConfigurator(TIME, () -> time,
 				value -> time = value.doubleValue(), time, false).setRange(0, Double.MAX_VALUE));
 		content.addChild(status.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
 				.layout(layout -> layout.widthPercent(100).flexShrink(0)));
 		dialog.addContent(content);
-		dialog.addButton(new Button().setText("photon.lobecorp.animation.inspector_panel").setOnClick(_ -> edit()));
-		dialog.addButton(new Button().setText("photon.lobecorp.animation.play").setOnClick(_ -> start()));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> seek()));
-		dialog.addButton(new Button().setText("photon.lobecorp.animation.stop").setOnClick(_ -> stop()));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(INSPECTOR_PANEL).setOnClick(_ -> edit()));
+		dialog.addButton(new Button().setText(PLAY).setOnClick(_ -> start()));
+		dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> seek()));
+		dialog.addButton(new Button().setText(STOP).setOnClick(_ -> stop()));
+		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 		dialog.setOnClose(this::stop);
 		dialog.show(editor);
 	}
@@ -93,19 +110,19 @@ public class PhotonProjectPreviewPanel {
 			Completion[] completion = {definition.completion()};
 			var group = new ConfiguratorGroup("", false).hideTitle();
 			group.layout(layout -> layout.widthPercent(100).flexShrink(0));
-			group.addConfigurator(new StringConfigurator("photon.lobecorp.animation.name", () -> name[0], value -> name[0] = value, name[0], false));
-			group.addConfigurator(new NumberConfigurator("photon.lobecorp.animation.duration", () -> duration[0], value -> duration[0] = value.doubleValue(), duration[0], false).setRange(0, Double.MAX_VALUE));
-			group.addConfigurator(new BooleanConfigurator("photon.lobecorp.animation.auto_duration", () -> flags[0], value -> flags[0] = value, flags[0], false));
-			group.addConfigurator(new BooleanConfigurator("photon.lobecorp.animation.loop", () -> flags[1], value -> flags[1] = value, flags[1], false));
-			group.addConfigurator(new NumberConfigurator("photon.lobecorp.animation.priority", () -> priority[0], value -> priority[0] = value.intValue(), priority[0], false).setRange(Integer.MIN_VALUE, Integer.MAX_VALUE));
-			group.addConfigurator(new SelectorConfigurator<>("photon.lobecorp.animation.completion", () -> completion[0], value -> completion[0] = value, completion[0], false, List.of(Completion.values()), value -> Component.translatable("photon.lobecorp.animation.enum." + value.name()).getString()));
+			group.addConfigurator(new StringConfigurator(NAME, () -> name[0], value -> name[0] = value, name[0], false));
+			group.addConfigurator(new NumberConfigurator(DURATION, () -> duration[0], value -> duration[0] = value.doubleValue(), duration[0], false).setRange(0, Double.MAX_VALUE));
+			group.addConfigurator(new BooleanConfigurator(AUTO_DURATION, () -> flags[0], value -> flags[0] = value, flags[0], false));
+			group.addConfigurator(new BooleanConfigurator(LOOP, () -> flags[1], value -> flags[1] = value, flags[1], false));
+			group.addConfigurator(new NumberConfigurator(PRIORITY, () -> priority[0], value -> priority[0] = value.intValue(), priority[0], false).setRange(Integer.MIN_VALUE, Integer.MAX_VALUE));
+			group.addConfigurator(new SelectorConfigurator<>(COMPLETION, () -> completion[0], value -> completion[0] = value, completion[0], false, List.of(Completion.values()), value -> Component.translatable(PhotonAnimationTranslations.key("enum." + value.name())).getString()));
 			var message = new TextElement().textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP));
 			message.layout(layout -> layout.widthPercent(100).flexShrink(0));
 			var dialog = new Dialog().setTitle(TITLE).width(TaffyDimension.length(400));
 			dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
 			dialog.addContent(group);
 			dialog.addContent(message);
-			dialog.addButton(new Button().setText("photon.lobecorp.editor.action.duplicate").setOnClick(_ -> {
+			dialog.addButton(new Button().setText(ACTION_DUPLICATE).setOnClick(_ -> {
 				try {
 					requireCurrent();
 					copySelectedTracks(source);
@@ -114,7 +131,7 @@ public class PhotonProjectPreviewPanel {
 					message.setText(Component.literal(invalid.getMessage()));
 				}
 			}));
-			dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
+			dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> {
 				try {
 					requireCurrent();
 					applyDefinition(editor, project, before, PhotonProjectPreviewUtil.edit(source, name[0], duration[0], flags[0], flags[1], priority[0], completion[0]));
@@ -124,7 +141,7 @@ public class PhotonProjectPreviewPanel {
 					message.setText(Component.literal(invalid.getMessage()));
 				}
 			}));
-			dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+			dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 			dialog.show(editor);
 		} catch (IOException | IllegalArgumentException | IllegalStateException invalid) {
 			showFailure(invalid);
@@ -233,7 +250,7 @@ public class PhotonProjectPreviewPanel {
 
 		handle = null;
 		playback = null;
-		status.setText("photon.lobecorp.animation.stop");
+		status.setText(STOP);
 	}
 
 	private void requireCurrent() {
@@ -243,7 +260,7 @@ public class PhotonProjectPreviewPanel {
 	}
 
 	private void showFailure(Exception invalid) {
-		status.setText(Component.translatable("photon.lobecorp.animation.invalid")
+		status.setText(Component.translatable(INVALID)
 				.append(Component.literal(": " + invalid.getMessage())));
 	}
 }

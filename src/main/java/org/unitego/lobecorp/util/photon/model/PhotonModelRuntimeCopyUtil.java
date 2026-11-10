@@ -19,7 +19,7 @@ import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition.Anchor;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig.Source;
 import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonModelOutputTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonModelOutputTypes;
 
 import javax.annotation.Nullable;
 import java.io.IOException;

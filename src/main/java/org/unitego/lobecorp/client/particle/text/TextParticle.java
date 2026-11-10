@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.jetbrains.annotations.NotNull;
 import org.unitego.lobecorp.particle.text.TextParticleSnapshot;
-import org.unitego.lobecorp.registry.particle.client.TextParticleRegistration;
+import org.unitego.lobecorp.registry.client.particle.TextParticleRegistration;
 
 import java.util.List;
 

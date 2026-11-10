@@ -5,10 +5,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.config.server.HordeEventConfig;
+import org.unitego.lobecorp.config.server.HordeConfig;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
-import org.unitego.lobecorp.world.horde.HordeEvents;
-import org.unitego.lobecorp.world.horde.HordeEvent;
+import org.unitego.lobecorp.world.horde.Hordes;
+import org.unitego.lobecorp.world.horde.HordeInstance;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
 
@@ -45,7 +45,7 @@ public class HordeSync {
 		for (var player : connected) {
 			var projections = new HashMap<UUID, Projection>();
 			var subscriptions = players.computeIfAbsent(player.getUUID(), _ -> new HashMap<>());
-			int remaining = HordeEventConfig.SEND_BYTES.get();
+			int remaining = HordeConfig.SEND_BYTES.get();
 			for (UUID id : List.copyOf(subscriptions.keySet())) {
 				var event = data.events().get(id);
 				if (event == null || !interested(player, event, true, projections)) {
@@ -83,7 +83,7 @@ public class HordeSync {
 					header.putBoolean("reset", subscription.reset);
 					header.putInt("scope_first", first);
 					header.putInt("scope_last", last);
-					var profile = HordeEvents.profile(event.profile());
+					var profile = Hordes.profile(event.profile());
 					if (profile != null) {
 						header.putString("model", profile.visuals().model().toString());
 						header.putString("animation", profile.visuals().animation().toString());
@@ -125,7 +125,7 @@ public class HordeSync {
 				int center = event.route().segment(projection(player, event, projections).station());
 				int previousMaximum = 2 * Math.max(subscription.center - first, last - subscription.center);
 				if (subscription.scanRevision == Long.MIN_VALUE
-						|| Math.abs(center - subscription.center) >= HordeEventConfig.MAX_SEGMENTS_PER_PACKET.get()
+						|| Math.abs(center - subscription.center) >= HordeConfig.MAX_SEGMENTS_PER_PACKET.get()
 						|| subscription.scanOffset > previousMaximum && subscription.scanRevision != event.revision()) {
 					subscription.scanRevision = event.revision();
 					subscription.scanOffset = 0;
@@ -144,7 +144,7 @@ public class HordeSync {
 						subscription.scanOffset++;
 						continue;
 					}
-					int count = Math.min(HordeEventConfig.MAX_SEGMENTS_PER_PACKET.get(), last - index + 1);
+					int count = Math.min(HordeConfig.MAX_SEGMENTS_PER_PACKET.get(), last - index + 1);
 					var slice = event.route().slice(index, count);
 					while (count > 1 && slice.sizeInBytes() + ENVELOPE_BUDGET > remaining) {
 						slice = event.route().slice(index, --count);
@@ -163,7 +163,7 @@ public class HordeSync {
 		}
 	}
 
-	private static Projection projection(ServerPlayer player, HordeEvent event, @Nullable Map<UUID, Projection> cache) {
+	private static Projection projection(ServerPlayer player, HordeInstance event, @Nullable Map<UUID, Projection> cache) {
 		if (cache != null) {
 			return cache.computeIfAbsent(event.id(), _ -> projection(player, event, null));
 		}
@@ -173,14 +173,14 @@ public class HordeSync {
 	}
 
 	private static double subscriptionDistance(ServerPlayer player) {
-		return Math.max(HordeEventConfig.SUBSCRIBE_DISTANCE.get(), player.requestedViewDistance() * 16d);
+		return Math.max(HordeConfig.SUBSCRIBE_DISTANCE.get(), player.requestedViewDistance() * 16d);
 	}
 
-	private static boolean interested(ServerPlayer player, HordeEvent event, boolean already,
+	private static boolean interested(ServerPlayer player, HordeInstance event, boolean already,
 	                                  @Nullable Map<UUID, Projection> cache) {
 		return player.level().dimension().equals(event.dimension()) && projection(player, event, cache).distance()
 				<= subscriptionDistance(player) + event.rules().width() / 2
-				+ (already ? HordeEventConfig.SUBSCRIBE_HYSTERESIS.get() : 0);
+				+ (already ? HordeConfig.SUBSCRIBE_HYSTERESIS.get() : 0);
 	}
 
 	private record Projection(double station, double distance) {

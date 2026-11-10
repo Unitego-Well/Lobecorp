@@ -17,7 +17,7 @@ import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.mixin.photon.editor.client.FXTimelineViewAccessor;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 
 import java.util.List;
@@ -117,12 +117,12 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 			}
 		}
 		if (clip.has("opacityKeys")) {
-			row(PhotonModelTextUtil.key("opacity"), path + "/opacityKeys");
+			row(PhotonModelTranslations.OPACITY, path + "/opacityKeys");
 		}
-		headers.addChild(new Button().setText(PhotonModelTextUtil.key("part_key")).setOnClick(_ -> addPartTrack()));
+		headers.addChild(new Button().setText(PhotonModelTranslations.PART_KEY).setOnClick(_ -> addPartTrack()));
 		lanes.addChild(new UIElement().layout(layout -> layout.height(ROW_HEIGHT)));
 		for (var kind : List.of("boneTracks", "morphTracks", "opacityKeys")) {
-			headers.addChild(new Button().setText(PhotonModelTextUtil.key(kind.equals("boneTracks") ? "bone_key"
+			headers.addChild(new Button().setText(PhotonModelTranslations.key(kind.equals("boneTracks") ? "bone_key"
 					: kind.equals("morphTracks") ? "morph_key" : "opacity")).setOnClick(_ -> chooseTrack(kind)));
 			lanes.addChild(new UIElement().layout(layout -> layout.height(ROW_HEIGHT)));
 		}
@@ -149,7 +149,7 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 				String expected = session.revision();
 				float time = Math.max(0, (float) xToTick(event.x));
 				var menu = TreeBuilder.Menu.start();
-				menu.leaf(Component.translatable(PhotonModelTextUtil.key("editor.key_at"), time), () -> insertKey(path, time, expected));
+				menu.leaf(Component.translatable(PhotonModelTranslations.EDITOR_KEY_AT, time), () -> insertKey(path, time, expected));
 				owner.openMenu(lane, event.x, event.y, menu);
 				event.stopPropagation();
 				return;
@@ -237,7 +237,7 @@ public class PhotonModelWorkspaceTimeline extends FXTimelineView {
 		var selector = new Selector<String>().setCandidates(ids).setSelected(selected[0], false)
 				.setCandidateUIProvider(value -> new Label().setText(Component.literal(value)))
 				.setOnValueChanged(value -> selected[0] = value);
-		var dialog = new Dialog().setTitle(PhotonModelTextUtil.key("timeline.tracks"));
+		var dialog = new Dialog().setTitle(PhotonModelTranslations.TIMELINE_TRACKS);
 		dialog.addContent(selector);
 		dialog.addButton(new Button().setText("ldlib.gui.tips.confirm").setOnClick(_ -> {
 			insertKey(path + "/" + kind + "/" + PhotonModelWorkspaceFields.encode(selected[0]), time, expected);

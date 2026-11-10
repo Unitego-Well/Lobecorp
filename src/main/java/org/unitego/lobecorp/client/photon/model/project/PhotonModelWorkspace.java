@@ -18,7 +18,7 @@ import com.lowdragmc.lowdraglib2.syncdata.ISubscription;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.PhotonModelWorkspaceEditUtil;
 import org.unitego.lobecorp.config.photon.model.PhotonModelDefinition;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
@@ -37,6 +37,10 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.google.gson.JsonParser;
 import org.joml.Vector3f;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.RENAME;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.ACTION_DUPLICATE;
 
 /// 04a3bab 模型编辑器的左侧工作区与右侧检视沿用原生停靠树，数据仍由当前工程事务持有。
 public class PhotonModelWorkspace implements AutoCloseable {
@@ -135,7 +139,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 	}
 
 	private static View view(String key) {
-		var view = new View(PhotonModelTextUtil.key(key));
+		var view = new View(PhotonModelTranslations.key(key));
 		view.layout(layout -> layout.flexDirection(FlexDirection.COLUMN).minHeight(0));
 		return view;
 	}
@@ -161,7 +165,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			try {
 				UUID.fromString(name);
 				int index = Integer.parseInt(node.getKey().substring("/parts/".length()));
-				return Component.translatable(PhotonModelTextUtil.key("editor.hierarchy.legacy_part"), index + 1);
+				return Component.translatable(PhotonModelTranslations.EDITOR_HIERARCHY_LEGACY_PART, index + 1);
 			} catch (IllegalArgumentException ignored) {
 				return Component.literal(name);
 			}
@@ -194,16 +198,16 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			var menu = TreeBuilder.Menu.start();
 			String target = part ? selectedPartId : "";
 			String revision = session.revision();
-			menu.branch(PhotonModelTextUtil.key("primitive"), branch -> {
-				branch.leaf(PhotonModelTextUtil.key("cube"), () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, true, target)));
-				branch.leaf(PhotonModelTextUtil.key("plane"), () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, false, target)));
+			menu.branch(PhotonModelTranslations.PRIMITIVE, branch -> {
+				branch.leaf(PhotonModelTranslations.CUBE, () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, true, target)));
+				branch.leaf(PhotonModelTranslations.PLANE, () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.primitive(asset, false, target)));
 				for (var shape : PhotonModelPrimitiveUtil.Shape.values()) {
-					branch.leaf(PhotonModelTextUtil.key(shape.name().toLowerCase(Locale.ROOT)), () -> meshTools.primitive(shape));
+					branch.leaf(PhotonModelTranslations.key(shape.name().toLowerCase(Locale.ROOT)), () -> meshTools.primitive(shape));
 				}
 			});
 			if (part) {
-				menu.leaf("photon.lobecorp.editor.action.duplicate", () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.duplicatePart(asset, target)));
-				menu.leaf(PhotonModelTextUtil.key("mesh.inside_out"), () -> session.changeAt(revision, asset -> {
+				menu.leaf(ACTION_DUPLICATE, () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.duplicatePart(asset, target)));
+				menu.leaf(PhotonModelTranslations.MESH_INSIDE_OUT, () -> session.changeAt(revision, asset -> {
 					for (var value : asset.getAsJsonArray("parts")) {
 						var item = value.getAsJsonObject();
 						if (target.equals(item.get("id").getAsString())) {
@@ -211,10 +215,10 @@ public class PhotonModelWorkspace implements AutoCloseable {
 						}
 					}
 				}));
-				menu.leaf("photon.lobecorp.animation.delete", () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target)));
-				menu.leaf(PhotonModelTextUtil.key("editor.delete_subtree"), () -> session.changeAt(revision,
+				menu.leaf(DELETE, () -> session.changeAt(revision, asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target)));
+				menu.leaf(PhotonModelTranslations.EDITOR_DELETE_SUBTREE, () -> session.changeAt(revision,
 						asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target, true)));
-				menu.leaf(PhotonModelTextUtil.key("editor.delete_promote"), () -> session.changeAt(revision,
+				menu.leaf(PhotonModelTranslations.EDITOR_DELETE_PROMOTE, () -> session.changeAt(revision,
 						asset -> PhotonModelWorkspaceEditUtil.removePart(asset, target, false)));
 			}
 			editor.openMenu(tree, event.x, event.y, menu);
@@ -222,17 +226,17 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		}, true);
 		hierarchy.addChild(scroll(tree));
 		var actions = new UIElement().layout(layout -> layout.flexDirection(FlexDirection.ROW).gapAll(3));
-		actions.addChild(new Button().setText("photon.lobecorp.animation.new").setOnClick(_ -> session.change(asset -> {
+		actions.addChild(new Button().setText(NEW).setOnClick(_ -> session.change(asset -> {
 			var parts = ensureArray(asset, "parts");
 			var part = new JsonObject();
 			part.addProperty("id", nextId(parts, "part"));
 			part.addProperty("parentId", "");
 			parts.add(part);
 		})));
-		actions.addChild(new Button().setText("photon.lobecorp.animation.delete").setOnClick(_ -> removeSelected()));
+		actions.addChild(new Button().setText(DELETE).setOnClick(_ -> removeSelected()));
 		hierarchy.addChild(actions);
 		for (var kind : List.of("bones", "morphs")) {
-			hierarchy.addChild(new Button().setText(PhotonModelTextUtil.key(kind.equals("bones") ? "add_bone" : "add_morph")).setOnClick(_ ->
+			hierarchy.addChild(new Button().setText(PhotonModelTranslations.key(kind.equals("bones") ? "add_bone" : "add_morph")).setOnClick(_ ->
 					session.change(asset -> {
 						var entries = ensureArray(asset, kind);
 						var value = new JsonObject();
@@ -265,7 +269,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 		editor.leftWindow.getLeftTop().selectView(hierarchy);
 		editor.rightWindow.getRightTop().selectView(inspector);
 		panels = editor.viewMenu.registerMenuCreator((_, menu) ->
-				menu.branch(PhotonModelTextUtil.key("editor.panels"), branch -> {
+				menu.branch(PhotonModelTranslations.EDITOR_PANELS, branch -> {
 					for (var entry : views.entrySet()) {
 						branch.leaf(entry.getKey().getName(), () -> show(entry.getKey(), entry.getValue()));
 					}
@@ -328,7 +332,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 						.setOnClick(_ -> inspect("/materials/" + PhotonModelWorkspaceFields.encode(name))));
 			}
 		}
-		materialList.addChild(new Button().setText(PhotonModelTextUtil.key("resources.add_slot")).setOnClick(_ -> addMaterial()));
+		materialList.addChild(new Button().setText(PhotonModelTranslations.RESOURCES_ADD_SLOT).setOnClick(_ -> addMaterial()));
 		resourceTools.actions(materialList, "");
 		animationList.clearAllChildren();
 		var clips = array(session.asset(), "clips");
@@ -350,7 +354,7 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			});
 			animationList.addChild(clipButton);
 		}
-		animationList.addChild(new Button().setText("photon.lobecorp.animation.new").setOnClick(_ -> session.change(asset -> {
+		animationList.addChild(new Button().setText(NEW).setOnClick(_ -> session.change(asset -> {
 			var values = ensureArray(asset, "clips");
 			var clip = new JsonObject();
 			clip.addProperty("id", nextId(values, "animation"));
@@ -478,9 +482,9 @@ public class PhotonModelWorkspace implements AutoCloseable {
 				var part = session.value(path).getAsJsonObject();
 				String currentName = part.has("id") ? part.get("id").getAsString() : PhotonModelDefinition.DEFAULT_PART;
 				String[] draftName = {currentName};
-				properties.addScrollViewChild(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> draftName[0],
+				properties.addScrollViewChild(new StringConfigurator(PhotonModelTranslations.NAME, () -> draftName[0],
 						name -> draftName[0] = name, currentName, false));
-				properties.addScrollViewChild(new Button().setText("photon.lobecorp.animation.rename").setOnClick(_ -> {
+				properties.addScrollViewChild(new Button().setText(RENAME).setOnClick(_ -> {
 					String before = session.revision();
 					session.change(asset -> PhotonModelWorkspaceEditUtil.renamePart(asset, currentName, draftName[0]));
 					if (!before.equals(session.revision())) {
@@ -497,13 +501,13 @@ public class PhotonModelWorkspace implements AutoCloseable {
 				String material = path.substring("/materials/".length()).replace("~1", "/").replace("~0", "~");
 				resourceTools.actions(properties.viewContainer, material);
 				String[] name = {material};
-				properties.addScrollViewChild(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> name[0],
+				properties.addScrollViewChild(new StringConfigurator(PhotonModelTranslations.NAME, () -> name[0],
 						value -> name[0] = value, material, false));
-				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.rename"))
+				properties.addScrollViewChild(new Button().setText(PhotonModelTranslations.RESOURCES_RENAME)
 						.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.renameMaterial(asset, material, name[0]))));
-				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.delete_slot"))
+				properties.addScrollViewChild(new Button().setText(PhotonModelTranslations.RESOURCES_DELETE_SLOT)
 						.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.removeMaterial(asset, material))));
-				properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("resources.assign")).setOnClick(_ -> session.change(asset -> {
+				properties.addScrollViewChild(new Button().setText(PhotonModelTranslations.RESOURCES_ASSIGN).setOnClick(_ -> session.change(asset -> {
 					var faces = asset.getAsJsonArray("faces");
 					for (int index : Set.copyOf(selectedFaces)) {
 						faces.get(index).getAsJsonObject().addProperty("material", material);
@@ -520,17 +524,17 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			String kind = path.substring(1, path.indexOf('/', 1));
 			String id = session.value(path).getAsJsonObject().get("id").getAsString();
 			String[] name = {id};
-			properties.addScrollViewChild(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> name[0],
+			properties.addScrollViewChild(new StringConfigurator(PhotonModelTranslations.NAME, () -> name[0],
 					value -> name[0] = value, id, false));
-			properties.addScrollViewChild(new Button().setText("photon.lobecorp.animation.rename")
+			properties.addScrollViewChild(new Button().setText(RENAME)
 					.setOnClick(_ -> session.change(asset -> PhotonModelWorkspaceEditUtil.renameNode(asset, kind, id, name[0]))));
 		}
 		if (path.matches("/bones/[0-9]+")) {
 			String id = session.value(path).getAsJsonObject().get("id").getAsString();
 			float[] weight = {1};
-			properties.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key("weight"), () -> weight[0],
+			properties.addScrollViewChild(new NumberConfigurator(PhotonModelTranslations.WEIGHT, () -> weight[0],
 					value -> weight[0] = value.floatValue(), 1, false).setRange(0, 1));
-			properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("editor.assign_weight")).setOnClick(_ -> {
+			properties.addScrollViewChild(new Button().setText(PhotonModelTranslations.EDITOR_ASSIGN_WEIGHT).setOnClick(_ -> {
 				var vertices = meshTools.vertexSelection();
 				session.change(asset -> {
 					var weights = asset.has("weights") ? asset.getAsJsonObject("weights") : new JsonObject();
@@ -556,10 +560,10 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			var delta = new Vector3f();
 			for (int axis = 0; axis < 3; axis++) {
 				int component = axis;
-				properties.addScrollViewChild(new NumberConfigurator(PhotonModelTextUtil.key("axis_" + "xyz".charAt(axis)), () -> delta.get(component),
+				properties.addScrollViewChild(new NumberConfigurator(PhotonModelTranslations.key("axis_" + "xyz".charAt(axis)), () -> delta.get(component),
 						value -> delta.setComponent(component, value.floatValue()), 0, false));
 			}
-			properties.addScrollViewChild(new Button().setText(PhotonModelTextUtil.key("edit_morph")).setOnClick(_ -> {
+			properties.addScrollViewChild(new Button().setText(PhotonModelTranslations.EDIT_MORPH).setOnClick(_ -> {
 				var vertices = meshTools.vertexSelection();
 				session.change(asset -> {
 					var morph = array(asset, "morphs").asList().stream().map(JsonElement::getAsJsonObject)
@@ -612,10 +616,10 @@ public class PhotonModelWorkspace implements AutoCloseable {
 	private void animationMenu(UIElement anchor, String id, float x, float y) {
 		String expected = session.revision();
 		var menu = TreeBuilder.Menu.start();
-		menu.leaf(PhotonModelTextUtil.key("timeline.rename"), () -> {
+		menu.leaf(PhotonModelTranslations.TIMELINE_RENAME, () -> {
 			String[] draft = {id};
-			var dialog = new Dialog().setTitle(PhotonModelTextUtil.key("timeline.rename"));
-			dialog.addContent(new StringConfigurator(PhotonModelTextUtil.key("name"), () -> draft[0], value -> draft[0] = value, id, false));
+			var dialog = new Dialog().setTitle(PhotonModelTranslations.TIMELINE_RENAME);
+			dialog.addContent(new StringConfigurator(PhotonModelTranslations.NAME, () -> draft[0], value -> draft[0] = value, id, false));
 			dialog.addButton(new Button().setText("ldlib.gui.tips.confirm").setOnClick(_ -> {
 				String selected = project.model().config.clip.equals(id) ? draft[0] : project.model().config.clip;
 				session.changeAssetAndPlaybackAt(expected, asset -> {
@@ -632,17 +636,17 @@ public class PhotonModelWorkspace implements AutoCloseable {
 			dialog.setOnClose(() -> dialogs.remove(dialog));
 			dialog.show(editor);
 		});
-		menu.leaf(PhotonModelTextUtil.key("duplicate"), () -> session.changeAt(expected, asset -> {
+		menu.leaf(PhotonModelTranslations.DUPLICATE, () -> session.changeAt(expected, asset -> {
 			var values = array(asset, "clips");
 			var copied = clip(asset, id).deepCopy();
 			copied.addProperty("id", nextId(values, "animation"));
 			values.add(copied);
 		}));
-		menu.leaf(PhotonModelTextUtil.key("delete"), () -> session.changeAssetAndPlaybackAt(expected,
+		menu.leaf(PhotonModelTranslations.DELETE, () -> session.changeAssetAndPlaybackAt(expected,
 				asset -> array(asset, "clips").asList().removeIf(value -> id.equals(value.getAsJsonObject().get("id").getAsString())),
 				project.model().config.clip.equals(id) ? "" : project.model().config.clip));
 		for (int direction : List.of(-1, 1)) {
-			menu.leaf(Component.translatable(PhotonModelTextUtil.key("timeline.reorder")).append(direction < 0 ? " ↑" : " ↓"), () -> session.changeAt(expected, asset -> {
+			menu.leaf(Component.translatable(PhotonModelTranslations.TIMELINE_REORDER).append(direction < 0 ? " ↑" : " ↓"), () -> session.changeAt(expected, asset -> {
 				var values = array(asset, "clips");
 				int index = values.asList().indexOf(clip(asset, id));
 				int next = index + direction;

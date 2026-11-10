@@ -16,7 +16,7 @@ import net.minecraft.nbt.NbtOps;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-import org.unitego.lobecorp.registry.photon.client.LcPhotonPlaybackTypes;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonPlaybackTypes;
 import org.unitego.lobecorp.client.photon.playback.PhotonChildWindows;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonCallTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildClip;

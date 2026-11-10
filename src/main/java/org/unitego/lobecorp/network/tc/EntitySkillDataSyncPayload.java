@@ -9,7 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillDataSyncUtil;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
@@ -29,9 +29,9 @@ public record EntitySkillDataSyncPayload(
 ) implements IToClientPayload {
 	public static final Type<EntitySkillDataSyncPayload> TYPE = Lobecorp.type("entity_skill_data_sync");
 	private static final StreamCodec<RegistryFriendlyByteBuf, IEntitySkill<?>> SKILL_CODEC =
-			ByteBufCodecs.registry(LcRegistrys.ENTITY_SKILL_KEY);
+			ByteBufCodecs.registry(LcRegistries.ENTITY_SKILL_KEY);
 	private static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillGroup> GROUP_CODEC =
-			ByteBufCodecs.registry(LcRegistrys.ENTITY_SKILL_GROUP_KEY);
+			ByteBufCodecs.registry(LcRegistries.ENTITY_SKILL_GROUP_KEY);
 	private static final StreamCodec<RegistryFriendlyByteBuf, Map<IEntitySkill<?>, Boolean>> SKILLS_CODEC =
 			ByteBufCodecs.map(LinkedHashMap::new, SKILL_CODEC, ByteBufCodecs.BOOL);
 	private static final StreamCodec<RegistryFriendlyByteBuf, Set<IEntitySkill<?>>> SKILL_KEYS_CODEC =

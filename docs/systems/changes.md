@@ -1,5 +1,12 @@
 # 系统修改记录
 
+## 2026-11-10：Encounter、翻译与注册职责迁移
+
+- 引入Encounter定义注册与通用Horde API边界，倒计时与当地停止生成边界统一，提前触发收尾展示而不停止真实浪潮；协议33。
+- 类型翻译键类直接归registry.translation，以类型前缀命名、常量登记中英文；删除ConductorTexts转接类。
+- Definition使用world.encounter中的普通类和NeoForge注册表，清道夫声音拆出独立注册类，大气表达式移为资源；客户端登记归registry.client，Bench专属内容归bench源集。
+- 当前结构见[Encounter契约](encounters.md)。验证证据另记本次任务报告；下方早先“目标尚未实施”段落为历史状态。
+
 ## 2026-11-10：分层读取入口与项目结构规范
 
 - 项目入口改为按任务导航，新增薄开发规则技能及Encounter结构规范；客户端登记采用registry.client层级，翻译键归translation，文案随业务注册登记。

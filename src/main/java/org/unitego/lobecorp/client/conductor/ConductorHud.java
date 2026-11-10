@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.conductor;
 
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -20,7 +22,6 @@ import org.unitego.lobecorp.client.conductor.hud.ConductorHudPreferences;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudRenderer;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudViewSlot;
-import org.unitego.lobecorp.client.conductor.hud.ConductorTexts;
 import org.unitego.lobecorp.client.conductor.render.ConductorPortraitCache;
 import org.unitego.lobecorp.client.hud.HudLayerManager;
 import org.unitego.lobecorp.client.hud.host.HudHost;
@@ -206,11 +207,11 @@ public class ConductorHud implements GuiLayer {
 				.filter(member -> ConductorClient.hasAbility(member, id))
 				.mapToInt(member -> ConductorClient.abilityCooldownTicks(member, id)).min().orElse(0);
 		List<Component> lines = new ArrayList<>(List.of(ConductorHudLayout.abilityName(ability),
-				Component.translatable(ConductorTexts.COOLDOWN_REMAINING,
+				Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_COOLDOWN_REMAINING,
 						String.format(Locale.ROOT, DECIMAL_FORMAT, remaining / (float) TICKS_PER_SECOND))));
 
 		if (ability instanceof EntitySkillConductorAbility.Laser) {
-			lines.add(Component.translatable(ConductorTexts.RANGE,
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_RANGE,
 					String.format(Locale.ROOT, RANGE_INTERVAL_FORMAT, LaserSkill.MINIMUM_RANGE, LaserSkill.RANGE)));
 		}
 		appendSkillStatus(lines, mob, ability, remaining);
@@ -222,15 +223,15 @@ public class ConductorHud implements GuiLayer {
 		boolean available = ability.isAvailable(mob);
 
 		if (remaining > 0) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
 		}
 
 		if (casting) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
 		}
 
 		if (!available) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
 		}
 
 		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
@@ -244,9 +245,9 @@ public class ConductorHud implements GuiLayer {
 		}
 
 		if (aim.rangeLimited()) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
 		} else if (!aim.valid() && remaining == 0 && available && !casting) {
-			lines.add(Component.translatable(ConductorTexts.SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
 		}
 	}
 

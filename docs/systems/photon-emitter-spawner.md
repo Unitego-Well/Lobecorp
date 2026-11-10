@@ -6,7 +6,7 @@
 
 新增持久字段或函数类型时同步helper映射及测量后NativeCheck的字段/独占性/原生Codec对照；不能只改supportsFunction放行。真实根FXData/两实例/版本枚举与资源guard检查已通过，但完整视觉、长时生命周期与FPS收益未建立，详见[复制与预热检查](benchmod.md#2026-10-30-类型复制和材质粒度预热)。
 
-> 2026-10-23：当前类型 ID 仍为 lobecorp_emitter_spawner，注册由 [LcPhotonSpawnTypes](../../src/main/java/org/unitego/lobecorp/registry/photon/client/LcPhotonSpawnTypes.java) 持有，运行由 [PhotonChildSpawner](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java) 和独占子实例承担。当前源码包含单份未发射准备、来源／深度核对与关闭销毁，尚无本轮实机验收。下文旧 emitter 包和旧调度／迁移 API 为历史，不能因资源 ID 相同而视为全部旧行为已验证；恢复入口见 [Photon 工作区](photon-workspace.md)。
+> 2026-10-23：当前类型 ID 仍为 lobecorp_emitter_spawner，注册由 [LcPhotonSpawnTypes](../../src/main/java/org/unitego/lobecorp/registry/client/photon/LcPhotonSpawnTypes.java) 持有，运行由 [PhotonChildSpawner](../../src/main/java/org/unitego/lobecorp/client/photon/playback/spawn/PhotonChildSpawner.java) 和独占子实例承担。当前源码包含单份未发射准备、来源／深度核对与关闭销毁，尚无本轮实机验收。下文旧 emitter 包和旧调度／迁移 API 为历史，不能因资源 ID 相同而视为全部旧行为已验证；恢复入口见 [Photon 工作区](photon-workspace.md)。
 
 > 2026-10-19 当前状态：本文描述的自建发射器发射器已移除，原生 Photon 发射器保留，资源原件保留。 实际检查与备份见[移除实施记录](photon-removal-result.md)。下文涉及已移除实现的说明仅保留为历史参考。
 

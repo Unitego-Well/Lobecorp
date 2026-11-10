@@ -19,6 +19,7 @@ import dev.vfyjxf.taffy.style.TaffyDimension;
 import org.joml.Vector2f;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.Map;
 import java.util.List;
@@ -54,7 +55,7 @@ public class PhotonCurveEasingUtil {
 		}
 
 		var model = PhotonEditorTimelineUtil.of(context);
-		choose(context, "add_curve_easing", "curve_easing_tip", preset -> {
+		choose(context, PhotonEditorTranslations.ADD_CURVE_EASING, PhotonEditorTranslations.CURVE_EASING_TIP, preset -> {
 			if (context.runtime() != runtime || PhotonEditorTimelineUtil.of(context) != model
 					|| model.parentListOf(track) == null || track.lock() || track.property(type) != null
 					|| !Objects.equals(track.targetId(), targetId) || runtime.objects.get(targetId) != target
@@ -127,24 +128,24 @@ public class PhotonCurveEasingUtil {
 
 		String[] selected = {PhotonEditorSettings.of(context.editor()).curveEasingPreset()};
 		var group = new ConfiguratorGroup("", false).hideTitle();
-		group.addConfigurator(PhotonEditorTooltipUtil.tips(new SelectorConfigurator<>(PhotonEditorTextUtil.key("curve_easing"),
+		group.addConfigurator(PhotonEditorTooltipUtil.tips(new SelectorConfigurator<>(PhotonEditorTranslations.CURVE_EASING,
 				() -> selected[0], value -> selected[0] = value, selected[0], false,
-				PhotonEditorTextUtil.CURVE_EASING_PRESETS, PhotonEditorTextUtil::key), PhotonEditorTextUtil.key(tip)));
-		group.addChild(new TextElement().setText(PhotonEditorTextUtil.key(tip))
+				PhotonEditorTranslations.CURVE_EASING_PRESETS, PhotonEditorTranslations::key), tip));
+		group.addChild(new TextElement().setText(tip)
 				.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
 				.layout(layout -> layout.widthPercent(100)));
-		var dialog = new Dialog().width(TaffyDimension.length(DIALOG_WIDTH)).setTitle(PhotonEditorTextUtil.key(title));
+		var dialog = new Dialog().width(TaffyDimension.length(DIALOG_WIDTH)).setTitle(title);
 		dialog.addContent(group);
-		dialog.addButton(new Button().setText(PhotonEditorTextUtil.key("close"))
+		dialog.addButton(new Button().setText(PhotonEditorTranslations.CLOSE)
 				.setOnClick(_ -> dialog.close()));
-		dialog.addButton(new Button().setText(PhotonEditorTextUtil.key("apply"))
+		dialog.addButton(new Button().setText(PhotonEditorTranslations.APPLY)
 				.setOnClick(_ -> {
 					try {
 						apply.accept(selected[0]);
 						dialog.close();
 					} catch (IllegalArgumentException error) {
-						Dialog.showNotification(PhotonEditorTextUtil.key("curve_easing"),
-								PhotonEditorTextUtil.key("invalid"), null).show(context.editor());
+						Dialog.showNotification(PhotonEditorTranslations.CURVE_EASING,
+								PhotonEditorTranslations.INVALID, null).show(context.editor());
 					}
 				}));
 		dialog.show(context.editor());

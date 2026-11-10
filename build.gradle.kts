@@ -203,6 +203,8 @@ base {
 tasks.named<Jar>("jar") {
     dependsOn(reserveBuildIdentity)
     archiveFileName = "$modId-$minecraftVersion-$buildVersion.jar"
+    exclude("org/unitego/lobecorp/mixin/bench/**", "org/unitego/lobecorp/bench/**",
+        "META-INF/lobecorp.bench.mixins.json", "META-INF/services/com.zhongbai233.bench.api.BenchProvider")
     notCompatibleWithConfigurationCache("The archive name contains a local daily build number")
 }
 
@@ -243,6 +245,7 @@ neoForge {
             logLevel = org.slf4j.event.Level.DEBUG
             if (name.startsWith("bench")) {
                 systemProperty("lobecorp.developmentWindowTestPolicy", "true")
+                programArguments.addAll("--mixin", "META-INF/lobecorp.bench.mixins.json")
             }
             if (name == "benchClient" && photonBenchEnabled.get()) {
                 systemProperty("mcp.port", minecraftMcpGamePort.get())
@@ -475,7 +478,7 @@ tasks.withType<JavaCompile> {
 tasks.register<org.gradle.api.tasks.bundling.Zip>("internalTestBundle") {
     group = "distribution"
     description = "Builds the internal-test mod bundle with all runtime mod dependencies"
-    dependsOn(tasks.named("jar"))
+    dependsOn(tasks.named("jar"), tasks.named("verifyProductionJarHasNoBenchContent"))
     archiveFileName = "$modId-$minecraftVersion-$buildVersion-internal-test.zip"
     notCompatibleWithConfigurationCache("The archive name contains a local daily build number")
     destinationDirectory = layout.buildDirectory.dir("distributions")
@@ -483,7 +486,9 @@ tasks.register<org.gradle.api.tasks.bundling.Zip>("internalTestBundle") {
 
     into("mods") {
         from(tasks.named<Jar>("jar").flatMap { it.archiveFile })
-        from(internalTestMods)
+        from(internalTestMods) {
+            exclude("*bench*.jar", "*Bench*.jar")
+        }
     }
     from(resources.text.fromString(
         """Lobotomy Corporation internal test bundle

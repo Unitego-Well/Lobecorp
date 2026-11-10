@@ -126,7 +126,7 @@ GeckoLib 触发接口；运行回调会在服务端及同步客户端执行。�
 - [EntitySkillSyncPayload](../../src/main/java/org/unitego/lobecorp/network/tc/EntitySkillSyncPayload.java)
   传递施放阶段回调，客户端对应运行实例触发动作和短时表现。
 - 过渡设置载荷只同步控制器配置，播放与停止仍复用 GeckoLib 原生接口。
-- [LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/animation/client/LcDataTickets.java)提供渲染状态数据；模型读取对应
+- [LcDataTickets](../../src/main/java/org/unitego/lobecorp/registry/client/animation/LcDataTickets.java)提供渲染状态数据；模型读取对应
   ticket，而不是自行复制一套实体业务状态。
 - GeckoLib 动画切换与定位器 Mixin 对 Photon
   效果及锚点有集成；关联入口为 PhotonGeoEffects（历史路径：`../../src/main/java/org/unitego/lobecorp/client/photon/runtime/PhotonGeoEffects.java`；当前 dev 未保留）

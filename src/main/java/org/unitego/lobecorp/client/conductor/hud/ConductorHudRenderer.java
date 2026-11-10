@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.conductor.hud;
 
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
+
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
@@ -135,17 +137,17 @@ public class ConductorHudRenderer {
 			model.selectTeam(teams.isEmpty() ? "" : teams.getFirst());
 		}
 		model.hints().put(ConductorHudLayout.TEAM_SELECT, ConductorClient.snapshot().team(model.teamSelection()) == null
-				? Component.translatable(ConductorTexts.TEAM)
+				? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_TEAM)
 				: Component.literal(ConductorClient.snapshot().team(model.teamSelection()).name())
 				.withColor(ConductorClient.snapshot().team(model.teamSelection()).color()));
 		ConductorData.Unit modeUnit = selectedModeUnit();
 		model.hints().put(ConductorHudLayout.ATTACK_MODE, Component.translatable(modeUnit != null
 				&& modeUnit.attackState() == ConductorData.AttackState.MANUAL
-				? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI));
-		model.hints().put(ConductorHudLayout.BEHAVIOR_MODE, modeUnit == null ? Component.translatable(ConductorTexts.BEHAVIOR_MODE)
-				: Component.translatable(ConductorTexts.BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(modeUnit.combatBehavior()))));
-		model.hints().put(ConductorHudLayout.ACTIVITY_MODE, modeUnit == null ? Component.translatable(ConductorTexts.ACTIVITY_MODE)
-				: Component.translatable(ConductorTexts.ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(modeUnit.behaviorState()))));
+				? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_BASIC : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_AI));
+		model.hints().put(ConductorHudLayout.BEHAVIOR_MODE, modeUnit == null ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_MODE)
+				: Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(modeUnit.combatBehavior()))));
+		model.hints().put(ConductorHudLayout.ACTIVITY_MODE, modeUnit == null ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_MODE)
+				: Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(modeUnit.behaviorState()))));
 
 		if (modeUnit == null) {
 			model.setModeDropdown("");
@@ -174,7 +176,7 @@ public class ConductorHudRenderer {
 		}
 
 		layout.selectId(ConductorHudLayout.SELECTED_COUNT, Label.class).findFirst().orElseThrow()
-				.setText(Component.translatable(ConductorTexts.ROSTER_COUNT, selected.size(), model.teamMemberCount()));
+				.setText(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ROSTER_COUNT, selected.size(), model.teamMemberCount()));
 		layout.selectId(ConductorHudLayout.ROSTER_QUERY, Label.class).findFirst().orElseThrow().setText(Component.empty());
 		layout.selectId(ConductorHudLayout.SKILL_QUERY, Label.class).findFirst().orElseThrow().setText(Component.empty());
 		layout.button(ConductorHudLayout.ROSTER_CLEAR).setDisplay(!model.rosterSearch().isEmpty());
@@ -281,8 +283,8 @@ public class ConductorHudRenderer {
 		Entity entity = focus == null ? null : minecraft.level.getEntity(focus);
 		List<UUID> selected = ConductorControls.selected();
 		List<Component> lines = new ArrayList<>();
-		Component name = focus == null ? Component.translatable(ConductorTexts.NO_SELECTION) : memberName(focus);
-		lines.add(selected.size() > 1 ? Component.translatable(ConductorTexts.SELECTED, selected.size()) : name);
+		Component name = focus == null ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_SELECTION) : memberName(focus);
+		lines.add(selected.size() > 1 ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SELECTED, selected.size()) : name);
 
 		if (focus != null) {
 			lines.add(memberType(focus));
@@ -300,25 +302,25 @@ public class ConductorHudRenderer {
 			}
 
 			if (known > 0) {
-				lines.add(Component.translatable(ConductorTexts.HEALTH_PERCENT, Math.round(sum / known * PERCENT)));
-				lines.add(Component.translatable(ConductorTexts.KNOWN_HEALTH, known, selected.size()));
+				lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_HEALTH_PERCENT, Math.round(sum / known * PERCENT)));
+				lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_KNOWN_HEALTH, known, selected.size()));
 			} else {
-				lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
+				lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_UNKNOWN_HEALTH));
 			}
 		} else if (entity instanceof LivingEntity living) {
-			lines.add(Component.translatable(ConductorTexts.HEALTH, (int) Math.ceil(living.getHealth()), (int) Math.ceil(living.getMaxHealth())));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_HEALTH, (int) Math.ceil(living.getHealth()), (int) Math.ceil(living.getMaxHealth())));
 			lines.add(attributes(living));
 		} else {
-			lines.add(Component.translatable(ConductorTexts.UNKNOWN_HEALTH));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_UNKNOWN_HEALTH));
 		}
 
 		ConductorData.Unit unit = focus == null ? null : ConductorClient.unit(focus);
 
 		if (unit != null && ConductorClient.snapshot().team(unit.team()) != null) {
-			lines.add(Component.translatable(ConductorTexts.BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(unit.combatBehavior()))));
-			lines.add(Component.translatable(ConductorTexts.ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(unit.behaviorState()))));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_VALUE, Component.translatable(ConductorHudLayout.combatBehaviorKey(unit.combatBehavior()))));
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_VALUE, Component.translatable(ConductorHudLayout.behaviorKey(unit.behaviorState()))));
 			lines.add(Component.translatable(unit.attackState() == ConductorData.AttackState.MANUAL
-					? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI));
+					? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_BASIC : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_AI));
 		}
 
 		focusLines = List.copyOf(lines);
@@ -472,7 +474,7 @@ public class ConductorHudRenderer {
 			frame(graphics, area, BG_0, active ? ORE_GREEN : LINE_OUTER, 0);
 			String query = ConductorHudLayout.ROSTER_SEARCH.equals(id) ? model.rosterSearch() : model.skillSearch();
 			Component value = query.isBlank() ? Component.translatable(ConductorHudLayout.ROSTER_SEARCH.equals(id)
-					? ConductorTexts.SEARCH : ConductorTexts.SEARCH_SKILLS) : Component.literal(query);
+					? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SEARCH : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SEARCH_SKILLS) : Component.literal(query);
 			int textX = (int) area.getPositionX() + SECTION_PADDING + SEARCH_ICON_SIZE;
 			int textY = (int) area.getPositionY() + SECTION_PADDING;
 			int textWidth = (int) area.getSizeWidth() - SEARCH_ICON_SIZE * 2 - SECTION_PADDING * 2;
@@ -487,24 +489,24 @@ public class ConductorHudRenderer {
 
 		if (!layout.rosterHidden()) {
 			UIElement area = layout.element(ConductorHudLayout.SELECTED_COUNT);
-			textFit(graphics, Component.translatable(ConductorTexts.ROSTER_COUNT, ConductorControls.selected().size(), model.teamMemberCount()),
+			textFit(graphics, Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ROSTER_COUNT, ConductorControls.selected().size(), model.teamMemberCount()),
 					(int) area.getPositionX(), (int) area.getPositionY(), (int) area.getSizeWidth(), GOLD);
 
 			if (model.rosterMembers().isEmpty()) {
 				emptyMessage(graphics, ConductorHudLayout.ROSTER_LIST,
-						model.appliedRosterSearch().isBlank() ? ConductorTexts.EMPTY_TEAM : ConductorTexts.NO_MATCHING_MEMBERS);
+						model.appliedRosterSearch().isBlank() ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_EMPTY_TEAM : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_MATCHING_MEMBERS);
 			}
 		}
 
 		if (!layout.skillsHidden()) {
 			UIElement title = layout.element(ConductorHudLayout.SKILL_TITLE);
-			textFit(graphics, Component.translatable(ConductorTexts.SKILLS), (int) title.getPositionX(),
+			textFit(graphics, Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILLS), (int) title.getPositionX(),
 					(int) title.getPositionY(), (int) title.getSizeWidth(), TEXT_COLOR);
 
 			if (cards.skillIds().isEmpty()) {
-				emptyMessage(graphics, ConductorHudLayout.SKILL_LIST, model.focused() == null ? ConductorTexts.NO_SELECTION
-						: Minecraft.getInstance().level == null || Minecraft.getInstance().level.getEntity(model.focused()) == null ? ConductorTexts.REMOTE_SKILLS
-						: model.appliedSkillSearch().isBlank() ? ConductorTexts.NO_SKILLS : ConductorTexts.NO_MATCHING_SKILLS);
+				emptyMessage(graphics, ConductorHudLayout.SKILL_LIST, model.focused() == null ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_SELECTION
+						: Minecraft.getInstance().level == null || Minecraft.getInstance().level.getEntity(model.focused()) == null ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_REMOTE_SKILLS
+						: model.appliedSkillSearch().isBlank() ? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_SKILLS : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_NO_MATCHING_SKILLS);
 			}
 		}
 
@@ -1012,11 +1014,11 @@ public class ConductorHudRenderer {
 	public Component modeLabel(int index) {
 		if (ConductorHudLayout.ATTACK_MODE.equals(model.modeDropdown())) {
 			return Component.translatable(ConductorHudLayout.ATTACK_OPTIONS.get(index) == ConductorData.AttackState.MANUAL
-					? ConductorTexts.ATTACK_BASIC : ConductorTexts.ATTACK_AI);
+					? ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_BASIC : ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTACK_AI);
 		}
-		return ConductorHudLayout.ACTIVITY_MODE.equals(model.modeDropdown()) ? Component.translatable(ConductorTexts.ACTIVITY_VALUE,
+		return ConductorHudLayout.ACTIVITY_MODE.equals(model.modeDropdown()) ? Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ACTIVITY_VALUE,
 				Component.translatable(ConductorHudLayout.behaviorKey(ConductorHudLayout.ACTIVITY_OPTIONS.get(index).behaviorState())))
-				: Component.translatable(ConductorTexts.BEHAVIOR_VALUE,
+				: Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_VALUE,
 				Component.translatable(ConductorHudLayout.combatBehaviorKey(ConductorHudLayout.BEHAVIOR_OPTIONS.get(index))));
 	}
 
@@ -1226,7 +1228,7 @@ public class ConductorHudRenderer {
 	private static Component memberDistance(UUID member) {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		return Component.translatable(ConductorTexts.DISTANCE, entity == null ? UNKNOWN_MARK
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
 				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
 	}
 
@@ -1234,7 +1236,7 @@ public class ConductorHudRenderer {
 		Minecraft minecraft = Minecraft.getInstance();
 		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
 		ConductorData.Unit unit = ConductorClient.unit(member);
-		return Component.translatable(ConductorTexts.DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
 				: unit == null ? UNKNOWN_MARK : unit.dimension());
 	}
 
@@ -1249,7 +1251,7 @@ public class ConductorHudRenderer {
 	private static Component attributes(LivingEntity living) {
 		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
 				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
-		return Component.translatable(ConductorTexts.ATTRIBUTES, attack, living.getArmorValue());
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
 	}
 
 	private static Component memberName(UUID member) {

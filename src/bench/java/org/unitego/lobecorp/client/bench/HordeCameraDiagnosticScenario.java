@@ -6,7 +6,7 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.horde.HordeClient;
-import org.unitego.lobecorp.client.hud.event.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 
 import java.nio.file.Files;

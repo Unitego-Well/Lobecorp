@@ -20,7 +20,7 @@ import org.unitego.lobecorp.util.photon.clipboard.PhotonObjectClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorRenameUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 
@@ -59,10 +59,10 @@ public abstract class FXHierarchyViewMixin {
 		var view = (FXHierarchyView) (Object) this;
 		if (PhotonKeyClipboardUtil.systemEnabled(fxEditor)) {
 			if (!treeList.getSelected().isEmpty()) {
-				menu.leaf(PhotonEditorTextUtil.key("copy_system"), () -> PhotonObjectClipboardUtil.copy(view));
+				menu.leaf(PhotonEditorTranslations.COPY_SYSTEM, () -> PhotonObjectClipboardUtil.copy(view));
 			}
 			if (PhotonObjectClipboardUtil.OBJECTS.equals(PhotonSystemClipboardUtil.kind())) {
-				menu.leaf(PhotonEditorTextUtil.key("paste_system"), () -> PhotonObjectClipboardUtil.paste(view));
+				menu.leaf(PhotonEditorTranslations.PASTE_SYSTEM, () -> PhotonObjectClipboardUtil.paste(view));
 			}
 		}
 

@@ -3,13 +3,13 @@ package org.unitego.lobecorp.world.entity.ordeal.indigo.skill;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.registry.LcSoundEvents;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
+import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
@@ -83,7 +83,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 		entity.addEntityState(SweeperStates.SWEEP);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
 		}
 	}
 
@@ -91,14 +91,14 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
 		}
 	}
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
 		}
 		Entity target = runtime.target();
 		if (!(entity.level() instanceof ServerLevel level)) {
@@ -170,7 +170,7 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(LcSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
 		}
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}

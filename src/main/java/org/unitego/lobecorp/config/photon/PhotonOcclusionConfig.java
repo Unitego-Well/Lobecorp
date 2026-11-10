@@ -3,14 +3,14 @@ package org.unitego.lobecorp.config.photon;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigNumber;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.photon.client.gameobject.emitter.data.ToggleGroup;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 public class PhotonOcclusionConfig extends ToggleGroup {
 	/// 仅接近不透明的像素写入遮挡深度；Alpha 无单位，范围 0 到 1。
 	public static final float DEFAULT_ALPHA_CUTOFF = 0.99f;
 
-	@Configurable(name = TranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_KEY,
-			tips = TranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_TIPS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_KEY,
+			tips = PhotonTranslationKeys.PHOTON_OCCLUSION_ALPHA_CUTOFF_TIPS_KEY)
 	@ConfigNumber(range = {0, 1})
 	protected float alphaCutoff = DEFAULT_ALPHA_CUTOFF;
 

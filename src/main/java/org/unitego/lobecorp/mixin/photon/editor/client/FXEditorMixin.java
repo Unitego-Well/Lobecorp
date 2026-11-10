@@ -18,9 +18,10 @@ import org.unitego.lobecorp.client.photon.model.project.PhotonModelAuthoringPane
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelSourceProjectType;
 import org.unitego.lobecorp.client.photon.model.project.PhotonEffectLibraryPanel;
 import org.unitego.lobecorp.client.photon.model.project.PhotonEffectLibraryProject;
-import org.unitego.lobecorp.util.photon.editor.PhotonEffectLibraryTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
 
 import java.io.File;
+import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.PROJECT_TYPE;
 
 
 @Mixin(FXEditor.class)
@@ -49,8 +50,8 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 			menu.remove(PhotonModelSourceProjectType.JSON.getName());
 			menu.remove(PhotonModelSourceProjectType.DEFINITION.getName());
 		});
-		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf("photon.lobecorp.model.project.type", () -> PhotonModelAuthoringPanel.open(editor)));
-		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PhotonEffectLibraryTextUtil.OPEN_MENU, () -> PhotonEffectLibraryPanel.open(editor)));
+		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PROJECT_TYPE, () -> PhotonModelAuthoringPanel.open(editor)));
+		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PhotonEffectLibraryTranslations.OPEN_MENU, () -> PhotonEffectLibraryPanel.open(editor)));
 	}
 
 

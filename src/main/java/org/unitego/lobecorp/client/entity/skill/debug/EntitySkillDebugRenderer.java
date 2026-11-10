@@ -15,7 +15,7 @@ import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 import java.util.List;
 import java.util.Map;
@@ -46,7 +46,7 @@ public class EntitySkillDebugRenderer implements DebugRenderer.SimpleDebugRender
 	}
 
 	private static Identifier groupId(EntitySkillGroup group) {
-		return LcRegistrys.ENTITY_SKILL_GROUP.getKey(group);
+		return LcRegistries.ENTITY_SKILL_GROUP.getKey(group);
 	}
 
 	private static void emitLine(String text, Vec3 position, int line) {

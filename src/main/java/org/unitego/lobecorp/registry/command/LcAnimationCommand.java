@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import static org.unitego.lobecorp.registry.translation.CommandTranslationKeys.COMMANDS_LOBECORP_ANIMATION_EMPTY_ITEM;
 
 /// 唯一动画调试命令树；玩家选择器和物品参数复用当前版本原版解析。
 public class LcAnimationCommand {
@@ -42,7 +43,7 @@ public class LcAnimationCommand {
 	private static final String FADE_OUT = "fade_out";
 	private static final String TRANSITION = "transition";
 	private static final String ROTATION = "rotation";
-	private static final String EMPTY_ITEM_KEY = "commands.lobecorp.animation.empty_item";
+	private static final String EMPTY_ITEM_KEY = COMMANDS_LOBECORP_ANIMATION_EMPTY_ITEM;
 	private static final SimpleCommandExceptionType EMPTY_ITEM = new SimpleCommandExceptionType(Component.translatable(EMPTY_ITEM_KEY));
 
 	public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {

@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.client.photon.render.PhotonOcclusionAccess;
 import org.unitego.lobecorp.config.photon.PhotonOcclusionConfig;
 import org.unitego.lobecorp.client.photon.render.PhotonViewDepthSortAccess;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import org.unitego.lobecorp.config.photon.PhotonFixedRenderSettings;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
@@ -31,7 +31,7 @@ public abstract class RendererSettingMixin implements PhotonViewDepthSortAccess,
 	@Persisted
 	private boolean lobecorp$fixedRendering;
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_FIXED_RENDER_KEY, subConfigurable = true, persisted = false)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_FIXED_RENDER_KEY, subConfigurable = true, persisted = false)
 	private final PhotonFixedRenderSettings lobecorp$fixedRenderSettings = new PhotonFixedRenderSettings((RendererSetting) (Object) this);
 
 	@Override

@@ -34,7 +34,7 @@ import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
 import org.unitego.lobecorp.registry.entity.LcAttributes;
 import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
 import org.unitego.lobecorp.registry.entity.LcEntityTypes;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.EntityTranslationKeys;
 
 import java.util.List;
 
@@ -60,7 +60,6 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	private static final double LAVA_HORIZONTAL_DAMPING = 0.95;
 
 	/// 尸体显示名称翻译键。
-	public static final String DISPLAY_NAME_KEY = TranslationKeys.ENTITY_LOBECORP_ENTITY_CORPSE_DISPLAY_NAME;
 	/// 尸体自动腐烂前的最大存续 tick。
 	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
 	private static final Logger LOGGER = LogUtils.getLogger();
@@ -455,7 +454,7 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	@Override
 	public Component getDisplayName() {
 		if (ownerEntity != null) {
-			return Component.translatable(DISPLAY_NAME_KEY, ownerEntity.getDisplayName());
+			return Component.translatable(EntityTranslationKeys.ENTITY_LOBECORP_ENTITY_CORPSE_DISPLAY_NAME, ownerEntity.getDisplayName());
 		}
 
 		return super.getDisplayName();

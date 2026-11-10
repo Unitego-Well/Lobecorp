@@ -22,7 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
 import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -75,7 +75,7 @@ public class PhotonModelWorkspaceResources implements AutoCloseable {
 	}
 
 	private static void button(UIElement parent, String key, Runnable action) {
-		parent.addChild(new Button().setText(PhotonModelTextUtil.key(key)).setOnClick(_ -> action.run()));
+		parent.addChild(new Button().setText(PhotonModelTranslations.key(key)).setOnClick(_ -> action.run()));
 	}
 
 	private void show(Dialog dialog) {
@@ -102,7 +102,7 @@ public class PhotonModelWorkspaceResources implements AutoCloseable {
 
 	private void png(String target) {
 		String expected = session.revision();
-		show(Dialog.showFileDialog(PhotonModelTextUtil.key("resources.import_png"), LDLib2.getAssetsDir(), true,
+		show(Dialog.showFileDialog(PhotonModelTranslations.RESOURCES_IMPORT_PNG, LDLib2.getAssetsDir(), true,
 				Dialog.suffixFilter(".png"), file -> {
 					if (file != null && !closed) {
 						importPngAt(expected, target, file);
@@ -119,8 +119,8 @@ public class PhotonModelWorkspaceResources implements AutoCloseable {
 			return;
 		}
 		if (!file.isFile() || !file.getName().toLowerCase(Locale.ROOT).endsWith(".png")) {
-			show(Dialog.showNotification(PhotonModelTextUtil.key("resources.import_png"),
-					Component.translatable(PhotonModelTextUtil.key("resources.png_only")).getString(), null));
+			show(Dialog.showNotification(PhotonModelTranslations.RESOURCES_IMPORT_PNG,
+					Component.translatable(PhotonModelTranslations.RESOURCES_PNG_ONLY).getString(), null));
 			return;
 		}
 		ResourceFileImport.resolveOrImport(editor, file, "textures", location -> {
@@ -167,7 +167,7 @@ public class PhotonModelWorkspaceResources implements AutoCloseable {
 		try {
 			editMaterial(target);
 		} catch (IOException | RuntimeException invalid) {
-			show(Dialog.showNotification(PhotonModelTextUtil.key("resources.edit_shader"), String.valueOf(invalid.getMessage()), null));
+			show(Dialog.showNotification(PhotonModelTranslations.RESOURCES_EDIT_SHADER, String.valueOf(invalid.getMessage()), null));
 		}
 	}
 
@@ -181,9 +181,9 @@ public class PhotonModelWorkspaceResources implements AutoCloseable {
 		var editable = material.copy();
 		var baseline = (CompoundTag) IMaterial.CODEC.encodeStart(NbtOps.INSTANCE, editable).getOrThrow();
 		String expected = session.revision();
-		var group = new ConfiguratorGroup(PhotonModelTextUtil.key("resources.shader_settings"), false);
+		var group = new ConfiguratorGroup(PhotonModelTranslations.RESOURCES_SHADER_SETTINGS, false);
 		editable.buildConfigurator(group);
-		var dialog = new Dialog().setTitle(PhotonModelTextUtil.key("resources.edit_shader"));
+		var dialog = new Dialog().setTitle(PhotonModelTranslations.RESOURCES_EDIT_SHADER);
 		dialog.addContent(group);
 		dialog.addButton(new Button().setText("ldlib.gui.tips.confirm").setOnClick(_ -> {
 			if (!closed) {

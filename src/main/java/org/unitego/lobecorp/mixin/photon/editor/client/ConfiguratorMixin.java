@@ -12,7 +12,7 @@ import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(Configurator.class)
 public abstract class ConfiguratorMixin implements PhotonConfiguratorNameAccess {
@@ -33,7 +33,7 @@ public abstract class ConfiguratorMixin implements PhotonConfiguratorNameAccess 
 		if ("RendererSetting.layer".equals(name) || "photon.emitter.config.renderer.orderInLayer".equals(name)) {
 			configurator.addEventListener(UIEvents.ADDED, _ -> {
 				for (var parent = configurator.getParent(); parent != null; parent = parent.getParent()) {
-					if (parent instanceof PhotonConfiguratorNameAccess access && TranslationKeys.PHOTON_FIXED_RENDER_KEY.equals(access.lobecorp$name())) {
+					if (parent instanceof PhotonConfiguratorNameAccess access && PhotonTranslationKeys.PHOTON_FIXED_RENDER_KEY.equals(access.lobecorp$name())) {
 						return;
 					}
 				}

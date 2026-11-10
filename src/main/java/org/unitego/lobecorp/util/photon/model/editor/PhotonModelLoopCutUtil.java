@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Face;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditMesh.Weight;
 import org.unitego.lobecorp.util.photon.model.PhotonModelPolygonUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
 import org.unitego.lobecorp.util.photon.model.editor.PhotonModelEditUtil.Edge;
 
 import java.util.ArrayDeque;
@@ -428,6 +428,6 @@ public class PhotonModelLoopCutUtil {
     }
 
     private static IllegalArgumentException invalid() {
-        return new IllegalArgumentException(PhotonModelTextUtil.key("loop_cut.invalid"));
+        return new IllegalArgumentException(PhotonModelTranslations.LOOP_CUT_INVALID);
     }
 }

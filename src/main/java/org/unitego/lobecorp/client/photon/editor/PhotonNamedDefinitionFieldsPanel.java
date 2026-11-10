@@ -17,6 +17,9 @@ import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
 
 /// 原树高级字段编辑不通过摘要重建条目；应用时与同一制作会话版本一起提交。
 public class PhotonNamedDefinitionFieldsPanel {
@@ -34,7 +37,7 @@ public class PhotonNamedDefinitionFieldsPanel {
 		dialog.addContent(new StringConfigurator("rules", () -> values[1], value -> values[1] = value, values[1], false));
 		var status = new TextElement();
 		dialog.addContent(status);
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
+		dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> {
 			try {
 				var parsed = TagParser.parseCompoundFully(values[1]);
 				if (parsed.size() != 1 || !(parsed.get("rules") instanceof ListTag rules)) {
@@ -46,7 +49,7 @@ public class PhotonNamedDefinitionFieldsPanel {
 				status.setText(Component.literal(invalid.getMessage()));
 			}
 		}));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 		dialog.show(editor);
 	}
 
@@ -56,7 +59,7 @@ public class PhotonNamedDefinitionFieldsPanel {
 		var values = new LinkedHashMap<String, String>();
 		String[] durationParameter = {source.getStringOr("durationParameter", "")};
 		boolean[] enableModules = {source.getBooleanOr("autoEnableModules", false)};
-		var dialog = new PhotonEditorDockedPanel("photon.lobecorp.animation.inspector_panel", PhotonEditorDockedPanel.Slot.RIGHT);
+		var dialog = new PhotonEditorDockedPanel(INSPECTOR_PANEL, PhotonEditorDockedPanel.Slot.RIGHT);
 		dialog.setId("named.fields." + definitionId);
 		dialog.group(session, false);
 		dialog.contentContainer.layout(layout -> layout.flexDirection(FlexDirection.COLUMN));
@@ -73,7 +76,7 @@ public class PhotonNamedDefinitionFieldsPanel {
 
 		var status = new TextElement();
 		dialog.addContent(status);
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
+		dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> {
 			try {
 				var patch = new CompoundTag();
 				patch.putString("durationParameter", durationParameter[0]);
@@ -94,7 +97,7 @@ public class PhotonNamedDefinitionFieldsPanel {
 				status.setText(Component.literal(invalid.getMessage()));
 			}
 		}));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 		dialog.show(editor);
 	}
 }

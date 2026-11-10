@@ -46,7 +46,7 @@ public class HordeTerrainState implements AutoCloseable {
 		return RenderSystem.getDevice().precompilePipeline(UPDATE).isValid();
 	}
 
-    public void update(HordeClient.ClientEvent event, HordeDataTexture targets, double time) {
+    public void update(HordeClient.ClientHorde event, HordeDataTexture targets, double time) {
         if (read != null && time == lastTime) {
             return;
         }

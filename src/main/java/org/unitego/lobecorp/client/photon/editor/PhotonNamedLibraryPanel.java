@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
+
 import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
@@ -36,10 +38,24 @@ import java.util.ArrayList;
 import org.unitego.lobecorp.client.photon.model.project.PhotonModelWorkspaceScene;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.AUTO_DURATION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.COMPLETION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DURATION;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.LOOP;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NAME;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.OUTLINE_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.PRIORITY;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.RENAME;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TIMELINE_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TITLE;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
 
 /// 列表编辑只修改会话草稿；显式应用时一次提交库和工程测试引用。
 public class PhotonNamedLibraryPanel {
-	public static final String TITLE = "photon.lobecorp.animation.outline_panel";
+	public static final String TITLE = OUTLINE_PANEL;
 	private final FXEditor editor;
 	private final PhotonNamedAuthoringSession session;
 	private final PhotonNamedOutline list;
@@ -113,11 +129,11 @@ public class PhotonNamedLibraryPanel {
 		dialog.addContent(list);
 		inspectorPages = new PhotonNamedInspectorPages(session, () -> selected, properties,
 				value -> status.setText(Component.literal(value)), () -> PhotonNamedDefinitionFieldsPanel.openLibrary(editor, session));
-		dialog.inspector("photon.lobecorp.animation.inspector_panel", inspectorPages);
+		dialog.inspector(INSPECTOR_PANEL, inspectorPages);
 		dialog.addContent(status);
-		dialog.addContent(new Button().setText("photon.lobecorp.animation.timeline_panel").setOnClick(_ -> openTracks(false)));
+		dialog.addContent(new Button().setText(TIMELINE_PANEL).setOnClick(_ -> openTracks(false)));
 		dialog.addContent(new Button().setText(PhotonProjectPreviewPanel.TITLE).setOnClick(_ -> openTracks(true)));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.apply").setOnClick(_ -> {
+		dialog.addButton(new Button().setText(APPLY).setOnClick(_ -> {
 			try {
 				if (selected != null && !currentDefinition(selected).name().equals(name)) {
 					session.edit(session.revision(), source -> PhotonNamedAuthoringUtil.rename(source, selected, name));
@@ -128,7 +144,7 @@ public class PhotonNamedLibraryPanel {
 				status.setText(Component.literal(invalid.getMessage()));
 			}
 		}));
-		dialog.addButton(new Button().setText("photon.lobecorp.editor.close").setOnClick(_ -> dialog.close()));
+		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
 		animationScene = new PhotonModelWorkspaceScene(editor, () -> {
 			animationScene.showScene(true);
 			dialog.activate(true);
@@ -136,7 +152,7 @@ public class PhotonNamedLibraryPanel {
 			animationScene.showScene(false);
 			dialog.activate(false);
 		});
-		animationScene.setName("photon.lobecorp.animation.title");
+		animationScene.setName(TITLE);
 		animationScene.setId("named.animation_scene");
 		animationScene.setOnRemove(dialog::close);
 		dialog.companion(animationScene, PhotonEditorDockedPanel.Slot.CENTER);
@@ -193,10 +209,10 @@ public class PhotonNamedLibraryPanel {
 		list.rebuild(library.animations(), selected);
 
 		properties.clearAllChildren();
-		var field = new StringConfigurator("photon.lobecorp.animation.name", () -> name, value -> name = value, name, false);
+		var field = new StringConfigurator(NAME, () -> name, value -> name = value, name, false);
 		field.layout(layout -> layout.widthPercent(100).flexShrink(0));
 		properties.addChild(field);
-		properties.addChild(new Button().setText("photon.lobecorp.animation.inspector_panel").setOnClick(_ -> {
+		properties.addChild(new Button().setText(INSPECTOR_PANEL).setOnClick(_ -> {
 			try {
 				PhotonNamedDefinitionFieldsPanel.open(editor, session, requireSelected(), false);
 			} catch (IllegalArgumentException | IllegalStateException invalid) {
@@ -213,19 +229,19 @@ public class PhotonNamedLibraryPanel {
 
 	private void addDefinitionProperties(UUID id) {
 		var definition = library().animations().stream().filter(value -> value.id().equals(id)).findFirst().orElseThrow();
-		var duration = new NumberConfigurator("photon.lobecorp.animation.duration", () -> currentDefinition(id).duration(),
+		var duration = new NumberConfigurator(DURATION, () -> currentDefinition(id).duration(),
 				value -> patch(id, tag -> tag.putDouble("duration", value.doubleValue())), definition.duration(), false)
 				.setRange(0, Double.MAX_VALUE);
-		var automatic = new BooleanConfigurator("photon.lobecorp.animation.auto_duration", () -> currentDefinition(id).autoDuration(),
+		var automatic = new BooleanConfigurator(AUTO_DURATION, () -> currentDefinition(id).autoDuration(),
 				value -> patch(id, tag -> tag.putBoolean("autoDuration", value)), definition.autoDuration(), false);
-		var loop = new BooleanConfigurator("photon.lobecorp.animation.loop", () -> currentDefinition(id).loop(),
+		var loop = new BooleanConfigurator(LOOP, () -> currentDefinition(id).loop(),
 				value -> patch(id, tag -> tag.putBoolean("loop", value)), definition.loop(), false);
-		var priority = new NumberConfigurator("photon.lobecorp.animation.priority", () -> currentDefinition(id).priority(),
+		var priority = new NumberConfigurator(PRIORITY, () -> currentDefinition(id).priority(),
 				value -> patch(id, tag -> tag.putInt("priority", value.intValue())), definition.priority(), false)
 				.setRange(Integer.MIN_VALUE, Integer.MAX_VALUE);
-		var completion = new SelectorConfigurator<>("photon.lobecorp.animation.completion", () -> currentDefinition(id).completion(),
+		var completion = new SelectorConfigurator<>(COMPLETION, () -> currentDefinition(id).completion(),
 				value -> patch(id, tag -> tag.putString("completion", value.name())), definition.completion(), false,
-				List.of(PhotonNamedLibrary.Completion.values()), value -> Component.translatable("photon.lobecorp.animation.enum." + value.name()).getString());
+				List.of(PhotonNamedLibrary.Completion.values()), value -> Component.translatable(PhotonAnimationTranslations.key("enum." + value.name())).getString());
 		for (var property : List.of(duration, automatic, loop, priority, completion)) {
 			property.layout(layout -> layout.widthPercent(100).flexShrink(0));
 			properties.addChild(property);
@@ -268,7 +284,7 @@ public class PhotonNamedLibraryPanel {
 
 	private void create() {
 		long revision = session.revision();
-		own(Dialog.stringEditorDialog("photon.lobecorp.animation.new", availableName("animation"), value -> value.matches("[a-z_]+"), value -> {
+		own(Dialog.stringEditorDialog(NEW, availableName("animation"), value -> value.matches("[a-z_]+"), value -> {
 			try {
 				session.edit(revision, source -> PhotonNamedAuthoringUtil.add(source, value));
 				rebuild();
@@ -282,7 +298,7 @@ public class PhotonNamedLibraryPanel {
 		try {
 			UUID id = requireSelected();
 			long revision = session.revision();
-			own(Dialog.stringEditorDialog("photon.lobecorp.animation.rename", currentDefinition(id).name(),
+			own(Dialog.stringEditorDialog(RENAME, currentDefinition(id).name(),
 					value -> value.matches("[a-z_]+"), value -> {
 						try {
 							session.edit(revision, source -> PhotonNamedAuthoringUtil.rename(source, id, value));

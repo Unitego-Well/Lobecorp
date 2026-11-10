@@ -5,14 +5,14 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 
 /// 实体技能组的注册入口与内置组定义。
 /// 自定义组应通过本类的 {@code register} 方法注册，以统一使用实体技能组注册表。
 public interface LcEntitySkillGroups {
 	/// 未显式指定上限时，自定义组和被动组使用的默认同时运行数量。
 	int DEFAULT_MAXIMUM_ACTIVE_SKILLS = 5;
-	DeferredRegister<EntitySkillGroup> REGISTER = Lobecorp.register(LcRegistrys.ENTITY_SKILL_GROUP_KEY);
+	DeferredRegister<EntitySkillGroup> REGISTER = Lobecorp.register(LcRegistries.ENTITY_SKILL_GROUP_KEY);
 
 	/// 默认当前执行组。该组不可从实体移除，初始同时运行上限为一。
 	DeferredHolder<EntitySkillGroup, EntitySkillGroup> CURRENT = register("current", 1);

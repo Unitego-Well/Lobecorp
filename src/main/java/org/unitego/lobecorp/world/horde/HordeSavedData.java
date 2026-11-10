@@ -17,7 +17,7 @@ public class HordeSavedData extends SavedData {
     public static final Codec<HordeSavedData> CODEC = CompoundTag.CODEC.xmap(HordeSavedData::load, HordeSavedData::save);
     private static final SavedDataType<HordeSavedData> TYPE =
 		    new SavedDataType<>(Lobecorp.id("horde_events_gpu_v1"), HordeSavedData::new, CODEC);
-    private final Map<UUID, HordeEvent> events = new LinkedHashMap<>();
+    private final Map<UUID, HordeInstance> events = new LinkedHashMap<>();
     private final Map<String, HordeTargetAssignment> targets = new LinkedHashMap<>();
     private long clock;
     private final Map<UUID, UUID> memberEvents = new LinkedHashMap<>();
@@ -30,7 +30,7 @@ public class HordeSavedData extends SavedData {
         return server.overworld().getDataStorage().computeIfAbsent(TYPE);
     }
 
-    public Map<UUID, HordeEvent> events() {
+    public Map<UUID, HordeInstance> events() {
         return events;
     }
 
@@ -73,7 +73,7 @@ public class HordeSavedData extends SavedData {
         for (var element : tag.getListOrEmpty("events")) {
             if (element instanceof CompoundTag eventTag) {
                 try {
-                    var event = HordeEvent.load(eventTag);
+                    var event = HordeInstance.load(eventTag);
                     data.events.put(event.id(), event);
                 } catch (IllegalArgumentException exception) {
                     Lobecorp.LOGGER.warn("无法恢复群体事件记录", exception);

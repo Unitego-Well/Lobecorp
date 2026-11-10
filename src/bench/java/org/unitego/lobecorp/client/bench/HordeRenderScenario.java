@@ -6,8 +6,6 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.zhongbai233.bench.api.BenchMetricDescriptor;
 import com.zhongbai233.bench.api.MetricDirection;
 import com.zhongbai233.bench.api.neoforge.client.*;
-import net.minecraft.client.gui.components.ChatComponent;
-import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -19,7 +17,6 @@ import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.util.Unit;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.ClientCommandHandler;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeGpuRenderer;
@@ -28,12 +25,12 @@ import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
-import org.unitego.lobecorp.world.horde.HordeEvents;
+import org.unitego.lobecorp.world.horde.Hordes;
 import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
 import org.unitego.lobecorp.world.horde.HordeStartRequest;
 import org.unitego.lobecorp.world.horde.HordeStopMode;
-import org.unitego.lobecorp.world.horde.definition.MidnightCleanup;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -41,7 +38,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Pattern;
 
 /// 在隔离客户端构造仅用于显示的事件快照；不代表真实参战或网络性能。
 public class HordeRenderScenario implements BenchClientScenario {
@@ -221,7 +217,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 				throw new IllegalStateException("真实浪潮事件需要集成服务端");
 			}
 			server.execute(() -> {
-				var result = HordeEvents.start(server.overworld(), MidnightCleanup.ID,
+				var result = Hordes.start(server.overworld(), MidnightCleanupEncounter.ID,
 						new HordeStartRequest(start, end, List.of(), 6000, LobecorpBenchConfig.hordeWidth()));
 				if (result.started()) {
 					realEventId = result.eventId();
@@ -243,13 +239,13 @@ public class HordeRenderScenario implements BenchClientScenario {
 			header.putDouble("length", route.length());
 			header.putDouble("speed", speed);
 			header.putInt("node_count", route.size());
-			var visual = new MidnightCleanup().visuals();
+			var visual = new MidnightCleanupEncounter().visuals();
 			header.putString("model", visual.model().toString());
 			header.putString("animation", visual.animation().toString());
 			header.putString("run", visual.runAnimation());
 			header.putString("texture", visual.texture().toString());
-			header.putDouble("light_probe_height", new MidnightCleanup().dimensions().eyeHeight());
-			header.putDouble("entity_height", new MidnightCleanup().dimensions().height());
+			header.putDouble("light_probe_height", new MidnightCleanupEncounter().dimensions().eyeHeight());
+			header.putDouble("entity_height", new MidnightCleanupEncounter().dimensions().height());
 			baseTick = (long) Math.ceil(route.length() / speed) + 40;
 			header.putLong("tick", baseTick);
 			header.putBoolean("reset", true);
@@ -704,7 +700,7 @@ public class HordeRenderScenario implements BenchClientScenario {
 			failure = cleanup(failure, () -> {
 				var server = context.minecraft().getSingleplayerServer();
 				if (server != null) {
-					server.execute(() -> HordeEvents.stop(server, eventId, HordeStopMode.CLEAR));
+					server.execute(() -> Hordes.stop(server, eventId, HordeStopMode.CLEAR));
 				}
 			});
 		}

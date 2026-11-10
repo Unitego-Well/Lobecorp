@@ -12,14 +12,14 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.ModGenerator;
 import org.unitego.lobecorp.registry.conductor.ConductorTicketControllers;
 import org.unitego.lobecorp.registry.LcPayloads;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 import org.unitego.lobecorp.registry.entity.EntityAttributeCreation;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LobecorpEvents {
 	@SubscribeEvent
 	public static void registerRegistry(NewRegistryEvent event) {
-		LcRegistrys.registerRegistry(event);
+		LcRegistries.registerRegistry(event);
 	}
 
 	@SubscribeEvent

@@ -5,7 +5,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.LcRegistrys;
+import org.unitego.lobecorp.registry.LcRegistries;
 import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
 
 /// 通用技能定义。
@@ -22,7 +22,7 @@ public interface IEntitySkill<T extends LivingEntity> {
 	/// @param tag 要查询的实体技能标签
 	/// @return 当前已注册技能属于该标签时返回 `true`
 	default boolean is(TagKey<IEntitySkill<?>> tag) {
-		return LcRegistrys.ENTITY_SKILL.wrapAsHolder(this).is(tag);
+		return LcRegistries.ENTITY_SKILL.wrapAsHolder(this).is(tag);
 	}
 
 	/// 返回技能的唯一注册标识，用于网络同步、冷却附件和诊断信息。

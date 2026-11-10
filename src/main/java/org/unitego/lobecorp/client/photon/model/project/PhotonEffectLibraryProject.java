@@ -9,7 +9,7 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.unitego.lobecorp.util.photon.compat.PhotonEffectInventoryUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEffectLibraryTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -21,7 +21,7 @@ import java.util.Set;
 /// 与FX工程、模型特效工程的区别是它自身不含对象树：预览在选中条目时才按需建立，
 /// 因此同时存在的预览实例至多一个，避免打开一个工程就初始化全部内容。
 public class PhotonEffectLibraryProject extends FXProject {
-	public static final ProjectType TYPE = ProjectType.of(PhotonEffectLibraryTextUtil.TYPE, ".mfxlib", PhotonEffectLibraryProject::new);
+	public static final ProjectType TYPE = ProjectType.of(PhotonEffectLibraryTranslations.TYPE, ".mfxlib", PhotonEffectLibraryProject::new);
 	/// 条目列表的容器键。
 	private static final String ENTRIES_KEY = "entries";
 	/// 共享引用的容器键。

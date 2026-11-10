@@ -17,7 +17,7 @@
 
 | 域 | 主要入口 | 数据边界 |
 | --- | --- | --- |
-| `registry` | `LcRegistrys`、`LcAttachmentTypes`、`LcCapabilities`、各类 `Lc*` 注册器 | 只定义注册对象和注册生命周期 |
+| `registry` | `LcRegistries`、`LcAttachmentTypes`、`LcCapabilities`、各类 `Lc*` 注册器 | 只定义注册对象和注册生命周期 |
 | `entity` | 女皇、清道夫、其他 Ordeal、尸体、AI、导航 | 实体自身状态、行为和实体专属表现 |
 | `entity_skill` | `IEntitySkill`、`IEntitySkillAccess`、`EntitySkillRuntime` | 技能定义、资格、请求、运行实例和效果 |
 | `conductor` | `ConductorData`、`IConductorUnitControl`、`ConductorUtil` | 指挥家目录、单位能力、持续意图和世界运行态 |

@@ -1,0 +1,24 @@
+{
+	"required": true,
+	"package": "org.unitego.lobecorp.mixin",
+	"plugin": "org.unitego.lobecorp.launch.plugin.PhotonMixinPlugin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [],
+	"client": [
+		"geckolib.AnimationControllerMaskMixin",
+		"geckolib.client.RenderPassInfoMixin",
+		"geckolib.client.AnimationControllerMixin",
+		"geckolib.client.ControllerStateLodMixin",
+		"geckolib.client.AnimationProcessorLodMixin",
+		"geckolib.client.CuboidModelLodMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	},
+	"mixinextras": {
+		"minVersion": "0.5.0"
+	}
+}

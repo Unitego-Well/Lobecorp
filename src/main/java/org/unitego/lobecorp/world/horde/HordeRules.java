@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.world.horde;
 
 import net.minecraft.nbt.CompoundTag;
-import org.unitego.lobecorp.config.server.HordeEventConfig;
+import org.unitego.lobecorp.config.server.HordeConfig;
 
 /// 事件启动时固定的服务端规则；计时均为服务器逻辑刻。
 /// scanTicks与transitionTicks保留快照结构；发现与空间更新由运行期调度，GPU不再使用旧区域过渡计时。
@@ -28,13 +28,13 @@ public record HordeRules(int duration, double width, double margin,
 	}
 
 	public static HordeRules configured() {
-		return new HordeRules(HordeEventConfig.DURATION.get(), HordeEventConfig.WIDTH.get(),
-				HordeEventConfig.MARGIN.get(),
-				HordeEventConfig.INITIAL_QUOTA.get(), HordeEventConfig.MAXIMUM_MULTIPLIER.get(),
-				HordeEventConfig.REINFORCE.get(), HordeEventConfig.UNREACHABLE.get(), HordeEventConfig.RETRY.get(),
-				HordeEventConfig.OUTSIDE.get(), 1, HordeEventConfig.FADE.get(),
-				20, HordeEventConfig.REGION_MARGIN.get(),
-				HordeEventConfig.SPLIT.get(), HordeEventConfig.SPAWN_DISTANCE.get());
+		return new HordeRules(HordeConfig.DURATION.get(), HordeConfig.WIDTH.get(),
+				HordeConfig.MARGIN.get(),
+				HordeConfig.INITIAL_QUOTA.get(), HordeConfig.MAXIMUM_MULTIPLIER.get(),
+				HordeConfig.REINFORCE.get(), HordeConfig.UNREACHABLE.get(), HordeConfig.RETRY.get(),
+				HordeConfig.OUTSIDE.get(), 1, HordeConfig.FADE.get(),
+				20, HordeConfig.REGION_MARGIN.get(),
+				HordeConfig.SPLIT.get(), HordeConfig.SPAWN_DISTANCE.get());
 	}
 
 	public HordeRules withOverrides(int ticks, double blocks) {

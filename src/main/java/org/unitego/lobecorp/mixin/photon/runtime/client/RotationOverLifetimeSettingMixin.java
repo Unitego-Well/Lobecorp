@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.photon.runtime.PhotonRotationCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
-import org.unitego.lobecorp.util.TranslationKeys;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 @Mixin(RotationOverLifetimeSetting.class)
@@ -22,11 +22,11 @@ public abstract class RotationOverLifetimeSettingMixin implements PhotonRotation
 	private static final int DEFAULT_ROTATION_CYCLE_TICKS = 20;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_ROTATION_CYCLE_ENABLED_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_ROTATION_CYCLE_ENABLED_KEY)
 	private boolean lobecorp$rotationCycleEnabled;
 
 	@Unique
-	@Configurable(name = TranslationKeys.PHOTON_ROTATION_CYCLE_TICKS_KEY)
+	@Configurable(name = PhotonTranslationKeys.PHOTON_ROTATION_CYCLE_TICKS_KEY)
 	@ConfigNumber(range = {1, Integer.MAX_VALUE})
 	private int lobecorp$rotationCycleTicks = DEFAULT_ROTATION_CYCLE_TICKS;
 
@@ -55,7 +55,7 @@ public abstract class RotationOverLifetimeSettingMixin implements PhotonRotation
 	@Override
 	public void buildConfigurator(ConfiguratorGroup father) {
 		IToggleConfigurable.super.buildConfigurator(father);
-		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(TranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ROTATION_KEY,
+		father.addConfigurators(PhotonLifetimeCycleUtil.offsetConfigurator(PhotonTranslationKeys.PHOTON_CYCLE_TIME_OFFSET_ROTATION_KEY,
 				() -> new NumberFunction3(this.lobecorp$cycleOffsetYaw, this.lobecorp$cycleOffsetPitch, this.lobecorp$cycleOffsetRoll),
 				value -> {
 					this.lobecorp$cycleOffsetYaw = value.x.get(0, () -> 0f).floatValue();

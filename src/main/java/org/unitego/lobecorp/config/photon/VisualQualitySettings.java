@@ -13,7 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
-import org.unitego.lobecorp.util.photon.editor.PhotonVisualQualityTextUtil;
+import org.unitego.lobecorp.registry.translation.photon.visual.PhotonVisualQualityTranslations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,13 +65,13 @@ public class VisualQualitySettings implements Settings {
 			var path = value.getPath();
             var section = path.size() > 2 ? path.get(1) : "general";
 			var group = groups.computeIfAbsent(section, name -> {
-				var created = new ConfiguratorGroup(PhotonVisualQualityTextUtil.group(name));
+				var created = new ConfiguratorGroup(PhotonVisualQualityTranslations.group(name));
 				father.addConfigurator(created);
 				return created;
 			});
 			var initial = value.get();
             var relativePath = String.join(".", path.subList(1, path.size()));
-            var label = PhotonVisualQualityTextUtil.label(relativePath);
+            var label = PhotonVisualQualityTranslations.label(relativePath);
 			Configurator control;
 			if (initial instanceof Boolean) {
 				control = new BooleanConfigurator(label, () -> Boolean.parseBoolean(values.get(key)),
@@ -95,17 +95,17 @@ public class VisualQualitySettings implements Settings {
 						text(value.getDefault()), false);
 			}
 			var tips = new ArrayList<Component>();
-			tips.add(Component.translatable(PhotonVisualQualityTextUtil.description(relativePath)));
+			tips.add(Component.translatable(PhotonVisualQualityTranslations.description(relativePath)));
 			var defaultValue = value.getDefault();
 			Object defaultText = defaultValue instanceof Boolean enabled
 					? Component.translatable(enabled ? "options.on" : "options.off")
 					: defaultValue instanceof List<?> list && list.isEmpty()
-					? Component.translatable(PhotonVisualQualityTextUtil.EMPTY) : text(defaultValue);
-			tips.add(Component.translatable(PhotonVisualQualityTextUtil.DEFAULT_VALUE, defaultText));
+					? Component.translatable(PhotonVisualQualityTranslations.EMPTY) : text(defaultValue);
+			tips.add(Component.translatable(PhotonVisualQualityTranslations.DEFAULT_VALUE, defaultText));
 			var range = value.getSpec().getRange();
 
 			if (range != null) {
-				tips.add(Component.translatable(PhotonVisualQualityTextUtil.RANGE, range.getMin(), range.getMax()));
+				tips.add(Component.translatable(PhotonVisualQualityTranslations.RANGE, range.getMin(), range.getMax()));
 			}
 
 			control.setTips(tips.toArray(Component[]::new));

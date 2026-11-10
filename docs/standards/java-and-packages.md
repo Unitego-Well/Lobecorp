@@ -67,7 +67,7 @@
 
 ## 包与职责分类
 
-- 通用注册入口只提供注册器、公共注册方法及功能域接入；具体实体的注册项放入独立注册类。例如 `LcSoundEvents` 负责通用声音注册，清道夫声音由 `SweeperSoundEvents` 声明，沿用原资源标识与参数。
+- 通用注册入口只提供注册器、公共注册方法及功能域接入；具体类型的注册项放入独立注册类，不将其专属声明堆入通用入口。例如 `LcSoundEvents` 负责通用声音注册，清道夫声音由 `SweeperSoundEvents` 声明，沿用原资源标识与参数。
 - 所有登记、注册表及注册声明统一归入 `registry`，按功能域和登记职责细分；运行时状态与生命周期不因方法名含 `register` 就成为注册声明。
 - 所有客户端登记统一采用 `registry.client.<功能>.<职责>`，不继续使用 `registry.<功能>.client` 或 `client` 下的平行登记入口；客户端类型不进入服务端注册签名、静态初始化或服务端可加载的公共配置/API。客户端实现仍按职责归入 `client`。
 - 所有客户端内容统一放入 `client` 包，但注册放入 `registry`，配置放入配置包，事件监听放入 `events` 包，Mod 自定义事件放入 `event` 包。
@@ -85,8 +85,8 @@
 - 全项目翻译键统一归入 `org.unitego.lobecorp.registry.translation`；对应类型的键类直接放入该包并命名为 `<类型>TranslationKeys`，例如 `HordeTranslationKeys`、`EncounterTranslationKeys`，不为各个 `TranslationKeys` 单独建立子包。其他有独立职责的翻译管理实现按实际职责组织；包括原 `translation`、`util` 和其他位置的键、文案登记与翻译工具，不在其他包保留平行正文。
 - 翻译键采用命名常量注册，中英文与键在声明处保持唯一来源，例如 `public static final String TITLE = register("key", "Title", "标题")`。需要用于注解的键保留编译期 `TITLE_KEY` 常量，并用对应的注册常量登记该键，不把方法调用结果作为注解实参。
 - 业务注册以命名常量引用对应翻译常量，使文案随注册项初始化登记；DataGen从统一翻译管理器导出已登记条目，不再独立重放另一份文案清单。具体 Encounter 归属见[Encounter 结构规范](encounter-structure.md#翻译登记)。
-- Encounter 定义类型与实现归 `world.encounter`，仿照 `world.item` 的领域分类；Definition 使用原版／NeoForge 注册表和标准注册生命周期，不以自建 Map 代替注册表。
-- Definition由独立管理器管理登记、查找与绑定；具体项仿照其他注册类以 `MIDNIGHT_CLEANUP = register(...)` 这样的常量声明，不另建 `EncounterRegistration.init()` 逐项创建和登记的专用流程类。初始化入口只负责绑定既有声明，不重放业务声明。
+- 清理只重复转发翻译常量的类，例如 `ConductorTexts`；调用方直接引用对应的 `<类型>TranslationKeys`。确需保留的翻译键解析方法归入对应翻译职责，不为转接再维护一套键别名。
+- Encounter 定义的领域包、可扩展类、标准注册表及命名常量声明统一遵守[Encounter 登记与常量归属](encounter-structure.md#登记与常量归属)。
 - Java 类名、包名和翻译键的结构调整应分别列入迁移影响，不因类名改变擅自改变既有资源、存档和网络标识。
 
 ## Bench、Mixin 与辅助类

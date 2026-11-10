@@ -15,18 +15,16 @@
 ## 登记与常量归属
 
 - Encounter 登记、注册表及登记声明归 `registry` 对应功能域。客户端登记统一为 `registry.client.<功能>.<职责>`；例如 Encounter HUD 的登记可归 `registry.client.encounter.hud`，HUD 实现仍归 `client` 对应功能包。
-- `MidnightCleanupEncounter` 由命名注册常量 `MIDNIGHT_CLEANUP` 引入，集中承载该玩法的非注册专属常量，不另建独立 `Constants` 类。Definition管理器负责登记、查询、延迟取得实现与绑定，具体注册项仿照其他注册类以常量声明，不通过 `EncounterRegistration.init()` 的逐项创建流程实现。
+- `MidnightCleanupEncounter` 由命名注册常量 `MIDNIGHT_CLEANUP` 引入，集中承载该玩法的非注册专属常量，不另建独立 `Constants` 类。Definition 由独立管理入口负责登记与查询，具体注册项仿照其他注册类以 `MIDNIGHT_CLEANUP = register(...)` 这样的命名常量声明，不通过 `EncounterRegistration.init()` 的逐项创建流程实现；初始化入口只绑定既有声明，不重放业务声明。
 - 配置、实体属性、已有注册结构或公共 API 已有权威值时直接引用，不在 `MidnightCleanupEncounter` 再复制；常量集中不意味着把客户端类型或资源对象放入公共服务端加载路径。
 - 服务端可加载的玩法定义、登记和常量不泄漏 `client` 类型；客户端展示、资源及渲染登记在客户端职责入口接入。
-
-- `EncounterDefinition` 使用普通可继承的类，不使用 `record` 或额外添加 `final` 限制扩展。Encounter 的定义类型与具体实现统一放入 `world.encounter` 及子包；`registry.encounter` 只负责注册声明与注册表接入。Definition 使用原版／NeoForge 注册表体系，禁止以自建 Map 和绑定流程替代标准注册生命周期。
+- `EncounterDefinition` 使用普通可继承的类，不使用 `record` 或额外添加 `final` 限制扩展。Encounter 的定义类型与具体实现统一放入 `world.encounter` 及子包，仿照 `world.item` 的领域分类；`registry.encounter` 只负责注册声明与注册表接入。Definition 使用原版／NeoForge 注册表体系，禁止以自建 Map 和绑定流程替代标准注册生命周期。
 - `MidnightCleanupEncounter` 的大气表达式通过客户端资源管理器从资源文件读取，支持资源重载；不在类中以 `ATMOSPHERE_EXPRESSION` 字符串常量内嵌正文。表达式算法和数值保持不变。
 
 ## 翻译登记
 
-- 翻译键、文案登记及翻译工具统一归 `registry.translation`；对应键类直接放在该包，命名为 `<类型>TranslationKeys`，不单独分包；不再保留顶层 `translation` 包或 `util` 中的翻译入口，也不由单一 `HordeLang` 承载多个玩法的文案。
-- 翻译键以命名常量在声明处登记中英文，具体遭遇的注册常量引用对应翻译常量；不通过独立 `init` 或另一份文案清单补登。需要注解使用时遵守Java编译期常量约束。
-- 翻译键定义与中英文内容登记各自保持唯一来源，数据生成从登记来源读取。该要求是目标归属，不宣称现有翻译源、调用引用或生成资源已迁移完成。
+- 翻译键、文案及翻译工具的归属、`<类型>TranslationKeys` 直接归包、常量登记和重复转接类清理，统一遵守[翻译归属](java-and-packages.md#翻译归属)。不由单一 `HordeLang` 承载多个玩法的文案。
+- 具体 Encounter 的注册常量引用其对应翻译常量，使文案随该注册项初始化登记；不通过独立 `init` 或另一份文案清单补登。
 
 ## 迁移影响与源码状态
 

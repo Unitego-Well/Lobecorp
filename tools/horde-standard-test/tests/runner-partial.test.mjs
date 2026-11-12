@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+const dir=path.resolve('build/agent-backups/20261111-horde-gpu-study/partial-fixture-'+Date.now());
+fs.mkdirSync(dir,{recursive:true});
+const adapter=path.join(dir,'adapter.mjs');
+fs.writeFileSync(adapter,`export async function preflight() {}\nexport async function launch() {throw Error('fixture nativeexit');}\nexport async function collect() {}\nexport async function cleanup() {return {processExited:true,encounterRemoved:false,confirmed:false};}\n`);
+const batch='partial-fixture-'+Date.now();
+const run=spawnSync(process.execPath,['tools/horde-standard-test/runner.mjs','--batch',batch,'--modes','b','--run-matrix','--adapter',adapter],{encoding:'utf8'});
+assert.equal(run.status,1);assert.match(run.stderr,/fixture nativeexit/);assert.match(run.stderr,/encounterRemoved/);assert.doesNotMatch(run.stderr,/Cleanup did not confirm process exit/);
+const output=path.resolve('build/horde-standard-test',batch), files=fs.readdirSync(output);
+const json=files.find(f=>/^analysis-\d+\.json$/.test(f));assert.ok(json);assert.ok(files.includes(json.replace('.json','.md')));
+const analysis=JSON.parse(fs.readFileSync(path.join(output,json),'utf8'));assert.equal(analysis.caseStatus.b_normal.status,'FAIL');assert.equal(analysis.caseStatus.b_shader.status,'UNKNOWN');assert.ok(!fs.existsSync(path.join(output,'b_shader_1')));
+const cleanup=JSON.parse(fs.readFileSync(path.join(output,'b_normal_1/cleanup-stop.json'),'utf8'));assert.equal(cleanup.fields.processExited,true);assert.equal(cleanup.fields.encounterRemoved,false);
+assert.match(JSON.parse(fs.readFileSync(path.join(output,files.find(f=>f.startsWith('matrix-stop-'))),'utf8')).message,/fixture nativeexit/);
+console.log('PASS runner partial-report cleanup-stop fixture (mock adapter only)');

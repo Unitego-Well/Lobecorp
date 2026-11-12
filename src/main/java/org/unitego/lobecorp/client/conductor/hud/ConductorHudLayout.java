@@ -1,7 +1,5 @@
 package org.unitego.lobecorp.client.conductor.hud;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.data.ScrollDisplay;
@@ -16,6 +14,7 @@ import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
 
 import java.util.List;
 
@@ -76,6 +75,106 @@ public class ConductorHudLayout extends UIElement {
 		layout(layout -> layout.widthPercent(100).heightPercent(100));
 		buildLayout();
 		configureIcons();
+	}
+
+	public static ConductorData.FormationMode formationMode(String id) {
+		return switch (id) {
+			case FORMATION_SCATTERED -> ConductorData.FormationMode.SCATTERED;
+			case FORMATION_UNIFORM -> ConductorData.FormationMode.UNIFORM;
+			default -> ConductorData.FormationMode.FORMATION;
+		};
+	}
+
+	public static String formationKey(String id) {
+		return switch (id) {
+			case FORMATION_SCATTERED -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_SCATTERED;
+			case FORMATION_UNIFORM -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_UNIFORM;
+			default -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_REGULAR;
+		};
+	}
+
+	private static ScrollerView flatScroller(String id) {
+		var scroller = new ScrollerView();
+		scroller.setId(id);
+		scroller.layout(layout -> layout.widthPercent(100).heightPercent(100));
+		scroller.viewPort.layout(layout -> layout.paddingAll(0).minHeight(0).minWidth(0));
+		scroller.viewPort.style(style -> style.backgroundTexture(IGuiTexture.EMPTY));
+		scroller.getScrollerViewStyle().adaptiveWidth(false).adaptiveHeight(false)
+				.verticalScrollDisplay(ScrollDisplay.AUTO)
+				.horizontalScrollDisplay(ScrollDisplay.AUTO);
+		scroller.verticalScroller.headButton.setDisplay(false);
+		scroller.verticalScroller.tailButton.setDisplay(false);
+		scroller.horizontalScroller.headButton.setDisplay(false);
+		scroller.horizontalScroller.tailButton.setDisplay(false);
+		scroller.viewContainer.layout(layout -> layout.gapAll(0));
+		scroller.verticalScroller.layout(layout -> layout.width(SCROLLBAR_WIDTH));
+		scroller.horizontalScroller.layout(layout -> layout.height(BORDER));
+		return scroller;
+	}
+
+	private static UIElement panel(String id) {
+		var element = new UIElement();
+		element.setId(id);
+		element.style(style -> style.backgroundTexture(IGuiTexture.EMPTY));
+		return element;
+	}
+
+	private static Label label(String id) {
+		var label = new Label();
+		label.setId(id);
+		label.layout(layout -> layout.height(TEXT_LINE_HEIGHT).paddingAll(0).flexShrink(0));
+		return label;
+	}
+
+	public static Button portraitButton(String id, int width, int height) {
+		var button = new Button();
+		button.setId(id);
+		button.noText();
+		button.layout(layout -> {
+			layout.height(height).paddingAll(0).flexShrink(0);
+
+			if (width > 0) {
+				layout.width(width);
+			}
+		});
+		button.buttonStyle(style -> style.baseTexture(IGuiTexture.EMPTY)
+				.hoverTexture(IGuiTexture.EMPTY)
+				.pressedTexture(IGuiTexture.EMPTY));
+		return button;
+	}
+
+	public static Component abilityName(IConductorAbility ability) {
+		return Component.translatableWithFallback(ability instanceof EntitySkillConductorAbility
+				? ConductorTranslationKeys.skillName(ability.id()) : ConductorTranslationKeys.abilityName(ability.id()), ability.id().getPath());
+	}
+
+	public static String combatBehaviorKey(ConductorData.CombatBehavior behavior) {
+		return switch (behavior) {
+			case ACTIVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_ACTIVE;
+			case PASSIVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_PASSIVE;
+			case NEUTRAL -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_NEUTRAL;
+		};
+	}
+
+	public static String behaviorKey(ConductorData.BehaviorState state) {
+		return switch (state) {
+			case PATROL -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_PATROL;
+			case IDLE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_IDLE;
+			case GUARD -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_GUARD;
+			case STANDBY -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_STANDBY;
+		};
+	}
+
+	public static String orderKey(ConductorData.OrderType order) {
+		return switch (order) {
+			case NONE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_NONE;
+			case MOVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_MOVE;
+			case ATTACK -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_ATTACK;
+			case ATTACK_POINT -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_ATTACK_POINT;
+			case RETURN -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_RETURN;
+			case CLEANUP -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_CLEANUP;
+			case REASSEMBLE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_REASSEMBLE;
+		};
 	}
 
 	public boolean rosterHidden() {
@@ -220,22 +319,6 @@ public class ConductorHudLayout extends UIElement {
 		addChildren(bottom, roster, rail, left, right);
 	}
 
-	public static ConductorData.FormationMode formationMode(String id) {
-		return switch (id) {
-			case FORMATION_SCATTERED -> ConductorData.FormationMode.SCATTERED;
-			case FORMATION_UNIFORM -> ConductorData.FormationMode.UNIFORM;
-			default -> ConductorData.FormationMode.FORMATION;
-		};
-	}
-
-	public static String formationKey(String id) {
-		return switch (id) {
-			case FORMATION_SCATTERED -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_SCATTERED;
-			case FORMATION_UNIFORM -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_UNIFORM;
-			default -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_FORMATION_REGULAR;
-		};
-	}
-
 	private UIElement searchRow(String id, String queryId, String clearId) {
 		UIElement row = panel(id);
 		row.layout(layout -> layout.widthPercent(100).height(SEARCH_HEIGHT).flexShrink(0)
@@ -244,39 +327,6 @@ public class ConductorHudLayout extends UIElement {
 		query.layout(layout -> layout.width(0).minWidth(0).flexGrow(1));
 		row.addChildren(query, button(clearId, ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_CLEAR_SEARCH, SEARCH_ICON_SIZE, SEARCH_ICON_SIZE));
 		return row;
-	}
-
-	private static ScrollerView flatScroller(String id) {
-		var scroller = new ScrollerView();
-		scroller.setId(id);
-		scroller.layout(layout -> layout.widthPercent(100).heightPercent(100));
-		scroller.viewPort.layout(layout -> layout.paddingAll(0).minHeight(0).minWidth(0));
-		scroller.viewPort.style(style -> style.backgroundTexture(IGuiTexture.EMPTY));
-		scroller.getScrollerViewStyle().adaptiveWidth(false).adaptiveHeight(false)
-				.verticalScrollDisplay(ScrollDisplay.AUTO)
-				.horizontalScrollDisplay(ScrollDisplay.AUTO);
-		scroller.verticalScroller.headButton.setDisplay(false);
-		scroller.verticalScroller.tailButton.setDisplay(false);
-		scroller.horizontalScroller.headButton.setDisplay(false);
-		scroller.horizontalScroller.tailButton.setDisplay(false);
-		scroller.viewContainer.layout(layout -> layout.gapAll(0));
-		scroller.verticalScroller.layout(layout -> layout.width(SCROLLBAR_WIDTH));
-		scroller.horizontalScroller.layout(layout -> layout.height(BORDER));
-		return scroller;
-	}
-
-	private static UIElement panel(String id) {
-		var element = new UIElement();
-		element.setId(id);
-		element.style(style -> style.backgroundTexture(IGuiTexture.EMPTY));
-		return element;
-	}
-
-	private static Label label(String id) {
-		var label = new Label();
-		label.setId(id);
-		label.layout(layout -> layout.height(TEXT_LINE_HEIGHT).paddingAll(0).flexShrink(0));
-		return label;
 	}
 
 	private Button button(String id, String key, int width, int height) {
@@ -289,57 +339,6 @@ public class ConductorHudLayout extends UIElement {
 				.hoverTexture(IGuiTexture.EMPTY)
 				.pressedTexture(IGuiTexture.EMPTY));
 		return button;
-	}
-
-	public static Button portraitButton(String id, int width, int height) {
-		var button = new Button();
-		button.setId(id);
-		button.noText();
-		button.layout(layout -> {
-			layout.height(height).paddingAll(0).flexShrink(0);
-
-			if (width > 0) {
-				layout.width(width);
-			}
-		});
-		button.buttonStyle(style -> style.baseTexture(IGuiTexture.EMPTY)
-				.hoverTexture(IGuiTexture.EMPTY)
-				.pressedTexture(IGuiTexture.EMPTY));
-		return button;
-	}
-
-	public static Component abilityName(IConductorAbility ability) {
-		return Component.translatableWithFallback(ability instanceof EntitySkillConductorAbility
-				? ConductorTranslationKeys.skillName(ability.id()) : ConductorTranslationKeys.abilityName(ability.id()), ability.id().getPath());
-	}
-
-	public static String combatBehaviorKey(ConductorData.CombatBehavior behavior) {
-		return switch (behavior) {
-			case ACTIVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_ACTIVE;
-			case PASSIVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_PASSIVE;
-			case NEUTRAL -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_NEUTRAL;
-		};
-	}
-
-	public static String behaviorKey(ConductorData.BehaviorState state) {
-		return switch (state) {
-			case PATROL -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_PATROL;
-			case IDLE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_IDLE;
-			case GUARD -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_GUARD;
-			case STANDBY -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_BEHAVIOR_STANDBY;
-		};
-	}
-
-	public static String orderKey(ConductorData.OrderType order) {
-		return switch (order) {
-			case NONE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_NONE;
-			case MOVE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_MOVE;
-			case ATTACK -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_ATTACK;
-			case ATTACK_POINT -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_ATTACK_POINT;
-			case RETURN -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_RETURN;
-			case CLEANUP -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_CLEANUP;
-			case REASSEMBLE -> ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ORDER_REASSEMBLE;
-		};
 	}
 
 	/// 按当前窗口尺寸与折叠状态更新面板槽位；只读模型状态。

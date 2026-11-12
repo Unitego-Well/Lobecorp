@@ -11,12 +11,10 @@ import org.unitego.lobecorp.network.tc.encounter.EncounterStatePayload;
 import org.unitego.lobecorp.util.encounter.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.horde.HordeInstance;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
+import org.unitego.lobecorp.util.horde.HordePresenceUtil;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.UUID;
+import java.util.*;
+
 import static org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter.SPEED_ID;
 import static org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter.SUBTITLE_WIDTH_FACTOR;
 
@@ -42,14 +40,8 @@ public class MidnightCleanupOpening {
 		var center = event.route().point(station, 0);
 		var direction = event.route().point(Math.min(event.route().length(), station + 1), 0)
 				.subtract(event.route().point(Math.max(0, station - 1), 0)).normalize();
-		double along = (point.x - center.x) * direction.x + (point.z - center.z) * direction.z;
-		if (station < 0.001 && along < 0 || station > event.route().length() - 0.001 && along > 0) {
-			return false;
-		}
-
-		double dx = point.x - center.x, dz = point.z - center.z;
-		double halfWidth = event.rules().width() * widthFactor / 2;
-		return dx * dx + dz * dz <= halfWidth * halfWidth;
+		return HordePresenceUtil.contains(point, station, center, direction, 0, event.route().length(),
+				event.rules().width() * widthFactor / 2);
 	}
 
 	public static Identifier speedModifierId() {
@@ -96,7 +88,7 @@ public class MidnightCleanupOpening {
 			}
 
 			double station = event.route().nearest(player.position(), 0, event.route().length());
-			double arrival = station / event.movementSpeed() - event.tick();
+			double arrival = HordePresenceUtil.arrival(station, event.tick(), event.movementSpeed());
 			boolean originalCorridor = inside(player, event);
 			var previous = observations.computeIfAbsent(event.id(), _ -> new HashMap<>())
 					.put(player.getUUID(), new Observation(event.tick(), arrival, originalCorridor));
@@ -123,7 +115,8 @@ public class MidnightCleanupOpening {
 				speed.removeModifier(SPEED_ID);
 				speed.addTransientModifier(new AttributeModifier(SPEED_ID, -1, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
 			}
-			var toward = event.route().direction(station).scale(-1);
+			var center = event.route().point(HordePresenceUtil.center(event.head(), event.tail()), 0);
+			var toward = center.subtract(player.getEyePosition());
 			float targetYaw = (float) Math.toDegrees(Math.atan2(toward.z, toward.x)) - 90;
 			float targetPitch = (float) -Math.toDegrees(Math.atan2(toward.y, toward.horizontalDistance()));
 			locks.put(player, new Lock(event.id(), server.getTickCount() + MidnightCleanupViewUtil.CENTER_END,
@@ -140,10 +133,14 @@ public class MidnightCleanupOpening {
 			if (server.getTickCount() >= lock.until() || !player.isAlive() || player.isSpectator()
 					|| server.getPlayerList().getPlayer(player.getUUID()) != player || event == null
 					|| !player.level().dimension().equals(event.dimension())) {
-				if (server.getTickCount() >= lock.until() && player.isAlive() && !player.isSpectator()) {
-					player.setYRot(lock.startYaw());
-					player.setXRot(lock.startPitch());
-					player.setYHeadRot(lock.startYaw());
+				if (server.getTickCount() >= lock.until() && player.isAlive() && !player.isSpectator()
+						&& event != null && player.level().dimension().equals(event.dimension())) {
+					var toward = event.route().point(HordePresenceUtil.center(event.head(), event.tail()), 0).subtract(player.getEyePosition());
+					float yaw = (float) Math.toDegrees(Math.atan2(toward.z, toward.x)) - 90;
+					float pitch = (float) -Math.toDegrees(Math.atan2(toward.y, toward.horizontalDistance()));
+					player.setYRot(yaw);
+					player.setXRot(pitch);
+					player.setYHeadRot(yaw);
 				}
 				release(player);
 				return true;
@@ -205,9 +202,6 @@ public class MidnightCleanupOpening {
 			return;
 		}
 		locks.remove(player);
-		player.setYRot(lock.startYaw());
-		player.setXRot(lock.startPitch());
-		player.setYHeadRot(lock.startYaw());
 		release(player);
 	}
 

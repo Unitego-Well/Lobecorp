@@ -11,8 +11,10 @@ import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 
 @Mixin(MouseHandler.class)
 public class PlayerMouseInteractionMixin {
-	@Shadow private double accumulatedDX;
-	@Shadow private double accumulatedDY;
+	@Shadow
+	private double accumulatedDX;
+	@Shadow
+	private double accumulatedDY;
 
 	@Inject(method = "onButton", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$blockButton(long handle, MouseButtonInfo rawButtonInfo, int action, CallbackInfo callback) {

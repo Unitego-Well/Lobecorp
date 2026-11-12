@@ -2,8 +2,8 @@ package org.unitego.lobecorp.animation.behavior;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.animation.runtime.LcAnimationInstance;
+import org.unitego.lobecorp.attachment.LcTransform;
 
 import java.util.Objects;
 import java.util.Set;

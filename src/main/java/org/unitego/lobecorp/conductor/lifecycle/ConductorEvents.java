@@ -7,14 +7,14 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.event.EntitySkillEvent;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
-import org.unitego.lobecorp.registry.tag.LcEntitySkillTags;
+import org.unitego.lobecorp.registry.world.tag.LcEntitySkillTags;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
 /// 指挥家生命周期与战斗事件的业务处理入口，由 events 包订阅器调用。
 public class ConductorEvents {

@@ -1,27 +1,11 @@
 package org.unitego.lobecorp.util.photon.compat;
 
-import net.minecraft.nbt.ByteArrayTag;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.DoubleTag;
-import net.minecraft.nbt.FloatTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.LongArrayTag;
-import net.minecraft.nbt.LongTag;
-import net.minecraft.nbt.ShortTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /// 只读索引特效目录并统计其初始化开销；不创建FX运行态、不解析材质、不触碰GPU与编辑器状态。
@@ -45,21 +29,6 @@ public class PhotonEffectInventoryUtil {
 	private static final int MAX_LINKS = 64;
 
 	private PhotonEffectInventoryUtil() {
-	}
-
-	/// 一个特效定义的静态开销画像；字段均为可复述的整数，便于展示与比较。
-	public record Entry(Path file, String id, long sourceBytes, long decodedBytes, String sha256,
-	                    int objects, int emitters, int spawners, int models, int controllers,
-	                    int linkedEffects, int linkDepth, int estimatedRenderTypes,
-	                    List<String> linkedIds, String failure) {
-		/// 一次性初始化成本的经验权重，仅用于排序，不是毫秒。
-		public long cost() {
-			return (long) objects + estimatedRenderTypes + (long) linkedEffects * 4L;
-		}
-
-		public boolean readable() {
-			return failure == null;
-		}
 	}
 
 	/// 索引一个根目录下的全部特效定义；单文件失败只记录在该条目上，不中断整批。
@@ -139,7 +108,7 @@ public class PhotonEffectInventoryUtil {
 	/// 估算解压后的定义体积：按NBT结构递归累计，不保留中间副本。
 	/// 与 `.fx` 的 gzip 解压长度同量级，用于找出真正占体积的对象，不作为精确字节数。
 	private static int decodedSize(CompoundTag node) {
-		return size((Tag) node);
+		return size(node);
 	}
 
 	private static int size(Tag tag) {
@@ -171,6 +140,7 @@ public class PhotonEffectInventoryUtil {
 			case null, default -> 0;
 		};
 	}
+
 	/// 估算一次性渲染类型数量：每个发射器至少一个材质，模型输出按材质组追加，子发射器自身不提交几何。
 	private static int estimateRenderTypes(List<CompoundTag> objects) {
 		int total = 0;
@@ -309,7 +279,7 @@ public class PhotonEffectInventoryUtil {
 
 	/// 收集对象树里指向其它特效的ID，去重并保持出现顺序。
 	private static void collectLinks(CompoundTag object, Set<String> out) {
-		collectLinks((Tag) object, out, 0);
+		collectLinks(object, out, 0);
 	}
 
 	private static void collectLinks(Tag tag, Set<String> out, int depth) {
@@ -342,6 +312,21 @@ public class PhotonEffectInventoryUtil {
 			return Files.size(file);
 		} catch (IOException unavailable) {
 			return 0;
+		}
+	}
+
+	/// 一个特效定义的静态开销画像；字段均为可复述的整数，便于展示与比较。
+	public record Entry(Path file, String id, long sourceBytes, long decodedBytes, String sha256,
+	                    int objects, int emitters, int spawners, int models, int controllers,
+	                    int linkedEffects, int linkDepth, int estimatedRenderTypes,
+	                    List<String> linkedIds, String failure) {
+		/// 一次性初始化成本的经验权重，仅用于排序，不是毫秒。
+		public long cost() {
+			return (long) objects + estimatedRenderTypes + (long) linkedEffects * 4L;
+		}
+
+		public boolean readable() {
+			return failure == null;
 		}
 	}
 }

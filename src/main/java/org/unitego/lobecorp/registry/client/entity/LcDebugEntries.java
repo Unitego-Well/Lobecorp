@@ -54,7 +54,7 @@ public class LcDebugEntries {
 	}
 
 	public static void onRegisterDebugRenderers(RegisterDebugRenderersEvent event) {
-        event.register(new HordeDebugRenderer());
+		event.register(new HordeDebugRenderer());
 		if (Minecraft.getInstance().debugEntries.isCurrentlyEnabled(ENTITY_STATES)) {
 			event.register(EntityStateDebugRenderer::new);
 		}

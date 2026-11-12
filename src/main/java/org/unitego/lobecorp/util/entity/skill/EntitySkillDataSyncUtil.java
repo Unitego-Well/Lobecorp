@@ -4,16 +4,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.unitego.lobecorp.network.tc.EntitySkillDataSyncPayload;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillState;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /// 技能持久化附件的同步入口，不创建或推进技能运行态。
 /// 侧别检查读取游戏持有的共享世界，不在本工具中关闭。

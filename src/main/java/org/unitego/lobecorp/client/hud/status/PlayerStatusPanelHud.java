@@ -26,7 +26,7 @@ public class PlayerStatusPanelHud extends ContainerHudRenderer {
 	private static final float AVATAR_OUTER_SIZE = 23.6F;
 	private final PanelStatusBar healthBar = new PanelStatusBar(false, HEALTH_BOX, HEALTH_ICON);
 	private final PanelStatusBar rationalityBar = new PanelStatusBar(true, RATIONALITY_BOX, RATIONALITY_ICON);
-	private final PlayerAvatar avatar = new PlayerAvatar(26, 1.1F);
+	private final PlayerAvatar avatar = new PlayerAvatar(16, 1.1F);
 
 	public PlayerStatusPanelHud() {
 		setSize(AVATAR_SIZE + 3 + 66, AVATAR_SIZE);

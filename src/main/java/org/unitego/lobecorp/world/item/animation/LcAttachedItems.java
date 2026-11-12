@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.world.item.animation;
 
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.LcAnimationTransitionSettings;
 import org.unitego.lobecorp.animation.LcControllerBlendType;
@@ -12,12 +12,7 @@ import org.unitego.lobecorp.animation.LcRotationTransitionMode;
 import org.unitego.lobecorp.animation.LcTransitionMode;
 import org.unitego.lobecorp.attachment.LcAttachmentBinding;
 
-import java.util.IdentityHashMap;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 只管理显式物品显示元数据；绑定、动画与物品对象各自保留原生命周期。
 public class LcAttachedItems {

@@ -3,11 +3,11 @@ package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffect;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarfallSkill;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
+import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffect;
 
 import java.util.List;
 

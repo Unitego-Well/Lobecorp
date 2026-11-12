@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.util.photon.render.PhotonOcclusionUtil;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
+import org.unitego.lobecorp.util.photon.render.PhotonOcclusionUtil;
 import org.unitego.lobecorp.util.photon.render.PhotonViewDepthSortUtil;
 
 @Mixin(PhotonRenderTypes.class)

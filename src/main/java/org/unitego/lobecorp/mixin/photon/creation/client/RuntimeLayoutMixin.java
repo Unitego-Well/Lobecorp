@@ -4,27 +4,23 @@ import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.ParticleTickHost;
 import com.lowdragmc.photon.client.fx.timeline.TimelinePlayer;
+import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.creation.IPhotonRuntimeCreationAccess;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 
-import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
-@Mixin(value = FXRuntime.class, remap = false)
+@Mixin(value = FXRuntime.class)
 public abstract class RuntimeLayoutMixin implements IPhotonRuntimeCreationAccess {
 	@Shadow
 	@Final
@@ -78,12 +74,12 @@ public abstract class RuntimeLayoutMixin implements IPhotonRuntimeCreationAccess
 		}
 	}
 
-    @Inject(method = "destroy", at = @At("TAIL"))
-    private void lobecorp$retireForcedScope(boolean force, CallbackInfo result) {
-        if (force) {
-            PhotonRuntimeFactory.onRuntimeForceDestroyed((FXRuntime) (Object) this);
-        }
-    }
+	@Inject(method = "destroy", at = @At("TAIL"))
+	private void lobecorp$retireForcedScope(boolean force, CallbackInfo result) {
+		if (force) {
+			PhotonRuntimeFactory.onRuntimeForceDestroyed((FXRuntime) (Object) this);
+		}
+	}
 
 	@Override
 	public void lobecorp$resetCreationState(FXData data) {

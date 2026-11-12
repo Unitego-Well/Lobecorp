@@ -12,22 +12,17 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
-import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.config.HordePathVariant;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.network.ts.horde.HordeSnapshotRequestPayload;
+import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
 import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.util.*;
 
 /// 接收事件快照；每tick提交玩家模拟距离内的整数区域，GPU负责分割运动。
 public class HordeClient {
@@ -123,8 +118,16 @@ public class HordeClient {
 		var player = minecraft.player;
 		var area = simulationBounds();
 		var nearby = minecraft.level.getEntitiesOfClass(LivingEntity.class, area, HordeClient::hasVisualCollision);
-		var targets = nearby.stream().filter(entity -> entity != player && ClientHorde.isGapTarget(entity)).toList();
-		var members = nearby.stream().filter(Mob.class::isInstance).map(Mob.class::cast).filter(HordeParticipant::isEvent).toList();
+		var targets = new ArrayList<LivingEntity>();
+		var members = new ArrayList<Mob>();
+		for (var entity : nearby) {
+			if (entity != player && ClientHorde.isGapTarget(entity)) {
+				targets.add(entity);
+			}
+			if (entity instanceof Mob mob && HordeParticipant.isEvent(mob)) {
+				members.add(mob);
+			}
+		}
 		for (var event : EVENTS.values()) {
 			if (event.ready && !event.failed) {
 				event.updateGaps(targets, members, player);
@@ -189,13 +192,7 @@ public class HordeClient {
 			lastBatches = List.of();
 			return lastBatches;
 		}
-		if (generation != GeckoLibResources.getBakedModels() || meshSettings != HordeMeshCache.settingsKey()) {
-			generation = GeckoLibResources.getBakedModels();
-			meshSettings = HordeMeshCache.settingsKey();
-			HordeGpuRenderer.clearModels();
-			HordeMeshCache.clear();
-			EVENTS.values().forEach(event -> event.failed = false);
-		}
+		ensureResourceGeneration();
 
 		for (var event : EVENTS.values()) {
 			if (!event.failed && event.visual != null) {
@@ -218,9 +215,9 @@ public class HordeClient {
 				if (block.bounds().distanceToSqr(camera) > range * range || !frustum.isVisible(block.bounds())) {
 					continue;
 				}
-                long first = Math.max(0, (long) Math.floor((now * event.speed - block.last()) / event.rowSpacing()) + 1);
-                long last = Math.min((long) Math.floor(Math.min(event.stop, now) * event.speed / event.rowSpacing()),
-                        (long) Math.floor((now * event.speed - block.first()) / event.rowSpacing()));
+				long first = Math.max(0, (long) Math.floor((now * event.speed - block.last()) / event.rowSpacing()) + 1);
+				long last = Math.min((long) Math.floor(Math.min(event.stop, now) * event.speed / event.rowSpacing()),
+						(long) Math.floor((now * event.speed - block.first()) / event.rowSpacing()));
 				if (last < first) {
 					continue;
 				}
@@ -244,7 +241,8 @@ public class HordeClient {
 					break;
 				}
 				int count = Math.min(remaining, batch.count());
-				limited.add(new Batch(batch.event(), batch.block(), batch.firstRow(), batch.offset(), count, batch.time()));
+				limited.add(count == batch.count() ? batch
+						: new Batch(batch.event(), batch.block(), batch.firstRow(), batch.offset(), count, batch.time()));
 				remaining -= count;
 			}
 			batches = limited;
@@ -331,16 +329,27 @@ public class HordeClient {
 				+ String.format("%.1f", head) + ", rows=" + Math.round(rows) + ", splits=" + splits;
 	}
 
+	/// 世界会话不拥有模型缓存，只有真实资源代际或采样设置变化才释放。
+	public static void ensureResourceGeneration() {
+		var next = GeckoLibResources.getBakedModels();
+		int settings = HordeMeshCache.settingsKey();
+		if (generation == next && meshSettings == settings) {
+			return;
+		}
+		HordeGpuRenderer.clearModels();
+		HordeMeshCache.clear();
+		generation = next;
+		meshSettings = settings;
+		EVENTS.values().forEach(event -> event.failed = false);
+	}
+
 	public static void clear() {
 		EVENTS.values().forEach(HordeClient::closeEvent);
 		EVENTS.clear();
 		SNAPSHOT_REQUESTS.clear();
 		lastBatches = List.of();
-		generation = null;
-		meshSettings = Integer.MIN_VALUE;
 		ambientFrustum = null;
 		HordeRendering.clear();
-		HordeMeshCache.clear();
 		HordeClientHooks.closeSession();
 		HordeDebugState.reset();
 	}
@@ -355,45 +364,40 @@ public class HordeClient {
 	}
 
 	public static class ClientHorde {
+		/// 粗略数据在五个游戏刻内靠近精确样本，暂停时冻结。
+		private static final int REFINEMENT_TICKS = 5;
+		private static final double REGION_LINGER_TICKS = 30;
 		public final UUID id;
+		public final java.util.BitSet changedHeights = new java.util.BitSet();
+		public final java.util.BitSet changedRoute = new java.util.BitSet();
+		public final Map<String, RegionBox> regions = new TreeMap<>();
+		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
+		/// 分割割圆表：CPU 平滑后上传，GPU 只做连续让步。
+		public final HordeSplitState split = new HordeSplitState();
+		/// 粒子快照随客户端事件拥有，不依赖可见GPU批次。
+		public final HordeParticleSamples particleSamples = new HordeParticleSamples();
+		private final Map<Integer, Refinement> refinements = new TreeMap<>();
+		private final Map<String, LingeringGap> lingeringTargets = new TreeMap<>();
+		private final Map<Integer, HordeRoute.Node> received = new TreeMap<>();
+		private final HordeRenderClock clock = new HordeRenderClock();
 		public Identifier profile;
 		public HordeRules rules;
-		/// 本地显示间距在接收事件头时固定，不参与服务端规则或同步。
-		private double rowSpacing = 1.8;
-		private double columnSpacing = 1.8;
-
-		public double rowSpacing() {
-			return rowSpacing;
-		}
-
-		public double columnSpacing() {
-			return columnSpacing;
-		}
 		public HordeVisualDefinition visual;
 		public HordeRoute.Node[] nodes;
 		public Vec3 origin;
 		public float[] routeData;
 		public float[] heightData;
 		public int heightColumns;
+		// 保存完整横向采样的世界高度，避免包围计算重复扫描及 float 精度损失。
+		private double[] nodeMinimumHeights;
+		private double[] nodeMaximumHeights;
 		public double groundWidth;
-		public final java.util.BitSet changedHeights = new java.util.BitSet();
-		public final java.util.BitSet changedRoute = new java.util.BitSet();
 		public boolean lookupChanged;
-		private final Map<Integer, Refinement> refinements = new TreeMap<>();
-		private boolean distancesExact;
-		/// 粗略数据在五个游戏刻内靠近精确样本，暂停时冻结。
-		private static final int REFINEMENT_TICKS = 5;
-
-		private record Refinement(HordeRoute.Node from, HordeRoute.Node to, long began) {
-		}
+		public long terrainRevision;
+		private long geometryRevision;
+		private long pendingGeometryRevision = -1;
+		private final Map<Integer, HordeRoute.Node> pendingGeometry = new TreeMap<>();
 		public List<Block> blocks = List.of();
-		public final Map<String, RegionBox> regions = new TreeMap<>();
-		public final Map<String, RegionBox> previousRegions = new TreeMap<>();
-		private final Map<String, LingeringGap> lingeringTargets = new TreeMap<>();
-
-		private record LingeringGap(RegionBox box, LivingEntity entity, double until) {
-		}
-		private static final double REGION_LINGER_TICKS = 30;
 		public double regionsChanged;
 		public float entityHeight;
 		public double length;
@@ -401,10 +405,6 @@ public class HordeClient {
 		public float lightProbeHeight;
 		/// 按进度求位置的纯函数；路线就绪后创建，客户端不再保存逐单位状态。
 		public HordeTide tide;
-		/// 分割割圆表：CPU 平滑后上传，GPU 只做连续让步。
-		public final HordeSplitState split = new HordeSplitState();
-		/// 粒子快照随客户端事件拥有，不依赖可见GPU批次。
-		public final HordeParticleSamples particleSamples = new HordeParticleSamples();
 		public long stop;
 		public int columns;
 		public boolean ready;
@@ -412,14 +412,27 @@ public class HordeClient {
 		public int spawnCutoffTicks;
 		public boolean failed;
 		public long regionVersion;
+		/// 本地显示间距在接收事件头时固定，不参与服务端规则或同步。
+		private double rowSpacing = 1.8;
+		private double columnSpacing = 1.8;
+		private boolean distancesExact;
 		private AABB routeBounds;
-		private final Map<Integer, HordeRoute.Node> received = new TreeMap<>();
 		private long sequence;
-		private final HordeRenderClock clock = new HordeRenderClock();
 		private int nodeCount;
-
 		private ClientHorde(UUID id) {
 			this.id = id;
+		}
+
+		private static boolean isGapTarget(LivingEntity entity) {
+			return hasVisualCollision(entity) && !HordeParticipant.isEvent(entity);
+		}
+
+		public double rowSpacing() {
+			return rowSpacing;
+		}
+
+		public double columnSpacing() {
+			return columnSpacing;
 		}
 
 		public double time(float partial) {
@@ -527,6 +540,14 @@ public class HordeClient {
 				return;
 			}
 
+			long incomingGeometry = page.getLongOr("geometry_revision", 0);
+			if (incomingGeometry < geometryRevision) {
+				return;
+			}
+			if (incomingGeometry > geometryRevision) {
+				stageGeometry(page, incomingGeometry);
+				return;
+			}
 			int index = page.getIntOr("first", 0);
 			for (var element : page.getListOrEmpty("nodes")) {
 				if (element instanceof CompoundTag node && index >= 0 && index < nodeCount) {
@@ -542,6 +563,45 @@ public class HordeClient {
 					index++;
 				}
 			}
+		}
+
+		/// 几何版本分页全部就绪后整版发布，保留原逻辑站程和行列身份。
+		private void stageGeometry(CompoundTag page, long revision) {
+			if (revision < pendingGeometryRevision) {
+				return;
+			}
+			if (revision != pendingGeometryRevision) {
+				pendingGeometry.clear();
+				pendingGeometryRevision = revision;
+			}
+			int index = page.getIntOr("first", 0);
+			for (var element : page.getListOrEmpty("nodes")) {
+				if (element instanceof CompoundTag tag && index >= 0 && index < nodeCount) {
+					var node = HordeRoute.Node.load(tag);
+					if (node.heightCount() != heightColumns || node.sampleWidth() != groundWidth) {
+						throw new IllegalArgumentException("重规划采样结构变化");
+					}
+					pendingGeometry.put(index++, node);
+				}
+			}
+			if (pendingGeometry.size() != nodeCount) {
+				return;
+			}
+			refinements.clear();
+			received.clear();
+			received.putAll(pendingGeometry);
+			for (int i = 0; i < nodeCount; i++) {
+				nodes[i] = pendingGeometry.get(i);
+			}
+			geometryRevision = revision;
+			pendingGeometry.clear();
+			distancesExact = true;
+			// 重建包围、摘要及路线纹理；避让行窗由逻辑站程保持身份。
+			prepareRoute();
+			changedRoute.set(0, nodeCount);
+			changedHeights.set(0, nodeCount);
+			lookupChanged = true;
+			terrainRevision++;
 		}
 
 		private void refine() {
@@ -614,6 +674,14 @@ public class HordeClient {
 			heightColumns = nodes[0].heightCount();
 			groundWidth = nodes[0].sampleWidth();
 			heightData = new float[nodes.length * heightColumns];
+			if (HordePathVariant.optimized()) {
+				nodeMinimumHeights = new double[nodes.length];
+				nodeMaximumHeights = new double[nodes.length];
+				// prepareBlocks 会读取后续节点，必须先完成全路线极值缓存。
+				for (int i = 0; i < nodes.length; i++) {
+					updateHeightBounds(i);
+				}
+			}
 			int lookupCount = (int) Math.ceil(length) + 1;
 			routeData = new float[Math.addExact(Math.multiplyExact(nodes.length, 16), lookupCount)];
 			var prepared = new ArrayList<Block>();
@@ -664,11 +732,27 @@ public class HordeClient {
 		}
 
 		private void updateHeights(int index) {
+			terrainRevision++;
 			double width = groundWidth;
 			for (int h = 0; h < heightColumns; h++) {
 				heightData[index * heightColumns + h] = (float) (nodes[index].height((h / (double) (heightColumns - 1) - 0.5) * width) - origin.y);
 			}
+			if (HordePathVariant.optimized()) {
+				updateHeightBounds(index);
+			}
 			changedHeights.set(index);
+		}
+
+		private void updateHeightBounds(int index) {
+			double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+			double width = groundWidth;
+			for (int h = 0; h < heightColumns; h++) {
+				double y = nodes[index].height((h / (double) (heightColumns - 1) - 0.5) * width);
+				minY = Math.min(minY, y);
+				maxY = Math.max(maxY, y);
+			}
+			nodeMinimumHeights[index] = minY;
+			nodeMaximumHeights[index] = maxY;
 		}
 
 		private void updateBlocks(BitSet dirtyGroups) {
@@ -733,12 +817,17 @@ public class HordeClient {
 				}
 			}
 			double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
-			double width = groundWidth;
-			for (int i = segment; i <= segment + 1; i++) {
-				for (int h = 0; h < heightColumns; h++) {
-					double y = nodes[i].height((h / (double) (heightColumns - 1) - 0.5) * width);
-					minY = Math.min(minY, y);
-					maxY = Math.max(maxY, y);
+			if (HordePathVariant.optimized()) {
+				minY = Math.min(nodeMinimumHeights[segment], nodeMinimumHeights[segment + 1]);
+				maxY = Math.max(nodeMaximumHeights[segment], nodeMaximumHeights[segment + 1]);
+			} else {
+				double width = groundWidth;
+				for (int i = segment; i <= segment + 1; i++) {
+					for (int h = 0; h < heightColumns; h++) {
+						double y = nodes[i].height((h / (double) (heightColumns - 1) - 0.5) * width);
+						minY = Math.min(minY, y);
+						maxY = Math.max(maxY, y);
+					}
 				}
 			}
 			return new AABB(Math.min(a.x, b.x) + minX - MODEL_PADDING, minY - MODEL_PADDING,
@@ -752,9 +841,10 @@ public class HordeClient {
 			if (hasVisualCollision(player)) {
 				updated.put("local", RegionBox.forEntity(player.getBoundingBox()));
 			}
+			var targetBounds = routeBounds == null ? null : routeBounds.inflate(48);
 			for (var entity : targets) {
 				// 只对浪潮可视范围内的目标开缺口：远处的生物（含其他无关事件/动物）不应在空地上制造分割。
-				if (!isRelevantTarget(entity, player)) {
+				if (!isRelevantTarget(entity, player, targetBounds)) {
 					continue;
 				}
 				var key = "target:" + entity.getUUID();
@@ -777,11 +867,13 @@ public class HordeClient {
 
 			// 每个参战生物保留自己的圆核心，不把多个核心合并成矩形禁区。
 			var seeds = members.isEmpty() ? Map.<String, RegionBox>of() : Map.copyOf(updated);
+			var playerId = player.getUUID().toString();
+			var eventId = id.toString();
 			for (var member : members) {
 				var source = HordeParticipant.get(member);
 				var key = "target:" + source.targetId();
-				var target = source.targetId().equals(player.getUUID().toString()) ? seeds.get("local") : seeds.get(key);
-				if (!hasVisualCollision(member) || target == null || source.fading() || !source.eventId().equals(id.toString())) {
+				var target = source.targetId().equals(playerId) ? seeds.get("local") : seeds.get(key);
+				if (!hasVisualCollision(member) || target == null || source.fading() || !source.eventId().equals(eventId)) {
 					continue;
 				}
 				var bounds = member.getBoundingBox();
@@ -822,22 +914,23 @@ public class HordeClient {
 					? hasVisualCollision(player) : target != null && now < target.until() && isGapTarget(target.entity()));
 		}
 
-		private boolean isRelevantTarget(LivingEntity entity, Player player) {
+		private boolean isRelevantTarget(LivingEntity entity, Player player, AABB targetBounds) {
 			double range = HordeVisualConfig.rangeBlocks();
 			if (player.distanceToSqr(entity) > range * range) {
 				return false;
 			}
-			if (routeBounds != null && !routeBounds.inflate(48).contains(entity.position())) {
+			if (targetBounds != null && !targetBounds.contains(entity.position())) {
 				return false;
 			}
 			return isGapTarget(entity);
 		}
 
+		private record Refinement(HordeRoute.Node from, HordeRoute.Node to, long began) {
+		}
 
-		private static boolean isGapTarget(LivingEntity entity) {
-			return hasVisualCollision(entity) && !HordeParticipant.isEvent(entity);
-        }
-    }
+		private record LingeringGap(RegionBox box, LivingEntity entity, double until) {
+		}
+	}
 
 	/// 圆核心的正方形外包围与真实高度；GPU仅将外包围用于候选索引，窄相位使用圆。
 	public record RegionBox(double x, double y, double z, double sizeX, double sizeY, double sizeZ) {
@@ -857,6 +950,14 @@ public class HordeClient {
 					radius * 2, bounds.getYsize(), radius * 2);
 		}
 
+		public static RegionBox of(AABB bounds, int grid) {
+			int x = Math.floorDiv((int) Math.floor(bounds.minX), grid) * grid;
+			int y = Math.floorDiv((int) Math.floor(bounds.minY), grid) * grid;
+			int z = Math.floorDiv((int) Math.floor(bounds.minZ), grid) * grid;
+			return new RegionBox(x, y, z, Math.ceilDiv((int) Math.ceil(bounds.maxX) - x, grid) * grid,
+					Math.ceilDiv((int) Math.ceil(bounds.maxY) - y, grid) * grid,
+					Math.ceilDiv((int) Math.ceil(bounds.maxZ) - z, grid) * grid);
+		}
 
 		public double radius() {
 			return Math.max(sizeX, sizeZ) * 0.5;
@@ -883,15 +984,6 @@ public class HordeClient {
 			double band = HordeSplitState.band(speed) * influence;
 			double nearest = Math.clamp(along, -band - radius * 0.6, band * 0.6 + radius * 0.5);
 			return Math.hypot(along - nearest, across) - radius;
-		}
-
-	    public static RegionBox of(AABB bounds, int grid) {
-            int x = Math.floorDiv((int) Math.floor(bounds.minX), grid) * grid;
-            int y = Math.floorDiv((int) Math.floor(bounds.minY), grid) * grid;
-            int z = Math.floorDiv((int) Math.floor(bounds.minZ), grid) * grid;
-            return new RegionBox(x, y, z, Math.ceilDiv((int) Math.ceil(bounds.maxX) - x, grid) * grid,
-                    Math.ceilDiv((int) Math.ceil(bounds.maxY) - y, grid) * grid,
-                    Math.ceilDiv((int) Math.ceil(bounds.maxZ) - z, grid) * grid);
 		}
 	}
 

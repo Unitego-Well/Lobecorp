@@ -1,11 +1,11 @@
 package org.unitego.lobecorp.client.hud.widget;
 
 import net.minecraft.client.Minecraft;
-import org.unitego.lobecorp.client.hud.TextureHudRenderer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.hud.TextureHudRenderer;
 
 /// 可复用的全屏纹理滤镜；透明度作为每份提取状态的颜色，不污染后续 GUI 绘制。
 @NullMarked

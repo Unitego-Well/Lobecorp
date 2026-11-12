@@ -38,7 +38,6 @@ public class PhotonGlobalContractScenario implements BenchClientScenario {
             archiveProgress(context);
             collect("program_contract", PhotonProgramContractCheck::verify, checks);
             archiveProgress(context);
-            collect("static_model_contract", PhotonStaticModelContractCheck::verify, checks);
         } catch (Throwable failure) {
             var error = new JsonObject();
             error.addProperty("type", failure.getClass().getName());

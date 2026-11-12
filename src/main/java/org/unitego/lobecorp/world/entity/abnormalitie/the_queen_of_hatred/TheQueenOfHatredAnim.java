@@ -33,7 +33,7 @@ public enum TheQueenOfHatredAnim {
 
 	private final RawAnimation animation;
 
-	private TheQueenOfHatredAnim(RawAnimation animation) {
+	TheQueenOfHatredAnim(RawAnimation animation) {
 		this.animation = animation;
 	}
 

@@ -5,16 +5,16 @@ import com.lowdragmc.lowdraglib2.editor.resource.IResourcePath;
 import com.lowdragmc.lowdraglib2.editor.ui.resource.ResourceProviderContainer;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextArea;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.CommandEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -86,11 +86,11 @@ public class PhotonResourceClipboardUtil {
 		}
 
 		if (path != null && container.getCanCopy().test(path)) {
-			menu.leaf(PhotonEditorTranslations.COPY_SYSTEM, () -> copy(container, path));
+			menu.leaf(PhotonEditorTranslationKeys.COPY_SYSTEM, () -> copy(container, path));
 		}
 
 		if (compatible(container)) {
-			menu.leaf(PhotonEditorTranslations.PASTE_SYSTEM, () -> paste(container));
+			menu.leaf(PhotonEditorTranslationKeys.PASTE_SYSTEM, () -> paste(container));
 		}
 	}
 
@@ -143,6 +143,6 @@ public class PhotonResourceClipboardUtil {
 	}
 
 	private static void invalid(ResourceProviderContainer<?> container) {
-		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(container.getEditor());
+		Dialog.showNotification(PhotonEditorTranslationKeys.CLIPBOARD, PhotonEditorTranslationKeys.CLIPBOARD_INVALID, null).show(container.getEditor());
 	}
 }

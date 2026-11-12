@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
-import java.util.function.Supplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 @Mixin(AdditionalGPUDataSetting.class)
 public abstract class AdditionalGPUDataSettingMixin {

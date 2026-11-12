@@ -20,72 +20,6 @@ public class PhotonEffectViewUtil {
 	private static final List<String> FIELDS = List.of("center", "zoom", "yaw", "pitch", "orthographic", "orthoRange",
 			"bloomEnabled", "effectsEnabled", "shapeVisible", "cullBoxVisible");
 
-	private record Settings(Vector3f center, float zoom, float yaw, float pitch, boolean orthographic, float orthoRange,
-	                        boolean bloomEnabled, boolean effectsEnabled, boolean shapeVisible,
-	                        boolean cullBoxVisible) {
-		private void apply(Handle handle) {
-			var view = handle.editor().sceneView;
-			var scene = view.sceneEditor.scene;
-			scene.setCenter(new Vector3f(center));
-			scene.setZoom(zoom);
-			scene.setCameraYawAndPitch(yaw, pitch);
-			scene.useOrtho(orthographic);
-			scene.setOrthoRange(orthoRange);
-			view.setBloomEnabled(bloomEnabled);
-			view.setEffectsEnabled(effectsEnabled);
-			view.setShapeVisible(shapeVisible);
-			view.setCullBoxVisible(cullBoxVisible);
-		}
-
-		private JsonObject json() {
-			var result = new JsonObject();
-			var point = new JsonArray();
-			point.add(center.x);
-			point.add(center.y);
-			point.add(center.z);
-			result.add("center", point);
-			result.addProperty("zoom", zoom);
-			result.addProperty("yaw", yaw);
-			result.addProperty("pitch", pitch);
-			result.addProperty("orthographic", orthographic);
-			result.addProperty("orthoRange", orthoRange);
-			result.addProperty("bloomEnabled", bloomEnabled);
-			result.addProperty("effectsEnabled", effectsEnabled);
-			result.addProperty("shapeVisible", shapeVisible);
-			result.addProperty("cullBoxVisible", cullBoxVisible);
-			return result;
-		}
-	}
-
-	public static class Prepared {
-		private final Handle handle;
-		private final Settings before;
-		private final Settings after;
-
-		private Prepared(Handle handle, Settings before, Settings after) {
-			this.handle = handle;
-			this.before = before;
-			this.after = after;
-		}
-
-		public JsonObject commit() {
-			requireCurrent(handle);
-
-			try {
-				after.apply(handle);
-				return describe(handle);
-			} catch (RuntimeException | Error failure) {
-				try {
-					before.apply(handle);
-				} catch (RuntimeException | Error rollbackFailure) {
-					failure.addSuppressed(rollbackFailure);
-				}
-
-				throw failure;
-			}
-		}
-	}
-
 	/// 视角属于预览界面状态，不写入工程资产、内容版本或撤销历史。
 	public static Prepared prepare(Handle handle, JsonObject request) {
 		requireCurrent(handle);
@@ -236,5 +170,71 @@ public class PhotonEffectViewUtil {
 		result.addProperty("width", right - left);
 		result.addProperty("height", bottom - top);
 		return result;
+	}
+
+	private record Settings(Vector3f center, float zoom, float yaw, float pitch, boolean orthographic, float orthoRange,
+	                        boolean bloomEnabled, boolean effectsEnabled, boolean shapeVisible,
+	                        boolean cullBoxVisible) {
+		private void apply(Handle handle) {
+			var view = handle.editor().sceneView;
+			var scene = view.sceneEditor.scene;
+			scene.setCenter(new Vector3f(center));
+			scene.setZoom(zoom);
+			scene.setCameraYawAndPitch(yaw, pitch);
+			scene.useOrtho(orthographic);
+			scene.setOrthoRange(orthoRange);
+			view.setBloomEnabled(bloomEnabled);
+			view.setEffectsEnabled(effectsEnabled);
+			view.setShapeVisible(shapeVisible);
+			view.setCullBoxVisible(cullBoxVisible);
+		}
+
+		private JsonObject json() {
+			var result = new JsonObject();
+			var point = new JsonArray();
+			point.add(center.x);
+			point.add(center.y);
+			point.add(center.z);
+			result.add("center", point);
+			result.addProperty("zoom", zoom);
+			result.addProperty("yaw", yaw);
+			result.addProperty("pitch", pitch);
+			result.addProperty("orthographic", orthographic);
+			result.addProperty("orthoRange", orthoRange);
+			result.addProperty("bloomEnabled", bloomEnabled);
+			result.addProperty("effectsEnabled", effectsEnabled);
+			result.addProperty("shapeVisible", shapeVisible);
+			result.addProperty("cullBoxVisible", cullBoxVisible);
+			return result;
+		}
+	}
+
+	public static class Prepared {
+		private final Handle handle;
+		private final Settings before;
+		private final Settings after;
+
+		private Prepared(Handle handle, Settings before, Settings after) {
+			this.handle = handle;
+			this.before = before;
+			this.after = after;
+		}
+
+		public JsonObject commit() {
+			requireCurrent(handle);
+
+			try {
+				after.apply(handle);
+				return describe(handle);
+			} catch (RuntimeException | Error failure) {
+				try {
+					before.apply(handle);
+				} catch (RuntimeException | Error rollbackFailure) {
+					failure.addSuppressed(rollbackFailure);
+				}
+
+				throw failure;
+			}
+		}
 	}
 }

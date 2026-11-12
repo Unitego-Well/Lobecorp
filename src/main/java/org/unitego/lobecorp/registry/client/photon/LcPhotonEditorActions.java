@@ -7,8 +7,8 @@ import com.lowdragmc.lowdraglib2.editor.keymap.KeymapContext;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -20,8 +20,8 @@ public class LcPhotonEditorActions {
 					? KeyContext.SPECIFICITY_STATE : KeyContext.SPECIFICITY_FOCUS;
 			var context = KeyContext.notTyping().and(KeyContext.of(value -> available.test(action, value), specificity));
 			editor.getKeymap().register(EditorAction.builder(PhotonEditorShortcutUtil.actionId(action))
-					.category(PhotonEditorTranslations.SHORTCUTS)
-					.displayName(Component.translatable(PhotonEditorTranslations.key("action." + action)))
+					.category(PhotonEditorTranslationKeys.SHORTCUTS)
+					.displayName(Component.translatable(PhotonEditorTranslationKeys.key("action." + action)))
 					.defaultChord(KeyChord.parse(PhotonEditorSettings.DEFAULT_KEYS.get(action)).orElse(KeyChord.UNBOUND))
 					.when(context).onAction(_ -> {
 						handler.accept(action);

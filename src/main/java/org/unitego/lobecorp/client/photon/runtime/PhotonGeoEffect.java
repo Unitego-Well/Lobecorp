@@ -3,11 +3,11 @@ package org.unitego.lobecorp.client.photon.runtime;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.IEffectExecutor;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.Level;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 
 /// 一个权威表现快照拥有一个原生FX运行实例；宿主失效或世界切换时显式销毁。
 public class PhotonGeoEffect implements IEffectExecutor, AutoCloseable {
@@ -78,7 +78,7 @@ public class PhotonGeoEffect implements IEffectExecutor, AutoCloseable {
 	@Override
 	public void close() {
 		if (!closed) {
-		stop(true);
+			stop(true);
 			closed = true;
 			lease.close(true);
 		}

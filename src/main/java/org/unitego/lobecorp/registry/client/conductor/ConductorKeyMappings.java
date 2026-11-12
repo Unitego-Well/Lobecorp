@@ -1,12 +1,11 @@
 package org.unitego.lobecorp.registry.client.conductor;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.input.KeyEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
 
 /// 指挥家客户端键位及其注册入口。
 public class ConductorKeyMappings {

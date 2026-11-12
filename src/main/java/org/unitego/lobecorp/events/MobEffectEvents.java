@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.events;
 
-import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -11,9 +11,11 @@ import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
-import org.unitego.lobecorp.world.effect.StunMobEffect;
+import org.unitego.lobecorp.world.level.CityDimensions;
+import net.minecraft.world.item.BucketItem;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
+import org.unitego.lobecorp.world.effect.StunMobEffect;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class MobEffectEvents {
@@ -77,7 +79,8 @@ public class MobEffectEvents {
 
 	@SubscribeEvent
 	public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-		if (StunMobEffect.preventsActions(event.getEntity())) {
+		if (CityDimensions.isProtected(event.getLevel()) && event.getItemStack().getItem() instanceof BucketItem
+				|| StunMobEffect.preventsActions(event.getEntity())) {
 			event.setCancellationResult(InteractionResult.FAIL);
 			event.setCanceled(true);
 		}
@@ -85,7 +88,8 @@ public class MobEffectEvents {
 
 	@SubscribeEvent
 	public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-		if (StunMobEffect.preventsActions(event.getEntity())) {
+		if (CityDimensions.isProtected(event.getLevel()) && event.getItemStack().getItem() instanceof BucketItem
+				|| StunMobEffect.preventsActions(event.getEntity())) {
 			event.setCancellationResult(InteractionResult.FAIL);
 			event.setCanceled(true);
 		}
@@ -117,7 +121,7 @@ public class MobEffectEvents {
 
 	@SubscribeEvent
 	public static void onBreakBlock(BreakBlockEvent event) {
-		if (StunMobEffect.preventsActions(event.getPlayer())) {
+		if (CityDimensions.isProtected(event.getLevel()) || StunMobEffect.preventsActions(event.getPlayer())) {
 			event.setCanceled(true);
 		}
 	}

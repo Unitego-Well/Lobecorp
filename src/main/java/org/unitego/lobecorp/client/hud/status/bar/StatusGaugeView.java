@@ -3,10 +3,10 @@ package org.unitego.lobecorp.client.hud.status.bar;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.client.hud.TextureLayer;
 import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
-import org.unitego.lobecorp.client.hud.TextureHudRenderer;
 import org.unitego.lobecorp.client.hud.RectangleHudRenderer;
+import org.unitego.lobecorp.client.hud.TextureHudRenderer;
+import org.unitego.lobecorp.client.hud.TextureLayer;
 
 /// 原版状态条绘制：组件持有三段纹理，绘制时只读取 [StatusGauge] 的数字状态。
 ///
@@ -32,6 +32,12 @@ public class StatusGaugeView extends ContainerHudRenderer {
 		setLayers(bottom, internal, light);
 	}
 
+	private static void configure(TextureHudRenderer renderer, TextureLayer layer) {
+		renderer.setTexture(layer.texture());
+		renderer.setPosition(layer.x(), layer.y());
+		renderer.setSize(layer.width(), layer.height());
+	}
+
 	public void setLayers(TextureLayer bottom, TextureLayer internal, @Nullable TextureLayer light) {
 		this.bottom = bottom;
 		this.internal = internal;
@@ -54,12 +60,6 @@ public class StatusGaugeView extends ContainerHudRenderer {
 			configure(flash, light);
 		}
 		super.render(graphics, x, y);
-	}
-
-	private static void configure(TextureHudRenderer renderer, TextureLayer layer) {
-		renderer.setTexture(layer.texture());
-		renderer.setPosition(layer.x(), layer.y());
-		renderer.setSize(layer.width(), layer.height());
 	}
 
 }

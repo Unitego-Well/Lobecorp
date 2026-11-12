@@ -12,8 +12,8 @@ import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.gui.GuiMetadataSection;
 import net.minecraft.client.resources.metadata.gui.GuiSpriteScaling;
-import net.minecraft.util.ARGB;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 import org.joml.Matrix3x2f;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -25,6 +25,10 @@ import org.unitego.lobecorp.client.gui.state.FloatTiledBlitRenderState;
 /// 原版 GUI 提取器的浮点坐标重载；纹理像素偏移仍使用整数。
 @NullMarked
 public interface IGuiGraphicsExtractorExpand {
+	private static GuiSpriteScaling getSpriteScaling(TextureAtlasSprite sprite) {
+		return sprite.contents().getAdditionalMetadata(GuiMetadataSection.TYPE).orElse(GuiMetadataSection.DEFAULT).scaling();
+	}
+
 	default Minecraft lobecorp$getMinecraft() {
 		throw new NoMixinException();
 	}
@@ -624,10 +628,6 @@ public interface IGuiGraphicsExtractorExpand {
 						lobecorp$graphics().peekScissorStack()
 				)
 		);
-	}
-
-	private static GuiSpriteScaling getSpriteScaling(TextureAtlasSprite sprite) {
-		return sprite.contents().getAdditionalMetadata(GuiMetadataSection.TYPE).orElse(GuiMetadataSection.DEFAULT).scaling();
 	}
 
 

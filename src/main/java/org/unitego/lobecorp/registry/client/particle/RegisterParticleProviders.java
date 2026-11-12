@@ -1,15 +1,8 @@
 package org.unitego.lobecorp.registry.client.particle;
 
 import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
-import org.unitego.lobecorp.client.particle.BloodParticle;
 import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
-import org.unitego.lobecorp.client.particle.ShortSmokeParticle;
-import org.unitego.lobecorp.client.particle.SweeperStrikeParticle;
-import org.unitego.lobecorp.client.particle.QueenRepelWaveParticle;
-import org.unitego.lobecorp.client.particle.QueenLaserParticle;
-import org.unitego.lobecorp.client.particle.QueenChannelLaserParticle;
-import org.unitego.lobecorp.client.particle.QueenMagicCircleParticle;
-import org.unitego.lobecorp.client.particle.QueenConvergentParticle;
+import org.unitego.lobecorp.client.particle.*;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 
 public class RegisterParticleProviders {

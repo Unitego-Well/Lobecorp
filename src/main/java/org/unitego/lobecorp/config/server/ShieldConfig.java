@@ -10,9 +10,9 @@ public class ShieldConfig {
 	public static final ModConfigSpec.DoubleValue SHIELD_ADDITIONAL_VALUE_PER_LEVEL;
 
 	static {
-        var builder = ServerConfig.section("combat", ServerConfigTranslationKeys.COMBAT);
-        builder.translation(ServerConfigTranslationKeys.COMBAT_SHIELDS).push("shields");
-        ENABLE_MULTI_SHIELD = builder.translation(ServerConfigTranslationKeys.COMBAT_SHIELDS_MULTIPLE).comment("允许四色护盾同时存在。")
+		var builder = ServerConfig.section("combat", ServerConfigTranslationKeys.COMBAT);
+		builder.translation(ServerConfigTranslationKeys.COMBAT_SHIELDS).push("shields");
+		ENABLE_MULTI_SHIELD = builder.translation(ServerConfigTranslationKeys.COMBAT_SHIELDS_MULTIPLE).comment("允许四色护盾同时存在。")
 				.define("enable_multi_shield", false);
 		ENABLE_SHIELD_DAMAGE_IMMUNITY = builder.translation(ServerConfigTranslationKeys.COMBAT_SHIELDS_DAMAGE_IMMUNITY).comment("护盾耗尽时免除本次对应通道的溢出伤害。")
 				.define("enable_shield_damage_immunity", false);

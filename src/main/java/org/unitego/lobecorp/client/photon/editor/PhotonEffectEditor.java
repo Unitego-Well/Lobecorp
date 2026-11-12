@@ -8,7 +8,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
 
-
 import javax.annotation.ParametersAreNonnullByDefault;
 
 /// 与原生入口使用不同窗口身份，标签和恢复流程始终保留扩展编辑器类型。
@@ -26,19 +25,6 @@ public class PhotonEffectEditor extends FXEditor {
 		bottomWindow.getLeftTop().addView(compositionWorkspace);
 	}
 
-	@Override
-	protected void closeCurrentProject() {
-		if (compositionWorkspace != null) {
-			compositionWorkspace.projectClosed();
-		}
-		super.closeCurrentProject();
-	}
-
-	@Override
-	protected Editor createNewEditorInstance() {
-		return new PhotonEffectEditor();
-	}
-
 	public static boolean open() {
 		var minecraft = Minecraft.getInstance();
 		if (minecraft.player == null || minecraft.level == null) {
@@ -52,5 +38,18 @@ public class PhotonEffectEditor extends FXEditor {
 
 		EditorWindow.open(WINDOW_ID, PhotonEffectEditor::new).hostAsScreen();
 		return true;
+	}
+
+	@Override
+	protected void closeCurrentProject() {
+		if (compositionWorkspace != null) {
+			compositionWorkspace.projectClosed();
+		}
+		super.closeCurrentProject();
+	}
+
+	@Override
+	protected Editor createNewEditorInstance() {
+		return new PhotonEffectEditor();
 	}
 }

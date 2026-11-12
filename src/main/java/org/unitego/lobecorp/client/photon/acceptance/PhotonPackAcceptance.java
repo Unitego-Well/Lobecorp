@@ -1,13 +1,7 @@
 package org.unitego.lobecorp.client.photon.acceptance;
 
-import com.google.gson.GsonBuilder;
 import com.google.gson.Gson;
-import net.minecraft.server.packs.PackResources;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument.Kind;
-
-import java.util.List;
-
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.Platform;
@@ -16,14 +10,17 @@ import com.lowdragmc.photon.client.fx.fxpack.FXPacks;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackResources;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
+import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDependencyUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument.Kind;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.resource.DevelopmentResourceUtil;
 import org.unitego.lobecorp.util.resource.PhotonAcceptancePackResourcesUtil;
 
@@ -31,10 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
-import java.util.HexFormat;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /// 显式开发验收入口：只管理本次临时实例，来源/字节与运行状态分开记录，不替代视觉验收。

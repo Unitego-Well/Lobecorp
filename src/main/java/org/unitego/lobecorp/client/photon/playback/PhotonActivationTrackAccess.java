@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.client.photon.playback;
 
-import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import net.minecraft.nbt.CompoundTag;
+import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 
 import javax.annotation.Nullable;
 import java.util.List;

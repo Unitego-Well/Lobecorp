@@ -1,8 +1,7 @@
 package org.unitego.lobecorp.client.hud;
 
-import org.jspecify.annotations.NullMarked;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /// 浮点几何与最终像素对齐；布局和动画数据不因取整丢失精度。

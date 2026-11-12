@@ -4,24 +4,15 @@ import com.lowdragmc.lowdraglib2.editor.ui.View;
 import com.lowdragmc.lowdraglib2.editor.ui.ViewContainer;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TabView;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import dev.vfyjxf.taffy.style.FlexDirection;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.IdentityHashMap;
-import java.util.Map;
-
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TabView;
+import java.util.*;
 
 /// 制作面板沿用原编辑器停靠树；工程关闭和切换时只释放自身视图与预览。
 public class PhotonEditorDockedPanel extends View {
-	public enum Slot {
-		LEFT, RIGHT, CENTER, BOTTOM
-	}
-
 	public final UIElement contentContainer = new UIElement();
 	private final UIElement buttons = new UIElement();
 	private final Slot slot;
@@ -33,7 +24,6 @@ public class PhotonEditorDockedPanel extends View {
 	private boolean closed;
 	private Object group;
 	private boolean ownsGroup;
-
 	public PhotonEditorDockedPanel(String title, Slot slot) {
 		super(title);
 		this.slot = slot;
@@ -44,6 +34,30 @@ public class PhotonEditorDockedPanel extends View {
 		setCanRemove(true);
 		setFocusable(true);
 		setOnRemove(this::close);
+	}
+
+	private static void select(View view) {
+		var container = view.getViewContainer();
+		if (container != null) {
+			container.selectView(view);
+		}
+	}
+
+	private static ViewContainer container(FXEditor editor, Slot slot) {
+		return switch (slot) {
+			case LEFT -> editor.leftWindow.getLeftTop();
+			case RIGHT -> editor.rightWindow.getRightTop();
+			case CENTER -> editor.centerWindow.getLeftTop();
+			case BOTTOM -> editor.bottomWindow.getLeftTop();
+		};
+	}
+
+	public static void closeAll(FXEditor editor) {
+		for (var view : List.copyOf(editor.getViewFallbacks().keySet())) {
+			if (view instanceof PhotonEditorDockedPanel panel) {
+				panel.close();
+			}
+		}
 	}
 
 	public void addContent(UIElement element) {
@@ -129,22 +143,6 @@ public class PhotonEditorDockedPanel extends View {
 		}
 	}
 
-	private static void select(View view) {
-		var container = view.getViewContainer();
-		if (container != null) {
-			container.selectView(view);
-		}
-	}
-
-	private static ViewContainer container(FXEditor editor, Slot slot) {
-		return switch (slot) {
-			case LEFT -> editor.leftWindow.getLeftTop();
-			case RIGHT -> editor.rightWindow.getRightTop();
-			case CENTER -> editor.centerWindow.getLeftTop();
-			case BOTTOM -> editor.bottomWindow.getLeftTop();
-		};
-	}
-
 	public void close() {
 		if (closed) {
 			return;
@@ -177,11 +175,7 @@ public class PhotonEditorDockedPanel extends View {
 		view.removeSelf();
 	}
 
-	public static void closeAll(FXEditor editor) {
-		for (var view : List.copyOf(editor.getViewFallbacks().keySet())) {
-			if (view instanceof PhotonEditorDockedPanel panel) {
-				panel.close();
-			}
-		}
+	public enum Slot {
+		LEFT, RIGHT, CENTER, BOTTOM
 	}
 }

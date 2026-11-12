@@ -6,19 +6,19 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
+import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
-import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
-import net.minecraft.world.entity.LivingEntity;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -71,6 +71,10 @@ public class ConductorData extends SavedData {
 				& 0xFFFFFF;
 	}
 
+	private static String factionId(String team) {
+		return TEAM_FACTION_PREFIX + team;
+	}
+
 	public Map<String, Team> teams() {
 		Map<String, Team> snapshots = new LinkedHashMap<>();
 		for (String name : teams.keySet()) {
@@ -97,10 +101,6 @@ public class ConductorData extends SavedData {
 			}
 		}
 		return new Team(name, Set.copyOf(enemies), settings.forceLoad(), settings.color());
-	}
-
-	private static String factionId(String team) {
-		return TEAM_FACTION_PREFIX + team;
 	}
 
 	public Unit unit(UUID uuid) {
@@ -379,13 +379,6 @@ public class ConductorData extends SavedData {
 		return CombatData.get(server).allied(first, second);
 	}
 
-	private record TeamSettings(boolean forceLoad, int color) {
-		private static final Codec<TeamSettings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-				Codec.BOOL.fieldOf("force_load").forGetter(TeamSettings::forceLoad),
-				Codec.INT.fieldOf("color").forGetter(TeamSettings::color)
-		).apply(instance, TeamSettings::new));
-	}
-
 	public enum BehaviorState {
 		PATROL,
 		IDLE,
@@ -414,7 +407,7 @@ public class ConductorData extends SavedData {
 
 		private final BehaviorState behaviorState;
 
-		private ControlMode(BehaviorState behaviorState) {
+		ControlMode(BehaviorState behaviorState) {
 			this.behaviorState = behaviorState;
 		}
 
@@ -456,6 +449,13 @@ public class ConductorData extends SavedData {
 				default -> valueOf(value);
 			};
 		}
+	}
+
+	private record TeamSettings(boolean forceLoad, int color) {
+		private static final Codec<TeamSettings> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.BOOL.fieldOf("force_load").forGetter(TeamSettings::forceLoad),
+				Codec.INT.fieldOf("color").forGetter(TeamSettings::color)
+		).apply(instance, TeamSettings::new));
 	}
 
 	public record Team(String name, Set<String> enemies, boolean forceLoad, int color) {

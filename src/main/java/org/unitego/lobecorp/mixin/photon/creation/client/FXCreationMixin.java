@@ -7,10 +7,10 @@ import com.lowdragmc.photon.client.fx.FXRuntime;
 import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 
-@Mixin(value = FX.class, remap = false)
+@Mixin(value = FX.class)
 public class FXCreationMixin {
-    @WrapMethod(method = "createRuntime(Z)Lcom/lowdragmc/photon/client/fx/FXRuntime;")
-    private FXRuntime lobecorp$createFromDefinition(boolean deep, Operation<FXRuntime> original) {
-        return PhotonRuntimeFactory.create((FX) (Object) this, deep, () -> original.call(deep));
-    }
+	@WrapMethod(method = "createRuntime(Z)Lcom/lowdragmc/photon/client/fx/FXRuntime;")
+	private FXRuntime lobecorp$createFromDefinition(boolean deep, Operation<FXRuntime> original) {
+		return PhotonRuntimeFactory.create((FX) (Object) this, deep, () -> original.call(deep));
+	}
 }

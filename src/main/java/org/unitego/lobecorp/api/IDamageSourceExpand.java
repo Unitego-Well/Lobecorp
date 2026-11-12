@@ -4,9 +4,9 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 
-import java.util.Set;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 /// 通过 Interface Injection 暴露伤害类型标签读写；默认实现由 `DamageSourceMixin` 覆盖。
 public interface IDamageSourceExpand {

@@ -1,33 +1,17 @@
 package org.unitego.lobecorp.registry.translation;
 
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEmitterSpawnerTranslations;
-import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
-import org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations;
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslationKeys;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEmitterSpawnerTranslationKeys;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
 
 public interface PhotonTranslationKeys {
-	String PHOTON_MODEL_ENABLED_KEY = "photon.lobecorp.model.enabled";
-	String PHOTON_MODEL_DURATION_KEY = "photon.lobecorp.model.duration";
-	String PHOTON_MODEL_START_DELAY_KEY = "photon.lobecorp.model.start_delay";
-	String PHOTON_MODEL_LOOPING_KEY = "photon.lobecorp.model.looping";
-	String PHOTON_MODEL_PAUSE_KEY = "photon.lobecorp.model.pause";
-	String PHOTON_MODEL_CLIP_KEY = "photon.lobecorp.model.clip";
-	String PHOTON_MODEL_PLAYBACK_SPEED_KEY = "photon.lobecorp.model.playback_speed";
-	String PHOTON_MODEL_ANIMATION_OFFSET_KEY = "photon.lobecorp.model.animation_offset";
-	String PHOTON_MODEL_USE_REFERENCE_DIMENSIONS_KEY = "photon.lobecorp.model.use_reference_dimensions";
-	String PHOTON_MODEL_LENGTH_KEY = "photon.lobecorp.model.length";
-	String PHOTON_MODEL_WIDTH_KEY = "photon.lobecorp.model.width";
-	String PHOTON_MODEL_ANCHOR_KEY = "photon.lobecorp.model.anchor";
-	String PHOTON_MODEL_OPACITY_KEY = "photon.lobecorp.model.opacity";
-	String PHOTON_MODEL_OVERRIDE_RENDERER_KEY = "photon.lobecorp.model.override_renderer";
-	public String PHOTON_ANIMATION_TEXT = PhotonAnimationTranslations.PREFIX;
-	String PHOTON_EDITOR_TEXT = PhotonEditorTranslations.PREFIX;
-	String PHOTON_PERFORMANCE_TEXT = PhotonPerformanceTranslations.PREFIX;
-	String PHOTON_EMITTER_SPAWNER_TEXT = PhotonEmitterSpawnerTranslations.PREFIX;
-	public String PHOTON_MODEL_TEXT = PhotonModelTranslations.PREFIX;
-	public String PHOTON_EFFECT_LIBRARY_TEXT = PhotonEffectLibraryTranslations.TYPE;
+	String PHOTON_ANIMATION_TEXT = PhotonAnimationTranslationKeys.PREFIX;
+	String PHOTON_EDITOR_TEXT = PhotonEditorTranslationKeys.PREFIX;
+	String PHOTON_PERFORMANCE_TEXT = PhotonPerformanceTranslationKeys.PREFIX;
+	String PHOTON_EMITTER_SPAWNER_TEXT = PhotonEmitterSpawnerTranslationKeys.PREFIX;
+	String PHOTON_EFFECT_LIBRARY_TEXT = PhotonEffectLibraryTranslationKeys.TYPE;
 	/// 循环采样的时间偏移；单位 tick。
 	String PHOTON_CYCLE_TIME_OFFSET_AXES_KEY = "photon.lobecorp.cycle_time_offset.axes";
 	String PHOTON_CYCLE_TIME_OFFSET_AXES = TranslationRegistry.register(PHOTON_CYCLE_TIME_OFFSET_AXES_KEY, "Time offset (ticks)", "时间偏移（tick）");

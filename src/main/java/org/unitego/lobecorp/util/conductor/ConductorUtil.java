@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.control.IConductorUnitControl;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.registry.LcCapabilities;
+import org.unitego.lobecorp.registry.world.LcCapabilities;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 import java.util.Collection;

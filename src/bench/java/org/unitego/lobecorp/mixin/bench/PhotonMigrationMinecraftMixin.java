@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.bench.PhotonMigrationMatrixCapture;
 
 /// 仅新进入场景装载；采集入口早于Bench在世界可用后的setup。
-@Mixin(value = Minecraft.class, remap = false)
+@Mixin(value = Minecraft.class)
 public class PhotonMigrationMinecraftMixin {
 	@Inject(method = "renderFrame", at = @At("HEAD"))
 	private void lobecorp$hybridLoading(boolean advance, CallbackInfo callback) {

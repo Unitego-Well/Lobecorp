@@ -5,28 +5,17 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
-import org.jspecify.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
-import org.unitego.lobecorp.attachment.LcAnchorReference;
-import org.unitego.lobecorp.attachment.LcAttachmentSnapshot;
-import org.unitego.lobecorp.attachment.LcAttachments;
-import org.unitego.lobecorp.attachment.LcRenderAnchorReference;
-import org.unitego.lobecorp.attachment.LcTransform;
+import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.attachment.*;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.animation.LcClientAnimationResources;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItemSnapshot;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /// 服务端镜像与客户端局部绑定分区；网络全量替换不会释放本地创建的绑定。
 public class LcClientAttachments {

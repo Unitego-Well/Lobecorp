@@ -13,11 +13,10 @@ import com.geckolib.renderer.base.RenderPassInfo;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.animation.LcAnimationControllerRuntime.RotationHistory;
+import org.unitego.lobecorp.client.animation.LcAnimationLodStateAccess;
 import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil;
 
 import java.util.*;
-
-import org.unitego.lobecorp.client.animation.LcAnimationLodStateAccess;
 
 /// 采样并混合动画层的骨骼姿态，保留各通道的遮罩范围。
 public class LcAnimationPose {

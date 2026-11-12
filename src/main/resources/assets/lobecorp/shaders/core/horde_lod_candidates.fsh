@@ -34,6 +34,7 @@ bool inFrustum(mat4 viewProjection, vec3 point, float radius) {
     return true;
 }
 
+#ifndef HORDE_DISABLE_OCCLUSION
 float maximumDepth(ivec2 cell, int mip) {
     vec4 encoded = (mip & 1) == 0 ? texelFetch(HordeDepthEven, cell, mip)
             : texelFetch(HordeDepthOdd, cell, mip);
@@ -71,6 +72,8 @@ bool notOccluded(mat4 viewProjection, vec3 point, float radius) {
     return front <= farthest + 0.00001;
 }
 
+#endif
+
 void main() {
     int pixel = int(gl_FragCoord.y) * LodRange.x + int(gl_FragCoord.x);
     int ordinal = pixel / 2;
@@ -88,7 +91,9 @@ void main() {
         float radius = VisibilityShape.x * scalar(HordeMotion, (LodMotion.x + local) * LodMotion.y + 3);
         mat4 viewProjection = ProjMat * ViewRotation;
         if (distanceSquared < 16384.0 && inFrustum(viewProjection, relative, radius)
+#ifndef HORDE_DISABLE_OCCLUSION
                 && notOccluded(viewProjection, relative, radius)
+#endif
                 && scalar(HordeMotion, (LodMotion.x + local) * LodMotion.y + 4) >= 0.0) {
             float edge = scalar(HordeMotion, (LodMotion.x + local) * LodMotion.y + 8);
             bits = pixel % 2 == 0 ? hordeLodKey(distanceSquared, edge) : uint(ordinal);

@@ -2,6 +2,7 @@
 #moj_import <lobecorp:horde_lod_priority.glsl>
 const int HORDE_MOTION_VALUES = 9;
 const float HORDE_HEADING_STEP = 0.125;
+const int HORDE_ROUTE_WORDS = 6;
 
 // 16个vec4，与HordeGpuRenderer.PARAMETER_BYTES一致。
 layout(std140) uniform HordeParameters {
@@ -44,33 +45,46 @@ layout(std140) uniform HordeNearTerrainParameters {
 uniform sampler2D HordeNearTerrain;
 
 vec2 hordeNearGround(vec2 localXZ) {
-    vec2 worldXZ = localXZ + vec2(WorldSection.x, WorldSection.z) * 16.0 + WidthFraction.yw;
-    ivec2 cell = ivec2(floor(worldXZ));
+    ivec2 cell = ivec2(floor(localXZ + WidthFraction.yw)) + ivec2(WorldSection.xz) * 16;
     if (any(lessThan(cell, NearTerrainInfo.xy))
             || any(greaterThanEqual(cell, NearTerrainInfo.xy + ivec2(NearTerrainInfo.z)))) {
         return vec2(0.0, -1.0);
     }
     ivec2 uv = ((cell % NearTerrainInfo.z) + NearTerrainInfo.z) % NearTerrainInfo.z;
     int at = (uv.y * NearTerrainInfo.z + uv.x) * NearTerrainInfo.w;
-    float y = scalar(HordeNearTerrain, at);
-    if (isnan(y) || scalar(HordeNearTerrain, at + 2) != float(cell.x)
-            || scalar(HordeNearTerrain, at + 3) != float(cell.y)) {
+    uint encoded = rawWord(HordeNearTerrain, at);
+    float y = uintBitsToFloat(encoded & 0xfffffffeu);
+    uint tag = (uint(cell.x) & 65535u) | ((uint(cell.y) & 65535u) << 16u);
+    if (isnan(y) || rawWord(HordeNearTerrain, at + 1) != tag) {
         return vec2(0.0, -1.0);
     }
-    return vec2(y - (WorldSection.y * 16.0 + WidthFraction.z), scalar(HordeNearTerrain, at + 1));
+    return vec2(y - (WorldSection.y * 16.0 + WidthFraction.z), float(encoded & 1u));
 }
 
 // 高模只消费每材质128容量的密集表；-1槽在任何动画读取前退出。
+#ifdef HORDE_LAYER_MAP
+uniform sampler2D HordeVisibleIDs;
+uniform sampler2D HordeVisibleFlags;
+layout(std140) uniform HordeLayerDraw { ivec4 LayerDrawInfo; };
+#endif
 int hordeLodInstance(int instance) {
+#ifndef HORDE_NO_DETAIL_LOD
     if (DebugInfo.z > 0.5) {
-        return integer(HordeLodCompact, (int(DebugInfo.z) - 1) * 128 + MotionInfo.x + instance);
+        int selected = integer(HordeLodCompact, (int(DebugInfo.z) - 1) * 128 + MotionInfo.x + instance);
+#ifdef HORDE_LAYER_MAP
+        if (selected >= 0 && integer(HordeVisibleFlags, selected) == 0) return -1;
+#endif
+        return selected;
     }
+#endif
+#ifdef HORDE_LAYER_MAP
+    int index = integer(HordeVisibleIDs, LayerDrawInfo.x + instance);
+#else
     int index = MotionInfo.x + instance;
-    if (DebugInfo.w > 0.5) {
-        if (integer(HordeLodSelected, index) != 0) {
-            return -1;
-        }
-    }
+#endif
+#ifndef HORDE_NO_DETAIL_LOD
+    if (DebugInfo.w > 0.5 && integer(HordeLodSelected, index) != 0) return -1;
+#endif
     return index;
 }
 
@@ -103,12 +117,12 @@ float motionDifference(float before, float after) {
 vec2 motionXZ(float station, float lateral, float total) {
     float s = clamp(station, 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
-    int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
-    while (node + 2 < count && scalar(HordeRoute, (node + 1) * 16 + 3) <= s) {
+    int node = int(scalar(HordeRoute, count * HORDE_ROUTE_WORDS + int(floor(s))));
+    while (node + 2 < count && scalar(HordeRoute, (node + 1) * HORDE_ROUTE_WORDS + 3) <= s) {
         node++;
     }
-    int a = node * 16;
-    int b = a + 16;
+    int a = node * HORDE_ROUTE_WORDS;
+    int b = a + HORDE_ROUTE_WORDS;
     float first = scalar(HordeRoute, a + 3);
     float last = scalar(HordeRoute, b + 3);
     float weight = clamp((s - first) / max(last - first, 0.0001), 0.0, 1.0);
@@ -127,12 +141,12 @@ vec2 motionXZ(float station, float lateral, float total) {
 vec3 location(float station, float lateral) {
     float s = clamp(station, 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
-    int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
-    while (node + 2 < count && scalar(HordeRoute, (node + 1) * 16 + 3) <= s) {
+    int node = int(scalar(HordeRoute, count * HORDE_ROUTE_WORDS + int(floor(s))));
+    while (node + 2 < count && scalar(HordeRoute, (node + 1) * HORDE_ROUTE_WORDS + 3) <= s) {
         node++;
     }
-    int a = node * 16;
-    int b = a + 16;
+    int a = node * HORDE_ROUTE_WORDS;
+    int b = a + HORDE_ROUTE_WORDS;
     float first = scalar(HordeRoute, a + 3);
     float last = scalar(HordeRoute, b + 3);
     float weight = clamp((s - first) / max(last - first, 0.0001), 0.0, 1.0);
@@ -151,9 +165,9 @@ vec3 location(float station, float lateral) {
 vec2 routeForward(float station) {
     int count = int(LightRoute.y);
     float s = clamp(station, 0.0, SpacingLength.w);
-    int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
-    while (node + 2 < count && scalar(HordeRoute, (node + 1) * 16 + 3) <= s) node++;
-    int a = node * 16, b = a + 16;
+    int node = int(scalar(HordeRoute, count * HORDE_ROUTE_WORDS + int(floor(s))));
+    while (node + 2 < count && scalar(HordeRoute, (node + 1) * HORDE_ROUTE_WORDS + 3) <= s) node++;
+    int a = node * HORDE_ROUTE_WORDS, b = a + HORDE_ROUTE_WORDS;
     float first = scalar(HordeRoute, a + 3), last = scalar(HordeRoute, b + 3);
     float weight = clamp((s - first) / max(last - first, 0.0001), 0.0, 1.0);
     vec2 forward = mix(vec2(scalar(HordeRoute, a + 4), scalar(HordeRoute, a + 5)),
@@ -245,9 +259,9 @@ vec3 movingLocation(float station, float lateral, float time, float seed) {
 float motionGroundHeight(float station, float lateral, float lateralDelta, float seed) {
     float s = clamp(station + motionDrift(OriginTime.w, seed), 0.0, SpacingLength.w);
     int count = int(LightRoute.y);
-    int node = int(scalar(HordeRoute, count * 16 + int(floor(s))));
-    while (node + 2 < count && scalar(HordeRoute, (node + 1) * 16 + 3) <= s) node++;
-    int a = node * 16, b = a + 16;
+    int node = int(scalar(HordeRoute, count * HORDE_ROUTE_WORDS + int(floor(s))));
+    while (node + 2 < count && scalar(HordeRoute, (node + 1) * HORDE_ROUTE_WORDS + 3) <= s) node++;
+    int a = node * HORDE_ROUTE_WORDS, b = a + HORDE_ROUTE_WORDS;
     float first = scalar(HordeRoute, a + 3), last = scalar(HordeRoute, b + 3);
     float weight = clamp((s - first) / max(last - first, 0.0001), 0.0, 1.0);
     float base = lateral;

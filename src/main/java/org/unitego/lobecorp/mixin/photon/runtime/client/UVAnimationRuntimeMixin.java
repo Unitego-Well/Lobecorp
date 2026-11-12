@@ -3,9 +3,9 @@ package org.unitego.lobecorp.mixin.photon.runtime.client;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.lowdragmc.photon.client.gameobject.emitter.data.UVAnimationSetting;
 import com.lowdragmc.photon.client.gameobject.particle.IParticle;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 

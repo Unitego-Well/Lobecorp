@@ -8,16 +8,16 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.clock.ClockTimeMarkers;
-import net.minecraft.world.level.gamerules.GameRules;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.registry.world.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
@@ -47,15 +47,6 @@ public class QueenBeamPerformanceFixture {
 	private final ResourceKey<Level> dimension;
 	private final List<Member> members;
 	private final boolean converging;
-
-	public record Member(UUID queenUuid, UUID targetUuid, int queenId, double targetHealth, Vec3 targetSpawn) {
-	}
-
-	public record CastResult(UUID queenUuid, int queenId, String status, boolean started) {
-	}
-
-	private record Pair(TheQueenOfHatred queen, LivingEntity target, IEntitySkillAccess skills, Vec3 targetSpawn) {
-	}
 
 	private QueenBeamPerformanceFixture(MinecraftServer ownerServer, ResourceKey<Level> dimension, List<Member> members, boolean converging) {
 		this.ownerServer = ownerServer;
@@ -211,6 +202,110 @@ public class QueenBeamPerformanceFixture {
 		return new QueenBeamPerformanceFixture(server, level.dimension(), members, converging);
 	}
 
+	private static void clearMembers(ServerLevel level, List<Member> members) {
+		RuntimeException problem = null;
+
+		for (var member : members) {
+			if (level.getEntity(member.queenUuid()) instanceof TheQueenOfHatred queen && queen.entityTags().contains(FIXTURE_TAG)) {
+				try {
+					var access = IEntitySkillAccess.get(queen);
+
+					if (access != null) {
+						access.cancelAll(true);
+					}
+				} catch (RuntimeException failure) {
+					if (problem == null) {
+						problem = failure;
+					} else {
+						problem.addSuppressed(failure);
+					}
+				} finally {
+					queen.discard();
+				}
+			}
+
+			var target = level.getEntity(member.targetUuid());
+
+			if (target != null && target.entityTags().contains(FIXTURE_TAG)) {
+				target.discard();
+			}
+		}
+
+		if (problem != null) {
+			throw problem;
+		}
+	}
+
+	/// 只清理带夹具 tag 的遗留对象；调用前世界路径已由 prepareBenchWorld 校验，归属不明实体不删除。
+	public static int discardOrphanedFixtures(ServerLevel level) {
+		var orphaned = new ArrayList<Entity>();
+
+		for (var entity : level.getAllEntities()) {
+			if (entity.entityTags().contains(FIXTURE_TAG)) {
+				orphaned.add(entity);
+			}
+		}
+
+		// 丢弃会修改原始实体集合，收集完归属明确的对象后再删除。
+		for (var entity : orphaned) {
+			entity.discard();
+		}
+
+		return orphaned.size();
+	}
+
+	/// 统计夹具原点附近实体；带 tag 的计数与归属不明样本分开，供报告核对背景实体来源。
+	public static JsonObject census(ServerLevel level, Vec3 center, double radius) {
+		var result = new JsonObject();
+		var counts = new JsonObject();
+		var foreign = new JsonArray();
+		double limit = radius * radius;
+		int total = 0;
+		int tagged = 0;
+		int foreignCount = 0;
+
+		for (var entity : level.getAllEntities()) {
+			if (entity.position().distanceToSqr(center) > limit) {
+				continue;
+			}
+
+			total++;
+			String type = EntityType.getKey(entity.getType()).toString();
+			counts.addProperty(type, counts.has(type) ? counts.get(type).getAsInt() + 1 : 1);
+
+			if (entity.entityTags().contains(FIXTURE_TAG)) {
+				tagged++;
+				continue;
+			}
+
+			foreignCount++;
+
+			if (foreign.size() < 50) {
+				var item = new JsonObject();
+				item.addProperty("type", type);
+				item.addProperty("uuid", entity.getUUID().toString());
+				item.addProperty("x", entity.getX());
+				item.addProperty("y", entity.getY());
+				item.addProperty("z", entity.getZ());
+				foreign.add(item);
+			}
+		}
+
+		result.addProperty("radius", radius);
+		result.addProperty("total_near_origin", total);
+		result.add("counts", counts);
+		result.addProperty("fixture_tagged", tagged);
+		result.addProperty("foreign", foreignCount);
+		result.add("foreign_sample", foreign);
+		return result;
+	}
+
+	private static void requireServerThread(MinecraftServer server) {
+		if (!server.isSameThread()) {
+			throw new IllegalStateException("profile_fixture_requires_server_thread");
+		}
+	}
+
 	public List<Member> members() {
 		return members;
 	}
@@ -273,104 +368,6 @@ public class QueenBeamPerformanceFixture {
 		}
 	}
 
-	private static void clearMembers(ServerLevel level, List<Member> members) {
-		RuntimeException problem = null;
-
-		for (var member : members) {
-			if (level.getEntity(member.queenUuid()) instanceof TheQueenOfHatred queen && queen.entityTags().contains(FIXTURE_TAG)) {
-				try {
-					var access = IEntitySkillAccess.get(queen);
-
-					if (access != null) {
-						access.cancelAll(true);
-					}
-				} catch (RuntimeException failure) {
-					if (problem == null) {
-						problem = failure;
-					} else {
-						problem.addSuppressed(failure);
-					}
-				} finally {
-					queen.discard();
-				}
-			}
-
-			var target = level.getEntity(member.targetUuid());
-
-			if (target != null && target.entityTags().contains(FIXTURE_TAG)) {
-				target.discard();
-			}
-		}
-
-		if (problem != null) {
-			throw problem;
-		}
-	}
-
-	/// 只清理带夹具 tag 的遗留对象；调用前世界路径已由 prepareBenchWorld 校验，归属不明实体不删除。
-    public static int discardOrphanedFixtures(ServerLevel level) {
-        var orphaned = new ArrayList<Entity>();
-
-        for (var entity : level.getAllEntities()) {
-            if (entity.entityTags().contains(FIXTURE_TAG)) {
-                orphaned.add(entity);
-            }
-        }
-
-        // 丢弃会修改原始实体集合，收集完归属明确的对象后再删除。
-        for (var entity : orphaned) {
-            entity.discard();
-        }
-
-        return orphaned.size();
-    }
-
-	/// 统计夹具原点附近实体；带 tag 的计数与归属不明样本分开，供报告核对背景实体来源。
-	public static JsonObject census(ServerLevel level, Vec3 center, double radius) {
-		var result = new JsonObject();
-		var counts = new JsonObject();
-		var foreign = new JsonArray();
-		double limit = radius * radius;
-		int total = 0;
-		int tagged = 0;
-		int foreignCount = 0;
-
-		for (var entity : level.getAllEntities()) {
-			if (entity.position().distanceToSqr(center) > limit) {
-				continue;
-			}
-
-			total++;
-			String type = EntityType.getKey(entity.getType()).toString();
-			counts.addProperty(type, counts.has(type) ? counts.get(type).getAsInt() + 1 : 1);
-
-			if (entity.entityTags().contains(FIXTURE_TAG)) {
-				tagged++;
-				continue;
-			}
-
-			foreignCount++;
-
-			if (foreign.size() < 50) {
-				var item = new JsonObject();
-				item.addProperty("type", type);
-				item.addProperty("uuid", entity.getUUID().toString());
-				item.addProperty("x", entity.getX());
-				item.addProperty("y", entity.getY());
-				item.addProperty("z", entity.getZ());
-				foreign.add(item);
-			}
-		}
-
-		result.addProperty("radius", radius);
-		result.addProperty("total_near_origin", total);
-		result.add("counts", counts);
-		result.addProperty("fixture_tagged", tagged);
-		result.addProperty("foreign", foreignCount);
-		result.add("foreign_sample", foreign);
-		return result;
-	}
-
 	private void requireOwner(MinecraftServer server) {
 		requireServerThread(server);
 
@@ -379,9 +376,12 @@ public class QueenBeamPerformanceFixture {
 		}
 	}
 
-	private static void requireServerThread(MinecraftServer server) {
-		if (!server.isSameThread()) {
-			throw new IllegalStateException("profile_fixture_requires_server_thread");
-		}
+	public record Member(UUID queenUuid, UUID targetUuid, int queenId, double targetHealth, Vec3 targetSpawn) {
+	}
+
+	public record CastResult(UUID queenUuid, int queenId, String status, boolean started) {
+	}
+
+	private record Pair(TheQueenOfHatred queen, LivingEntity target, IEntitySkillAccess skills, Vec3 targetSpawn) {
 	}
 }

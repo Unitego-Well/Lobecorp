@@ -37,20 +37,45 @@ public class HordeDepthPyramid implements AutoCloseable {
 	private int width;
 	private int height;
 	private int levels;
+	private boolean initialized;
+	private int sourceWidth;
+	private int sourceHeight;
+	private int sourceMip;
+	private boolean sourceReverse;
 
 	public static boolean precompile() {
 		return RenderSystem.getDevice().precompilePipeline(REDUCE).isValid();
 	}
 
+	private static int nextPowerOfTwo(int value) {
+		return value <= 1 ? 1 : Integer.highestOneBit(value - 1) * 2;
+	}
+
 	public void prepare(GpuTextureView sceneDepth, boolean reverse) {
 		// 当前OpenGL后端逐级直接右移宽高；正方形保证完整mip链的末级仍为1×1。
-		int side = nextPowerOfTwo(Math.ceilDiv(Math.max(sceneDepth.getWidth(0), sceneDepth.getHeight(0)), 2));
+		int nextSourceWidth = sceneDepth.getWidth(0);
+		int nextSourceHeight = sceneDepth.getHeight(0);
+		int nextSourceMip = sceneDepth.baseMipLevel();
+		int side = nextPowerOfTwo(Math.ceilDiv(Math.max(nextSourceWidth, nextSourceHeight), 2));
 		ensure(side, side);
+		boolean fullRefresh = !HordeRenderPolicy.depthScissor() || !initialized || nextSourceMip != 0
+				|| sourceWidth != nextSourceWidth || sourceHeight != nextSourceHeight
+				|| sourceMip != nextSourceMip || sourceReverse != reverse;
+		// 中断的链不能在下次复用未完成的padding。
+		initialized = false;
+		int validWidth = nextSourceWidth;
+		int validHeight = nextSourceHeight;
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		var nearest = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		for (int level = 0; level < levels; level++) {
+			validWidth = Math.ceilDiv(validWidth, 2);
+			validHeight = Math.ceilDiv(validHeight, 2);
 			boolean raw = level == 0;
 			int parity = level & 1;
+			int physicalWidth = Math.max(1, width >> level);
+			int physicalHeight = Math.max(1, height >> level);
+			int updatedWidth = fullRefresh ? physicalWidth : Math.min(validWidth, physicalWidth);
+			int updatedHeight = fullRefresh ? physicalHeight : Math.min(validHeight, physicalHeight);
 			upload.clear();
 			upload.putInt(raw ? sceneDepth.baseMipLevel() : level - 1)
 					.putInt(raw ? 1 : 0).putInt(reverse ? 1 : 0).putInt(0).flip();
@@ -60,17 +85,25 @@ public class HordeDepthPyramid implements AutoCloseable {
 				HordeIrisShadows.setNativePipeline(pass, REDUCE);
 				pass.setUniform("HordeDepthParameters", parameters);
 				pass.bindTexture("HordeDepthSource", raw ? sceneDepth : views[1 - parity], nearest);
-				pass.setViewport(0, 0, Math.max(1, width >> level), Math.max(1, height >> level));
+				pass.setViewport(0, 0, physicalWidth, physicalHeight);
+				if (fullRefresh) {
+					pass.disableScissor();
+				} else {
+					pass.enableScissor(0, 0, updatedWidth, updatedHeight);
+				}
 				pass.draw(0, 3);
 			}
+			HordeRenderMetrics.add(HordeRenderMetrics.Counter.DEPTH_TARGET_PIXELS, (long) physicalWidth * physicalHeight);
+			HordeRenderMetrics.add(HordeRenderMetrics.Counter.DEPTH_UPDATED_PIXELS, (long) updatedWidth * updatedHeight);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, PARAMETER_BYTES);
 		}
-	}
-
-	private static int nextPowerOfTwo(int value) {
-		return value <= 1 ? 1 : Integer.highestOneBit(value - 1) * 2;
+		sourceWidth = nextSourceWidth;
+		sourceHeight = nextSourceHeight;
+		sourceMip = nextSourceMip;
+		sourceReverse = reverse;
+		initialized = true;
 	}
 
 	// 跨帧纹理由本实例数组持有，重建和close统一释放。
@@ -115,6 +148,11 @@ public class HordeDepthPyramid implements AutoCloseable {
 
 	@Override
 	public void close() {
+		initialized = false;
+		sourceWidth = 0;
+		sourceHeight = 0;
+		sourceMip = 0;
+		sourceReverse = false;
 		if (attachments != null) {
 			for (var attachment : attachments) {
 				if (attachment != null) {

@@ -18,6 +18,10 @@ public record LcSkeletalPose(Map<String, LcTransform> bones, Map<String, Vec3> e
 		this(bones, Map.of());
 	}
 
+	public static LcSkeletalPose empty() {
+		return new LcSkeletalPose(Map.of());
+	}
+
 	public Vec3 rotationAngles(String bone) {
 		Vec3 angles = eulerRotations.get(bone);
 
@@ -37,10 +41,6 @@ public record LcSkeletalPose(Map<String, LcTransform> bones, Map<String, Vec3> e
 		values.put(bone, new LcTransform(transform.position(),
 				transform.rotation().rotationZYX((float) angles.z, (float) angles.y, (float) angles.x), transform.scale()));
 		return new LcSkeletalPose(values, result);
-	}
-
-	public static LcSkeletalPose empty() {
-		return new LcSkeletalPose(Map.of());
 	}
 
 	public LcTransform get(String bone) {

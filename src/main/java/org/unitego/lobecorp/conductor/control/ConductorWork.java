@@ -7,14 +7,14 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.world.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.world.entity.ai.LcSensorTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.util.entity.ai.SweeperWorkUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.ReassembleSkill;
-import org.unitego.lobecorp.util.entity.ai.SweeperWorkUtil;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 import java.util.Comparator;
 import java.util.HashSet;
@@ -132,9 +132,9 @@ public final class ConductorWork {
 		private final boolean reassemble;
 		// 本次工作中不再尝试的目标，目标刷新时保留。
 		private final Set<UUID> skipped = new HashSet<>();
+		private final SweeperWorkUtil.Approach approach = new SweeperWorkUtil.Approach();
 		// 当前目标 UUID，工作时按 UUID 从世界解析实体。
 		private UUID target;
-		private final SweeperWorkUtil.Approach approach = new SweeperWorkUtil.Approach();
 		// 下一次允许尝试施放的游戏时间。
 		private long retryAt;
 

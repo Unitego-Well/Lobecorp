@@ -53,6 +53,44 @@ public record LcPlayerModelPose(Map<String, PartPose> parts) {
 		return new LcPlayerModelPose(values);
 	}
 
+	public static LcTransform transform(PartPose pose) {
+		return new LcTransform(new Vec3(pose.x(), pose.y(), pose.z()).scale(1.0 / 16),
+				rotation(pose), new Vec3(pose.xScale(), pose.yScale(), pose.zScale()));
+	}
+
+	private static float scaled(float current, float before, float after, double weight) {
+		return before == 0 ? current + (after - before) * (float) weight
+				: current * lerp(1, after / before, weight);
+	}
+
+	private static Vector3f nearby(double x, double y, double z, PartPose reference) {
+		return new Vector3f(nearest(x, reference.xRot()), nearest(y, reference.yRot()), nearest(z, reference.zRot()));
+	}
+
+	private static float nearest(double angle, float reference) {
+		return (float) (angle + Math.rint((reference - angle) / (Math.PI * 2)) * (Math.PI * 2));
+	}
+
+	private static double distance(Vector3f angles, PartPose reference) {
+		return angles.distanceSquared(reference.xRot(), reference.yRot(), reference.zRot());
+	}
+
+	public static PartPose pose(LcTransform transform) {
+		var angles = transform.rotation().getEulerAnglesZYX(new Vector3f());
+		var position = transform.position().scale(16);
+		var scale = transform.scale();
+		return new PartPose((float) position.x, (float) position.y, (float) position.z,
+				angles.x, angles.y, angles.z, (float) scale.x, (float) scale.y, (float) scale.z);
+	}
+
+	private static Quaternionf rotation(PartPose pose) {
+		return new Quaternionf().rotationZYX(pose.zRot(), pose.yRot(), pose.xRot());
+	}
+
+	private static float lerp(float first, float second, double weight) {
+		return (float) (first + (second - first) * weight);
+	}
+
 	public void apply(PlayerModel model) {
 		var targets = parts(model);
 		parts.forEach((name, pose) -> {
@@ -101,17 +139,6 @@ public record LcPlayerModelPose(Map<String, PartPose> parts) {
 		}
 
 		return new BlendSample(pose, rotations);
-	}
-
-	public record BlendSample(LcPlayerModelPose pose, Map<String, LcRotationTransitionUtil.State> rotations) {
-		public BlendSample {
-			rotations = Map.copyOf(rotations);
-		}
-	}
-
-	public static LcTransform transform(PartPose pose) {
-		return new LcTransform(new Vec3(pose.x(), pose.y(), pose.z()).scale(1.0 / 16),
-				rotation(pose), new Vec3(pose.xScale(), pose.yScale(), pose.zScale()));
 	}
 
 	/// 仅用于已明确归属的原链阶段；旋转按 ModelPart 的 Euler 字段增量应用。
@@ -164,36 +191,9 @@ public record LcPlayerModelPose(Map<String, PartPose> parts) {
 		return new LcPlayerModelPose(values);
 	}
 
-	private static float scaled(float current, float before, float after, double weight) {
-		return before == 0 ? current + (after - before) * (float) weight
-				: current * lerp(1, after / before, weight);
-	}
-
-	private static Vector3f nearby(double x, double y, double z, PartPose reference) {
-		return new Vector3f(nearest(x, reference.xRot()), nearest(y, reference.yRot()), nearest(z, reference.zRot()));
-	}
-
-	private static float nearest(double angle, float reference) {
-		return (float) (angle + Math.rint((reference - angle) / (Math.PI * 2)) * (Math.PI * 2));
-	}
-
-	private static double distance(Vector3f angles, PartPose reference) {
-		return angles.distanceSquared(reference.xRot(), reference.yRot(), reference.zRot());
-	}
-
-	public static PartPose pose(LcTransform transform) {
-		var angles = transform.rotation().getEulerAnglesZYX(new Vector3f());
-		var position = transform.position().scale(16);
-		var scale = transform.scale();
-		return new PartPose((float) position.x, (float) position.y, (float) position.z,
-				angles.x, angles.y, angles.z, (float) scale.x, (float) scale.y, (float) scale.z);
-	}
-
-	private static Quaternionf rotation(PartPose pose) {
-		return new Quaternionf().rotationZYX(pose.zRot(), pose.yRot(), pose.xRot());
-	}
-
-	private static float lerp(float first, float second, double weight) {
-		return (float) (first + (second - first) * weight);
+	public record BlendSample(LcPlayerModelPose pose, Map<String, LcRotationTransitionUtil.State> rotations) {
+		public BlendSample {
+			rotations = Map.copyOf(rotations);
+		}
 	}
 }

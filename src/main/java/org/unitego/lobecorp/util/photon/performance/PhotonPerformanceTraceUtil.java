@@ -1,23 +1,19 @@
 package org.unitego.lobecorp.util.photon.performance;
 
 import com.sun.management.ThreadMXBean;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.management.ManagementFactory;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.function.Consumer;
+import java.util.*;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /// 同 JVM 的有界诊断记录；不引用客户端类，服务端标记不改变业务载荷或执行线程。
 public class PhotonPerformanceTraceUtil {
@@ -55,163 +51,6 @@ public class PhotonPerformanceTraceUtil {
 	private static final ThreadLocal<LocalState> LOCAL = ThreadLocal.withInitial(LocalState::new);
 	private static volatile @Nullable Session active;
 
-	public enum Mode {
-		OVERVIEW, DETAIL, GPU
-	}
-
-	public enum LimitReason {
-		NODES, THREADS, AGGREGATES, COUNTERS, IMPORTANT_MARKS, DEPTH
-	}
-
-	public record Limit(LimitReason reason, long timeNs, int frame) {
-	}
-
-	public record Quality(long deniedNodeRequests, long deniedThreadRequests, long droppedImportantMarks,
-	                      long droppedRawSpans, long droppedDepthSpans, long deniedAggregateRequests,
-	                      long deniedCounterRequests, @Nullable Limit limit) {
-	}
-
-	public enum Stage {
-		RENDER(false), EXTRACT(false), FX_CREATE(false), FX_COPY(false), FX_EMIT(false), FX_RESET(false),
-		OBJECT_TICK(true), OBJECT_FRAME(true), OBJECT_EXTRACT(true), GEOMETRY(true),
-		MODEL_PREPARE(true), MODEL_SAMPLE(true), MODEL_POSE(true), MODEL_PART(true), MATERIAL(true),
-		UPLOAD(true), DRAW(true), BLOOM(false), ANIMATION(true), TRACK(true), CURVE(true),
-		SEEK(false), REPLAY(false), UI_INPUT(false), UI_LAYOUT(true), UI_RENDER(true),
-		MANUAL_INPUT(false), COMMAND_SEND(false), COMMAND_HANDLE(false), SKILL(false),
-		CLIENT_PHASE(false), RESOURCE_LOAD(false), PREWARM(false), CLEANUP(false), EXPORT(false), ANIMATION_FRAME(true);
-
-		private boolean detailed;
-
-		private Stage(boolean detailed) {
-			this.detailed = detailed;
-		}
-	}
-
-	public enum Metric {
-		LIVE_PARTICLES, BORN_PARTICLES, DRAW_JOBS, VERTICES, TRIANGLES, INPUT_VERTICES, INPUT_TRIANGLES, SUBMITTED_TRIANGLES, UPLOADED_BYTES,
-		CACHE_HIT, CACHE_MISS, REQUESTS, COALESCED_REQUESTS, RESET_COUNT,
-		REPLAY_REQUESTED_TICKS, REPLAY_TICKS, FULL_SIMULATION_TICKS, FAST_SIMULATION_TICKS,
-		PREPARED_REMAINING, PREPARED_HIT, PREPARED_MISS, ACTIVE_TRACKS, KEYFRAMES,
-		GUI_ELEMENTS, PIPELINE_CREATES, BUFFER_BYTES, BORROWED_BUFFERS
-	}
-
-	public record Node(int id, int parent, String kind, String name, String definitionId, String resource) {
-	}
-
-	public record Context(int node, int owner) {
-	}
-
-	public record Mark(long timeNs, int frame, long threadId, Stage stage, int node,
-	                   String code, String detail, double value, double secondary) {
-	}
-
-	public record Event(long id, long parent, int frame, int node, Stage stage, int generation, double localTime,
-	                    long startNs, long endNs,
-	                    long selfNs, long allocatedBytes, long selfAllocatedBytes, long threadCpuNs, int flags) {
-		public boolean completed() {
-			return (flags & COMPLETED) != 0;
-		}
-
-		public boolean failed() {
-			return (flags & FAILED) != 0;
-		}
-	}
-
-	public record Aggregate(long threadId, int node, Stage stage, long calls, long inclusiveNs, long selfNs,
-	                        long maximumNs, long allocatedBytes, long selfAllocatedBytes, long cpuNs,
-	                        long allocationSamples, long cpuSamples, long failures, @Nullable Event maximumEvent) {
-	}
-
-	public record Counter(long threadId, int node, Metric metric, long samples, long total, long last, long maximum) {
-	}
-
-	public record View(long sessionId, String label, Mode mode, long startedNs, Instant startedAt, int frame,
-	                   long frameOriginNs, List<Node> nodes, List<Aggregate> aggregates, List<Counter> counters,
-	                   List<Mark> marks, long dropped, long overwritten, long incomplete, @Nullable String problem,
-	                   Quality quality, List<Context> contexts) {
-	}
-
-	public record Capture(View view, String reason, long finishedNs, List<ThreadCapture> threads) {
-	}
-
-	public record Retention(long threadId, String threadName, long firstNs, long lastNs,
-	                        long completed, long incomplete, long overwritten, long dropped) {
-	}
-
-	/// 冻结后只提供逐条读取，导出不额外复制整套事件数组。
-	public static class ThreadCapture {
-		private Buffer buffer;
-
-		private ThreadCapture(Buffer buffer) {
-			this.buffer = buffer;
-		}
-
-		public long threadId() {
-			return buffer.threadId;
-		}
-
-		public String threadName() {
-			return buffer.threadName;
-		}
-
-		public void forEachEvent(Consumer<Event> consumer) {
-			visit(Long.MIN_VALUE, Long.MAX_VALUE, false, consumer);
-		}
-
-		/// 只为相交的冻结事件构建记录；不按开始时帧号猜测跨帧归属。
-		public void forEachEvent(long fromNs, long toNs, Consumer<Event> consumer) {
-			visit(fromNs, toNs, true, consumer);
-		}
-
-		public Retention retention() {
-			long firstNs = Long.MAX_VALUE;
-			long lastNs = Long.MIN_VALUE;
-			long completed = 0;
-			long incomplete = 0;
-			long first = Math.max(1, buffer.sequence - EVENTS_PER_THREAD + 1);
-			for (long sequence = first; sequence <= buffer.sequence; sequence++) {
-				int index = (int) sequence & EVENT_MASK;
-				if (buffer.ids[index] != buffer.token(sequence)) {
-					continue;
-				}
-				firstNs = Math.min(firstNs, buffer.starts[index]);
-				lastNs = Math.max(lastNs, Math.max(buffer.starts[index], buffer.ends[index]));
-				if ((buffer.flags[index] & COMPLETED) != 0) {
-					completed++;
-				} else {
-					incomplete++;
-				}
-			}
-			return new Retention(buffer.threadId, buffer.threadName,
-					firstNs == Long.MAX_VALUE ? -1 : firstNs, lastNs == Long.MIN_VALUE ? -1 : lastNs,
-					completed, incomplete, buffer.overwritten, buffer.dropped);
-		}
-
-		private void visit(long fromNs, long toNs, boolean filter, Consumer<Event> consumer) {
-			long first = Math.max(1, buffer.sequence - EVENTS_PER_THREAD + 1);
-
-			for (long sequence = first; sequence <= buffer.sequence; sequence++) {
-				int index = (int) sequence & EVENT_MASK;
-				if (buffer.ids[index] != buffer.token(sequence)) {
-					continue;
-				}
-
-				if (Thread.currentThread().isInterrupted()) {
-					throw new CancellationException();
-				}
-				if (filter && (buffer.starts[index] >= toNs
-						|| (buffer.flags[index] & COMPLETED) != 0 && (buffer.ends[index] < fromNs || buffer.ends[index] == fromNs && buffer.starts[index] < fromNs))) {
-					continue;
-				}
-
-				consumer.accept(new Event(buffer.ids[index], buffer.parents[index], buffer.frames[index],
-						buffer.nodes[index], STAGES[buffer.stages[index]], buffer.generations[index], buffer.localTimes[index], buffer.starts[index],
-						buffer.ends[index], buffer.self[index], buffer.allocations[index],
-						buffer.selfAllocations[index], buffer.cpu[index], buffer.flags[index]));
-			}
-		}
-	}
-
 	public static boolean active() {
 		var session = active;
 		return session != null && session.accepting && session.problem == null && session.limit == null;
@@ -248,7 +87,6 @@ public class PhotonPerformanceTraceUtil {
 			session.frame = frame;
 		}
 	}
-
 
 	public static int currentNode() {
 		var buffer = LOCAL.get().buffer.get();
@@ -633,11 +471,168 @@ public class PhotonPerformanceTraceUtil {
 		}
 	}
 
+	public enum Mode {
+		OVERVIEW, DETAIL, GPU
+	}
+
+	public enum LimitReason {
+		NODES, THREADS, AGGREGATES, COUNTERS, IMPORTANT_MARKS, DEPTH
+	}
+
+	public enum Stage {
+		RENDER(false), EXTRACT(false), FX_CREATE(false), FX_COPY(false), FX_EMIT(false), FX_RESET(false),
+		OBJECT_TICK(true), OBJECT_FRAME(true), OBJECT_EXTRACT(true), GEOMETRY(true),
+		MODEL_PREPARE(true), MODEL_SAMPLE(true), MODEL_POSE(true), MODEL_PART(true), MATERIAL(true),
+		UPLOAD(true), DRAW(true), BLOOM(false), ANIMATION(true), TRACK(true), CURVE(true),
+		SEEK(false), REPLAY(false), UI_INPUT(false), UI_LAYOUT(true), UI_RENDER(true),
+		MANUAL_INPUT(false), COMMAND_SEND(false), COMMAND_HANDLE(false), SKILL(false),
+		CLIENT_PHASE(false), RESOURCE_LOAD(false), PREWARM(false), CLEANUP(false), EXPORT(false), ANIMATION_FRAME(true);
+
+		private final boolean detailed;
+
+		Stage(boolean detailed) {
+			this.detailed = detailed;
+		}
+	}
+
+	public enum Metric {
+		LIVE_PARTICLES, BORN_PARTICLES, DRAW_JOBS, VERTICES, TRIANGLES, INPUT_VERTICES, INPUT_TRIANGLES, SUBMITTED_TRIANGLES, UPLOADED_BYTES,
+		CACHE_HIT, CACHE_MISS, REQUESTS, COALESCED_REQUESTS, RESET_COUNT,
+		REPLAY_REQUESTED_TICKS, REPLAY_TICKS, FULL_SIMULATION_TICKS, FAST_SIMULATION_TICKS,
+		PREPARED_REMAINING, PREPARED_HIT, PREPARED_MISS, ACTIVE_TRACKS, KEYFRAMES,
+		GUI_ELEMENTS, PIPELINE_CREATES, BUFFER_BYTES, BORROWED_BUFFERS
+	}
+
+	public record Limit(LimitReason reason, long timeNs, int frame) {
+	}
+
+	public record Quality(long deniedNodeRequests, long deniedThreadRequests, long droppedImportantMarks,
+	                      long droppedRawSpans, long droppedDepthSpans, long deniedAggregateRequests,
+	                      long deniedCounterRequests, @Nullable Limit limit) {
+	}
+
+	public record Node(int id, int parent, String kind, String name, String definitionId, String resource) {
+	}
+
+	public record Context(int node, int owner) {
+	}
+
+	public record Mark(long timeNs, int frame, long threadId, Stage stage, int node,
+	                   String code, String detail, double value, double secondary) {
+	}
+
+	public record Event(long id, long parent, int frame, int node, Stage stage, int generation, double localTime,
+	                    long startNs, long endNs,
+	                    long selfNs, long allocatedBytes, long selfAllocatedBytes, long threadCpuNs, int flags) {
+		public boolean completed() {
+			return (flags & COMPLETED) != 0;
+		}
+
+		public boolean failed() {
+			return (flags & FAILED) != 0;
+		}
+	}
+
+	public record Aggregate(long threadId, int node, Stage stage, long calls, long inclusiveNs, long selfNs,
+	                        long maximumNs, long allocatedBytes, long selfAllocatedBytes, long cpuNs,
+	                        long allocationSamples, long cpuSamples, long failures, @Nullable Event maximumEvent) {
+	}
+
+	public record Counter(long threadId, int node, Metric metric, long samples, long total, long last, long maximum) {
+	}
+
+	public record View(long sessionId, String label, Mode mode, long startedNs, Instant startedAt, int frame,
+	                   long frameOriginNs, List<Node> nodes, List<Aggregate> aggregates, List<Counter> counters,
+	                   List<Mark> marks, long dropped, long overwritten, long incomplete, @Nullable String problem,
+	                   Quality quality, List<Context> contexts) {
+	}
+
+	public record Capture(View view, String reason, long finishedNs, List<ThreadCapture> threads) {
+	}
+
+	public record Retention(long threadId, String threadName, long firstNs, long lastNs,
+	                        long completed, long incomplete, long overwritten, long dropped) {
+	}
+
+	/// 冻结后只提供逐条读取，导出不额外复制整套事件数组。
+	public static class ThreadCapture {
+		private final Buffer buffer;
+
+		private ThreadCapture(Buffer buffer) {
+			this.buffer = buffer;
+		}
+
+		public long threadId() {
+			return buffer.threadId;
+		}
+
+		public String threadName() {
+			return buffer.threadName;
+		}
+
+		public void forEachEvent(Consumer<Event> consumer) {
+			visit(Long.MIN_VALUE, Long.MAX_VALUE, false, consumer);
+		}
+
+		/// 只为相交的冻结事件构建记录；不按开始时帧号猜测跨帧归属。
+		public void forEachEvent(long fromNs, long toNs, Consumer<Event> consumer) {
+			visit(fromNs, toNs, true, consumer);
+		}
+
+		public Retention retention() {
+			long firstNs = Long.MAX_VALUE;
+			long lastNs = Long.MIN_VALUE;
+			long completed = 0;
+			long incomplete = 0;
+			long first = Math.max(1, buffer.sequence - EVENTS_PER_THREAD + 1);
+			for (long sequence = first; sequence <= buffer.sequence; sequence++) {
+				int index = (int) sequence & EVENT_MASK;
+				if (buffer.ids[index] != buffer.token(sequence)) {
+					continue;
+				}
+				firstNs = Math.min(firstNs, buffer.starts[index]);
+				lastNs = Math.max(lastNs, Math.max(buffer.starts[index], buffer.ends[index]));
+				if ((buffer.flags[index] & COMPLETED) != 0) {
+					completed++;
+				} else {
+					incomplete++;
+				}
+			}
+			return new Retention(buffer.threadId, buffer.threadName,
+					firstNs == Long.MAX_VALUE ? -1 : firstNs, lastNs == Long.MIN_VALUE ? -1 : lastNs,
+					completed, incomplete, buffer.overwritten, buffer.dropped);
+		}
+
+		private void visit(long fromNs, long toNs, boolean filter, Consumer<Event> consumer) {
+			long first = Math.max(1, buffer.sequence - EVENTS_PER_THREAD + 1);
+
+			for (long sequence = first; sequence <= buffer.sequence; sequence++) {
+				int index = (int) sequence & EVENT_MASK;
+				if (buffer.ids[index] != buffer.token(sequence)) {
+					continue;
+				}
+
+				if (Thread.currentThread().isInterrupted()) {
+					throw new CancellationException();
+				}
+				if (filter && (buffer.starts[index] >= toNs
+						|| (buffer.flags[index] & COMPLETED) != 0 && (buffer.ends[index] < fromNs || buffer.ends[index] == fromNs && buffer.starts[index] < fromNs))) {
+					continue;
+				}
+
+				consumer.accept(new Event(buffer.ids[index], buffer.parents[index], buffer.frames[index],
+						buffer.nodes[index], STAGES[buffer.stages[index]], buffer.generations[index], buffer.localTimes[index], buffer.starts[index],
+						buffer.ends[index], buffer.self[index], buffer.allocations[index],
+						buffer.selfAllocations[index], buffer.cpu[index], buffer.flags[index]));
+			}
+		}
+	}
+
 	/// 使用对象身份比较的弱键；查找复用临时键，不在每个计时入口分配 WeakReference。
 	private static class WeakIdentityTable<V> {
-		private ReferenceQueue<Object> queue = new ReferenceQueue<>();
-		private Map<IdentityReference, V> values = new HashMap<>();
-		private IdentityLookup lookup = new IdentityLookup();
+		private final ReferenceQueue<Object> queue = new ReferenceQueue<>();
+		private final Map<IdentityReference, V> values = new HashMap<>();
+		private final IdentityLookup lookup = new IdentityLookup();
 
 		@SuppressWarnings("SuspiciousMethodCalls") // 临时查找键只参与身份哈希查询，不存入弱键表。
 		private @Nullable V get(Object owner) {
@@ -668,7 +663,7 @@ public class PhotonPerformanceTraceUtil {
 	}
 
 	private static class IdentityReference extends WeakReference<Object> {
-		private int hash;
+		private final int hash;
 
 		private IdentityReference(Object owner, ReferenceQueue<Object> queue) {
 			super(owner, queue);
@@ -707,30 +702,30 @@ public class PhotonPerformanceTraceUtil {
 		private WeakReference<Session> session = new WeakReference<>(null);
 		private WeakReference<Buffer> buffer = new WeakReference<>(null);
 		private int frame;
-		private WeakIdentityTable<Integer> identities = new WeakIdentityTable<>();
+		private final WeakIdentityTable<Integer> identities = new WeakIdentityTable<>();
 	}
 
 	private static class Session {
-		private long id = EPOCHS.incrementAndGet();
-		private String label;
-		private Mode mode;
-		private long startedNs = System.nanoTime();
-		private Instant startedAt = Instant.now();
+		private final long id = EPOCHS.incrementAndGet();
+		private final String label;
+		private final Mode mode;
+		private final long startedNs = System.nanoTime();
+		private final Instant startedAt = Instant.now();
 		private volatile int frame = -1;
 		private volatile long frameOriginNs;
 		private volatile boolean accepting = true;
 		private volatile @Nullable String problem;
 		private volatile @Nullable Limit limit;
-		private WeakIdentityTable<Integer> identities = new WeakIdentityTable<>();
-		private WeakIdentityTable<Long2IntOpenHashMap> scopedIdentities = new WeakIdentityTable<>();
-		private List<Context> contexts = new ArrayList<>();
-		private List<Node> nodes = new ArrayList<>();
-		private AtomicIntegerArray parents = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
-		private AtomicIntegerArray generations = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
-		private Map<Integer, Map<String, Map<String, Integer>>> namedNodes = new HashMap<>();
-		private List<Buffer> buffers = new ArrayList<>();
-		private List<Mark> marks = new ArrayList<>();
-		private List<Mark> importantMarks = new ArrayList<>();
+		private final WeakIdentityTable<Integer> identities = new WeakIdentityTable<>();
+		private final WeakIdentityTable<Long2IntOpenHashMap> scopedIdentities = new WeakIdentityTable<>();
+		private final List<Context> contexts = new ArrayList<>();
+		private final List<Node> nodes = new ArrayList<>();
+		private final AtomicIntegerArray parents = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
+		private final AtomicIntegerArray generations = new AtomicIntegerArray(EFFECTIVE_MAX_NODES);
+		private final Map<Integer, Map<String, Map<String, Integer>>> namedNodes = new HashMap<>();
+		private final List<Buffer> buffers = new ArrayList<>();
+		private final List<Mark> marks = new ArrayList<>();
+		private final List<Mark> importantMarks = new ArrayList<>();
 		private long droppedImportantMarks;
 		private long overwrittenMarks;
 		private int markCursor;
@@ -898,10 +893,10 @@ public class PhotonPerformanceTraceUtil {
 	}
 
 	private static class Buffer {
-		private Session session;
-		private int threadIndex;
-		private long threadId = Thread.currentThread().threadId();
-		private String threadName = text(Thread.currentThread().getName());
+		private final Session session;
+		private final int threadIndex;
+		private final long threadId = Thread.currentThread().threadId();
+		private final String threadName = text(Thread.currentThread().getName());
 		private boolean closed;
 		private long sequence;
 		private int depth;
@@ -914,34 +909,34 @@ public class PhotonPerformanceTraceUtil {
 		private @Nullable ThreadMXBean bean;
 		private boolean cpuAvailable;
 		private boolean allocationAvailable;
-		private Long2ObjectOpenHashMap<MutableAggregate> aggregates = new Long2ObjectOpenHashMap<>();
-		private Long2ObjectOpenHashMap<MutableCounter> counters = new Long2ObjectOpenHashMap<>();
-		private long[] tokens = new long[MAX_DEPTH];
-		private long[] stackStarts = new long[MAX_DEPTH];
-		private long[] children = new long[MAX_DEPTH];
-		private long[] stackAllocations = new long[MAX_DEPTH];
-		private long[] childAllocations = new long[MAX_DEPTH];
-		private long[] stackCpu = new long[MAX_DEPTH];
-		private int[] slots = new int[MAX_DEPTH];
-		private int[] stackNodes = new int[MAX_DEPTH];
-		private int[] stackFrames = new int[MAX_DEPTH];
-		private int[] stackGenerations = new int[MAX_DEPTH];
-		private double[] stackLocalTimes = new double[MAX_DEPTH];
-		private Stage[] stackStages = new Stage[MAX_DEPTH];
-		private long[] ids = new long[EVENTS_PER_THREAD];
-		private long[] parents = new long[EVENTS_PER_THREAD];
-		private long[] starts = new long[EVENTS_PER_THREAD];
-		private long[] ends = new long[EVENTS_PER_THREAD];
-		private long[] self = new long[EVENTS_PER_THREAD];
-		private long[] allocations = new long[EVENTS_PER_THREAD];
-		private long[] selfAllocations = new long[EVENTS_PER_THREAD];
-		private long[] cpu = new long[EVENTS_PER_THREAD];
-		private int[] frames = new int[EVENTS_PER_THREAD];
-		private int[] nodes = new int[EVENTS_PER_THREAD];
-		private int[] generations = new int[EVENTS_PER_THREAD];
-		private double[] localTimes = new double[EVENTS_PER_THREAD];
-		private short[] stages = new short[EVENTS_PER_THREAD];
-		private byte[] flags = new byte[EVENTS_PER_THREAD];
+		private final Long2ObjectOpenHashMap<MutableAggregate> aggregates = new Long2ObjectOpenHashMap<>();
+		private final Long2ObjectOpenHashMap<MutableCounter> counters = new Long2ObjectOpenHashMap<>();
+		private final long[] tokens = new long[MAX_DEPTH];
+		private final long[] stackStarts = new long[MAX_DEPTH];
+		private final long[] children = new long[MAX_DEPTH];
+		private final long[] stackAllocations = new long[MAX_DEPTH];
+		private final long[] childAllocations = new long[MAX_DEPTH];
+		private final long[] stackCpu = new long[MAX_DEPTH];
+		private final int[] slots = new int[MAX_DEPTH];
+		private final int[] stackNodes = new int[MAX_DEPTH];
+		private final int[] stackFrames = new int[MAX_DEPTH];
+		private final int[] stackGenerations = new int[MAX_DEPTH];
+		private final double[] stackLocalTimes = new double[MAX_DEPTH];
+		private final Stage[] stackStages = new Stage[MAX_DEPTH];
+		private final long[] ids = new long[EVENTS_PER_THREAD];
+		private final long[] parents = new long[EVENTS_PER_THREAD];
+		private final long[] starts = new long[EVENTS_PER_THREAD];
+		private final long[] ends = new long[EVENTS_PER_THREAD];
+		private final long[] self = new long[EVENTS_PER_THREAD];
+		private final long[] allocations = new long[EVENTS_PER_THREAD];
+		private final long[] selfAllocations = new long[EVENTS_PER_THREAD];
+		private final long[] cpu = new long[EVENTS_PER_THREAD];
+		private final int[] frames = new int[EVENTS_PER_THREAD];
+		private final int[] nodes = new int[EVENTS_PER_THREAD];
+		private final int[] generations = new int[EVENTS_PER_THREAD];
+		private final double[] localTimes = new double[EVENTS_PER_THREAD];
+		private final short[] stages = new short[EVENTS_PER_THREAD];
+		private final byte[] flags = new byte[EVENTS_PER_THREAD];
 
 		private Buffer(Session session, int threadIndex) {
 			this.session = session;

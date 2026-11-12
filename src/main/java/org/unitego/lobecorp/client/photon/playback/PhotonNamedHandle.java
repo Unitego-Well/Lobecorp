@@ -13,9 +13,6 @@ import java.util.UUID;
 
 /// 句柄独占时钟、形参与跟随关系；制作定义和其他实例不接收运行修改。
 public class PhotonNamedHandle {
-	private record Follow(WeakReference<PhotonNamedHandle> source, UUID parameter) {
-	}
-
 	private final UUID id = UUID.randomUUID();
 	private final Definition definition;
 	private final UUID sourceDefinitionId;
@@ -25,12 +22,11 @@ public class PhotonNamedHandle {
 	private final Map<String, Parameter> parameterIndex = new LinkedHashMap<>();
 	private final Map<UUID, List<Float>> parameters = new LinkedHashMap<>();
 	private final Map<UUID, Follow> following = new LinkedHashMap<>();
+	private final boolean controlled;
 	private @Nullable Map<UUID, List<Float>> endedValues;
 	private boolean durationOverride;
-	private final boolean controlled;
 	private double controlledPosition;
 	private boolean disposed;
-
 	public PhotonNamedHandle(Definition definition, double authoredDuration, long order, double requestedDuration,
 	                         boolean loop, boolean controlled, Map<String, List<Float>> inputs) {
 		this(definition, definition.id(), authoredDuration, order, requestedDuration, loop, controlled, inputs);
@@ -277,5 +273,8 @@ public class PhotonNamedHandle {
 		if (disposed) {
 			throw new IllegalStateException("命名播放句柄已释放。");
 		}
+	}
+
+	private record Follow(WeakReference<PhotonNamedHandle> source, UUID parameter) {
 	}
 }

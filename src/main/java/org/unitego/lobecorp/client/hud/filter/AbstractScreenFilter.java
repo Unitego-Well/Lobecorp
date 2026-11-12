@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.client.hud.filter;
 
-import org.unitego.lobecorp.client.hud.AbstractHud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.jspecify.annotations.NullMarked;
+import org.unitego.lobecorp.client.hud.AbstractHud;
 
 /// 滤镜共用的会话、显隐与暂停处理；具体效果由各自实现持有。
 @NullMarked

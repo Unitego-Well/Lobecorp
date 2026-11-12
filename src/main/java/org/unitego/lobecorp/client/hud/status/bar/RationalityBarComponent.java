@@ -1,12 +1,12 @@
 package org.unitego.lobecorp.client.hud.status.bar;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
 import org.unitego.lobecorp.client.hud.TextureLayer;
-import net.minecraft.client.renderer.RenderPipelines;
+import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 
 /// 理智条按比例切换高低纹理，归零时改用独立动态纹理。
@@ -20,6 +20,28 @@ public class RationalityBarComponent extends StatusBarComponent {
 	public RationalityBarComponent() {
 		super(new StatusGauge(93, 11, 78),
 				new StatusGaugeView(bottom("rationality"), internal("rationality"), light("rationality")));
+	}
+
+	public static int textureRow(float value, float maximum) {
+		float ratio = maximum > 0 ? value / maximum : 1;
+		return ratio >= HIGH_RATIO ? 0 : ratio < LOW_RATIO ? 1 : 2;
+	}
+
+	private static TextureLayer bottom(String name) {
+		boolean low = name.equals("rationality_low");
+		return new TextureLayer(texture(name + "_bottom"), low ? -1 : 0, low ? -2 : 0, low ? 94 : 93, low ? 14 : 11);
+	}
+
+	private static TextureLayer internal(String name) {
+		return new TextureLayer(texture(name), 14, 2, 78, 7);
+	}
+
+	private static TextureLayer light(String name) {
+		return new TextureLayer(texture(name + "_light"), 0, 0, 93, 11);
+	}
+
+	private static Identifier texture(String name) {
+		return Lobecorp.id("hud/bar/rationality/" + name);
 	}
 
 	@Override
@@ -60,27 +82,5 @@ public class RationalityBarComponent extends StatusBarComponent {
 	public void clear() {
 		super.clear();
 		appearance = "";
-	}
-
-	public static int textureRow(float value, float maximum) {
-		float ratio = maximum > 0 ? value / maximum : 1;
-		return ratio >= HIGH_RATIO ? 0 : ratio < LOW_RATIO ? 1 : 2;
-	}
-
-	private static TextureLayer bottom(String name) {
-		boolean low = name.equals("rationality_low");
-		return new TextureLayer(texture(name + "_bottom"), low ? -1 : 0, low ? -2 : 0, low ? 94 : 93, low ? 14 : 11);
-	}
-
-	private static TextureLayer internal(String name) {
-		return new TextureLayer(texture(name), 14, 2, 78, 7);
-	}
-
-	private static TextureLayer light(String name) {
-		return new TextureLayer(texture(name + "_light"), 0, 0, 93, 11);
-	}
-
-	private static Identifier texture(String name) {
-		return Lobecorp.id("hud/bar/rationality/" + name);
 	}
 }

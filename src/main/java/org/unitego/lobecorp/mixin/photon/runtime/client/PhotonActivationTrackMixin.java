@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
 import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
-import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.Clip;
+import com.lowdragmc.photon.client.fx.timeline.Track;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,22 +16,18 @@ import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
 import org.unitego.lobecorp.util.photon.playback.PhotonActivationCodecUtil;
 
 import javax.annotation.Nullable;
-import java.util.Objects;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 
 @Mixin(Track.class)
 public abstract class PhotonActivationTrackMixin implements PhotonActivationTrackAccess {
+	@Unique
+	private final Map<Clip, CompoundTag> lobecorp$clipSources = new IdentityHashMap<>();
 	@Unique
 	private PhotonActivationOptions lobecorp$options = PhotonActivationOptions.NATIVE;
 	@Unique
 	private @Nullable CompoundTag lobecorp$activationSource;
 	@Unique
 	private CompoundTag lobecorp$trackSource = new CompoundTag();
-	@Unique
-	private final Map<Clip, CompoundTag> lobecorp$clipSources = new IdentityHashMap<>();
 
 	@Override
 	public PhotonActivationOptions lobecorp$activationOptions() {

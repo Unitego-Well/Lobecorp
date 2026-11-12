@@ -8,17 +8,23 @@ import com.lowdragmc.lowdraglib2.editor.ui.EditorWindow;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTitleUtil;
 
 @Mixin(EditorWindow.class)
 public abstract class EditorWindowMixin {
+
+	@WrapOperation(method = "/^(createEditorButton|lambda\\$createEditorButton\\$\\d+)$/", at = @At(value = "INVOKE",
+			target = "Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;getTitle()Lnet/minecraft/network/chat/Component;"))
+	private static Component lobecorp$compactTitle(Editor editor, Operation<Component> original) {
+		return PhotonEditorTitleUtil.title(editor, original.call(editor));
+	}
 
 	@WrapMethod(method = "showEditor(Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;)V")
 	private void lobecorp$refreshShownControls(Editor editor, Operation<Void> original) {
@@ -41,12 +47,6 @@ public abstract class EditorWindowMixin {
 		if (previous != null && window.getCurrentEditor() == null) {
 			PhotonEditorTools.refreshControls(window);
 		}
-	}
-
-	@WrapOperation(method = "/^(createEditorButton|lambda\\$createEditorButton\\$\\d+)$/", at = @At(value = "INVOKE",
-			target = "Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;getTitle()Lnet/minecraft/network/chat/Component;"))
-	private static Component lobecorp$compactTitle(Editor editor, Operation<Component> original) {
-		return PhotonEditorTitleUtil.title(editor, original.call(editor));
 	}
 
 	@Inject(method = "createEditorButton", at = @At("RETURN"))

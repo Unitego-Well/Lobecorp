@@ -27,24 +27,16 @@ import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
 import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.client.horde.HordeDataTexture;
 import org.unitego.lobecorp.client.horde.HordeIrisAnimation;
 import org.unitego.lobecorp.client.horde.HordeIrisShadows;
 import org.unitego.lobecorp.client.horde.HordeMeshCache;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
-import org.unitego.lobecorp.registry.entity.LcEntityTypes;
+import org.unitego.lobecorp.config.client.ClientConfig;
+import org.unitego.lobecorp.registry.world.entity.LcEntityTypes;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalDouble;
-import java.util.OptionalInt;
+import java.util.*;
 
 /// 已冻结网格按材质归组；CPU仅提交真实尸体的实例数据，逐顶点变换和Iris展开由GPU执行。
 public class CorpseBatchRenderer {
@@ -92,16 +84,6 @@ public class CorpseBatchRenderer {
 	private static int shadowFallback;
 	private static int draws;
 	private static String path = "idle";
-
-	public record Instance(HordeMeshCache.Model model, float x, float y, float z, float yawRadians,
-	                       int light, int color, float range, float scale) {
-		private double distanceSquared() {
-			return x * x + y * y + z * z;
-		}
-	}
-
-	private record Batch(Mesh mesh, int first, int count) {
-	}
 
 	private static RenderPipeline pipeline(boolean reverse) {
 		return RenderPipeline.builder(RenderPipelines.MATRICES_FOG_LIGHT_DIR_SNIPPET)
@@ -199,9 +181,6 @@ public class CorpseBatchRenderer {
 		} finally {
 			PENDING.clear();
 		}
-	}
-
-	private record PreparedFrame(List<Batch> batches, boolean iris, int format) {
 	}
 
 	private static PreparedFrame prepareBatches() {
@@ -455,6 +434,19 @@ public class CorpseBatchRenderer {
 		retryAt = irisRetryAt = 0;
 		FrozenCorpseMeshProvider.clear();
 		EntityCorpseRenderer.clearFrozen();
+	}
+
+	public record Instance(HordeMeshCache.Model model, float x, float y, float z, float yawRadians,
+	                       int light, int color, float range, float scale) {
+		private double distanceSquared() {
+			return x * x + y * y + z * z;
+		}
+	}
+
+	private record Batch(Mesh mesh, int first, int count) {
+	}
+
+	private record PreparedFrame(List<Batch> batches, boolean iris, int format) {
 	}
 
 	private static class Mesh implements AutoCloseable {

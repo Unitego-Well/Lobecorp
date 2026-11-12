@@ -6,8 +6,8 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(value = TimelinePlayer.class, remap = false)
+@Mixin(value = TimelinePlayer.class)
 public interface TimelinePlayerLeaseAccessor {
-    @Accessor("effect")
-    void lobecorp$setLeaseEffect(@Nullable IEffectExecutor effect);
+	@Accessor("effect")
+	void lobecorp$setLeaseEffect(@Nullable IEffectExecutor effect);
 }

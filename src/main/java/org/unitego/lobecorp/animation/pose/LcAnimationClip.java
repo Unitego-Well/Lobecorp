@@ -10,13 +10,7 @@ import org.joml.Quaternionf;
 import org.unitego.lobecorp.animation.adapter.geckolib.LcMolangParser;
 import org.unitego.lobecorp.attachment.LcTransform;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /// 不依赖渲染控制器的资源动画；关键帧保持私有，实例变量只在采样时传入。
 public class LcAnimationClip {
@@ -94,44 +88,6 @@ public class LcAnimationClip {
 		return new LcAnimationClip(duration, loop, bakedBones, parser);
 	}
 
-	public double durationSeconds() {
-		return durationSeconds;
-	}
-
-	public boolean looping() {
-		return looping;
-	}
-
-	public LcSkeletalPose sample(double seconds, ILcAnimationQueries queries) {
-		if (!Double.isFinite(seconds)) {
-			throw new IllegalArgumentException(INVALID_SAMPLE_TIME);
-		}
-
-		var sampleTime = Math.clamp(seconds, 0, durationSeconds);
-		var context = new SampleQueries(Objects.requireNonNull(queries), sampleTime);
-		return expressions.evaluate(context, () -> sampleBones(sampleTime));
-	}
-
-	private LcSkeletalPose sampleBones(double seconds) {
-		var transforms = new LinkedHashMap<String, LcTransform>();
-		var rotations = new LinkedHashMap<String, Vec3>();
-
-		for (var bone : bones) {
-			var nativePosition = sampleVector(bone.positionKeyFrames(), seconds, 0);
-			var nativeRotation = sampleVector(bone.rotationKeyFrames(), seconds, 0);
-			var scale = sampleVector(bone.scaleKeyFrames(), seconds, 1);
-			var position = new Vec3(nativePosition.x, nativePosition.y, -nativePosition.z)
-					.scale(1 / MODEL_UNITS_PER_BLOCK);
-			// Gecko 烘焙后的 Euler 已包含源轴符号，Y 轴半圈共轭将其转换到公共坐标。
-			var rotation = new Vec3(-nativeRotation.x, nativeRotation.y, -nativeRotation.z);
-			transforms.put(bone.boneName(), new LcTransform(position,
-					new Quaternionf().rotationZYX((float) rotation.z, (float) rotation.y, (float) rotation.x), scale));
-			rotations.put(bone.boneName(), rotation);
-		}
-
-		return new LcSkeletalPose(transforms, rotations);
-	}
-
 	private static Vec3 sampleVector(KeyframeStack stack, double seconds, double fallback) {
 		return new Vec3(sampleAxis(stack.xKeyframes(), seconds, fallback),
 				sampleAxis(stack.yKeyframes(), seconds, fallback),
@@ -171,6 +127,44 @@ public class LcAnimationClip {
 
 	private static String failure(Exception exception) {
 		return exception.getClass().getSimpleName() + ": " + exception.getMessage();
+	}
+
+	public double durationSeconds() {
+		return durationSeconds;
+	}
+
+	public boolean looping() {
+		return looping;
+	}
+
+	public LcSkeletalPose sample(double seconds, ILcAnimationQueries queries) {
+		if (!Double.isFinite(seconds)) {
+			throw new IllegalArgumentException(INVALID_SAMPLE_TIME);
+		}
+
+		var sampleTime = Math.clamp(seconds, 0, durationSeconds);
+		var context = new SampleQueries(Objects.requireNonNull(queries), sampleTime);
+		return expressions.evaluate(context, () -> sampleBones(sampleTime));
+	}
+
+	private LcSkeletalPose sampleBones(double seconds) {
+		var transforms = new LinkedHashMap<String, LcTransform>();
+		var rotations = new LinkedHashMap<String, Vec3>();
+
+		for (var bone : bones) {
+			var nativePosition = sampleVector(bone.positionKeyFrames(), seconds, 0);
+			var nativeRotation = sampleVector(bone.rotationKeyFrames(), seconds, 0);
+			var scale = sampleVector(bone.scaleKeyFrames(), seconds, 1);
+			var position = new Vec3(nativePosition.x, nativePosition.y, -nativePosition.z)
+					.scale(1 / MODEL_UNITS_PER_BLOCK);
+			// Gecko 烘焙后的 Euler 已包含源轴符号，Y 轴半圈共轭将其转换到公共坐标。
+			var rotation = new Vec3(-nativeRotation.x, nativeRotation.y, -nativeRotation.z);
+			transforms.put(bone.boneName(), new LcTransform(position,
+					new Quaternionf().rotationZYX((float) rotation.z, (float) rotation.y, (float) rotation.x), scale));
+			rotations.put(bone.boneName(), rotation);
+		}
+
+		return new LcSkeletalPose(transforms, rotations);
 	}
 
 	/// 批量编译结果；失败项单独保留，不覆盖其他已成功编译的动画。

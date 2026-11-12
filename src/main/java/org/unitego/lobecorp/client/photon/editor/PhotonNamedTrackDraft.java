@@ -6,15 +6,15 @@ import com.lowdragmc.photon.client.fx.timeline.Clip;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
-import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonTrackCopyUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonTimelineDecodeUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonTrackCopyUtil;
 
-import java.util.IdentityHashMap;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 

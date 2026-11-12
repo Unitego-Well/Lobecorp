@@ -2,11 +2,11 @@ package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
-import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 二阶段冲刺复用瞬步的受限移动，每个实际移动 tick 留下一枚中型星星。
 public class DashSkill extends BlinkSkill {

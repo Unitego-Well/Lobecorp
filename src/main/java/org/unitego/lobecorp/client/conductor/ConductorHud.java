@@ -1,7 +1,5 @@
 package org.unitego.lobecorp.client.conductor;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -14,14 +12,7 @@ import net.minecraft.world.entity.Mob;
 import net.neoforged.neoforge.client.gui.GuiLayer;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudCards;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudInput;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudLayout;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudModel;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudPreferences;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudRenderer;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudViewSlot;
+import org.unitego.lobecorp.client.conductor.hud.*;
 import org.unitego.lobecorp.client.conductor.render.ConductorPortraitCache;
 import org.unitego.lobecorp.client.hud.HudLayerManager;
 import org.unitego.lobecorp.client.hud.host.HudHost;
@@ -30,6 +21,7 @@ import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 
@@ -39,7 +31,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
-import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
+import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.DECIMAL_FORMAT;
 
 /// 指挥家 HUD 的业务门面；持有始终存在的显示模型与当前宿主视图。
 public class ConductorHud implements GuiLayer {
@@ -53,6 +45,39 @@ public class ConductorHud implements GuiLayer {
 	private ConductorHud() {
 		model = new ConductorHudModel(ConductorHudPreferences.load());
 		tooltip = new ConductorHudTooltip();
+	}
+
+	private static void appendSkillStatus(List<Component> lines, Mob mob, IConductorAbility ability, int remaining) {
+		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
+		boolean available = ability.isAvailable(mob);
+
+		if (remaining > 0) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+		}
+
+		if (casting) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+		}
+
+		if (!available) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+		}
+
+		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
+			return;
+		}
+
+		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
+
+		if (aim == null || aim.caster() != mob) {
+			return;
+		}
+
+		if (aim.rangeLimited()) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
+		} else if (!aim.valid() && remaining == 0 && available && !casting) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
+		}
 	}
 
 	/// 向统一管理器注册宿主工厂与会话清理；重复注册由管理器拒绝。
@@ -216,39 +241,6 @@ public class ConductorHud implements GuiLayer {
 		}
 		appendSkillStatus(lines, mob, ability, remaining);
 		tooltip.draw(graphics, lines);
-	}
-
-	private static void appendSkillStatus(List<Component> lines, Mob mob, IConductorAbility ability, int remaining) {
-		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
-		boolean available = ability.isAvailable(mob);
-
-		if (remaining > 0) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
-		}
-
-		if (casting) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
-		}
-
-		if (!available) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
-		}
-
-		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
-			return;
-		}
-
-		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
-
-		if (aim == null || aim.caster() != mob) {
-			return;
-		}
-
-		if (aim.rangeLimited()) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
-		} else if (!aim.valid() && remaining == 0 && available && !casting) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
-		}
 	}
 
 	public record HoveredSkill(Mob mob, IConductorTargeting targeting) {

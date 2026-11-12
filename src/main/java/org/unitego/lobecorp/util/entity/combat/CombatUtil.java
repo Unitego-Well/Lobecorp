@@ -2,19 +2,19 @@ package org.unitego.lobecorp.util.entity.combat;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
-import org.unitego.lobecorp.world.horde.HordeParticipant;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
 import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
 import org.unitego.lobecorp.world.entity.combat.ICombatant;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 
 import java.util.UUID;
 import java.util.function.Predicate;

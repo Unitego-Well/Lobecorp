@@ -29,7 +29,6 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
@@ -151,7 +150,7 @@ public class PhotonCreationNativeCheck {
 
 		check.runCase("compiled_object_all_entries_and_live_preparation", () -> {
 			var models = check.probes.stream().flatMap(probe -> probe.source().getFxData().objects().stream())
-					.filter(PhotonModelOutput.class::isInstance).toList();
+					.toList();
 			var entries = PhotonCompiledObjectNativeCheck.verify(models);
 			require(!entries.isEmpty(), "compiled entry checks did not run");
 			var encoded = new JsonArray();
@@ -434,15 +433,6 @@ public class PhotonCreationNativeCheck {
 			object.transform().localRotation(new Quaternionf().rotationXYZ(0.2f, 0.3f, 0.4f));
 			object.transform().localScale(new Vector3f(2, 0.5f, 3));
 			switch (object) {
-				case PhotonModelOutput model -> {
-					model.config.color = 0x7f123456;
-					model.config.width = 2.75f;
-					model.config.playbackSpeed = 0.5f;
-					var original = model.source();
-					original.putString("creation_current_source", "retained");
-					model.rememberSource(original);
-					model.config.assetMaterialDependencies.putInt("creation_current_dependency", 1);
-				}
 				case PhotonChildSpawner child -> {
 					child.config.duration = 73;
 					child.config.parameters.color = NumberFunction.color(0x7fabcdef);
@@ -544,12 +534,6 @@ public class PhotonCreationNativeCheck {
 						((Collection<?>) field(y, "pendingSubEmitterSpawns")).size());
 				require(x.waitToAdded != y.waitToAdded && x.getParticles() != y.getParticles(), "particle queues shared");
 			}
-			if (a instanceof PhotonModelOutput x && b instanceof PhotonModelOutput y) {
-				require(x.config != y.config && x.config.renderer != y.config.renderer
-						&& x.config.modelRenderer != y.config.modelRenderer, "model config/renderer settings shared");
-				equal(x.slot("color").isOverridden(), y.slot("color").isOverridden());
-				equal(x.slot("width").isOverridden(), y.slot("width").isOverridden());
-			}
 			if (a instanceof PhotonChildSpawner x && b instanceof PhotonChildSpawner y) {
 				require(x.config != y.config && x.slot("count") != y.slot("count"), "spawner state shared");
 				equal(x.slot("count").isOverridden(), y.slot("count").isOverridden());
@@ -568,11 +552,6 @@ public class PhotonCreationNativeCheck {
 			var a = first.objects.get(id);
 			var b = second.objects.get(id);
 			require(a != b && a.transform().localPosition() != b.transform().localPosition(), "instance TRS shared");
-			if (a instanceof PhotonModelOutput x && b instanceof PhotonModelOutput y) {
-				require(x.config != y.config && x.slot("width") != y.slot("width"), "instance model state shared");
-				require(x.config.renderer != y.config.renderer && x.config.modelRenderer != y.config.modelRenderer,
-						"instance renderer settings shared");
-			}
 			if (a instanceof ParticleEmitter x && b instanceof ParticleEmitter y) {
 				require(x.config != y.config && x.runtime() != y.runtime(), "instance particle state shared");
 				require(x.config.renderer != y.config.renderer, "instance particle renderer settings shared");
@@ -623,12 +602,6 @@ public class PhotonCreationNativeCheck {
 				emitter.scheduleSubEmitterSpawn(() -> {
 					throw new AssertionError("stale sub-emitter callback");
 				});
-			}
-			if (object instanceof PhotonModelOutput model) {
-				model.config.color = 0x7f123456;
-				model.config.width = 37;
-				model.slot("width").setRaw(99f);
-				model.slot("color").setRaw(NumberFunction.color(0x7fabcdef));
 			}
 			if (object instanceof PhotonChildSpawner child) {
 				child.config.duration = 37;
@@ -715,7 +688,6 @@ public class PhotonCreationNativeCheck {
 
 	private static CompoundTag source(IFXObject object) {
 		return switch (object) {
-			case PhotonModelOutput model -> model.source();
 			case PhotonChildSpawner child -> child.source();
 			case PhotonNamedController named -> named.source();
 			default -> new CompoundTag();

@@ -13,13 +13,10 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientScenario;
 import com.zhongbai233.bench.api.neoforge.client.BenchClientStepResult;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
-import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -77,7 +74,6 @@ public class PhotonWorkspaceReviewScenario implements BenchClientScenario {
 		if (!commonDone) {
 			if (common.step(context, label)) {
 				commonDone = true;
-				verifyModelExport(context);
 				markFence();
 			}
 			return BenchClientStepResult.CONTINUE;
@@ -166,34 +162,7 @@ public class PhotonWorkspaceReviewScenario implements BenchClientScenario {
 		return PhotonRuntimeFactory.ticks() - tick >= 3 && PhotonRuntimeFactory.frames() - frame >= 3;
 	}
 
-	private void verifyModelExport(BenchClientContext context) throws Exception {
-		var file = context.artifacts().write(label + "_source.obj", "text/plain", triangle(1));
-		var config = new PhotonModelOutputConfig(false);
-		config.source = PhotonModelOutputConfig.Source.FILE;
-		config.file = file.toString();
-		config.setAssetSnapshot(PhotonModelSourceUtil.load(config).snapshot());
-		config.snapshotSource = "FILE|null|" + config.file + "|false";
-		var model = new PhotonModelOutput(config, null);
-		var authored = model.serializeWrapper();
-		authored.putString("future_object", "preserved");
-		authored.getCompoundOrEmpty("data").getCompoundOrEmpty("config").putString("future_config", "preserved");
-		var copy = authored.copy();
-		Files.write(file, triangle(4));
-		var exporter = FXPackExporterAccessor.lobecorp$create(Platform.getFrozenRegistry());
-		((FXPackExporterAccessor) (Object) exporter).lobecorp$walk(copy);
-		if (!(IFXObject.deserializeWrapper(copy) instanceof PhotonModelOutput exported)) {
-			throw new IllegalStateException("review_export_model_type");
-		}
-		require(exported.config.source == PhotonModelOutputConfig.Source.EMBEDDED
-				&& PhotonModelSourceUtil.load(exported.config).definition().vertices().get(1).x() == 4, "review_export_stale_file");
-		require(copy.getStringOr("future_object", "").equals("preserved")
-						&& copy.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getStringOr("future_config", "").equals("preserved"),
-				"review_export_unknown_lost");
-		require(config.source == PhotonModelOutputConfig.Source.FILE
-						&& PhotonModelSourceUtil.load(config).definition().vertices().get(1).x() == 1
-						&& authored.getCompoundOrEmpty("data").getCompoundOrEmpty("config").getStringOr("future_config", "").equals("preserved"),
-				"review_export_mutated_author");
-	}
+
 
 	private static byte[] triangle(int x) {
 		return ("v 0 0 0\nv " + x + " 0 0\nv 0 1 0\nf 1 2 3\n").getBytes(StandardCharsets.UTF_8);

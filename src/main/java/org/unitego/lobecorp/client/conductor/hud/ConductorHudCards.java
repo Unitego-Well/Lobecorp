@@ -10,14 +10,7 @@ import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
 
@@ -277,10 +270,6 @@ public class ConductorHudCards {
 		return visible.size();
 	}
 
-	/// 一次挂载所用的实际视口与步进范围；任一变化都必须重建卡片与滚动占位。
-	private record Geometry(int contentWidth, int contentHeight, int columns, int extent) {
-	}
-
 	/// 绘制已采样的生命值；读取快照，不推进插值。
 	public void healthBar(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int x, int y, int width,
 	                      float ratio, float shown) {
@@ -308,5 +297,9 @@ public class ConductorHudCards {
 		skillIds.clear();
 		selectedColumns = 1;
 		rosterColumns = -1;
+	}
+
+	/// 一次挂载所用的实际视口与步进范围；任一变化都必须重建卡片与滚动占位。
+	private record Geometry(int contentWidth, int contentHeight, int columns, int extent) {
 	}
 }

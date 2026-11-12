@@ -11,15 +11,14 @@ public class HordeSamplingUtil {
 	public static final double MAX_VISUAL_OFFSET = 64;
 	/// 与movingLocation一致的最大左右摆幅，单位格。
 	private static final double MAX_VISUAL_SWAY = 1.5;
-
-	public static double groundSampleWidth(double width, double margin) {
-		return width + 2 * Math.max(margin, MAX_VISUAL_OFFSET + MAX_VISUAL_SWAY);
-	}
-
 	private static final double LOOP_SAMPLE_SPACING = 2;
 	private static final int MIN_LOOP_SAMPLES = 8;
 	private static final int MAX_LOOP_SAMPLES = 64;
 	private static final double CENTRIPETAL_ALPHA = 0.5;
+
+	public static double groundSampleWidth(double width, double margin) {
+		return width + 2 * Math.max(margin, MAX_VISUAL_OFFSET + MAX_VISUAL_SWAY);
+	}
 
 	public static double smooth(double value) {
 		value = Math.clamp(value, 0, 1);

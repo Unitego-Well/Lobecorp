@@ -55,25 +55,6 @@ public record TextParticleLayout(List<Glyph> glyphs, int lineHeight, List<Intege
 		return new TextParticleLayout(List.copyOf(glyphs), font.lineHeight, List.copyOf(obfuscatedGlyphs));
 	}
 
-	/// 混淆样式每客户端 tick 更新随机字形，普通字形仍复用原缓存。
-	public TextParticleLayout refreshObfuscated(Font font, int outlineColor) {
-		if (obfuscatedGlyphs.isEmpty()) {
-			return this;
-		}
-
-		var refreshed = new ArrayList<>(glyphs);
-		for (var index : obfuscatedGlyphs) {
-			var glyph = glyphs.get(index);
-			var character = new CharacterData(glyph.sourceIndex(), glyph.style(), glyph.codepoint(), 0, 0, glyph.advance());
-			var meshes = createMeshes(font, character, glyph.advance() / 2, lineHeight / 2F, outlineColor);
-			double radius = meshes.stream().mapToDouble(TextGlyphMesh::radius).max().orElse(0);
-			refreshed.set(index, new Glyph(glyph.x(), glyph.y(), radius, meshes, glyph.sourceIndex(),
-					glyph.style(), glyph.codepoint(), glyph.advance()));
-		}
-
-		return new TextParticleLayout(List.copyOf(refreshed), lineHeight, obfuscatedGlyphs);
-	}
-
 	private static List<TextGlyphMesh> createMeshes(Font font, CharacterData character, float centerX,
 	                                                float centerY, int outlineColor) {
 		var meshes = new ArrayList<TextGlyphMesh>();
@@ -103,6 +84,25 @@ public record TextParticleLayout(List<Glyph> glyphs, int lineHeight, List<Intege
 			}
 		});
 		return List.copyOf(meshes);
+	}
+
+	/// 混淆样式每客户端 tick 更新随机字形，普通字形仍复用原缓存。
+	public TextParticleLayout refreshObfuscated(Font font, int outlineColor) {
+		if (obfuscatedGlyphs.isEmpty()) {
+			return this;
+		}
+
+		var refreshed = new ArrayList<>(glyphs);
+		for (var index : obfuscatedGlyphs) {
+			var glyph = glyphs.get(index);
+			var character = new CharacterData(glyph.sourceIndex(), glyph.style(), glyph.codepoint(), 0, 0, glyph.advance());
+			var meshes = createMeshes(font, character, glyph.advance() / 2, lineHeight / 2F, outlineColor);
+			double radius = meshes.stream().mapToDouble(TextGlyphMesh::radius).max().orElse(0);
+			refreshed.set(index, new Glyph(glyph.x(), glyph.y(), radius, meshes, glyph.sourceIndex(),
+					glyph.style(), glyph.codepoint(), glyph.advance()));
+		}
+
+		return new TextParticleLayout(List.copyOf(refreshed), lineHeight, obfuscatedGlyphs);
 	}
 
 	public record Glyph(float x, float y, double radius, List<TextGlyphMesh> meshes, int sourceIndex,

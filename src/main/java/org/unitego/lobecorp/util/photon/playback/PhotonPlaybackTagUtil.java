@@ -1,17 +1,11 @@
 package org.unitego.lobecorp.util.photon.playback;
 
 import net.minecraft.core.UUIDUtil;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.*;
+import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildClip;
 
 import java.util.HashSet;
 import java.util.UUID;
-
-import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildClip;
-import org.unitego.lobecorp.client.photon.model.timeline.PhotonModelClip;
 
 /// 扩展轨道在交给原生宽松读取器前校验已知字段，未知字段仍保留在原树。
 public class PhotonPlaybackTagUtil {
@@ -95,29 +89,6 @@ public class PhotonPlaybackTagUtil {
 		}
 	}
 
-	public static void validateModelTrack(CompoundTag source) {
-		uuid(source, "target");
-		text(source, "name");
-		bool(source, "mute");
-		bool(source, "lock");
-		for (var value : list(source, "clips")) {
-			if (!(value instanceof CompoundTag clip)) {
-				throw new IllegalArgumentException("模型轨道含非片段数据。");
-			}
-			for (var key : new String[]{"start", "duration", "speed", "offset", "seed"}) {
-				number(clip, key);
-			}
-			text(clip, "animation");
-			text(clip, "completion");
-			bool(clip, "loop");
-			bool(clip, "randomSeed");
-			uuid(clip, "clipTarget");
-			var checked = new PhotonModelClip(clip.getDoubleOr("start", 0), clip.getDoubleOr("duration", 0), clip.getFloatOr("speed", 1));
-			checked.offset = clip.getDoubleOr("offset", 0);
-			checked.completion = PhotonModelClip.Completion.valueOf(clip.getStringOr("completion", "RESTORE"));
-			checked.validate();
-		}
-	}
 
 	private static ListTag list(CompoundTag source, String key) {
 		if (source.contains(key) && !(source.get(key) instanceof ListTag)) {

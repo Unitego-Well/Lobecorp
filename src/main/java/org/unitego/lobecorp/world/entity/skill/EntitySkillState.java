@@ -3,11 +3,7 @@ package org.unitego.lobecorp.world.entity.skill;
 import com.mojang.serialization.Codec;
 import org.unitego.lobecorp.registry.LcRegistries;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /// 实体技能的持久化修正；未修正的技能实时继承实体类型的默认定义。
 public record EntitySkillState(Map<IEntitySkill<?>, Boolean> overrides) {

@@ -7,11 +7,7 @@ import net.minecraft.client.Camera;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.render.PhotonViewDepthSortAccess;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.IdentityHashMap;
+import java.util.*;
 
 public class PhotonViewDepthSortUtil {
 	/// 标记只属于当前绘制项身份，帧结束清理，避免值相同的其他发射器被误标记。

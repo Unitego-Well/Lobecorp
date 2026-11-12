@@ -3,59 +3,38 @@ package org.unitego.lobecorp.client.photon.editor.automation;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import net.minecraft.client.Minecraft;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.editor.PhotonPreviewTimeAccess;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectJsonUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectSchemaUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectResourceAuditUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectViewUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectNamedControlUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.*;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
 import xyz.langyo.minecraft.mcp.common.ControlModeHelper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class PhotonEffectAutomation {
+	/// 原生粒子定位需要从头模拟，限制一次最多定位到 60 秒（1200 tick）。
+	public static final long MAX_SEEK_TICKS = 1200;
 	/// 排队和复制校验允许等待的时间；取消状态不能再进入提交。
 	private static final long QUEUE_TIMEOUT_SECONDS = 8;
 	/// 单次请求上限为 2 MiB，限制客户端线程的解析和快照开销。
 	private static final int MAX_REQUEST_BYTES = 2 * 1024 * 1024;
-	/// 原生粒子定位需要从头模拟，限制一次最多定位到 60 秒（1200 tick）。
-	public static final long MAX_SEEK_TICKS = 1200;
 	private static final String OPERATION_SCHEMA = """
 			{
 			  "add_emitter":{"projectKind":"fx","required":["type"],"optional":["name","parameters"],"parameters":"原生对象data字段递归合并，对象未涉及字段保留，列表和数组整体替换；type从emitterTypes选择"},
 			  "remove_emitter":{"projectKind":"fx","required":["objectId"]},
 			  "set_parameter":{"projectKind":"fx","required":["objectId","path","value"],"path":"相对 parameters 的 JSON Pointer；只允许已有字段，保留原生 NBT 类型"},
 			  "set_timeline":{"projectKind":"fx","required":["timeline"],"timeline":"effect_state 返回的原生时间轴 JSON 格式；时间单位 tick"},
-			  "set_model_asset":{"projectKind":"model","required":["asset"],"asset":"当前version=1完整JSON资产；保持需要保留的未知字段"},
-			  "patch_model_asset":{"projectKind":"model","required":["patch"],"patch":"JSON对象递归合并，列表整体替换；未涉及字段保留"},
-			  "edit_model_value":{"projectKind":"model或fx内嵌模型","required":["path","value"],"optional":["objectId"],"path":"已有模型JSON字段的JSON Pointer，例如/vertices/0或/faces/0/uv/2；fx需objectId；身份字段须使用完整引用事务"},
-			  "set_model_playback":{"projectKind":"model","required":["values"],"values":"enabled/duration/startDelay/looping/paused/clip/playbackSpeed/animationOffset的局部设置"},
-			  "import_model_obj":{"projectKind":"model","required":["text"],"optional":["flipV"],"text":"OBJ文本；保留几何、分组、面角UV和法线，其他能力不作为完整工程备份"},
-			  "set_model_renderer":{"projectKind":"model","required":["snbt"],"snbt":"原生renderer复合标签局部合并，保留未涉及字段"},
 			  "set_project_data":{"required":["snbt"],"snbt":"完整 snapshotSnbt，仅支持当前原生 FX 工程字段；必须精确往返"}
 			}
 			""";
@@ -67,142 +46,6 @@ public class PhotonEffectAutomation {
 		thread.setDaemon(true);
 		return thread;
 	}, new ThreadPoolExecutor.AbortPolicy());
-
-	private enum Phase {
-		QUEUED, RUNNING, COMMITTING, CANCELLED, DONE
-	}
-
-	@FunctionalInterface
-	@SuppressWarnings("UnnecessaryModifier")
-	private interface Action extends AutoCloseable {
-		public JsonObject run() throws Exception;
-
-		public default Callable<Action> background() {
-			return null;
-		}
-
-		@Override
-		public default void close() throws Exception {
-		}
-	}
-
-	private static class Request implements Runnable {
-		private final String command;
-		private final JsonObject arguments;
-		private final boolean writes;
-		private final AtomicReference<Phase> phase = new AtomicReference<>(Phase.QUEUED);
-		private final CompletableFuture<JsonObject> result = new CompletableFuture<>();
-
-		private Request(String command, JsonObject arguments, boolean writes) {
-			this.command = command;
-			this.arguments = arguments.deepCopy();
-			this.writes = writes;
-		}
-
-		private void checkControl() {
-			if (writes && !ControlModeHelper.isMcpControlMode()) {
-				throw new PhotonEffectCommandException(Code.CONTROL_REQUIRED);
-			}
-		}
-
-		@Override
-		public void run() {
-			if (!phase.compareAndSet(Phase.QUEUED, Phase.RUNNING)) {
-				return;
-			}
-			try {
-				checkControl();
-				var action = prepare(command, arguments);
-				var background = action.background();
-				if (background == null) {
-					complete(action);
-				} else {
-					try {
-						FILE_WORKER.execute(() -> prepareBackground(action, background));
-					} catch (RuntimeException failure) {
-						closeAction(action);
-						throw failure;
-					}
-				}
-			} catch (Throwable failure) {
-				fail(failure);
-			}
-		}
-
-		private void prepareBackground(Action owner, Callable<Action> background) {
-			Action prepared = null;
-			try {
-				if (phase.get() != Phase.RUNNING) {
-					return;
-				}
-				prepared = background.call();
-				if (phase.get() != Phase.RUNNING) {
-					closeAction(prepared);
-					return;
-				}
-				var ready = prepared;
-				Minecraft.getInstance().execute(() -> complete(ready));
-			} catch (Throwable failure) {
-				closeAction(prepared);
-				fail(failure);
-			} finally {
-				closeAction(owner);
-			}
-		}
-
-		private void complete(Action action) {
-			try {
-				if (!phase.compareAndSet(Phase.RUNNING, Phase.COMMITTING)) {
-					return;
-				}
-				checkControl();
-				result.complete(PhotonEffectJsonUtil.success(action.run()));
-			} catch (Throwable failure) {
-				fail(failure);
-			} finally {
-				closeAction(action);
-				phase.set(Phase.DONE);
-			}
-		}
-
-		private void fail(Throwable failure) {
-			if (failure instanceof IllegalArgumentException || failure instanceof IndexOutOfBoundsException || failure instanceof IllegalStateException) {
-				result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INVALID_ARGUMENT, String.valueOf(failure.getMessage()))));
-			} else {
-				result.complete(PhotonEffectJsonUtil.failure(failure));
-			}
-			phase.set(Phase.DONE);
-			if (failure instanceof Error error) {
-				throw error;
-			}
-		}
-
-		private static void closeAction(Action action) {
-			if (action == null) {
-				return;
-			}
-			try {
-				action.close();
-			} catch (Exception cleanupFailure) {
-				Lobecorp.LOGGER.error(cleanupFailure.getMessage(), cleanupFailure);
-			}
-		}
-
-		private boolean cancel() {
-			while (true) {
-				var current = phase.get();
-
-				if (current != Phase.QUEUED && current != Phase.RUNNING) {
-					return false;
-				}
-
-				if (phase.compareAndSet(current, Phase.CANCELLED)) {
-					result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.CLIENT_TIMEOUT)));
-					return true;
-				}
-			}
-		}
-	}
 
 	/// 手动编辑器操作沿用同一准备/提交管线，不阻塞客户端线程，也不借用远程接管权限。
 	public static void exportFromEditor(Handle handle, JsonObject arguments, Consumer<String> onFailure) {
@@ -447,17 +290,11 @@ public class PhotonEffectAutomation {
 		result.addProperty("protocolVersion", 1);
 		result.addProperty("projectCloseAvailable", true);
 		result.add("operations", JsonParser.parseString(OPERATION_SCHEMA));
-		for (var key : List.of("set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer", "import_model_obj")) {
-			var operation = result.getAsJsonObject("operations").getAsJsonObject(key);
-			operation.addProperty("projectKind", "model_or_fx");
-			operation.addProperty("objectIdRequiredFor", "fx");
-		}
 		result.add("animationOperations", PhotonEffectNamedUtil.operations());
 		result.addProperty("animationProtocolVersion", 1);
 		result.addProperty("namedAuthoringAvailable", true);
 		result.addProperty("namedRuntimeAvailable", true);
-		result.addProperty("modelAuthoringAvailable", true);
-		result.addProperty("modelFileAcceptancePending", true);
+		result.addProperty("modelAuthoringAvailable", false);
 		result.addProperty("namedSeekSemantics", "authored_cursor_without_particle_resimulation");
 		result.add("namedWritableTrackTypes", JsonParser.parseString("[\"activator\",\"control\",\"animation\",\"group\"]"));
 		var parameterTypes = new JsonArray();
@@ -516,8 +353,7 @@ public class PhotonEffectAutomation {
 		PhotonRegistries.MODEL_SOURCES.keys().forEach(modelSources::add);
 		result.add("modelSourceTypes", modelSources);
 		result.addProperty("customRuntimeAvailable", false);
-		result.addProperty("modelProjectsAvailable", true);
-		result.addProperty("modelFileSupport", "validated_embedded_v1");
+		result.addProperty("modelProjectsAvailable", false);
 		var tracks = new JsonArray();
 		PhotonRegistries.TIMELINE_TRACKS.keys().forEach(tracks::add);
 		result.add("timelineTypes", tracks);
@@ -532,5 +368,141 @@ public class PhotonEffectAutomation {
 
 		result.add("timelineTemplates", templates);
 		return result;
+	}
+
+	private enum Phase {
+		QUEUED, RUNNING, COMMITTING, CANCELLED, DONE
+	}
+
+	@FunctionalInterface
+	@SuppressWarnings("UnnecessaryModifier")
+	private interface Action extends AutoCloseable {
+		public JsonObject run() throws Exception;
+
+		public default Callable<Action> background() {
+			return null;
+		}
+
+		@Override
+		public default void close() throws Exception {
+		}
+	}
+
+	private static class Request implements Runnable {
+		private final String command;
+		private final JsonObject arguments;
+		private final boolean writes;
+		private final AtomicReference<Phase> phase = new AtomicReference<>(Phase.QUEUED);
+		private final CompletableFuture<JsonObject> result = new CompletableFuture<>();
+
+		private Request(String command, JsonObject arguments, boolean writes) {
+			this.command = command;
+			this.arguments = arguments.deepCopy();
+			this.writes = writes;
+		}
+
+		private static void closeAction(Action action) {
+			if (action == null) {
+				return;
+			}
+			try {
+				action.close();
+			} catch (Exception cleanupFailure) {
+				Lobecorp.LOGGER.error(cleanupFailure.getMessage(), cleanupFailure);
+			}
+		}
+
+		private void checkControl() {
+			if (writes && !ControlModeHelper.isMcpControlMode()) {
+				throw new PhotonEffectCommandException(Code.CONTROL_REQUIRED);
+			}
+		}
+
+		@Override
+		public void run() {
+			if (!phase.compareAndSet(Phase.QUEUED, Phase.RUNNING)) {
+				return;
+			}
+			try {
+				checkControl();
+				var action = prepare(command, arguments);
+				var background = action.background();
+				if (background == null) {
+					complete(action);
+				} else {
+					try {
+						FILE_WORKER.execute(() -> prepareBackground(action, background));
+					} catch (RuntimeException failure) {
+						closeAction(action);
+						throw failure;
+					}
+				}
+			} catch (Throwable failure) {
+				fail(failure);
+			}
+		}
+
+		private void prepareBackground(Action owner, Callable<Action> background) {
+			Action prepared = null;
+			try {
+				if (phase.get() != Phase.RUNNING) {
+					return;
+				}
+				prepared = background.call();
+				if (phase.get() != Phase.RUNNING) {
+					closeAction(prepared);
+					return;
+				}
+				var ready = prepared;
+				Minecraft.getInstance().execute(() -> complete(ready));
+			} catch (Throwable failure) {
+				closeAction(prepared);
+				fail(failure);
+			} finally {
+				closeAction(owner);
+			}
+		}
+
+		private void complete(Action action) {
+			try {
+				if (!phase.compareAndSet(Phase.RUNNING, Phase.COMMITTING)) {
+					return;
+				}
+				checkControl();
+				result.complete(PhotonEffectJsonUtil.success(action.run()));
+			} catch (Throwable failure) {
+				fail(failure);
+			} finally {
+				closeAction(action);
+				phase.set(Phase.DONE);
+			}
+		}
+
+		private void fail(Throwable failure) {
+			if (failure instanceof IllegalArgumentException || failure instanceof IndexOutOfBoundsException || failure instanceof IllegalStateException) {
+				result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.INVALID_ARGUMENT, String.valueOf(failure.getMessage()))));
+			} else {
+				result.complete(PhotonEffectJsonUtil.failure(failure));
+			}
+			phase.set(Phase.DONE);
+			if (failure instanceof Error error) {
+				throw error;
+			}
+		}
+
+		private boolean cancel() {
+			while (true) {
+				var current = phase.get();
+
+				if (current != Phase.QUEUED && current != Phase.RUNNING) {
+					return false;
+				}
+
+				if (phase.compareAndSet(current, Phase.CANCELLED)) {
+					result.complete(PhotonEffectJsonUtil.failure(new PhotonEffectCommandException(Code.CLIENT_TIMEOUT)));
+					return true;
+				}
+			}
+		}
 	}
 }

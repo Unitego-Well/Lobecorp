@@ -12,19 +12,19 @@ import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
-import dev.vfyjxf.taffy.style.TaffyDimension;
-import net.minecraft.network.chat.Component;
-import net.minecraft.nbt.CompoundTag;
 import dev.vfyjxf.taffy.style.FlexDirection;
+import dev.vfyjxf.taffy.style.TaffyDimension;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.client.photon.playback.PhotonActivationTrackAccess;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
-import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions.StartBehavior;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions.EndBehavior;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions.StartBehavior;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 
-import java.util.List;
-import java.util.ArrayList;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 
 /// 配置当前原生激活轨道；修改进入原生撤销历史，不直接写磁盘。
 public class PhotonActivationPanel {
@@ -139,6 +139,6 @@ public class PhotonActivationPanel {
 	}
 
 	private static String key(String suffix) {
-		return PhotonEditorTranslations.key(suffix);
+		return PhotonEditorTranslationKeys.key(suffix);
 	}
 }

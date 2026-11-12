@@ -1,34 +1,24 @@
 package org.unitego.lobecorp.util.photon.editor.automation;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigNumber;
-import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
-import com.lowdragmc.lowdraglib2.utils.PersistedParser;
-import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.EnumAccessor;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigSelector;
+import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
+import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.EnumAccessor;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.photon.PhotonRegistries;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunctionConfig;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3Config;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.Constant;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.RandomConstant;
-
-import java.util.Arrays;
-
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import net.minecraft.network.chat.Component;
 
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Field;
-import java.util.List;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class PhotonEffectSchemaUtil {

@@ -1,34 +1,30 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
+import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import org.unitego.lobecorp.client.photon.editor.PhotonCompositionProjectAccess;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.unitego.lobecorp.client.photon.editor.PhotonCompositionProjectAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonProjectRawAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonProjectNbtUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonAuthoringSnapshotUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
-import java.util.Set;
-
-import org.jetbrains.annotations.NotNull;
-import com.lowdragmc.photon.gui.editor.FXEditor;
-import com.lowdragmc.lowdraglib2.editor.ui.Editor;
-
 import java.lang.ref.WeakReference;
-
-import org.unitego.lobecorp.util.photon.editor.PhotonAuthoringSnapshotUtil;
+import java.util.Set;
 
 /// 当前FX协议仍由原生序列化；原树只承接已知模型的变化，不通过重建摘要覆盖文件。
 @Mixin(FXProject.class)

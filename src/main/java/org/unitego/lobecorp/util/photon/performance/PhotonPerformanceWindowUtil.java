@@ -3,56 +3,14 @@ package org.unitego.lobecorp.util.photon.performance;
 import com.google.gson.JsonObject;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Capture;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Event;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mark;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mode;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Retention;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.function.BooleanSupplier;
 
 /// 只分析冻结捕获；边界调用只计墙钟交集，不按比例伪造自身耗时、分配或 GPU 时间。
 public class PhotonPerformanceWindowUtil {
-	public record Bounds(int firstFrame, int lastFrame, long fromNs, long toNs) {
-	}
-
-	public record Distribution(int samples, int missing, @Nullable Long sum, @Nullable Long maximum,
-	                           @Nullable Long p95, @Nullable Long p99) {
-	}
-
-	public record FrameMetrics(Distribution intervals, Distribution cpu, Distribution gpu, Distribution allocations) {
-	}
-
-	public record CpuRow(long threadId, String threadName, int node, Stage stage, long fullCalls, long partialCalls,
-	                     long incomplete, long failed, long inclusiveOverlapNs, long knownSelfNs,
-	                     long maximumFullNs, long allocationSamples, long knownSelfAllocatedBytes,
-	                     long cpuSamples, long knownInclusiveThreadCpuNs) {
-	}
-
-	public record GpuRow(String pass, int node, String ownership, long measured, long unavailable, long sumNs,
-	                     long maximumNs) {
-	}
-
-	public record Result(long sessionId, Bounds bounds, FrameMetrics frames, boolean detailedCpu,
-	                     List<CpuRow> cpu, List<GpuRow> gpu, List<Mark> marks, List<Retention> retention,
-	                     List<Event> cpuPeakHints, List<JsonObject> gpuPeakHints, long gpuPartial,
-	                     long gpuUnknownSubmission,
-	                     long globalDropped, long globalOverwritten, long globalIncomplete) {
-	}
-
-	private record Key(long thread, int node, Stage stage) {
-	}
-
-	private record GpuKey(String pass, int node, String ownership) {
-	}
-
 	public static Bounds bounds(Frames frames, int firstFrame, int lastFrame) {
 		if (firstFrame < 1 || lastFrame < firstFrame || lastFrame >= frames.count()) {
 			throw new IllegalArgumentException("invalid_frame_window");
@@ -190,6 +148,39 @@ public class PhotonPerformanceWindowUtil {
 	private static long number(JsonObject object, String name, long fallback) {
 		var value = object.get(name);
 		return value == null || value.isJsonNull() ? fallback : value.getAsLong();
+	}
+
+	public record Bounds(int firstFrame, int lastFrame, long fromNs, long toNs) {
+	}
+
+	public record Distribution(int samples, int missing, @Nullable Long sum, @Nullable Long maximum,
+	                           @Nullable Long p95, @Nullable Long p99) {
+	}
+
+	public record FrameMetrics(Distribution intervals, Distribution cpu, Distribution gpu, Distribution allocations) {
+	}
+
+	public record CpuRow(long threadId, String threadName, int node, Stage stage, long fullCalls, long partialCalls,
+	                     long incomplete, long failed, long inclusiveOverlapNs, long knownSelfNs,
+	                     long maximumFullNs, long allocationSamples, long knownSelfAllocatedBytes,
+	                     long cpuSamples, long knownInclusiveThreadCpuNs) {
+	}
+
+	public record GpuRow(String pass, int node, String ownership, long measured, long unavailable, long sumNs,
+	                     long maximumNs) {
+	}
+
+	public record Result(long sessionId, Bounds bounds, FrameMetrics frames, boolean detailedCpu,
+	                     List<CpuRow> cpu, List<GpuRow> gpu, List<Mark> marks, List<Retention> retention,
+	                     List<Event> cpuPeakHints, List<JsonObject> gpuPeakHints, long gpuPartial,
+	                     long gpuUnknownSubmission,
+	                     long globalDropped, long globalOverwritten, long globalIncomplete) {
+	}
+
+	private record Key(long thread, int node, Stage stage) {
+	}
+
+	private record GpuKey(String pass, int node, String ownership) {
 	}
 
 	static class CpuAccumulator {

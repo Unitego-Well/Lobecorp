@@ -7,7 +7,6 @@ import com.google.gson.JsonPrimitive;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonNamedAuthoringSession;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
@@ -15,14 +14,11 @@ import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /// 客户端线程上的瞬时控制，不写制作定义或历史；运行代次和句柄身份共同拒绝过期调用。
 public class PhotonEffectNamedControlUtil {

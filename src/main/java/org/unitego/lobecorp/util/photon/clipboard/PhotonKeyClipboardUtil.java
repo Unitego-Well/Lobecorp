@@ -7,26 +7,16 @@ import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.Animat
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.joml.Vector2f;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
 import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.HashSet;
+import java.util.*;
 
 public class PhotonKeyClipboardUtil {
 	/// 每个编辑器独立保存值与切线副本，不保留源粒子和轨道引用。
 	private static final Map<FXEditor, Clipboard> CLIPBOARDS = new WeakHashMap<>();
-
-	private record Key(int axis, Vector2f point, Vector2f in, Vector2f out) {
-	}
-
-	private record Clipboard(String type, String propertyKey, float anchor, List<Key> keys) {
-	}
 
 	public static void clear(FXEditor editor) {
 		CLIPBOARDS.remove(editor);
@@ -261,5 +251,11 @@ public class PhotonKeyClipboardUtil {
 		}
 
 		throw new IllegalArgumentException();
+	}
+
+	private record Key(int axis, Vector2f point, Vector2f in, Vector2f out) {
+	}
+
+	private record Clipboard(String type, String propertyKey, float anchor, List<Key> keys) {
 	}
 }

@@ -6,12 +6,12 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.conductor.control.ConductorController;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.world.entity.skill.MultiStageBasicSkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.hitbox.*;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
@@ -43,6 +43,16 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 
 	public AttackSkill(Properties properties) {
 		super(properties, COMBO_LENGTH, COMBO_COOLDOWN_TICKS);
+	}
+
+	@Nullable
+	private static LivingEntity getTarget(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		return runtime.target() instanceof LivingEntity target ? target
+				: queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
+	}
+
+	private static boolean isOutsideAttackRange(TheQueenOfHatred queen, LivingEntity target) {
+		return queen.distanceToSqr(target) > ATTACK_RANGE * ATTACK_RANGE;
 	}
 
 	@Override
@@ -128,16 +138,6 @@ public class AttackSkill extends MultiStageBasicSkill<TheQueenOfHatred> {
 	@Override
 	public void onCancel(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		onRecoveryEnd(queen, runtime);
-	}
-
-	@Nullable
-	private static LivingEntity getTarget(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		return runtime.target() instanceof LivingEntity target ? target
-				: queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
-	}
-
-	private static boolean isOutsideAttackRange(TheQueenOfHatred queen, LivingEntity target) {
-		return queen.distanceToSqr(target) > ATTACK_RANGE * ATTACK_RANGE;
 	}
 
 }

@@ -10,96 +10,27 @@ import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion
 
 import javax.annotation.Nullable;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 每个父播放独占窗口；窗口内迟生成的子实例只触发一次，受控与独立播放分开结束。
 public class PhotonChildWindows implements AutoCloseable {
-	private record Child(WeakReference<PhotonNamedRuntime> runtime, WeakReference<PhotonNamedHandle> handle) {
-	}
-
-	private static class Window {
-		private final PhotonChildClip clip;
-		private final Map<UUID, Child> children = new HashMap<>();
-		private boolean completed;
-
-		private Window(PhotonChildClip clip) {
-			this.clip = clip;
-		}
-
-		private void drive(double time, boolean simulation) {
-			if (completed || clip.mode != PhotonChildClip.Mode.CONTROLLED) {
-				return;
-			}
-
-			for (var child : children.values()) {
-				var runtime = child.runtime().get();
-				var handle = child.handle().get();
-
-				if (current(runtime, handle)) {
-					runtime.driveControlled(handle, clip.windowProgress(time), simulation);
-				}
-			}
-		}
-
-		private void complete() {
-			if (completed) {
-				return;
-			}
-
-			completed = true;
-
-			if (clip.mode == PhotonChildClip.Mode.CONTROLLED) {
-				for (var child : children.values()) {
-					var runtime = child.runtime().get();
-					var handle = child.handle().get();
-
-					if (current(runtime, handle)) {
-						var completion = switch (clip.completion) {
-							case INHERIT -> handle.definition().completion();
-							case HOLD -> Completion.HOLD;
-							case RELEASE -> Completion.RELEASE;
-						};
-						runtime.completeControlled(handle, completion);
-					}
-				}
-			}
-		}
-
-		private void close() {
-			if (clip.mode == PhotonChildClip.Mode.CONTROLLED) {
-				for (var child : children.values()) {
-					var runtime = child.runtime().get();
-					var handle = child.handle().get();
-
-					if (current(runtime, handle)) {
-						runtime.stop(handle);
-					}
-				}
-			}
-
-			children.clear();
-			completed = true;
-		}
-	}
-
 	private final FXRuntime source;
 	private final @Nullable PhotonNamedHandle parent;
 	private final @Nullable PhotonNamedRuntime callHost;
 	private final Map<UUID, Window> windows = new HashMap<>();
 	private double previous = Double.NEGATIVE_INFINITY;
-
 	public PhotonChildWindows(FXRuntime source, @Nullable PhotonNamedHandle parent) {
 		this(source, parent, null);
 	}
-
 	public PhotonChildWindows(FXRuntime source, @Nullable PhotonNamedHandle parent, @Nullable PhotonNamedRuntime callHost) {
 		this.source = source;
 		this.parent = parent;
 		this.callHost = callHost;
+	}
+
+	private static boolean current(@Nullable PhotonNamedRuntime runtime, @Nullable PhotonNamedHandle handle) {
+		return runtime != null && handle != null && !runtime.closed() && !handle.disposed()
+				&& runtime.ownsPlayback(handle);
 	}
 
 	public void evaluate(List<? extends Track> tracks, double time) {
@@ -206,15 +137,78 @@ public class PhotonChildWindows implements AutoCloseable {
 		windows.values().forEach(window -> window.drive(time, false));
 	}
 
-	private static boolean current(@Nullable PhotonNamedRuntime runtime, @Nullable PhotonNamedHandle handle) {
-		return runtime != null && handle != null && !runtime.closed() && !handle.disposed()
-				&& runtime.ownsPlayback(handle);
-	}
-
 	@Override
 	public void close() {
 		windows.values().forEach(Window::close);
 		windows.clear();
 		previous = Double.NEGATIVE_INFINITY;
+	}
+
+	private record Child(WeakReference<PhotonNamedRuntime> runtime, WeakReference<PhotonNamedHandle> handle) {
+	}
+
+	private static class Window {
+		private final PhotonChildClip clip;
+		private final Map<UUID, Child> children = new HashMap<>();
+		private boolean completed;
+
+		private Window(PhotonChildClip clip) {
+			this.clip = clip;
+		}
+
+		private void drive(double time, boolean simulation) {
+			if (completed || clip.mode != PhotonChildClip.Mode.CONTROLLED) {
+				return;
+			}
+
+			for (var child : children.values()) {
+				var runtime = child.runtime().get();
+				var handle = child.handle().get();
+
+				if (current(runtime, handle)) {
+					runtime.driveControlled(handle, clip.windowProgress(time), simulation);
+				}
+			}
+		}
+
+		private void complete() {
+			if (completed) {
+				return;
+			}
+
+			completed = true;
+
+			if (clip.mode == PhotonChildClip.Mode.CONTROLLED) {
+				for (var child : children.values()) {
+					var runtime = child.runtime().get();
+					var handle = child.handle().get();
+
+					if (current(runtime, handle)) {
+						var completion = switch (clip.completion) {
+							case INHERIT -> handle.definition().completion();
+							case HOLD -> Completion.HOLD;
+							case RELEASE -> Completion.RELEASE;
+						};
+						runtime.completeControlled(handle, completion);
+					}
+				}
+			}
+		}
+
+		private void close() {
+			if (clip.mode == PhotonChildClip.Mode.CONTROLLED) {
+				for (var child : children.values()) {
+					var runtime = child.runtime().get();
+					var handle = child.handle().get();
+
+					if (current(runtime, handle)) {
+						runtime.stop(handle);
+					}
+				}
+			}
+
+			children.clear();
+			completed = true;
+		}
 	}
 }

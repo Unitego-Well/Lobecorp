@@ -16,12 +16,6 @@ public class HordeGroundCache {
 	private static ClientLevel world;
 	private static long cleaned = Long.MIN_VALUE;
 
-	public record Sample(double height, BlockState state, boolean passable) {
-	}
-
-	private record Entry(LevelChunk chunk, Sample sample) {
-	}
-
 	public static Sample sample(double x, double z) {
 		var level = Minecraft.getInstance().level;
 		if (world != level) {
@@ -101,5 +95,11 @@ public class HordeGroundCache {
 		columns.clear();
 		world = null;
 		cleaned = Long.MIN_VALUE;
+	}
+
+	public record Sample(double height, BlockState state, boolean passable) {
+	}
+
+	private record Entry(LevelChunk chunk, Sample sample) {
 	}
 }

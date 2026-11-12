@@ -8,8 +8,8 @@ import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.metadata.MetadataSectionType;
 import net.minecraft.server.packs.repository.KnownPack;
 import net.minecraft.server.packs.resources.IoSupplier;
-import org.jspecify.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 
@@ -18,11 +18,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /// 仅独立验收会话隐藏基础包中的已声明特效资源，不改变资源包优先级或普通运行路径。
 @NullMarked
@@ -30,15 +26,6 @@ public class PhotonAcceptancePackResourcesUtil {
 	private static final String GAME_NAME = "g1_resource_acceptance_20261021";
 	private static final String SOURCE_BASELINE = "g1_source_baseline.fxpack";
 	private static volatile @Nullable Scope latest;
-
-	public record Scope(String selectedPackId, List<String> origins, Set<Identifier> resourceIds,
-						Set<Identifier> hiddenIds) {
-		public Scope {
-			origins = List.copyOf(origins);
-			resourceIds = Set.copyOf(resourceIds);
-			hiddenIds = Set.copyOf(hiddenIds);
-		}
-	}
 
 	public static @Nullable Scope scope() {
 		return latest;
@@ -80,23 +67,23 @@ public class PhotonAcceptancePackResourcesUtil {
 					}
 					var document = PhotonResourceReader.read(file, limits);
 					origins.add(file + "#" + document.sha256());
-                    for (var entry : document.entries()) {
-                        expandedBytes = Math.addExact(expandedBytes, entry.sourceBytes());
-                        if (expandedBytes > limits.unpackedBytes()) {
-                            throw new IOException("验收包集合超过展开预算。");
-                        }
-                        var name = entry.origin().substring(document.origin().length() + 2);
-                        if (name.startsWith("assets/")) {
-                            int separator = name.indexOf('/', "assets/".length());
-                            if (separator < 0) {
-                                throw new IOException("验收包资源缺少命名空间。");
-                            }
-                            resources.add(Identifier.fromNamespaceAndPath(name.substring("assets/".length(), separator), name.substring(separator + 1)));
-                            if (resources.size() > limits.entries()) {
-                                throw new IOException("验收包集合超过展开预算。");
-                            }
-                        }
-                    }
+					for (var entry : document.entries()) {
+						expandedBytes = Math.addExact(expandedBytes, entry.sourceBytes());
+						if (expandedBytes > limits.unpackedBytes()) {
+							throw new IOException("验收包集合超过展开预算。");
+						}
+						var name = entry.origin().substring(document.origin().length() + 2);
+						if (name.startsWith("assets/")) {
+							int separator = name.indexOf('/', "assets/".length());
+							if (separator < 0) {
+								throw new IOException("验收包资源缺少命名空间。");
+							}
+							resources.add(Identifier.fromNamespaceAndPath(name.substring("assets/".length(), separator), name.substring(separator + 1)));
+							if (resources.size() > limits.entries()) {
+								throw new IOException("验收包集合超过展开预算。");
+							}
+						}
+					}
 				} catch (IOException | RuntimeException invalid) {
 					throw new IllegalStateException("无法读取验收屏蔽来源：" + file, invalid);
 				}
@@ -119,6 +106,15 @@ public class PhotonAcceptancePackResourcesUtil {
 
 	public static PackResources hideResources(PackResources original, Set<Identifier> hidden) {
 		return new Filtered(original, Set.copyOf(hidden));
+	}
+
+	public record Scope(String selectedPackId, List<String> origins, Set<Identifier> resourceIds,
+	                    Set<Identifier> hiddenIds) {
+		public Scope {
+			origins = List.copyOf(origins);
+			resourceIds = Set.copyOf(resourceIds);
+			hiddenIds = Set.copyOf(hiddenIds);
+		}
 	}
 
 	private record Filtered(PackResources original, Set<Identifier> hidden) implements PackResources {

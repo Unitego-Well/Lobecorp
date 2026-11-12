@@ -19,11 +19,11 @@ public class EntitySkillCooldownClock {
 
 	/// 尚未建立计时基准时使用的标记，兼容只有旧冷却附件的存档。
 	private static final long UNINITIALIZED_TICK = -1L;
+	/// 到期时间向上取整产生的余量，范围为 (-1, 0]。
+	private final Map<IEntitySkill<?>, Double> fractions = new HashMap<>();
 	private long lastTick = UNINITIALIZED_TICK;
 	/// 前一计时间隔的速度，1 表示每 tick 推进 1 tick 冷却。
 	private double lastSpeed = 1.0;
-	/// 到期时间向上取整产生的余量，范围为 (-1, 0]。
-	private final Map<IEntitySkill<?>, Double> fractions = new HashMap<>();
 
 	public EntitySkillCooldownClock() {
 	}

@@ -3,7 +3,6 @@ package org.unitego.lobecorp.client.conductor;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Camera;
 import net.minecraft.client.KeyMapping;
-import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -14,7 +13,10 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.*;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.joml.Matrix4f;
@@ -24,18 +26,19 @@ import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.conductor.input.ConductorManualSkillControl;
 import org.unitego.lobecorp.client.conductor.render.ConductorCamera;
 import org.unitego.lobecorp.client.conductor.render.ConductorCamera.View;
-import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
 import org.unitego.lobecorp.conductor.ability.ConductorTargetingResolver;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.network.ts.ConductorViewPayload;
 import org.unitego.lobecorp.registry.client.conductor.ConductorKeyMappings;
+import org.unitego.lobecorp.registry.world.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -487,7 +490,8 @@ public class ConductorControls {
 	private static void enter(Minecraft minecraft) {
 		active = true;
 		PlayerInteractionControl.acquire(ConductorControls.class, 100, () -> active,
-				PlayerInteractionControl.Policy.OBSERVER, () -> {});
+				PlayerInteractionControl.Policy.OBSERVER, () -> {
+				});
 		clearCameraKeys();
 		KeyMapping.releaseAll();
 		ConductorHud.INSTANCE.resetLayout();

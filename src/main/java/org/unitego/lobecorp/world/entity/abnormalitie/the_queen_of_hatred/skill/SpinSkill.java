@@ -2,18 +2,18 @@ package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
-import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 
 /// 女皇回旋：结算一圈横扫近战，并向四周发射中型追踪星星。
 public class SpinSkill extends EntitySkill<TheQueenOfHatred> {

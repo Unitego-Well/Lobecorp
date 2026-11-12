@@ -5,44 +5,25 @@ import com.lowdragmc.lowdraglib2.gui.holder.ModularUIScreen;
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI;
 import com.lowdragmc.lowdraglib2.gui.ui.UI;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.*;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.photon.gui.editor.FXEditor;
+import com.lowdragmc.photon.gui.editor.view.FXObjectTreeNode;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.*;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowAnalysisUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil.CpuRow;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil.GpuRow;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil.Result;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Aggregate;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Counter;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mark;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mode;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Node;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.View;
 
-import java.util.ArrayList;
-import java.util.ArrayDeque;
-
-import com.lowdragmc.photon.gui.editor.view.FXObjectTreeNode;
-
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 固定行复用与有界刷新；世界采样开始后关闭查看界面，编辑器面板可继续操作时间轴。
 public class PhotonPerformancePanel {
@@ -54,29 +35,29 @@ public class PhotonPerformancePanel {
 	private static final double NS_PER_MS = 1_000_000d;
 	// 分页顺序同时决定两行标签的位置；第 5 项起换行。
 	private static final List<String> PAGES = List.of("overview", "objects", "models", "animations", "operations", "gpu", "resources", "export");
-	private @Nullable FXEditor editor;
-	private UIElement root = new UIElement();
 	private final PhotonPerformanceWindowAnalysisUtil analysis = new PhotonPerformanceWindowAnalysisUtil();
 	private final PhotonPerformanceFrameChart chart = new PhotonPerformanceFrameChart(this::chooseWindow, this::clearWindow, this::exportWindow);
 	private final TextElement heading = new TextElement();
 	private final UIElement ordering = row();
 	private final Button selfOrder = button("sort_self", () -> order(0));
 	private final Button allocationOrder = button("sort_alloc", () -> order(2));
+	private final @Nullable FXEditor editor;
+	private final UIElement root = new UIElement();
 	private @Nullable Result window;
 	// 帧窗口使用 1-based 帧号；0 表示未选择。
 	private int firstFrame;
 	private int lastFrame;
 	private long submittedSession;
 	private @Nullable String windowError;
-	private TextElement status = new TextElement();
-	private TextElement details = new TextElement();
-	private TextElement pagination = new TextElement();
-	private List<Button> rows = new ArrayList<>();
-	private List<Object> entries = new ArrayList<>();
-	private int[] rowNodes = new int[PAGE_SIZE];
-	private Map<Integer, String> paths = new HashMap<>();
-	private Map<Integer, Integer> contexts = new HashMap<>();
-	private int[] ancestorSearch = new int[PhotonPerformanceTraceUtil.MAX_DEPTH * 2];
+	private final TextElement status = new TextElement();
+	private final TextElement details = new TextElement();
+	private final TextElement pagination = new TextElement();
+	private final List<Button> rows = new ArrayList<>();
+	private final List<Object> entries = new ArrayList<>();
+	private final int[] rowNodes = new int[PAGE_SIZE];
+	private final Map<Integer, String> paths = new HashMap<>();
+	private final Map<Integer, Integer> contexts = new HashMap<>();
+	private final int[] ancestorSearch = new int[PhotonPerformanceTraceUtil.MAX_DEPTH * 2];
 	private @Nullable View view;
 	private long viewedSession;
 	private long refreshedNs;
@@ -117,6 +98,55 @@ public class PhotonPerformancePanel {
 			});
 			panel.show(host);
 		});
+	}
+
+	private static int nodeId(Object value) {
+		if (value instanceof Aggregate aggregate) {
+			return aggregate.node();
+		}
+		if (value instanceof Mark mark) {
+			return mark.node();
+		}
+		if (value instanceof CpuRow cpu) {
+			return cpu.node();
+		}
+		if (value instanceof GpuRow gpu) {
+			return gpu.node();
+		}
+		return value instanceof Counter counter ? counter.node() : 0;
+	}
+
+	private static GpuRow gpuRow(JsonObject value) {
+		return new GpuRow(value.get("pass").getAsString(), value.get("node_id").getAsInt(), value.get("ownership").getAsString(),
+				value.get("measured").getAsLong(), value.get("unavailable").getAsLong() + value.get("skipped_budget_or_pending").getAsLong(),
+				value.get("duration_ns_sum").isJsonNull() ? 0 : value.get("duration_ns_sum").getAsLong(),
+				value.get("duration_ns_max").isJsonNull() ? 0 : value.get("duration_ns_max").getAsLong());
+	}
+
+	private static String nullableDecimal(@Nullable Long value) {
+		return value == null ? "?" : decimal(value);
+	}
+
+	private static String decimal(long ns) {
+		return String.format(Locale.ROOT, "%.3f", ns / NS_PER_MS);
+	}
+
+	private static UIElement row() {
+		return new UIElement().layout(layout -> layout.widthPercent(100).height(ROW_HEIGHT).minHeight(ROW_HEIGHT).flexDirection(FlexDirection.ROW));
+	}
+
+	private static Button button(String name, Runnable action) {
+		var button = new Button().setText(key(name)).setOnClick(_ -> action.run());
+		button.layout(layout -> layout.flex(1).minWidth(0));
+		return button;
+	}
+
+	private static String key(String name) {
+		return PhotonPerformanceTranslationKeys.key(name);
+	}
+
+	private static Component text(String name) {
+		return Component.translatable(key(name));
 	}
 
 	private void show(UIElement host) {
@@ -469,11 +499,13 @@ public class PhotonPerformancePanel {
 					.append(Component.translatable(key("stage." + cpu.stage().name().toLowerCase(Locale.ROOT))))
 					.append(Component.literal(" / " + cpu.threadName()));
 		}
-		if (value instanceof GpuRow gpu) {
-			return Component.literal((gpu.measured() == 0 ? "?" : decimal(gpu.sumNs())) + " | "
-							+ (gpu.measured() == 0 ? "?" : decimal(gpu.maximumNs())) + " | " + gpu.measured() + "/" + gpu.unavailable()
-							+ " | " + path(gpu.node()) + " / " + gpu.pass() + " / ")
-					.append(Component.translatable(key("linked_scope".equals(gpu.ownership()) ? "gpu_linked" : "gpu_shared")));
+		if (value instanceof GpuRow(
+				String pass, int node, String ownership, long measured, long unavailable, long sumNs, long maximumNs
+		)) {
+			return Component.literal((measured == 0 ? "?" : decimal(sumNs)) + " | "
+							+ (measured == 0 ? "?" : decimal(maximumNs)) + " | " + measured + "/" + unavailable
+							+ " | " + path(node) + " / " + pass + " / ")
+					.append(Component.translatable(key("linked_scope".equals(ownership) ? "gpu_linked" : "gpu_shared")));
 		}
 		if (value instanceof Aggregate aggregate) {
 			String name = view.nodes().get(aggregate.node()).name();
@@ -577,54 +609,5 @@ public class PhotonPerformancePanel {
 		} catch (IllegalArgumentException ignored) {
 			// 非场景对象或已经结束的运行实例只展示捕获路径。
 		}
-	}
-
-	private static int nodeId(Object value) {
-		if (value instanceof Aggregate aggregate) {
-			return aggregate.node();
-		}
-		if (value instanceof Mark mark) {
-			return mark.node();
-		}
-		if (value instanceof CpuRow cpu) {
-			return cpu.node();
-		}
-		if (value instanceof GpuRow gpu) {
-			return gpu.node();
-		}
-		return value instanceof Counter counter ? counter.node() : 0;
-	}
-
-	private static GpuRow gpuRow(JsonObject value) {
-		return new GpuRow(value.get("pass").getAsString(), value.get("node_id").getAsInt(), value.get("ownership").getAsString(),
-				value.get("measured").getAsLong(), value.get("unavailable").getAsLong() + value.get("skipped_budget_or_pending").getAsLong(),
-				value.get("duration_ns_sum").isJsonNull() ? 0 : value.get("duration_ns_sum").getAsLong(),
-				value.get("duration_ns_max").isJsonNull() ? 0 : value.get("duration_ns_max").getAsLong());
-	}
-
-	private static String nullableDecimal(@Nullable Long value) {
-		return value == null ? "?" : decimal(value);
-	}
-
-	private static String decimal(long ns) {
-		return String.format(Locale.ROOT, "%.3f", ns / NS_PER_MS);
-	}
-
-	private static UIElement row() {
-		return new UIElement().layout(layout -> layout.widthPercent(100).height(ROW_HEIGHT).minHeight(ROW_HEIGHT).flexDirection(FlexDirection.ROW));
-	}
-
-	private static Button button(String name, Runnable action) {
-		var button = new Button().setText(key(name)).setOnClick(_ -> action.run());
-		button.layout(layout -> layout.flex(1).minWidth(0));
-		return button;
-	}
-
-	private static String key(String name) {
-		return PhotonPerformanceTranslations.key(name);
-	}
-
-	private static Component text(String name) {
-		return Component.translatable(key(name));
 	}
 }

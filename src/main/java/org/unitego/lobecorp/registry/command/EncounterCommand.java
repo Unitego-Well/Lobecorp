@@ -7,21 +7,21 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.commands.arguments.AngleArgument;
-import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
-import java.util.List;
+import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.registry.translation.EncounterTranslationKeys;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.world.horde.Hordes;
-import org.unitego.lobecorp.world.encounter.Encounters;
+import org.unitego.lobecorp.registry.translation.EncounterTranslationKeys;
+import org.unitego.lobecorp.api.encounter.Encounters;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 import org.unitego.lobecorp.world.horde.HordeStartRequest;
 import org.unitego.lobecorp.world.horde.HordeStopMode;
+import org.unitego.lobecorp.api.horde.Hordes;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class EncounterCommand {
@@ -42,8 +42,8 @@ public class EncounterCommand {
 												.executes(context -> start(context, 1))
 												.then(Commands.argument("width", DoubleArgumentType.doubleArg(1, 512))
 														.executes(context -> start(context, 2))
-																.then(Commands.argument("waypoints", StringArgumentType.greedyString())
-																		.executes(context -> start(context, 3))))))));
+														.then(Commands.argument("waypoints", StringArgumentType.greedyString())
+																.executes(context -> start(context, 3))))))));
 		dispatcher.register(Commands.literal("lobecorp").then(Commands.literal("encounter")
 				.requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
 				.then(start)

@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import com.lowdragmc.photon.client.gameobject.emitter.IParticleEmitter;
+import jdk.jfr.FlightRecorder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.Identifier;
@@ -17,13 +18,14 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforgespi.language.IModInfo;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.client.photon.runtime.PhotonGeoEffect;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
@@ -32,34 +34,19 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.Set;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.Objects;
-
-import net.neoforged.neoforgespi.language.IModInfo;
-import jdk.jfr.FlightRecorder;
-
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /// 两个前端共用同一场景、施放时钟和采集所有权；inactive tick 只读空引用。
 public class PhotonRepeatedEffectTrial {
-	public enum Kind {LASER, NATIVE}
-
-	public enum Mode {BASE, FULL}
-
-	private enum State {SETTLE, PREPARE, WARMUP, PREWARM_EXPORT, MAIN, MAIN_EXPORT, CLEANUP, COMPLETE, FAILED}
-
 	private static final Gson GSON = new Gson();
 	private static PhotonRepeatedEffectTrial current;
 	private final Minecraft minecraft = Minecraft.getInstance();
@@ -88,6 +75,10 @@ public class PhotonRepeatedEffectTrial {
 	private final long[] peakParticles = new long[PhotonRepeatedEffectConfig.COUNT];
 	private final boolean[] triggered = new boolean[PhotonRepeatedEffectConfig.COUNT];
 	private final long createdNs = System.nanoTime();
+	private final Vec3 originalPosition;
+	private final float originalYaw;
+	private final float originalPitch;
+	private final boolean originalFlying;
 	private State state = State.SETTLE;
 	private long stableNs;
 	private long previousSampleNs;
@@ -106,28 +97,6 @@ public class PhotonRepeatedEffectTrial {
 	private Scene scene;
 	private CompletableFuture<Void> cleanup;
 	private CompletableFuture<JsonObject> archive;
-	private final Vec3 originalPosition;
-	private final float originalYaw;
-	private final float originalPitch;
-	private final boolean originalFlying;
-
-	private record Scene(Vec3 origin, List<QueenBeamPerformanceFixture> fixtures) {
-	}
-
-	public static void start(Kind kind, Mode mode, String label, BooleanSupplier fullReady) throws Exception {
-		if (current != null) {
-			throw new IllegalStateException("repeat_one_trial_per_game");
-		}
-
-		if (FMLEnvironment.isProduction() || Minecraft.getInstance().level == null
-				|| Minecraft.getInstance().player == null || Minecraft.getInstance().getSingleplayerServer() == null) {
-			throw new IllegalStateException("repeat_requires_ide_integrated_client");
-		}
-
-		requireIdle();
-		current = new PhotonRepeatedEffectTrial(kind, mode, label, fullReady);
-	}
-
 	private PhotonRepeatedEffectTrial(Kind kind, Mode mode, String label, BooleanSupplier fullReady) throws Exception {
 		if (!label.matches("[a-z0-9_]{1,80}")) {
 			throw new IllegalArgumentException("repeat_label");
@@ -231,6 +200,20 @@ public class PhotonRepeatedEffectTrial {
 		writeReport();
 	}
 
+	public static void start(Kind kind, Mode mode, String label, BooleanSupplier fullReady) throws Exception {
+		if (current != null) {
+			throw new IllegalStateException("repeat_one_trial_per_game");
+		}
+
+		if (FMLEnvironment.isProduction() || Minecraft.getInstance().level == null
+				|| Minecraft.getInstance().player == null || Minecraft.getInstance().getSingleplayerServer() == null) {
+			throw new IllegalStateException("repeat_requires_ide_integrated_client");
+		}
+
+		requireIdle();
+		current = new PhotonRepeatedEffectTrial(kind, mode, label, fullReady);
+	}
+
 	private static boolean testArgument(String argument) {
 		return PhotonRepeatedEffectConfig.isTestVmArgument(argument);
 	}
@@ -240,16 +223,6 @@ public class PhotonRepeatedEffectTrial {
 				|| PhotonPerformanceTraceUtil.sessionId() != 0 || PhotonSubmissionDiagnostics.enabled()
 				|| PhotonPerformanceCapture.status().get("exporting").getAsBoolean()) {
 			throw new IllegalStateException("repeat_capture_owner_busy");
-		}
-	}
-
-	private void requireWorld() throws Exception {
-		var saves = gameDirectory.resolve("saves");
-		if (!worldName.startsWith(PhotonRepeatedEffectConfig.WORLD_PREFIX)
-				|| !worldDirectory.getFileName().toString().equals(worldName)
-				|| !saves.toRealPath().equals(saves) || !worldDirectory.equals(saves.resolve(worldName))
-				|| !level.dimension().equals(server.overworld().dimension())) {
-			throw new IllegalStateException("repeat_requires_owned_photon_repeat_world");
 		}
 	}
 
@@ -263,6 +236,140 @@ public class PhotonRepeatedEffectTrial {
 			trial.advance();
 		} catch (Exception | LinkageError failure) {
 			trial.fail(failure);
+		}
+	}
+
+	public static void prepareWindow() {
+		if (FMLEnvironment.isProduction()) {
+			throw new IllegalStateException("repeat_requires_ide_client");
+		}
+
+		var window = Minecraft.getInstance().getWindow();
+		if (window == null || window.handle() == 0) {
+			throw new IllegalStateException("repeat_window_unavailable");
+		}
+	}
+
+	private static double lane(int index) {
+		return (index - 1) * PhotonRepeatedEffectConfig.LANE_SPACING;
+	}
+
+	private static JsonObject environment() {
+		var minecraft = Minecraft.getInstance();
+		var result = new JsonObject();
+		var window = minecraft.getWindow();
+		result.addProperty("width", window.getWidth());
+		result.addProperty("height", window.getHeight());
+		result.addProperty("focused", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE);
+		result.addProperty("maximized", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE);
+		result.addProperty("iconified", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE);
+		result.addProperty("fullscreen", window.isFullscreen());
+		result.addProperty("vsync", minecraft.options.enableVsync().get());
+		result.addProperty("fps_limit", minecraft.options.framerateLimit().get());
+		result.addProperty("render_distance", minecraft.options.renderDistance().get());
+		result.addProperty("fov", minecraft.options.fov().get());
+		result.addProperty("shader_pack", IrisCompat.isUsingShaderPack());
+
+		result.addProperty("graphics", minecraft.options.graphicsPreset().get().toString());
+		result.addProperty("particles_setting", minecraft.options.particles().get().toString());
+		result.addProperty("sodium", ModList.get().isLoaded("sodium"));
+		result.addProperty("spark", ModList.get().isLoaded("spark"));
+		result.addProperty("cast_requested", Boolean.getBoolean("lobecorp.photon.diag.cast"));
+		result.addProperty("submission_requested", Boolean.getBoolean(PhotonSubmissionDiagnostics.PROBES_PROPERTY));
+		result.add("resource_packs", GSON.toJsonTree(minecraft.options.resourcePacks));
+		if (minecraft.player != null) {
+			result.add("player_position", GSON.toJsonTree(List.of(minecraft.player.getX(), minecraft.player.getY(), minecraft.player.getZ())));
+			result.addProperty("yaw", minecraft.player.getYRot());
+			result.addProperty("pitch", minecraft.player.getXRot());
+		}
+
+		return result;
+	}
+
+	public static void recordFrontendDiagnostics(String label, JsonObject diagnostics) throws Exception {
+		var trial = requireLabel(label);
+		if (trial.mode != Mode.FULL || !trial.terminal()) {
+			throw new IllegalStateException("repeat_frontend_diagnostics_owner");
+		}
+
+		trial.report.add("frontend_diagnostics", diagnostics.deepCopy());
+		trial.writeReport();
+	}
+
+	public static JsonObject runtimeStatus(String label) {
+		var result = new JsonObject();
+		var args = ManagementFactory.getRuntimeMXBean().getInputArguments();
+		result.addProperty("pid", ProcessHandle.current().pid());
+		result.add("vm_arguments", GSON.toJsonTree(args));
+		result.add("test_vm_arguments", GSON.toJsonTree(args.stream().filter(PhotonRepeatedEffectTrial::testArgument).toList()));
+		result.addProperty("world_loaded", Minecraft.getInstance().level != null);
+		result.add("environment", environment());
+		result.addProperty("base_vm_arguments_clean", args.stream().noneMatch(PhotonRepeatedEffectTrial::testArgument));
+		result.add("test_environment", GSON.toJsonTree(System.getenv().entrySet().stream()
+				.filter(entry -> entry.getKey().startsWith("LOBECORP_LASER_PROFILE") || entry.getKey().startsWith("MC_DEBUG_"))
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))));
+		result.addProperty("active_label", current == null ? null : current.label);
+		if (!label.isBlank()) {
+			result.add("trial", status(label));
+		}
+
+		return result;
+	}
+
+	public static JsonObject status(String label) {
+		var trial = requireLabel(label);
+		var result = trial.report.deepCopy();
+		result.remove("samples");
+		result.addProperty("sample_count", trial.samples.size());
+		result.addProperty("state", trial.state.name());
+		result.addProperty("terminal", trial.terminal());
+		result.addProperty("owned_report", trial.directory.resolve("trial.json").toString());
+		result.addProperty("cleanup_pending", trial.state == State.CLEANUP
+				|| trial.report.has("cleanup_unconfirmed") && trial.report.get("cleanup_unconfirmed").getAsBoolean());
+		result.addProperty("export_pending", trial.archive != null && !trial.archive.isDone()
+				|| trial.failureExportPending);
+		result.addProperty("failed", trial.problem != null);
+		return result;
+	}
+
+	private static PhotonRepeatedEffectTrial requireLabel(String label) {
+		if (current == null || !current.label.equals(label)) {
+			throw new IllegalStateException("repeat_label_owner_mismatch");
+		}
+
+		return current;
+	}
+
+	public static void cancel(String label) {
+		var trial = requireLabel(label);
+		if (!trial.terminal()) {
+			if (trial.minecraft.level != trial.level || trial.minecraft.getSingleplayerServer() != trial.server) {
+				throw new IllegalStateException("repeat_cancel_world_owner_changed");
+			}
+
+			trial.cancelled = true;
+			trial.fail(new IllegalStateException("repeat_cancelled"));
+		}
+	}
+
+	public static void close(String label) throws Exception {
+		var trial = requireLabel(label);
+		if (trial.mode != Mode.BASE || trial.state != State.COMPLETE || trial.minecraft.level != trial.level
+				|| trial.minecraft.getSingleplayerServer() != trial.server) {
+			throw new IllegalStateException("repeat_close_requires_completed_owned_base");
+		}
+
+		trial.requireWorld();
+		trial.minecraft.stop();
+	}
+
+	private void requireWorld() throws Exception {
+		var saves = gameDirectory.resolve("saves");
+		if (!worldName.startsWith(PhotonRepeatedEffectConfig.WORLD_PREFIX)
+				|| !worldDirectory.getFileName().toString().equals(worldName)
+				|| !saves.toRealPath().equals(saves) || !worldDirectory.equals(saves.resolve(worldName))
+				|| !level.dimension().equals(server.overworld().dimension())) {
+			throw new IllegalStateException("repeat_requires_owned_photon_repeat_world");
 		}
 	}
 
@@ -315,19 +422,8 @@ public class PhotonRepeatedEffectTrial {
 		}
 	}
 
-	public static void prepareWindow() {
-		if (FMLEnvironment.isProduction()) {
-			throw new IllegalStateException("repeat_requires_ide_client");
-		}
-
-		var window = Minecraft.getInstance().getWindow();
-		if (window == null || window.handle() == 0) {
-			throw new IllegalStateException("repeat_window_unavailable");
-		}
-	}
-
 	private void settle() {
-        if (GLFW.glfwGetWindowAttrib(minecraft.getWindow().handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE) {
+		if (GLFW.glfwGetWindowAttrib(minecraft.getWindow().handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE) {
 			stableNs = 0;
 			return;
 		}
@@ -401,10 +497,6 @@ public class PhotonRepeatedEffectTrial {
 
 			throw new IllegalStateException("repeat_scene_preparation_failed", failure);
 		}
-	}
-
-	private static double lane(int index) {
-		return (index - 1) * PhotonRepeatedEffectConfig.LANE_SPACING;
 	}
 
 	private void prepared() throws Exception {
@@ -640,38 +732,6 @@ public class PhotonRepeatedEffectTrial {
 		sample.add("buffer_pools", pools);
 		sample.add("environment", environment());
 		samples.add(sample);
-	}
-
-	private static JsonObject environment() {
-		var minecraft = Minecraft.getInstance();
-		var result = new JsonObject();
-		var window = minecraft.getWindow();
-		result.addProperty("width", window.getWidth());
-		result.addProperty("height", window.getHeight());
-		result.addProperty("focused", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE);
-		result.addProperty("maximized", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE);
-		result.addProperty("iconified", GLFW.glfwGetWindowAttrib(window.handle(), GLFW.GLFW_ICONIFIED) == GLFW.GLFW_TRUE);
-		result.addProperty("fullscreen", window.isFullscreen());
-		result.addProperty("vsync", minecraft.options.enableVsync().get());
-		result.addProperty("fps_limit", minecraft.options.framerateLimit().get());
-		result.addProperty("render_distance", minecraft.options.renderDistance().get());
-		result.addProperty("fov", minecraft.options.fov().get());
-		result.addProperty("shader_pack", IrisCompat.isUsingShaderPack());
-
-		result.addProperty("graphics", minecraft.options.graphicsPreset().get().toString());
-		result.addProperty("particles_setting", minecraft.options.particles().get().toString());
-		result.addProperty("sodium", ModList.get().isLoaded("sodium"));
-		result.addProperty("spark", ModList.get().isLoaded("spark"));
-		result.addProperty("cast_requested", Boolean.getBoolean("lobecorp.photon.diag.cast"));
-		result.addProperty("submission_requested", Boolean.getBoolean(PhotonSubmissionDiagnostics.PROBES_PROPERTY));
-		result.add("resource_packs", GSON.toJsonTree(minecraft.options.resourcePacks));
-		if (minecraft.player != null) {
-			result.add("player_position", GSON.toJsonTree(List.of(minecraft.player.getX(), minecraft.player.getY(), minecraft.player.getZ())));
-			result.addProperty("yaw", minecraft.player.getYRot());
-			result.addProperty("pitch", minecraft.player.getXRot());
-		}
-
-		return result;
 	}
 
 	private void finishCapture(boolean main) {
@@ -1019,80 +1079,12 @@ public class PhotonRepeatedEffectTrial {
 				StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 
-	public static void recordFrontendDiagnostics(String label, JsonObject diagnostics) throws Exception {
-		var trial = requireLabel(label);
-		if (trial.mode != Mode.FULL || !trial.terminal()) {
-			throw new IllegalStateException("repeat_frontend_diagnostics_owner");
-		}
+	public enum Kind {LASER, NATIVE}
 
-		trial.report.add("frontend_diagnostics", diagnostics.deepCopy());
-		trial.writeReport();
-	}
+	public enum Mode {BASE, FULL}
 
-	public static JsonObject runtimeStatus(String label) {
-		var result = new JsonObject();
-		var args = ManagementFactory.getRuntimeMXBean().getInputArguments();
-		result.addProperty("pid", ProcessHandle.current().pid());
-		result.add("vm_arguments", GSON.toJsonTree(args));
-		result.add("test_vm_arguments", GSON.toJsonTree(args.stream().filter(PhotonRepeatedEffectTrial::testArgument).toList()));
-		result.addProperty("world_loaded", Minecraft.getInstance().level != null);
-		result.add("environment", environment());
-		result.addProperty("base_vm_arguments_clean", args.stream().noneMatch(PhotonRepeatedEffectTrial::testArgument));
-		result.add("test_environment", GSON.toJsonTree(System.getenv().entrySet().stream()
-				.filter(entry -> entry.getKey().startsWith("LOBECORP_LASER_PROFILE") || entry.getKey().startsWith("MC_DEBUG_"))
-				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))));
-		result.addProperty("active_label", current == null ? null : current.label);
-		if (!label.isBlank()) {
-			result.add("trial", status(label));
-		}
+	private enum State {SETTLE, PREPARE, WARMUP, PREWARM_EXPORT, MAIN, MAIN_EXPORT, CLEANUP, COMPLETE, FAILED}
 
-		return result;
-	}
-
-	public static JsonObject status(String label) {
-		var trial = requireLabel(label);
-		var result = trial.report.deepCopy();
-		result.remove("samples");
-		result.addProperty("sample_count", trial.samples.size());
-		result.addProperty("state", trial.state.name());
-		result.addProperty("terminal", trial.terminal());
-		result.addProperty("owned_report", trial.directory.resolve("trial.json").toString());
-		result.addProperty("cleanup_pending", trial.state == State.CLEANUP
-				|| trial.report.has("cleanup_unconfirmed") && trial.report.get("cleanup_unconfirmed").getAsBoolean());
-		result.addProperty("export_pending", trial.archive != null && !trial.archive.isDone()
-				|| trial.failureExportPending);
-		result.addProperty("failed", trial.problem != null);
-		return result;
-	}
-
-	private static PhotonRepeatedEffectTrial requireLabel(String label) {
-		if (current == null || !current.label.equals(label)) {
-			throw new IllegalStateException("repeat_label_owner_mismatch");
-		}
-
-		return current;
-	}
-
-	public static void cancel(String label) {
-		var trial = requireLabel(label);
-		if (!trial.terminal()) {
-			if (trial.minecraft.level != trial.level || trial.minecraft.getSingleplayerServer() != trial.server) {
-				throw new IllegalStateException("repeat_cancel_world_owner_changed");
-			}
-
-			trial.cancelled = true;
-			trial.fail(new IllegalStateException("repeat_cancelled"));
-		}
-	}
-
-	public static void close(String label) throws Exception {
-		var trial = requireLabel(label);
-		if (trial.mode != Mode.BASE || trial.state != State.COMPLETE || trial.minecraft.level != trial.level
-				|| trial.minecraft.getSingleplayerServer() != trial.server) {
-			throw new IllegalStateException("repeat_close_requires_completed_owned_base");
-		}
-
-		trial.requireWorld();
-		trial.minecraft.stop();
+	private record Scene(Vec3 origin, List<QueenBeamPerformanceFixture> fixtures) {
 	}
 }

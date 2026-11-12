@@ -5,8 +5,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.registry.world.LcCapabilities;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.LcCapabilities;
 
 import java.util.List;
 import java.util.Map;

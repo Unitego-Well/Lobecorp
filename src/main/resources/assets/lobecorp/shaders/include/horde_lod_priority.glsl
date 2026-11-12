@@ -11,3 +11,16 @@ uint hordeLodKey(float squared, float edge) {
 float hordeLodDistance(uint key) {
     return float(key & 0x0fffffffu) / 4096.0;
 }
+
+// 最终排序表是唯一额度来源；距离域使用整数编码，避免再次开方产生边界差异。
+bool hordeLodAccepted(uint key, uint identity, int rank, int count) {
+    if (key == 0xffffffffu || identity == 0xffffffffu || identity >= uint(count)) {
+        return false;
+    }
+    if ((key & 0x0fffffffu) >= 0x04000000u) {
+        return false;
+    }
+    uint band = key >> 29u;
+    int allowance = 128 - int(band) * 16;
+    return rank >= 0 && rank < 128 && rank < allowance;
+}

@@ -9,18 +9,15 @@ import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 /// 离线来源审查只读取明确指定的许可路径；不挂载包、写资源或宣告运行验收成功。
 public class PhotonEffectResourceAuditUtil {
 	/// 单次审查的容器上限；另受总字节、展开条目和NBT复杂度预算约束。
 	private static final int MAX_SOURCES = 64;
-
-	private record Declared(Path path, String logicalPath) {
-	}
 
 	public static JsonObject audit(JsonObject request) throws Exception {
 		return prepare(request).call();
@@ -128,5 +125,8 @@ public class PhotonEffectResourceAuditUtil {
 		});
 		result.add("cycles", cycles);
 		return result;
+	}
+
+	private record Declared(Path path, String logicalPath) {
 	}
 }

@@ -35,7 +35,9 @@ public class PhotonFrameCapture {
 	private static final int MAX_FRAMES = 131072;
 	private static final int MAX_PHASES = 64;
 	private static final double MIN_SECONDS = 10;
-	private static final double MAX_SECONDS = 120;
+	// 标准全程采集可显式扩展到10分钟；普通调用仍保留原120秒上限。
+	private static final double MAX_SECONDS = Math.clamp(
+			Double.parseDouble(System.getProperty("lobecorp.performance.capture.maxSeconds", "120")), 120, 600);
 	private static final long NANOSECONDS_PER_SECOND = 1_000_000_000L;
 	private static final double NANOSECONDS_PER_MILLISECOND = 1_000_000d;
 	private static final long UNAVAILABLE = -1L;
@@ -47,7 +49,7 @@ public class PhotonFrameCapture {
 	private static final int VSYNC = 16;
 	private static final String OUTPUT_DIRECTORY = "performance";
 	private static final String INVALID_LABEL = "Capture label must match [a-z0-9_]+";
-	private static final String INVALID_DURATION = "Capture duration must be finite and between 10 and 120 seconds";
+	private static final String INVALID_DURATION = "Capture duration must be finite and between 10 and " + MAX_SECONDS + " seconds";
 	private static final String INVALID_PHASE = "Phase time must be finite, nonnegative and within the active capture duration";
 	private static final String NO_ACTIVE_CAPTURE = "No active frame capture";
 	private static final String EXPIRED_CAPTURE = "Frame capture has expired";
@@ -69,10 +71,6 @@ public class PhotonFrameCapture {
 	private static @Nullable JsonObject lastSnapshot;
 	private static long renderFrameId;
 	private static int renderDepth;
-
-	private enum State {
-		IDLE, RUNNING, DURATION, CAPACITY, STOPPED, CANCELLED, ERROR
-	}
 
 	public static double minSeconds() {
 		return MIN_SECONDS;
@@ -385,6 +383,10 @@ public class PhotonFrameCapture {
 		return values[(int) Math.ceil(count * percentile) - 1];
 	}
 
+	private enum State {
+		IDLE, RUNNING, DURATION, CAPACITY, STOPPED, CANCELLED, ERROR
+	}
+
 	private static class Phase {
 		private final String label;
 		private final double atSeconds;
@@ -406,9 +408,6 @@ public class PhotonFrameCapture {
 		private final double requestedSeconds;
 		private final BooleanSupplier gpuFrameFilter;
 		private final UUID id = UUID.randomUUID();
-		private long startedNs;
-		private Instant startedAt = Instant.now();
-		private long deadlineNs;
 		private final long threadId = Thread.currentThread().threadId();
 		private final JsonObject hardware = hardwareSnapshot();
 		private final JsonObject poolStart = poolSnapshot();
@@ -431,6 +430,9 @@ public class PhotonFrameCapture {
 		private final int[] intervalPhaseIds = new int[MAX_FRAMES];
 		private final Phase[] phases = new Phase[MAX_PHASES];
 		private final String[] throttleReasons = new String[MAX_FRAMES];
+		private long startedNs;
+		private Instant startedAt = Instant.now();
+		private long deadlineNs;
 		private @Nullable ThreadMXBean allocationBean;
 		private @Nullable String allocationProblem;
 		private @Nullable TimerQuery.FrameProfile pendingGpu;
@@ -498,9 +500,9 @@ public class PhotonFrameCapture {
 				startedNs = now;
 				startedAt = Instant.now();
 				deadlineNs = startedNs + (long) (requestedSeconds * NANOSECONDS_PER_SECOND);
-                if (FMLEnvironment.isProduction()) {
-				Minecraft.getInstance().getFramerateLimitTracker().onInputReceived();
-			}
+				if (FMLEnvironment.isProduction()) {
+					Minecraft.getInstance().getFramerateLimitTracker().onInputReceived();
+				}
 			}
 
 			// 在递增 frames 前冻结，容量结束不追加未填充的零值帧，也不再执行后续采样阶段。
@@ -513,7 +515,7 @@ public class PhotonFrameCapture {
 			var allocated = endpoint ? UNAVAILABLE : allocatedNow();
 			pollGpu();
 			if (!endpoint) {
-			runPhases(now);
+				runPhases(now);
 			}
 
 			if (active != this) {
@@ -530,7 +532,7 @@ public class PhotonFrameCapture {
 			if (endpoint) {
 				PhotonPerformanceTraceUtil.frame(index, startedNs);
 			} else {
-			PhotonPerformanceCapture.frame(index, startedNs);
+				PhotonPerformanceCapture.frame(index, startedNs);
 			}
 			if (active != this) {
 				return;

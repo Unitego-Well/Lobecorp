@@ -10,18 +10,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorAccess;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorDockedPanel;
+import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.PhotonSceneAxisView;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelAuthoringPanel;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelSourceProjectType;
-import org.unitego.lobecorp.client.photon.model.project.PhotonEffectLibraryPanel;
-import org.unitego.lobecorp.client.photon.model.project.PhotonEffectLibraryProject;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
+import org.unitego.lobecorp.client.photon.model.project.*;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslationKeys;
 
 import java.io.File;
-import static org.unitego.lobecorp.registry.translation.photon.model.PhotonModelTranslations.PROJECT_TYPE;
+
 
 
 @Mixin(FXEditor.class)
@@ -40,18 +36,8 @@ public abstract class FXEditorMixin extends Editor implements PhotonEditorAccess
 
 		lobecorp$editorTools = new PhotonEditorTools(editor);
 		PhotonEditorTools.installMenus(editor);
-		editor.fileMenu.addProjectProvider(PhotonModelProject.TYPE);
 		editor.fileMenu.addProjectProvider(PhotonEffectLibraryProject.TYPE);
-		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.OBJ);
-		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.JSON);
-		editor.fileMenu.addProjectProvider(PhotonModelSourceProjectType.DEFINITION);
-		editor.fileMenu.registerNewMenuCreator((_, menu) -> {
-			menu.remove(PhotonModelSourceProjectType.OBJ.getName());
-			menu.remove(PhotonModelSourceProjectType.JSON.getName());
-			menu.remove(PhotonModelSourceProjectType.DEFINITION.getName());
-		});
-		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PROJECT_TYPE, () -> PhotonModelAuthoringPanel.open(editor)));
-		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PhotonEffectLibraryTranslations.OPEN_MENU, () -> PhotonEffectLibraryPanel.open(editor)));
+		editor.fileMenu.registerMenuCreator((_, menu) -> menu.leaf(PhotonEffectLibraryTranslationKeys.OPEN_MENU, () -> PhotonEffectLibraryPanel.open(editor)));
 	}
 
 

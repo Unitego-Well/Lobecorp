@@ -3,7 +3,9 @@ package org.unitego.lobecorp.client.photon.playback;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorPropertyType;
+import com.lowdragmc.photon.client.fx.timeline.property.PositionPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.property.RotationPropertyType;
+import com.lowdragmc.photon.client.fx.timeline.property.ScalePropertyType;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.client.gameobject.RuntimeBinding;
 import com.lowdragmc.photon.client.gameobject.RuntimeValue;
@@ -11,8 +13,6 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import com.lowdragmc.photon.client.fx.timeline.property.PositionPropertyType;
-import com.lowdragmc.photon.client.fx.timeline.property.ScalePropertyType;
 import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 
 import javax.annotation.Nullable;
@@ -22,12 +22,6 @@ import java.util.List;
 
 /// 每目标属性唯一写入者；一次采样临时调用原生类型并精确恢复，不把上帧结果再叠加。
 public class PhotonPropertyTarget {
-	public record Sample(List<Float> values, @Nullable PhotonValueContribution.Function function) {
-		public Sample {
-			values = List.copyOf(values);
-		}
-	}
-
 	private final FXObject target;
 	private final AnimatedPropertyType type;
 	private final @Nullable RuntimeBinding binding;
@@ -37,7 +31,6 @@ public class PhotonPropertyTarget {
 	private @Nullable float[] before;
 	private @Nullable float[] after;
 	private @Nullable Quaternionf rotation;
-
 	public PhotonPropertyTarget(FXObject target, AnimatedPropertyType type) {
 		this.target = target;
 		this.type = type;
@@ -47,6 +40,24 @@ public class PhotonPropertyTarget {
 		if (type.path().startsWith("config.") && binding == null) {
 			throw new IllegalArgumentException("命名动画属性没有可用运行槽：" + type.path());
 		}
+	}
+
+	private static void restore(RuntimeValue<?> slot, boolean overridden, @Nullable Object value) {
+		if (overridden) {
+			slot.setRaw(value);
+		} else {
+			slot.clear();
+		}
+	}
+
+	private static List<Float> list(float[] values) {
+		var result = new ArrayList<Float>();
+
+		for (float value : values) {
+			result.add(value);
+		}
+
+		return List.copyOf(result);
 	}
 
 	public Sample sample(AnimatedProperty property, double time) {
@@ -160,21 +171,21 @@ public class PhotonPropertyTarget {
 		return result;
 	}
 
-    public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
-        if (object != target || before == null || after == null) {
-            return current;
-        }
-        if (type instanceof PositionPropertyType && current.position().equals(new Vector3f(after[0], after[1], after[2]))) {
-            return new PhotonAuthoringPose(new Vector3f(before[0], before[1], before[2]), current.rotation(), current.scale());
-        }
-        if (type instanceof ScalePropertyType && current.scale().equals(new Vector3f(after[0], after[1], after[2]))) {
-            return new PhotonAuthoringPose(current.position(), current.rotation(), new Vector3f(before[0], before[1], before[2]));
-        }
-        if (type instanceof RotationPropertyType && rotation != null && Arrays.equals(type.captureLive(object), after)) {
-            return new PhotonAuthoringPose(current.position(), rotation, current.scale());
-        }
-        return current;
-    }
+	public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+		if (object != target || before == null || after == null) {
+			return current;
+		}
+		if (type instanceof PositionPropertyType && current.position().equals(new Vector3f(after[0], after[1], after[2]))) {
+			return new PhotonAuthoringPose(new Vector3f(before[0], before[1], before[2]), current.rotation(), current.scale());
+		}
+		if (type instanceof ScalePropertyType && current.scale().equals(new Vector3f(after[0], after[1], after[2]))) {
+			return new PhotonAuthoringPose(current.position(), current.rotation(), new Vector3f(before[0], before[1], before[2]));
+		}
+		if (type instanceof RotationPropertyType && rotation != null && Arrays.equals(type.captureLive(object), after)) {
+			return new PhotonAuthoringPose(current.position(), rotation, current.scale());
+		}
+		return current;
+	}
 
 	private float[] capture() {
 		if (type instanceof ColorPropertyType color) {
@@ -201,21 +212,9 @@ public class PhotonPropertyTarget {
 		return binding == null ? null : binding.slot(target);
 	}
 
-	private static void restore(RuntimeValue<?> slot, boolean overridden, @Nullable Object value) {
-		if (overridden) {
-			slot.setRaw(value);
-		} else {
-			slot.clear();
+	public record Sample(List<Float> values, @Nullable PhotonValueContribution.Function function) {
+		public Sample {
+			values = List.copyOf(values);
 		}
-	}
-
-	private static List<Float> list(float[] values) {
-		var result = new ArrayList<Float>();
-
-		for (float value : values) {
-			result.add(value);
-		}
-
-		return List.copyOf(result);
 	}
 }

@@ -25,7 +25,7 @@ import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
-import org.unitego.lobecorp.world.horde.Hordes;
+import org.unitego.lobecorp.api.horde.Hordes;
 import org.unitego.lobecorp.world.horde.HordeRoute;
 import org.unitego.lobecorp.world.horde.HordeRules;
 import org.unitego.lobecorp.world.horde.HordeStartRequest;
@@ -39,8 +39,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-/// 在隔离客户端构造仅用于显示的事件快照；不代表真实参战或网络性能。
-public class HordeRenderScenario implements BenchClientScenario {
+/// 开幕镜头诊断共用的合成浪潮夹具，不作为独立性能场景注册。
+public abstract class HordeRenderScenario implements BenchClientScenario {
     private static final UUID EVENT_ID = UUID.fromString("85fb7af6-51fc-4f6e-985f-46409699774d");
 	private static final int UNLIMITED_BENCH_COUNT = 10000;
 	private int configuredCount;

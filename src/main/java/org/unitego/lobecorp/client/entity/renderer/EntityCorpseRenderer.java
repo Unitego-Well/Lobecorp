@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.entity.renderer;
 
+import com.geckolib.constant.DataTickets;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -8,19 +9,18 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.Mth;
 import net.minecraft.util.context.ContextKey;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.world.entity.EntityCorpse;
-import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
-import com.geckolib.constant.DataTickets;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
 import org.unitego.lobecorp.client.entity.corpse.CorpseBatchRenderer;
 import org.unitego.lobecorp.client.entity.corpse.FrozenCorpseMeshProvider;
 import org.unitego.lobecorp.client.horde.HordeMeshCache;
-import net.minecraft.util.Mth;
-import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -33,11 +33,6 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 
 	public EntityCorpseRenderer(EntityRendererProvider.Context context) {
 		super(context);
-	}
-
-	@Override
-	public RenderState createRenderState() {
-		return new RenderState();
 	}
 
 	public static void invalidateResourceEpoch(Object generation) {
@@ -54,6 +49,11 @@ public class EntityCorpseRenderer<T extends EntityCorpse<?>> extends EntityRende
 	public static void clearFrozen() {
 		FROZEN.clear();
 		cacheGeneration = null;
+	}
+
+	@Override
+	public RenderState createRenderState() {
+		return new RenderState();
 	}
 
 	@SuppressWarnings("unchecked")

@@ -24,6 +24,7 @@ tasks.wrapper {
     distributionType = Wrapper.DistributionType.BIN
 }
 
+// 开发运行类路径与MCP
 val photonBenchEnabled = providers.gradleProperty("photonBench").map(String::toBoolean).orElse(false)
 val minecraftMcpJar = files("lib/minecraft-mcp-0.3.0.jar")
 val minecraftMcpBridge = layout.projectDirectory.dir("lib/minecraft-mcp/bridge")
@@ -57,9 +58,9 @@ sourceSets.named("bench") {
 // 游戏仍由原启动器提供此类库，检查专用补充不进入 FULL 游戏类路径。
 photonBenchClient.runtimeClasspath = photonBenchClient.runtimeClasspath - mixinExtrasCheckRuntime
 
+// 模组标识与本地制品版本
 val minecraftVersion = libs.versions.minecraft.get()
 val neoforgeVersion = libs.versions.neoforge.get()
-val mixinsquaredVersion = libs.versions.mixinsquared.get()
 val modId = property("mod_id").toString()
 val modVersion = property("mod_version").toString()
 val buildDate: String = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
@@ -106,6 +107,7 @@ sourceSets.main {
     }
 }
 
+// 仓库与依赖
 repositories {
     mavenLocal()
     mavenCentral()
@@ -133,9 +135,9 @@ repositories {
         forRepository { maven { url = uri("https://maven.theillusivec4.top/") } }
         filter { includeGroup("top.theillusivec4.curios") }
     }
-    // jie
+    // JEI
     maven { url = uri("https://modmaven.dev") }
-    // jade reretrodamageindicators
+    // Jade等Modrinth依赖
     maven { url = uri("https://api.modrinth.com/maven") }
     // photon 依赖 (LDLib2 / KilaGraph)
     exclusiveContent {
@@ -171,16 +173,14 @@ dependencies {
     implementation(libs.jeiapi)
     implementation(libs.jei)
     implementation(libs.jade)
-//    implementation(libs.reretrodamageindicators)
     // photon 依赖
     implementation(libs.ldlib2)
     implementation(libs.kilagraph)
-    implementation(libs.photon){
+    implementation(libs.photon) {
         isTransitive = false
     }
     implementation(libs.particlestorm)
-    // lib/ 下的本地 jar (Photon) 打包进模组并加入开发类路径
-//    jarJar(fileTree("lib") { include("*.jar") })?.let { implementation(it) }
+    // MCP由单独的编译与运行配置管理，其余本地JAR作为开发依赖。
     implementation(fileTree("lib") { include("*.jar"); exclude("minecraft-mcp-*.jar") })
 
     internalTestMods(libs.anvilcraftlib)
@@ -188,7 +188,6 @@ dependencies {
     internalTestMods(libs.curios)
     internalTestMods(libs.jei)
     internalTestMods(libs.jade)
-//    internalTestMods(libs.reretrodamageindicators)
     internalTestMods(libs.ldlib2)
     internalTestMods(libs.kilagraph)
     internalTestMods(libs.photon)
@@ -196,6 +195,7 @@ dependencies {
     internalTestMods(fileTree("lib") { include("*.jar"); exclude("minecraft-mcp-*.jar") })
 }
 
+// Java与制品配置
 base {
     archivesName = "$modId-$minecraftVersion"
 }
@@ -214,6 +214,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// 游戏开发运行配置
 neoForge {
     version = neoforgeVersion
     addModdingDependenciesTo(sourceSets.test.get())
@@ -279,7 +280,7 @@ neoForge {
     }
 }
 
-
+// Bench场景、环境与报告契约
 tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
     if (photonBenchEnabled.get()) {
         expectedScenarioIds.set(
@@ -352,17 +353,15 @@ tasks.named<VerifyBenchReportTask>("verifyBenchClientReport") {
             )
         )
     } else {
-        expectedScenarioIds.set(listOf("lobecorp.sweeper-render", "lobecorp.horde-render"))
-        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities", "lobecorp.horde_render.instances"))
+        expectedScenarioIds.set(listOf("lobecorp.sweeper-render", "lobecorp.horde-encounter-performance"))
+        expectedMetricNames.set(listOf("client.frame.interval", "lobecorp.sweeper_render.loaded_entities"))
         expectedLoadedModIds.set(listOf("minecraft", "neoforge", modId, "modbench_runtime"))
         expectedArtifactPaths.set(
             listOf(
                 "artifacts/samples/lobecorp.sweeper-render.jsonl",
                 "artifacts/jfr/lobecorp.sweeper-render.jfr",
                 "artifacts/screenshots/sweeper-render.png",
-                "artifacts/samples/lobecorp.horde-render.jsonl",
-                "artifacts/jfr/lobecorp.horde-render.jfr",
-                "artifacts/screenshots/horde-render.png"
+                "artifacts/horde-encounter-performance.json"
             )
         )
     }
@@ -433,7 +432,7 @@ tasks.named<VerifyBenchReportTask>("verifyBenchServerReport") {
     )
 }
 
-
+// 资源展开、发布与内部测试制品
 tasks.processResources {
     val replaceProperties = mapOf(
         "minecraft_version" to minecraftVersion,
@@ -503,8 +502,7 @@ Install Minecraft $minecraftVersion with NeoForge $neoforgeVersion, then copy ev
     }
 }
 
-val minecraftMcpPort = minecraftMcpGamePort
-
+// MCP工具任务
 tasks.register<Exec>("checkMinecraftMcpBridge") {
     group = "minecraft mcp"
     workingDir(minecraftMcpBridge)
@@ -525,13 +523,13 @@ listOf(
         val script =
             if (taskName.endsWith("ReferenceEffects")) "create-reference-effects.mjs" else "check-effect-tools.mjs"
         commandLine(listOf("node", "scripts/$script") + arguments)
-        environment("MC_MCP_PORT", minecraftMcpPort.get())
+        environment("MC_MCP_PORT", minecraftMcpGamePort.get())
     }
 }
 
+// IDEA启动入口
 plugins.withType<IdeaExtPlugin> {
-
-val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
+    val projectSettings = (idea.project as ExtensionAware).extensions.getByType<ProjectSettings>()
     val runConfigurations = (projectSettings as ExtensionAware).extensions.getByType<RunConfigurationContainer>()
     runConfigurations.create("Workspace Build", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
@@ -548,9 +546,26 @@ val projectSettings = (idea.project as ExtensionAware).extensions.getByType<Proj
             taskNames = benchTasks
         }
     }
-    runConfigurations.create("Minecraft MCP Artifact Check", Gradle::class.java).apply {
+    runConfigurations.create("Minecraft MCP 检查", Gradle::class.java).apply {
         projectPath = rootDir.absolutePath
-        taskNames = listOf("compileJava", "prepareClientRun", "checkMinecraftMcpBridge", "probeBridge")
+        taskNames = listOf(
+            "compileJava", "prepareClientRun", "checkMinecraftMcpBridge", "probeBridge",
+            "probeEffectRuntime", "probeEffectAuthoring", "probeEffectAnimation"
+        )
+    }
+    // A使用独立游戏目录和固定MCP端口。
+    runConfigurations.create("Horde 开发 - A", Application::class.java).apply {
+        mainClass = "net.neoforged.devlaunch.Main"
+        moduleRef(project, minecraftMcpClient)
+        workingDirectory = file("run/horde-study/a").invariantSeparatorsPath
+        programParameters = "@\"" + layout.buildDirectory.file("moddev/clientRunProgramArgs.txt")
+            .get().asFile.invariantSeparatorsPath + "\" --gameDir \"$workingDirectory\""
+        val folders = sourceSets.main.get().output.files
+            .joinToString(";") { "$modId%%${it.invariantSeparatorsPath}" }
+        jvmArgs = "@\"" + layout.buildDirectory.file("moddev/clientRunVmArgs.txt")
+            .get().asFile.invariantSeparatorsPath + "\" -Dlobecorp.horde.variant=a" +
+            " -Dlobecorp.developmentWindowTestPolicy=true -Dlobecorp.developmentWindowTestMode=native" +
+            " -Dmcp.port=19882 -Dfml.modFolders=$folders"
     }
     runConfigurations.create("Photon Bench Debug", Application::class.java).apply {
         mainClass = "net.neoforged.devlaunch.Main"
@@ -574,28 +589,6 @@ val projectSettings = (idea.project as ExtensionAware).extensions.getByType<Proj
         projectPath = rootDir.absolutePath
         taskNames = listOf("verifyBenchClient")
         scriptParameters = "-PphotonBench=true"
-    }
-    runConfigurations.create("Minecraft MCP Bridge", Gradle::class.java).apply {
-        projectPath = rootDir.absolutePath
-        taskNames = listOf("checkMinecraftMcpBridge", "probeBridge")
-    }
-    runConfigurations.create("Minecraft MCP Effect Runtime", Gradle::class.java).apply {
-        projectPath = rootDir.absolutePath
-        taskNames = listOf("probeEffectRuntime")
-    }
-    runConfigurations.create("Minecraft MCP Effect Authoring", Gradle::class.java).apply {
-        projectPath = rootDir.absolutePath
-        taskNames = listOf("probeEffectAuthoring")
-    }
-    listOf(
-        "Minecraft MCP Reference Inspect" to "inspectReferenceEffects",
-        "Minecraft MCP Reference Create" to "createReferenceEffects",
-        "Minecraft MCP Reference Save" to "saveReferenceEffects",
-    ).forEach { (name, task) ->
-        runConfigurations.create(name, Gradle::class.java).apply {
-            projectPath = rootDir.absolutePath
-            taskNames = listOf(task)
-        }
     }
 }
 

@@ -23,9 +23,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.MapItem;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.ClientHooks;
+import org.joml.Matrix4f;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.joml.Matrix4f;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
 import org.unitego.lobecorp.client.attachment.LcPlayerRenderAnchors;
@@ -62,11 +62,11 @@ public class LcPlayerFirstPersonRenderer extends AvatarRenderer<AbstractClientPl
 			return null;
 		}
 
-        if (!LcPlayerAnimationRuntime.firstPersonRequested(player)) {
-            return null;
-        }
+		if (!LcPlayerAnimationRuntime.firstPersonRequested(player)) {
+			return null;
+		}
 
-        var state = renderer.createRenderState(player, partialTick);
+		var state = renderer.createRenderState(player, partialTick);
 		var frame = LcPlayerAnimationRuntime.frame(state);
 		if (frame == null || frame.layers().stream().noneMatch(layer -> layer.policy().firstPersonArms()
 				&& layer.policy().weight() > 0)) {

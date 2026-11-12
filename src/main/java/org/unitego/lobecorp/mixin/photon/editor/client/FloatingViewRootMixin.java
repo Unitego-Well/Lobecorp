@@ -10,14 +10,14 @@ import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 
 @Mixin(FloatingViewRoot.class)
 public abstract class FloatingViewRootMixin {
-    @WrapMethod(method = "setHostedEditor(Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;)V")
-    private void lobecorp$refreshHostedControls(@Nullable Editor hostedEditor, Operation<Void> original) {
-        var root = (FloatingViewRoot) (Object) this;
-        var previous = root.getHostedEditor();
-        original.call(hostedEditor);
+	@WrapMethod(method = "setHostedEditor(Lcom/lowdragmc/lowdraglib2/editor/ui/Editor;)V")
+	private void lobecorp$refreshHostedControls(@Nullable Editor hostedEditor, Operation<Void> original) {
+		var root = (FloatingViewRoot) (Object) this;
+		var previous = root.getHostedEditor();
+		original.call(hostedEditor);
 
-        if (previous != root.getHostedEditor()) {
-            PhotonEditorTools.refreshControls(root);
-        }
-    }
+		if (previous != root.getHostedEditor()) {
+			PhotonEditorTools.refreshControls(root);
+		}
+	}
 }

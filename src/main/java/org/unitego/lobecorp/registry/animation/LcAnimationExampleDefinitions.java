@@ -6,9 +6,9 @@ import org.unitego.lobecorp.animation.definition.LcAnimationDefinition;
 import org.unitego.lobecorp.animation.demo.LcAnimationDemo;
 import org.unitego.lobecorp.animation.demo.LcAnimationDemoSession;
 import org.unitego.lobecorp.animation.demo.LcPlayerAnimationDemo;
+import org.unitego.lobecorp.animation.player.LcPlayerAnimationSources;
 import org.unitego.lobecorp.animation.runtime.LcAnimationContext;
 import org.unitego.lobecorp.world.item.animation.LcItemAnimationSession;
-import org.unitego.lobecorp.animation.player.LcPlayerAnimationSources;
 
 import java.util.Map;
 

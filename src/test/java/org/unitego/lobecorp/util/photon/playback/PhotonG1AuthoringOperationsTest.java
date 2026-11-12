@@ -9,8 +9,6 @@ import org.unitego.lobecorp.util.photon.compat.PhotonProjectNbtUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDependencyUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
-import org.unitego.lobecorp.util.photon.model.PhotonModelObjUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelCodec;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueInput;
@@ -18,7 +16,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.unitego.lobecorp.util.photon.model.PhotonModelJsonEditUtil;
 import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
 import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
@@ -63,19 +60,7 @@ public class PhotonG1AuthoringOperationsTest {
 		assertEquals(raw, PhotonLosslessNbtUtil.changed(raw, before, before));
 	}
 
-	@Test
-	public void objRoundTripKeepsFaceCornerUVNormalsAndLabels() throws Exception {
-		String text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvn 0 0 1\ng main\nusemtl basic\nf -3/1/1 -2/2/1 -1/3/1\n";
-		var source = PhotonModelObjUtil.read(text, false);
-		var reopened = PhotonModelObjUtil.read(PhotonModelObjUtil.write(source, false), false);
-		var expected = PhotonModelCodec.read(source);
-		var actual = PhotonModelCodec.read(reopened);
-		assertEquals(expected.vertices(), actual.vertices());
-		assertEquals(expected.faces(), actual.faces());
-		assertEquals(expected.parts(), actual.parts());
-		assertEquals(expected.materials(), actual.materials());
-		assertThrows(IOException.class, () -> PhotonModelObjUtil.read("v 0 0 0\nf 1 2 3", false));
-	}
+
 
 	@Test
 	public void dependencyAuditKeepsSourceVersionsAndDoesNotInventBuiltinAcceptance() throws Exception {
@@ -124,17 +109,7 @@ public class PhotonG1AuthoringOperationsTest {
 		assertEquals(id, ((CompoundTag) source.getCompoundOrEmpty("data").getListOrEmpty("clips").getFirst()).getStringOr("id", ""));
 	}
 
-	@Test
-	public void modelFieldEditsKeepOtherVerticesAndUnknownData() {
-		var source = JsonParser.parseString("{version:1,vertices:[[0,0,0],[1,0,0]],future:'keep'}").getAsJsonObject();
-		var edited = PhotonModelJsonEditUtil.set(source, "/vertices/0/1", JsonParser.parseString("2"));
-		assertEquals(0, source.getAsJsonArray("vertices").get(0).getAsJsonArray().get(1).getAsInt());
-		assertEquals(2, edited.getAsJsonArray("vertices").get(0).getAsJsonArray().get(1).getAsInt());
-		assertEquals(source.get("future"), edited.get("future"));
-		assertEquals(source.getAsJsonArray("vertices").get(1), edited.getAsJsonArray("vertices").get(1));
-		assertThrows(IllegalArgumentException.class, () -> PhotonModelJsonEditUtil.set(source, "/vertices/9", JsonParser.parseString("[]")));
-		assertThrows(IllegalArgumentException.class, () -> PhotonModelJsonEditUtil.set(source, "/version", JsonParser.parseString("2")));
-	}
+
 
 	@Test
 	public void inactiveLegacyDefaultsDoNotPermitActiveOrUnknownFields() throws Exception {

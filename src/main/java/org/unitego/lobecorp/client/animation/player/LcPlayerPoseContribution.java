@@ -61,15 +61,15 @@ public abstract class LcPlayerPoseContribution {
 	/// 求值返回下一帧状态；冻结或重复渲染不会修改已经保存的过渡分支。
 	public abstract Evaluation evaluate(LcPlayerModelPose base, LcPlayerModelPose reference);
 
-	public record Evaluation(LcPlayerModelPose pose, LcPlayerPoseContribution displayed,
-	                         LcPlayerPoseContribution origin) {
-	}
-
 	protected abstract Map<String, Factors> factors(LcPlayerModelPose reference);
 
 	/// 冻结本层当前输出及基底保留比例，不递归保存历次打断，也不冻结其他层。
 	public LcPlayerPoseContribution freeze(LcPlayerModelPose base, LcPlayerModelPose reference) {
 		return this instanceof Transition ? new Frozen(base, apply(base, reference), factors(reference)) : this;
+	}
+
+	public record Evaluation(LcPlayerModelPose pose, LcPlayerPoseContribution displayed,
+	                         LcPlayerPoseContribution origin) {
 	}
 
 	protected record Factors(Vec3 position, Vec3 rotation, Vec3 scale) {
@@ -108,6 +108,10 @@ public abstract class LcPlayerPoseContribution {
 			this.sample = sample;
 		}
 
+		private static double scaleFactor(float initial, float target, double weight) {
+			return initial == 0 ? 1 : 1 + (target / initial - 1) * weight;
+		}
+
 		@Override
 		public Evaluation evaluate(LcPlayerModelPose base, LcPlayerModelPose reference) {
 			var target = policy.transitions().blendType() == LcControllerBlendType.ADDITIVE
@@ -136,10 +140,6 @@ public abstract class LcPlayerPoseContribution {
 
 		private double weight(String bone, Channel channel) {
 			return policy.includesBone(bone) && policy.includesChannel(channel) ? policy.weight() : 0;
-		}
-
-		private static double scaleFactor(float initial, float target, double weight) {
-			return initial == 0 ? 1 : 1 + (target / initial - 1) * weight;
 		}
 	}
 
@@ -202,6 +202,10 @@ public abstract class LcPlayerPoseContribution {
 			this.factors = Map.copyOf(factors);
 		}
 
+		private static float shift(float output, float input, float current, double factor) {
+			return (float) (output + (current - input) * factor);
+		}
+
 		@Override
 		public Evaluation evaluate(LcPlayerModelPose base, LcPlayerModelPose reference) {
 			var result = new LinkedHashMap<>(base.parts());
@@ -226,10 +230,6 @@ public abstract class LcPlayerPoseContribution {
 		@Override
 		protected Map<String, Factors> factors(LcPlayerModelPose reference) {
 			return factors;
-		}
-
-		private static float shift(float output, float input, float current, double factor) {
-			return (float) (output + (current - input) * factor);
 		}
 	}
 }

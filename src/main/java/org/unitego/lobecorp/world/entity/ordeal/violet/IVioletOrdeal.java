@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.world.entity.ordeal.violet;
 
 import net.minecraft.world.entity.Entity;
+import org.unitego.lobecorp.registry.world.tag.LcEntityTypeTags;
 import org.unitego.lobecorp.world.entity.ordeal.IOrdeal;
-import org.unitego.lobecorp.registry.tag.LcEntityTypeTags;
 
 /// 紫色系异常实体的类型契约。
 public interface IVioletOrdeal extends IOrdeal {

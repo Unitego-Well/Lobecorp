@@ -1,19 +1,16 @@
 package org.unitego.lobecorp.client.animation;
 
-import com.geckolib.animation.state.ControllerState;
+import com.geckolib.animation.object.EasingType;
 import com.geckolib.animation.state.BoneSnapshot;
-import com.geckolib.renderer.base.BoneSnapshots;
+import com.geckolib.animation.state.ControllerState;
 import com.geckolib.cache.animation.Animation;
 import com.geckolib.cache.model.GeoBone;
-import com.geckolib.animation.object.EasingType;
-
-import java.util.function.BiConsumer;
-
-import java.util.LinkedHashMap;
-
+import com.geckolib.renderer.base.BoneSnapshots;
 import org.jspecify.annotations.Nullable;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 /// 仅缓存本控制器的姿态贡献，不缓存控制器时钟、事件或其他层的最终姿态。
 public class LcAnimationLodCache {
@@ -29,13 +26,9 @@ public class LcAnimationLodCache {
 	private boolean transitioning, additive;
 	private double sampledAge = Double.NEGATIVE_INFINITY, sampledTime = Double.NEGATIVE_INFINITY;
 
-	public record Request(LcAnimationLodCache cache, int fps, int revision) {
-	}
-
-	private record Before(GeoBone bone, BoneSnapshot target, float[] values) {
-	}
-
-	private record Contribution(GeoBone bone, float[] values) {
+	private static float[] read(BoneSnapshot value) {
+		return new float[]{value.getScaleX(), value.getScaleY(), value.getScaleZ(), value.getRotX(), value.getRotY(),
+				value.getRotZ(), value.getTranslateX(), value.getTranslateY(), value.getTranslateZ()};
 	}
 
 	public void apply(ControllerState state, BoneSnapshots snapshots, Request request, BiConsumer<ControllerState, BoneSnapshots> original) {
@@ -119,8 +112,12 @@ public class LcAnimationLodCache {
 		}
 	}
 
-	private static float[] read(BoneSnapshot value) {
-		return new float[]{value.getScaleX(), value.getScaleY(), value.getScaleZ(), value.getRotX(), value.getRotY(),
-				value.getRotZ(), value.getTranslateX(), value.getTranslateY(), value.getTranslateZ()};
+	public record Request(LcAnimationLodCache cache, int fps, int revision) {
+	}
+
+	private record Before(GeoBone bone, BoneSnapshot target, float[] values) {
+	}
+
+	private record Contribution(GeoBone bone, float[] values) {
 	}
 }

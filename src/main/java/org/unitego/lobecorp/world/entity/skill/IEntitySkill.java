@@ -4,9 +4,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.registry.LcRegistries;
-import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
+import org.unitego.lobecorp.registry.world.entity.skill.LcEntitySkillGroups;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 /// 通用技能定义。
 ///

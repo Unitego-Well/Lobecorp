@@ -6,19 +6,15 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
+import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.world.hitbox.*;
 import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
-import org.unitego.lobecorp.world.hitbox.HitboxHitPolicy;
-import org.unitego.lobecorp.world.hitbox.HitboxInstance;
-import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
-import org.unitego.lobecorp.world.hitbox.HitboxManager;
-import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
-import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
-import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 女皇远程瞄准后发射瞬时星束，方块截断而敌人不截断光束。
 public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
@@ -61,6 +57,11 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 		return QueenSkillUtil.beamEndpoint(mob, position, RANGE);
 	}
 
+	private static void aim(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		EntityFacingUtil.aim(queen, EntityFacingUtil.targetPosition(queen, runtime, true), origin(queen), true);
+		queen.lockSkillFacing();
+	}
+
 	@Override
 	public boolean canUse(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		LivingEntity target = runtime.target(LivingEntity.class);
@@ -74,11 +75,6 @@ public class StarBeamSkill extends EntitySkill<TheQueenOfHatred> {
 		return target != null ? target.isAlive() && queen.isHatedTarget(target)
 				&& queen.hasLineOfSight(target) && queen.distanceToSqr(target) <= RANGE * RANGE
 				: runtime.targetPosition() != null;
-	}
-
-	private static void aim(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		EntityFacingUtil.aim(queen, EntityFacingUtil.targetPosition(queen, runtime, true), origin(queen), true);
-		queen.lockSkillFacing();
 	}
 
 	@Override

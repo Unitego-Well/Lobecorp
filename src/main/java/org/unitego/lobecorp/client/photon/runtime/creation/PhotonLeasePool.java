@@ -1,13 +1,6 @@
 package org.unitego.lobecorp.client.photon.runtime.creation;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -105,8 +98,8 @@ public class PhotonLeasePool<T> {
 		}
 
 		if (owned.get(slot.value) == slot && slot.state == State.STOPPING) {
-            // 不可复用实例同样保留到自然尾迹结束，再跨屏障销毁，不能遗失回收所有权。
-            slot.reusable = reusable;
+			// 不可复用实例同样保留到自然尾迹结束，再跨屏障销毁，不能遗失回收所有权。
+			slot.reusable = reusable;
 			slot.state = State.DRAINING;
 			pending.add(slot);
 		}
@@ -263,6 +256,10 @@ public class PhotonLeasePool<T> {
 		}
 	}
 
+	private enum State {
+		RESETTING, ACTIVE, STOPPING, CHECKING, DRAINING, QUARANTINE, PARKING, IDLE, RETIRED
+	}
+
 	public interface Lifecycle<T> {
 		void stop(T value, boolean force);
 
@@ -313,10 +310,6 @@ public class PhotonLeasePool<T> {
 
 			return slot.value;
 		}
-	}
-
-	private enum State {
-		RESETTING, ACTIVE, STOPPING, CHECKING, DRAINING, QUARANTINE, PARKING, IDLE, RETIRED
 	}
 
 	private static class Slot<T> {

@@ -13,17 +13,11 @@ public class MidnightCleanupViewUtil {
 	public static final int TEXT_READY = MidnightCleanupEncounter.TEXT_READY, DISSOLVE_START = MidnightCleanupEncounter.DISSOLVE_START;
 	public static final int RECOVERY_START = MidnightCleanupEncounter.RECOVERY_START;
 
-	public record Angles(float yaw, float pitch) {
-	}
-
 	public static Angles sample(float startYaw, float startPitch, float targetYaw, float targetPitch, float age) {
-		float align = phase(age, 0, FIRST_CENTER_END);
 		float restore = phase(age, RECOVERY_START, CENTER_END);
-		float center = startYaw + Mth.wrapDegrees(targetYaw - startYaw) * align;
+		float center = startYaw + Mth.wrapDegrees(targetYaw - startYaw);
 		float yaw = center + MidnightCleanupEncounter.viewYaw(age) * (1 - restore);
-		yaw += Mth.wrapDegrees(startYaw - yaw) * restore;
-		float pitch = Mth.lerp(align, startPitch, targetPitch) + MidnightCleanupEncounter.viewPitch(age) * (1 - restore);
-		pitch = Mth.lerp(restore, pitch, startPitch);
+		float pitch = targetPitch + MidnightCleanupEncounter.viewPitch(age) * (1 - restore);
 		return new Angles(yaw, Math.clamp(pitch, -90, 90));
 	}
 
@@ -59,5 +53,8 @@ public class MidnightCleanupViewUtil {
 
 	public static float phase(float age, float from, float to) {
 		return TimelineUtil.phase(age, from, to);
+	}
+
+	public record Angles(float yaw, float pitch) {
 	}
 }

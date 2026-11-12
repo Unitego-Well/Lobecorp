@@ -2,31 +2,26 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
 import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
+import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
-import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
-import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigAnimatedProperty;
+import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.TaffyDimension;
 import org.joml.Vector2f;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 
-import java.util.Map;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Objects;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class PhotonCurveEasingUtil {
@@ -55,7 +50,7 @@ public class PhotonCurveEasingUtil {
 		}
 
 		var model = PhotonEditorTimelineUtil.of(context);
-		choose(context, PhotonEditorTranslations.ADD_CURVE_EASING, PhotonEditorTranslations.CURVE_EASING_TIP, preset -> {
+		choose(context, PhotonEditorTranslationKeys.ADD_CURVE_EASING, PhotonEditorTranslationKeys.CURVE_EASING_TIP, preset -> {
 			if (context.runtime() != runtime || PhotonEditorTimelineUtil.of(context) != model
 					|| model.parentListOf(track) == null || track.lock() || track.property(type) != null
 					|| !Objects.equals(track.targetId(), targetId) || runtime.objects.get(targetId) != target
@@ -128,24 +123,24 @@ public class PhotonCurveEasingUtil {
 
 		String[] selected = {PhotonEditorSettings.of(context.editor()).curveEasingPreset()};
 		var group = new ConfiguratorGroup("", false).hideTitle();
-		group.addConfigurator(PhotonEditorTooltipUtil.tips(new SelectorConfigurator<>(PhotonEditorTranslations.CURVE_EASING,
+		group.addConfigurator(PhotonEditorTooltipUtil.tips(new SelectorConfigurator<>(PhotonEditorTranslationKeys.CURVE_EASING,
 				() -> selected[0], value -> selected[0] = value, selected[0], false,
-				PhotonEditorTranslations.CURVE_EASING_PRESETS, PhotonEditorTranslations::key), tip));
+				PhotonEditorTranslationKeys.CURVE_EASING_PRESETS, PhotonEditorTranslationKeys::key), tip));
 		group.addChild(new TextElement().setText(tip)
 				.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
 				.layout(layout -> layout.widthPercent(100)));
 		var dialog = new Dialog().width(TaffyDimension.length(DIALOG_WIDTH)).setTitle(title);
 		dialog.addContent(group);
-		dialog.addButton(new Button().setText(PhotonEditorTranslations.CLOSE)
+		dialog.addButton(new Button().setText(PhotonEditorTranslationKeys.CLOSE)
 				.setOnClick(_ -> dialog.close()));
-		dialog.addButton(new Button().setText(PhotonEditorTranslations.APPLY)
+		dialog.addButton(new Button().setText(PhotonEditorTranslationKeys.APPLY)
 				.setOnClick(_ -> {
 					try {
 						apply.accept(selected[0]);
 						dialog.close();
 					} catch (IllegalArgumentException error) {
-						Dialog.showNotification(PhotonEditorTranslations.CURVE_EASING,
-								PhotonEditorTranslations.INVALID, null).show(context.editor());
+						Dialog.showNotification(PhotonEditorTranslationKeys.CURVE_EASING,
+								PhotonEditorTranslationKeys.INVALID, null).show(context.editor());
 					}
 				}));
 		dialog.show(context.editor());

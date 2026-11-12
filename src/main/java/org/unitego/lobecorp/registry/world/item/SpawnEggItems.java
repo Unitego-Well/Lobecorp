@@ -1,0 +1,38 @@
+package org.unitego.lobecorp.registry.world.item;
+
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.item.Item;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.world.item.LcSpawnEggItem;
+
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+public interface SpawnEggItems {
+	DeferredRegister.Items REGISTER = DeferredRegister.createItems(Lobecorp.NAMESPACE);
+
+	DeferredItem<LcSpawnEggItem> THE_QUEEN_OF_HATRED = register("the_queen_of_hatred", "The Queen Of Hatred", "憎恶皇后",
+			AbnormalitieEntityTypes.THE_QUEEN_OF_HATRED);
+
+	DeferredItem<LcSpawnEggItem> SWEEPER = register("sweeper", "Sweeper", "清道夫", OrdealEntityTypes.SWEEPER);
+
+	static void init(IEventBus iEventBus) {
+		REGISTER.register(iEventBus);
+	}
+
+	static DeferredItem<LcSpawnEggItem> register(String name, String enUs, String zhCn,
+	                                             Supplier<? extends EntityType<?>> entityType) {
+		return register(name, enUs, zhCn, UnaryOperator.identity(), entityType);
+	}
+
+	static DeferredItem<LcSpawnEggItem> register(String name, String enUs, String zhCn,
+	                                             UnaryOperator<Item.Properties> properties, Supplier<? extends EntityType<?>> entityType) {
+		return LcItems.register(REGISTER, name + "_spawn_egg", enUs + " Spawn Egg",
+				zhCn + "刷怪蛋", p -> new LcSpawnEggItem(entityType, p), properties);
+	}
+}

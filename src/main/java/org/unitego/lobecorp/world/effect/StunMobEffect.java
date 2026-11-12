@@ -7,7 +7,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import org.jspecify.annotations.NullMarked;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 import java.util.Collections;

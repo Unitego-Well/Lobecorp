@@ -6,39 +6,38 @@ import com.geckolib.animatable.manager.AnimatableManager;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
 import com.mojang.serialization.Codec;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.Brain;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.animation.*;
-import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.animation.*;
 import org.unitego.lobecorp.conductor.control.ConductorController;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.registry.world.entity.state.TheQueenOfHatredStates;
+import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
 import org.unitego.lobecorp.world.entity.combat.ICombatant;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillHolder;
 import org.unitego.lobecorp.world.entity.state.EntityState;
 import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.registry.entity.state.TheQueenOfHatredStates;
 
 import java.util.List;
 
@@ -46,14 +45,14 @@ import java.util.List;
 public class TheQueenOfHatred extends PathfinderMob implements GeoEntity, ILcCustomAnimatable, IEntityStateHolder, IEntitySkillHolder, ICombatant {
 	/// 坐姿退出动画的淡出时长，单位为 tick。
 	public static final int SITTING_FADE_OUT_TICKS = 23;
+	public static final int PHASE_ONE = 1;
+	public static final int PHASE_TWO = 2;
+	public static final int PHASE_THREE = 3;
 	/// 眼睛动画重新开始的间隔，单位为 tick。
 	private static final int EYE_ANIMATION_INTERVAL_TICKS = 20 * 5;
 	/// 同步实体当前姿态与技能状态的数据字段。
 	private static final EntityDataAccessor<List<EntityState>> DATA_ENTITY_STATES =
 			SynchedEntityData.defineId(TheQueenOfHatred.class, LcEntityDataSerializers.ENTITY_STATES.get());
-	public static final int PHASE_ONE = 1;
-	public static final int PHASE_TWO = 2;
-	public static final int PHASE_THREE = 3;
 	private static final EntityDataAccessor<Integer> DATA_PHASE =
 			SynchedEntityData.defineId(TheQueenOfHatred.class, EntityDataSerializers.INT);
 	private static final String PHASE_SAVE_KEY = "Phase";

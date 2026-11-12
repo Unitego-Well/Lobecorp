@@ -3,7 +3,6 @@ package org.unitego.lobecorp.registry.client.photon;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -11,7 +10,8 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceCapture;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
+import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mode;
 
 import java.util.Locale;
@@ -69,7 +69,8 @@ public class LcPhotonProfileCommand {
 				case "start" -> PhotonRepeatedEffectTrial.start(kind, PhotonRepeatedEffectTrial.Mode.BASE, label, null);
 				case "cancel" -> PhotonRepeatedEffectTrial.cancel(label);
 				case "close" -> PhotonRepeatedEffectTrial.close(label);
-				default -> { }
+				default -> {
+				}
 			}
 			var status = PhotonRepeatedEffectTrial.status(label).toString();
 			source.sendSuccess(() -> Component.literal(status), false);
@@ -83,31 +84,31 @@ public class LcPhotonProfileCommand {
 	private static int start(CommandSourceStack source, double seconds, Mode mode) {
 		try {
 			PhotonPerformanceCapture.start(LABEL, seconds, mode);
-			source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslations.key("started"), seconds,
-					Component.translatable(PhotonPerformanceTranslations.key("mode." + mode.name().toLowerCase(Locale.ROOT)))), false);
+			source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslationKeys.key("started"), seconds,
+					Component.translatable(PhotonPerformanceTranslationKeys.key("mode." + mode.name().toLowerCase(Locale.ROOT)))), false);
 			return 1;
 		} catch (RuntimeException problem) {
-			source.sendFailure(Component.translatable(PhotonPerformanceTranslations.key("error"), Component.translatable(String.valueOf(problem.getMessage()))));
+			source.sendFailure(Component.translatable(PhotonPerformanceTranslationKeys.key("error"), Component.translatable(String.valueOf(problem.getMessage()))));
 			return 0;
 		}
 	}
 
 	private static int status(CommandSourceStack source) {
 		var status = PhotonPerformanceCapture.status();
-		source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslations.key("status"),
+		source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslationKeys.key("status"),
 				status.get("active").getAsBoolean(), status.get("exporting").getAsBoolean(),
 				status.has("nodes") ? status.get("nodes").getAsInt() : 0,
 				status.has("frame") ? status.get("frame").getAsInt() : 0), false);
 		if (!status.get("output").isJsonNull()) {
-			source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslations.key("output"), status.get("output").getAsString()), false);
+			source.sendSuccess(() -> Component.translatable(PhotonPerformanceTranslationKeys.key("output"), status.get("output").getAsString()), false);
 		}
 		if (!status.get("error").isJsonNull()) {
-			source.sendFailure(Component.translatable(PhotonPerformanceTranslations.key("error"), status.get("error").getAsString()));
+			source.sendFailure(Component.translatable(PhotonPerformanceTranslationKeys.key("error"), status.get("error").getAsString()));
 		}
 		return 1;
 	}
 
 	private static Component message(String key) {
-		return Component.translatable(PhotonPerformanceTranslations.key(key));
+		return Component.translatable(PhotonPerformanceTranslationKeys.key(key));
 	}
 }

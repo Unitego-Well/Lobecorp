@@ -14,24 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /// 线程内加载与复制诊断；exclusive 仅扣除已计时子调用，仍包含等待、GC及未计时工作。
 public class PhotonFXLoadDiagnosticsUtil {
-	public enum Stage {
-		QUERY, LOAD, TEMPLATE_PREPARE, TEMPLATE_NEXT, TEMPLATE_CREATE, OPEN, READ_COMPRESSED, VERSION_FIXES, DESERIALIZE,
-		GUARD_FX, GUARD_OBJECT, GUARD_TIMELINE, GUARD_TRACK,
-		OBJECT, CODEC, OBJECT_VERSION_FIX, FACTORY_CREATE, CLASS_DESERIALIZE, DECLARED_METHODS, DECLARED_FIELDS,
-		FIELD_KEY, FIELD_REF, FIELD_WRITE, FIELD_READ, SETTER, BEFORE_DESERIALIZE, ADDITIONAL_NBT, AFTER_DESERIALIZE,
-		SUB_CONFIG, VALUE_DESERIALIZE;
-
-		private boolean boundary() {
-			return this == QUERY || this == LOAD || this == TEMPLATE_PREPARE || this == TEMPLATE_NEXT || this == OBJECT;
-		}
-	}
-
-	private static class RuntimeState {
-		private static final ThreadLocal<Ledger> LEDGER = ThreadLocal.withInitial(Ledger::new);
-		private static final AtomicLong IDS = new AtomicLong();
-		private static volatile Capture capture;
-	}
-
 	public static Scope begin(Stage stage, Object resource, boolean useCache) {
 		if (!PhotonCastProfiler.enabled()) {
 			return null;
@@ -175,6 +157,24 @@ public class PhotonFXLoadDiagnosticsUtil {
 		return value == null ? "none" : value.toString().replaceAll("\\s", "_");
 	}
 
+	public enum Stage {
+		QUERY, LOAD, TEMPLATE_PREPARE, TEMPLATE_NEXT, TEMPLATE_CREATE, OPEN, READ_COMPRESSED, VERSION_FIXES, DESERIALIZE,
+		GUARD_FX, GUARD_OBJECT, GUARD_TIMELINE, GUARD_TRACK,
+		OBJECT, CODEC, OBJECT_VERSION_FIX, FACTORY_CREATE, CLASS_DESERIALIZE, DECLARED_METHODS, DECLARED_FIELDS,
+		FIELD_KEY, FIELD_REF, FIELD_WRITE, FIELD_READ, SETTER, BEFORE_DESERIALIZE, ADDITIONAL_NBT, AFTER_DESERIALIZE,
+		SUB_CONFIG, VALUE_DESERIALIZE;
+
+		private boolean boundary() {
+			return this == QUERY || this == LOAD || this == TEMPLATE_PREPARE || this == TEMPLATE_NEXT || this == OBJECT;
+		}
+	}
+
+	private static class RuntimeState {
+		private static final ThreadLocal<Ledger> LEDGER = ThreadLocal.withInitial(Ledger::new);
+		private static final AtomicLong IDS = new AtomicLong();
+		private static volatile Capture capture;
+	}
+
 	/// 纯账本不读取时钟、注册表或运行配置；显式时间戳也用于确定性单元检验。
 	public static class Ledger {
 		private Scope current;
@@ -231,6 +231,43 @@ public class PhotonFXLoadDiagnosticsUtil {
 		public Capture(String label, long id) {
 			this.label = label;
 			this.id = id;
+		}
+
+		private static JsonObject aggregateJson(AggregateKey key, Totals totals) {
+			var row = new JsonObject();
+			row.addProperty("objectId", key.objectId);
+			row.addProperty("stage", key.stage.name());
+			row.addProperty("class", key.className);
+			row.addProperty("field", key.field);
+			row.addProperty("path", key.path);
+			row.addProperty("root", key.root);
+			row.addProperty("parentBoundaryId", key.parentBoundaryId);
+			row.addProperty("resultClass", key.resultClass);
+			row.addProperty("count", totals.count);
+			row.addProperty("inclusiveNs", totals.inclusiveNs);
+			row.addProperty("exclusiveNs", totals.exclusiveNs);
+			row.addProperty("maxNs", totals.maxNs);
+			row.addProperty("failedCount", totals.failedCount);
+			return row;
+		}
+
+		private static JsonObject coverageJson() {
+			var coverage = new JsonObject();
+			coverage.addProperty("codec", "IFXObject dispatch call, including overrides");
+			coverage.addProperty("factory", "PersistedParser.createCodec anonymous decode Supplier.get only");
+			coverage.addProperty("fixData", "FXObjectType base codec decode call only");
+			coverage.addProperty("classes", "PersistedParser.deserializeInternal, superclass and nested config");
+			coverage.addProperty("fields", "existing Field metadata; no extra field reads or reflection scans");
+			return coverage;
+		}
+
+		private static JsonArray missingJson() {
+			var missing = new JsonArray();
+			missing.add("Custom codecs bypassing PersistedParser.createCodec: factory/fixData not guaranteed covered; absent counters mean unobserved, never zero cost");
+			missing.add("CLASS_DESERIALIZE exclusive includes annotation checks, map/ops conversions, access setup, loops and all other unhooked work");
+			missing.add("OBJECT exclusive includes codec dispatch/parse/result handling and other unhooked work");
+			missing.add("Timings include instrumentation, allocation, logging in enclosing scopes, GC and waits; no overhead subtraction");
+			return missing;
 		}
 
 		private synchronized void started() {
@@ -325,43 +362,6 @@ public class PhotonFXLoadDiagnosticsUtil {
 			result.addProperty("complete", active && started == completed);
 			result.addProperty("attributionComplete", false);
 			return result;
-		}
-
-		private static JsonObject aggregateJson(AggregateKey key, Totals totals) {
-			var row = new JsonObject();
-			row.addProperty("objectId", key.objectId);
-			row.addProperty("stage", key.stage.name());
-			row.addProperty("class", key.className);
-			row.addProperty("field", key.field);
-			row.addProperty("path", key.path);
-			row.addProperty("root", key.root);
-			row.addProperty("parentBoundaryId", key.parentBoundaryId);
-			row.addProperty("resultClass", key.resultClass);
-			row.addProperty("count", totals.count);
-			row.addProperty("inclusiveNs", totals.inclusiveNs);
-			row.addProperty("exclusiveNs", totals.exclusiveNs);
-			row.addProperty("maxNs", totals.maxNs);
-			row.addProperty("failedCount", totals.failedCount);
-			return row;
-		}
-
-		private static JsonObject coverageJson() {
-			var coverage = new JsonObject();
-			coverage.addProperty("codec", "IFXObject dispatch call, including overrides");
-			coverage.addProperty("factory", "PersistedParser.createCodec anonymous decode Supplier.get only");
-			coverage.addProperty("fixData", "FXObjectType base codec decode call only");
-			coverage.addProperty("classes", "PersistedParser.deserializeInternal, superclass and nested config");
-			coverage.addProperty("fields", "existing Field metadata; no extra field reads or reflection scans");
-			return coverage;
-		}
-
-		private static JsonArray missingJson() {
-			var missing = new JsonArray();
-			missing.add("Custom codecs bypassing PersistedParser.createCodec: factory/fixData not guaranteed covered; absent counters mean unobserved, never zero cost");
-			missing.add("CLASS_DESERIALIZE exclusive includes annotation checks, map/ops conversions, access setup, loops and all other unhooked work");
-			missing.add("OBJECT exclusive includes codec dispatch/parse/result handling and other unhooked work");
-			missing.add("Timings include instrumentation, allocation, logging in enclosing scopes, GC and waits; no overhead subtraction");
-			return missing;
 		}
 
 		public synchronized JsonObject finish() {

@@ -1,3 +1,15 @@
+// 同高绕行优先；跨上一格及回到原高度其次；低于起始高度最后考虑。
+int hordeTerrainRank(float reference, float from, float to) {
+    if (isnan(from) || isnan(to) || isinf(from) || isinf(to)
+            || to - from > 1.0 || from - to > 3.0) {
+        return 3;
+    }
+    if (to < reference - 0.001) {
+        return 2;
+    }
+    return abs(to - from) <= 0.001 ? 0 : 1;
+}
+
 // 目标区域与地形使用同一连续排斥函数，方向由稳定的两侧分流决定。
 float hordeGapPush(float along, float across, float radius, float forwardHalf, float side) {
     float need = radius - side * across;

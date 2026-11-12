@@ -6,12 +6,12 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.network.ts.IToServerPayload;
-import org.unitego.lobecorp.world.encounter.Encounters;
+import org.unitego.lobecorp.api.encounter.Encounters;
 
 import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record EncounterSkipPayload(UUID eventId) implements IToServerPayload {

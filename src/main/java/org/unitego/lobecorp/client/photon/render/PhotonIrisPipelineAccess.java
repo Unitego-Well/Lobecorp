@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.client.photon.render;
 
+import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderPass;
-import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 
 import javax.annotation.Nullable;
 
@@ -57,6 +57,12 @@ public final class PhotonIrisPipelineAccess {
 		useNativePipeline(draw);
 	}
 
+	interface Bypass {
+		boolean bypass();
+
+		void bypass(boolean value);
+	}
+
 	/// Iris 引用隔离在独立类中，未安装 Iris 时不会加载该类。
 	private static final class IrisPipelineBridge {
 		private static @Nullable Bypass instance;
@@ -67,11 +73,6 @@ public final class PhotonIrisPipelineAccess {
 			}
 			return instance;
 		}
-	}
-
-	interface Bypass {
-		boolean bypass();
-		void bypass(boolean value);
 	}
 
 	private static final class Impl implements Bypass {

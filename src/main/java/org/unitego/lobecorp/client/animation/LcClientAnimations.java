@@ -1,40 +1,32 @@
 package org.unitego.lobecorp.client.animation;
 
+import com.geckolib.cache.GeckoLibResources;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
-import com.geckolib.cache.GeckoLibResources;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.config.client.VisualQualityConfig;
-import org.unitego.lobecorp.util.animation.LcVisualQualityUtil;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.joml.Quaternionf;
+import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.behavior.LcRootMotion;
-import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
-import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 import org.unitego.lobecorp.animation.player.LcAnimationTermination;
 import org.unitego.lobecorp.animation.player.LcPlayerAnimationPolicy;
 import org.unitego.lobecorp.animation.pose.ILcAnimationQueries;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
-import org.unitego.lobecorp.attachment.LcTransform;
-import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
 import org.unitego.lobecorp.animation.runtime.LcAnimationInstance;
+import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
+import org.unitego.lobecorp.attachment.LcTransform;
+import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
+import org.unitego.lobecorp.config.client.VisualQualityConfig;
 import org.unitego.lobecorp.network.tc.animation.LcAnimationStatePayload;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil.Event;
+import org.unitego.lobecorp.util.animation.LcVisualQualityUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
 
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Predicate;
 
 /// 客户端安装权威结果并进行视觉插值，不执行服务端行为或历史时间线回调。
@@ -160,10 +152,10 @@ public class LcClientAnimations {
 		return frame.current.serverTick() + Math.max(0, gameTime() - frame.receivedTick + partialTick);
 	}
 
-    /// 使用既有收包时钟外推显示阶段，不依赖动作片段是否已到末帧。
-    public static double renderServerTick(UUID id, float partialTick) {
-        var frame = FRAMES.get(id);
-        return frame == null ? 0 : renderServerTick(frame, partialTick);
+	/// 使用既有收包时钟外推显示阶段，不依赖动作片段是否已到末帧。
+	public static double renderServerTick(UUID id, float partialTick) {
+		var frame = FRAMES.get(id);
+		return frame == null ? 0 : renderServerTick(frame, partialTick);
 	}
 
 	private static void pruneExpired() {
@@ -180,10 +172,6 @@ public class LcClientAnimations {
 		});
 	}
 
-	public record PlayerFrame(LcAnimationSnapshot snapshot, double timeSeconds, double weight,
-	                          LcSkeletalPose poseOverrides, double fadeInProgress, double fadeOutProgress) {
-	}
-
 	public static @Nullable LcSkeletalPose pose(UUID id) {
 		var snapshot = snapshot(id);
 		return snapshot == null ? null : snapshot.pose();
@@ -193,19 +181,19 @@ public class LcClientAnimations {
 		return visualPoseForEntity(entityId, 1);
 	}
 
-    /// 只查询策略资格，不采样骨骼；已停止但仍淡出的玩家帧继续参与判断。
-    public static boolean hasPlayerAnimation(int entityId, boolean requireFirstPersonArms) {
-        pruneExpired();
-        for (var frame : FRAMES.values()) {
-            var snapshot = frame.current;
-            var policy = snapshot.playerPolicy();
-            if (snapshot.ownerEntityId() == entityId && policy != null
-                    && (!requireFirstPersonArms || policy.firstPersonArms() && policy.weight() > 0)) {
-                return true;
-            }
-        }
-        return false;
-    }
+	/// 只查询策略资格，不采样骨骼；已停止但仍淡出的玩家帧继续参与判断。
+	public static boolean hasPlayerAnimation(int entityId, boolean requireFirstPersonArms) {
+		pruneExpired();
+		for (var frame : FRAMES.values()) {
+			var snapshot = frame.current;
+			var policy = snapshot.playerPolicy();
+			if (snapshot.ownerEntityId() == entityId && policy != null
+					&& (!requireFirstPersonArms || policy.firstPersonArms() && policy.weight() > 0)) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public static boolean hasEntityAnimation(int entityId) {
 		return FRAMES.values().stream().anyMatch(frame -> frame.current.ownerEntityId() == entityId);
@@ -312,14 +300,6 @@ public class LcClientAnimations {
 		cache.band = LcVisualQualityUtil.band(distance, cache.band, VisualQualityConfig.ANIMATION_NEAR.get(),
 				VisualQualityConfig.ANIMATION_FAR.get(), VisualQualityConfig.HYSTERESIS.get());
 		return cache.band == 0 ? 0 : cache.band == 1 ? VisualQualityConfig.MEDIUM_FPS.get() : VisualQualityConfig.FAR_FPS.get();
-	}
-
-	private static class CodePoseCache {
-		private @Nullable LcSkeletalPose pose;
-		private @Nullable Object generation;
-		private long bucket, revision;
-		private int band, fps;
-		private double phase;
 	}
 
 	private static LcSkeletalPose sampleVisualPose(Frame frame, float partialTick) {
@@ -485,6 +465,18 @@ public class LcClientAnimations {
 		LcClientAnimationResources.clearConnectionContent();
 	}
 
+	public record PlayerFrame(LcAnimationSnapshot snapshot, double timeSeconds, double weight,
+	                          LcSkeletalPose poseOverrides, double fadeInProgress, double fadeOutProgress) {
+	}
+
+	private static class CodePoseCache {
+		private @Nullable LcSkeletalPose pose;
+		private @Nullable Object generation;
+		private long bucket, revision;
+		private int band, fps;
+		private double phase;
+	}
+
 	private record Frame(LcAnimationSnapshot previous, LcAnimationSnapshot current, long receivedTick,
 	                     double clockSeconds, long clockTick, double ageOffset, @Nullable CodePoseCache codePose) {
 	}
@@ -495,6 +487,10 @@ public class LcClientAnimations {
 
 		private VisualQueries(Map<String, Double> parameters) {
 			parameters.forEach((name, value) -> variables.put(normalize(name), value));
+		}
+
+		private static String normalize(String name) {
+			return name.replace("query.", "q.").replace("variable.", "v.").replace("temp.", "t.");
 		}
 
 		private void useVisualTime(double time, double age) {
@@ -525,10 +521,6 @@ public class LcClientAnimations {
 			}
 
 			variables.put(key, value);
-		}
-
-		private static String normalize(String name) {
-			return name.replace("query.", "q.").replace("variable.", "v.").replace("temp.", "t.");
 		}
 	}
 }

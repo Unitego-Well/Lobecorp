@@ -15,18 +15,13 @@ import org.unitego.lobecorp.animation.behavior.LcRootMotion;
 import org.unitego.lobecorp.animation.player.LcAnimationTermination;
 import org.unitego.lobecorp.animation.player.LcPlayerAnimationPolicy;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
-import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
+import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.network.tc.IToClientPayload;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.EnumSet;
-import java.util.UUID;
+import java.util.*;
 
 /// 数值帧只引用已分块传输的内容版本，不重复携带模型与动画文本。
 public record LcAnimationStatePayload(UUID instanceId, int ownerEntityId, Identifier definitionId,
@@ -54,12 +49,6 @@ public record LcAnimationStatePayload(UUID instanceId, int ownerEntityId, Identi
 				snapshot.worldTransform(), snapshot.rootBone(), snapshot.rootAxes(),
 				snapshot.playerPolicy(), snapshot.serverTick(), snapshot.playbackRevision(), snapshot.startedTick(),
 				snapshot.stoppedTick(), snapshot.termination(), snapshot.poseOverrides());
-	}
-
-	public LcAnimationSnapshot snapshot(LcAnimationContent content) {
-		return new LcAnimationSnapshot(instanceId, ownerEntityId, definitionId, content, animationName,
-				timeSeconds, speed, paused, stopped, pose, parameters, worldTransform, rootBone, rootAxes,
-				playerPolicy, serverTick, playbackRevision, startedTick, stoppedTick, termination, poseOverrides);
 	}
 
 	private static void encode(RegistryFriendlyByteBuf buffer, LcAnimationStatePayload payload) {
@@ -244,6 +233,12 @@ public record LcAnimationStatePayload(UUID instanceId, int ownerEntityId, Identi
 
 	private static @Nullable String readNullable(RegistryFriendlyByteBuf buffer) {
 		return buffer.readBoolean() ? buffer.readUtf() : null;
+	}
+
+	public LcAnimationSnapshot snapshot(LcAnimationContent content) {
+		return new LcAnimationSnapshot(instanceId, ownerEntityId, definitionId, content, animationName,
+				timeSeconds, speed, paused, stopped, pose, parameters, worldTransform, rootBone, rootAxes,
+				playerPolicy, serverTick, playbackRevision, startedTick, stoppedTick, termination, poseOverrides);
 	}
 
 	@Override

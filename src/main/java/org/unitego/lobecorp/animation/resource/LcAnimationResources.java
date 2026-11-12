@@ -30,6 +30,26 @@ public class LcAnimationResources extends SimplePreparableReloadListener<LcAnima
 		return server.getServerResources().managers().getListener(KEY);
 	}
 
+	private static Map<Identifier, String> read(ResourceManager manager, FileToIdConverter converter) {
+		Map<Identifier, String> values = new LinkedHashMap<>();
+		for (var entry : converter.listMatchingResources(manager).entrySet()) {
+			try (var reader = entry.getValue().openAsReader()) {
+				var text = new StringWriter();
+				reader.transferTo(text);
+				var json = text.toString();
+				if (!JsonParser.parseString(json).isJsonObject()) {
+					throw new IllegalStateException(entry.getKey().toString());
+				}
+
+				values.put(converter.fileToId(entry.getKey()), json);
+			} catch (IOException | RuntimeException exception) {
+				throw new IllegalStateException(entry.getKey().toString(), exception);
+			}
+		}
+
+		return Map.copyOf(values);
+	}
+
 	public LcAnimationContent resolve(Identifier modelId, Identifier animationId) {
 		var model = models.get(modelId);
 		var animation = animations.get(animationId);
@@ -49,26 +69,6 @@ public class LcAnimationResources extends SimplePreparableReloadListener<LcAnima
 	protected void apply(Prepared prepared, ResourceManager manager, ProfilerFiller profiler) {
 		models = prepared.models();
 		animations = prepared.animations();
-	}
-
-	private static Map<Identifier, String> read(ResourceManager manager, FileToIdConverter converter) {
-		Map<Identifier, String> values = new LinkedHashMap<>();
-		for (var entry : converter.listMatchingResources(manager).entrySet()) {
-			try (var reader = entry.getValue().openAsReader()) {
-				var text = new StringWriter();
-				reader.transferTo(text);
-				var json = text.toString();
-				if (!JsonParser.parseString(json).isJsonObject()) {
-					throw new IllegalStateException(entry.getKey().toString());
-				}
-
-				values.put(converter.fileToId(entry.getKey()), json);
-			} catch (IOException | RuntimeException exception) {
-				throw new IllegalStateException(entry.getKey().toString(), exception);
-			}
-		}
-
-		return Map.copyOf(values);
 	}
 
 	public record Prepared(Map<Identifier, String> models, Map<Identifier, String> animations) {

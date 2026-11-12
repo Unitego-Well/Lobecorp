@@ -21,16 +21,7 @@ import org.unitego.lobecorp.world.item.animation.LcAttachedItemSnapshot;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.WeakHashMap;
+import java.util.*;
 
 /// 追踪关系只决定收件人；同步不会回放技能或动画时间线事件。
 @SuppressWarnings("resource")
@@ -313,11 +304,11 @@ public class LcAnimationSync {
 	}
 
 	private static class PlayerState {
-		private @Nullable ResourceKey<Level> dimension;
 		private final Set<String> content = new HashSet<>();
 		private final Map<UUID, LcAnimationSnapshot> snapshots = new HashMap<>();
 		private final Map<UUID, LcAttachmentSnapshot> attachments = new HashMap<>();
 		private final Map<UUID, LcAttachedItemSnapshot> items = new HashMap<>();
+		private @Nullable ResourceKey<Level> dimension;
 		private boolean attachmentsInitialized;
 	}
 }

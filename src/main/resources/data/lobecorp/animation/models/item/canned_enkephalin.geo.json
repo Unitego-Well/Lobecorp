@@ -1,0 +1,122 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.lobecorp.canned_enkephalin",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 3,
+        "visible_bounds_height": 3.5,
+        "visible_bounds_offset": [
+          0,
+          1.25,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "body",
+          "parent": "root",
+          "pivot": [
+            0,
+            24,
+            0
+          ]
+        },
+        {
+          "name": "head",
+          "parent": "root",
+          "pivot": [
+            0,
+            24,
+            0
+          ]
+        },
+        {
+          "name": "right_arm",
+          "parent": "root",
+          "pivot": [
+            -5,
+            22,
+            0
+          ]
+        },
+        {
+          "name": "right_item",
+          "parent": "right_arm",
+          "pivot": [
+            -6,
+            14,
+            -2
+          ],
+          "locators": {
+            "right_item": {
+              "offset": [
+                -6,
+                14,
+                -2
+              ],
+              "rotation": [
+                0,
+                -52.5,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "name": "left_arm",
+          "parent": "root",
+          "pivot": [
+            5,
+            22,
+            0
+          ]
+        },
+        {
+          "name": "left_item",
+          "parent": "left_arm",
+          "pivot": [
+            6,
+            14,
+            -2
+          ],
+          "locators": {
+            "left_item": [
+              6,
+              14,
+              -2
+            ]
+          }
+        },
+        {
+          "name": "right_leg",
+          "parent": "root",
+          "pivot": [
+            -2,
+            12,
+            0
+          ]
+        },
+        {
+          "name": "left_leg",
+          "parent": "root",
+          "pivot": [
+            2,
+            12,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

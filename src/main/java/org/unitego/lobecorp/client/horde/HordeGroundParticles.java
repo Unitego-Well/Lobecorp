@@ -8,20 +8,13 @@ import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 地面覆盖单元按世界坐标固定；碎屑独立分散补发。
 public class HordeGroundParticles {
 	private static final double CELL_SIZE = 3;
 	private static final int CELL_STRIDE = 137;
 	private static final Map<UUID, Long> cursors = new HashMap<>();
-
-	public record Emission(int groups, int particles) {
-	}
 
 	public static Emission tick(List<HordeClient.ClientHorde> events, long tick) {
 		var minecraft = Minecraft.getInstance();
@@ -92,8 +85,8 @@ public class HordeGroundParticles {
 			var surface = sampled == null ? level.getBlockState(BlockPos.containing(debris.add(0, -0.05, 0))) : sampled.state();
 			if (!surface.isAir() && surface.getFluidState().isEmpty()
 					&& minecraft.particleEngine.createParticle(new BlockParticleOption(ParticleTypes.BLOCK, surface),
-						debris.x, debris.y + 0.04, debris.z, (random.nextDouble() - 0.5) * 0.12, 0.035,
-						(random.nextDouble() - 0.5) * 0.12) != null) {
+					debris.x, debris.y + 0.04, debris.z, (random.nextDouble() - 0.5) * 0.12, 0.035,
+					(random.nextDouble() - 0.5) * 0.12) != null) {
 				particles++;
 			}
 		}
@@ -149,5 +142,8 @@ public class HordeGroundParticles {
 
 	public static void clear() {
 		cursors.clear();
+	}
+
+	public record Emission(int groups, int particles) {
 	}
 }

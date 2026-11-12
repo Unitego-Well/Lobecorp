@@ -23,6 +23,7 @@ public interface ILivingEntityExpand {
 	default void lobecorp$setCapturingShieldBlock(boolean capture) {
 		throw new NoMixinException();
 	}
+
 	default float lobecorp$getRationality() {
 		return LcDamageUtil.getRationality((LivingEntity) this);
 	}

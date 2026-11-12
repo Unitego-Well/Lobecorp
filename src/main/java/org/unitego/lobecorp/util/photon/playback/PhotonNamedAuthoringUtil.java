@@ -13,31 +13,6 @@ import java.util.UUID;
 
 /// 对制作原树执行无副作用编辑；工程测试调用与库内名称引用作为同一事务返回。
 public class PhotonNamedAuthoringUtil {
-	public record Document(CompoundTag library, @Nullable CompoundTag preview) {
-		public Document {
-			library = library.copy();
-			preview = preview == null ? null : preview.copy();
-			var parsed = checked(library);
-			if (preview != null) {
-				preview = PhotonProjectPreviewUtil.checkedCopy(preview);
-				var id = preview.getStringOr("id", "");
-				if (parsed.animations().stream().anyMatch(definition -> definition.id().toString().equals(id))) {
-					throw new IllegalArgumentException("工程测试身份不能与命名动画重复。");
-				}
-			}
-		}
-
-		@Override
-		public CompoundTag library() {
-			return library.copy();
-		}
-
-		@Override
-		public @Nullable CompoundTag preview() {
-			return preview == null ? null : preview.copy();
-		}
-	}
-
 	public static Document add(Document source, String name) {
 		var library = source.library();
 		var definition = PhotonProjectPreviewUtil.create();
@@ -269,6 +244,31 @@ public class PhotonNamedAuthoringUtil {
 			return PhotonNamedCodecUtil.read(library);
 		} catch (IOException invalid) {
 			throw new IllegalArgumentException("命名制作库无法按当前协议读取。", invalid);
+		}
+	}
+
+	public record Document(CompoundTag library, @Nullable CompoundTag preview) {
+		public Document {
+			library = library.copy();
+			preview = preview == null ? null : preview.copy();
+			var parsed = checked(library);
+			if (preview != null) {
+				preview = PhotonProjectPreviewUtil.checkedCopy(preview);
+				var id = preview.getStringOr("id", "");
+				if (parsed.animations().stream().anyMatch(definition -> definition.id().toString().equals(id))) {
+					throw new IllegalArgumentException("工程测试身份不能与命名动画重复。");
+				}
+			}
+		}
+
+		@Override
+		public CompoundTag library() {
+			return library.copy();
+		}
+
+		@Override
+		public @Nullable CompoundTag preview() {
+			return preview == null ? null : preview.copy();
 		}
 	}
 }

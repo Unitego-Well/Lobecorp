@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.client.animation;
 
-import com.geckolib.cache.GeckoLibResources;
 import com.geckolib.cache.BakedAnimationCache;
 import com.geckolib.cache.BakedModelCache;
+import com.geckolib.cache.GeckoLibResources;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;

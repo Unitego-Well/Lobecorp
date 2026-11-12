@@ -1472,6 +1472,11 @@
             }
           }
         }
+      },
+      "sound_effects": {
+        "0.3333": {
+          "effect": "lobecorp:entity.sweeper.attack|0.8|1"
+        }
       }
     },
     "attack2": {
@@ -2066,6 +2071,11 @@
             }
           }
         }
+      },
+      "sound_effects": {
+        "0.3333": {
+          "effect": "lobecorp:entity.sweeper.attack|0.8|1"
+        }
       }
     },
     "attack3": {
@@ -2629,6 +2639,11 @@
               "lerp_mode": "catmullrom"
             }
           }
+        }
+      },
+      "sound_effects": {
+        "0.375": {
+          "effect": "lobecorp:entity.sweeper.attack|0.8|1"
         }
       }
     },
@@ -3971,6 +3986,11 @@
             }
           }
         }
+      },
+      "sound_effects": {
+        "0.0": {
+          "effect": "lobecorp:entity.sweeper.clear_start|0.7|1"
+        }
       }
     },
     "clear2": {
@@ -4155,6 +4175,14 @@
             "vector": [0, "-10*math.sin(q.anim_time*90*8)", 0]
           }
         }
+      },
+      "sound_effects": {
+        "0.0833": {
+          "effect": "lobecorp:entity.sweeper.clear_loop|0.7|1"
+        },
+        "0.25": {
+          "effect": "lobecorp:entity.sweeper.clear_loop|0.7|1"
+        }
       }
     },
     "clear3": {
@@ -4332,6 +4360,11 @@
               "lerp_mode": "catmullrom"
             }
           }
+        }
+      },
+      "sound_effects": {
+        "0.0": {
+          "effect": "lobecorp:entity.sweeper.clear_end|0.7|1"
         }
       }
     }

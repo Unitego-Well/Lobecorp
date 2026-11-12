@@ -13,22 +13,22 @@ import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
-import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.WardenSonicBoomAbility;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorUnitData;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCastResult;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
-import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -806,13 +806,13 @@ public class ConductorController {
 				LaserSkill.enableManualControl(result.runtime());
 			}
 
-            boolean aiming = result.status() == EntitySkillCastResult.Status.AIMING;
-            ConductorUnitRuntime.get(mob).pendingSkill = aiming ? new PendingSkillCast(skill, target, targetPosition) : null;
-            return result.started() || aiming;
-        } finally {
-            casts.pop();
-            if (casts.isEmpty()) {
-                EXPLICIT_SKILL_CASTS.remove();
+			boolean aiming = result.status() == EntitySkillCastResult.Status.AIMING;
+			ConductorUnitRuntime.get(mob).pendingSkill = aiming ? new PendingSkillCast(skill, target, targetPosition) : null;
+			return result.started() || aiming;
+		} finally {
+			casts.pop();
+			if (casts.isEmpty()) {
+				EXPLICIT_SKILL_CASTS.remove();
 			}
 		}
 	}

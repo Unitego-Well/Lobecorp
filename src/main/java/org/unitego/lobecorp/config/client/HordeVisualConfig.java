@@ -4,13 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.unitego.lobecorp.registry.translation.HordeConfigTranslationKeys;
 
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.EVENTS;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.EVENTS_MIDNIGHT_CLEANUP;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.EVENTS_MIDNIGHT_CLEANUP_WAVE;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.HORDE_DISPLAY;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.HORDE_SOUND;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.HORDE_PARTICLES;
-import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.HORDE_DEBUG;
+import static org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys.*;
 
 /// 主体数量只由显式上限决定，不进行自动降级。
 public class HordeVisualConfig {
@@ -21,13 +15,15 @@ public class HordeVisualConfig {
 	/// 地面发射与刀光共用既有频率和单轮组数倍率。
 	public static final int PARTICLE_FREQUENCY_MULTIPLIER = 5, PARTICLE_GROUP_MULTIPLIER = 2;
 	public static final ModConfigSpec.IntValue MAX_VISIBLE, DISTANCE, SOUND_VOICES, PARTICLE_INTERVAL, PARTICLE_RANGE, FRAGMENT_GROUPS;
-	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST;
+	public static final ModConfigSpec.BooleanValue ENABLED, STATISTICS, SOUND, DUST, ANIMATION_CYCLE;
 	public static final ModConfigSpec.IntValue SOUND_RANGE, SOUND_MAX_ACTIVE, EVENT_SHAKE_RANGE, LANDING_SHAKE_RANGE;
 	public static final ModConfigSpec.BooleanValue EVENT_SHAKE, LANDING_SHAKE;
 	public static final ModConfigSpec.DoubleValue SHAKE_STRENGTH;
-    public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES;
-    public static final ModConfigSpec.DoubleValue ROW_SPACING, COLUMN_SPACING;
-    public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, SINGLE_CARD_DISTANCE, FRAME_DISTANCE;
+	public static final ModConfigSpec.BooleanValue IRIS_DOUBLE_BUFFER, IRIS_MERGE_MATERIALS, REDUCE_HIDDEN_FACES;
+	/// 仅A_ADAPTIVE实验模式读取；光影指shaderpack实际启用，而非仅安装Iris。
+	public static final ModConfigSpec.BooleanValue IRIS_GROUPED_MOTION;
+	public static final ModConfigSpec.DoubleValue ROW_SPACING, COLUMN_SPACING;
+	public static final ModConfigSpec.IntValue IRIS_WORKSET_WORDS, ANIMATION_FRAMES, FRAME_DISTANCE, LAYER_COUNT;
 
 	static {
 		synchronized (ClientConfig.class) {
@@ -40,13 +36,19 @@ public class HordeVisualConfig {
 			COLUMN_SPACING = b.translation(HordeConfigTranslationKeys.VISUAL_COLUMN_SPACING).defineInRange("columnSpacing", 1.8d, 0.25d, 16d);
 			MAX_VISIBLE = b.translation(HordeConfigTranslationKeys.VISUAL_MAX_VISIBLE).defineInRange("maximumVisible", -1, -1, Integer.MAX_VALUE);
 			DISTANCE = b.translation(HordeConfigTranslationKeys.VISUAL_DISTANCE).defineInRange("rangeChunks", -1, -1, 1024);
+			LAYER_COUNT = b.translation(HordeConfigTranslationKeys.VISUAL_LAYER_COUNT).comment("仅未验收的分层诊断版B生效；-1不做层次剔除，0不显示虚拟单位，正数保留前N个单位层。").defineInRange("layerCount", 5, -1, Integer.MAX_VALUE);
 			IRIS_WORKSET_WORDS = b.translation(HordeConfigTranslationKeys.VISUAL_IRIS_WORKSET_WORDS).comment("使用4、8或16百万字；中间值向下取档。显存不足时自动缩小工作集，不减少实例。").defineInRange("irisWorksetMiWords", 16, 4, 16);
 			IRIS_DOUBLE_BUFFER = b.translation(HordeConfigTranslationKeys.VISUAL_IRIS_DOUBLE_BUFFER).define("irisDoubleBuffer", true);
 			IRIS_MERGE_MATERIALS = b.translation(HordeConfigTranslationKeys.VISUAL_IRIS_MERGE_MATERIALS).define("irisMergeMaterials", true);
 			REDUCE_HIDDEN_FACES = b.translation(HordeConfigTranslationKeys.VISUAL_REDUCE_HIDDEN_FACES).define("reduceHiddenFaces", true);
 			ANIMATION_FRAMES = b.translation(HordeConfigTranslationKeys.VISUAL_ANIMATION_FRAMES).defineInRange("animationFrames", 20, 4, 20);
-			SINGLE_CARD_DISTANCE = b.translation(HordeConfigTranslationKeys.VISUAL_SINGLE_CARD_DISTANCE).defineInRange("singleCardDistance", 64, -1, 4096);
-		FRAME_DISTANCE = b.translation(HordeConfigTranslationKeys.VISUAL_FRAME_DISTANCE).defineInRange("frameDistance", 10, -1, 4096);
+			ANIMATION_CYCLE = b.translation(HordeConfigTranslationKeys.VISUAL_ANIMATION_CYCLE).define("animationCycle", false);
+			FRAME_DISTANCE = b.translation(HordeConfigTranslationKeys.VISUAL_FRAME_DISTANCE).defineInRange("frameDistance", 10, -1, 4096);
+			b.translation(HordeConfigTranslationKeys.VISUAL_ADAPTIVE)
+					.comment("仅A_ADAPTIVE模式生效；native为未启用shaderpack，iris为已启用shaderpack，仅安装Iris不算启用光影。配置变化所需GPU资源重建在渲染线程执行。")
+					.push("adaptive");
+			IRIS_GROUPED_MOTION = b.translation(HordeConfigTranslationKeys.VISUAL_ADAPTIVE_IRIS_GROUPED_MOTION).define("irisGroupedMotion", true);
+			b.pop();
 			b.pop().translation(HORDE_SOUND).push("sound");
 			SOUND = b.translation(HordeConfigTranslationKeys.VISUAL_SOUND).define("sound", true);
 			SOUND_VOICES = b.translation(HordeConfigTranslationKeys.VISUAL_SOUND_VOICES).defineInRange("soundVoices", 2, 0, 16);
@@ -81,6 +83,6 @@ public class HordeVisualConfig {
 		return Math.max(0, chunks == -1 ? view : Math.min(chunks, view)) * 16d;
 	}
 
-    public static void init() {
-    }
+	public static void init() {
+	}
 }

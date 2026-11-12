@@ -1,21 +1,19 @@
 package org.unitego.lobecorp.config.photon.playback;
 
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEmitterSpawnerTranslations;
-
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.TransformRef;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
+import org.jetbrains.annotations.NotNull;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEmitterSpawnerTranslationKeys;
 
 import javax.annotation.Nullable;
 
-import org.jetbrains.annotations.NotNull;
-
 /// 沿用当前文件字段与枚举编码；运行副本不会把调度结果写进配置。
 public class PhotonSpawnConfig implements IPersistedSerializable {
-	public static final String ENUM_PREFIX = PhotonEmitterSpawnerTranslations.PREFIX + "enum.";
+	public static final String ENUM_PREFIX = PhotonEmitterSpawnerTranslationKeys.PREFIX + "enum.";
 	public static final int DEFAULT_DURATION = 100;
 	public static final int DEFAULT_INTERVAL = 20;
 	public static final int DEFAULT_MAX_INSTANCES = 64;
@@ -23,13 +21,16 @@ public class PhotonSpawnConfig implements IPersistedSerializable {
 	public static final int MAX_DEPTH = 8;
 	public static final int MAX_TEMPLATE_OBJECTS = 4096;
 	public static final int MAX_PLAYBACK_SPEED = 16;
-
+	@Persisted
+	public final TransformRef template = new TransformRef();
+	@Persisted(subPersisted = true)
+	public final PhotonSpawnShape shape = new PhotonSpawnShape();
+	@Persisted(subPersisted = true)
+	public final PhotonSpawnParameters parameters = new PhotonSpawnParameters();
 	@Persisted
 	public boolean enabled = true;
 	@Persisted
 	public Source source = Source.PROJECT;
-	@Persisted
-	public final TransformRef template = new TransformRef();
 	@Persisted
 	public @Nullable Identifier fxLocation;
 	@Persisted
@@ -76,10 +77,6 @@ public class PhotonSpawnConfig implements IPersistedSerializable {
 	public boolean inheritVelocity;
 	@Persisted
 	public NumberFunction launchSpeed = NumberFunction.constant(0);
-	@Persisted(subPersisted = true)
-	public final PhotonSpawnShape shape = new PhotonSpawnShape();
-	@Persisted(subPersisted = true)
-	public final PhotonSpawnParameters parameters = new PhotonSpawnParameters();
 
 	public enum Source implements StringRepresentable {
 		PROJECT, FX;

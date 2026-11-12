@@ -10,11 +10,8 @@ import com.sun.management.ThreadMXBean;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.config.photon.PhotonRepeatedEffectConfig;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelAssetUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelRuntimeCopyUtil;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -45,8 +42,6 @@ public class PhotonRuntimeCopyLedger {
 		var report = new JsonObject();
 		report.addProperty("phase", "verify_after_main_window_archive");
 		report.addProperty("main_window_sample", false);
-		report.addProperty("native_model_copy_property", PhotonModelRuntimeCopyUtil.NATIVE_MODEL_COPY_PROPERTY);
-		report.addProperty("native_model_copy_enabled", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled());
 		report.addProperty("native_baseline", "unchanged public IFXObject.CODEC encode/parse; never model.deepCopy");
 		report.addProperty("start_nano_time", started);
 		report.addProperty("repetitions_per_block", REPETITIONS);
@@ -178,40 +173,6 @@ public class PhotonRuntimeCopyLedger {
 				PhotonEditorProjectGuardUtil.requireSupported(encoded);
 				return Boolean.TRUE;
 			});
-			if (source instanceof PhotonModelOutput model && encoded instanceof CompoundTag wrapper) {
-				var payload = wrapper.getCompoundOrEmpty("data");
-				phase(source, blocks, "model_adapt_only", () -> adapt(payload));
-				boolean eligible = PhotonModelRuntimeCopyUtil.supportsEncoded(model, encoded);
-				row.addProperty("model_typed_restore_eligible", eligible);
-				row.addProperty("model_actual_deep_copy_path", PhotonModelRuntimeCopyUtil.nativeModelCopyEnabled()
-						? "native_forced" : eligible ? "typed_restore" : "native_fallback");
-				row.addProperty("model_encode_eliminated", false);
-				row.addProperty("model_restore_scope", "same encoded wrapper; canonical guard borrows config without whole-payload clone; two native renderer subtrees; owned snapshot, dependencies and remembered source retained");
-				if (eligible) {
-					phase(source, blocks, "model_canonical_borrow_guard_only", () -> borrowCanonicalConfig(payload));
-				}
-				phase(source, blocks, "model_typed_candidate_restore_without_encode", () -> PhotonModelRuntimeCopyUtil.copyEncoded(model, encoded));
-				var typed = Objects.requireNonNull(PhotonModelRuntimeCopyUtil.typedCopy(model));
-				if (!IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, expected).getOrThrow()
-						.equals(IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, typed).getOrThrow())) {
-					throw new AssertionError("native versus typed candidate equivalence failed");
-				}
-				for (int i = 0; i < 2 && withinBudget(); i++) {
-					sink = nativeCopy(model);
-					sink = PhotonModelRuntimeCopyUtil.typedCopy(model);
-				}
-
-				for (var mode : List.of("A", "B", "B", "A")) {
-					var block = measure(mode.equals("A") ? () -> nativeCopy(model) : () -> PhotonModelRuntimeCopyUtil.typedCopy(model));
-					block.addProperty("phase", "model_native_vs_typed_full_copy");
-					block.addProperty("mode", mode);
-					block.addProperty("typed_candidate_path", eligible ? "typed_restore" : "native_fallback");
-					blocks.add(block);
-					aggregate(source, "model_native_vs_typed_full_copy_" + mode, block);
-				}
-				row.add("full_copy_comparison", comparison(blocks, "full_copy"));
-				row.add("native_vs_typed_comparison", comparison(blocks, "model_native_vs_typed_full_copy"));
-			}
 
 			row.addProperty("status", exhausted ? "partial_budget" : "complete");
 		} catch (RuntimeException | AssertionError failure) {
@@ -345,21 +306,9 @@ public class PhotonRuntimeCopyLedger {
 				.flatMap(tag -> IFXObject.CODEC.parse(NbtOps.INSTANCE, tag).result()).orElse(null);
 	}
 
-	private static CompoundTag borrowCanonicalConfig(CompoundTag payload) {
-		try {
-			return PhotonModelAssetUtil.borrowCanonicalConfig(payload);
-		} catch (IOException failure) {
-			throw new IllegalArgumentException(failure);
-		}
-	}
 
-	private static CompoundTag adapt(CompoundTag payload) {
-		try {
-			return PhotonModelAssetUtil.adaptObject(payload);
-		} catch (IOException failure) {
-			throw new IllegalArgumentException(failure);
-		}
-	}
+
+
 
 	private static class Totals {
 		private long operations;

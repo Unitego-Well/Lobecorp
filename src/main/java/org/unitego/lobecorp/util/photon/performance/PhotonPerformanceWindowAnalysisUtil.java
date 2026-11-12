@@ -7,12 +7,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.C
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil.Result;
 
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /// 冻结快照的专用有界分析线程；每个面板只留一个运行任务和一个最新等待目标。
 public class PhotonPerformanceWindowAnalysisUtil implements AutoCloseable {
@@ -32,12 +27,6 @@ public class PhotonPerformanceWindowAnalysisUtil implements AutoCloseable {
 
 	PhotonPerformanceWindowAnalysisUtil(Executor executor) {
 		this.executor = executor;
-	}
-
-	public record State(boolean working, @Nullable Result result, @Nullable String error) {
-	}
-
-	private record Request(long revision, Capture capture, Frames frames, List<JsonObject> gpu, int first, int last) {
 	}
 
 	public synchronized void request(Capture capture, Frames frames, List<JsonObject> gpu, int first, int last) {
@@ -102,5 +91,11 @@ public class PhotonPerformanceWindowAnalysisUtil implements AutoCloseable {
 				}
 			}
 		}
+	}
+
+	public record State(boolean working, @Nullable Result result, @Nullable String error) {
+	}
+
+	private record Request(long revision, Capture capture, Frames frames, List<JsonObject> gpu, int first, int last) {
 	}
 }

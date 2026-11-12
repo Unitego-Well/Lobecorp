@@ -1,21 +1,20 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
-
-import java.util.function.Supplier;
-
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.photon.client.gameobject.emitter.data.ForceOverLifetimeSetting;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import com.lowdragmc.photon.client.gameobject.particle.IParticle;
+import org.joml.Vector3f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess.Component;
-import org.joml.Vector3f;
+import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
+
+import java.util.function.Supplier;
 
 @Mixin(ForceOverLifetimeSetting.Runtime.class)
 public abstract class ForceOverLifetimeRuntimeMixin {

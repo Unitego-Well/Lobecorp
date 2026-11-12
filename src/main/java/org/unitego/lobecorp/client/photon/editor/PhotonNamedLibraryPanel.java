@@ -1,11 +1,11 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
-
-import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
@@ -14,44 +14,27 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import dev.vfyjxf.taffy.style.FlexDirection;
-import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil.Document;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectEditUtil;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonArray;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.UUID;
-import java.util.List;
-import java.util.Objects;
-import java.util.HashSet;
-import java.util.ArrayList;
-
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelWorkspaceScene;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.AUTO_DURATION;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.COMPLETION;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DURATION;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.LOOP;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NAME;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.OUTLINE_PANEL;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.PRIORITY;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.RENAME;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TIMELINE_PANEL;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TITLE;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.*;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.CLOSE;
 
 /// 列表编辑只修改会话草稿；显式应用时一次提交库和工程测试引用。
 public class PhotonNamedLibraryPanel {
@@ -59,13 +42,13 @@ public class PhotonNamedLibraryPanel {
 	private final FXEditor editor;
 	private final PhotonNamedAuthoringSession session;
 	private final PhotonNamedOutline list;
-	private PhotonModelWorkspaceScene animationScene;
 	private final UIElement properties = new UIElement();
-	private PhotonNamedInspectorPages inspectorPages;
 	private final TextElement status = new TextElement();
+	private final List<Dialog> ownedDialogs = new ArrayList<>();
+	private PhotonNamedAnimationScene animationScene;
+	private PhotonNamedInspectorPages inspectorPages;
 	private @Nullable UUID selected;
 	private String name = "animation";
-	private final List<Dialog> ownedDialogs = new ArrayList<>();
 
 	public PhotonNamedLibraryPanel(FXEditor editor, UUID controller) {
 		this.editor = editor;
@@ -145,7 +128,7 @@ public class PhotonNamedLibraryPanel {
 			}
 		}));
 		dialog.addButton(new Button().setText(CLOSE).setOnClick(_ -> dialog.close()));
-		animationScene = new PhotonModelWorkspaceScene(editor, () -> {
+		animationScene = new PhotonNamedAnimationScene(editor, () -> {
 			animationScene.showScene(true);
 			dialog.activate(true);
 		}, () -> {
@@ -241,7 +224,7 @@ public class PhotonNamedLibraryPanel {
 				.setRange(Integer.MIN_VALUE, Integer.MAX_VALUE);
 		var completion = new SelectorConfigurator<>(COMPLETION, () -> currentDefinition(id).completion(),
 				value -> patch(id, tag -> tag.putString("completion", value.name())), definition.completion(), false,
-				List.of(PhotonNamedLibrary.Completion.values()), value -> Component.translatable(PhotonAnimationTranslations.key("enum." + value.name())).getString());
+				List.of(PhotonNamedLibrary.Completion.values()), value -> Component.translatable(PhotonAnimationTranslationKeys.key("enum." + value.name())).getString());
 		for (var property : List.of(duration, automatic, loop, priority, completion)) {
 			property.layout(layout -> layout.widthPercent(100).flexShrink(0));
 			properties.addChild(property);

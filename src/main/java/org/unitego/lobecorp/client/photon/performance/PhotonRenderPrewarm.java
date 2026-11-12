@@ -16,18 +16,13 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
 import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
@@ -210,11 +205,6 @@ public final class PhotonRenderPrewarm {
 	public static final class Queue {
 		private static final long BUDGET_NANOS = 10_000_000L;
 		private static final boolean DIAGNOSTICS = PhotonCastProfiler.enabled();
-
-		private enum JobType {
-			DEFINE, SHELL, PREPARE, MATERIAL, VARIANT, CHILD
-		}
-
 		private final long queuedAt = DIAGNOSTICS ? System.nanoTime() : 0;
 		private final long[] jobNanos = DIAGNOSTICS ? new long[JobType.values().length] : null;
 		private final long[] jobMaxNanos = DIAGNOSTICS ? new long[JobType.values().length] : null;
@@ -270,9 +260,7 @@ public final class PhotonRenderPrewarm {
 		private void addObjects(List<IFXObject> objects, int depth, BooleanSupplier alive) {
 			for (var object : objects) {
 				enqueue(JobType.PREPARE, alive, () -> {
-					if (object instanceof PhotonModelOutput model) {
-						model.queuePrewarmRenderTypes(this, alive);
-					} else if (object instanceof Emitter emitter) {
+					if (object instanceof Emitter emitter) {
 						addMaterials(alive, emitter.rendererRuntime(), emitter.geometryMode(),
 								variants(emitter), emitter.getName());
 					}
@@ -362,9 +350,6 @@ public final class PhotonRenderPrewarm {
 			}
 		}
 
-		private record PendingVariant(JobType type, Runnable action) {
-		}
-
 		private void prepare(PhotonChildSpawner spawner, int depth, BooleanSupplier alive) {
 			spawners++;
 			spawner.prepareNext();
@@ -386,15 +371,7 @@ public final class PhotonRenderPrewarm {
 
 			for (var node : program.definition().nodes()) {
 				enqueue(JobType.PREPARE, current, () -> {
-					var model = node.preparedModel();
-					if (model != null) {
-						try {
-							model.prepareStatic();
-							addMaterials(current, model.config(), model.mode());
-						} catch (IOException | RuntimeException invalid) {
-							Lobecorp.LOGGER.warn("静态模型材质预热登记失败：{}", program.key(), invalid);
-						}
-					}
+
 					for (var child : node.childPrograms()) {
 						if (depth >= 0) {
 							enqueue(JobType.CHILD, current, () -> prepare(child, depth, current));
@@ -484,6 +461,13 @@ public final class PhotonRenderPrewarm {
 
 		public int failed() {
 			return failed;
+		}
+
+		private enum JobType {
+			DEFINE, SHELL, PREPARE, MATERIAL, VARIANT, CHILD
+		}
+
+		private record PendingVariant(JobType type, Runnable action) {
 		}
 	}
 }

@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.client.hud;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.event.RenderGuiEvent.Post;
 import org.unitego.lobecorp.client.horde.HordeDebugState;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;

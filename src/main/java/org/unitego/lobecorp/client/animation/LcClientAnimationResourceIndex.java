@@ -57,7 +57,7 @@ public record LcClientAnimationResourceIndex(
 	/// 单个资源失败会记录后继续处理其他资源；调用方应在资源 reload 的应用阶段调用。
 	@SuppressWarnings("UnstableApiUsage")
 	public static LcClientAnimationResourceIndex prepare(ResourceManager manager, long revision,
-	                                                    BakedModelCache models, BakedAnimationCache animations) {
+	                                                     BakedModelCache models, BakedAnimationCache animations) {
 		Map<Identifier, BakedGeoModel> bakedModels = new LinkedHashMap<>();
 		Map<Identifier, BakedAnimations> bakedAnimations = new LinkedHashMap<>();
 		Map<LocalClipKey, LcAnimationClip> clips = new LinkedHashMap<>();
@@ -173,10 +173,6 @@ public record LcClientAnimationResourceIndex(
 				MathParser.createWithDeduplication());
 	}
 
-	public int failureCount() {
-		return failures.size();
-	}
-
 	private static boolean isModel(Identifier file) {
 		return file.getNamespace().equals(Lobecorp.NAMESPACE) && file.getPath().endsWith(MODEL_SUFFIX);
 	}
@@ -199,6 +195,10 @@ public record LcClientAnimationResourceIndex(
 
 	private static <K, V> Map<K, V> immutableMap(Map<K, V> values) {
 		return Collections.unmodifiableMap(new LinkedHashMap<>(values));
+	}
+
+	public int failureCount() {
+		return failures.size();
 	}
 
 	/// 本地动画 clip 的键包含资源代次，避免同 ID 同名内容在 reload 后复用旧结果。

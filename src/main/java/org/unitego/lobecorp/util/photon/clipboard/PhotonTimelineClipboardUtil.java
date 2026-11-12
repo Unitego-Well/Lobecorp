@@ -4,36 +4,21 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
-import com.lowdragmc.photon.client.fx.timeline.Clip;
-import com.lowdragmc.photon.client.fx.timeline.Timeline;
-import com.lowdragmc.photon.client.fx.timeline.Track;
-import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
+import com.lowdragmc.photon.client.fx.timeline.*;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.view.timeline.ClipTrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.Objects;
+import java.util.*;
 
 public class PhotonTimelineClipboardUtil {
 	/// 限制嵌套轨道层数，与一次操作的条目上限共同约束外部内容。
 	private static final int MAX_TRACK_DEPTH = 64;
-
-	/// 记录复制时的轨道位置，粘贴时仍需核对类型、目标及名称。
-	private record ClipBatch(Track track, List<Clip> clips) {
-	}
 
 	public static void copyTracks(TimelineContext ctx, Collection<Track> selected) {
 		var runtime = ctx.runtime();
@@ -357,6 +342,10 @@ public class PhotonTimelineClipboardUtil {
 	}
 
 	public static void invalid(TimelineContext ctx) {
-		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(ctx.editor());
+		Dialog.showNotification(PhotonEditorTranslationKeys.CLIPBOARD, PhotonEditorTranslationKeys.CLIPBOARD_INVALID, null).show(ctx.editor());
+	}
+
+	/// 记录复制时的轨道位置，粘贴时仍需核对类型、目标及名称。
+	private record ClipBatch(Track track, List<Clip> clips) {
 	}
 }

@@ -7,9 +7,9 @@ import org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys;
 public class ClientConfig {
 	public static final String FILE_NAME = "lobecorp-client.toml";
 	private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
-    public static final ModConfigSpec.BooleanValue CORPSE_BATCH = BUILDER
-            .translation(ClientConfigTranslationKeys.CORPSE_BATCH)
-            .define("corpseBatch", true);
+	public static final ModConfigSpec.BooleanValue CORPSE_BATCH = BUILDER
+			.translation(ClientConfigTranslationKeys.CORPSE_BATCH)
+			.define("corpseBatch", true);
 
 	/// 调用方在同一监视器内完成整组定义，防止并行类初始化交错push/pop。
 	public static ModConfigSpec.Builder section(String key, String translationKey) {

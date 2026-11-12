@@ -1,49 +1,37 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
-import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.*;
 import com.lowdragmc.photon.client.gameobject.FXObject;
-import org.unitego.lobecorp.client.photon.playback.PhotonActivationOverrideAccess;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
-import com.lowdragmc.photon.client.fx.timeline.TimelinePlayer;
+import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelClipUtil;
-import com.lowdragmc.photon.client.fx.timeline.Timeline;
-import org.spongepowered.asm.mixin.Unique;
-import org.unitego.lobecorp.client.photon.playback.PhotonChildWindows;
-import org.unitego.lobecorp.client.photon.playback.PhotonTimelineStateAccess;
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
+import org.unitego.lobecorp.client.photon.playback.*;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrack;
-import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
-import org.unitego.lobecorp.client.photon.playback.PhotonActivationTrackAccess;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedGates;
 import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 
 import javax.annotation.Nullable;
-import java.util.Map;
-import java.util.IdentityHashMap;
-
-import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
-import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
-import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
+import java.util.*;
 
 
 @Mixin(TimelinePlayer.class)
 public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
+	@Unique
+	private final Map<FXObject, PhotonAuthoringPose[]> lobecorp$authoredPoses = new IdentityHashMap<>();
+	@Unique
 	@Shadow
 	@Final
 	private FXRuntime runtime;
@@ -58,7 +46,17 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 	@Final
 	private Set<UUID> lastControlled;
 	@Unique
-	private final Map<FXObject, PhotonAuthoringPose[]> lobecorp$authoredPoses = new IdentityHashMap<>();
+	private @Nullable PhotonChildWindows lobecorp$children;
+	@Unique
+	private @Nullable PhotonNamedGates lobecorp$activation;
+	@Unique
+	private @Nullable List<PhotonChildTrack> lobecorp$childLeaves;
+
+	@Unique
+	private static boolean lobecorp$interval(Track track) {
+		var options = ((PhotonActivationTrackAccess) track).lobecorp$activationOptions();
+		return options.startControl() && options.endControl();
+	}
 
 	@Override
 	public PhotonAuthoringPose lobecorp$authoredPose(FXObject object, PhotonAuthoringPose current) {
@@ -85,15 +83,6 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		return recording;
 	}
 
-	@Unique
-	private @Nullable PhotonChildWindows lobecorp$children;
-	@Unique
-	private @Nullable PhotonNamedGates lobecorp$activation;
-	@Unique
-	private final PhotonModelClipUtil.ContributionState lobecorp$modelContributions = new PhotonModelClipUtil.ContributionState();
-	@Unique
-	private @Nullable List<PhotonChildTrack> lobecorp$childLeaves;
-
 	@WrapOperation(method = "evaluate", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/fx/timeline/Timeline;leafTracks(Z)Ljava/util/List;"))
 	private List<Track> lobecorp$nativeIntervals(Timeline timeline, boolean muted, Operation<List<Track>> original) {
@@ -103,12 +92,6 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 
 		return leaves.stream().filter(track -> !(track instanceof ActivatorTrack) || lobecorp$interval(track)).toList();
-	}
-
-	@Unique
-	private static boolean lobecorp$interval(Track track) {
-		var options = ((PhotonActivationTrackAccess) track).lobecorp$activationOptions();
-		return options.startControl() && options.endControl();
 	}
 
 	@Inject(method = "resetSubtree", at = @At("HEAD"), cancellable = true)
@@ -135,22 +118,7 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 
 		lobecorp$childLeaves = null;
-		lobecorp$modelContributions.clear(this);
 	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 	@Inject(method = "evaluate(DZ)V", at = @At("RETURN"))
@@ -190,7 +158,6 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 			lobecorp$children.evaluate(lobecorp$childLeaves, time);
 		}
 
-		lobecorp$modelContributions.apply(this, runtime, timeline, time, PhotonModelClipUtil.SCENE_PRIORITY, 0);
 		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
@@ -204,16 +171,15 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 			lobecorp$children.frame(lastEvalTime + partialTicks);
 		}
 
-		lobecorp$modelContributions.apply(this, runtime, timeline, lastEvalTime + partialTicks, PhotonModelClipUtil.SCENE_PRIORITY, 0);
 		PhotonRuntimePreviewUtil.apply(runtime);
 	}
 
 	@Inject(method = "stop", at = @At("RETURN"))
 	private void lobecorp$clearModelPlayback(CallbackInfo ci) {
-        if (!recording) {
-            lobecorp$authoredPoses.forEach((object, state) -> PhotonAuthoringPose.capture(object).authored(state[0], state[1]).apply(object));
-        }
-        lobecorp$authoredPoses.clear();
+		if (!recording) {
+			lobecorp$authoredPoses.forEach((object, state) -> PhotonAuthoringPose.capture(object).authored(state[0], state[1]).apply(object));
+		}
+		lobecorp$authoredPoses.clear();
 		lobecorp$clearActivation();
 		if (lobecorp$children != null) {
 			lobecorp$children.close();
@@ -221,7 +187,6 @@ public abstract class TimelinePlayerMixin implements PhotonTimelineStateAccess {
 		}
 
 		lobecorp$childLeaves = null;
-		lobecorp$modelContributions.clear(this);
 	}
 
 	@Unique

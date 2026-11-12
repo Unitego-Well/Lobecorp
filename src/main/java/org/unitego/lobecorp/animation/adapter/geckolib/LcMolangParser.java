@@ -25,6 +25,22 @@ public class LcMolangParser extends MathParser {
 		super();
 	}
 
+	private static String normalize(String name) {
+		if (name.startsWith("q.")) {
+			return "query." + name.substring(2);
+		}
+
+		if (name.startsWith("v.")) {
+			return "variable." + name.substring(2);
+		}
+
+		if (name.startsWith("t.")) {
+			return "temp." + name.substring(2);
+		}
+
+		return name;
+	}
+
 	public <T> T evaluate(ILcAnimationQueries queries, Supplier<T> evaluation) {
 		Objects.requireNonNull(queries);
 		var previous = activeQueries.get();
@@ -106,21 +122,5 @@ public class LcMolangParser extends MathParser {
 
 	private ILcAnimationQueries context() {
 		return Objects.requireNonNull(activeQueries.get(), MISSING_CONTEXT);
-	}
-
-	private static String normalize(String name) {
-		if (name.startsWith("q.")) {
-			return "query." + name.substring(2);
-		}
-
-		if (name.startsWith("v.")) {
-			return "variable." + name.substring(2);
-		}
-
-		if (name.startsWith("t.")) {
-			return "temp." + name.substring(2);
-		}
-
-		return name;
 	}
 }

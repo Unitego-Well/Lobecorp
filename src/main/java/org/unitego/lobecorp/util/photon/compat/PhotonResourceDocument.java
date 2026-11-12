@@ -10,6 +10,32 @@ import java.util.List;
 public record PhotonResourceDocument(String origin, Kind kind, String sha256, byte[] bytes,
                                      @Nullable CompoundTag nbt, @Nullable JsonElement json,
                                      List<PhotonResourceDocument> entries) {
+	public PhotonResourceDocument {
+		bytes = bytes.clone();
+		nbt = nbt == null ? null : nbt.copy();
+		json = json == null ? null : json.deepCopy();
+		entries = List.copyOf(entries);
+	}
+
+	@Override
+	public byte[] bytes() {
+		return bytes.clone();
+	}
+
+	public int sourceBytes() {
+		return bytes.length;
+	}
+
+	@Override
+	public @Nullable CompoundTag nbt() {
+		return nbt == null ? null : nbt.copy();
+	}
+
+	@Override
+	public @Nullable JsonElement json() {
+		return json == null ? null : json.deepCopy();
+	}
+
 	public enum Kind {
 		FX_PROJECT, FX, MODEL_PROJECT, MODEL_FX, FX_PACK, MODEL_PACK, JSON, OBJ, NBT, BINARY;
 
@@ -48,31 +74,5 @@ public record PhotonResourceDocument(String origin, Kind kind, String sha256, by
 
 			return name.endsWith(".nbt") ? NBT : BINARY;
 		}
-	}
-
-	public PhotonResourceDocument {
-		bytes = bytes.clone();
-		nbt = nbt == null ? null : nbt.copy();
-		json = json == null ? null : json.deepCopy();
-		entries = List.copyOf(entries);
-	}
-
-	@Override
-	public byte[] bytes() {
-		return bytes.clone();
-	}
-
-	public int sourceBytes() {
-		return bytes.length;
-	}
-
-	@Override
-	public @Nullable CompoundTag nbt() {
-		return nbt == null ? null : nbt.copy();
-	}
-
-	@Override
-	public @Nullable JsonElement json() {
-		return json == null ? null : json.deepCopy();
 	}
 }

@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorNotificationUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
 
 import java.io.File;
 
@@ -26,7 +26,7 @@ public abstract class FXFileActionsMixin {
 			return;
 		}
 
-		Dialog.showNotification(PhotonEditorTranslations.EXPORT_SUCCESS, PhotonEditorNotificationUtil.SUCCESS_DURATION_SECONDS)
+		Dialog.showNotification(PhotonEditorTranslationKeys.EXPORT_SUCCESS, PhotonEditorNotificationUtil.SUCCESS_DURATION_SECONDS)
 				.show(editor);
 	}
 
@@ -36,7 +36,7 @@ public abstract class FXFileActionsMixin {
 			return;
 		}
 
-		var text = Component.translatable(PhotonEditorTranslations.EXPORT_SUCCESS_DETAIL, message.getString()).getString();
+		var text = Component.translatable(PhotonEditorTranslationKeys.EXPORT_SUCCESS_DETAIL, message.getString()).getString();
 		Dialog.showNotification(text, PhotonEditorNotificationUtil.SUCCESS_DURATION_SECONDS).show(editor);
 	}
 }

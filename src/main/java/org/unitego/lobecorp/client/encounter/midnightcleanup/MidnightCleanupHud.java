@@ -4,11 +4,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.client.hud.encounter.EncounterHudComponent;
 import org.unitego.lobecorp.config.client.HudStyle;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
 import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
-import org.jspecify.annotations.NullMarked;
 
 /// 深夜清扫倒计时；父容器提供堆叠Y，默认框单独贴屏幕左边。
 @NullMarked

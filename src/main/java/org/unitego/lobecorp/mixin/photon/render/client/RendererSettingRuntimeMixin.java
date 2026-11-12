@@ -6,13 +6,12 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 import org.unitego.lobecorp.client.photon.render.PhotonOcclusionAccess;
-import org.unitego.lobecorp.config.photon.PhotonOcclusionConfig;
 import org.unitego.lobecorp.client.photon.render.PhotonViewDepthSortAccess;
+import org.unitego.lobecorp.config.photon.PhotonOcclusionConfig;
 
 import java.util.Objects;
-
-import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
 
 @Mixin(RendererSetting.Runtime.class)
 public abstract class RendererSettingRuntimeMixin implements PhotonViewDepthSortAccess, PhotonOcclusionAccess, PhotonFixedRenderAccess {

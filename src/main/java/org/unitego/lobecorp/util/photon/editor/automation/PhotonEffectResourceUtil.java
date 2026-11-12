@@ -4,23 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.lowdragmc.lowdraglib2.LDLib2;
 import com.lowdragmc.lowdraglib2.Platform;
-import com.lowdragmc.lowdraglib2.editor.resource.FilePath;
-import com.lowdragmc.lowdraglib2.editor.resource.FileResourceProvider;
-import com.lowdragmc.lowdraglib2.editor.resource.IResourcePath;
-import com.lowdragmc.lowdraglib2.editor.resource.IResourceProvider;
-import com.lowdragmc.lowdraglib2.editor.resource.Resource;
-import com.lowdragmc.lowdraglib2.editor.resource.ResourceInstance;
-import com.lowdragmc.lowdraglib2.editor.resource.Resources;
+import com.lowdragmc.lowdraglib2.editor.resource.*;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
-import net.minecraft.nbt.TagParser;
+import net.minecraft.nbt.*;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
@@ -28,15 +17,11 @@ import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil.R
 
 import javax.imageio.ImageIO;
 import javax.imageio.stream.MemoryCacheImageInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -58,67 +43,6 @@ public class PhotonEffectResourceUtil {
 	private static final int MAX_TEXTURE_SIZE = 4096;
 	private static final String PNG_SUFFIX = ".png";
 	private static final String TEXTURE_DIRECTORY = "textures";
-
-	/// 准备阶段只持有临时文件和 CPU 图像；提交后才发布文件并更新 GPU／原生缓存。
-	public static class Prepared implements AutoCloseable {
-		private final ResourcePrepared file;
-		private final Resource<Object> resource;
-		private final Identifier textureId;
-		private final JsonObject result;
-		private NativeImage image;
-
-		private Prepared(ResourcePrepared file, Resource<Object> resource, Identifier textureId, NativeImage image, JsonObject result) {
-			this.file = file;
-			this.resource = resource;
-			this.textureId = textureId;
-			this.image = image;
-			this.result = result;
-		}
-
-		public JsonObject commit() throws Exception {
-			DynamicTexture texture = null;
-
-			try {
-				if (image != null) {
-					texture = new DynamicTexture(textureId::toString, image);
-					image = null;
-				}
-
-				file.commit();
-
-				if (texture != null) {
-					Minecraft.getInstance().getTextureManager().register(textureId, texture);
-					texture = null;
-				}
-
-				if (resource != null) {
-					invalidate(resource, file.target());
-				}
-
-				for (var handle : PhotonEffectProjectUtil.projects()) {
-					handle.editor().resourceView.getAssetBrowser().requestGridRebuild();
-				}
-
-				return result.deepCopy();
-			} finally {
-				if (texture != null) {
-					texture.close();
-				}
-			}
-		}
-
-		@Override
-		public void close() throws IOException {
-			try {
-				if (image != null) {
-					image.close();
-					image = null;
-				}
-			} finally {
-				file.close();
-			}
-		}
-	}
 
 	public static JsonObject list(JsonObject request) throws Exception {
 		var resources = resources(request);
@@ -514,5 +438,66 @@ public class PhotonEffectResourceUtil {
 		}
 
 		return false;
+	}
+
+	/// 准备阶段只持有临时文件和 CPU 图像；提交后才发布文件并更新 GPU／原生缓存。
+	public static class Prepared implements AutoCloseable {
+		private final ResourcePrepared file;
+		private final Resource<Object> resource;
+		private final Identifier textureId;
+		private final JsonObject result;
+		private NativeImage image;
+
+		private Prepared(ResourcePrepared file, Resource<Object> resource, Identifier textureId, NativeImage image, JsonObject result) {
+			this.file = file;
+			this.resource = resource;
+			this.textureId = textureId;
+			this.image = image;
+			this.result = result;
+		}
+
+		public JsonObject commit() throws Exception {
+			DynamicTexture texture = null;
+
+			try {
+				if (image != null) {
+					texture = new DynamicTexture(textureId::toString, image);
+					image = null;
+				}
+
+				file.commit();
+
+				if (texture != null) {
+					Minecraft.getInstance().getTextureManager().register(textureId, texture);
+					texture = null;
+				}
+
+				if (resource != null) {
+					invalidate(resource, file.target());
+				}
+
+				for (var handle : PhotonEffectProjectUtil.projects()) {
+					handle.editor().resourceView.getAssetBrowser().requestGridRebuild();
+				}
+
+				return result.deepCopy();
+			} finally {
+				if (texture != null) {
+					texture.close();
+				}
+			}
+		}
+
+		@Override
+		public void close() throws IOException {
+			try {
+				if (image != null) {
+					image.close();
+					image = null;
+				}
+			} finally {
+				file.close();
+			}
+		}
 	}
 }

@@ -4,12 +4,7 @@ import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
 import com.lowdragmc.photon.client.fx.timeline.ControlTrack;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 按当前轨道快照建立激活目标到相关轨道的局部分组。
 public class PhotonActivationTargetUtil {

@@ -1,11 +1,13 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
+import com.lowdragmc.lowdraglib2.gui.texture.GuiTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import com.lowdragmc.lowdraglib2.gui.util.DrawerHelperClient;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.timeline.Track;
@@ -17,29 +19,22 @@ import dev.vfyjxf.taffy.style.FlexWrap;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.UUID;
 import java.util.Objects;
+import java.util.UUID;
 
-import org.lwjgl.glfw.GLFW;
-import com.lowdragmc.lowdraglib2.gui.texture.GuiTexture;
-import com.lowdragmc.lowdraglib2.gui.util.DrawerHelperClient;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.PLAY;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.STOP;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TIME;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.TIMELINE_PANEL;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.ACTION_DUPLICATE;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.*;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.TIME;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.*;
 
 /// 制作游标和测试句柄独立于主场景；关闭只清理本窗口创建的预览贡献。
 public class PhotonNamedTrackWorkspace implements AutoCloseable {

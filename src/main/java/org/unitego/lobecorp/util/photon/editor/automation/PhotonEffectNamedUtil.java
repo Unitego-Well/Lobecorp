@@ -1,10 +1,6 @@
 package org.unitego.lobecorp.util.photon.editor.automation;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.nbt.CompoundTag;
@@ -25,8 +21,8 @@ import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.UUID;
 import java.util.ArrayList;
+import java.util.UUID;
 
 /// 界面制作会话的结构化适配；MCP调度、控制门禁和文件保护沿用现有入口。
 public class PhotonEffectNamedUtil {
@@ -48,46 +44,6 @@ public class PhotonEffectNamedUtil {
 				  "clear_project_preview":{}
 				}
 				""").getAsJsonObject();
-	}
-
-	/// 已完成准备阶段验证的命名制作草稿。
-	///
-	/// `commit` 的 dry-run 只验证草案并返回拟议内容；实际提交复用会话提交内的跨阶段校验，有变化时写入一条历史，无变化不新增历史。
-	public record Prepared(Handle handle, UUID controller, PhotonNamedAuthoringSession session,
-	                       Document before, boolean dryRun) implements AutoCloseable {
-		/// 提交或预览本次草稿。
-		///
-		/// dry-run 不写历史；实际提交由 [PhotonNamedAuthoringSession#commit(long)] 再次核对工程 revision、控制器身份和原树。
-		/// 会话失效或跨阶段变化转为 `REVISION_CONFLICT`，参数与定义校验异常原样传播。
-		public JsonObject commit() {
-			var proposed = session.document();
-			try {
-				if (dryRun) {
-					session.validate(session.revision());
-				} else {
-					session.commit(session.revision());
-				}
-			} catch (IllegalStateException conflict) {
-				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT, conflict.getMessage());
-			}
-
-			var result = state(handle, controller);
-			result.addProperty("dryRun", dryRun);
-			result.addProperty("changed", !before.equals(proposed));
-			if (dryRun) {
-				result.addProperty("proposedLibrarySnbt", proposed.library().toString());
-				var preview = proposed.preview();
-				result.add("proposedProjectPreviewSnbt", preview == null ? JsonNull.INSTANCE
-						: new JsonPrimitive(preview.toString()));
-			}
-
-			return result;
-		}
-
-		@Override
-		public void close() {
-			session.cancel();
-		}
 	}
 
 	public static Prepared prepare(Handle handle, JsonObject request) {
@@ -286,5 +242,45 @@ public class PhotonEffectNamedUtil {
 		}
 
 		return (int) value;
+	}
+
+	/// 已完成准备阶段验证的命名制作草稿。
+	///
+	/// `commit` 的 dry-run 只验证草案并返回拟议内容；实际提交复用会话提交内的跨阶段校验，有变化时写入一条历史，无变化不新增历史。
+	public record Prepared(Handle handle, UUID controller, PhotonNamedAuthoringSession session,
+	                       Document before, boolean dryRun) implements AutoCloseable {
+		/// 提交或预览本次草稿。
+		///
+		/// dry-run 不写历史；实际提交由 [PhotonNamedAuthoringSession#commit(long)] 再次核对工程 revision、控制器身份和原树。
+		/// 会话失效或跨阶段变化转为 `REVISION_CONFLICT`，参数与定义校验异常原样传播。
+		public JsonObject commit() {
+			var proposed = session.document();
+			try {
+				if (dryRun) {
+					session.validate(session.revision());
+				} else {
+					session.commit(session.revision());
+				}
+			} catch (IllegalStateException conflict) {
+				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT, conflict.getMessage());
+			}
+
+			var result = state(handle, controller);
+			result.addProperty("dryRun", dryRun);
+			result.addProperty("changed", !before.equals(proposed));
+			if (dryRun) {
+				result.addProperty("proposedLibrarySnbt", proposed.library().toString());
+				var preview = proposed.preview();
+				result.add("proposedProjectPreviewSnbt", preview == null ? JsonNull.INSTANCE
+						: new JsonPrimitive(preview.toString()));
+			}
+
+			return result;
+		}
+
+		@Override
+		public void close() {
+			session.cancel();
+		}
 	}
 }

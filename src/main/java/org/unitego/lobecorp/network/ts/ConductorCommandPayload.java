@@ -15,18 +15,18 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
-import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.control.ConductorFormation;
 import org.unitego.lobecorp.conductor.control.ConductorPointAttack;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
-import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorChunkLoading;
-import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 
 import java.util.*;
 
@@ -131,14 +131,14 @@ public record ConductorCommandPayload(Action action, String team, String otherTe
 				0.0D, 0.0D, 0.0D, ConductorData.BehaviorState.IDLE, false, "", color, TargetSelection.NONE, ConductorData.FormationMode.FORMATION, ConductorData.CombatBehavior.PASSIVE);
 	}
 
-	@Override
-	public void work(IPayloadContext context, ServerPlayer player) {
-        apply(player);
-	}
-
 	private static IConductorAbility conductorAbility(Mob mob, String id) {
 		Identifier identifier = ConductorUtil.parseIdentifier(id);
 		return identifier == null ? null : ConductorUtil.ability(mob, identifier);
+	}
+
+	@Override
+	public void work(IPayloadContext context, ServerPlayer player) {
+		apply(player);
 	}
 
 	public ConductorCommandPayload withFormationMode(ConductorData.FormationMode nextMode) {

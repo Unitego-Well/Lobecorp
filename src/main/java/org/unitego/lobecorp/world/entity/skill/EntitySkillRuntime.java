@@ -4,9 +4,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillDebugUtil;
 import org.unitego.lobecorp.network.tc.EntitySkillSyncPayload;
 import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillDebugUtil;
 
 import java.util.HashMap;
 import java.util.Map;

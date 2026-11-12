@@ -10,48 +10,35 @@ import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.Tag;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
-import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
-import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
-import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
+import org.unitego.lobecorp.util.photon.compat.PhotonInactiveLegacyFieldUtil;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceInspection;
+import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonPlaybackTagUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnConfigUtil;
-import org.unitego.lobecorp.config.photon.playback.PhotonActivationOptions;
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.IntTag;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.FileSystem;
-import java.util.Set;
+import java.nio.file.Files;
 import java.util.HashSet;
+import java.util.Set;
 
 /// 在反序列化修改对象或轨道之前拒绝已移除的扩展数据，原始资源保持不变。
 public class PhotonEditorProjectGuardUtil {
 	private static final int MAX_DEPTH = 128;
 
 	public static boolean rejectOpen(Editor editor, IProject project, @Nullable File file) {
-		if (file == null && project instanceof PhotonModelProject) {
-			return false;
-		}
 		if (!(editor instanceof FXEditor) || !containsExtensions(project) && (file == null || !containsFileExtensions(file))) {
 			return false;
 		}
@@ -98,9 +85,6 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	public static boolean containsExtensions(IProject project) {
-		if (project instanceof PhotonModelProject model) {
-			return requiresModelProjectData(model.document());
-		}
 		if (!(project instanceof FXProject fxProject)) {
 			return false;
 		}
@@ -145,16 +129,10 @@ public class PhotonEditorProjectGuardUtil {
 
 	private static boolean requiresAdapter(PhotonResourceDocument document) {
 		if (document.kind() == PhotonResourceDocument.Kind.MODEL_PROJECT) {
-			return requiresModelProject(document.nbt());
+			return true;
 		}
 		if (document.kind() == PhotonResourceDocument.Kind.MODEL_FX) {
-			var tag = document.nbt();
-			if (tag == null || !(tag.get("version") instanceof IntTag version) || version.intValue() != PhotonModelFileValidationUtil.DEFINITION_VERSION
-					|| !(tag.get("fxData") instanceof CompoundTag data) || !(data.get("objects") instanceof ListTag objects)
-					|| objects.stream().noneMatch(value -> value instanceof CompoundTag object && object.getStringOr("type", "").equals("lobecorp_model_emitter"))) {
-				return true;
-			}
-			return containsTag(tag);
+			return true;
 		}
 		if (document.kind() == PhotonResourceDocument.Kind.MODEL_PACK
 				&& document.entries().stream().noneMatch(entry -> entry.kind() == PhotonResourceDocument.Kind.MODEL_FX)) {
@@ -232,7 +210,7 @@ public class PhotonEditorProjectGuardUtil {
 	/// 工程测试字段只允许出现在工程data层，FX发布数据及其他位置仍按旧字段阻断。
 	public static boolean containsProjectTag(@Nullable CompoundTag project) {
 		if (project != null && project.getCompoundOrEmpty("meta").getStringOr("suffix", "").equals(".mfxproj")) {
-			return requiresModelProject(project);
+			return true;
 		}
 		if (project == null || !(project.get("data") instanceof CompoundTag data)
 				|| !data.contains(PhotonProjectPreviewUtil.PROJECT_FIELD)) {
@@ -262,21 +240,13 @@ public class PhotonEditorProjectGuardUtil {
 			if (type.equals("lobecorp_animation_controller")) {
 				return requiresNamedAdapter(compound, depth);
 			}
-			if (type.equals("lobecorp_model_emitter")) {
-				if (!(compound.get("data") instanceof CompoundTag data)) {
-					return true;
-				}
-				try {
-					PhotonModelFileValidationUtil.emitterData(data);
-					return containsTag(checkedRendererData(data, true, false), depth + 1);
-				} catch (IOException | RuntimeException invalid) {
-					return true;
-				}
+			if (type.equals("lobecorp_model_emitter") || type.equals("lobecorp_model_animation")) {
+				return true;
 			}
 			if (Set.of("particle_emitter", "beam_emitter", "trail_emitter").contains(type)
 					&& compound.get("data") instanceof CompoundTag data) {
 				compound = compound.copy();
-				compound.put("data", checkedRendererData(data, false, type.equals("particle_emitter")));
+				compound.put("data", checkedRendererData(data, type.equals("particle_emitter")));
 			}
 
 			if (Set.of("activator", "control", "animation", "speed", "signal", "audio", "post_process", "group").contains(type)
@@ -297,11 +267,7 @@ public class PhotonEditorProjectGuardUtil {
 					return true;
 				}
 				try {
-					if (type.equals("lobecorp_model_animation")) {
-						PhotonPlaybackTagUtil.validateModelTrack(data);
-					} else {
-						PhotonPlaybackTagUtil.validateChildTrack(data);
-					}
+					PhotonPlaybackTagUtil.validateChildTrack(data);
 					return containsTag(data, depth + 1, projectTest);
 				} catch (IllegalArgumentException invalid) {
 					return true;
@@ -342,14 +308,14 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	/// 只在已适配发射器的真实渲染槽中放行完整固定渲染组合。
-	private static CompoundTag checkedRendererData(CompoundTag data, boolean model, boolean particle) {
-		if (!(data.get("version") instanceof IntTag version) || version.intValue() != (model ? 0 : 2)) {
+	private static CompoundTag checkedRendererData(CompoundTag data, boolean particle) {
+		if (!(data.get("version") instanceof IntTag version) || version.intValue() != 2) {
 			return data;
 		}
 
 		var checked = data.copy();
 		var config = checked.getCompoundOrEmpty("config");
-		for (var key : model ? new String[]{"renderer", "modelRenderer"} : new String[]{"renderer"}) {
+		for (var key : new String[]{"renderer"}) {
 			if (!(config.get(key) instanceof CompoundTag renderer) || !supportedFixedRenderer(renderer)) {
 				continue;
 			}
@@ -429,23 +395,7 @@ public class PhotonEditorProjectGuardUtil {
 		return value instanceof ByteTag number && (number.byteValue() == 0 || number.byteValue() == 1);
 	}
 
-	private static boolean requiresModelProject(@Nullable CompoundTag project) {
-		if (project == null || !(project.get("data") instanceof CompoundTag data)
-				|| !project.getCompoundOrEmpty("meta").getStringOr("version", "").equals("1.0")
-				|| !project.getCompoundOrEmpty("meta").getStringOr("suffix", "").equals(".mfxproj")) {
-			return true;
-		}
-		return requiresModelProjectData(data) || containsTag(project);
-	}
 
-	private static boolean requiresModelProjectData(CompoundTag data) {
-		try {
-			PhotonModelFileValidationUtil.projectData(data);
-			return containsTag(data, 1);
-		} catch (IOException | RuntimeException invalid) {
-			return true;
-		}
-	}
 
 	/// 仅接受当前控制器包装和可保留的原生轨道库，未恢复的内部扩展继续阻断。
 	private static boolean requiresNamedAdapter(CompoundTag wrapper, int depth) {
@@ -571,7 +521,7 @@ public class PhotonEditorProjectGuardUtil {
 	}
 
 	public static String message() {
-		return Component.translatable(PhotonEditorTranslations.REMOVED_RUNTIME_DATA).getString();
+		return Component.translatable(PhotonEditorTranslationKeys.REMOVED_RUNTIME_DATA).getString();
 	}
 
 	private static void notifyUnsupported(Editor editor) {

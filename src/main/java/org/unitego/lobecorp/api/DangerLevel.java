@@ -13,7 +13,7 @@ public enum DangerLevel {
 	private final String name;
 	private final String colour;
 
-	private DangerLevel(int id, int levelValue, String name, String colour) {
+	DangerLevel(int id, int levelValue, String name, String colour) {
 		this.id = id;
 		this.levelValue = levelValue;
 		this.name = name;

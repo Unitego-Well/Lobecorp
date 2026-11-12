@@ -5,27 +5,16 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.event.CommandEvents;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.view.FXHierarchyView;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import com.lowdragmc.photon.gui.editor.view.FXObjectTreeNode;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.core.UUIDUtil;
-import com.lowdragmc.photon.client.fx.FXRuntime;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class PhotonObjectClipboardUtil {
 	/// 系统剪贴板中完整粒子分支的内容类型。
@@ -95,9 +84,6 @@ public class PhotonObjectClipboardUtil {
 	}
 
 	public static void paste(FXHierarchyView view) {
-		if (view.fxEditor.getCurrentProject() instanceof PhotonModelProject) {
-			throw new IllegalArgumentException("模型工程只管理一个模型资产，组合对象请使用FX工程。");
-		}
 		try {
 			var runtime = view.getRuntime();
 			var data = PhotonSystemClipboardUtil.read(OBJECTS);
@@ -158,7 +144,7 @@ public class PhotonObjectClipboardUtil {
 			var selected = view.treeList.getSelected();
 			var father = selected.size() == 1 ? selected.iterator().next().getKey().transform().parent() : null;
 			var destination = father == null ? runtime.root.transform() : father;
-			view.fxEditor.historyView.pushHistory(Component.translatable(PhotonEditorTranslations.PASTE_SYSTEM), EditAction.of(() -> {
+			view.fxEditor.historyView.pushHistory(Component.translatable(PhotonEditorTranslationKeys.PASTE_SYSTEM), EditAction.of(() -> {
 				for (int i = 0; i < objects.size(); i++) {
 					objects.get(i).transform().parent(parents.get(i) < 0 ? destination : objects.get(parents.get(i)).transform(), false);
 					view.addSceneObject(objects.get(i));
@@ -232,6 +218,6 @@ public class PhotonObjectClipboardUtil {
 	}
 
 	public static void invalid(FXHierarchyView view) {
-		Dialog.showNotification(PhotonEditorTranslations.CLIPBOARD, PhotonEditorTranslations.CLIPBOARD_INVALID, null).show(view.fxEditor);
+		Dialog.showNotification(PhotonEditorTranslationKeys.CLIPBOARD, PhotonEditorTranslationKeys.CLIPBOARD_INVALID, null).show(view.fxEditor);
 	}
 }

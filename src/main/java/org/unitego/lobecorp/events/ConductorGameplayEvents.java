@@ -11,10 +11,10 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.lifecycle.ConductorEvents;
 import org.unitego.lobecorp.event.EntitySkillEvent;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.world.entity.combat.CombatEvents;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ConductorGameplayEvents {

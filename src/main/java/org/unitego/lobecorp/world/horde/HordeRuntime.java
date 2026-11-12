@@ -7,32 +7,24 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.item.ItemEntity;
-import org.unitego.lobecorp.world.entity.EntityCorpse;
-import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.api.horde.Hordes;
 import org.unitego.lobecorp.config.server.HordeConfig;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
 import org.unitego.lobecorp.world.entity.combat.ICombatant;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.world.horde.network.HordeSync;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.WeakHashMap;
+import java.util.*;
 
 /// 服务端事件调度器；内存占用不随累计虚拟影像数量增长。
 @SuppressWarnings("resource")
@@ -46,8 +38,8 @@ public class HordeRuntime {
 	private final Map<UUID, Long> blockedSince = new HashMap<>();
 	private final Map<String, HordeTargetSpatialState> spatial = new HashMap<>();
 	private final List<List<HordeTargetAssignment>> regionGroups = new ArrayList<>();
-	private boolean regionsDirty;
 	private final HordeSync sync = new HordeSync();
+	private boolean regionsDirty;
 	private boolean stopping;
 	private long ticksNanos;
 	private long spawned;
@@ -821,15 +813,15 @@ public class HordeRuntime {
 		private int attempt;
 		private Vec3 fallback;
 
+		private SpawnRequest(UUID event, HordeTargetAssignment target) {
+			this.event = event;
+			this.target = target;
+		}
+
 		private void pause() {
 			if (startedAt >= 0) {
 				startedAt++;
 			}
-		}
-
-		private SpawnRequest(UUID event, HordeTargetAssignment target) {
-			this.event = event;
-			this.target = target;
 		}
 	}
 }

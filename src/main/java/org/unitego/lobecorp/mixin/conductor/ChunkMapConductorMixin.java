@@ -25,6 +25,11 @@ public abstract class ChunkMapConductorMixin {
 	private ServerLevel level;
 
 	@Shadow
+	private static void dropChunk(ServerPlayer player, ChunkPos pos) {
+		throw new AssertionError();
+	}
+
+	@Shadow
 	private int getPlayerViewDistance(ServerPlayer player) {
 		throw new AssertionError();
 	}
@@ -36,11 +41,6 @@ public abstract class ChunkMapConductorMixin {
 
 	@Shadow
 	private void markChunkPendingToSend(ServerPlayer player, ChunkPos pos) {
-		throw new AssertionError();
-	}
-
-	@Shadow
-	private static void dropChunk(ServerPlayer player, ChunkPos pos) {
 		throw new AssertionError();
 	}
 

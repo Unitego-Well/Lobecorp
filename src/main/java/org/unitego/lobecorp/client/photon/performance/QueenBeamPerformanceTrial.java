@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.client.photon.performance;
 
 import com.google.gson.Gson;
-import com.lowdragmc.lowdraglib2.Platform;
-import com.lowdragmc.photon.client.fx.FX;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.photon.client.fx.FX;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -16,20 +16,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.ClientCommandHandler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
-import net.neoforged.neoforge.client.ClientCommandHandler;
 
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
-
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -80,13 +78,6 @@ public class QueenBeamPerformanceTrial {
 	private static volatile @Nullable String failure;
 	private static boolean optionsSaved;
 	private static boolean originalGui;
-
-	private enum State {
-		IDLE, TITLE, CREATE, LOAD, FIXTURE, SETTLE, CAPTURE, VERIFY, COMPLETE, FAILED
-	}
-
-	private record Mark(String event, long nanoTime, String detail) {
-	}
 
 	/// 对真实定义比较标准复制和作用域复制的再序列化结果；只在显式开发采样加载阶段执行。
 	public static boolean verifyRuntimeCopy(FX fx) {
@@ -225,9 +216,6 @@ public class QueenBeamPerformanceTrial {
 				}
 				if (elapsed() >= 5) {
 					cleanup();
-                    if (Boolean.parseBoolean(System.getenv(PhotonModelBindingsValidation.REQUEST_ENV))) {
-                        report(PhotonModelBindingsValidation.verify());
-                    }
 					restoreOptions();
 					move(State.COMPLETE);
 				}
@@ -245,52 +233,6 @@ public class QueenBeamPerformanceTrial {
 		POSE_SAMPLES.computeIfAbsent(snapshot.instanceId(), _ -> new PoseSamples())
 				.accept(snapshot.parameters().getOrDefault(PHASE_PARAMETER, 0.0).intValue(),
 						sampleTime, weight, renderAge);
-	}
-
-	private static class PoseSamples {
-		private long count, charge, recovery, timeReversals, chargeReversals, recoveryReversals;
-		private double lastAge = Double.NEGATIVE_INFINITY, lastTime, lastWeight, maxGap;
-		private int lastPhase = -1;
-
-		private void accept(int phase, double time, double weight, double age) {
-			if (age <= lastAge) {
-				return;
-			}
-			if (count > 0) {
-				maxGap = Math.max(maxGap, age - lastAge);
-				if (time + 0.000001 < lastTime) {
-					timeReversals++;
-				}
-				if (phase == lastPhase && phase == 0 && weight + 0.000001 < lastWeight) {
-					chargeReversals++;
-				}
-				if (phase == lastPhase && phase == 2 && weight > lastWeight + 0.000001) {
-					recoveryReversals++;
-				}
-			}
-			count++;
-			if (phase == 0) {
-				charge++;
-			} else if (phase == 2) {
-				recovery++;
-			}
-			lastAge = age;
-			lastTime = time;
-			lastWeight = weight;
-			lastPhase = phase;
-		}
-
-		private JsonObject snapshot() {
-			var result = new JsonObject();
-			result.addProperty("render_samples", count);
-			result.addProperty("charge_render_samples", charge);
-			result.addProperty("recovery_render_samples", recovery);
-			result.addProperty("time_reversals", timeReversals);
-			result.addProperty("charge_weight_reversals", chargeReversals);
-			result.addProperty("recovery_weight_reversals", recoveryReversals);
-			result.addProperty("maximum_render_gap_ticks", maxGap);
-			return result;
-		}
 	}
 
 	private static boolean press(String text) {
@@ -370,12 +312,12 @@ public class QueenBeamPerformanceTrial {
 		try {
 			for (var result : current.cast(server)) {
 				MARKS.add(new Mark("server_cast", System.nanoTime(), result.status()));
-		report(result.status());
+				report(result.status());
 
-		if (!result.started()) {
-			failure = "profile_cast_" + result.status();
-		}
-	}
+				if (!result.started()) {
+					failure = "profile_cast_" + result.status();
+				}
+			}
 		} catch (RuntimeException invalid) {
 			failure = invalid.getMessage() == null ? invalid.toString() : invalid.getMessage();
 		}
@@ -467,8 +409,8 @@ public class QueenBeamPerformanceTrial {
 
 	private static void restoreOptions() {
 		var mc = Minecraft.getInstance();
-        if (optionsSaved) {
-            optionsSaved = false;
+		if (optionsSaved) {
+			optionsSaved = false;
 			mc.options.hideGui = originalGui;
 			mc.options.entityDistanceScaling().set(originalEntityDistance);
 		}
@@ -509,5 +451,58 @@ public class QueenBeamPerformanceTrial {
 		restoreOptions();
 		move(State.FAILED);
 		Lobecorp.LOGGER.error(LOG, message);
+	}
+
+	private enum State {
+		IDLE, TITLE, CREATE, LOAD, FIXTURE, SETTLE, CAPTURE, VERIFY, COMPLETE, FAILED
+	}
+
+	private record Mark(String event, long nanoTime, String detail) {
+	}
+
+	private static class PoseSamples {
+		private long count, charge, recovery, timeReversals, chargeReversals, recoveryReversals;
+		private double lastAge = Double.NEGATIVE_INFINITY, lastTime, lastWeight, maxGap;
+		private int lastPhase = -1;
+
+		private void accept(int phase, double time, double weight, double age) {
+			if (age <= lastAge) {
+				return;
+			}
+			if (count > 0) {
+				maxGap = Math.max(maxGap, age - lastAge);
+				if (time + 0.000001 < lastTime) {
+					timeReversals++;
+				}
+				if (phase == lastPhase && phase == 0 && weight + 0.000001 < lastWeight) {
+					chargeReversals++;
+				}
+				if (phase == lastPhase && phase == 2 && weight > lastWeight + 0.000001) {
+					recoveryReversals++;
+				}
+			}
+			count++;
+			if (phase == 0) {
+				charge++;
+			} else if (phase == 2) {
+				recovery++;
+			}
+			lastAge = age;
+			lastTime = time;
+			lastWeight = weight;
+			lastPhase = phase;
+		}
+
+		private JsonObject snapshot() {
+			var result = new JsonObject();
+			result.addProperty("render_samples", count);
+			result.addProperty("charge_render_samples", charge);
+			result.addProperty("recovery_render_samples", recovery);
+			result.addProperty("time_reversals", timeReversals);
+			result.addProperty("charge_weight_reversals", chargeReversals);
+			result.addProperty("recovery_weight_reversals", recoveryReversals);
+			result.addProperty("maximum_render_gap_ticks", maxGap);
+			return result;
+		}
 	}
 }

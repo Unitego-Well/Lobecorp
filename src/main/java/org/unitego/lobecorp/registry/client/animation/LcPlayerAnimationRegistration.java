@@ -6,10 +6,10 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
-import org.unitego.lobecorp.client.entity.player.renderer.LcPlayerFirstPersonRenderer;
 import org.unitego.lobecorp.client.attachment.LcPlayerAttachmentLayer;
 import org.unitego.lobecorp.client.attachment.LcPlayerRenderAnchors;
 import org.unitego.lobecorp.client.attachment.LcRenderAnchorProviders;
+import org.unitego.lobecorp.client.entity.player.renderer.LcPlayerFirstPersonRenderer;
 
 public class LcPlayerAnimationRegistration {
 	public static void registerFirstPerson(EntityRenderersEvent.AddLayers event) {

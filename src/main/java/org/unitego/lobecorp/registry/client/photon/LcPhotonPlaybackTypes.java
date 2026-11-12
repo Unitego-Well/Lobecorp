@@ -4,16 +4,16 @@ import com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture;
 import com.lowdragmc.lowdraglib2.registry.annotation.LDLRegisterClient;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
+import com.lowdragmc.photon.gui.editor.view.timeline.TrackType;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
-import com.lowdragmc.photon.gui.editor.view.timeline.TrackType;
-import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonCallTrack;
+import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildTrackEditor;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 
 import java.io.IOException;
 

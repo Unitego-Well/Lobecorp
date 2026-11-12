@@ -13,14 +13,13 @@ import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 
+import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
-import javax.annotation.Nonnull;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.COPY;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.RENAME;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.*;
 
 /// 复用移除前列表的原生行、拖动条和右键菜单，排序通过现有 UUID 草稿事务提交。
 public class PhotonNamedOutline extends UIElement {
@@ -48,6 +47,16 @@ public class PhotonNamedOutline extends UIElement {
 		scroller.scrollerStyle(style -> style.adaptiveHeight(false));
 		addEventListener(UIEvents.DRAG_END, _ -> commitOrder(), true);
 		addEventListener(UIEvents.MOUSE_DOWN, this::background);
+	}
+
+	private static Configurator name(Definition definition) {
+		var row = new Configurator();
+		row.layout(layout -> layout.widthPercent(100));
+		var label = new Label().setText(definition.name(), false);
+		TimelineContext.styleLabel(label);
+		label.layout(layout -> layout.widthPercent(100));
+		row.addInlineChild(label);
+		return row;
 	}
 
 	public void rebuild(List<Definition> definitions, UUID selected) {
@@ -96,16 +105,6 @@ public class PhotonNamedOutline extends UIElement {
 		}
 		list.setOnSelectedChanged(definition -> select.accept(definition == null ? null : definition.id()));
 		addChild(list);
-	}
-
-	private static Configurator name(Definition definition) {
-		var row = new Configurator();
-		row.layout(layout -> layout.widthPercent(100));
-		var label = new Label().setText(definition.name(), false);
-		TimelineContext.styleLabel(label);
-		label.layout(layout -> layout.widthPercent(100));
-		row.addInlineChild(label);
-		return row;
 	}
 
 	private void background(UIEvent event) {

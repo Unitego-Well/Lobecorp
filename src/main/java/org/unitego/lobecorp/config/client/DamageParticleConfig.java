@@ -6,6 +6,13 @@ import org.unitego.lobecorp.registry.translation.ClientConfigTranslationKeys;
 /// 屏幕粒子的客户端开关、伤害合并及实例容量；服务端只注册配置，不读取客户端值。
 public class DamageParticleConfig {
 
+	public static final ModConfigSpec.BooleanValue ENABLED;
+	public static final ModConfigSpec.BooleanValue MERGE_ENABLED;
+	public static final ModConfigSpec.DoubleValue MERGE_RADIUS;
+	public static final ModConfigSpec.IntValue LIFETIME_TICKS;
+	public static final ModConfigSpec.IntValue MAX_ACTIVE;
+	public static final ModConfigSpec.IntValue POOL_CAPACITY;
+	public static final ModConfigSpec.IntValue OUTLINE_COLOR;
 	private static final boolean DEFAULT_ENABLED = true;
 	private static final boolean DEFAULT_MERGE_ENABLED = true;
 	/// 新命中与实例首次命中位置的最大距离，单位为格。
@@ -19,18 +26,10 @@ public class DamageParticleConfig {
 	/// 数字的 ARGB 描边颜色，零表示关闭描边。
 	private static final int DEFAULT_OUTLINE_COLOR = 0xFF000000;
 
-	public static final ModConfigSpec.BooleanValue ENABLED;
-	public static final ModConfigSpec.BooleanValue MERGE_ENABLED;
-	public static final ModConfigSpec.DoubleValue MERGE_RADIUS;
-	public static final ModConfigSpec.IntValue LIFETIME_TICKS;
-	public static final ModConfigSpec.IntValue MAX_ACTIVE;
-	public static final ModConfigSpec.IntValue POOL_CAPACITY;
-	public static final ModConfigSpec.IntValue OUTLINE_COLOR;
-
 	static {
 		synchronized (ClientConfig.class) {
 			var builder = ClientConfig.section("damageParticles", ClientConfigTranslationKeys.DAMAGE_PARTICLES);
-            builder.translation(ClientConfigTranslationKeys.DAMAGE_PARTICLES_DISPLAY).push("display");
+			builder.translation(ClientConfigTranslationKeys.DAMAGE_PARTICLES_DISPLAY).push("display");
 			ENABLED = builder.comment("启用屏幕粒子。").translation(ClientConfigTranslationKeys.DAMAGE_PARTICLES_ENABLED).define("enabled", DEFAULT_ENABLED);
 			LIFETIME_TICKS = builder.comment("新建及每次合并后的剩余寿命，单位为客户端 tick。")
 					.translation(ClientConfigTranslationKeys.DAMAGE_PARTICLES_LIFETIME_TICKS).defineInRange("lifetimeTicks", DEFAULT_LIFETIME_TICKS, 1, Integer.MAX_VALUE);

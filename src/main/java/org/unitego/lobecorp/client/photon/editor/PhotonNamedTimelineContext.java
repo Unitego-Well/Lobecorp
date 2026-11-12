@@ -1,59 +1,43 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Menu;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.rendering.GUIContext;
-import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.lowdraglib2.gui.util.DrawerHelperClient;
+import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.timeline.Clip;
+import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.TrackGroup;
-import com.lowdragmc.photon.client.fx.timeline.Timeline;
-import com.lowdragmc.photon.gui.editor.view.timeline.TrackEditor;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.ClipTrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
+import com.lowdragmc.photon.gui.editor.view.timeline.TrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 import net.minecraft.nbt.ListTag;
 import org.joml.Vector2f;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
 
 import javax.annotation.Nullable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Consumer;
-import java.util.WeakHashMap;
 import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.function.Consumer;
 
 /// 命名制作的独立宿主；本地历史保存原树，恢复后不继续执行旧轨道闭包。
 public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimelineEditAccess {
 	private static final Map<FXEditor, WeakReference<PhotonNamedTimelineContext>> INSPECTORS = new WeakHashMap<>();
-
-	private record ViewState(float scale, float scroll, long time) {
-	}
-
 	private final FXEditor editor;
 	private final FXRuntime runtime;
 	private final boolean projectTest;
-	private UIElement origin;
 	private final Runnable rebuild;
 	private final Consumer<ListTag> publish;
 	private final Runnable preview;
-	private PhotonNamedTrackDraft draft;
-	private ListTag checkpoint;
 	private final ArrayDeque<ListTag> undo = new ArrayDeque<>();
 	private final ArrayDeque<ListTag> redo = new ArrayDeque<>();
 	private final List<LaneItem> laneItems = new ArrayList<>();
@@ -61,6 +45,9 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	private final Map<Clip, Track> clipTracks = new IdentityHashMap<>();
 	private final Map<Track, TrackUIState> states = new IdentityHashMap<>();
 	private final Map<Clip, Double> dragStarts = new IdentityHashMap<>();
+	private UIElement origin;
+	private PhotonNamedTrackDraft draft;
+	private ListTag checkpoint;
 	private @Nullable Track selectedTrack;
 	private @Nullable Track recording;
 	private @Nullable Clip primary;
@@ -72,7 +59,6 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 	private float scroll;
 	private long time;
 	private boolean closed;
-
 	public PhotonNamedTimelineContext(FXEditor editor, UIElement origin, ListTag source,
 	                                  Runnable rebuild, Consumer<ListTag> publish, Runnable preview, boolean projectTest) {
 		if (editor.runtime == null) {
@@ -88,6 +74,14 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		this.preview = preview;
 		draft = new PhotonNamedTrackDraft(source, projectTest);
 		checkpoint = source.copy();
+	}
+
+	private static TrackEditor editorFor(Track track) {
+		var type = track.type();
+		if (type == null) {
+			throw new IllegalArgumentException("制作轨道类型未注册。");
+		}
+		return type.editor();
 	}
 
 	public PhotonNamedTrackDraft draft() {
@@ -143,14 +137,6 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 
 	public TrackUIState state(Track track) {
 		return states.computeIfAbsent(track, value -> editorFor(value).createState());
-	}
-
-	private static TrackEditor editorFor(Track track) {
-		var type = track.type();
-		if (type == null) {
-			throw new IllegalArgumentException("制作轨道类型未注册。");
-		}
-		return type.editor();
 	}
 
 	public void time(long value) {
@@ -829,5 +815,8 @@ public class PhotonNamedTimelineContext implements TimelineContext, PhotonTimeli
 		if (closed || editor.runtime != runtime) {
 			throw new IllegalStateException("制作上下文已关闭或场景已重建。");
 		}
+	}
+
+	private record ViewState(float scale, float scroll, long time) {
 	}
 }

@@ -1,7 +1,8 @@
 package org.unitego.lobecorp.util.photon.playback;
 
-import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.TransformRef;
+import com.lowdragmc.lowdraglib2.math.GradientColor;
+import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.Constant;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
@@ -9,7 +10,6 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.RandomConstant;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Color;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Gradient;
-import com.lowdragmc.lowdraglib2.math.GradientColor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -18,8 +18,8 @@ import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
-import org.unitego.lobecorp.config.photon.playback.PhotonSpawnShape;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnParameters;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnShape;
 
 import javax.annotation.Nullable;
 import java.io.IOException;

@@ -23,18 +23,18 @@ import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.world.horde.HordeParticipant;
-import org.unitego.lobecorp.world.horde.HordeRuntime;
-import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.registry.entity.LcEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.registry.world.entity.LcEntityTypes;
 import org.unitego.lobecorp.registry.translation.EntityTranslationKeys;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
+import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.world.horde.HordeRuntime;
 
 import java.util.List;
 
@@ -42,6 +42,9 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 
 /// 保存并展示原实体快照的尸体实体，负责腐烂移除与尺寸缓存。
 public class EntityCorpse<T extends Entity> extends LivingEntity {
+	/// 尸体显示名称翻译键。
+	/// 尸体自动腐烂前的最大存续 tick。
+	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
 	/// 无原实体缓存时重新检查尸体有效性的间隔，单位为 tick。
 	private static final int OWNER_RECHECK_INTERVAL_TICKS = TICKS_PER_SECOND;
 	/// 尸体死亡流程使用的移除计时，单位为 tick。
@@ -58,10 +61,6 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 	private static final double LAVA_BUOYANCY = 0.015;
 	/// 尸体在岩浆中的水平速度保留倍率。
 	private static final double LAVA_HORIZONTAL_DAMPING = 0.95;
-
-	/// 尸体显示名称翻译键。
-	/// 尸体自动腐烂前的最大存续 tick。
-	public static final int MAX_ROT_REMOVED_TICK = 120 * TICKS_PER_SECOND;
 	private static final Logger LOGGER = LogUtils.getLogger();
 	/// 原实体序列化数据的同步字段。
 	private static final EntityDataAccessor<CompoundTag> DATA_OWNER_ENTITY_TAG = SynchedEntityData.defineId(
@@ -92,28 +91,6 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		entityCorpse.setOwnerEntityTag(entityCorpse.getEntityCompoundTag(entity));
 		entityCorpse.absSnapTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
 		return entityCorpse;
-	}
-
-	public double renderDistance() {
-		return isComplexModel() || hasCorpseAnimation() ? 32 : 180;
-	}
-
-	public boolean hasCorpseAnimation() {
-		return false;
-	}
-
-	public boolean isComplexModel() {
-		return false;
-	}
-
-	public long visualRevision() {
-		return visualRevision;
-	}
-
-	@Override
-	public boolean shouldRenderAtSqrDistance(double distance) {
-		double range = renderDistance();
-		return range > 0 && distance < range * range;
 	}
 
 	public static AttributeSupplier.Builder createAttributes() {
@@ -168,6 +145,28 @@ public class EntityCorpse<T extends Entity> extends LivingEntity {
 		EntitySkillUtil.clearTemporaryState(livingEntity);
 		mob.setTarget(null);
 		mob.getNavigation().stop();
+	}
+
+	public double renderDistance() {
+		return isComplexModel() || hasCorpseAnimation() ? 32 : 180;
+	}
+
+	public boolean hasCorpseAnimation() {
+		return false;
+	}
+
+	public boolean isComplexModel() {
+		return false;
+	}
+
+	public long visualRevision() {
+		return visualRevision;
+	}
+
+	@Override
+	public boolean shouldRenderAtSqrDistance(double distance) {
+		double range = renderDistance();
+		return range > 0 && distance < range * range;
 	}
 
 	@Override

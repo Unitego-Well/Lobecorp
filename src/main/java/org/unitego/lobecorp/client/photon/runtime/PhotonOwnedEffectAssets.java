@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
+import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.photon.client.compat.iris.IrisCompat;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.PreloadContext;
@@ -8,70 +10,53 @@ import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigPropertyType;
 import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import com.lowdragmc.photon.client.compat.iris.IrisCompat;
-import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleRendererSetting;
-import com.lowdragmc.photon.client.gameobject.emitter.data.InstancedRendererSetting;
-import com.lowdragmc.photon.client.gameobject.emitter.beam.BeamEmitter;
-import com.lowdragmc.photon.client.gameobject.emitter.trail.TrailEmitter;
-import com.lowdragmc.photon.client.gameobject.emitter.aratrail.AraTrailEmitter;
-import com.lowdragmc.photon.client.gameobject.emitter.data.material.TextureMaterial;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
-
-import java.util.Set;
-
-import com.lowdragmc.lowdraglib2.Platform;
-import net.minecraft.resources.Identifier;
-import net.minecraft.nbt.ByteArrayTag;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HexFormat;
-
-import org.unitego.lobecorp.util.photon.model.PhotonModelSplitUtil;
-import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
+import com.lowdragmc.photon.client.gameobject.emitter.aratrail.AraTrailEmitter;
+import com.lowdragmc.photon.client.gameobject.emitter.beam.BeamEmitter;
+import com.lowdragmc.photon.client.gameobject.emitter.data.InstancedRendererSetting;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
+import com.lowdragmc.photon.client.gameobject.emitter.data.material.TextureMaterial;
+import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleRendererSetting;
+import com.lowdragmc.photon.client.gameobject.emitter.trail.TrailEmitter;
 import com.lowdragmc.photon.client.render.PhotonPipelines;
 import com.lowdragmc.photon.client.render.PhotonRenderTypes;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
-import org.unitego.lobecorp.client.photon.model.PhotonModelMaterials;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
+import net.minecraft.nbt.ByteArrayTag;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
-import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.ref.WeakReference;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /// 仅处理资源定义，不建立运行实例；共享纹理和管线由原有管理器持有。
 public class PhotonOwnedEffectAssets {
 	private static final Map<PhotonOwnedEffectResources.SourceKey, Map<FX, List<Object>>> PREPARED = new LinkedHashMap<>();
 	private static final Map<PhotonOwnedEffectResources.SourceKey, String> DEVICE_STAMPS = new LinkedHashMap<>();
-
+	private static final Map<Path, FileFingerprint> AUTHOR_FILES = new LinkedHashMap<>();
+	private static final Map<Identifier, String> AUTHOR_RESOURCES = new LinkedHashMap<>();
 	private static long deviceRevision;
 	private static volatile DeviceStampKey cachedDeviceStamp;
-
-	private record DeviceStampKey(long revision, int fxGeneration, long renderGeneration, boolean iris,
-	                              String pack, PhotonRuntimeFactory.Mode mode, String value) {
-	}
+	private static WeakReference<FX> fingerprintOwner = new WeakReference<>(null);
+	private static long fingerprintGeneration = -1;
+	private static String fingerprintMemory = "";
+	private static String fingerprintValue = "";
+	private static int resourceProbe;
 
 	public static void invalidateDeviceResources() {
 		deviceRevision++;
@@ -184,45 +169,26 @@ public class PhotonOwnedEffectAssets {
 			}
 		};
 		var assets = new ArrayList<Object>();
-		try {
-			for (var object : definition.getFxData().objects()) {
-				if (object instanceof PhotonModelOutput model) {
-					if (source.kind() == PhotonOwnedEffectResources.SourceKind.AUTHORING
-							&& model.config.source == PhotonModelOutputConfig.Source.FILE) {
-						// 传入的是独立定义；作者FILE发布不得沿用上个修订的资产快照。
-						model.config.setAssetSnapshot(new ByteArrayTag(new byte[0]));
-					}
-					var sampler = PhotonModelSourceUtil.prepare(model.config);
-					var topology = sampler.prepared();
-					model.compiledPreparation(() -> topology);
-					var materials = new PhotonModelMaterials(model.config.overrideRenderer ? model.config.renderer : model.config.modelRenderer,
-							model.rendererRuntime(), topology);
-					assets.add(sampler);
-					assets.add(materials);
-					for (int index = 0; index < topology.groups().size(); index++) {
-						prepareMaterials(materials.group(index), model.geometryMode());
-					}
-				} else if (object instanceof Emitter emitter) {
-					prepareMaterials(emitter.rendererRuntime(), emitter.geometryMode(), variants(emitter));
+		for (var object : definition.getFxData().objects()) {
+			if (object instanceof Emitter emitter) {
+				prepareMaterials(emitter.rendererRuntime(), emitter.geometryMode(), variants(emitter));
+			}
+			object.preload(context);
+			if (object instanceof PhotonChildSpawner child && child.config.source == PhotonSpawnConfig.Source.FX) {
+				var id = child.config.fxLocation;
+				if (id == null || !path.add(id)) {
+					throw new IllegalArgumentException("自有特效子资源缺失或循环：" + id);
 				}
-				object.preload(context);
-				if (object instanceof PhotonChildSpawner child && child.config.source == PhotonSpawnConfig.Source.FX) {
-					var id = child.config.fxLocation;
-					if (id == null || !path.add(id)) {
-						throw new IllegalArgumentException("自有特效子资源缺失或循环：" + id);
-					}
-					try {
-						var nested = PhotonOwnedEffectResources.resolveDefinition(id, source);
-						prepare(nested, source, retained, path, depth + 1);
-						assets.add(nested);
-					} finally {
-						path.remove(id);
-					}
+				try {
+					var nested = PhotonOwnedEffectResources.resolveDefinition(id, source);
+					prepare(nested, source, retained, path, depth + 1);
+					assets.add(nested);
+				} finally {
+					path.remove(id);
 				}
 			}
-		} catch (IOException failure) {
-			throw new UncheckedIOException("自有模型静态准备失败", failure);
 		}
+
 		var location = definition.getFxLocation();
 		var identity = source.kind().name() + ":" + source.effectId() + ":" +
 				(location == null ? definition.getFxData().objects().stream().map(IFXObject::getName).toList() : location);
@@ -329,17 +295,6 @@ public class PhotonOwnedEffectAssets {
 				info.bindings().graph().material().prepareUniforms();
 			}
 		}
-	}
-
-	private static final Map<Path, FileFingerprint> AUTHOR_FILES = new LinkedHashMap<>();
-	private static final Map<Identifier, String> AUTHOR_RESOURCES = new LinkedHashMap<>();
-	private static WeakReference<FX> fingerprintOwner = new WeakReference<>(null);
-	private static long fingerprintGeneration = -1;
-	private static String fingerprintMemory = "";
-	private static String fingerprintValue = "";
-	private static int resourceProbe;
-
-	private record FileFingerprint(String attributes, String content) {
 	}
 
 	/// 客户端只捕获内存 NBT 与依赖清单；文件和资源流的内容确认放到 worker。
@@ -495,30 +450,6 @@ public class PhotonOwnedEffectAssets {
 		}
 		digest.update(definition.serializeNBT(Platform.getFrozenRegistry()).toString().getBytes(StandardCharsets.UTF_8));
 		for (var object : definition.getFxData().objects()) {
-			if (object instanceof PhotonModelOutput model) {
-				var config = model.config;
-				if (config.source == PhotonModelOutputConfig.Source.FILE && !config.file.isBlank()) {
-					fingerprintFile(Path.of(config.file), digest, files);
-					fingerprintFile(Path.of(PhotonModelSplitUtil.dataPath(config.file)), digest, files);
-					// 只读配置副本，FILE依赖发现不能使用旧的内嵌快照。
-					var current = new PhotonModelOutputConfig(false);
-					current.source = config.source;
-					current.file = config.file;
-					current.flipObjV = config.flipObjV;
-					config = current;
-				} else if (config.source == PhotonModelOutputConfig.Source.RESOURCE && config.resource != null) {
-					fingerprintResource(config.resource, digest, resources);
-					fingerprintResource(Identifier.fromNamespaceAndPath(config.resource.getNamespace(),
-							PhotonModelSplitUtil.dataPath(config.resource.getPath())), digest, resources);
-				}
-				var loaded = PhotonModelSourceUtil.load(config);
-				digest.update(loaded.sha256().getBytes(StandardCharsets.UTF_8));
-				for (var material : loaded.definition().materials().values()) {
-					if (!material.texture().isBlank()) {
-						fingerprintResource(Identifier.parse(material.texture()), digest, resources);
-					}
-				}
-			}
 			if (object instanceof Emitter emitter) {
 				for (var material : emitter.rendererRuntime().getMaterials()) {
 					if (material.getMaterial() instanceof TextureMaterial texture) {
@@ -533,7 +464,6 @@ public class PhotonOwnedEffectAssets {
 				}
 				try {
 					fingerprintResource(Identifier.fromNamespaceAndPath(id.getNamespace(), "fx/" + id.getPath() + ".fx"), digest, resources);
-					fingerprintResource(Identifier.fromNamespaceAndPath(id.getNamespace(), "fx/" + id.getPath() + ".mfx"), digest, resources);
 					var key = new PhotonOwnedEffectResources.SourceKey(id, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
 					fingerprint(PhotonOwnedEffectResources.resolveDefinition(id, key), digest, path, depth + 1, files, resources);
 				} finally {
@@ -553,5 +483,12 @@ public class PhotonOwnedEffectAssets {
 
 	public static boolean prepared(PhotonOwnedEffectResources.SourceKey source) {
 		return PREPARED.containsKey(source) && !PREPARED.get(source).isEmpty() && deviceCurrent(source);
+	}
+
+	private record DeviceStampKey(long revision, int fxGeneration, long renderGeneration, boolean iris,
+	                              String pack, PhotonRuntimeFactory.Mode mode, String value) {
+	}
+
+	private record FileFingerprint(String attributes, String content) {
 	}
 }

@@ -15,7 +15,7 @@ import com.geckolib.renderer.base.GeoRenderState;
 import com.geckolib.renderer.base.RenderPassInfo;
 import org.unitego.lobecorp.animation.LcAnimationControllerRuntime.ControllerRuntime;
 import org.unitego.lobecorp.animation.LcAnimationControllerRuntime.RuntimeData;
-import org.unitego.lobecorp.animation.LcAnimationPose.*;
+import org.unitego.lobecorp.animation.LcAnimationPose.Pose;
 
 import static org.unitego.lobecorp.animation.LcAnimationControllerRuntime.transitionProgress;
 

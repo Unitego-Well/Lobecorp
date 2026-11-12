@@ -41,10 +41,6 @@ public class ConductorHudInput {
 		this.renderer = renderer;
 	}
 
-	public boolean contains(Minecraft minecraft) {
-		return containsStatic(layout, minecraft, model, renderer);
-	}
-
 	public static boolean containsStatic(ConductorHudLayout layout, Minecraft minecraft) {
 		double x = minecraft.mouseHandler.xpos() * minecraft.getWindow().getGuiScaledWidth() / minecraft.getWindow().getWidth();
 		double y = minecraft.mouseHandler.ypos() * minecraft.getWindow().getGuiScaledHeight() / minecraft.getWindow().getHeight();
@@ -88,6 +84,47 @@ public class ConductorHudInput {
 		}
 
 		return false;
+	}
+
+	private static void scrollList(ScrollerView list, float direction) {
+		float extent = list.viewContainer.getSizeHeight() - list.viewPort.getContentHeight();
+
+		if (extent <= 0) {
+			return;
+		}
+
+		float step = direction * SCROLL_STEP / extent;
+		list.verticalScroller.setNormalizedValue(net.minecraft.util.Mth.clamp(list.verticalScroller.getNormalizedValue() + step, 0, 1), true);
+	}
+
+	private static boolean hasRemoteSelection(Minecraft minecraft) {
+		if (minecraft.level == null) {
+			return false;
+		}
+
+		for (UUID member : ConductorControls.selected()) {
+			if (ConductorClient.unit(member) != null && minecraft.level.getEntity(member) == null) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static Component memberName(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+
+		if (entity != null) {
+			return entity.getDisplayName();
+		}
+
+		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
+		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
+	}
+
+	public boolean contains(Minecraft minecraft) {
+		return containsStatic(layout, minecraft, model, renderer);
 	}
 
 	public @Nullable UUID memberAtPointer(Minecraft minecraft) {
@@ -551,17 +588,6 @@ public class ConductorHudInput {
 		return contains(minecraft);
 	}
 
-	private static void scrollList(ScrollerView list, float direction) {
-		float extent = list.viewContainer.getSizeHeight() - list.viewPort.getContentHeight();
-
-		if (extent <= 0) {
-			return;
-		}
-
-		float step = direction * SCROLL_STEP / extent;
-		list.verticalScroller.setNormalizedValue(net.minecraft.util.Mth.clamp(list.verticalScroller.getNormalizedValue() + step, 0, 1), true);
-	}
-
 	public boolean handleSkillKey(KeyEvent event, int action) {
 		if (renderer.searchFocused() || model.teamDropdown() || !model.modeDropdown().isEmpty()) {
 			return false;
@@ -660,20 +686,6 @@ public class ConductorHudInput {
 		model.setModeCursor(renderer.currentModeIndex());
 	}
 
-	private static boolean hasRemoteSelection(Minecraft minecraft) {
-		if (minecraft.level == null) {
-			return false;
-		}
-
-		for (UUID member : ConductorControls.selected()) {
-			if (ConductorClient.unit(member) != null && minecraft.level.getEntity(member) == null) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	private void send(ConductorCommandPayload.Action action, boolean flag, String skill) {
 		String team = action == ConductorCommandPayload.Action.ASSIGN ? model.teamSelection() : ConductorControls.selectedTeam();
 
@@ -697,18 +709,6 @@ public class ConductorHudInput {
 			ConductorClient.send(action, unit.team(), "", units, null,
 					0.0D, 0.0D, 0.0D, ConductorData.ControlMode.FULL, flag, skill);
 		}
-	}
-
-	private static Component memberName(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-
-		if (entity != null) {
-			return entity.getDisplayName();
-		}
-
-		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
-		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
 	}
 
 	public void clearTransient() {

@@ -11,12 +11,12 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 
 @Mixin(ShaderGraphRuntime.class)
 public class ShaderGraphRuntimeMixin {
-	@WrapMethod(method = "get", remap = false)
+	@WrapMethod(method = "get")
 	private static ShaderGraphRuntime.Entry lobecorp$lookup(IResourcePath path, Operation<ShaderGraphRuntime.Entry> original) {
 		return PhotonMaterialDiagnosticsUtil.graphLookup(path, original);
 	}
 
-	@WrapMethod(method = "compile", remap = false)
+	@WrapMethod(method = "compile")
 	private static ShaderGraphRuntime.Entry lobecorp$build(CompoundTag tag, Operation<ShaderGraphRuntime.Entry> original) {
 		return PhotonMaterialDiagnosticsUtil.call(Stage.GRAPH_RESOURCE_BUILD, original, tag);
 	}

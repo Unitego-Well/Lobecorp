@@ -16,7 +16,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil.
 
 @Mixin(IFXObject.class)
 public interface PhotonObjectDeserializeDiagnosticsMixin {
-	@WrapMethod(method = "deserializeWrapper", remap = false)
+	@WrapMethod(method = "deserializeWrapper")
 	private static IFXObject lobecorp$object(Tag tag, Operation<IFXObject> original) {
 		if (PhotonFXLoadDiagnosticsUtil.skipDetails()) {
 			return original.call(tag);
@@ -37,7 +37,7 @@ public interface PhotonObjectDeserializeDiagnosticsMixin {
 	}
 
 	@WrapOperation(method = "lambda$static$2", at = @At(value = "INVOKE",
-			target = "Lcom/lowdragmc/photon/client/gameobject/FXObjectType;codec()Lcom/mojang/serialization/Codec;"), remap = false)
+			target = "Lcom/lowdragmc/photon/client/gameobject/FXObjectType;codec()Lcom/mojang/serialization/Codec;"))
 	private static Codec<IFXObject> lobecorp$codec(FXObjectType type, Operation<Codec<IFXObject>> original) {
 		if (PhotonFXLoadDiagnosticsUtil.skipDetails()) {
 			return original.call(type);

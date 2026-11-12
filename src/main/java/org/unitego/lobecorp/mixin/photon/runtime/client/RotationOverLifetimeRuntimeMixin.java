@@ -2,38 +2,30 @@ package org.unitego.lobecorp.mixin.photon.runtime.client;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.lowdragmc.photon.client.gameobject.RuntimeValue;
+import com.lowdragmc.photon.client.gameobject.emitter.data.RotationOverLifetimeSetting;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
+import com.lowdragmc.photon.client.gameobject.particle.IParticle;
+import com.lowdragmc.photon.client.gameobject.particle.TileParticle;
+import net.minecraft.util.Mth;
+import org.joml.Vector3f;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
+import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess.Component;
+import org.unitego.lobecorp.client.photon.runtime.PhotonParticleAgeAccess;
+import org.unitego.lobecorp.client.photon.runtime.PhotonRotationCycleAccess;
+import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 import java.util.function.Supplier;
 
-import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
-import com.lowdragmc.photon.client.gameobject.RuntimeValue;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
-import com.lowdragmc.photon.client.gameobject.emitter.data.RotationOverLifetimeSetting;
-import com.lowdragmc.photon.client.gameobject.particle.IParticle;
-import com.lowdragmc.photon.client.gameobject.particle.TileParticle;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.Unique;
-import org.joml.Vector3f;
-import net.minecraft.util.Mth;
-import org.unitego.lobecorp.client.photon.runtime.PhotonParticleAgeAccess;
-import org.unitego.lobecorp.client.photon.runtime.PhotonRotationCycleAccess;
-import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess.Component;
-import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
-
 @Mixin(RotationOverLifetimeSetting.Runtime.class)
 public abstract class RotationOverLifetimeRuntimeMixin {
-	@Shadow
-	@Final
-	private RotationOverLifetimeSetting config;
-
-	@Shadow
-	public abstract boolean isEnable();
-
 	@Shadow
 	@Final
 	public RuntimeValue<NumberFunction> roll;
@@ -43,6 +35,12 @@ public abstract class RotationOverLifetimeRuntimeMixin {
 	@Shadow
 	@Final
 	public RuntimeValue<NumberFunction> yaw;
+	@Shadow
+	@Final
+	private RotationOverLifetimeSetting config;
+
+	@Shadow
+	public abstract boolean isEnable();
 
 	@ModifyExpressionValue(method = "getRotation", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/gameobject/particle/IParticle;getT(F)F"))

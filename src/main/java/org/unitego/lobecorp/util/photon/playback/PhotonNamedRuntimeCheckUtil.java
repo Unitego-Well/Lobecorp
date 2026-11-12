@@ -1,6 +1,7 @@
 package org.unitego.lobecorp.util.photon.playback;
 
 import com.lowdragmc.lowdraglib2.Platform;
+import com.lowdragmc.lowdraglib2.utils.virtuallevel.TrackedDummyWorld;
 import com.lowdragmc.photon.PhotonRegistries;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXRuntime;
@@ -9,19 +10,18 @@ import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.fx.timeline.property.PositionPropertyType;
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
 import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import org.joml.Vector3f;
+import org.unitego.lobecorp.client.photon.playback.PhotonChildWindows;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-import org.unitego.lobecorp.registry.client.photon.LcPhotonPlaybackTypes;
-import org.unitego.lobecorp.client.photon.playback.PhotonChildWindows;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonCallTrack;
 import org.unitego.lobecorp.client.photon.playback.timeline.PhotonChildClip;
-import com.lowdragmc.photon.gui.editor.FXProjectEffectExecutor;
-import com.lowdragmc.lowdraglib2.utils.virtuallevel.TrackedDummyWorld;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonPlaybackTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +30,6 @@ import java.util.UUID;
 
 /// 客户端原生注册环境中的内存检查；不读取为可播放原件、不解除文件门禁。
 public class PhotonNamedRuntimeCheckUtil {
-	public record Result(boolean passed, String detail) {
-	}
-
 	public static Result inspectFixture() {
 		PhotonNamedRuntime playback = null;
 
@@ -162,7 +159,7 @@ public class PhotonNamedRuntimeCheckUtil {
 			var definition = PhotonProjectPreviewUtil.read(preview);
 			var host = playback;
 			requireRejected(() -> host.preview(definition, 0));
-			((FXObject) runtime.root).setEffect(new FXProjectEffectExecutor(new TrackedDummyWorld()));
+			runtime.root.setEffect(new FXProjectEffectExecutor(new TrackedDummyWorld()));
 			requireRejected(() -> {
 				try (var windows = new PhotonChildWindows(runtime, null)) {
 					windows.evaluate(List.of(track), 0);
@@ -274,5 +271,8 @@ public class PhotonNamedRuntimeCheckUtil {
 		if (Math.abs(actual - expected) > 0.0001f) {
 			throw new IllegalStateException("命名混合坐标不符：" + actual + " != " + expected);
 		}
+	}
+
+	public record Result(boolean passed, String detail) {
 	}
 }

@@ -6,5 +6,5 @@ import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 public interface PhotonTimelineStateAccess {
 	boolean lobecorp$recording();
 
-    PhotonAuthoringPose lobecorp$authoredPose(FXObject object, PhotonAuthoringPose current);
+	PhotonAuthoringPose lobecorp$authoredPose(FXObject object, PhotonAuthoringPose current);
 }

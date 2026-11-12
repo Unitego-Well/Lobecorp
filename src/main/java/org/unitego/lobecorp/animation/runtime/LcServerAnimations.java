@@ -1,25 +1,17 @@
 package org.unitego.lobecorp.animation.runtime;
 
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import org.unitego.lobecorp.animation.player.LcAnimationTermination;
+import org.unitego.lobecorp.animation.resource.LcAnimationResources;
 import org.unitego.lobecorp.attachment.ILcTransformTarget;
 import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.attachment.adapter.EntityAnimationTarget;
-import org.unitego.lobecorp.animation.player.LcAnimationTermination;
-import org.unitego.lobecorp.animation.resource.LcAnimationResources;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.Set;
-
-import net.minecraft.server.MinecraftServer;
-
+import java.util.*;
 import java.util.function.Consumer;
 
 /// 世界只持有播放与空间绑定；目标对象仍由自身系统管理，卸载时显式释放世界引用。
@@ -223,17 +215,6 @@ public class LcServerAnimations {
 		}
 	}
 
-	private void removeEntityInstance(LcAnimationInstance instance) {
-		var entity = instance.sourceEntity();
-		var owned = entityInstances.get(entity);
-		if (owned != null) {
-			owned.remove(instance.id(), instance);
-			if (owned.isEmpty()) {
-				entityInstances.remove(entity);
-			}
-		}
-	}
-
 	/// 一个用户回调失败时仍释放其余实例，保留首个异常与后续清理异常。
 	private static <T> void cleanAll(List<T> values, Consumer<T> cleanup) {
 		Throwable failure = null;
@@ -256,6 +237,17 @@ public class LcServerAnimations {
 
 		if (failure instanceof Error error) {
 			throw error;
+		}
+	}
+
+	private void removeEntityInstance(LcAnimationInstance instance) {
+		var entity = instance.sourceEntity();
+		var owned = entityInstances.get(entity);
+		if (owned != null) {
+			owned.remove(instance.id(), instance);
+			if (owned.isEmpty()) {
+				entityInstances.remove(entity);
+			}
 		}
 	}
 }

@@ -14,12 +14,12 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime.SkillState;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.ConvergentSkill;
 import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.ConvergentSkill;
+import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime.SkillState;
 
 /// 聚爆星星与向内收拢的双面光环在提取时读取女皇的插值位置。
 @NullMarked

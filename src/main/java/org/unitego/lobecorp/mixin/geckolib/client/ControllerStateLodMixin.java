@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.mixin.geckolib.client;
 
 import com.geckolib.animation.state.ControllerState;
-import org.spongepowered.asm.mixin.Mixin;
 import org.jspecify.annotations.Nullable;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.unitego.lobecorp.client.animation.LcAnimationLodCache.Request;
 import org.unitego.lobecorp.client.animation.LcAnimationLodStateAccess;

@@ -13,23 +13,25 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 import org.unitego.lobecorp.config.client.ClientConfig;
 import org.unitego.lobecorp.config.server.ServerConfig;
-import org.unitego.lobecorp.registry.encounter.LcEncounters;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
-import org.unitego.lobecorp.registry.LcSoundEvents;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.item.LcDataComponents;
+import org.unitego.lobecorp.registry.sound.LcSoundEvents;
 import org.unitego.lobecorp.registry.animation.LcAnimationExampleDefinitions;
+import org.unitego.lobecorp.registry.animation.CannedEnkephalinAnimationDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
-import org.unitego.lobecorp.registry.block.LcBlocks;
-import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.registry.entity.LcEntityTypes;
-import org.unitego.lobecorp.registry.entity.skill.LcEntitySkills;
-import org.unitego.lobecorp.registry.item.LcCreativeModeTabs;
-import org.unitego.lobecorp.registry.item.LcItems;
+import org.unitego.lobecorp.registry.world.block.LcBlocks;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.world.encounter.LcEncounters;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.registry.world.entity.LcEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.world.entity.ai.LcSensorTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.LcEntitySkills;
+import org.unitego.lobecorp.registry.world.item.LcCreativeModeTabs;
+import org.unitego.lobecorp.registry.world.item.LcItems;
 import org.unitego.lobecorp.registry.particle.LcParticleTypes;
-import org.unitego.lobecorp.registry.tag.LcTags;
+import org.unitego.lobecorp.registry.world.tag.LcTags;
 
 @Mod(Lobecorp.NAMESPACE)
 public class Lobecorp {
@@ -38,13 +40,15 @@ public class Lobecorp {
 	public static final Logger LOGGER = LogUtils.getLogger();
 
 	public Lobecorp(IEventBus iEventBus, ModContainer modContainer) {
-        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.specification(), ClientConfig.FILE_NAME);
+		modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.specification(), ClientConfig.FILE_NAME);
 		modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.specification(), ServerConfig.FILE_NAME);
 		LcEncounters.init(iEventBus);
 
 		LcAttachmentTypes.init(iEventBus);
+		LcDataComponents.init(iEventBus);
 		LcTags.init();
 		LcAnimationExampleDefinitions.init();
+		CannedEnkephalinAnimationDefinitions.init();
 		TheQueenOfHatredAnimationDefinitions.init();
 		LcMemoryModuleTypes.init(iEventBus);
 		LcSensorTypes.init(iEventBus);
@@ -61,44 +65,36 @@ public class Lobecorp {
 	}
 
 	/// 创建属于本模组命名空间的资源标识符。
-	///
-	/// @param path 命名空间内的资源路径
-	/// @return 本模组资源标识符
 	public static Identifier id(String path) {
 		return Identifier.fromNamespaceAndPath(NAMESPACE, path);
 	}
 
 	/// 创建属于本模组命名空间的完整资源名称。
-	///
-	/// @param path 命名空间内的资源路径
-	/// @return 字符串形式的完整资源名称
 	public static String name(String path) {
 		return id(path).toString();
 	}
 
+	/// 使用本模组命名空间创建指定注册表的资源键。
+	public static <T> ResourceKey<T> createKey(ResourceKey<? extends Registry<T>> registry, String path) {
+		return createKey(registry, id(path));
+	}
+
+	/// 使用完整资源标识符创建指定注册表的资源键。
+	public static <T> ResourceKey<T> createKey(ResourceKey<? extends Registry<T>> registry, Identifier identifier) {
+		return ResourceKey.create(registry, identifier);
+	}
+
 	/// 为原版注册表创建本模组的延迟注册器。
-	///
-	/// @param registry 目标注册表
-	/// @param <T>      注册对象类型
-	/// @return 绑定本模组命名空间的延迟注册器
 	public static <T> DeferredRegister<T> register(Registry<T> registry) {
 		return DeferredRegister.create(registry, NAMESPACE);
 	}
 
 	/// 为资源键指定的注册表创建本模组延迟注册器。
-	///
-	/// @param registry 目标注册表资源键
-	/// @param <T>      注册对象类型
-	/// @return 绑定本模组命名空间的延迟注册器
 	public static <T> DeferredRegister<T> register(ResourceKey<Registry<T>> registry) {
 		return DeferredRegister.create(registry, NAMESPACE);
 	}
 
 	/// 创建属于本模组命名空间的网络载荷类型。
-	///
-	/// @param identifier 载荷资源路径
-	/// @param <T>        载荷类型
-	/// @return 网络载荷类型
 	public static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String identifier) {
 		return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(NAMESPACE, identifier));
 	}

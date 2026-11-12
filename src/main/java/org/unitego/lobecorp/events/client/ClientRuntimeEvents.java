@@ -1,56 +1,60 @@
 package org.unitego.lobecorp.events.client;
 
 import net.minecraft.client.Minecraft;
-import org.unitego.lobecorp.client.encounter.EncounterClient;
-import org.unitego.lobecorp.client.visual.camera.CameraControl;
-import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
+import org.unitego.lobecorp.client.particle.EntityForegroundParticles;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.ViewportEvent;
-import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
-import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.client.event.sound.PlaySoundEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
+import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
+import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.level.LevelEvent;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAtmosphere;
-import net.neoforged.bus.api.EventPriority;
 import org.unitego.lobecorp.attachment.LcAttachments;
-import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.client.animation.player.LcPlayerAnimationRuntime;
+import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
-import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
-import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
-import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
-import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import org.unitego.lobecorp.client.particle.text.TextParticleClient;
-import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
+import org.unitego.lobecorp.client.encounter.EncounterClient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAtmosphere;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupMusic;
+import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
+import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.horde.HordeGpuRenderer;
+import org.unitego.lobecorp.client.horde.HordeMeshCache;
+import org.unitego.lobecorp.client.horde.HordeGroundCache;
 import org.unitego.lobecorp.client.hud.HudLayerManager;
-import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 import org.unitego.lobecorp.client.hud.PlayerStatusHud;
+import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
 import org.unitego.lobecorp.client.hud.TopLeftHud;
 import org.unitego.lobecorp.client.hud.filter.DamageFilter;
 import org.unitego.lobecorp.client.hud.filter.RationalityFilter;
+import org.unitego.lobecorp.client.particle.screen.ScreenParticles;
+import org.unitego.lobecorp.client.particle.WarpAnchorParticles;
+import org.unitego.lobecorp.client.particle.text.TextParticleClient;
+import org.unitego.lobecorp.client.photon.performance.PhotonFrameCapture;
+import org.unitego.lobecorp.client.photon.performance.PhotonRepeatedEffectTrial;
+import org.unitego.lobecorp.client.photon.performance.QueenBeamPerformanceTrial;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
+import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
-import org.unitego.lobecorp.client.horde.HordeClient;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
-import org.unitego.lobecorp.client.horde.HordeGroundCache;
-import net.neoforged.neoforge.event.level.ChunkEvent;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
-import net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
-import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
@@ -58,6 +62,13 @@ public class ClientRuntimeEvents {
 	private static double landingAt = Double.NEGATIVE_INFINITY;
 	private static float landingPower;
 	private static ResourceKey<Level> landingDimension;
+
+	@SubscribeEvent
+	public static void onSelectMusic(SelectMusicEvent event) {
+		if (MidnightCleanupMusic.active()) {
+			event.overrideMusic(null);
+		}
+	}
 
 	@SubscribeEvent
 	public static void onGroundChunkLoad(ChunkEvent.Load event) {
@@ -173,6 +184,7 @@ public class ClientRuntimeEvents {
 	@SubscribeEvent
 	public static void onClientLevelUnload(LevelEvent.Unload event) {
 		if (event.getLevel() instanceof ClientLevel) {
+			EntityForegroundParticles.clear();
 			HordeClient.clear();
 		}
 		if (event.getLevel().isClientSide()) {
@@ -206,6 +218,9 @@ public class ClientRuntimeEvents {
 
 	@SubscribeEvent
 	public static void onGameShuttingDown(GameShuttingDownEvent event) {
+		HordeGpuRenderer.clear();
+		HordeGpuRenderer.clearModels();
+		HordeMeshCache.clear();
 		PhotonOwnedEffectResources.closePreparation();
 	}
 
@@ -228,6 +243,7 @@ public class ClientRuntimeEvents {
 
 		LcPlayerAnimationRuntime.tick();
 		ScreenParticles.tick();
+		WarpAnchorParticles.tick();
 		DamageFilter.INSTANCE.tick();
 		RationalityFilter.INSTANCE.tick();
 		ConductorClient.tick();

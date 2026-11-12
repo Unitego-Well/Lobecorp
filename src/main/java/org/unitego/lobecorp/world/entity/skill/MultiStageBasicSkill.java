@@ -1,12 +1,12 @@
 package org.unitego.lobecorp.world.entity.skill;
 
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
-import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 多段普通攻击：AI 与手动施放均可在后摇中提前接下一段，空挥也可续段。
 @NullMarked

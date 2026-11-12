@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.util.photon.material.LazyBuiltinResourceProvider;
 import org.unitego.lobecorp.util.photon.material.PhotonMaterialPreparationUtil;
 
-@Mixin(value = Resource.class, remap = false)
+@Mixin(value = Resource.class)
 public abstract class ResourceMixin<T> {
 	@WrapOperation(
 			method = "buildBuiltin(Lcom/lowdragmc/lowdraglib2/editor/resource/ResourceInstance;)V",

@@ -1,38 +1,25 @@
 package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.Platform;
-import com.lowdragmc.lowdraglib2.utils.PersistedParser;
-import com.lowdragmc.lowdraglib2.utils.virtuallevel.DummyWorld;
+import com.lowdragmc.lowdraglib2.configurator.EditAction;
+import com.lowdragmc.lowdraglib2.configurator.ui.*;
+import com.lowdragmc.lowdraglib2.editor.keymap.KeymapContext;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.editor.ui.EditorHost;
 import com.lowdragmc.lowdraglib2.editor.ui.EditorWindow;
-import com.lowdragmc.lowdraglib2.editor.keymap.KeymapContext;
-import com.lowdragmc.lowdraglib2.configurator.EditAction;
-import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.ColorConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
-import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.editor.ui.menu.MenuTab;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.layout.LayoutProperties;
-import dev.vfyjxf.taffy.style.TaffyDisplay;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Selector;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
+import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.*;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import com.lowdragmc.lowdraglib2.gui.ui.layout.LayoutProperties;
 import com.lowdragmc.lowdraglib2.gui.util.TreeBuilder;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
-import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.lowdraglib2.utils.PersistedParser;
+import com.lowdragmc.lowdraglib2.utils.virtuallevel.DummyWorld;
 import com.lowdragmc.photon.client.PhotonParticleManager;
-import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
+import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
@@ -45,39 +32,32 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import com.lowdragmc.photon.gui.editor.FXEditor;
-import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
 import com.lowdragmc.photon.gui.editor.view.FXObjectTreeNode;
+import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
 import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.AnimationTrackUIState;
-import dev.vfyjxf.taffy.style.TaffyDimension;
+import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import dev.vfyjxf.taffy.style.FlexDirection;
-import com.lowdragmc.lowdraglib2.gui.ui.data.TextWrap;
+import dev.vfyjxf.taffy.style.TaffyDimension;
+import dev.vfyjxf.taffy.style.TaffyDisplay;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
-import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorActions;
-import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorShortcutUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
-import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
-import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
-import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
-import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.photon.performance.PhotonPerformancePanel;
+import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
+import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorActions;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
+import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
+import org.unitego.lobecorp.util.photon.editor.*;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 
-import java.util.LinkedHashMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.WeakHashMap;
-import java.util.Locale;
+import java.util.*;
 
 @SuppressWarnings({"FieldMayBeFinal", "unused"})
 public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
@@ -99,21 +79,35 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			Map.entry("fit_selected", "fit"), Map.entry("fit_all", "fit"),
 			Map.entry("step_back", "step"), Map.entry("step_forward", "step"),
 			Map.entry("step_back_large", "step"), Map.entry("step_forward_large", "step"),
-			Map.entry("duplicate", PhotonEditorTranslations.PRECISE_FEATURE), Map.entry("move", "batch_move"), Map.entry("scale", "time_scale"),
+			Map.entry("duplicate", PhotonEditorTranslationKeys.PRECISE_FEATURE), Map.entry("move", "batch_move"), Map.entry("scale", "time_scale"),
 			Map.entry("range_in", "range_preview"), Map.entry("range_out", "range_preview"),
-			Map.entry("range_loop", "range_preview"), Map.entry("solo", "solo"), Map.entry("cancel", PhotonEditorTranslations.PRECISE_FEATURE));
+			Map.entry("range_loop", "range_preview"), Map.entry("solo", "solo"), Map.entry("cancel", PhotonEditorTranslationKeys.PRECISE_FEATURE));
+	/// 扩展运行时控件和编辑器设置的翻译键前缀。
+	private static final String CONTROL_PREFIX = "photon.lobecorp.";
+	/// Photon 编辑器操作翻译键的公共前缀。
+	private static final String EDITOR_CONTROL_PREFIX = "photon.lobecorp.editor.";
+	private final Map<FXTimelineView, PreviewRange> previewRanges = new WeakHashMap<>();
 	private FXEditor editor;
 	private long previewStart;
 	private long previewEnd;
 	private boolean loopPreview;
-	private final Map<FXTimelineView, PreviewRange> previewRanges = new WeakHashMap<>();
 	private FXTimelineView rangeTimeline;
-
-	private record PreviewRange(long start, long end, boolean loop) {
-	}
-
-	public Object capturePreviewRange() {
-		return new PreviewRange(previewStart, previewEnd, loopPreview);
+	private Map<RuntimeValue<?>, Object> overrides = new LinkedHashMap<>();
+	private Map<IFXObject, Boolean> visibility = new LinkedHashMap<>();
+	private FXRuntime previewRuntime;
+	private CompoundTag moduleClipboard;
+	private String clipboardModule;
+	private Dialog parameterDialog;
+	private FXRuntime boundRuntime;
+	/// 特效管理工程单独持有一份按需预览运行态，避免与编辑器工程的预览互相覆盖。
+	private FXRuntime libraryPreview;
+	private Identifier libraryPreviewId;
+	private Map<AnimatedProperty, Map<Long, Integer>> linkedTangents = new WeakHashMap<>();
+	public PhotonEditorTools(FXEditor editor) {
+		this.editor = editor;
+		refreshControls(editor);
+		LcPhotonEditorActions.register(editor, this::canRunShortcut, action -> safely(() -> runAction(action)));
+		editor.addEventListener(UIEvents.TICK, _ -> tick());
 	}
 
 	public static Object capturePreviewRange(FXEditor editor) {
@@ -128,30 +122,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			tools.restorePreviewRange(state);
 		}
 	}
-
-	public void restorePreviewRange(Object state) {
-		var range = state instanceof PreviewRange saved ? saved : new PreviewRange(0, 0, false);
-		previewStart = range.start();
-		previewEnd = range.end();
-		loopPreview = range.loop();
-		rangeTimeline = timeline();
-	}
-
-	private Map<RuntimeValue<?>, Object> overrides = new LinkedHashMap<>();
-	private Map<IFXObject, Boolean> visibility = new LinkedHashMap<>();
-	private FXRuntime previewRuntime;
-	private CompoundTag moduleClipboard;
-	private String clipboardModule;
-	private Dialog parameterDialog;
-	private FXRuntime boundRuntime;
-	/// 特效管理工程单独持有一份按需预览运行态，避免与编辑器工程的预览互相覆盖。
-	private FXRuntime libraryPreview;
-	private Identifier libraryPreviewId;
-	private Map<AnimatedProperty, Map<Long, Integer>> linkedTangents = new WeakHashMap<>();
-	/// 扩展运行时控件和编辑器设置的翻译键前缀。
-	private static final String CONTROL_PREFIX = "photon.lobecorp.";
-	/// Photon 编辑器操作翻译键的公共前缀。
-	private static final String EDITOR_CONTROL_PREFIX = "photon.lobecorp.editor.";
 
 	public static void syncTangent(TimelineContext ctx, AnimationTrackUIState state) {
 		var access = (AnimationTrackUIStateAccessor) state;
@@ -212,39 +182,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 				&& tools.loopPreview && tools.previewEnd > tools.previewStart;
 	}
 
-	private FXTimelineView timeline() {
-		return editor.timelineView;
-	}
-
-	private void syncPreviewRange() {
-		var current = timeline();
-
-		if (current == rangeTimeline) {
-			return;
-		}
-
-		if (rangeTimeline != null) {
-			previewRanges.put(rangeTimeline, new PreviewRange(previewStart, previewEnd, loopPreview));
-		}
-
-		var range = previewRanges.getOrDefault(current, new PreviewRange(0, 0, false));
-		previewStart = range.start();
-		previewEnd = range.end();
-		loopPreview = range.loop();
-		rangeTimeline = current;
-	}
-
-	public void bindRuntime() {
-		if (boundRuntime != null) {
-			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
-		}
-		boundRuntime = editor.runtime;
-
-		if (boundRuntime != null) {
-			PhotonRuntimePreviewUtil.bind(boundRuntime, this);
-		}
-	}
-
 	public static void applyPreview(FXRuntime runtime) {
 		PhotonRuntimePreviewUtil.apply(runtime);
 	}
@@ -257,13 +194,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		return enabled(element, name);
 	}
 
-	public PhotonEditorTools(FXEditor editor) {
-		this.editor = editor;
-		refreshControls(editor);
-		LcPhotonEditorActions.register(editor, this::canRunShortcut, action -> safely(() -> runAction(action)));
-		editor.addEventListener(UIEvents.TICK, _ -> tick());
-	}
-
 	public static void updateControlRegistration(UIElement element, String name, boolean attached) {
 		if (!attached || !isFeatureControlName(name)) {
 			return;
@@ -271,7 +201,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 
 		boolean display = controlEnabled(name, element);
 
-		if ((element.getLayoutStyle().getValueImmediate(LayoutProperties.DISPLAY) != TaffyDisplay.NONE) != display) {
+		if ((element.getLayoutStyle().getValueImmediate(LayoutProperties.DISPLAY) == TaffyDisplay.NONE) == display) {
 			element.setDisplay(display);
 		}
 	}
@@ -327,12 +257,8 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		return enabled(manager.sceneView, feature);
 	}
 
-	private boolean enabled(String feature) {
-		return isPhotonEditor(editor);
-	}
-
 	private static String key(String name) {
-		return PhotonEditorTranslations.key(name);
+		return PhotonEditorTranslationKeys.key(name);
 	}
 
 	public static @Nullable PhotonEditorTools of(Editor editor) {
@@ -387,6 +313,91 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		}.createMenuTab();
 	}
 
+	private static UIElement documentText(Component text) {
+		return new TextElement().setText(text)
+				.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
+				.layout(layout -> layout.widthPercent(100).flexShrink(0));
+	}
+
+	private static boolean isWithin(UIElement element, UIElement parent) {
+		for (var current = element; current != null; current = current.getParent()) {
+			if (current == parent) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static float sample(NumberFunction function) {
+		return function.get(0, () -> 0f).floatValue();
+	}
+
+	private static FXObjectTreeNode findNode(FXObjectTreeNode node, IFXObject object) {
+		if (node == null || node.getKey() == object) {
+			return node;
+		}
+
+		for (var child : node.getChildren()) {
+			var found = findNode(child, object);
+
+			if (found != null) {
+				return found;
+			}
+		}
+
+		return null;
+	}
+
+	public Object capturePreviewRange() {
+		return new PreviewRange(previewStart, previewEnd, loopPreview);
+	}
+
+	public void restorePreviewRange(Object state) {
+		var range = state instanceof PreviewRange saved ? saved : new PreviewRange(0, 0, false);
+		previewStart = range.start();
+		previewEnd = range.end();
+		loopPreview = range.loop();
+		rangeTimeline = timeline();
+	}
+
+	private FXTimelineView timeline() {
+		return editor.timelineView;
+	}
+
+	private void syncPreviewRange() {
+		var current = timeline();
+
+		if (current == rangeTimeline) {
+			return;
+		}
+
+		if (rangeTimeline != null) {
+			previewRanges.put(rangeTimeline, new PreviewRange(previewStart, previewEnd, loopPreview));
+		}
+
+		var range = previewRanges.getOrDefault(current, new PreviewRange(0, 0, false));
+		previewStart = range.start();
+		previewEnd = range.end();
+		loopPreview = range.loop();
+		rangeTimeline = current;
+	}
+
+	public void bindRuntime() {
+		if (boundRuntime != null) {
+			PhotonRuntimePreviewUtil.unbind(boundRuntime, this);
+		}
+		boundRuntime = editor.runtime;
+
+		if (boundRuntime != null) {
+			PhotonRuntimePreviewUtil.bind(boundRuntime, this);
+		}
+	}
+
+	private boolean enabled(String feature) {
+		return isPhotonEditor(editor);
+	}
+
 	private void leaf(TreeBuilder.Menu menu, String feature, Runnable action) {
 		if (enabled(feature)) {
 			menu.leaf(key("feature." + feature), () -> safely(action));
@@ -397,15 +408,15 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		menu.leaf(PhotonNamedLibraryPanel.TITLE, () -> PhotonNamedLibraryPanel.open(editor));
 		menu.leaf(key("control"), () -> PhotonActivationPanel.open(editor));
 		menu.leaf(PhotonProjectPreviewPanel.TITLE, () -> PhotonProjectPreviewPanel.open(editor));
-		menu.leaf(PhotonPerformanceTranslations.key("title"), () -> PhotonPerformancePanel.open(editor));
-		if (enabled(PhotonEditorTranslations.TEST_FEATURE)) {
+		menu.leaf(PhotonPerformanceTranslationKeys.key("title"), () -> PhotonPerformancePanel.open(editor));
+		if (enabled(PhotonEditorTranslationKeys.TEST_FEATURE)) {
 			PhotonEditorTestMenu.append(editor, menu);
 		}
 
 
-		leaf(menu, PhotonEditorTranslations.PRECISE_FEATURE, () -> editSelection(false));
+		leaf(menu, PhotonEditorTranslationKeys.PRECISE_FEATURE, () -> editSelection(false));
 		leaf(menu, "time_scale", () -> editSelection(true));
-		leaf(menu, PhotonEditorTranslations.BATCH_EASING_FEATURE, this::chooseEasing);
+		leaf(menu, PhotonEditorTranslationKeys.BATCH_EASING_FEATURE, this::chooseEasing);
 
 		if (enabled("fit")) {
 			menu.leaf(key("action.fit_selected"), () -> safely(() -> fit(false)));
@@ -455,12 +466,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		dialog("documents", content).show(editor);
 	}
 
-	private static UIElement documentText(Component text) {
-		return new TextElement().setText(text)
-				.textStyle(style -> style.adaptiveWidth(false).adaptiveHeight(true).textWrap(TextWrap.WRAP))
-				.layout(layout -> layout.widthPercent(100).flexShrink(0));
-	}
-
 	private void safely(Runnable action) {
 		try {
 			action.run();
@@ -487,16 +492,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 
 		return action.equals("solo") || action.equals("cancel") || timeline().isSelfOrChildHover()
 				|| isWithin(editor.getKeymapDispatcher().getFocusedElement(), timeline());
-	}
-
-	private static boolean isWithin(UIElement element, UIElement parent) {
-		for (var current = element; current != null; current = current.getParent()) {
-			if (current == parent) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	private void runAction(String action) {
@@ -535,7 +530,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			throw new IllegalArgumentException();
 		}
 
-		if (enabled(PhotonEditorTranslations.SCALE_LINK_FEATURE)) {
+		if (enabled(PhotonEditorTranslationKeys.SCALE_LINK_FEATURE)) {
 			return result.stream().map(selection -> new PhotonCurveEditUtil.Selection(
 					selection.track(), selection.property(),
 					PhotonScaleCurveUtil.linkedKeys(selection.property(), selection.keys()))).toList();
@@ -597,7 +592,7 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		var runtime = editor.runtime;
 		var model = PhotonEditorTimelineUtil.of(view);
 		var snapshots = PhotonCurveEasingUtil.captureSelection(selection);
-		PhotonCurveEasingUtil.choose(view, PhotonEditorTranslations.BATCH_CURVE_EASING, PhotonEditorTranslations.BATCH_CURVE_EASING_TIP, preset -> {
+		PhotonCurveEasingUtil.choose(view, PhotonEditorTranslationKeys.BATCH_CURVE_EASING, PhotonEditorTranslationKeys.BATCH_CURVE_EASING_TIP, preset -> {
 			if (editor.runtime != runtime || timeline() != view || PhotonEditorTimelineUtil.of(view) != model
 					|| !PhotonCurveEasingUtil.selectionUnchanged(model, selection, snapshots)) {
 				throw new IllegalArgumentException();
@@ -850,10 +845,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 			parameterDialog = null;
 		});
 		parameterDialog.show(editor);
-	}
-
-	private static float sample(NumberFunction function) {
-		return function.get(0, () -> 0f).floatValue();
 	}
 
 	private void replayPreview() {
@@ -1333,19 +1324,6 @@ public class PhotonEditorTools implements PhotonRuntimePreviewUtil.Preview {
 		editor.hierarchyView.treeList.setSelected(Set.of(node), true);
 	}
 
-	private static FXObjectTreeNode findNode(FXObjectTreeNode node, IFXObject object) {
-		if (node == null || node.getKey() == object) {
-			return node;
-		}
-
-		for (var child : node.getChildren()) {
-			var found = findNode(child, object);
-
-			if (found != null) {
-				return found;
-			}
-		}
-
-		return null;
+	private record PreviewRange(long start, long end, boolean loop) {
 	}
 }

@@ -2,8 +2,8 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.configurator.EditAction;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
-import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.view.FXHierarchyView;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import net.minecraft.network.chat.Component;

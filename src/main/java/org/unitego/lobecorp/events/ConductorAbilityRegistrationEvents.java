@@ -6,7 +6,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.event.RegisterConductorAbilitiesEvent;
-import org.unitego.lobecorp.registry.entity.RegisterConductorAbilities;
+import org.unitego.lobecorp.registry.conductor.RegisterConductorAbilities;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class ConductorAbilityRegistrationEvents {

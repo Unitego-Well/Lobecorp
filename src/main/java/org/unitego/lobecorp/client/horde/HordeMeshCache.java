@@ -16,19 +16,12 @@ import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
 import org.unitego.lobecorp.client.animation.LcAnimationBoneAdapter;
 import org.unitego.lobecorp.client.animation.LcClientAnimationResources;
-import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.config.HordePathVariant;
+import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /// 同一资源代际只准备一次烘焙动画帧；GPU 顶点阶段只选帧并读取静态顶点，不再做骨骼变换。
 public class HordeMeshCache {
@@ -61,11 +54,11 @@ public class HordeMeshCache {
 
 	/// 只登记准备请求，不读取资源或烘焙模型；客户端线程通过 advance 推进。
 	private static MeshKey key(HordeVisualDefinition visual) {
-		return new MeshKey(visual, HordeVisualConfig.ANIMATION_FRAMES.get(), HordeVisualConfig.REDUCE_HIDDEN_FACES.get());
+		return new MeshKey(visual, HordeVisualConfig.ANIMATION_FRAMES.get(), (HordeVisualConfig.REDUCE_HIDDEN_FACES.get() && HordePathVariant.reduceHiddenFaces()));
 	}
 
 	public static int settingsKey() {
-		return HordeVisualConfig.ANIMATION_FRAMES.get() | (HordeVisualConfig.REDUCE_HIDDEN_FACES.get() ? 256 : 0);
+		return HordeVisualConfig.ANIMATION_FRAMES.get() | ((HordeVisualConfig.REDUCE_HIDDEN_FACES.get() && HordePathVariant.reduceHiddenFaces()) ? 256 : 0);
 	}
 
 	public static void request(HordeVisualDefinition visual) {
@@ -133,6 +126,91 @@ public class HordeMeshCache {
 
 		PREPARATIONS.remove(preparation.key);
 		PENDING.remove(preparation);
+	}
+
+	private static void prepBoneChain(PoseStack stack, int index, List<Bone> bones) {
+		int parent = bones.get(index).parent();
+		if (parent >= 0) {
+			prepBoneChain(stack, parent, bones);
+		}
+		RenderUtil.prepMatrixForBone(stack, bones.get(index).bone());
+	}
+
+	private static String read(Identifier id, String prefix, String suffix) throws IOException {
+		Identifier file = Identifier.fromNamespaceAndPath(id.getNamespace(), prefix + id.getPath() + suffix);
+		try (var reader = Minecraft.getInstance().getResourceManager().getResourceOrThrow(file).openAsReader()) {
+			return com.google.common.io.CharStreams.toString(reader);
+		}
+	}
+
+	/// 不执行动画控制器；从资源的静态骨骼变换冻结一次可共享几何。
+	public static Model freeze(HordeVisualDefinition visual) {
+		try {
+			String modelJson = read(visual.model(), "geckolib/models/", ".geo.json");
+			String animationJson = read(visual.animation(), "geckolib/animations/", ".animation.json");
+			var baked = LcClientAnimationResources.model(
+					LcAnimationContent.of(visual.model(), visual.animation(), modelJson, animationJson));
+			var bones = new ArrayList<Bone>();
+			var pending = new ArrayDeque<PendingBone>();
+			for (var root : baked.topLevelBones()) {
+				pending.addLast(new PendingBone(root, -1, 0));
+			}
+			while (!pending.isEmpty()) {
+				var next = pending.removeFirst();
+				if (next.depth() >= 64) {
+					throw new IllegalArgumentException("尸体模型骨骼层级过深");
+				}
+				int index = bones.size();
+				bones.add(new Bone(next.bone(), next.parent()));
+				var children = next.bone().children();
+				for (int child = children.length - 1; child >= 0; child--) {
+					pending.addFirst(new PendingBone(children[child], index, next.depth() + 1));
+				}
+			}
+			var snapshots = bones.stream().map(entry -> BoneSnapshot.create(entry.bone())
+					.setTranslation(0, 0, 0).setRotation(0, 0, 0).setScale(1, 1, 1)).toList();
+			var output = new Capture();
+			var pose = new PoseStack();
+			try {
+				snapshots.forEach(BoneSnapshot::apply);
+				for (int index = 0; index < bones.size(); index++) {
+					pose.pushPose();
+					try {
+						prepBoneChain(pose, index, bones);
+						output.bone = index;
+						if (bones.get(index).bone() instanceof CuboidGeoBone cuboid) {
+							for (var cube : cuboid.cubes) {
+								cube.render(pose, output, 0, 0, -1);
+							}
+						}
+					} finally {
+						pose.popPose();
+					}
+				}
+			} finally {
+				snapshots.forEach(BoneSnapshot::cleanup);
+			}
+			int count = output.size / VERTEX_STRIDE;
+			if (count == 0 || count % 4 != 0) {
+				throw new IllegalArgumentException("尸体模型缺少完整四边形");
+			}
+			float[] vertices = Arrays.copyOf(output.values, output.size);
+			float[] frame = new float[count * FRAME_VERTEX_VALUES];
+			for (int vertex = 0; vertex < count; vertex++) {
+				System.arraycopy(vertices, vertex * VERTEX_STRIDE, frame, vertex * FRAME_VERTEX_VALUES, 3);
+				System.arraycopy(vertices, vertex * VERTEX_STRIDE + 5, frame, vertex * FRAME_VERTEX_VALUES + 3, 3);
+			}
+			return new Model(vertices, frame, count, 1, 1);
+		} catch (IOException failure) {
+			throw new IllegalArgumentException("无法冻结尸体模型：" + visual.model(), failure);
+		}
+	}
+
+	public static void clear() {
+		MODELS.clear();
+		PREPARATIONS.clear();
+		FAILURES.clear();
+		PENDING.clear();
 	}
 
 	private enum PreparationStage {
@@ -339,93 +417,18 @@ public class HordeMeshCache {
 	private record PendingBone(GeoBone bone, int parent, int depth) {
 	}
 
-	private static void prepBoneChain(PoseStack stack, int index, List<Bone> bones) {
-		int parent = bones.get(index).parent();
-		if (parent >= 0) {
-			prepBoneChain(stack, parent, bones);
-		}
-		RenderUtil.prepMatrixForBone(stack, bones.get(index).bone());
-	}
-
-	private static String read(Identifier id, String prefix, String suffix) throws IOException {
-		Identifier file = Identifier.fromNamespaceAndPath(id.getNamespace(), prefix + id.getPath() + suffix);
-		try (var reader = Minecraft.getInstance().getResourceManager().getResourceOrThrow(file).openAsReader()) {
-			return com.google.common.io.CharStreams.toString(reader);
-		}
-	}
-
-	/// 不执行动画控制器；从资源的静态骨骼变换冻结一次可共享几何。
-	public static Model freeze(HordeVisualDefinition visual) {
-		try {
-			String modelJson = read(visual.model(), "geckolib/models/", ".geo.json");
-			String animationJson = read(visual.animation(), "geckolib/animations/", ".animation.json");
-			var baked = LcClientAnimationResources.model(
-					LcAnimationContent.of(visual.model(), visual.animation(), modelJson, animationJson));
-			var bones = new ArrayList<Bone>();
-			var pending = new ArrayDeque<PendingBone>();
-			for (var root : baked.topLevelBones()) {
-				pending.addLast(new PendingBone(root, -1, 0));
-			}
-			while (!pending.isEmpty()) {
-				var next = pending.removeFirst();
-				if (next.depth() >= 64) {
-					throw new IllegalArgumentException("尸体模型骨骼层级过深");
-				}
-				int index = bones.size();
-				bones.add(new Bone(next.bone(), next.parent()));
-				var children = next.bone().children();
-				for (int child = children.length - 1; child >= 0; child--) {
-					pending.addFirst(new PendingBone(children[child], index, next.depth() + 1));
-				}
-			}
-			var snapshots = bones.stream().map(entry -> BoneSnapshot.create(entry.bone())
-					.setTranslation(0, 0, 0).setRotation(0, 0, 0).setScale(1, 1, 1)).toList();
-			var output = new Capture();
-			var pose = new PoseStack();
-			try {
-				snapshots.forEach(BoneSnapshot::apply);
-				for (int index = 0; index < bones.size(); index++) {
-					pose.pushPose();
-					try {
-						prepBoneChain(pose, index, bones);
-						output.bone = index;
-						if (bones.get(index).bone() instanceof CuboidGeoBone cuboid) {
-							for (var cube : cuboid.cubes) {
-								cube.render(pose, output, 0, 0, -1);
-							}
-						}
-					} finally {
-						pose.popPose();
-					}
-				}
-			} finally {
-				snapshots.forEach(BoneSnapshot::cleanup);
-			}
-			int count = output.size / VERTEX_STRIDE;
-			if (count == 0 || count % 4 != 0) {
-				throw new IllegalArgumentException("尸体模型缺少完整四边形");
-			}
-			float[] vertices = Arrays.copyOf(output.values, output.size);
-			float[] frame = new float[count * FRAME_VERTEX_VALUES];
-			for (int vertex = 0; vertex < count; vertex++) {
-				System.arraycopy(vertices, vertex * VERTEX_STRIDE, frame, vertex * FRAME_VERTEX_VALUES, 3);
-				System.arraycopy(vertices, vertex * VERTEX_STRIDE + 5, frame, vertex * FRAME_VERTEX_VALUES + 3, 3);
-			}
-			return new Model(vertices, frame, count, 1, 1);
-		} catch (IOException failure) {
-			throw new IllegalArgumentException("无法冻结尸体模型：" + visual.model(), failure);
-		}
-	}
-
-	public static void clear() {
-		MODELS.clear();
-		PREPARATIONS.clear();
-		FAILURES.clear();
-		PENDING.clear();
-	}
-
 	public record Model(float[] vertices, float[] frameVertices, int vertexCount, int frames, float duration,
 	                    int sourceVertexCount, int tier) {
+		/// 动画时间轴及方向片图集的帧数，保留 frames() 的既有语义。
+		public int animationFrames() {
+			return frames;
+		}
+
+		/// 实际缓存的位置与法线帧数；共享静态片几何为一帧，不能用于缩短动画时间轴。
+		public int geometryFrames() {
+			return vertexCount == 0 ? frames : frameVertices.length / (vertexCount * FRAME_VERTEX_VALUES);
+		}
+
 		public Model(float[] vertices, float[] frameVertices, int vertexCount, int frames, float duration) {
 			this(vertices, frameVertices, vertexCount, frames, duration, vertexCount, 0);
 		}

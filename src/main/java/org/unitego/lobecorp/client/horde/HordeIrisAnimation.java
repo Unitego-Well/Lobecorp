@@ -1,6 +1,5 @@
 package org.unitego.lobecorp.client.horde;
 
-import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -8,6 +7,7 @@ import com.mojang.blaze3d.shaders.UniformType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -31,13 +31,9 @@ public class HordeIrisAnimation implements AutoCloseable {
 	private final GpuTexture texture;
 	private final GpuTextureView view;
 
-	public static boolean precompile() {
-		return RenderSystem.getDevice().precompilePipeline(PREPARE).isValid();
-	}
-
 	public HordeIrisAnimation(HordeMeshCache.Model model, HordeDataTexture animation, HordeDataTexture uvs) {
 		var device = RenderSystem.getDevice();
-		var layout = FrameLayout.plan(model.vertexCount(), model.frames(), device.getMaxTextureSize());
+		var layout = FrameLayout.plan(model.vertexCount(), model.geometryFrames(), device.getMaxTextureSize());
 		texture = device.createTexture(() -> "Horde cached Iris frames",
 				GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT,
 				TextureFormat.RGBA8, layout.width(), layout.height(), 1, 1);
@@ -52,7 +48,7 @@ public class HordeIrisAnimation implements AutoCloseable {
 		var memory = MemoryUtil.memAlloc(16);
 		long started = HordeRenderMetrics.begin(HordeRenderMetrics.Stage.IRIS_PREPARE, layout.words());
 		try {
-			memory.putInt(model.vertexCount()).putInt(model.frames()).putInt(layout.width()).putInt(0).flip();
+			memory.putInt(model.vertexCount()).putInt(model.geometryFrames()).putInt(layout.width()).putInt(0).flip();
 			try (GpuBuffer parameters = device.createBuffer(() -> "Horde Iris frame parameters", GpuBuffer.USAGE_UNIFORM, memory);
 			     var pass = device.createCommandEncoder().createRenderPass(() -> "Horde prepare Iris frames", view, OptionalInt.empty())) {
 				var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
@@ -75,8 +71,18 @@ public class HordeIrisAnimation implements AutoCloseable {
 		}
 	}
 
+	public static boolean precompile() {
+		return RenderSystem.getDevice().precompilePipeline(PREPARE).isValid();
+	}
+
 	public GpuTextureView view() {
 		return view;
+	}
+
+	@Override
+	public void close() {
+		view.close();
+		texture.close();
 	}
 
 	public record FrameLayout(int width, int height, long words) {
@@ -92,11 +98,5 @@ public class HordeIrisAnimation implements AutoCloseable {
 			}
 			return new FrameLayout(width, (int) rows, words);
 		}
-	}
-
-	@Override
-	public void close() {
-		view.close();
-		texture.close();
 	}
 }

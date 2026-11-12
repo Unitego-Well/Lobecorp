@@ -1,13 +1,12 @@
 package org.unitego.lobecorp.client.photon.model.project;
 
 import com.lowdragmc.photon.client.fx.FX;
+import com.mojang.logging.annotations.MethodsReturnNonnullByDefault;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import org.unitego.lobecorp.util.photon.compat.PhotonLosslessNbtUtil;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-
-import com.mojang.logging.annotations.MethodsReturnNonnullByDefault;
 
 /// 导出副本在已知模型上展开依赖，同时保留工程中对应FX原树的未知数据。
 @ParametersAreNonnullByDefault

@@ -29,7 +29,7 @@ import org.unitego.lobecorp.client.photon.runtime.QueenOwnedLaserEffects;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.registry.world.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 

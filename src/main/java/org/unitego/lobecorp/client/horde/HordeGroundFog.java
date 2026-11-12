@@ -1,10 +1,6 @@
 package org.unitego.lobecorp.client.horde;
 
-import com.lowdragmc.photon.client.light.DynamicLightManager;
-import com.lowdragmc.photon.client.light.FogProvider;
-import com.lowdragmc.photon.client.light.FogSink;
-import com.lowdragmc.photon.client.light.FogVolume;
-import com.lowdragmc.photon.client.light.PhotonLights;
+import com.lowdragmc.photon.client.light.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.phys.Vec3;
@@ -25,18 +21,6 @@ public class HordeGroundFog {
 	private static final List<Region> REGIONS = new ArrayList<>();
 	private static final List<VisibleRegion> ACTIVE = new ArrayList<>();
 	private static ClientLevel boundLevel;
-
-	private record Region(HordeClient.ClientHorde event, double station, double lateral, long seed, double distance) {
-	}
-
-	private static class VisibleRegion {
-		private Region region;
-		private float previous, weight;
-
-		private VisibleRegion(Region region) {
-			this.region = region;
-		}
-	}
 
 	public static void tick(List<HordeClient.ClientHorde> events) {
 		var minecraft = Minecraft.getInstance();
@@ -198,5 +182,17 @@ public class HordeGroundFog {
 		}
 		REGIONS.clear();
 		ACTIVE.clear();
+	}
+
+	private record Region(HordeClient.ClientHorde event, double station, double lateral, long seed, double distance) {
+	}
+
+	private static class VisibleRegion {
+		private Region region;
+		private float previous, weight;
+
+		private VisibleRegion(Region region) {
+			this.region = region;
+		}
 	}
 }

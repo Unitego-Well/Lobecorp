@@ -1,0 +1,40 @@
+package org.unitego.lobecorp.registry.world.block;
+
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredBlock;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.translation.LangHandler;
+
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
+
+public interface LcBlocks {
+	DeferredRegister.Blocks REGISTER = DeferredRegister.createBlocks(Lobecorp.NAMESPACE);
+
+	static void init(IEventBus iEventBus) {
+		REGISTER.register(iEventBus);
+	}
+
+	static <B extends Block> DeferredBlock<B> register(
+			DeferredRegister.Blocks register,
+			String name, String enUs, String zhCn,
+			Function<BlockBehaviour.Properties, ? extends B> func,
+			UnaryOperator<BlockBehaviour.Properties> properties
+	) {
+		DeferredBlock<B> holder = register.registerBlock(name, func, properties);
+		LangHandler.creates(register.getNamespace(), enUs, zhCn,
+				(langSet, txt) -> langSet.blockText(holder, txt));
+		return holder;
+	}
+
+	static <B extends Block> DeferredBlock<B> register(
+			DeferredRegister.Blocks register,
+			String name, String enUs, String zhCn,
+			Function<BlockBehaviour.Properties, ? extends B> func
+	) {
+		return register(register, name, enUs, zhCn, func, UnaryOperator.identity());
+	}
+}

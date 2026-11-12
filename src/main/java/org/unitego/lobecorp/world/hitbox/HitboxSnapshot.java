@@ -6,16 +6,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
-import org.unitego.lobecorp.world.hitbox.geometry.BoxRingCylinderSize;
-import org.unitego.lobecorp.world.hitbox.geometry.BoxSize;
-import org.unitego.lobecorp.world.hitbox.geometry.ConeSize;
-import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
-import org.unitego.lobecorp.world.hitbox.geometry.EllipsoidSize;
-import org.unitego.lobecorp.world.hitbox.geometry.HitboxShapeType;
-import org.unitego.lobecorp.world.hitbox.geometry.IHitboxSize;
-import org.unitego.lobecorp.world.hitbox.geometry.RingCylinderSize;
-import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
-import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
+import org.unitego.lobecorp.world.hitbox.geometry.*;
 
 /// 客户端调试渲染需要的完整判断框实例快照。
 ///
@@ -29,9 +20,6 @@ import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
 public record HitboxSnapshot(int id, IHitboxSize size, Vec3 position, Vec3 rotation, HitboxPurpose purpose,
                              boolean active,
                              int remainingTicks, @Nullable EntitySkillEffectDebugInfo entitySkillEffectDebugInfo) {
-	/// 判断框网络编码遇到未知尺寸类型时的错误前缀。
-	private static final String UNSUPPORTED_SIZE_PREFIX = "Unsupported hitbox size: ";
-
 	public static final StreamCodec<RegistryFriendlyByteBuf, HitboxSnapshot> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull HitboxSnapshot decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -69,6 +57,8 @@ public record HitboxSnapshot(int id, IHitboxSize size, Vec3 position, Vec3 rotat
 			}
 		}
 	};
+	/// 判断框网络编码遇到未知尺寸类型时的错误前缀。
+	private static final String UNSUPPORTED_SIZE_PREFIX = "Unsupported hitbox size: ";
 
 	/// 创建服务端实例的当前可见快照。
 	///

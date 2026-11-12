@@ -4,14 +4,6 @@ import java.util.Objects;
 
 /// 每个命名句柄独占周期位置；改时长保留归一化位置，暂停不累积待补时间。
 public class PhotonPlaybackClock {
-	public enum State {
-		PLAYING, PAUSED, HOLDING, STOPPED
-	}
-
-	public record Snapshot(double duration, double position, double anchor, double elapsed,
-	                       boolean looping, State state, State pausedState, boolean completionDelivered) {
-	}
-
 	private final boolean looping;
 	private double duration;
 	private double position;
@@ -20,10 +12,15 @@ public class PhotonPlaybackClock {
 	private State state = State.PLAYING;
 	private State pausedState = State.PLAYING;
 	private boolean completionDelivered;
-
 	public PhotonPlaybackClock(double duration, boolean looping) {
 		this.looping = looping;
 		duration(duration);
+	}
+
+	private static void finiteNonnegative(double value) {
+		if (!Double.isFinite(value) || value < 0) {
+			throw new IllegalArgumentException("命名播放时间必须有限且非负。");
+		}
 	}
 
 	public void duration(double value) {
@@ -153,9 +150,11 @@ public class PhotonPlaybackClock {
 		completionDelivered = snapshot.completionDelivered();
 	}
 
-	private static void finiteNonnegative(double value) {
-		if (!Double.isFinite(value) || value < 0) {
-			throw new IllegalArgumentException("命名播放时间必须有限且非负。");
-		}
+	public enum State {
+		PLAYING, PAUSED, HOLDING, STOPPED
+	}
+
+	public record Snapshot(double duration, double position, double anchor, double elapsed,
+	                       boolean looping, State state, State pausedState, boolean completionDelivered) {
 	}
 }

@@ -1,17 +1,12 @@
 package org.unitego.lobecorp.util.photon.render;
 
-import com.lowdragmc.photon.client.render.PhotonBufferCache;
-import com.lowdragmc.photon.client.render.PhotonInstancedDrawState;
-import com.lowdragmc.photon.client.render.PhotonMaskUniforms;
-import com.lowdragmc.photon.client.render.PhotonMaterialUniforms;
-import com.lowdragmc.photon.client.render.PhotonRenderTypes;
+import com.lowdragmc.photon.client.render.*;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.InstancedJob;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.Job;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
@@ -23,14 +18,10 @@ import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.IdentityHashMap;
-import java.util.OptionalDouble;
-import java.util.OptionalInt;
+import java.util.*;
 
 public class PhotonOcclusionDrawUtil {
 	/// Uniform 与采样器名称来自受支持的原生粒子着色器。

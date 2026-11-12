@@ -8,10 +8,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.attachment.ILcTransformTarget;
-import org.unitego.lobecorp.attachment.ILcAttachmentAnchor;
-import org.unitego.lobecorp.attachment.LcAttachments;
-import org.unitego.lobecorp.attachment.LcAttachmentBinding;
 import org.unitego.lobecorp.animation.behavior.LcRootMotion;
 import org.unitego.lobecorp.animation.definition.LcAnimationDefinition;
 import org.unitego.lobecorp.animation.player.LcAnimationTermination;
@@ -19,19 +15,12 @@ import org.unitego.lobecorp.animation.player.LcPlayerAnimationPolicy;
 import org.unitego.lobecorp.animation.pose.LcAnimationClip;
 import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import org.unitego.lobecorp.animation.pose.LcSkeleton;
-import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
+import org.unitego.lobecorp.attachment.*;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil.Event;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 /// 一次服务端权威播放；固定资源版本，运行期参数与显式内容修改仍可改变本实例。
@@ -95,6 +84,25 @@ public class LcAnimationInstance {
 		rawPose = sampled.pose();
 		poseOverrides = consumeOverrideRootChannels(sampled.overrides());
 		pose = consumeRootChannels(rawPose);
+	}
+
+	/// Java 修饰器只在服务端执行；声明骨骼同步最终绝对全部通道，不按数值变化猜测所有权。
+	private static LcSkeletalPose absoluteOverrides(Set<String> names, LcSkeletalPose modified) {
+		Map<String, LcTransform> bones = new LinkedHashMap<>();
+		Map<String, Vec3> rotations = new LinkedHashMap<>();
+
+		for (var name : names) {
+			bones.put(name, modified.get(name));
+			rotations.put(name, modified.rotationAngles(name));
+		}
+
+		return new LcSkeletalPose(bones, rotations);
+	}
+
+	private static Vec3 selectAxes(Vec3 value, Set<LcRootMotion.Axis> axes) {
+		return new Vec3(axes.contains(LcRootMotion.Axis.X) ? value.x : 0,
+				axes.contains(LcRootMotion.Axis.Y) ? value.y : 0,
+				axes.contains(LcRootMotion.Axis.Z) ? value.z : 0);
 	}
 
 	public UUID id() {
@@ -444,19 +452,6 @@ public class LcAnimationInstance {
 		return new SampleResult(sampled, absoluteOverrides(ownedBones, sampled));
 	}
 
-	/// Java 修饰器只在服务端执行；声明骨骼同步最终绝对全部通道，不按数值变化猜测所有权。
-	private static LcSkeletalPose absoluteOverrides(Set<String> names, LcSkeletalPose modified) {
-		Map<String, LcTransform> bones = new LinkedHashMap<>();
-		Map<String, Vec3> rotations = new LinkedHashMap<>();
-
-		for (var name : names) {
-			bones.put(name, modified.get(name));
-			rotations.put(name, modified.rotationAngles(name));
-		}
-
-		return new LcSkeletalPose(bones, rotations);
-	}
-
 	private LcSkeletalPose consumeOverrideRootChannels(LcSkeletalPose sampled) {
 		var root = definition.rootMotion();
 		return root != null && sampled.bones().containsKey(root.bone()) ? consumeRootChannels(sampled) : sampled;
@@ -465,9 +460,6 @@ public class LcAnimationInstance {
 	private void markVisualRevision() {
 		playbackRevision++;
 		startedTick = level.getGameTime();
-	}
-
-	private record SampleResult(LcSkeletalPose pose, LcSkeletalPose overrides) {
 	}
 
 	private double sampleTime(double seconds) {
@@ -521,12 +513,6 @@ public class LcAnimationInstance {
 		return new LcSkeletalPose(bones, sampled.eulerRotations());
 	}
 
-	private static Vec3 selectAxes(Vec3 value, Set<LcRootMotion.Axis> axes) {
-		return new Vec3(axes.contains(LcRootMotion.Axis.X) ? value.x : 0,
-				axes.contains(LcRootMotion.Axis.Y) ? value.y : 0,
-				axes.contains(LcRootMotion.Axis.Z) ? value.z : 0);
-	}
-
 	private void fireActions(double previousTime, double currentTime) {
 		double duration = clip.durationSeconds();
 		long firstCycle = clip.looping() && duration > 0 ? Math.max(0, (long) Math.floor(previousTime / duration)) : 0;
@@ -551,5 +537,8 @@ public class LcAnimationInstance {
 				break;
 			}
 		}
+	}
+
+	private record SampleResult(LcSkeletalPose pose, LcSkeletalPose overrides) {
 	}
 }

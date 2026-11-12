@@ -1,26 +1,22 @@
 package org.unitego.lobecorp.client.encounter.midnightcleanup;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.server.level.ParticleStatus;
-import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
-import java.util.Comparator;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.server.level.ParticleStatus;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.client.horde.HordeClient;
-import org.unitego.lobecorp.client.horde.HordeGroundCache;
-import org.unitego.lobecorp.client.horde.HordeGroundFog;
-import org.unitego.lobecorp.client.horde.HordeGroundParticles;
-import org.unitego.lobecorp.client.horde.HordeParticleFlow;
-import org.unitego.lobecorp.client.horde.HordeParticleSamples;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+import org.unitego.lobecorp.util.horde.HordePresenceUtil;
+import org.unitego.lobecorp.client.horde.*;
 import org.unitego.lobecorp.config.client.HordeVisualConfig;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 /// 聚合声源，以及由短时 CPU 粗略流场快照驱动的边界扬尘和潮内刀光。
 public class MidnightCleanupAmbient {
@@ -153,8 +149,8 @@ public class MidnightCleanupAmbient {
 				continue;
 			}
 			double time = event.time(0);
-			double head = Math.min(event.length, time * event.speed);
-			double tail = Math.max(0, (time - event.stop) * event.speed);
+			double head = HordePresenceUtil.head(time, event.speed, event.length);
+			double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
 			if (head <= tail) {
 				continue;
 			}
@@ -225,8 +221,8 @@ public class MidnightCleanupAmbient {
 			}
 
 			double time = event.time(0);
-			double head = Math.min(event.length, time * event.speed);
-			double tail = Math.max(0, (time - event.stop) * event.speed);
+			double head = HordePresenceUtil.head(time, event.speed, event.length);
+			double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
 			if (head <= tail) {
 				continue;
 			}
@@ -268,8 +264,8 @@ public class MidnightCleanupAmbient {
 
 		var random = level.getRandom();
 		double time = event.time(0);
-		double head = Math.min(event.length, time * event.speed);
-		double tail = Math.max(0, (time - event.stop) * event.speed);
+		double head = HordePresenceUtil.head(time, event.speed, event.length);
+		double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
 		double station = Math.clamp(event.tide.stationOf(soundCenter), tail, head);
 		var center = event.tide.world(station, 0);
 		var forward = event.tide.forward(station);
@@ -326,8 +322,8 @@ public class MidnightCleanupAmbient {
 			if (time >= event.stop + event.length / event.speed) {
 				continue;
 			}
-			double head = Math.clamp(time * event.speed, 0, event.length);
-			double tail = Math.clamp((time - event.stop) * event.speed, 0, head);
+			double head = HordePresenceUtil.head(time, event.speed, event.length);
+			double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
 			double station = Math.clamp(event.tide.particleStation(listener), tail, head);
 			var center = event.tide.world(station, 0);
 			var forward = event.tide.forward(station);
@@ -388,8 +384,8 @@ public class MidnightCleanupAmbient {
 			var snapshot = HordeParticleSamples.latest(event, time);
 			if (snapshot != null) {
 				for (var sample : snapshot.samples()) {
-					if (activeRow(event, time, sample.row()) && sample.inWave(Math.max(0, (time - event.stop) * event.speed),
-							Math.min(event.length, time * event.speed))
+					if (activeRow(event, time, sample.row()) && sample.inWave(HordePresenceUtil.tail(time, event.stop, event.speed, event.length),
+							HordePresenceUtil.head(time, event.speed, event.length))
 							&& withinParticleRange(sample.ground())) {
 						samples.add(new LocatedSample(event, time, sample));
 					}
@@ -546,9 +542,6 @@ public class MidnightCleanupAmbient {
 		}
 	}
 
-	private record LocatedSample(HordeClient.ClientHorde event, double time, HordeParticleSamples.Sample sample) {
-	}
-
 	public static void clear() {
 		stopSounds();
 		HordeGroundFog.clear();
@@ -565,6 +558,9 @@ public class MidnightCleanupAmbient {
 		nextSlashTick = 0;
 		selectedAreas = 0;
 		emittedParticles = 0;
+	}
+
+	private record LocatedSample(HordeClient.ClientHorde event, double time, HordeParticleSamples.Sample sample) {
 	}
 
 	/// 固定世界坐标的普通音效，只由现有入口持有并停止自身。

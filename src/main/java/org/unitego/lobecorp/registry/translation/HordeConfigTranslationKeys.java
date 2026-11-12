@@ -8,12 +8,15 @@ public interface HordeConfigTranslationKeys {
 	String VISUAL_COLUMN_SPACING = register("lobecorp.configuration.horde.visual.column_spacing", "Column spacing (blocks)", "横向间距（格）");
 	String VISUAL_MAX_VISIBLE = register("lobecorp.configuration.horde.visual.max_visible", "Maximum visible (-1: unlimited)", "同时显示上限（-1：无限）");
 	String VISUAL_DISTANCE = register("lobecorp.configuration.horde.visual.distance", "Display range in chunks (-1: view distance)", "显示范围（区块，-1：视野距离）");
+	String VISUAL_ADAPTIVE = register("lobecorp.configuration.horde.visual.adaptive", "Adaptive shaderpack routing", "光影分流实验");
+	String VISUAL_ADAPTIVE_IRIS_GROUPED_MOTION = register("lobecorp.configuration.horde.visual.adaptive.iris_grouped_motion", "Shaderpack grouped motion", "光影分组运动");
+	String VISUAL_LAYER_COUNT = register("lobecorp.configuration.horde.visual.layer_count", "B diagnostic layers (unvalidated; -1 off, 0 hidden)", "B诊断层数（未验收；-1不剔除，0不显示）");
 	String VISUAL_IRIS_WORKSET_WORDS = register("lobecorp.configuration.horde.visual.iris_workset_words", "Iris workset (MiWords)", "Iris工作集（MiWords）");
 	String VISUAL_IRIS_DOUBLE_BUFFER = register("lobecorp.configuration.horde.visual.iris_double_buffer", "Iris double buffering", "Iris双缓冲");
 	String VISUAL_IRIS_MERGE_MATERIALS = register("lobecorp.configuration.horde.visual.iris_merge_materials", "Merge Iris material passes", "合并Iris材质通道");
 	String VISUAL_REDUCE_HIDDEN_FACES = register("lobecorp.configuration.horde.visual.reduce_hidden_faces", "Remove covered model faces", "剔除模型隐藏面");
+	String VISUAL_ANIMATION_CYCLE = register("lobecorp.configuration.horde.visual.animation_cycle", "Cycle virtual unit animation", "循环播放虚拟单位动画");
 	String VISUAL_ANIMATION_FRAMES = register("lobecorp.configuration.horde.visual.animation_frames", "Uniform animation samples", "动画等距采样帧数");
-	String VISUAL_SINGLE_CARD_DISTANCE = register("lobecorp.configuration.horde.visual.single_card_distance", "Single card distance (blocks, -1 off)", "单方向片距离（格，-1：关闭）");
 	String VISUAL_FRAME_DISTANCE = register("lobecorp.configuration.horde.visual.frame_distance", "Frame reduction distance (blocks, -1 off, 0 static)", "帧距离（格，-1：不降低，0：不动）");
 	String VISUAL_SOUND = register("lobecorp.configuration.horde.visual.sound", "Aggregate sweeper sounds", "聚合清道夫音效");
 	String VISUAL_SOUND_VOICES = register("lobecorp.configuration.horde.visual.sound_voices", "Sound voices", "聚合声源上限");

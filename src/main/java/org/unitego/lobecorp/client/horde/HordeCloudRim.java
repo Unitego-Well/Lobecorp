@@ -76,12 +76,15 @@ public class HordeCloudRim {
 	}
 
 	/// CloudInfo、CloudFaces、原索引和动态矩阵由调用方当前RenderPass持有，不转移所有权。
-	public static void draw(RenderPass pass, Vec3 direction, float strength, float time, int cellX, int cellZ,
-	                        int baseVertex, int firstIndex, int indexCount, int instanceCount) {
+	public static void upload(Vec3 direction, float strength, float time, int cellX, int cellZ) {
 		memory.clear();
 		memory.putFloat((float) direction.x).putFloat(0).putFloat((float) direction.z).putFloat(strength);
 		memory.putFloat(time).putFloat(cellX).putFloat(cellZ).putFloat(0).flip();
 		RenderSystem.getDevice().createCommandEncoder().writeToBuffer(parameters.slice(), memory);
+	}
+
+	/// 当前云pass只绑定既有资源；参数已在该pass创建前上传。
+	public static void draw(RenderPass pass, int baseVertex, int firstIndex, int indexCount, int instanceCount) {
 		HordeIrisShadows.setNativePipeline(pass, HordeIrisShadows.reverseDepth() ? REVERSE : NORMAL);
 		pass.setUniform("RimParameters", parameters.slice());
 		pass.bindTexture("CloudMask", mask.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));

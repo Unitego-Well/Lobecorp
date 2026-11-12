@@ -1,20 +1,11 @@
 package org.unitego.lobecorp.util.photon.performance;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.TypeAdapter;
+import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonWriter;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Aggregate;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Capture;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Event;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mark;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Node;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.*;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -24,15 +15,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 /// 冻结数据的本地导出；不在渲染线程序列化工程，不将环形保留窗口的分位称为全会话分位。
 public class PhotonPerformanceReportUtil {
+	public static final String SCHEMA = "lobecorp_photon_performance_v1";
 	private static final Gson GSON = new GsonBuilder().serializeNulls().registerTypeAdapter(Event.class, new TypeAdapter<Event>() {
 		@Override
 		public void write(JsonWriter writer, Event event) throws IOException {
@@ -83,15 +70,6 @@ public class PhotonPerformanceReportUtil {
 	private static final double NS_PER_MS = 1_000_000d;
 	private static final double NS_PER_US = 1_000d;
 	private static final int TOP_ROWS = 30;
-	public static final String SCHEMA = "lobecorp_photon_performance_v1";
-
-	public record Frames(JsonObject summary, int count, long originNs, long[] heads, long[] intervals,
-	                     long[] minecraft, long[] cpu, long[] gpu, long[] allocations, int[] widths, int[] heights,
-	                     int[] flags, int[] phases, int[] intervalPhases, int[] limits, String[] throttleReasons) {
-	}
-
-	private record Key(long thread, int node, Stage stage) {
-	}
 
 	public static Path write(Path directory, Capture capture, Frames frames, JsonObject environment,
 	                         List<JsonObject> gpuSamples) throws IOException {
@@ -325,7 +303,6 @@ public class PhotonPerformanceReportUtil {
 		}
 	}
 
-
 	private static void writeOutliers(Path path, Capture capture) throws IOException {
 		try (var writer = new JsonWriter(writer(path))) {
 			writer.beginObject().name("displayTimeUnit").value("ms").name("traceEvents").beginArray();
@@ -464,5 +441,13 @@ public class PhotonPerformanceReportUtil {
 			writer.write('"');
 		}
 		writer.newLine();
+	}
+
+	public record Frames(JsonObject summary, int count, long originNs, long[] heads, long[] intervals,
+	                     long[] minecraft, long[] cpu, long[] gpu, long[] allocations, int[] widths, int[] heights,
+	                     int[] flags, int[] phases, int[] intervalPhases, int[] limits, String[] throttleReasons) {
+	}
+
+	private record Key(long thread, int node, Stage stage) {
 	}
 }

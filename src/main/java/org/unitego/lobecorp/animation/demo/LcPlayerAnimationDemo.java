@@ -77,7 +77,7 @@ public class LcPlayerAnimationDemo {
 		private final String command;
 		private final Identifier definitionId;
 
-		private Mode(String command, Identifier definitionId) {
+		Mode(String command, Identifier definitionId) {
 			this.command = command;
 			this.definitionId = definitionId;
 		}

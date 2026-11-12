@@ -1,11 +1,11 @@
 package org.unitego.lobecorp.client.hud.status;
 
 import net.minecraft.client.Minecraft;
-import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 import net.minecraft.client.player.LocalPlayer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.api.LcDamageType;
+import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 import org.unitego.lobecorp.client.hud.status.bar.HealthBarComponent;
 import org.unitego.lobecorp.client.hud.status.bar.RationalityBarComponent;
 import org.unitego.lobecorp.client.hud.status.bar.ShieldBarComponent;
@@ -39,32 +39,6 @@ public class PlayerStatusHudView extends ContainerHudRenderer {
 		components.addAll(shields);
 		for (var component : components) {
 			add(component);
-		}
-	}
-
-	/// 刷新当帧数值与可见性；必须在绘制前调用。
-	public void prepare(@Nullable LocalPlayer player, int screenWidth, int screenHeight, float delta) {
-		setSize(screenWidth, screenHeight);
-		setVisible(true);
-		frameLayout = layout(screenWidth, screenHeight, player);
-
-		for (int index = 0; index < components.size(); index++) {
-			var slot = frameLayout.slots().get(index);
-			components.get(index).setPosition(slot.left(), slot.top());
-			components.get(index).setVisible(slot.visible());
-			components.get(index).updateFrameVisibility(slot.visible());
-		}
-
-		for (var component : components) {
-			component.prepare(player, delta);
-		}
-	}
-
-	public void clear() {
-		frameLayout = null;
-		setVisible(false);
-		for (var component : components) {
-			component.clear();
 		}
 	}
 
@@ -108,5 +82,31 @@ public class PlayerStatusHudView extends ContainerHudRenderer {
 		}
 
 		return bars;
+	}
+
+	/// 刷新当帧数值与可见性；必须在绘制前调用。
+	public void prepare(@Nullable LocalPlayer player, int screenWidth, int screenHeight, float delta) {
+		setSize(screenWidth, screenHeight);
+		setVisible(true);
+		frameLayout = layout(screenWidth, screenHeight, player);
+
+		for (int index = 0; index < components.size(); index++) {
+			var slot = frameLayout.slots().get(index);
+			components.get(index).setPosition(slot.left(), slot.top());
+			components.get(index).setVisible(slot.visible());
+			components.get(index).updateFrameVisibility(slot.visible());
+		}
+
+		for (var component : components) {
+			component.prepare(player, delta);
+		}
+	}
+
+	public void clear() {
+		frameLayout = null;
+		setVisible(false);
+		for (var component : components) {
+			component.clear();
+		}
 	}
 }

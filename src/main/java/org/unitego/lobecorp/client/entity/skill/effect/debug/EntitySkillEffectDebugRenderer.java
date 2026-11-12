@@ -9,11 +9,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.debug.DebugValueAccess;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
-import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 import org.unitego.lobecorp.registry.translation.DebugTranslationKeys;
-import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
+import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectDebugInfo;
 import org.unitego.lobecorp.world.hitbox.HitboxSnapshot;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 
 public class EntitySkillEffectDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
 	/// 技能实体文本的最大渲染距离平方。

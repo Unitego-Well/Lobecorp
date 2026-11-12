@@ -16,19 +16,19 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.world.entity.combat.CombatEvents;
-import org.unitego.lobecorp.util.entity.combat.CombatUtil;
-import org.unitego.lobecorp.world.entity.EntityCorpse;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
+import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
 import org.unitego.lobecorp.particle.damage.DamageParticles;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
+import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
-import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.combat.CombatEvents;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 
@@ -40,6 +40,7 @@ public class LivingEntityEvents {
 			event.setCanceled(true);
 		}
 	}
+
 	@SubscribeEvent
 	public static void onEntityTick(EntityTickEvent.Post event) {
 		if (event.getEntity() instanceof LivingEntity livingEntity && !livingEntity.level().isClientSide()) {

@@ -1,14 +1,14 @@
 package org.unitego.lobecorp.client.photon.performance;
 
 import com.google.gson.JsonNull;
-import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.blaze3d.systems.RenderSystem;
 import org.jetbrains.annotations.Nullable;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceGpuStatsUtil;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL33;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceGpuStatsUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -192,20 +192,20 @@ public class PhotonPerformanceGpu {
 	}
 
 	private static class Queries {
-		private int[] ids = new int[SLOTS * 2];
-		private byte[] states = new byte[SLOTS];
-		private int[] frames = new int[SLOTS];
-		private int[] owners = new int[SLOTS];
-		private long[] serials = new long[SLOTS];
-		private long[] parents = new long[SLOTS];
-		private long[] cpuBegins = new long[SLOTS];
-		private long[] cpuEnds = new long[SLOTS];
-		private boolean[] shared = new boolean[SLOTS];
+		private final int[] ids = new int[SLOTS * 2];
+		private final byte[] states = new byte[SLOTS];
+		private final int[] frames = new int[SLOTS];
+		private final int[] owners = new int[SLOTS];
+		private final long[] serials = new long[SLOTS];
+		private final long[] parents = new long[SLOTS];
+		private final long[] cpuBegins = new long[SLOTS];
+		private final long[] cpuEnds = new long[SLOTS];
+		private final boolean[] shared = new boolean[SLOTS];
 		private long currentToken;
-		private PhotonPerformanceGpuStatsUtil stats = new PhotonPerformanceGpuStatsUtil();
-		private String[] passes = new String[SLOTS];
-		private boolean[] completed = new boolean[SLOTS];
-		private List<JsonObject> samples = new ArrayList<>();
+		private final PhotonPerformanceGpuStatsUtil stats = new PhotonPerformanceGpuStatsUtil();
+		private final String[] passes = new String[SLOTS];
+		private final boolean[] completed = new boolean[SLOTS];
+		private final List<JsonObject> samples = new ArrayList<>();
 		private boolean ready;
 		private int bits;
 		private int frame;

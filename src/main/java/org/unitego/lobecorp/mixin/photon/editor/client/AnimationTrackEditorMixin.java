@@ -2,8 +2,8 @@ package org.unitego.lobecorp.mixin.photon.editor.client;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
@@ -13,11 +13,11 @@ import com.lowdragmc.photon.client.fx.timeline.AnimatedPropertyType;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
 import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
+import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.AnimationTrackUIState;
 import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
-import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,28 +27,36 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.unitego.lobecorp.client.photon.editor.PhotonTimelinePanAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonCurveViewAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
-import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
-import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
-import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonTimelinePanAccess;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
+import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonTimelineClipboardUtil;
-import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.util.photon.editor.PhotonCurveEasingUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonCurveEditUtil;
+import org.unitego.lobecorp.util.photon.editor.PhotonScaleCurveUtil;
 
-import java.util.HashSet;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 
 @Mixin(AnimationTrackEditor.class)
 @SuppressWarnings("FieldMayBeFinal")
 public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess {
+	/// GUI 像素：超过此距离后区分点击与拖动，并确定 Shift 锁定轴。
+	@Unique
+	private static final float DRAG_AXIS_THRESHOLD = 3f;
+	@Unique
+	private Map<AnimatedProperty, Float> lobecorp$viewOffsets = new WeakHashMap<>();
+	@Unique
+	private Set<AnimatedProperty> lobecorp$initializedRanges = Collections.newSetFromMap(new WeakHashMap<>());
+	@Unique
+	private Map<AnimationTrackUIState, CurveGesture> lobecorp$gestures = new WeakHashMap<>();
+	@Unique
+	private boolean lobecorp$lockTick;
+
 	@WrapOperation(method = {"openAddExprClipMenu", "openColorClipMenu"}, at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/gui/editor/view/timeline/AnimationTrackEditor;canPasteInto(Lcom/lowdragmc/photon/client/fx/timeline/AnimatedProperty;)Z"))
 	private boolean lobecorp$canPasteKeys(AnimationTrackEditor editor, AnimatedProperty property, Operation<Boolean> original,
@@ -122,18 +130,6 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		return original.call(ctx, track, state, destTick);
 	}
 
-	/// GUI 像素：超过此距离后区分点击与拖动，并确定 Shift 锁定轴。
-	@Unique
-	private static final float DRAG_AXIS_THRESHOLD = 3f;
-	@Unique
-	private Map<AnimatedProperty, Float> lobecorp$viewOffsets = new WeakHashMap<>();
-	@Unique
-	private Set<AnimatedProperty> lobecorp$initializedRanges = Collections.newSetFromMap(new WeakHashMap<>());
-	@Unique
-	private Map<AnimationTrackUIState, CurveGesture> lobecorp$gestures = new WeakHashMap<>();
-	@Unique
-	private boolean lobecorp$lockTick;
-
 	@Shadow
 	private float[] effectiveRange(AnimatedProperty property) {
 		throw new AssertionError();
@@ -148,16 +144,6 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@Shadow
 	private void noteRecordingEdit(TimelineContext ctx, Track track, AnimationTrackUIState st) {
 		throw new AssertionError();
-	}
-
-	private static class CurveGesture {
-		private Vector2f origin;
-		private int axis;
-		private boolean moved;
-		private Set<Long> clickSelection;
-		private boolean copyOnEnd;
-		private Set<Long> copyKeys;
-		private Map<Long, Vector2f> linkedOrigins = Map.of();
 	}
 
 	@WrapMethod(method = "addProperty")
@@ -183,7 +169,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	private int lobecorp$addScaleKeys(AnimatedProperty property, int axis, float tick, float value, Operation<Integer> original,
 	                                  @Local(argsOnly = true, name = "ctx") TimelineContext ctx) {
 		int inserted = PhotonScaleCurveUtil.supports(property)
-				&& PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.SCALE_LINK_FEATURE)
+				&& PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.SCALE_LINK_FEATURE)
 				? PhotonScaleCurveUtil.addLinkedKey(property, axis, tick, value, () -> original.call(property, axis, tick, value))
 				: original.call(property, axis, tick, value);
 		if (inserted >= 0) {
@@ -233,7 +219,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@Inject(method = "buildExpandedRight", at = @At("HEAD"))
 	private void lobecorp$initializeRange(TimelineContext ctx, Track track, TrackUIState state,
 	                                      CallbackInfoReturnable<UIElement> cir) {
-		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.FIT_VIEW_FEATURE)) {
+		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.FIT_VIEW_FEATURE)) {
 			return;
 		}
 
@@ -257,7 +243,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 		boolean[] panning = {false};
 		var last = new Vector2f();
 		container.addEventListener(UIEvents.MOUSE_DOWN, event -> {
-			if (!PhotonEditorTools.enabled(container, PhotonEditorTranslations.CURVE_PAN_FEATURE)) {
+			if (!PhotonEditorTools.enabled(container, PhotonEditorTranslationKeys.CURVE_PAN_FEATURE)) {
 				return;
 			}
 
@@ -319,7 +305,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 		var gesture = new CurveGesture();
 		gesture.origin = new Vector2f(origin);
-		if (PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.SCALE_LINK_FEATURE)) {
+		if (PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.SCALE_LINK_FEATURE)) {
 			gesture.linkedOrigins = PhotonScaleCurveUtil.dragOrigins(property,
 					((AnimationTrackUIStateAccessor) st).lobecorp$getSelectedKeys(), axis, key, handle);
 		}
@@ -330,13 +316,13 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 	@WrapMethod(method = "onKeyframeMouseDown")
 	private void lobecorp$startShiftDrag(TimelineContext ctx, UIEvent e, AnimationTrack track, AnimatedProperty property,
 	                                     AnimationTrackUIState st, int axis, int index, UIElement el, Operation<Void> original) {
-		boolean shift = PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.AXIS_LOCK_FEATURE)
+		boolean shift = PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.AXIS_LOCK_FEATURE)
 				&& e.button == GLFW.GLFW_MOUSE_BUTTON_LEFT && e.isShiftDown() && !e.isCtrlDown() && !track.lock();
 		AnimationTrackUIStateAccessor access = (AnimationTrackUIStateAccessor) st;
 		Set<Long> before = shift ? new HashSet<>(access.lobecorp$getSelectedKeys()) : null;
 		original.call(ctx, e, track, property, st, axis, index, el);
 		if (e.button == GLFW.GLFW_MOUSE_BUTTON_LEFT && e.isAltDown() && !e.isCtrlDown()
-				&& !e.isShiftDown() && !track.lock() && PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.PRECISE_FEATURE)) {
+				&& !e.isShiftDown() && !track.lock() && PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.PRECISE_FEATURE)) {
 			var gesture = lobecorp$gestures.get(st);
 			if (gesture != null) {
 				gesture.copyOnEnd = true;
@@ -363,7 +349,7 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 
 	@WrapMethod(method = "onCurveDrag")
 	private void lobecorp$lockCurveAxis(TimelineContext ctx, UIEvent e, AnimationTrackUIState st, Operation<Void> original) {
-		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslations.AXIS_LOCK_FEATURE)) {
+		if (!PhotonEditorTools.enabled(ctx.editor(), PhotonEditorTranslationKeys.AXIS_LOCK_FEATURE)) {
 			original.call(ctx, e, st);
 			return;
 		}
@@ -509,5 +495,15 @@ public abstract class AnimationTrackEditorMixin implements PhotonCurveViewAccess
 			}
 			ctx.refreshLaneLayout();
 		}
+	}
+
+	private static class CurveGesture {
+		private Vector2f origin;
+		private int axis;
+		private boolean moved;
+		private Set<Long> clickSelection;
+		private boolean copyOnEnd;
+		private Set<Long> copyKeys;
+		private Map<Long, Vector2f> linkedOrigins = Map.of();
 	}
 }

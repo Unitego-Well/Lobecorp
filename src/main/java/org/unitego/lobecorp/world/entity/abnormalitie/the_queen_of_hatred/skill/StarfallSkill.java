@@ -1,14 +1,14 @@
 package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
+import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.effect.QueenStarfallEffect;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
-import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectManager;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.effect.QueenStarfallEffect;
-import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
 
 /// 前摇结束锁定星陨区域；效果独立于施放实例，后摇完成即可继续行动。
 public class StarfallSkill extends EntitySkill<TheQueenOfHatred> {

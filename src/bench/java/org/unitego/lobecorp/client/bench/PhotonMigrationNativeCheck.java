@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.bench;
 
+import org.unitego.lobecorp.util.photon.editor.PhotonFxPackExportUtil;
 import com.google.gson.JsonObject;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXRuntime;
@@ -26,7 +27,6 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
 import org.unitego.lobecorp.client.photon.editor.PhotonCompositionProjectAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
-import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
@@ -182,8 +182,8 @@ public class PhotonMigrationNativeCheck implements AutoCloseable {
 				.map(FXInstanceObject.class::cast).findFirst().orElseThrow();
 		require(expected.getPlacement() != null && expected.getPlacement().isPlaced(), "instance_source_not_placed");
 		try {
-			var archive = PhotonModelPackExportUtil.capture("lobecorp", "migration_instance_fixture", restored,
-					Platform.getFrozenRegistry(), false);
+			var archive = PhotonFxPackExportUtil.capture("lobecorp", "migration_instance_fixture", restored,
+					Platform.getFrozenRegistry());
 			require(archive.definitions().containsKey("assets/lobecorp/fx/migration_instance_fixture.fx"), "instance_export_root_missing");
 			var sourceId = Objects.requireNonNull(expected.getFx(), "instance_source_missing");
 			var sourcePath = "assets/" + sourceId.getNamespace() + "/fx/" + sourceId.getPath() + ".fx";

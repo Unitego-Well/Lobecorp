@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.unitego.lobecorp.util.photon.material.PhotonMaterialPreparationUtil;
 
-@Mixin(value = ResourceInstance.class, remap = false)
+@Mixin(value = ResourceInstance.class)
 public abstract class ResourceInstanceMixin {
 	@Inject(method = "getResource", at = @At("RETURN"), require = 1)
 	private void lobecorp$countFileWithoutDefault(IResourcePath path, CallbackInfoReturnable<Object> cir) {

@@ -9,14 +9,6 @@ import java.util.UUID;
 
 /// 父轨道窗口与独立播放时长分别保存，受控子片段不借用独立时钟。
 public class PhotonChildClip extends Clip {
-	public enum Mode {
-		CONTROLLED, INDEPENDENT
-	}
-
-	public enum Completion {
-		INHERIT, HOLD, RELEASE
-	}
-
 	public UUID id = UUID.randomUUID();
 	public String animation = "";
 	public Mode mode = Mode.CONTROLLED;
@@ -24,7 +16,6 @@ public class PhotonChildClip extends Clip {
 	public double playbackDuration = -1;
 	public List<Input> inputs = List.of();
 	private CompoundTag source = new CompoundTag();
-
 	public PhotonChildClip(double start, double duration, float speed) {
 		super(start, duration, speed);
 	}
@@ -61,5 +52,13 @@ public class PhotonChildClip extends Clip {
 		result.inputs = List.copyOf(inputs);
 		result.source = source.copy();
 		return result;
+	}
+
+	public enum Mode {
+		CONTROLLED, INDEPENDENT
+	}
+
+	public enum Completion {
+		INHERIT, HOLD, RELEASE
 	}
 }

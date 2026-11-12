@@ -11,19 +11,85 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /// 有界 CPU 粒子代表点快照：按未分割浪潮采样，不代表 GPU 实际脚点。
 public class HordeParticleSamples implements AutoCloseable {
-    public static final int CAPACITY = HordeParticleFlow.SAMPLE_LIMIT;
-    private static final long CAPTURE_INTERVAL_NANOS = 100_000_000L;
-    private static final long MAX_AGE_NANOS = 150_000_000L;
-    private static final double MAX_AGE_TICKS = 3;
-    private static final ConcurrentHashMap<UUID, HordeParticleSamples> ACTIVE = new ConcurrentHashMap<>();
-    private static final AtomicLong GENERATION = new AtomicLong();
-    private volatile boolean closed;
-    private volatile @Nullable Snapshot snapshot;
-    private HordeClient.ClientHorde owner;
-    private long lastCapture;
-    private long captureGeneration = -1;
-    private long captureSerial;
-    private final HordeParticleFlow flow = new HordeParticleFlow();
+	public static final int CAPACITY = HordeParticleFlow.SAMPLE_LIMIT;
+	private static final long CAPTURE_INTERVAL_NANOS = 100_000_000L;
+	private static final long MAX_AGE_NANOS = 150_000_000L;
+	private static final double MAX_AGE_TICKS = 3;
+	private static final ConcurrentHashMap<UUID, HordeParticleSamples> ACTIVE = new ConcurrentHashMap<>();
+	private static final AtomicLong GENERATION = new AtomicLong();
+	private final HordeParticleFlow flow = new HordeParticleFlow();
+	private volatile boolean closed;
+	private volatile @Nullable Snapshot snapshot;
+	private HordeClient.ClientHorde owner;
+	private long lastCapture;
+	private long captureGeneration = -1;
+	private long captureSerial;
+
+	/// 返回不过期且不晚于调用方事件时钟的快照；无证据、卸载或重载均返回null。
+	public static @Nullable Snapshot latest(HordeClient.ClientHorde event, double eventTime) {
+		var source = ACTIVE.get(event.id);
+		if (source == null || source.closed || source.owner != event) {
+			return null;
+		}
+		var value = source.snapshot;
+		return value != null && value.fresh(eventTime, System.nanoTime())
+				&& value.generation() == GENERATION.get() ? value : null;
+	}
+
+	public static void invalidate() {
+		GENERATION.incrementAndGet();
+		for (var source : ACTIVE.values()) {
+			source.snapshot = null;
+			source.flow.clear();
+		}
+		ACTIVE.clear();
+	}
+
+	/// 客户端事件独立10 Hz采样；保留旧批次参数签名，不依赖可见绘制。
+	public void capture(HordeClient.ClientHorde event, double time, long serial,
+	                    long firstRow, int firstColumn, int columns) {
+		var tide = event.tide;
+		long now = System.nanoTime();
+		if (closed || tide == null) {
+			return;
+		}
+
+		if (owner != event || captureGeneration != GENERATION.get()) {
+			if (owner != null) {
+				ACTIVE.remove(owner.id, this);
+			}
+			flow.clear();
+			snapshot = null;
+			lastCapture = 0;
+			owner = event;
+			captureGeneration = GENERATION.get();
+		}
+
+		if (now - lastCapture < CAPTURE_INTERVAL_NANOS) {
+			return;
+		}
+
+		ACTIVE.put(event.id, this);
+		lastCapture = now;
+		var minecraft = Minecraft.getInstance();
+		var player = minecraft.player;
+		var camera = player != null ? player.position() : minecraft.gameRenderer.getMainCamera().position();
+		var field = new HordeParticleFlow.Field(tide, event.origin, List.of(), time, event.speed,
+				event.stop, event.columns, event.rowSpacing(),
+				event.columnSpacing(), event.entityHeight);
+		var samples = flow.sample(field, camera, ++captureSerial);
+		snapshot = new Snapshot(event.id, time, serial, captureGeneration, now, samples);
+	}
+
+	@Override
+	public void close() {
+		closed = true;
+		snapshot = null;
+		flow.clear();
+		if (owner != null) {
+			ACTIVE.remove(owner.id, this);
+		}
+	}
 
 	/// 位序为纵横偏移(-1,-1)至(1,1)，跳过中心；位值来自未分割浪潮包络的邻域探针。
 	/// 不依赖稀疏代表点的身份邻接；出生前仅核对活动波带、距离和已加载区块。
@@ -52,96 +118,30 @@ public class HordeParticleSamples implements AutoCloseable {
 			return envelope != null && envelope.contains(point);
 		}
 
-        public boolean inWave(double tail, double head) {
-            return Double.isFinite(station) && Double.isFinite(tail) && Double.isFinite(head)
-                    && station >= tail && station <= head;
-        }
+		public boolean inWave(double tail, double head) {
+			return Double.isFinite(station) && Double.isFinite(tail) && Double.isFinite(head)
+					&& station >= tail && station <= head;
+		}
 
-        public boolean interior() {
-            return occupancyMask == 255;
-        }
+		public boolean interior() {
+			return occupancyMask == 255;
+		}
 
-        public boolean boundary() {
-            return !interior();
-        }
-    }
+		public boolean boundary() {
+			return !interior();
+		}
+	}
 
-    public record Snapshot(UUID eventId, double eventTime, long drawSerial, long generation,
-                           long capturedNanos, List<Sample> samples) {
-        public Snapshot {
-            samples = List.copyOf(samples);
-        }
+	public record Snapshot(UUID eventId, double eventTime, long drawSerial, long generation,
+	                       long capturedNanos, List<Sample> samples) {
+		public Snapshot {
+			samples = List.copyOf(samples);
+		}
 
-        public boolean fresh(double currentTime, long nowNanos) {
-            double age = currentTime - eventTime;
-            long elapsed = nowNanos - capturedNanos;
-            return Double.isFinite(age) && age >= 0 && age <= MAX_AGE_TICKS && elapsed >= 0 && elapsed <= MAX_AGE_NANOS;
-        }
-    }
-
-    /// 返回不过期且不晚于调用方事件时钟的快照；无证据、卸载或重载均返回null。
-    public static @Nullable Snapshot latest(HordeClient.ClientHorde event, double eventTime) {
-        var source = ACTIVE.get(event.id);
-        if (source == null || source.closed || source.owner != event) {
-            return null;
-        }
-        var value = source.snapshot;
-        return value != null && value.fresh(eventTime, System.nanoTime())
-                && value.generation() == GENERATION.get() ? value : null;
-    }
-
-    public static void invalidate() {
-        GENERATION.incrementAndGet();
-        for (var source : ACTIVE.values()) {
-            source.snapshot = null;
-            source.flow.clear();
-        }
-        ACTIVE.clear();
-    }
-
-    /// 客户端事件独立10 Hz采样；保留旧批次参数签名，不依赖可见绘制。
-    public void capture(HordeClient.ClientHorde event, double time, long serial,
-                        long firstRow, int firstColumn, int columns) {
-        var tide = event.tide;
-        long now = System.nanoTime();
-	    if (closed || tide == null) {
-		    return;
-	    }
-
-	    if (owner != event || captureGeneration != GENERATION.get()) {
-		    if (owner != null) {
-			    ACTIVE.remove(owner.id, this);
-		    }
-		    flow.clear();
-		    snapshot = null;
-		    lastCapture = 0;
-		    owner = event;
-		    captureGeneration = GENERATION.get();
-	    }
-
-	    if (now - lastCapture < CAPTURE_INTERVAL_NANOS) {
-		    return;
-	    }
-
-	    ACTIVE.put(event.id, this);
-	    lastCapture = now;
-	    var minecraft = Minecraft.getInstance();
-	    var player = minecraft.player;
-	    var camera = player != null ? player.position() : minecraft.gameRenderer.getMainCamera().position();
-	    var field = new HordeParticleFlow.Field(tide, event.origin, List.of(), time, event.speed,
-                event.stop, event.columns, event.rowSpacing(),
-                event.columnSpacing(), event.entityHeight);
-	    var samples = flow.sample(field, camera, ++captureSerial);
-	    snapshot = new Snapshot(event.id, time, serial, captureGeneration, now, samples);
-    }
-
-    @Override
-    public void close() {
-        closed = true;
-        snapshot = null;
-        flow.clear();
-        if (owner != null) {
-            ACTIVE.remove(owner.id, this);
-        }
-    }
+		public boolean fresh(double currentTime, long nowNanos) {
+			double age = currentTime - eventTime;
+			long elapsed = nowNanos - capturedNanos;
+			return Double.isFinite(age) && age >= 0 && age <= MAX_AGE_TICKS && elapsed >= 0 && elapsed <= MAX_AGE_NANOS;
+		}
+	}
 }

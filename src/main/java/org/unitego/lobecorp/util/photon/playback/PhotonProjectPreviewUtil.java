@@ -4,12 +4,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 
 import java.io.IOException;
 import java.util.UUID;
-
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion;
 
 /// 工程测试字段独立于FXData，保持原树和身份；发布定义与运行包不读取此字段。
 public class PhotonProjectPreviewUtil {

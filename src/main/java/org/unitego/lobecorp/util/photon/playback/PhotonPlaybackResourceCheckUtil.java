@@ -22,9 +22,6 @@ import java.util.List;
 
 /// 开发态只读内存检查；逐项返回失败，不通过受保护文件入口，也不把准备成功算成G1。
 public class PhotonPlaybackResourceCheckUtil {
-	public record Result(String source, String kind, boolean passed, String detail) {
-	}
-
 	public static List<Result> inspect(Path root) throws IOException {
 		var results = new ArrayList<Result>();
 
@@ -147,5 +144,8 @@ public class PhotonPlaybackResourceCheckUtil {
 		} else if (!expected.equals(actual)) {
 			throw new IllegalStateException("往返字段变化：" + expected + " -> " + actual);
 		}
+	}
+
+	public record Result(String source, String kind, boolean passed, String detail) {
 	}
 }

@@ -5,12 +5,10 @@ import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 
 import java.util.List;
 import java.util.Optional;
-
-import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
-
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 

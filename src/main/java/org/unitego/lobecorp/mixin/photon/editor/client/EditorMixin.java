@@ -1,18 +1,18 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TreeList;
-import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorSettings;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonEditorSettings;
+import org.unitego.lobecorp.registry.translation.photon.visual.PhotonVisualQualityTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
-import org.unitego.lobecorp.registry.translation.photon.visual.PhotonVisualQualityTranslations;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -60,7 +60,7 @@ public abstract class EditorMixin {
 			var element = pending.removeFirst();
 
 			if (element instanceof TreeList<?> tree) {
-				tree.setNodeUISupplier(TreeList.textTemplate(node -> PhotonVisualQualityTranslations.navigation(node.toString())));
+				tree.setNodeUISupplier(TreeList.textTemplate(node -> PhotonVisualQualityTranslationKeys.navigation(node.toString())));
 			} else {
 				pending.addAll(element.getChildren());
 			}

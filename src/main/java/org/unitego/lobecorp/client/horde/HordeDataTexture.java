@@ -4,12 +4,20 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 
+import java.util.Objects;
+import org.unitego.lobecorp.config.HordePathVariant;
 import java.util.function.IntUnaryOperator;
 
 /// RGBA8保存原始32位字；整数直接提交，不经过可能改变NaN位模式的浮点转换。
+@SuppressWarnings("ClassCanBeRecord")
 public class HordeDataTexture implements AutoCloseable {
 	private static final int ROW_WIDTH = 1024;
 	private final DynamicTexture texture;
+
+	///
+	public HordeDataTexture(DynamicTexture texture) {
+		this.texture = texture;
+	}
 
 	public HordeDataTexture(String label, float[] values) {
 		this(label, values.length, index -> Float.floatToRawIntBits(values[index]));
@@ -46,7 +54,33 @@ public class HordeDataTexture implements AutoCloseable {
 		updateWords(first, length, index -> values[source + index]);
 	}
 
+	private static int rawWord(NativeImage image, int index, int width) {
+		int argb = image.getPixel(index % width, index / width);
+		// 公共getPixel返回ARGB；数据上传采用ABGR原始字，比较前还原红蓝顺序。
+		return (argb & 0xff00ff00) | ((argb & 255) << 16) | ((argb >>> 16) & 255);
+	}
+
 	private void updateWords(int first, int length, IntUnaryOperator words) {
+		if (HordePathVariant.optimized()) {
+			var image = texture.getPixels();
+			int width = image.getWidth();
+			int low = 0, high = length;
+			while (low < high && rawWord(image, first + low, width) == words.applyAsInt(low)) {
+				low++;
+			}
+			while (high > low && rawWord(image, first + high - 1, width) == words.applyAsInt(high - 1)) {
+				high--;
+			}
+			if (low > 0 || high < length) {
+				int offset = low;
+				updateRange(first + low, high - low, index -> words.applyAsInt(offset + index));
+				return;
+			}
+		}
+		updateRange(first, length, words);
+	}
+
+	private void updateRange(int first, int length, IntUnaryOperator words) {
 		if (length <= 0) {
 			return;
 		}
@@ -66,6 +100,9 @@ public class HordeDataTexture implements AutoCloseable {
 
 		// 覆盖区只分首段、完整行矩形和尾段三次提交，避免逐行产生碎片命令。
 		int x = first % width;
+		if (HordePathVariant.optimized()) {
+			HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, (long) length * Integer.BYTES);
+		}
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		int copied = 0;
 		if (x != 0) {
@@ -85,12 +122,37 @@ public class HordeDataTexture implements AutoCloseable {
 		}
 	}
 
-	public DynamicTexture texture() {
-		return texture;
-	}
 
 	@Override
 	public void close() {
 		texture.close();
 	}
+
+	public DynamicTexture texture() {
+		return texture;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == this) {
+			return true;
+		}
+		if (obj == null || obj.getClass() != this.getClass()) {
+			return false;
+		}
+		var that = (HordeDataTexture) obj;
+		return Objects.equals(this.texture, that.texture);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(texture);
+	}
+
+	@Override
+	public String toString() {
+		return "HordeDataTexture[" +
+				"texture=" + texture + ']';
+	}
+
 }

@@ -4,9 +4,9 @@ import com.geckolib.model.GeoModel;
 import com.geckolib.renderer.base.GeoRenderState;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperVariant;
-import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 
 import java.util.Map;
 

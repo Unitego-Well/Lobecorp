@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.bench.PhotonRunMatrixCapture;
 
-@Mixin(value = Minecraft.class, remap = false)
+@Mixin(value = Minecraft.class)
 public class PhotonRunMinecraftMixin {
 	@Inject(method = "renderFrame", at = @At("HEAD"))
 	private void lobecorp$runBeforeFrame(boolean advanceGameTime, CallbackInfo callback) {

@@ -2,17 +2,17 @@ package org.unitego.lobecorp.mixin.photon.render.client;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.client.photon.render.PhotonOcclusionAccess;
-import org.unitego.lobecorp.config.photon.PhotonOcclusionConfig;
-import org.unitego.lobecorp.client.photon.render.PhotonViewDepthSortAccess;
-import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
-import org.unitego.lobecorp.config.photon.PhotonFixedRenderSettings;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
+import org.unitego.lobecorp.client.photon.render.PhotonOcclusionAccess;
+import org.unitego.lobecorp.client.photon.render.PhotonViewDepthSortAccess;
+import org.unitego.lobecorp.config.photon.PhotonFixedRenderSettings;
+import org.unitego.lobecorp.config.photon.PhotonOcclusionConfig;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 import java.util.Objects;
 
@@ -20,19 +20,17 @@ import java.util.Objects;
 @SuppressWarnings("unused")
 public abstract class RendererSettingMixin implements PhotonViewDepthSortAccess, PhotonOcclusionAccess, PhotonFixedRenderAccess {
 	@Unique
-	@Persisted
-	private boolean lobecorp$viewDepthSort;
-
-	@Unique
 	@Persisted(subPersisted = true)
 	private final PhotonOcclusionConfig lobecorp$occlusion = new PhotonOcclusionConfig();
-
-	@Unique
-	@Persisted
-	private boolean lobecorp$fixedRendering;
 	@Unique
 	@Configurable(name = PhotonTranslationKeys.PHOTON_FIXED_RENDER_KEY, subConfigurable = true, persisted = false)
 	private final PhotonFixedRenderSettings lobecorp$fixedRenderSettings = new PhotonFixedRenderSettings((RendererSetting) (Object) this);
+	@Unique
+	@Persisted
+	private boolean lobecorp$viewDepthSort;
+	@Unique
+	@Persisted
+	private boolean lobecorp$fixedRendering;
 
 	@Override
 	public void lobecorp$useFixedRendering() {

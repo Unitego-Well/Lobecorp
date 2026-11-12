@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonPreviewTimeAccess;
 
-@Mixin(value = PhotonParticleManager.class, remap = false)
+@Mixin(value = PhotonParticleManager.class)
 public abstract class PhotonParticleManagerMixin implements PhotonPreviewTimeAccess {
 	@Shadow
 	private boolean isPlaying;

@@ -2,26 +2,26 @@ package org.unitego.lobecorp.events;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
-import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.event.EntitySkillEvent;
-import org.unitego.lobecorp.world.horde.Hordes;
-import org.unitego.lobecorp.world.horde.HordeSavedData;
+import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
-import org.unitego.lobecorp.util.horde.HordeCleanupUtil;
+import org.unitego.lobecorp.world.horde.HordeSavedData;
+import org.unitego.lobecorp.api.horde.Hordes;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class HordeGameplayEvents {
 	@SubscribeEvent(priority = EventPriority.LOWEST)
 	public static void onDeath(LivingDeathEvent event) {
 		if (!event.isCanceled() && event.getEntity().level() instanceof ServerLevel level) {
-            HordeCleanupUtil.markDeath(event.getEntity(), event.getSource().getEntity());
-            HordeRuntime.get(level.getServer()).death(event.getEntity());
+			HordeCleanupUtil.markDeath(event.getEntity(), event.getSource().getEntity());
+			HordeRuntime.get(level.getServer()).death(event.getEntity());
 		}
 	}
 

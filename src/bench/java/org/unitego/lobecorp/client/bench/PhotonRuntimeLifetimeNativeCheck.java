@@ -9,10 +9,7 @@ import com.zhongbai233.bench.api.neoforge.client.BenchClientContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.runtime.QueenBeamEffects;
-import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
-import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
 
 import java.lang.management.ManagementFactory;
 import java.lang.ref.WeakReference;
@@ -28,7 +25,6 @@ public class PhotonRuntimeLifetimeNativeCheck {
 	private final JsonObject report = new JsonObject();
 	private final JsonArray cases = new JsonArray();
 	private final List<Throwable> failures = new ArrayList<>();
-	private WeakReference<Object> releasedSampler;
 
 	public static void verify(BenchClientContext context, String label) throws Exception {
 		if (!Boolean.getBoolean(ENABLED_PROPERTY)) {
@@ -43,11 +39,8 @@ public class PhotonRuntimeLifetimeNativeCheck {
 		check.report.addProperty("start_nano_time", System.nanoTime());
 		check.runCase("disconnect_clear_preserves_mouse_state", check::clearControls);
 		check.runCase("queen_runtime_holders_cleared", check::clearQueen);
-		check.runCase("isolated_resource_cache_reuse_and_clear", check::resourceCache);
 		check.runCase("owned_runtime_destroy_and_reference_release", check::runtimes);
-		check.runCase("embedded_dead_key_purge", check::purgeEmbedded);
 		check.report.add("cases", check.cases);
-		check.report.add("cache_after", caches());
 		check.report.addProperty("passed", check.failures.isEmpty());
 		check.report.addProperty("end_nano_time", System.nanoTime());
 		context.artifacts().write(label + "-runtime-lifetime-native.json", "application/json", check.report.toString());
@@ -83,29 +76,9 @@ public class PhotonRuntimeLifetimeNativeCheck {
 		equal(state, QueenBeamEffects.retentionStatistics());
 	}
 
-	private void resourceCache() throws Exception {
-		var fx = effect();
-		var model = fx.getFxData().objects().stream().filter(PhotonModelOutput.class::isInstance)
-				.map(PhotonModelOutput.class::cast)
-				.filter(value -> value.config.source == PhotonModelOutputConfig.Source.RESOURCE && value.config.resource != null)
-				.findFirst().orElseThrow(() -> new IllegalStateException("real resource model unavailable"));
-		var cache = new PhotonModelSourceUtil.ResourcePreparationCache();
-		equal(0, cache.statistics().entries());
-		var provider = Minecraft.getInstance().getResourceManager();
-		var first = cache.prepare(provider, model.config.resource, model.config.flipObjV);
-		var second = cache.prepare(provider, model.config.resource, model.config.flipObjV);
-		equal(true, first == second);
-		equal(1, cache.statistics().entries());
-		equal(1, cache.statistics().liveValues());
-		releasedSampler = new WeakReference<>(first.sampler());
-		cache.clear();
-		equal(0, cache.statistics().entries());
-		equal(0, cache.statistics().liveValues());
-		report.addProperty("resource_cache_scope", "isolated real-resource cache, not a global resource reload or GPU cleanup");
-	}
+
 
 	private void runtimes() {
-		report.add("cache_before", caches());
 		var baseline = collect();
 		var state = create(effect());
 		var held = collect();
@@ -131,7 +104,6 @@ public class PhotonRuntimeLifetimeNativeCheck {
 		memory.addProperty("gc_observed", gcObserved);
 		memory.addProperty("release_status", collected == state.references.size() ? "collected"
 				: gcObserved ? "still_reachable_under_probe" : "unknown_gc_not_observed");
-		memory.addProperty("isolated_sampler_collected", releasedSampler == null ? null : releasedSampler.get() == null);
 		memory.addProperty("net_model_retained_bytes", "unknown: heap deltas are not exclusive retained sizes");
 		report.add("memory", memory);
 		if (gcObserved && collected != state.references.size()) {
@@ -139,21 +111,7 @@ public class PhotonRuntimeLifetimeNativeCheck {
 		}
 	}
 
-	private void purgeEmbedded() {
-		var before = PhotonModelSourceUtil.preparationStatistics();
-		QueenBeamEffects.clear();
-		var after = PhotonModelSourceUtil.preparationStatistics();
-		var purge = new JsonObject();
-		purge.add("before", cache(before.embedded()));
-		purge.add("after", cache(after.embedded()));
-		purge.addProperty("resource_cache_unchanged", before.resources().equals(after.resources()));
-		report.add("embedded_purge", purge);
-		equal(before.resources(), after.resources());
-		equal(after.embedded().liveValues(), after.embedded().entries());
-		if (after.embedded().liveValues() == 0) {
-			equal(0L, after.embedded().keyBytes());
-		}
-	}
+
 
 	private static FX effect() {
 		return Objects.requireNonNull(FXHelper.getFX(Identifier.parse("lobecorp:the_queen_of_hatred/laser")),
@@ -209,27 +167,8 @@ public class PhotonRuntimeLifetimeNativeCheck {
 		return result;
 	}
 
-	private static JsonObject caches() {
-		var state = PhotonModelSourceUtil.preparationStatistics();
-		var result = new JsonObject();
-		result.add("embedded", cache(state.embedded()));
-		result.add("resources", cache(state.resources()));
-		return result;
-	}
 
-	private static JsonObject cache(PhotonModelSourceUtil.CacheStatistics state) {
-		var result = new JsonObject();
-		result.addProperty("entries", state.entries());
-		result.addProperty("live_values", state.liveValues());
-		if (state.keyBytes() < 0) {
-			result.addProperty("key_bytes_status", "not_measured");
-		} else {
-			result.addProperty("key_bytes", state.keyBytes());
-			result.addProperty("key_bytes_scope", "embedded NBT keys only; excludes prepared model and native/GPU memory");
-		}
 
-		return result;
-	}
 
 	private void runCase(String name, CaseBody body) {
 		var result = new JsonObject();

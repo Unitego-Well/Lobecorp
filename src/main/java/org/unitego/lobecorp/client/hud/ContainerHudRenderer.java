@@ -1,8 +1,7 @@
 package org.unitego.lobecorp.client.hud;
 
-import org.jspecify.annotations.NullMarked;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,10 +9,6 @@ import java.util.List;
 /// 子元素使用父级原始浮点坐标，最终绘制时才应用继承的对齐策略。
 @NullMarked
 public class ContainerHudRenderer extends BasicHudRenderer {
-	public enum Layout {FREE, VERTICAL, HORIZONTAL}
-
-	public enum Anchor {START, CENTER, END}
-
 	private final List<BasicHudRenderer> children = new ArrayList<>();
 	private Layout layout = Layout.FREE;
 	private float gap;
@@ -22,6 +17,14 @@ public class ContainerHudRenderer extends BasicHudRenderer {
 	private boolean autoSize;
 	private Anchor horizontalAnchor = Anchor.START;
 	private Anchor verticalAnchor = Anchor.START;
+
+	private static float offset(Anchor anchor, float available, float size) {
+		return switch (anchor) {
+			case START -> 0;
+			case CENTER -> (available - size) / 2;
+			case END -> available - size;
+		};
+	}
 
 	public void add(BasicHudRenderer child) {
 		if (child == this || child.getParent() != null) {
@@ -121,11 +124,7 @@ public class ContainerHudRenderer extends BasicHudRenderer {
 		}
 	}
 
-	private static float offset(Anchor anchor, float available, float size) {
-		return switch (anchor) {
-			case START -> 0;
-			case CENTER -> (available - size) / 2;
-			case END -> available - size;
-		};
-	}
+	public enum Layout {FREE, VERTICAL, HORIZONTAL}
+
+	public enum Anchor {START, CENTER, END}
 }

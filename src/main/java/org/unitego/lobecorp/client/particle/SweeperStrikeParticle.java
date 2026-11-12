@@ -1,10 +1,12 @@
 package org.unitego.lobecorp.client.particle;
 
+import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.client.particle.SpriteSet;
+import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
@@ -29,6 +31,11 @@ public class SweeperStrikeParticle extends SingleQuadParticle {
 		this.setSize(COLLISION_SIZE, COLLISION_SIZE);
 		this.roll = roll;
 		this.oRoll = roll;
+	}
+
+	@Override
+	public void extract(QuadParticleRenderState renderState, Camera camera, float partialTick) {
+		super.extract(EntityForegroundParticles.state(), camera, partialTick);
 	}
 
 	@Override

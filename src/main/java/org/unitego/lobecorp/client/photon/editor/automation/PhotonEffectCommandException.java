@@ -1,6 +1,22 @@
 package org.unitego.lobecorp.client.photon.editor.automation;
 
 public class PhotonEffectCommandException extends RuntimeException {
+	private final Code code;
+
+	public PhotonEffectCommandException(Code code) {
+		super(code.message);
+		this.code = code;
+	}
+
+	public PhotonEffectCommandException(Code code, String detail) {
+		super(code.message + " " + detail);
+		this.code = code;
+	}
+
+	public String code() {
+		return code.name();
+	}
+
 	public enum Code {
 		INVALID_ARGUMENT("参数类型、取值或路径无效。"),
 		NO_PROJECT("没有可用的特效工程，请先创建工程或打开编辑器。"),
@@ -26,21 +42,5 @@ public class PhotonEffectCommandException extends RuntimeException {
 		private Code(String message) {
 			this.message = message;
 		}
-	}
-
-	private final Code code;
-
-	public PhotonEffectCommandException(Code code) {
-		super(code.message);
-		this.code = code;
-	}
-
-	public PhotonEffectCommandException(Code code, String detail) {
-		super(code.message + " " + detail);
-		this.code = code;
-	}
-
-	public String code() {
-		return code.name();
 	}
 }

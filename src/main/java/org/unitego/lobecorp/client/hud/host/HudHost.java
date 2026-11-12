@@ -16,10 +16,10 @@ import java.util.function.Consumer;
 @NullMarked
 public final class HudHost implements IHudHost, ModularHudLayer {
 	private final Consumer<HudFrame> prepareAction;
-	private @Nullable SpecialRoot specialRoot;
-	private @Nullable Consumer<HudFrame> specialAfterRender;
 	private final Runnable releaseAction;
 	private final UIElement root;
+	private @Nullable SpecialRoot specialRoot;
+	private @Nullable Consumer<HudFrame> specialAfterRender;
 	private @Nullable ModularUI modularUI;
 	private boolean released;
 

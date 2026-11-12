@@ -9,15 +9,16 @@ import org.unitego.lobecorp.util.horde.HordeTimingUtil;
 import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.List;
 
 public class MidnightCleanupDisplay implements IEncounterDisplay {
 
 	private final Set<UUID> started = new HashSet<>();
 	private final Set<UUID> closed = new HashSet<>();
 	private final Set<UUID> visible = new HashSet<>();
+
 	public static List<HordeClient.ClientHorde> instances() {
 		return HordeClient.events().stream().filter(instance -> instance.presentationEnabled
 				&& MidnightCleanupEncounter.ID.equals(instance.profile)).toList();
@@ -28,6 +29,9 @@ public class MidnightCleanupDisplay implements IEncounterDisplay {
 		if (!body.getBooleanOr("opening", true)) {
 			closed.add(instance);
 			EncounterHud.INSTANCE.hide(instance);
+			MidnightCleanupMusic.finish(instance);
+		} else if (!closed.contains(instance)) {
+			MidnightCleanupMusic.start(instance);
 		}
 		MidnightCleanupCinematic.receive(instance, body);
 	}
@@ -56,7 +60,9 @@ public class MidnightCleanupDisplay implements IEncounterDisplay {
 			if (!started.contains(event.id) && station / event.speed - time > MidnightCleanupEncounter.ARRIVAL_WARNING_TICKS) {
 				continue;
 			}
-			started.add(event.id);
+			if (started.add(event.id)) {
+				MidnightCleanupMusic.start(event.id);
+			}
 			if (EncounterHud.INSTANCE.show(MidnightCleanupEncounter.ID, event.id) instanceof MidnightCleanupHud hud) {
 				hud.update(remaining, time);
 			}
@@ -65,10 +71,12 @@ public class MidnightCleanupDisplay implements IEncounterDisplay {
 			if (!active.contains(id)) {
 				EncounterHud.INSTANCE.hide(id);
 				MidnightCleanupAtmosphere.remove(id);
+				MidnightCleanupMusic.remove(id);
 			}
 		}
 		visible.clear();
 		visible.addAll(active);
+		MidnightCleanupMusic.tick();
 	}
 
 	@Override
@@ -77,6 +85,7 @@ public class MidnightCleanupDisplay implements IEncounterDisplay {
 		visible.clear();
 		started.clear();
 		closed.clear();
+		MidnightCleanupMusic.clear();
 		MidnightCleanupAmbient.clear();
 		MidnightCleanupSky.clear();
 		MidnightCleanupCinematic.clear();

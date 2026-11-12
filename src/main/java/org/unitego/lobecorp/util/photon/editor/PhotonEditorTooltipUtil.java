@@ -9,17 +9,17 @@ import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTooltipTranslations;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTooltipTranslationKeys;
 
 import java.util.function.Supplier;
 
 /// 扩展选项的悬浮说明，复用 LDLib2 原生配置行提示图标。
 public class PhotonEditorTooltipUtil {
 	/// 配置标签对应的悬浮说明翻译后缀。
-	public static final String TOOLTIP_SUFFIX = PhotonEditorTooltipTranslations.TOOLTIP_SUFFIX;
+	public static final String TOOLTIP_SUFFIX = PhotonEditorTooltipTranslationKeys.TOOLTIP_SUFFIX;
 
 	public static boolean hasTooltip(String name) {
-		return PhotonEditorTooltipTranslations.hasTooltip(name);
+		return PhotonEditorTooltipTranslationKeys.hasTooltip(name);
 	}
 
 	public static void apply(Configurator configurator, String name) {

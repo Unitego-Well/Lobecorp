@@ -41,6 +41,12 @@ public record LcPlayerAnimationPolicy(Map<Identifier, Double> sources, Set<Strin
 		return new LcPlayerAnimationPolicy(Map.of(), Set.of(), Set.of(), 1, 0, IMMEDIATE, false);
 	}
 
+	private static void requireWeight(double value) {
+		if (!Double.isFinite(value) || value < 0 || value > 1) {
+			throw new IllegalArgumentException(INVALID_WEIGHT);
+		}
+	}
+
 	public LcPlayerAnimationPolicy withSources(Map<Identifier, Double> values) {
 		return new LcPlayerAnimationPolicy(values, bones, channels, weight, priority, transitions, firstPersonArms);
 	}
@@ -86,11 +92,5 @@ public record LcPlayerAnimationPolicy(Map<Identifier, Double> sources, Set<Strin
 		TRANSLATION,
 		ROTATION,
 		SCALE
-	}
-
-	private static void requireWeight(double value) {
-		if (!Double.isFinite(value) || value < 0 || value > 1) {
-			throw new IllegalArgumentException(INVALID_WEIGHT);
-		}
 	}
 }

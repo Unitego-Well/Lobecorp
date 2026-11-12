@@ -1,0 +1,56 @@
+package org.unitego.lobecorp.registry.world.entity;
+
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.projectile.MagicStarProjectile;
+
+public interface AbnormalitieEntityTypes {
+	DeferredRegister.Entities REGISTER = DeferredRegister.createEntities(Lobecorp.NAMESPACE);
+
+	//region ZAYIN
+
+	//endregion
+
+	//region TETH
+
+	//endregion
+
+	//region HE
+
+	//endregion
+
+	//region WAW
+
+	DeferredHolder<EntityType<?>, EntityType<TheQueenOfHatred>> THE_QUEEN_OF_HATRED = LcEntityTypes.register(REGISTER,
+			"the_queen_of_hatred", "The Queen Of Hatred", "憎恶皇后",
+			TheQueenOfHatred::new, MobCategory.CREATURE, b -> b
+					.sized(0.6F, 1.8F)
+					.eyeHeight(1.62F));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_NORMAL_STAR = LcEntityTypes.register(REGISTER,
+			"magic_normal_star", "Magic Normal Star", "魔法普通星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_HOMING_STAR = LcEntityTypes.register(REGISTER,
+			"magic_homing_star", "Magic Homing Star", "魔法追踪星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
+	DeferredHolder<EntityType<?>, EntityType<MagicStarProjectile>> MAGIC_BURST_STAR = LcEntityTypes.register(REGISTER,
+			"magic_burst_star", "Magic Burst Star", "魔法爆裂星星",
+			MagicStarProjectile::new, MobCategory.MISC, b -> b.sized(
+					MagicStarProjectile.StarSize.TINY.width(), MagicStarProjectile.StarSize.TINY.width()));
+
+	//endregion
+
+	//region ALEPH
+
+	//endregion
+
+	static void init(IEventBus iEventBus) {
+		REGISTER.register(iEventBus);
+	}
+}

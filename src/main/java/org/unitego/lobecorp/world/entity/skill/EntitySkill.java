@@ -2,7 +2,7 @@ package org.unitego.lobecorp.world.entity.skill;
 
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
-import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
+import org.unitego.lobecorp.registry.world.entity.skill.LcEntitySkillGroups;
 
 import java.util.Set;
 

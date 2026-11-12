@@ -29,8 +29,6 @@ public record ConductorEntityDataSyncPayload(int entityId, UUID entityUuid, Chan
                                              ConductorAbilityState abilities, List<AbilityChange> abilityChanges)
 		implements IToClientPayload {
 	public static final Type<ConductorEntityDataSyncPayload> TYPE = Lobecorp.type("conductor_entity_data_sync");
-	private static final StreamCodec<RegistryFriendlyByteBuf, ConductorAbilityState> ABILITIES_CODEC =
-			ByteBufCodecs.fromCodecWithRegistries(ConductorAbilityState.CODEC);
 	public static final StreamCodec<RegistryFriendlyByteBuf, ConductorEntityDataSyncPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull ConductorEntityDataSyncPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -126,6 +124,8 @@ public record ConductorEntityDataSyncPayload(int entityId, UUID entityUuid, Chan
 			}
 		}
 	};
+	private static final StreamCodec<RegistryFriendlyByteBuf, ConductorAbilityState> ABILITIES_CODEC =
+			ByteBufCodecs.fromCodecWithRegistries(ConductorAbilityState.CODEC);
 
 	public static ConductorEntityDataSyncPayload full(Entity entity, @Nullable ConductorUnitData unit,
 	                                                  ConductorAbilityState abilities) {

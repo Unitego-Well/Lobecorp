@@ -13,13 +13,12 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
-
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 
 /// 独占子FX及随机数；模拟和渲染仍由原生粒子宿主驱动，没有第二次手动tick。
 public class PhotonSpawnInstance implements IEffectExecutor {
@@ -27,9 +26,7 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	private final PhotonChildSpawner owner;
 	private final FXRuntime runtime;
 	private final @Nullable PhotonRuntimeFactory.Lease lease;
-	private boolean disposed;
 	private final IEffectExecutor delegate;
-	private RandomSource random;
 	private final PhotonSpawnOverrides overrides;
 	private final Vector3f offset;
 	private final Vector3f origin;
@@ -43,6 +40,8 @@ public class PhotonSpawnInstance implements IEffectExecutor {
 	private final boolean inheritScale;
 	private final float speed;
 	private final int lifetime;
+	private boolean disposed;
+	private final RandomSource random;
 	private double age;
 	private boolean started;
 	private long generation;

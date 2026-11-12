@@ -14,12 +14,7 @@ import org.unitego.lobecorp.client.animation.LcClientAnimations;
 import org.unitego.lobecorp.registry.client.animation.LcPlayerPoseSources;
 import org.unitego.lobecorp.util.animation.LcAnimationDebugUtil;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 只在状态提取时采样；重复模型设置共享冻结帧和各实际模型的过渡起点。
 public class LcPlayerAnimationRuntime {
@@ -29,17 +24,17 @@ public class LcPlayerAnimationRuntime {
 	private static Object modelGeneration = GeckoLibResources.getBakedModels();
 	private static Object animationGeneration = GeckoLibResources.getBakedAnimations();
 
-    /// 没有手臂策略时不构造独立玩家状态，仍按原规则清理空播放历史与资源代次。
-    public static boolean firstPersonRequested(Player player) {
-        refreshResources();
-        if (LcClientAnimations.hasPlayerAnimation(player.getId(), true)) {
-            return true;
-        }
-        if (!LcClientAnimations.hasPlayerAnimation(player.getId(), false)) {
-            HISTORIES.remove(player.getUUID());
-        }
-        return false;
-    }
+	/// 没有手臂策略时不构造独立玩家状态，仍按原规则清理空播放历史与资源代次。
+	public static boolean firstPersonRequested(Player player) {
+		refreshResources();
+		if (LcClientAnimations.hasPlayerAnimation(player.getId(), true)) {
+			return true;
+		}
+		if (!LcClientAnimations.hasPlayerAnimation(player.getId(), false)) {
+			HISTORIES.remove(player.getUUID());
+		}
+		return false;
+	}
 
 	public static void prepare(Player player, AvatarRenderState state, float partialTick) {
 		if (!((Object) state instanceof GeoRenderState geoState)) {
@@ -131,9 +126,9 @@ public class LcPlayerAnimationRuntime {
 
 	/// 每个实际模型独立保存姿态；盔甲模型不复用主玩家模型的枢轴或可变字段。
 	public static class ModelHistory {
+		public final Map<UUID, LayerHistory> layers = new HashMap<>();
 		public @Nullable LcPlayerModelPose displayed;
 		public @Nullable LcPlayerPoseFrame frame;
-		public final Map<UUID, LayerHistory> layers = new HashMap<>();
 	}
 
 	public record LayerHistory(long revision, boolean stopped, LcPlayerPoseContribution origin,

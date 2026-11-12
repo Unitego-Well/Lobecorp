@@ -9,6 +9,7 @@ import org.unitego.lobecorp.generator.lang.EnUsLangGenerator;
 import org.unitego.lobecorp.generator.lang.ZhCnLangGenerator;
 import org.unitego.lobecorp.generator.tag.DamageTypeTagGenerator;
 import org.unitego.lobecorp.generator.tag.EntityTypeTagGenerator;
+import org.unitego.lobecorp.generator.tag.EntitySkillTagGenerator;
 import org.unitego.lobecorp.registry.translation.TranslationRegistry;
 
 import java.util.concurrent.CompletableFuture;
@@ -16,16 +17,30 @@ import java.util.concurrent.CompletableFuture;
 @SuppressWarnings("UnusedReturnValue")
 public class ModGenerator {
 	public static void gatherData(GatherDataEvent.Client event) {
-		TranslationRegistry.export();
-		build(event, EnUsLangGenerator::new);
-		build(event, ZhCnLangGenerator::new);
-		build(event, ParticleGenerator::new);
-		build(event, ItemModelProvider::new);
 		CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
 		DataGenerator generator = event.getGenerator();
 		PackOutput packOutput = generator.getPackOutput();
-		build(event, new EntityTypeTagGenerator(packOutput, lookupProvider));
-		build(event, new DamageTypeTagGenerator(packOutput, lookupProvider));
+		client(event, lookupProvider, generator, packOutput);
+		server(event, lookupProvider, generator, packOutput);
+	}
+
+	private static void server(GatherDataEvent.Client event, CompletableFuture<HolderLookup.Provider> lookupProvider, DataGenerator generator, PackOutput packOutput) {
+		build(event, new CityDimensionGenerator(packOutput));
+		var damageTypes = new DamageTypeGenerator(packOutput, lookupProvider);
+		generator.addProvider(true, damageTypes);
+		var registries = damageTypes.getRegistryProvider();
+		build(event, new EntityTypeTagGenerator(packOutput, registries));
+		build(event, new DamageTypeTagGenerator(packOutput, registries));
+		build(event, new EntitySkillTagGenerator(packOutput, registries));
+	}
+
+	private static void client(GatherDataEvent.Client event, CompletableFuture<HolderLookup.Provider> lookupProvider, DataGenerator generator, PackOutput packOutput) {
+		TranslationRegistry.init();
+		build(event, EnUsLangGenerator::new);
+		build(event, ZhCnLangGenerator::new);
+		build(event, ParticleGenerator::new);
+		build(event, SoundGenerator::new);
+		build(event, ItemModelProvider::new);
 	}
 
 	public static <T extends DataProvider> T build(GatherDataEvent event, DataProvider provider) {

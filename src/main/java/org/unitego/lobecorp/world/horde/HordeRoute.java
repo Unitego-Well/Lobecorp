@@ -1,37 +1,29 @@
 package org.unitego.lobecorp.world.horde;
 
-import net.minecraft.core.BlockPos;
-import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-
-import java.util.BitSet;
-import java.util.ArrayDeque;
-import java.util.HashSet;
-import java.util.Set;
-
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.util.horde.HordeSamplingUtil;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.UnaryOperator;
 
-import net.minecraft.nbt.DoubleTag;
-
-/// 中心线与弧长固定；未加载样本暂存输入高度，区块就绪或方块更新后按预算校正。
+/// 逻辑站程及XZ中心线固定；未加载样本暂存输入高度，区块就绪或方块更新后按预算校正。
 public class HordeRoute {
 	private static final int HEIGHT_GROUPS_PER_TICK = 2;
-	private static final int HEIGHT_NODE_STRIDE = 16;
-	private static final double HEIGHT_SAMPLE_SPACING = 16;
+	private static final double HEIGHT_SAMPLE_SPACING = 1;
 	private static final double SAMPLE_SPACING = 1;
 	private static final int MAX_NODES = 8192;
 	// 固定XZ线路的查询包围组；高度更新不影响二维距离下界。
 	private static final int SEARCH_NODE_STRIDE = 32;
-	private final List<SearchBounds> searchBounds;
+	private List<SearchBounds> searchBounds;
+	private long geometryRevision;
 	private final List<Node> nodes;
 	private final double length;
 	private final Long2ObjectOpenHashMap<IntArrayList> samplesByGroup = new Long2ObjectOpenHashMap<>();
@@ -67,6 +59,62 @@ public class HordeRoute {
 			throw new IllegalArgumentException("起点与终点之间需要有效线路");
 		}
 		return new HordeRoute(nodes);
+	}
+
+	private static long heightGroup(double x, double z) {
+		return BlockPos.asLong((int) Math.floor(x) >> 4, 0, (int) Math.floor(z) >> 4);
+	}
+
+	public static Vec3 ground(ServerLevel level, Vec3 point) {
+		BlockPos pos = BlockPos.containing(point);
+		if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) {
+			return null;
+		}
+		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
+		return new Vec3(point.x, y, point.z);
+	}
+
+	public static HordeRoute load(CompoundTag tag) {
+		var nodes = new ArrayList<Node>();
+		for (var element : tag.getListOrEmpty("nodes")) {
+			if (element instanceof CompoundTag node && nodes.size() < MAX_NODES) {
+				nodes.add(Node.load(node));
+			}
+		}
+		if (nodes.size() < 2) {
+			throw new IllegalArgumentException("路线缺少节点");
+		}
+		var route = new HordeRoute(nodes);
+		// 旧存档的稀疏横向样本先展开，再由已加载区块逐组校正为逐格高度。
+		int columns = (int) Math.ceil(nodes.getFirst().width / HEIGHT_SAMPLE_SPACING) + 1;
+		for (var node : nodes) {
+			if (node.heights.length == columns) {
+				continue;
+			}
+			var heights = new double[columns];
+			for (int column = 0; column < columns; column++) {
+				heights[column] = node.height((column / (double) (columns - 1) - 0.5) * node.width);
+			}
+			node.heights = heights;
+			node.revision++;
+		}
+		route.heightColumns = nodes.getFirst().heightCount();
+		for (int index = 0; index < nodes.size(); index++) {
+			var node = nodes.get(index);
+			if (node.heightCount() != route.heightColumns) {
+				throw new IllegalArgumentException("线路高度列数不一致");
+			}
+			var forward = route.nodeDirection(index);
+			for (int column = 0; column < node.heights.length; column++) {
+				double lateral = (column / (double) (node.heights.length - 1) - 0.5) * node.width;
+				long key = heightGroup(node.position.x - forward.z * lateral, node.position.z + forward.x * lateral);
+				route.samplesByGroup.computeIfAbsent(key, _ -> new IntArrayList()).add(index * route.heightColumns + column);
+			}
+		}
+		// 存档中的高度可能来自尚未加载区块的临时坐标，加载后重新核对。
+		route.queuedGroups.addAll(route.samplesByGroup.keySet());
+		route.dirtyGroups.addAll(route.queuedGroups);
+		return route;
 	}
 
 	public double length() {
@@ -165,14 +213,6 @@ public class HordeRoute {
 		return List.copyOf(result);
 	}
 
-	private record SearchBounds(int first, int last, double minX, double maxX, double minZ, double maxZ) {
-		private double distanceSqr(Vec3 position) {
-			double dx = Math.max(0, Math.max(minX - position.x, position.x - maxX));
-			double dz = Math.max(0, Math.max(minZ - position.z, position.z - maxZ));
-			return dx * dx + dz * dz;
-		}
-	}
-
 	public int segment(double station) {
 		int low = 0;
 		int high = nodes.size() - 2;
@@ -203,16 +243,13 @@ public class HordeRoute {
 		samplesByGroup.clear();
 		dirtyGroups.clear();
 		queuedGroups.clear();
-		double sampleWidth = HordeSamplingUtil.groundSampleWidth(rules.width(), rules.regionMargin());
+		double sampleWidth = Math.ceil(HordeSamplingUtil.groundSampleWidth(rules.width(), rules.regionMargin()));
 		heightColumns = (int) Math.ceil(sampleWidth / HEIGHT_SAMPLE_SPACING) + 1;
 		for (var node : nodes) {
 			node.width = sampleWidth;
 			node.heights = new double[heightColumns];
 		}
 		for (int index = 0; index < nodes.size(); index++) {
-			if (index % HEIGHT_NODE_STRIDE != 0 && index != nodes.size() - 1) {
-				continue;
-			}
 			Node node = nodes.get(index);
 			Vec3 ground = sampler.apply(node.position);
 			if (ground == null) {
@@ -245,9 +282,6 @@ public class HordeRoute {
 			node.position = ground;
 			node.width = sampleWidth;
 			node.heights = heights;
-		}
-		for (int first = 0; first + 1 < nodes.size(); first += HEIGHT_NODE_STRIDE) {
-			interpolateHeights(first, Math.min(nodes.size() - 1, first + HEIGHT_NODE_STRIDE), false);
 		}
 		return true;
 	}
@@ -286,59 +320,25 @@ public class HordeRoute {
 				dirtyGroups.addLast(group);
 			}
 		}
-		var spans = new BitSet();
 		for (int index = changedNodes.nextSetBit(0); index >= 0; index = changedNodes.nextSetBit(index + 1)) {
 			var node = nodes.get(index);
 			node.position = new Vec3(node.position.x, node.height(0), node.position.z);
 			node.revision++;
-			if (index > 0) {
-				spans.set((index - 1) / HEIGHT_NODE_STRIDE);
-			}
-			if (index + 1 < nodes.size()) {
-				spans.set(index / HEIGHT_NODE_STRIDE);
-			}
-		}
-		for (int span = spans.nextSetBit(0); span >= 0; span = spans.nextSetBit(span + 1)) {
-			int first = span * HEIGHT_NODE_STRIDE;
-			interpolateHeights(first, Math.min(nodes.size() - 1, first + HEIGHT_NODE_STRIDE), true);
 		}
 		return !changedNodes.isEmpty();
 	}
 
-	private void interpolateHeights(int first, int last, boolean revise) {
-		var a = nodes.get(first);
-		var b = nodes.get(last);
-		for (int index = first + 1; index < last; index++) {
-			var node = nodes.get(index);
-			double ratio = (node.distance - a.distance) / (b.distance - a.distance);
-			boolean changed = false;
-			for (int column = 0; column < heightColumns; column++) {
-				double height = a.heights[column] * (1 - ratio) + b.heights[column] * ratio;
-				changed |= node.heights[column] != height;
-				node.heights[column] = height;
-			}
-			node.position = new Vec3(node.position.x, node.height(0), node.position.z);
-			if (changed && revise) {
-				node.revision++;
-			}
-		}
+	/// 诊断供主线命令/报告读取；失败不发布部分路线。
+	public String detourDiagnostic() {
+		return "fixed_a";
 	}
 
-	private static long heightGroup(double x, double z) {
-		return BlockPos.asLong((int) Math.floor(x) >> 4, 0, (int) Math.floor(z) >> 4);
+	public long geometryRevision() {
+		return geometryRevision;
 	}
 
 	public Node node(int index) {
 		return nodes.get(index);
-	}
-
-	public static Vec3 ground(ServerLevel level, Vec3 point) {
-		BlockPos pos = BlockPos.containing(point);
-		if (level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4) == null) {
-			return null;
-		}
-		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
-		return new Vec3(point.x, y, point.z);
 	}
 
 	public CompoundTag save() {
@@ -385,6 +385,7 @@ public class HordeRoute {
 
 	public CompoundTag slice(int first, int count) {
 		var tag = new CompoundTag();
+		tag.putLong("geometry_revision", geometryRevision);
 		tag.putInt("first", first);
 		tag.putInt("total", nodes.size());
 		tag.putDouble("length", length);
@@ -396,42 +397,17 @@ public class HordeRoute {
 		return tag;
 	}
 
-	public static HordeRoute load(CompoundTag tag) {
-		var nodes = new ArrayList<Node>();
-		for (var element : tag.getListOrEmpty("nodes")) {
-			if (element instanceof CompoundTag node && nodes.size() < MAX_NODES) {
-				nodes.add(Node.load(node));
-			}
+	private record SearchBounds(int first, int last, double minX, double maxX, double minZ, double maxZ) {
+		private double distanceSqr(Vec3 position) {
+			double dx = Math.max(0, Math.max(minX - position.x, position.x - maxX));
+			double dz = Math.max(0, Math.max(minZ - position.z, position.z - maxZ));
+			return dx * dx + dz * dz;
 		}
-		if (nodes.size() < 2) {
-			throw new IllegalArgumentException("路线缺少节点");
-		}
-		var route = new HordeRoute(nodes);
-		route.heightColumns = nodes.getFirst().heightCount();
-		for (int index = 0; index < nodes.size(); index++) {
-			var node = nodes.get(index);
-			if (node.heightCount() != route.heightColumns) {
-				throw new IllegalArgumentException("线路高度列数不一致");
-			}
-			if (index % HEIGHT_NODE_STRIDE != 0 && index != nodes.size() - 1) {
-				continue;
-			}
-			var forward = route.nodeDirection(index);
-			for (int column = 0; column < node.heights.length; column++) {
-				double lateral = (column / (double) (node.heights.length - 1) - 0.5) * node.width;
-				long key = heightGroup(node.position.x - forward.z * lateral, node.position.z + forward.x * lateral);
-				route.samplesByGroup.computeIfAbsent(key, _ -> new IntArrayList()).add(index * route.heightColumns + column);
-			}
-		}
-		// 存档中的高度可能来自尚未加载区块的临时坐标，加载后重新核对。
-		route.queuedGroups.addAll(route.samplesByGroup.keySet());
-		route.dirtyGroups.addAll(route.queuedGroups);
-		return route;
 	}
 
 	public static class Node {
-		private Vec3 position;
 		private final double distance;
+		private Vec3 position;
 		private double width = 64;
 		private double[] heights;
 		private long revision;
@@ -451,6 +427,28 @@ public class HordeRoute {
 			for (int column = 0; column < columns; column++) {
 				double lateral = (column / (double) (columns - 1) - 0.5) * node.width;
 				node.heights[column] = from.height(lateral) * (1 - ratio) + to.height(lateral) * ratio;
+			}
+			return node;
+		}
+
+		public static Node load(CompoundTag tag) {
+			Vec3 p = tag.read("position", Vec3.CODEC).orElse(Vec3.ZERO);
+			var node = new Node(p, tag.getDoubleOr("distance", 0));
+			node.width = tag.getDoubleOr("width", 64);
+			if (!Double.isFinite(node.width) || node.width <= 0) {
+				throw new IllegalArgumentException("线路高度采样宽度无效");
+			}
+			var heights = tag.getListOrEmpty("heights");
+			if (heights.size() < 2 || heights.size() > 1025) {
+				throw new IllegalArgumentException("线路高度样本数量无效");
+			}
+			node.heights = new double[heights.size()];
+			node.revision = tag.getLongOr("revision", 0);
+			for (int i = 0; i < heights.size(); i++) {
+				node.heights[i] = heights.get(i).asDouble().orElse(p.y);
+				if (!Double.isFinite(node.heights[i])) {
+					throw new IllegalArgumentException("线路高度样本必须为有限数");
+				}
 			}
 			return node;
 		}
@@ -494,28 +492,6 @@ public class HordeRoute {
 			}
 			tag.put("heights", samples);
 			return tag;
-		}
-
-		public static Node load(CompoundTag tag) {
-			Vec3 p = tag.read("position", Vec3.CODEC).orElse(Vec3.ZERO);
-			var node = new Node(p, tag.getDoubleOr("distance", 0));
-			node.width = tag.getDoubleOr("width", 64);
-			if (!Double.isFinite(node.width) || node.width <= 0) {
-				throw new IllegalArgumentException("线路高度采样宽度无效");
-			}
-			var heights = tag.getListOrEmpty("heights");
-			if (heights.size() < 2 || heights.size() > 1025) {
-				throw new IllegalArgumentException("线路高度样本数量无效");
-			}
-			node.heights = new double[heights.size()];
-			node.revision = tag.getLongOr("revision", 0);
-			for (int i = 0; i < heights.size(); i++) {
-				node.heights[i] = heights.get(i).asDouble().orElse(p.y);
-				if (!Double.isFinite(node.heights[i])) {
-					throw new IllegalArgumentException("线路高度样本必须为有限数");
-				}
-			}
-			return node;
 		}
 	}
 }

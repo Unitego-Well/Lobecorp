@@ -1,16 +1,16 @@
 package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill;
 
-import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.skill.EntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 
 import java.util.List;
 

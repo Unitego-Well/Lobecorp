@@ -1,11 +1,11 @@
 package org.unitego.lobecorp.world.horde;
 
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.EntityDimensions;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
 @SuppressWarnings("UnnecessaryModifier")

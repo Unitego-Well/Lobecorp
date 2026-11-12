@@ -8,10 +8,10 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
+import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
+import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
-import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
-import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
 
 import java.util.HashMap;
 import java.util.List;
@@ -167,9 +167,9 @@ public class ConductorClient {
 	                              List<UUID> units, UUID target, double x, double y, double z,
 	                              ConductorData.ControlMode mode, boolean flag, String skill,
 	                              ConductorCommandPayload.TargetSelection targetSelection) {
-        ClientPacketDistributor.sendToServer(ConductorCommandPayload.of(action, team, otherTeam,
-                        units, target == null ? NO_TARGET : target, x, y, z, mode, flag, skill, targetSelection)
-                .withFormationMode(ConductorHud.INSTANCE.formationMode()));
+		ClientPacketDistributor.sendToServer(ConductorCommandPayload.of(action, team, otherTeam,
+						units, target == null ? NO_TARGET : target, x, y, z, mode, flag, skill, targetSelection)
+				.withFormationMode(ConductorHud.INSTANCE.formationMode()));
 	}
 
 	public static void setCombatBehavior(String team, List<UUID> units, ConductorData.CombatBehavior behavior) {

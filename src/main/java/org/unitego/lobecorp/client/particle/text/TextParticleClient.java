@@ -4,11 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.unitego.lobecorp.particle.text.TextParticleSnapshot;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 仅由客户端主线程接收快照，同一实例的周期补发不重建粒子或重置播放进度。
 public class TextParticleClient {

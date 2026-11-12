@@ -4,8 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
 import jdk.jfr.consumer.RecordedMethod;
+import jdk.jfr.consumer.RecordingFile;
 import net.minecraft.client.Minecraft;
 import org.jspecify.annotations.Nullable;
 
@@ -14,12 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 仅开发采样显式启用；采样权重不是逐对象精确分配计数，解析在帧时间记录结束后执行。
 public class QueenBeamAllocationCapture {
@@ -34,9 +29,6 @@ public class QueenBeamAllocationCapture {
 	private static @Nullable Recording recording;
 	private static Instant origin = Instant.EPOCH;
 	private static long originNs;
-
-	private record Stage(int cycle, int phase, long nanoTime) {
-	}
 
 	public static void start() {
 		if (!Boolean.parseBoolean(System.getenv(REQUEST_ENV))) {
@@ -178,5 +170,8 @@ public class QueenBeamAllocationCapture {
 					result.add(item);
 				});
 		return result;
+	}
+
+	private record Stage(int cycle, int phase, long nanoTime) {
 	}
 }

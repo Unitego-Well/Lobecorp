@@ -2,6 +2,9 @@ package org.unitego.lobecorp.mixin.photon.performance.client;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlShaderModule;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil;
@@ -9,10 +12,6 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 
 import java.util.Map;
 import java.util.function.Function;
-
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.GlShaderModule;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 @Mixin(targets = "com.mojang.blaze3d.opengl.GlDevice")
 public class GlDeviceMixin {

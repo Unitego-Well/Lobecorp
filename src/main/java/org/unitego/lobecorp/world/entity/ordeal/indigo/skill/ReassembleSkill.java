@@ -4,18 +4,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import org.unitego.lobecorp.conductor.data.ConductorData;
-import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
+import org.unitego.lobecorp.registry.world.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.registry.world.entity.state.SweeperStates;
+// import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.util.entity.skill.ReassemblyProgressUtil;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.network.tc.ConductorSnapshotPayload;
-import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
-import org.unitego.lobecorp.registry.entity.state.SweeperStates;
-import org.unitego.lobecorp.util.entity.skill.ReassemblyProgressUtil;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 
 /// 清道夫重组技能：持续消耗清道夫尸体生命并复活原清道夫。
@@ -56,9 +56,9 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.REASSEMBLE);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+		// }
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
 
@@ -70,17 +70,17 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		// }
 		faceTarget(entity, runtime.target(EntityCorpse.class));
 	}
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		// }
 		EntityCorpse<?> corpse = runtime.target(EntityCorpse.class);
 		faceTarget(entity, corpse);
 		if (!(entity.level() instanceof ServerLevel level)) {
@@ -169,9 +169,9 @@ public class ReassembleSkill extends EntitySkill<Sweeper> {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+		// }
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 

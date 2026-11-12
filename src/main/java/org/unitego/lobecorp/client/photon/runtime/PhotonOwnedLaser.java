@@ -1,126 +1,68 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
+import com.google.gson.JsonParser;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import net.minecraft.client.Minecraft;
-import org.joml.Matrix4f;
-import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
-
-import java.util.ArrayDeque;
-import java.io.IOException;
-
+import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
+import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
 import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
 import com.lowdragmc.photon.gui.editor.FXProject;
-import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
-import com.lowdragmc.photon.client.gameobject.IFXObject;
-import com.lowdragmc.photon.client.gameobject.FXObject;
-
-import java.util.Set;
-import java.util.function.Consumer;
-
 import com.mojang.serialization.JsonOps;
-import net.minecraft.nbt.NbtOps;
-import com.google.gson.JsonParser;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.FloatTag;
-import org.unitego.lobecorp.Lobecorp;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.HashSet;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /// 每个组成件按需独立创建；作者快照与资源快照共用执行核心，模拟仍由 Photon 宿主推进。
 public class PhotonOwnedLaser implements AutoCloseable {
 	public static final Identifier V1_ID = Identifier.fromNamespaceAndPath("lobecorp", "the_queen_of_hatred/laser_composition_v1");
 	public static final Identifier ID = Identifier.fromNamespaceAndPath("lobecorp", "the_queen_of_hatred/laser_composition_v2");
-	private static final List<String> OUTER_COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle", "laser");
 	public static final List<String> COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle",
 			"laser_body", "dust_column", "source_dust", "pink_sequence_stars", "yellow_sequence_stars",
 			"blue_sequence_stars", "flower_muzzle_spawner", "launch_spikes", "white_lines", "laser_tail");
 	public static final List<String> BEAM_COMPONENTS = List.of("laser_body", "dust_column", "source_dust",
 			"pink_sequence_stars", "yellow_sequence_stars", "blue_sequence_stars", "flower_muzzle_spawner",
 			"launch_spikes", "white_lines", "laser_tail");
-	private PhotonOwnedLaserComposition.Definition composition = PhotonOwnedLaserComposition.defaults();
-	private PhotonOwnedLaserComposition.Phase phase;
-	private double phaseDuration;
+	private static final List<String> OUTER_COMPONENTS = List.of("circle", "circle2", "circle3", "light_ball", "accumulate_particle", "laser");
+	private static final Map<PhotonOwnedEffectResources.SourceKey, PreparedDefinition> PREPARED = new LinkedHashMap<>();
 	private final Set<Integer> fired = new HashSet<>();
 	private final Map<String, PhotonOwnedLaserComposition.Binding> bindings = new LinkedHashMap<>();
 	private final Vector3f beamPosition = new Vector3f();
 	private final Quaternionf beamRotation = new Quaternionf();
-	private Map<String, List<Float>> beamInputs = Map.of();
-	private Consumer<Float> frameAnchor;
 	private final PhotonOwnedEffectResources.SourceKey source;
 	private final Level level;
-	private static final Map<PhotonOwnedEffectResources.SourceKey, PreparedDefinition> PREPARED = new LinkedHashMap<>();
 	private final Map<String, FX> definitions;
 	private final BeamSpace space;
-
-	private record PreparedDefinition(Map<String, FX> definitions, BeamSpace space,
-	                                  PhotonOwnedLaserComposition.Definition composition) {
-		public PreparedDefinition {
-			definitions = Map.copyOf(definitions);
-		}
-	}
-
-	public record BeamSpace(Vector3f circleOffset, Vector3f beamOffset, Vector3f beamScale, float minimumLength) {
-		public BeamSpace {
-			circleOffset = new Vector3f(circleOffset);
-			beamOffset = new Vector3f(beamOffset);
-			beamScale = new Vector3f(beamScale);
-		}
-
-		@Override
-		public Vector3f circleOffset() {
-			return new Vector3f(circleOffset);
-		}
-
-		@Override
-		public Vector3f beamOffset() {
-			return new Vector3f(beamOffset);
-		}
-
-		@Override
-		public Vector3f beamScale() {
-			return new Vector3f(beamScale);
-		}
-	}
-
-	public BeamSpace space() {
-		return space;
-	}
-
 	private final Map<String, PhotonGeoEffect> active = new LinkedHashMap<>();
 	private final Vector3f position = new Vector3f();
 	private final Quaternionf rotation = new Quaternionf();
+	private PhotonOwnedLaserComposition.Definition composition = PhotonOwnedLaserComposition.defaults();
+	private PhotonOwnedLaserComposition.Phase phase;
+	private double phaseDuration;
+	private Map<String, List<Float>> beamInputs = Map.of();
+	private Consumer<Float> frameAnchor;
 	private boolean closed;
 	private boolean editorPreview;
-
-	public static void register() {
-		var ids = new LinkedHashMap<String, Identifier>();
-		OUTER_COMPONENTS.forEach(name -> ids.put(name, Identifier.fromNamespaceAndPath("lobecorp",
-				"the_queen_of_hatred/owned_laser_v1_" + name)));
-		PhotonOwnedEffectResources.register(ID, ids);
-		var finalIds = new LinkedHashMap<String, Identifier>();
-		COMPONENTS.forEach(name -> finalIds.put(name, Identifier.fromNamespaceAndPath(ID.getNamespace(),
-				"the_queen_of_hatred/owned_laser_v2_" + name)));
-		PhotonOwnedEffectResources.registerSnapshotComponents(ID, finalIds);
-		PhotonOwnedEffectResources.registerDefinitionPreparation(ID, PhotonOwnedLaser::prepareDefinitions, PREPARED::remove);
-	}
-
 	public PhotonOwnedLaser(PhotonOwnedEffectResources.SourceKey source, Level level) {
 		this.source = source;
 		this.level = level;
@@ -136,6 +78,18 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		definitions = prepared.definitions();
 		space = prepared.space();
 		composition = prepared.composition();
+	}
+
+	public static void register() {
+		var ids = new LinkedHashMap<String, Identifier>();
+		OUTER_COMPONENTS.forEach(name -> ids.put(name, Identifier.fromNamespaceAndPath("lobecorp",
+				"the_queen_of_hatred/owned_laser_v1_" + name)));
+		PhotonOwnedEffectResources.register(ID, ids);
+		var finalIds = new LinkedHashMap<String, Identifier>();
+		COMPONENTS.forEach(name -> finalIds.put(name, Identifier.fromNamespaceAndPath(ID.getNamespace(),
+				"the_queen_of_hatred/owned_laser_v2_" + name)));
+		PhotonOwnedEffectResources.registerSnapshotComponents(ID, finalIds);
+		PhotonOwnedEffectResources.registerDefinitionPreparation(ID, PhotonOwnedLaser::prepareDefinitions, PREPARED::remove);
 	}
 
 	/// 纯 CPU：只做版本修正与 NBT 副本，不创建 FX、不碰设备；可在 worker 调用。
@@ -248,9 +202,6 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		} catch (IOException failure) {
 			throw new IllegalArgumentException("组合定义读取失败", failure);
 		}
-	}
-
-	private record LocalPose(Vector3f position, Quaternionf rotation, Vector3f scale) {
 	}
 
 	private static LocalPose localPose(FX fx, IFXObject object) {
@@ -446,6 +397,106 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		}
 	}
 
+	/// 组合公共输入只投影到该局部动画的形参；显式组件覆盖仍由命名系统严格校验。
+	private static Map<String, List<Float>> componentInputs(Definition definition, Map<String, List<Float>> inputs) {
+		var projected = new LinkedHashMap<String, List<Float>>();
+		for (var parameter : definition.parameters()) {
+			var value = inputs.get(parameter.name());
+			if (value != null) {
+				projected.put(parameter.name(), value);
+			}
+		}
+		return Map.copyOf(projected);
+	}
+
+	private static ListTag vectorTag(float x, float y, float z) {
+		var values = new ListTag();
+		values.add(FloatTag.valueOf(x));
+		values.add(FloatTag.valueOf(y));
+		values.add(FloatTag.valueOf(z));
+		return values;
+	}
+
+	private static Vector3f readVector(CompoundTag tag, String name) {
+		var values = tag.getListOrEmpty(name);
+		if (values.size() != 3) {
+			throw new IllegalArgumentException("组合空间向量缺失：" + name);
+		}
+		return new Vector3f(values.get(0).asFloat().orElseThrow(), values.get(1).asFloat().orElseThrow(),
+				values.get(2).asFloat().orElseThrow());
+	}
+
+	public static PhotonOwnedLaser previewComponents(Map<String, CompoundTag> components, long revision, Level level) {
+		register();
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.PUBLISHED_PREVIEW, revision);
+		PhotonOwnedEffectResources.publishPublishedPreview(key, components);
+		var effect = new PhotonOwnedLaser(key, level);
+		effect.editorPreview = true;
+		return effect;
+	}
+
+	public static Map<String, CompoundTag> exportComponents(FX project) {
+		var parts = splitComponents(project);
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
+		var space = PREPARED.get(key).space();
+		return serializeComponents(parts, space);
+	}
+
+	private static Map<String, CompoundTag> serializeComponents(Map<String, FX> parts, BeamSpace space) {
+		var metadata = new CompoundTag();
+		metadata.put("circle", vectorTag(space.circleOffset().x, space.circleOffset().y, space.circleOffset().z));
+		metadata.put("offset", vectorTag(space.beamOffset().x, space.beamOffset().y, space.beamOffset().z));
+		metadata.put("scale", vectorTag(space.beamScale().x, space.beamScale().y, space.beamScale().z));
+		metadata.putFloat("minimum", space.minimumLength());
+		var result = new LinkedHashMap<String, CompoundTag>();
+		parts.forEach((name, fx) -> {
+			var tag = fx.serializeNBT(Platform.getFrozenRegistry());
+			tag.put("owned_beam_space", metadata.copy());
+			result.put(name, tag);
+		});
+		return Map.copyOf(result);
+	}
+
+	public static Map<String, FX> splitComponents(FX project) {
+		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
+		PhotonOwnedEffectResources.publishAuthoring(key, split(project));
+		var prepared = PREPARED.get(key);
+		if (prepared == null) {
+			throw new IllegalStateException("作者组合尚未准备");
+		}
+		var result = new LinkedHashMap<String, FX>();
+		prepared.definitions().forEach((name, fx) -> {
+			var copy = new FX();
+			copy.deserializeNBT(Platform.getFrozenRegistry(), fx.serializeNBT(Platform.getFrozenRegistry()));
+			result.put(name, copy);
+		});
+		return Map.copyOf(result);
+	}
+
+	private static void finalizeDefinition(FX fx) {
+		var targets = fx.getFxData().objects().stream().filter(object -> !(object instanceof PhotonNamedController))
+				.map(IFXObject::id).collect(Collectors.toSet());
+		for (var object : fx.getFxData().objects()) {
+			if (object instanceof PhotonNamedController controller) {
+				var definition = PhotonProjectDefinitionUtil.filter(controller.definition(), targets);
+				for (var value : definition.getListOrEmpty("animations")) {
+					removeActivation(((CompoundTag) value).getListOrEmpty("tracks"));
+				}
+				controller.definition(definition);
+				controller.preparePlaybackDefinition();
+				try {
+					PhotonNamedController.compileDefinition(controller.definition(), controller.source()).install(controller);
+				} catch (IOException failure) {
+					throw new IllegalArgumentException("光束组成件动画准备失败", failure);
+				}
+			}
+		}
+	}
+
+	public BeamSpace space() {
+		return space;
+	}
+
 	public PhotonNamedRuntime activate(String name, String animation, double duration, Map<String, List<Float>> inputs) {
 		if (!current()) {
 			throw new IllegalStateException("组合已结束或资源已失效");
@@ -539,88 +590,11 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		return runtime;
 	}
 
-
-	/// 组合公共输入只投影到该局部动画的形参；显式组件覆盖仍由命名系统严格校验。
-	private static Map<String, List<Float>> componentInputs(Definition definition, Map<String, List<Float>> inputs) {
-		var projected = new LinkedHashMap<String, List<Float>>();
-		for (var parameter : definition.parameters()) {
-			var value = inputs.get(parameter.name());
-			if (value != null) {
-				projected.put(parameter.name(), value);
-			}
-		}
-		return Map.copyOf(projected);
-	}
-
-	private static ListTag vectorTag(float x, float y, float z) {
-		var values = new ListTag();
-		values.add(FloatTag.valueOf(x));
-		values.add(FloatTag.valueOf(y));
-		values.add(FloatTag.valueOf(z));
-		return values;
-	}
-
-	private static Vector3f readVector(CompoundTag tag, String name) {
-		var values = tag.getListOrEmpty(name);
-		if (values.size() != 3) {
-			throw new IllegalArgumentException("组合空间向量缺失：" + name);
-		}
-		return new Vector3f(values.get(0).asFloat().orElseThrow(), values.get(1).asFloat().orElseThrow(),
-				values.get(2).asFloat().orElseThrow());
-	}
-
-	public static PhotonOwnedLaser previewComponents(Map<String, CompoundTag> components, long revision, Level level) {
-		register();
-		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.PUBLISHED_PREVIEW, revision);
-		PhotonOwnedEffectResources.publishPublishedPreview(key, components);
-		var effect = new PhotonOwnedLaser(key, level);
-		effect.editorPreview = true;
-		return effect;
-	}
-
-	public static Map<String, CompoundTag> exportComponents(FX project) {
-		var parts = splitComponents(project);
-		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
-		var space = PREPARED.get(key).space();
-		return serializeComponents(parts, space);
-	}
-
 	public Map<String, CompoundTag> exportComponents() {
 		if (!current()) {
 			throw new IllegalStateException("发布组合已失效，请重新载入");
 		}
 		return serializeComponents(definitions, space);
-	}
-
-	private static Map<String, CompoundTag> serializeComponents(Map<String, FX> parts, BeamSpace space) {
-		var metadata = new CompoundTag();
-		metadata.put("circle", vectorTag(space.circleOffset().x, space.circleOffset().y, space.circleOffset().z));
-		metadata.put("offset", vectorTag(space.beamOffset().x, space.beamOffset().y, space.beamOffset().z));
-		metadata.put("scale", vectorTag(space.beamScale().x, space.beamScale().y, space.beamScale().z));
-		metadata.putFloat("minimum", space.minimumLength());
-		var result = new LinkedHashMap<String, CompoundTag>();
-		parts.forEach((name, fx) -> {
-			var tag = fx.serializeNBT(Platform.getFrozenRegistry());
-			tag.put("owned_beam_space", metadata.copy());
-			result.put(name, tag);
-		});
-		return Map.copyOf(result);
-	}
-
-	public static Map<String, FX> splitComponents(FX project) {
-		var key = new PhotonOwnedEffectResources.SourceKey(ID, PhotonOwnedEffectResources.SourceKind.AUTHORING, 0);
-		PhotonOwnedEffectResources.publishAuthoring(key, split(project));
-		var prepared = PREPARED.get(key);
-		if (prepared == null) {
-			throw new IllegalStateException("作者组合尚未准备");
-		}
-		var result = new LinkedHashMap<String, FX>();
-		prepared.definitions().forEach((name, fx) -> {
-			var copy = new FX();
-			copy.deserializeNBT(Platform.getFrozenRegistry(), fx.serializeNBT(Platform.getFrozenRegistry()));
-			result.put(name, copy);
-		});
-		return Map.copyOf(result);
 	}
 
 	public void componentPose(String name, Vector3f offset, Quaternionf rotation, Map<String, List<Float>> inputs) {
@@ -638,26 +612,6 @@ public class PhotonOwnedLaser implements AutoCloseable {
 			var merged = new LinkedHashMap<String, List<Float>>(beam ? componentInputs(handle.definition(), beamInputs) : Map.of());
 			merged.putAll(inputs);
 			runtime.stageParameters(handle, merged);
-		}
-	}
-
-	private static void finalizeDefinition(FX fx) {
-		var targets = fx.getFxData().objects().stream().filter(object -> !(object instanceof PhotonNamedController))
-				.map(IFXObject::id).collect(Collectors.toSet());
-		for (var object : fx.getFxData().objects()) {
-			if (object instanceof PhotonNamedController controller) {
-				var definition = PhotonProjectDefinitionUtil.filter(controller.definition(), targets);
-				for (var value : definition.getListOrEmpty("animations")) {
-					removeActivation(((CompoundTag) value).getListOrEmpty("tracks"));
-				}
-				controller.definition(definition);
-				controller.preparePlaybackDefinition();
-				try {
-					PhotonNamedController.compileDefinition(controller.definition(), controller.source()).install(controller);
-				} catch (IOException failure) {
-					throw new IllegalArgumentException("光束组成件动画准备失败", failure);
-				}
-			}
 		}
 	}
 
@@ -795,5 +749,38 @@ public class PhotonOwnedLaser implements AutoCloseable {
 		closed = true;
 		active.values().forEach(PhotonGeoEffect::close);
 		active.clear();
+	}
+
+	private record PreparedDefinition(Map<String, FX> definitions, BeamSpace space,
+	                                  PhotonOwnedLaserComposition.Definition composition) {
+		public PreparedDefinition {
+			definitions = Map.copyOf(definitions);
+		}
+	}
+
+	public record BeamSpace(Vector3f circleOffset, Vector3f beamOffset, Vector3f beamScale, float minimumLength) {
+		public BeamSpace {
+			circleOffset = new Vector3f(circleOffset);
+			beamOffset = new Vector3f(beamOffset);
+			beamScale = new Vector3f(beamScale);
+		}
+
+		@Override
+		public Vector3f circleOffset() {
+			return new Vector3f(circleOffset);
+		}
+
+		@Override
+		public Vector3f beamOffset() {
+			return new Vector3f(beamOffset);
+		}
+
+		@Override
+		public Vector3f beamScale() {
+			return new Vector3f(beamScale);
+		}
+	}
+
+	private record LocalPose(Vector3f position, Quaternionf rotation, Vector3f scale) {
 	}
 }

@@ -2,9 +2,12 @@ package org.unitego.lobecorp.client.photon.playback.spawn;
 
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
+import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.FXData;
+import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.fx.PreloadContext;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import com.lowdragmc.photon.client.gameobject.RuntimeValue;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
@@ -14,39 +17,30 @@ import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.nbt.CompoundTag;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
-import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
-import org.unitego.lobecorp.registry.client.photon.LcPhotonSpawnTypes;
-import org.unitego.lobecorp.util.photon.playback.PhotonSpawnSnapshotUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
-import com.lowdragmc.photon.client.fx.FX;
-import com.lowdragmc.photon.client.fx.FXData;
-import com.lowdragmc.photon.client.fx.PreloadContext;
-import java.lang.ref.WeakReference;
-import java.util.HashSet;
-import java.util.ArrayDeque;
-import com.lowdragmc.photon.client.fx.FXHelper;
 import net.minecraft.resources.Identifier;
-import java.util.function.Function;
-
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+import org.unitego.lobecorp.client.photon.playback.PhotonEmissionAccess;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
+import org.unitego.lobecorp.registry.client.photon.LcPhotonSpawnTypes;
 import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil.Stage;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonSpawnSnapshotUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonSpawnTemplateUtil;
 
 import javax.annotation.Nullable;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.lang.ref.WeakReference;
+import java.util.*;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /// 调度已有原生FX实例，自身没有几何输出；每实例独占槽、随机数、预算和子实例。
 public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess {
+	private static final ThreadLocal<Set<IFXObject>> PRELOAD_PATH = ThreadLocal.withInitial(HashSet::new);
 	@Persisted(subPersisted = true)
 	public final PhotonSpawnConfig config = new PhotonSpawnConfig();
 	private final Map<String, RuntimeValue<?>> slots = new LinkedHashMap<>();
@@ -65,10 +59,28 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 	private @Nullable String failure;
 	private @Nullable PhotonTemplateProgram preparedProgram;
 	private @Nullable Function<Identifier, FX> ownedDefinitionResolver;
-
-
 	private @Nullable WeakReference<FXData> preloadDefinition;
-	private static final ThreadLocal<Set<IFXObject>> PRELOAD_PATH = ThreadLocal.withInitial(HashSet::new);
+
+	public PhotonChildSpawner() {
+		bind("enabled", () -> config.enabled);
+		bind("duration", () -> config.duration);
+		bind("looping", () -> config.looping);
+		bind("startDelay", () -> config.startDelay);
+		bind("interval", () -> config.interval);
+		bind("count", () -> config.count);
+		bind("rate", () -> config.rate);
+		bind("probability", () -> config.probability);
+		bind("maxInstances", () -> config.maxInstances);
+		bind("launchSpeed", () -> config.launchSpeed);
+		bind("parameters.lifetime", () -> config.parameters.lifetime);
+		bind("parameters.size", () -> config.parameters.size);
+		bind("parameters.color", () -> config.parameters.color);
+		bind("parameters.speed", () -> config.parameters.speed);
+		bind("parameters.beamLength", () -> config.parameters.beamLength);
+		bind("parameters.beamWidth", () -> config.parameters.beamWidth);
+		bind("parameters.playbackSpeed", () -> config.parameters.playbackSpeed);
+		budget = config.maxPerTick;
+	}
 
 	/// 定义预加载不构造运行树；作者内存发布也应调用此入口。
 	public static void bindPreloadDefinition(FXData definition) {
@@ -301,27 +313,6 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 		preparedProgram = null;
 	}
 
-	public PhotonChildSpawner() {
-		bind("enabled", () -> config.enabled);
-		bind("duration", () -> config.duration);
-		bind("looping", () -> config.looping);
-		bind("startDelay", () -> config.startDelay);
-		bind("interval", () -> config.interval);
-		bind("count", () -> config.count);
-		bind("rate", () -> config.rate);
-		bind("probability", () -> config.probability);
-		bind("maxInstances", () -> config.maxInstances);
-		bind("launchSpeed", () -> config.launchSpeed);
-		bind("parameters.lifetime", () -> config.parameters.lifetime);
-		bind("parameters.size", () -> config.parameters.size);
-		bind("parameters.color", () -> config.parameters.color);
-		bind("parameters.speed", () -> config.parameters.speed);
-		bind("parameters.beamLength", () -> config.parameters.beamLength);
-		bind("parameters.beamWidth", () -> config.parameters.beamWidth);
-		bind("parameters.playbackSpeed", () -> config.parameters.playbackSpeed);
-		budget = config.maxPerTick;
-	}
-
 	private void bind(String path, Supplier<?> fallback) {
 		slots.put(path, new RuntimeValue<>(fallback));
 	}
@@ -392,7 +383,7 @@ public class PhotonChildSpawner extends Emitter implements PhotonEmissionAccess 
 
 	@Override
 	protected void update(float delta) {
-        prune();
+		prune();
 		if (paused) {
 			return;
 		}

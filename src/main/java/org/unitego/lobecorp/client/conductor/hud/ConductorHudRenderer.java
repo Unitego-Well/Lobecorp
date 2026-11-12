@@ -1,7 +1,5 @@
 package org.unitego.lobecorp.client.conductor.hud;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
@@ -24,6 +22,7 @@ import org.unitego.lobecorp.client.conductor.render.ConductorPortraitCache;
 import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 
 import java.util.*;
@@ -38,6 +37,7 @@ public class ConductorHudRenderer {
 	private final ConductorHudCards cards;
 	private final ConductorHudTooltip tooltip;
 	private final ConductorHudAnimationState animation = new ConductorHudAnimationState();
+	private final Map<String, Integer> buttonOffsets = new java.util.HashMap<>();
 	private @Nullable String hoveredId = "";
 	private String pressedId = "";
 	private long releasedAt;
@@ -49,7 +49,6 @@ public class ConductorHudRenderer {
 	private long frameNow;
 	private List<Component> focusLines = List.of();
 	private List<ConductorHudTooltip.EffectIcon> focusEffects = List.of();
-	private final Map<String, Integer> buttonOffsets = new java.util.HashMap<>();
 	private int modeHover = -1;
 
 	public ConductorHudRenderer(ConductorHudModel model, ConductorHudLayout layout, ConductorHudCards cards,
@@ -60,6 +59,113 @@ public class ConductorHudRenderer {
 		this.tooltip = tooltip;
 	}
 
+	private static void resizeInfoContent(ScrollerView scroller, int width, int height) {
+		int contentWidth = Math.max(1, width);
+		int contentHeight = Math.max(1, height);
+
+		if (scroller.viewContainer.getSizeWidth() != contentWidth || scroller.viewContainer.getSizeHeight() != contentHeight) {
+			scroller.viewContainer.layout(layout -> layout.width(contentWidth).height(contentHeight));
+		}
+	}
+
+	private static void clipInfo(GuiGraphicsExtractor graphics, ScrollerView scroller) {
+		UIElement viewport = scroller.viewPort;
+		graphics.enableScissor((int) viewport.getPositionX(), (int) viewport.getPositionY(),
+				(int) (viewport.getPositionX() + viewport.getSizeWidth()), (int) (viewport.getPositionY() + viewport.getSizeHeight()));
+	}
+
+	public static void frame(GuiGraphicsExtractor graphics, UIElement area, int background, int border, int depth) {
+		frame(graphics, (int) area.getPositionX(), (int) area.getPositionY(),
+				(int) area.getSizeWidth(), (int) area.getSizeHeight(), background, border, depth);
+	}
+
+	public static void frame(GuiGraphicsExtractor graphics, int x, int y, int width, int height,
+	                         int background, int border, int depth) {
+		if (width <= 0 || height <= 0) {
+			return;
+		}
+
+		graphics.fill(x, y, x + width, y + height + depth, border);
+		graphics.fill(x + BORDER, y + BORDER, x + width - BORDER, y + height - BORDER, background);
+		graphics.outline(x + BORDER, y + BORDER, Math.max(1, width - BORDER * 2),
+				Math.max(1, height - BORDER * 2), LINE_INNER);
+		graphics.fill(x + BORDER, y + BORDER, x + width - BORDER, y + BORDER + 1, EDGE_LIGHT);
+	}
+
+	public static void textFit(GuiGraphicsExtractor graphics, Component text, int x, int y, int width, int color) {
+		if (width <= 0) {
+			return;
+		}
+
+		var font = Minecraft.getInstance().font;
+		String value = text.getString();
+
+		if (font.width(value) > width) {
+			value = font.plainSubstrByWidth(value, Math.max(0, width - font.width(ELLIPSIS))) + ELLIPSIS;
+		}
+
+		graphics.text(font, Component.literal(value), x, y, color, false);
+	}
+
+	public static void drawGlyph(GuiGraphicsExtractor graphics, String glyph, int x, int y, int scale, int color) {
+		String pixels = ICONS.get(glyph);
+
+		if (pixels == null) {
+			return;
+		}
+
+		for (int pixel = 0; pixel < pixels.length(); pixel++) {
+			if (pixels.charAt(pixel) != '1') {
+				continue;
+			}
+
+			int px = x + pixel % ICON_GRID * scale;
+			int py = y + pixel / ICON_GRID * scale;
+			graphics.fill(px, py, px + scale, py + scale, color);
+		}
+	}
+
+	private static Component memberDistance(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
+				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
+	}
+
+	private static Component memberDimension(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		ConductorData.Unit unit = ConductorClient.unit(member);
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
+				: unit == null ? UNKNOWN_MARK : unit.dimension());
+	}
+
+	private static Component memberType(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
+		return Component.literal(entity != null ? BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()
+				: info == null ? UNKNOWN_MARK : info.type());
+	}
+
+	private static Component attributes(LivingEntity living) {
+		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
+				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
+	}
+
+	private static Component memberName(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+
+		if (entity != null) {
+			return entity.getDisplayName();
+		}
+
+		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
+		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
+	}
+
 	public String pressedId() {
 		return pressedId;
 	}
@@ -67,7 +173,6 @@ public class ConductorHudRenderer {
 	public boolean pressReleased() {
 		return releasedAt != 0L;
 	}
-
 
 	public void press(String id) {
 		pressedId = id;
@@ -736,7 +841,7 @@ public class ConductorHudRenderer {
 				continue;
 			}
 
-			tooltip.drawEffectIcon(graphics, icons.get(index), cellX, cellY);
+			ConductorHudTooltip.drawEffectIcon(graphics, icons.get(index), cellX, cellY);
 		}
 
 		graphics.disableScissor();
@@ -1157,113 +1262,6 @@ public class ConductorHudRenderer {
 			cards.mountCards(listId, selectedList ? ConductorControls.selected() : model.rosterMembers(),
 					selectedList ? cards.selectedIds() : cards.rosterIds(), selectedList);
 		}
-	}
-
-	private static void resizeInfoContent(ScrollerView scroller, int width, int height) {
-		int contentWidth = Math.max(1, width);
-		int contentHeight = Math.max(1, height);
-
-		if (scroller.viewContainer.getSizeWidth() != contentWidth || scroller.viewContainer.getSizeHeight() != contentHeight) {
-			scroller.viewContainer.layout(layout -> layout.width(contentWidth).height(contentHeight));
-		}
-	}
-
-	private static void clipInfo(GuiGraphicsExtractor graphics, ScrollerView scroller) {
-		UIElement viewport = scroller.viewPort;
-		graphics.enableScissor((int) viewport.getPositionX(), (int) viewport.getPositionY(),
-				(int) (viewport.getPositionX() + viewport.getSizeWidth()), (int) (viewport.getPositionY() + viewport.getSizeHeight()));
-	}
-
-	public static void frame(GuiGraphicsExtractor graphics, UIElement area, int background, int border, int depth) {
-		frame(graphics, (int) area.getPositionX(), (int) area.getPositionY(),
-				(int) area.getSizeWidth(), (int) area.getSizeHeight(), background, border, depth);
-	}
-
-	public static void frame(GuiGraphicsExtractor graphics, int x, int y, int width, int height,
-	                         int background, int border, int depth) {
-		if (width <= 0 || height <= 0) {
-			return;
-		}
-
-		graphics.fill(x, y, x + width, y + height + depth, border);
-		graphics.fill(x + BORDER, y + BORDER, x + width - BORDER, y + height - BORDER, background);
-		graphics.outline(x + BORDER, y + BORDER, Math.max(1, width - BORDER * 2),
-				Math.max(1, height - BORDER * 2), LINE_INNER);
-		graphics.fill(x + BORDER, y + BORDER, x + width - BORDER, y + BORDER + 1, EDGE_LIGHT);
-	}
-
-	public static void textFit(GuiGraphicsExtractor graphics, Component text, int x, int y, int width, int color) {
-		if (width <= 0) {
-			return;
-		}
-
-		var font = Minecraft.getInstance().font;
-		String value = text.getString();
-
-		if (font.width(value) > width) {
-			value = font.plainSubstrByWidth(value, Math.max(0, width - font.width(ELLIPSIS))) + ELLIPSIS;
-		}
-
-		graphics.text(font, Component.literal(value), x, y, color, false);
-	}
-
-	public static void drawGlyph(GuiGraphicsExtractor graphics, String glyph, int x, int y, int scale, int color) {
-		String pixels = ICONS.get(glyph);
-
-		if (pixels == null) {
-			return;
-		}
-
-		for (int pixel = 0; pixel < pixels.length(); pixel++) {
-			if (pixels.charAt(pixel) != '1') {
-				continue;
-			}
-
-			int px = x + pixel % ICON_GRID * scale;
-			int py = y + pixel / ICON_GRID * scale;
-			graphics.fill(px, py, px + scale, py + scale, color);
-		}
-	}
-
-	private static Component memberDistance(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
-				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
-	}
-
-	private static Component memberDimension(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		ConductorData.Unit unit = ConductorClient.unit(member);
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
-				: unit == null ? UNKNOWN_MARK : unit.dimension());
-	}
-
-	private static Component memberType(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
-		return Component.literal(entity != null ? BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()
-				: info == null ? UNKNOWN_MARK : info.type());
-	}
-
-	private static Component attributes(LivingEntity living) {
-		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
-				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
-	}
-
-	private static Component memberName(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-
-		if (entity != null) {
-			return entity.getDisplayName();
-		}
-
-		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
-		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
 	}
 
 	public void clearTransient() {

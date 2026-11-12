@@ -1,9 +1,6 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
-
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
-import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
 import com.lowdragmc.lowdraglib2.gui.texture.IGuiTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
@@ -11,6 +8,7 @@ import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Tab;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TabView;
+import com.lowdragmc.photon.client.fx.FXRuntime;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.FloatTag;
@@ -18,20 +16,16 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DEFAULT;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.DELETE;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.ACTION_DUPLICATE;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.*;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.ACTION_DUPLICATE;
 
 /// 原工作区的动画、绑定、参数和规则四页检视，统一编辑同一原树草稿。
 public class PhotonNamedInspectorPages extends TabView {
@@ -61,12 +55,33 @@ public class PhotonNamedInspectorPages extends TabView {
 		}
 	}
 
+	private static String availableName(ListTag values, String prefix) {
+		var name = new StringBuilder(prefix);
+		while (true) {
+			String candidate = name.toString();
+			if (values.stream().noneMatch(value -> ((CompoundTag) value).getStringOr("name", "").equals(candidate))) {
+				return candidate;
+			}
+			name.append("_copy");
+		}
+	}
+
+	private static String shape(Tag value) {
+		if (value instanceof ListTag list) {
+			return list.stream().map(PhotonNamedInspectorPages::shape).toList().toString();
+		}
+		if (value instanceof CompoundTag compound) {
+			return compound.keySet().stream().sorted().map(key -> key + ":" + shape(compound.get(key))).toList().toString();
+		}
+		return Integer.toString(value.getId());
+	}
+
 	private void addPage(String name, UIElement content) {
 		var scroll = new ScrollerView();
 		scroll.layout(layout -> layout.widthPercent(100).flex(1).minHeight(0));
 		scroll.scrollerStyle(style -> style.adaptiveHeight(false));
 		scroll.addScrollViewChild(content);
-		addTab(new Tab().setText(Component.translatable(PhotonAnimationTranslations.key(name))), scroll);
+		addTab(new Tab().setText(Component.translatable(PhotonAnimationTranslationKeys.key(name))), scroll);
 	}
 
 	public void refresh() {
@@ -184,17 +199,6 @@ public class PhotonNamedInspectorPages extends TabView {
 		return tag;
 	}
 
-	private static String availableName(ListTag values, String prefix) {
-		var name = new StringBuilder(prefix);
-		while (true) {
-			String candidate = name.toString();
-			if (values.stream().noneMatch(value -> ((CompoundTag) value).getStringOr("name", "").equals(candidate))) {
-				return candidate;
-			}
-			name.append("_copy");
-		}
-	}
-
 	private void attempt(Runnable action) {
 		try {
 			action.run();
@@ -202,16 +206,6 @@ public class PhotonNamedInspectorPages extends TabView {
 		} catch (IllegalArgumentException | IllegalStateException invalid) {
 			error.accept(invalid.getMessage() == null ? invalid.toString() : invalid.getMessage());
 		}
-	}
-
-	private static String shape(Tag value) {
-		if (value instanceof ListTag list) {
-			return list.stream().map(PhotonNamedInspectorPages::shape).toList().toString();
-		}
-		if (value instanceof CompoundTag compound) {
-			return compound.keySet().stream().sorted().map(key -> key + ":" + shape(compound.get(key))).toList().toString();
-		}
-		return Integer.toString(value.getId());
 	}
 
 	private class Row {

@@ -1,14 +1,14 @@
 package org.unitego.lobecorp.client.photon.acceptance;
 
 import com.lowdragmc.lowdraglib2.editor.ui.EditorWindow;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Dialog;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEventDispatcher;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
+import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
-import com.lowdragmc.photon.client.fx.FXRuntime;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
@@ -22,12 +22,12 @@ import java.util.function.BiConsumer;
 public class PhotonLogicCloseCheck implements AutoCloseable {
 	private final BiConsumer<String, Boolean> check;
 	private final FXEditor host;
+	private final Map<String, RuntimeObservation> observations = new LinkedHashMap<>();
 	private EditorWindow window;
 	private FXEditor editor;
 	private FXProject project;
 	private Dialog dialog;
 	private FXRuntime runtime;
-	private final Map<String, RuntimeObservation> observations = new LinkedHashMap<>();
 	private int stage;
 
 	public PhotonLogicCloseCheck(BiConsumer<String, Boolean> check, FXEditor host) {
@@ -124,10 +124,6 @@ public class PhotonLogicCloseCheck implements AutoCloseable {
 						&& project.getKnownAs().isEmpty() && project.getFx().getFxData().objects().isEmpty());
 	}
 
-	public record RuntimeObservation(boolean alive, boolean finished, boolean valid,
-	                                 boolean editorStillReferencesRuntime, boolean projectStillAttached) {
-	}
-
 	private void observeRuntime(String phase) {
 		observations.put(phase, new RuntimeObservation(runtime.isAlive(), runtime.isFinished(), runtime.isValid(),
 				editor.runtime == runtime, editor.getCurrentProject() == project));
@@ -180,5 +176,9 @@ public class PhotonLogicCloseCheck implements AutoCloseable {
 			window.removeSelf();
 			window.clearAllChildren();
 		}
+	}
+
+	public record RuntimeObservation(boolean alive, boolean finished, boolean valid,
+	                                 boolean editorStillReferencesRuntime, boolean projectStillAttached) {
 	}
 }

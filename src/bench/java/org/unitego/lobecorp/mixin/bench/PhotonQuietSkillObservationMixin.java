@@ -9,7 +9,7 @@ import org.unitego.lobecorp.client.bench.PhotonQuietMatrixCapture;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 /// 仅 Quiet 激光场景装载；只观察生产技能推进，不改变生命周期或调用次数。
-@Mixin(value = EntitySkillUtil.class, remap = false)
+@Mixin(value = EntitySkillUtil.class)
 public class PhotonQuietSkillObservationMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private static void lobecorp$quietBeforeSkill(LivingEntity entity, CallbackInfo callback) {

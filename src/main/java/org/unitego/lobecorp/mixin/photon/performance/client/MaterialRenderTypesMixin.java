@@ -10,7 +10,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 import java.util.Map;
 import java.util.function.Function;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.MaterialRenderTypes", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.MaterialRenderTypes")
 public class MaterialRenderTypesMixin {
 	@WrapOperation(method = {"hdrParticle(Lnet/minecraft/resources/Identifier;Lnet/minecraft/resources/Identifier;Lcom/lowdragmc/photon/client/render/PhotonPipelines$ParticlePipelineKey;Lcom/lowdragmc/photon/client/render/PhotonMaterialUniforms$Values;)Lnet/minecraft/client/renderer/rendertype/RenderType;"},
 			at = @At(value = "INVOKE", target = "Ljava/util/Map;computeIfAbsent(Ljava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"))

@@ -1,20 +1,16 @@
 package org.unitego.lobecorp.client.photon.performance;
 
-import com.google.gson.JsonObject;
 import com.google.gson.Gson;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOperationUtil;
+import com.google.gson.JsonObject;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
+import org.unitego.lobecorp.util.photon.performance.*;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Mode;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.View;
@@ -29,23 +25,18 @@ public class PhotonPerformanceCapture {
 	public static final double DEFAULT_SECONDS = 40;
 	public static final String WORLD_LABEL = "manual";
 	public static final String EDITOR_LABEL = "editor";
-	private static long ownedSessionId;
 	// 面板视图刷新间隔，避免每帧重建统计。
 	public static final long VIEW_REFRESH_NS = 250_000_000L;
-	private static long lastViewNs;
 	private static final String OUTPUT_DIRECTORY = "performance";
 	private static final Gson GSON = new Gson();
+	private static long ownedSessionId;
+	private static long lastViewNs;
 	private static boolean managed;
 	private static WeakReference<ClientLevel> level = new WeakReference<>(null);
 	private static JsonObject environment = new JsonObject();
 	private static @Nullable View lastView;
 	private static JsonObject lastFrames = new JsonObject();
 	private static @Nullable Snapshot frozen;
-
-	public record Snapshot(PhotonPerformanceTraceUtil.Capture capture, Frames frames,
-	                       List<JsonObject> gpuSamples, JsonObject metadata) {
-	}
-
 	private static volatile boolean exporting;
 	private static volatile @Nullable Path output;
 	private static volatile @Nullable String failure;
@@ -54,7 +45,7 @@ public class PhotonPerformanceCapture {
 	public static void start(String label, double seconds, Mode mode) {
 		RenderSystem.assertOnRenderThread();
 		if (!(Minecraft.getInstance().gameRenderer instanceof IPhotonPerformanceInstrumentation)) {
-			throw new IllegalStateException(PhotonPerformanceTranslations.key("restart_required"));
+			throw new IllegalStateException(PhotonPerformanceTranslationKeys.key("restart_required"));
 		}
 		if (managed || PhotonPerformanceTraceUtil.active()) {
 			throw new IllegalStateException("performance_capture_already_active");
@@ -283,5 +274,9 @@ public class PhotonPerformanceCapture {
 		result.addProperty("vsync", minecraft.options.enableVsync().get());
 		result.addProperty("configured_fps", minecraft.options.framerateLimit().get());
 		return result;
+	}
+
+	public record Snapshot(PhotonPerformanceTraceUtil.Capture capture, Frames frames,
+	                       List<JsonObject> gpuSamples, JsonObject metadata) {
 	}
 }

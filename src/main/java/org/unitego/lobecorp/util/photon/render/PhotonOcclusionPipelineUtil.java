@@ -11,11 +11,7 @@ import com.mojang.blaze3d.shaders.UniformType;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
 
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PhotonOcclusionPipelineUtil {

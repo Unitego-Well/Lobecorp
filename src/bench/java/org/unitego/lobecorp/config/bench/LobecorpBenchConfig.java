@@ -11,7 +11,6 @@ public class LobecorpBenchConfig {
 	public static final String PROVIDER_ID = "lobecorp";
 	public static final String SERVER_SCENARIO = "lobecorp.sweeper-ai";
 	public static final String CLIENT_SCENARIO = "lobecorp.sweeper-render";
-	public static final String HORDE_SCENARIO = "lobecorp.horde-render";
 	public static final String CORPSE_SCENARIO = "lobecorp.corpse-render";
 	public static final String SWEEPER30_AI_SCENARIO = "lobecorp.sweeper30-ai";
 	public static final String SWEEPER30_NOAI_SCENARIO = "lobecorp.sweeper30-noai";
@@ -165,6 +164,4 @@ public class LobecorpBenchConfig {
 	public static final int CAMERA_HEIGHT = 14;
 	public static final int CAMERA_DISTANCE = 24;
 	public static final Duration PHASE_TIMEOUT = Duration.ofSeconds(120);
-	/// 浪潮测量默认 2400 tick，再加 Spark 上传等待余量，避免阶段超时误判。
-	public static final Duration HORDE_PHASE_TIMEOUT = Duration.ofMinutes(6);
 }

@@ -8,17 +8,17 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.control.ConductorController;
-import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.registry.world.entity.state.SweeperStates;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+// import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
+import org.unitego.lobecorp.util.entity.EntityUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
-import org.unitego.lobecorp.util.entity.EntityUtil;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.world.entity.skill.MultiStageBasicSkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.entity.state.SweeperStates;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
-import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.world.hitbox.*;
 import org.unitego.lobecorp.world.hitbox.geometry.SectorCylinderSize;
 
@@ -166,9 +166,9 @@ public class AttackSkill extends MultiStageBasicSkill<Sweeper> {
 
 	@Override
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_ATTACK.get(), 0.8F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_ATTACK.get(), 0.8F, 1);
+		// }
 		float yaw = entity.getYRot();
 		runtime.setData(LOCKED_YAW, yaw);
 		lockFacing(entity, runtime);

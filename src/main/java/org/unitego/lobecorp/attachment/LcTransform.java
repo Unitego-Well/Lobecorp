@@ -1,11 +1,7 @@
 package org.unitego.lobecorp.attachment;
 
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix3d;
-import org.joml.Matrix4d;
-import org.joml.Matrix4dc;
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
+import org.joml.*;
 
 /// 以格为位移单位的变换；旋转副本阻止接收端修改共享姿态。
 public record LcTransform(Vec3 position, Quaternionf rotation, Vec3 scale) {
@@ -13,18 +9,8 @@ public record LcTransform(Vec3 position, Quaternionf rotation, Vec3 scale) {
 		rotation = new Quaternionf(rotation);
 	}
 
-	@Override
-	public Quaternionf rotation() {
-		return new Quaternionf(rotation);
-	}
-
 	public static LcTransform identity() {
 		return new LcTransform(Vec3.ZERO, new Quaternionf(), new Vec3(1, 1, 1));
-	}
-
-	public Matrix4d matrix() {
-		return new Matrix4d().translation(position.x, position.y, position.z)
-				.rotate(rotation).scale(scale.x, scale.y, scale.z);
 	}
 
 	public static LcTransform fromMatrix(Matrix4dc matrix) {
@@ -89,6 +75,16 @@ public record LcTransform(Vec3 position, Quaternionf rotation, Vec3 scale) {
 			}
 		}
 		return new Quaternionf().setFromNormalized(new Matrix3d(x, y, z)).normalize();
+	}
+
+	@Override
+	public Quaternionf rotation() {
+		return new Quaternionf(rotation);
+	}
+
+	public Matrix4d matrix() {
+		return new Matrix4d().translation(position.x, position.y, position.z)
+				.rotate(rotation).scale(scale.x, scale.y, scale.z);
 	}
 
 	public LcTransform compose(LcTransform local) {

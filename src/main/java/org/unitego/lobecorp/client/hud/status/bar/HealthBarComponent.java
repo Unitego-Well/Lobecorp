@@ -3,6 +3,7 @@ package org.unitego.lobecorp.client.hud.status.bar;
 import net.minecraft.client.gui.Gui.HeartType;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
@@ -11,9 +12,8 @@ import net.neoforged.neoforge.client.ClientHooks;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
 import org.unitego.lobecorp.client.hud.TextureLayer;
-import net.minecraft.client.renderer.RenderPipelines;
+import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
 
 import java.text.DecimalFormat;
 
@@ -25,12 +25,31 @@ public class HealthBarComponent extends StatusBarComponent {
 	private static final Identifier ABSORPTION_LIGHT = texture("absorbing_light");
 	private static final int ABSORPTION_TEXT_COLOR = 0xFFE400;
 	private final DecimalFormat absorptionNumber = createNumberFormat("#,##0.00");
-	private @Nullable HeartType heartType;
 	private final AbsorptionFlash absorptionFlash = new AbsorptionFlash();
+	private @Nullable HeartType heartType;
 
 	public HealthBarComponent() {
 		super(new StatusGauge(90, 9, 78),
 				new StatusGaugeView(bottom("full"), internal("full"), new TextureLayer(LIGHT, 0, 0, 90, 9)));
+	}
+
+	public static HeartType heartType(LocalPlayer player) {
+		var vanilla = player.hasEffect(MobEffects.POISON) ? HeartType.POISIONED
+				: player.hasEffect(MobEffects.WITHER) ? HeartType.WITHERED
+				: player.isFullyFrozen() ? HeartType.FROZEN : HeartType.NORMAL;
+		return ClientHooks.firePlayerHeartTypeEvent(player, vanilla);
+	}
+
+	private static TextureLayer bottom(String variant) {
+		return new TextureLayer(texture(variant + "_bottom"), 0, 0, 90, 9);
+	}
+
+	private static TextureLayer internal(String variant) {
+		return new TextureLayer(texture(variant), 11, 1, 78, 7);
+	}
+
+	private static Identifier texture(String name) {
+		return Lobecorp.id("hud/bar/health/" + name);
 	}
 
 	@Override
@@ -94,24 +113,5 @@ public class HealthBarComponent extends StatusBarComponent {
 		super.clear();
 		heartType = null;
 		absorptionFlash.clear();
-	}
-
-	public static HeartType heartType(LocalPlayer player) {
-		var vanilla = player.hasEffect(MobEffects.POISON) ? HeartType.POISIONED
-				: player.hasEffect(MobEffects.WITHER) ? HeartType.WITHERED
-				: player.isFullyFrozen() ? HeartType.FROZEN : HeartType.NORMAL;
-		return ClientHooks.firePlayerHeartTypeEvent(player, vanilla);
-	}
-
-	private static TextureLayer bottom(String variant) {
-		return new TextureLayer(texture(variant + "_bottom"), 0, 0, 90, 9);
-	}
-
-	private static TextureLayer internal(String variant) {
-		return new TextureLayer(texture(variant), 11, 1, 78, 7);
-	}
-
-	private static Identifier texture(String name) {
-		return Lobecorp.id("hud/bar/health/" + name);
 	}
 }

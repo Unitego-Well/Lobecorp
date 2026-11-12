@@ -8,11 +8,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonConfiguratorNameAccess;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTooltipUtil;
-import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
 
 @Mixin(Configurator.class)
 public abstract class ConfiguratorMixin implements PhotonConfiguratorNameAccess {

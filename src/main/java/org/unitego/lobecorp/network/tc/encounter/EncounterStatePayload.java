@@ -7,10 +7,10 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jspecify.annotations.NullMarked;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.encounter.EncounterClient;
 import org.unitego.lobecorp.network.tc.IToClientPayload;
-import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record EncounterStatePayload(CompoundTag data) implements IToClientPayload {

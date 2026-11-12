@@ -9,16 +9,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.LcRegistries;
+import org.unitego.lobecorp.registry.LcRegistrieKeys;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillDataSyncUtil;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /// 技能附件的完整快照或条目变化；删除修正与显式 false 分别编码。
 public record EntitySkillDataSyncPayload(
@@ -28,20 +24,6 @@ public record EntitySkillDataSyncPayload(
 		Map<IEntitySkill<?>, Long> cooldowns, Set<IEntitySkill<?>> removedCooldowns
 ) implements IToClientPayload {
 	public static final Type<EntitySkillDataSyncPayload> TYPE = Lobecorp.type("entity_skill_data_sync");
-	private static final StreamCodec<RegistryFriendlyByteBuf, IEntitySkill<?>> SKILL_CODEC =
-			ByteBufCodecs.registry(LcRegistries.ENTITY_SKILL_KEY);
-	private static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillGroup> GROUP_CODEC =
-			ByteBufCodecs.registry(LcRegistries.ENTITY_SKILL_GROUP_KEY);
-	private static final StreamCodec<RegistryFriendlyByteBuf, Map<IEntitySkill<?>, Boolean>> SKILLS_CODEC =
-			ByteBufCodecs.map(LinkedHashMap::new, SKILL_CODEC, ByteBufCodecs.BOOL);
-	private static final StreamCodec<RegistryFriendlyByteBuf, Set<IEntitySkill<?>>> SKILL_KEYS_CODEC =
-			ByteBufCodecs.collection(LinkedHashSet::new, SKILL_CODEC);
-	private static final StreamCodec<RegistryFriendlyByteBuf, Map<EntitySkillGroup, Integer>> GROUPS_CODEC =
-			ByteBufCodecs.map(LinkedHashMap::new, GROUP_CODEC, ByteBufCodecs.VAR_INT);
-	private static final StreamCodec<RegistryFriendlyByteBuf, Set<EntitySkillGroup>> GROUP_KEYS_CODEC =
-			ByteBufCodecs.collection(LinkedHashSet::new, GROUP_CODEC);
-	private static final StreamCodec<RegistryFriendlyByteBuf, Map<IEntitySkill<?>, Long>> COOLDOWNS_CODEC =
-			ByteBufCodecs.map(LinkedHashMap::new, SKILL_CODEC, ByteBufCodecs.VAR_LONG);
 	public static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillDataSyncPayload> STREAM_CODEC = new StreamCodec<>() {
 		@Override
 		public @NonNull EntitySkillDataSyncPayload decode(@NonNull RegistryFriendlyByteBuf buffer) {
@@ -63,6 +45,20 @@ public record EntitySkillDataSyncPayload(
 			SKILL_KEYS_CODEC.encode(buffer, payload.removedCooldowns);
 		}
 	};
+	private static final StreamCodec<RegistryFriendlyByteBuf, IEntitySkill<?>> SKILL_CODEC =
+			ByteBufCodecs.registry(LcRegistrieKeys.ENTITY_SKILL);
+	private static final StreamCodec<RegistryFriendlyByteBuf, EntitySkillGroup> GROUP_CODEC =
+			ByteBufCodecs.registry(LcRegistrieKeys.ENTITY_SKILL_GROUP);
+	private static final StreamCodec<RegistryFriendlyByteBuf, Map<IEntitySkill<?>, Boolean>> SKILLS_CODEC =
+			ByteBufCodecs.map(LinkedHashMap::new, SKILL_CODEC, ByteBufCodecs.BOOL);
+	private static final StreamCodec<RegistryFriendlyByteBuf, Set<IEntitySkill<?>>> SKILL_KEYS_CODEC =
+			ByteBufCodecs.collection(LinkedHashSet::new, SKILL_CODEC);
+	private static final StreamCodec<RegistryFriendlyByteBuf, Map<EntitySkillGroup, Integer>> GROUPS_CODEC =
+			ByteBufCodecs.map(LinkedHashMap::new, GROUP_CODEC, ByteBufCodecs.VAR_INT);
+	private static final StreamCodec<RegistryFriendlyByteBuf, Set<EntitySkillGroup>> GROUP_KEYS_CODEC =
+			ByteBufCodecs.collection(LinkedHashSet::new, GROUP_CODEC);
+	private static final StreamCodec<RegistryFriendlyByteBuf, Map<IEntitySkill<?>, Long>> COOLDOWNS_CODEC =
+			ByteBufCodecs.map(LinkedHashMap::new, SKILL_CODEC, ByteBufCodecs.VAR_LONG);
 
 	public EntitySkillDataSyncPayload {
 		skills = Collections.unmodifiableMap(new LinkedHashMap<>(skills));

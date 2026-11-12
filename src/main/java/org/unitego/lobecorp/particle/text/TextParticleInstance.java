@@ -45,6 +45,22 @@ public class TextParticleInstance {
 		this.startedTick = level.getGameTime();
 	}
 
+	private static Vec3 requireFinite(Vec3 vector) {
+		if (!Objects.requireNonNull(vector).isFinite()) {
+			throw new IllegalArgumentException(INVALID_VECTOR_MESSAGE);
+		}
+
+		return vector;
+	}
+
+	private static float requireSize(float size) {
+		if (!Float.isFinite(size) || size <= 0.0F) {
+			throw new IllegalArgumentException(INVALID_SIZE_MESSAGE);
+		}
+
+		return size;
+	}
+
 	public ServerLevel level() {
 		return level;
 	}
@@ -189,21 +205,5 @@ public class TextParticleInstance {
 		var ops = level.registryAccess().createSerializationContext(NbtOps.INSTANCE);
 		var encoded = ComponentSerialization.CODEC.encodeStart(ops, Objects.requireNonNull(component)).getOrThrow();
 		return ComponentSerialization.CODEC.parse(ops, encoded).getOrThrow();
-	}
-
-	private static Vec3 requireFinite(Vec3 vector) {
-		if (!Objects.requireNonNull(vector).isFinite()) {
-			throw new IllegalArgumentException(INVALID_VECTOR_MESSAGE);
-		}
-
-		return vector;
-	}
-
-	private static float requireSize(float size) {
-		if (!Float.isFinite(size) || size <= 0.0F) {
-			throw new IllegalArgumentException(INVALID_SIZE_MESSAGE);
-		}
-
-		return size;
 	}
 }

@@ -2,27 +2,26 @@ package org.unitego.lobecorp.mixin.photon.performance.client;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
 import com.lowdragmc.photon.client.render.IPhotonFXCollector;
+import com.lowdragmc.photon.client.render.PhotonBufferCache;
 import com.lowdragmc.photon.client.render.PhotonStage;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.InstancedJob;
-import com.lowdragmc.photon.client.render.PhotonBufferCache;
-import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.textures.GpuTextureView;
-import org.spongepowered.asm.mixin.injection.Coerce;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-
-import java.util.List;
-
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceGpu;
 import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
-import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
+
+import java.util.List;
 
 @Mixin(PhotonWorldRenderState.class)
 public class PhotonWorldRenderStateMixin {

@@ -1,8 +1,8 @@
 package org.unitego.lobecorp.world.entity.skill;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /// 实体技能的非持久化运行态容器。

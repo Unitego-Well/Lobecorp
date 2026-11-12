@@ -15,13 +15,7 @@ import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedPreparationSchedule
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedPreparationScheduler.State;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedPreparationScheduler.Task;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
@@ -50,6 +44,25 @@ public class PhotonLogicPreparationCheck implements AutoCloseable {
 		this.check = check;
 	}
 
+	private static void register(Identifier effect, Probe probe) {
+		PhotonOwnedEffectResources.register(effect, Map.of("fixture", COMPONENT));
+		PhotonOwnedEffectResources.registerSnapshotComponents(effect, Map.of("fixture", COMPONENT));
+		PhotonOwnedEffectResources.registerDefinitionPreparation(effect, probe::prepare, PhotonOwnedEffectAssets::invalidate);
+	}
+
+	private static Task findTask(SourceKey source, Kind kind) {
+		return PhotonOwnedPreparationScheduler.ready(kind, Long.MAX_VALUE).stream()
+				.filter(task -> source.equals(task.source())).findFirst().orElse(null);
+	}
+
+	private static Kind snapshotKind(SourceKey source) {
+		return source.kind() == SourceKind.AUTHORING ? Kind.AUTHORING : Kind.PUBLISHED_PREVIEW;
+	}
+
+	private static String label(SourceKey source) {
+		return source.effectId().getPath() + "." + source.kind() + "." + source.revision();
+	}
+
 	public void begin() {
 		initialized = true;
 		ledgerContracts();
@@ -64,12 +77,6 @@ public class PhotonLogicPreparationCheck implements AutoCloseable {
 		for (var key : List.of(author, published, other)) {
 			initial.put(key, queue(key));
 		}
-	}
-
-	private static void register(Identifier effect, Probe probe) {
-		PhotonOwnedEffectResources.register(effect, Map.of("fixture", COMPONENT));
-		PhotonOwnedEffectResources.registerSnapshotComponents(effect, Map.of("fixture", COMPONENT));
-		PhotonOwnedEffectResources.registerDefinitionPreparation(effect, probe::prepare, PhotonOwnedEffectAssets::invalidate);
 	}
 
 	private SourceKey source(Identifier effect, SourceKind kind, long revision) {
@@ -224,25 +231,12 @@ public class PhotonLogicPreparationCheck implements AutoCloseable {
 		}
 	}
 
-	private static Task findTask(SourceKey source, Kind kind) {
-		return PhotonOwnedPreparationScheduler.ready(kind, Long.MAX_VALUE).stream()
-				.filter(task -> source.equals(task.source())).findFirst().orElse(null);
-	}
-
-	private static Kind snapshotKind(SourceKey source) {
-		return source.kind() == SourceKind.AUTHORING ? Kind.AUTHORING : Kind.PUBLISHED_PREVIEW;
-	}
-
 	private void expectReady(SourceKey key) {
 		var result = PhotonOwnedEffectResources.lookup(key);
 		expect("prepare.ready." + label(key), result.readiness() == Readiness.READY
 				&& result.prepared() != null && result.prepared().source().equals(key)
 				&& result.prepared().components().get("fixture").definition().getLongOr("logic_revision", -1) == key.revision()
 				&& PhotonOwnedEffectAssets.prepared(key));
-	}
-
-	private static String label(SourceKey source) {
-		return source.effectId().getPath() + "." + source.kind() + "." + source.revision();
 	}
 
 	private void expect(String name, boolean condition) {

@@ -10,9 +10,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
-
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.client.renderer.item.properties.select.DisplayContext;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.item.SpawnEggItems;
+import org.unitego.lobecorp.registry.world.item.SpawnEggItems;
+import org.unitego.lobecorp.registry.world.item.LcItems;
 
 import java.util.function.BiConsumer;
 
@@ -35,6 +37,15 @@ public class ItemModelProvider extends ModelProvider {
 	protected void registerModels(BlockModelGenerators blockModels, ItemModelGenerators itemModels) {
 		ItemModelOutput itemModelOutput = itemModels.itemModelOutput;
 		BiConsumer<Identifier, ModelInstance> modelOutput = itemModels.modelOutput;
+		var canGui = ModelTemplates.FLAT_ITEM.create(getModelLocation(LcItems.CANNED_ENKEPHALIN.get(), "", "_gui"),
+				TextureMapping.layer0(getItemTexture(LcItems.CANNED_ENKEPHALIN.get(), "", "_gui")), modelOutput);
+		itemModelOutput.accept(LcItems.CANNED_ENKEPHALIN.get(), ItemModelUtils.select(new DisplayContext(),
+				ItemModelUtils.plainModel(Lobecorp.id("item/canned_enkephalin_3d")),
+				ItemModelUtils.when(ItemDisplayContext.GUI, ItemModelUtils.plainModel(canGui))));
+		var anchorModel = ModelTemplates.FLAT_ITEM.create(getModelLocation(LcItems.WARP_ANCHOR.get(), "", ""),
+				TextureMapping.layer0(getItemTexture(LcItems.WARP_ANCHOR.get(), "", "")), modelOutput);
+		itemModelOutput.accept(LcItems.WARP_ANCHOR.get(), ItemModelUtils.plainModel(anchorModel));
+		itemModelOutput.accept(LcItems.WARP_ANCHOR_BACKSTREETS_MIDNIGHT.get(), ItemModelUtils.plainModel(anchorModel));
 		generateFlatItem(itemModelOutput, SpawnEggItems.SWEEPER.get(), modelOutput, "", "", "sweeper/", "", ModelTemplates.FLAT_ITEM);
 		generateFlatItem(itemModelOutput, SpawnEggItems.THE_QUEEN_OF_HATRED.get(), modelOutput, "", "", "the_queen_of_hatred/", "", ModelTemplates.FLAT_ITEM);
 	}

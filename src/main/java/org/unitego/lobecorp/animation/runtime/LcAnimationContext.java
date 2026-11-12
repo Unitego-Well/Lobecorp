@@ -32,6 +32,10 @@ public class LcAnimationContext implements ILcAnimationQueries {
 		this.variables = variables;
 	}
 
+	private static String normalize(String name) {
+		return name.replace("query.", "q.").replace("variable.", "v.").replace("temp.", "t.");
+	}
+
 	public LcAnimationInstance instance() {
 		return instance;
 	}
@@ -140,9 +144,5 @@ public class LcAnimationContext implements ILcAnimationQueries {
 		}
 
 		variables.put(query, value);
-	}
-
-	private static String normalize(String name) {
-		return name.replace("query.", "q.").replace("variable.", "v.").replace("temp.", "t.");
 	}
 }

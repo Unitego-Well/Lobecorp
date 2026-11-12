@@ -5,12 +5,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.registry.client.encounter.hud.EncounterHudRegistry;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Supplier;
 
 /// 事件 HUD 的纯活动状态；登记与包装查询委托注册表，不创建 UI，不依赖客户端会话。

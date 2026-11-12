@@ -8,12 +8,7 @@ import org.joml.Quaternionf;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.attachment.LcTransform;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /// 骨架只持有不可变的绑定姿态与挂点；坐标统一为实体前方为 +Z、位移单位为格。
 public class LcSkeleton {
@@ -58,6 +53,32 @@ public class LcSkeleton {
 		return new LcSkeleton(result);
 	}
 
+	@SuppressWarnings("UnstableApiUsage")
+	private static Bone parseBone(GeometryBone source) {
+		var locators = new LinkedHashMap<String, LcTransform>();
+
+		if (source.locators() != null) {
+			for (var entry : source.locators().entrySet()) {
+				var locator = entry.getValue();
+				var angles = sourceRotation(locator.rotation());
+				locators.put(entry.getKey(), new LcTransform(sourcePosition(locator.offset()),
+						new Quaternionf().rotationZYX((float) angles.z, (float) angles.y, (float) angles.x),
+						new Vec3(1, 1, 1)));
+			}
+		}
+
+		return new Bone(source.name(), source.parent(), sourcePosition(source.pivot()),
+				sourceRotation(source.rotation()), locators);
+	}
+
+	private static Vec3 sourcePosition(@Nullable Vec3 source) {
+		return source == null ? Vec3.ZERO : new Vec3(source.x, source.y, -source.z).scale(1 / MODEL_UNITS_PER_BLOCK);
+	}
+
+	private static Vec3 sourceRotation(@Nullable Vec3 source) {
+		return source == null ? Vec3.ZERO : new Vec3(Math.toRadians(source.x), -Math.toRadians(source.y), -Math.toRadians(source.z));
+	}
+
 	public Map<String, Bone> bones() {
 		return bones;
 	}
@@ -75,24 +96,6 @@ public class LcSkeleton {
 				.translate(-pivot.x, -pivot.y, -pivot.z)
 				.mul(local.matrix());
 		return LcTransform.fromMatrix(matrix);
-	}
-
-	@SuppressWarnings("UnstableApiUsage")
-	private static Bone parseBone(GeometryBone source) {
-		var locators = new LinkedHashMap<String, LcTransform>();
-
-		if (source.locators() != null) {
-			for (var entry : source.locators().entrySet()) {
-				var locator = entry.getValue();
-				var angles = sourceRotation(locator.rotation());
-				locators.put(entry.getKey(), new LcTransform(sourcePosition(locator.offset()),
-						new Quaternionf().rotationZYX((float) angles.z, (float) angles.y, (float) angles.x),
-						new Vec3(1, 1, 1)));
-			}
-		}
-
-		return new Bone(source.name(), source.parent(), sourcePosition(source.pivot()),
-				sourceRotation(source.rotation()), locators);
 	}
 
 	private Matrix4d boneMatrix(LcSkeletalPose pose, Bone target, LcTransform worldRoot) {
@@ -138,14 +141,6 @@ public class LcSkeleton {
 				}
 			}
 		}
-	}
-
-	private static Vec3 sourcePosition(@Nullable Vec3 source) {
-		return source == null ? Vec3.ZERO : new Vec3(source.x, source.y, -source.z).scale(1 / MODEL_UNITS_PER_BLOCK);
-	}
-
-	private static Vec3 sourceRotation(@Nullable Vec3 source) {
-		return source == null ? Vec3.ZERO : new Vec3(Math.toRadians(source.x), -Math.toRadians(source.y), -Math.toRadians(source.z));
 	}
 
 	/// pivot 是模型绝对枢轴坐标，rotation 是转换后以弧度表示的完整 ZYX Euler 通道。

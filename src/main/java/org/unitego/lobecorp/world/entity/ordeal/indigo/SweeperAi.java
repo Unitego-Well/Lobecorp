@@ -7,10 +7,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.entity.ai.ActivityData;
 import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.behavior.*;
 import net.minecraft.world.entity.ai.behavior.declarative.BehaviorBuilder;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
@@ -19,22 +18,23 @@ import net.minecraft.world.entity.ai.memory.NearestVisibleLivingEntities;
 import net.minecraft.world.entity.ai.sensing.SensorType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.schedule.Activity;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.conductor.control.ConductorController;
 import org.unitego.lobecorp.conductor.control.ConductorMovement;
 import org.unitego.lobecorp.conductor.data.ConductorData;
+import org.unitego.lobecorp.registry.world.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.world.entity.ai.LcSensorTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.util.conductor.ConductorAttachmentUtil;
-import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.util.entity.ai.BrainUtil;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.AttackSkill;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.ReassembleSkill;
 import org.unitego.lobecorp.util.entity.ai.SweeperWorkUtil;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.entity.ai.LcSensorTypes;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.world.entity.EntityCorpse;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.AttackSkill;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.skill.ReassembleSkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillCastResult;
 import org.unitego.lobecorp.world.horde.HordeParticipant;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
@@ -353,6 +353,15 @@ public final class SweeperAi {
 				|| target instanceof ItemEntity itemEntity && !itemEntity.getItem().isEmpty());
 	}
 
+	private static boolean isFlockingSuppressed(Sweeper member) {
+		return !member.isAlive() || member.isNoAi() || !member.onGround() || member.isPassenger()
+				|| member.isInWater() || member.isInLava() || member.onClimbable()
+				|| ConductorController.isControlled(member) || EntitySkillUtil.hasActiveSkills(member)
+				|| member.ai().lastSkillAimTick == member.tickCount
+				|| !member.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)
+				&& member.getBrain().hasMemoryValue(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get());
+	}
+
 	/// 在 Brain 行为推进后接近工作站位，避免核心寻路或闲逛覆盖最后一段精确移动。
 	private void updateCleanupMovement() {
 		if (sweeper.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)) {
@@ -392,7 +401,7 @@ public final class SweeperAi {
 	}
 
 	/// 根据当前生命、目标和技能状态更新恢复清理与活动。
-	protected void updateActivity() {
+	void updateActivity() {
 		if (!HordeParticipant.isEvent(sweeper)) {
 			updateRecoveryCleanup();
 		}
@@ -406,7 +415,7 @@ public final class SweeperAi {
 		updateCleanupMovement();
 	}
 
-	protected void updateMovementSpeed() {
+	void updateMovementSpeed() {
 		// JUMPING 不计入 hasWanted，但活跃导航仍需连续更新加速和速度倍率。
 		if (!sweeper.isAlive() || !sweeper.getMoveControl().hasWanted() && sweeper.getNavigation().isDone()
 				|| EntitySkillUtil.hasActiveSkills(sweeper) || !(sweeper.level() instanceof ServerLevel level)) {
@@ -486,15 +495,6 @@ public final class SweeperAi {
 		accelerationTarget = null;
 		accelerationStartedAt = 0;
 		lastAccelerationTick = 0;
-	}
-
-	private static boolean isFlockingSuppressed(Sweeper member) {
-		return !member.isAlive() || member.isNoAi() || !member.onGround() || member.isPassenger()
-				|| member.isInWater() || member.isInLava() || member.onClimbable()
-				|| ConductorController.isControlled(member) || EntitySkillUtil.hasActiveSkills(member)
-				|| member.ai().lastSkillAimTick == member.tickCount
-				|| !member.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)
-				&& member.getBrain().hasMemoryValue(LcMemoryModuleTypes.NEAREST_CLEANUP_TARGET.get());
 	}
 
 	/// 只调整当前路径的水平局部方向，不替换 WALK_TARGET、路径或运动物理。
@@ -649,7 +649,7 @@ public final class SweeperAi {
 	}
 
 	/// 恢复清理状态下受击时按概率恢复战斗。
-	protected boolean onHurt() {
+	boolean onHurt() {
 		if (!recoveryCleanup) {
 			return true;
 		}

@@ -26,10 +26,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
 import net.neoforged.neoforge.client.event.SubmitCustomGeometryEvent;
-import org.jspecify.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.LcRotationTransitionMode;
 import org.unitego.lobecorp.animation.resource.LcAnimationContent;
@@ -39,12 +39,7 @@ import org.unitego.lobecorp.client.attachment.LcRenderAnchorContext;
 import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItemSnapshot;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /// 显示适配必须由调用方显式登记；世界与渲染锚点共用同一份提取结果。
 public class LcAnimationDisplays {
@@ -182,6 +177,25 @@ public class LcAnimationDisplays {
 			stack = stack.copy();
 		}
 
+		private static Vec3 angles(Vector3f angles) {
+			return new Vec3(angles.x, angles.y, angles.z);
+		}
+
+		private static TransformSample blend(LcTransform previous, Vec3 previousAngles, LcTransform next, Vec3 nextAngles,
+		                                     double progress, LcRotationTransitionMode rotationMode,
+		                                     LcRotationTransitionUtil.@Nullable State state) {
+			if (rotationMode == LcRotationTransitionMode.SHORTEST_PATH) {
+				var sample = LcRotationTransitionUtil.interpolate(previous.rotation(), next.rotation(), progress, state);
+				return new TransformSample(new LcTransform(previous.position().lerp(next.position(), progress),
+						sample.rotation(), previous.scale().lerp(next.scale(), progress)), sample.state());
+			}
+
+			var angles = previousAngles.lerp(nextAngles, progress);
+			return new TransformSample(new LcTransform(previous.position().lerp(next.position(), progress),
+					new Quaternionf().rotationZYX((float) angles.z, (float) angles.y, (float) angles.x),
+					previous.scale().lerp(next.scale(), progress)), null);
+		}
+
 		@Override
 		public Frame extract(Level level, float partialTick) {
 			if (item != null && LcClientAttachments.renderTick(item, partialTick) < item.startedTick()) {
@@ -254,25 +268,6 @@ public class LcAnimationDisplays {
 					exit, settings.fadeOutRotationTransitionMode(), history.exit);
 			history.exit = exitSample.state();
 			return exitSample.transform();
-		}
-
-		private static Vec3 angles(Vector3f angles) {
-			return new Vec3(angles.x, angles.y, angles.z);
-		}
-
-		private static TransformSample blend(LcTransform previous, Vec3 previousAngles, LcTransform next, Vec3 nextAngles,
-		                                     double progress, LcRotationTransitionMode rotationMode,
-		                                     LcRotationTransitionUtil.@Nullable State state) {
-			if (rotationMode == LcRotationTransitionMode.SHORTEST_PATH) {
-				var sample = LcRotationTransitionUtil.interpolate(previous.rotation(), next.rotation(), progress, state);
-				return new TransformSample(new LcTransform(previous.position().lerp(next.position(), progress),
-						sample.rotation(), previous.scale().lerp(next.scale(), progress)), sample.state());
-			}
-
-			var angles = previousAngles.lerp(nextAngles, progress);
-			return new TransformSample(new LcTransform(previous.position().lerp(next.position(), progress),
-					new Quaternionf().rotationZYX((float) angles.z, (float) angles.y, (float) angles.x),
-					previous.scale().lerp(next.scale(), progress)), null);
 		}
 	}
 

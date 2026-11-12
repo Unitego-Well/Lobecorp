@@ -9,17 +9,17 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.AABB;
-import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.registry.world.entity.ai.LcMemoryModuleTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.registry.world.entity.state.SweeperStates;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+// import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.entity.ai.LcMemoryModuleTypes;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
-import org.unitego.lobecorp.registry.entity.state.SweeperStates;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 
 /// 清道夫清扫技能：靠近尸体或物品后持续进行清理，并将清理量转化为自身生命。
 public class SweepSkill extends EntitySkill<Sweeper> {
@@ -82,24 +82,24 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 	public void onWindupStart(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.addEntityState(SweeperStates.SWEEP);
 		entity.playActionAnimation(SweeperAnim.CLEAR1);
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_START.get(), 0.7F, 1);
+		// }
 	}
 
 	@Override
 	public void onActivate(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
 		entity.playActionAnimation(SweeperAnim.CLEAR2);
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		// }
 	}
 
 	@Override
 	public void onTick(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel && SweeperSkills.cleanupSoundTick(runtime.activeTicks())) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_LOOP.get(), 0.7F, 1);
+		// }
 		Entity target = runtime.target();
 		if (!(entity.level() instanceof ServerLevel level)) {
 			return;
@@ -169,9 +169,9 @@ public class SweepSkill extends EntitySkill<Sweeper> {
 
 	@Override
 	public void onEnd(Sweeper entity, EntitySkillRuntime<Sweeper> runtime) {
-		if (entity.level() instanceof ServerLevel) {
-			entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
-		}
+		// if (entity.level() instanceof ServerLevel) {
+			// entity.playSound(SweeperSoundEvents.SWEEPER_CLEAR_END.get(), 0.7F, 1);
+		// }
 		entity.playActionAnimation(SweeperAnim.CLEAR3);
 	}
 

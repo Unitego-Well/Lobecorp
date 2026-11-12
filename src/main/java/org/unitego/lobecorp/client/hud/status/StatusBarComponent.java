@@ -7,9 +7,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.client.hud.status.bar.StatusGauge;
 import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 import org.unitego.lobecorp.client.hud.TextHudRenderer;
+import org.unitego.lobecorp.client.hud.status.bar.StatusGauge;
 import org.unitego.lobecorp.client.hud.status.bar.StatusGaugeView;
 
 import java.math.RoundingMode;
@@ -20,11 +20,11 @@ import java.util.Locale;
 /// 玩家状态条组件：每帧先刷新数值与动画状态，再由原版绘制入口提交局部内容。
 @NullMarked
 public abstract class StatusBarComponent extends ContainerHudRenderer {
+	protected final StatusGauge gauge;
+	protected final StatusGaugeView gaugeView;
 	private final TextHudRenderer valueText = new TextHudRenderer();
 	private final DecimalFormat number = createNumberFormat("0.00");
 	private final DecimalFormat integer = createNumberFormat("0");
-	protected final StatusGauge gauge;
-	protected final StatusGaugeView gaugeView;
 	private final boolean valueTextVisible;
 	protected @Nullable LocalPlayer player;
 	protected float currentValue;

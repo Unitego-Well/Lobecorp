@@ -1,15 +1,12 @@
 package org.unitego.lobecorp.client.hud;
 
-import org.jspecify.annotations.NullMarked;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public class TextHudRenderer extends BasicHudRenderer {
-	public enum Alignment {LEFT, CENTER, RIGHT}
-
 	private Component text = Component.empty();
 	private int color = -1;
 	private boolean shadow;
@@ -54,4 +51,6 @@ public class TextHudRenderer extends BasicHudRenderer {
 			pose.popMatrix();
 		}
 	}
+
+	public enum Alignment {LEFT, CENTER, RIGHT}
 }

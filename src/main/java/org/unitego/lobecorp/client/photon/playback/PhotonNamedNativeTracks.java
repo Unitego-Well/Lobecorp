@@ -10,20 +10,16 @@ import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.unitego.lobecorp.mixin.photon.editor.client.TimelinePlayerAccessor;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /// 每个命名句柄独占原生音频实例；后期贡献沿用宿主逐帧sink，不替换主时间轴。
 public class PhotonNamedNativeTracks implements AutoCloseable {
 	private final FXRuntime runtime;
 	private final List<Track> audioTracks;
 	private final TimelinePlayer media;
-	private double previousTime = Double.NaN;
 	private final boolean hasAudio;
 	private final boolean hasPostProcess;
+	private double previousTime = Double.NaN;
 
 	public PhotonNamedNativeTracks(FXRuntime runtime, Timeline timeline, List<Track> leaves, boolean hasAudio,
 	                               boolean hasPostProcess) {
@@ -63,14 +59,10 @@ public class PhotonNamedNativeTracks implements AutoCloseable {
 
 	/// 命名速度按优先级/播放顺序覆盖；退出后只恢复仍属于本混合器的贡献。
 	public static class Speeds {
-		private record Value(float original, float applied) {
-		}
-
 		private final FXRuntime runtime;
 		private final Map<FXObject, Value> values = new HashMap<>();
 		private final Set<FXObject> seen = new HashSet<>();
 		private final Map<FXObject, Float> nativeValues = new HashMap<>();
-
 		public Speeds(FXRuntime runtime) {
 			this.runtime = runtime;
 		}
@@ -131,6 +123,9 @@ public class PhotonNamedNativeTracks implements AutoCloseable {
 			begin();
 			values.clear();
 			seen.clear();
+		}
+
+		private record Value(float original, float applied) {
 		}
 	}
 }

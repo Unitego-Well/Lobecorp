@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
+import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 

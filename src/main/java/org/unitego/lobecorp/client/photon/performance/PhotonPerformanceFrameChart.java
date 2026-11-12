@@ -11,8 +11,8 @@ import com.lowdragmc.lowdraglib2.gui.util.DrawerHelperClient;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
+import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslationKeys;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceReportUtil.Frames;
-import org.unitego.lobecorp.registry.translation.photon.performance.PhotonPerformanceTranslations;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceWindowUtil;
 
 import java.util.Arrays;
@@ -85,6 +85,16 @@ public class PhotonPerformanceFrameChart {
 					clear.run();
 				}), button("window_export", export));
 		root.addChildren(graph, legend, controls);
+	}
+
+	private static Button button(String name, Runnable action) {
+		var button = new Button().setText(key(name)).setOnClick(_ -> action.run());
+		button.layout(layout -> layout.flex(1).minWidth(0));
+		return button;
+	}
+
+	private static String key(String name) {
+		return PhotonPerformanceTranslationKeys.key(name);
 	}
 
 	public UIElement element() {
@@ -160,15 +170,5 @@ public class PhotonPerformanceFrameChart {
 			float bar = value / (float) maximumNs * (height - 2);
 			DrawerHelperClient.drawSolidRect(context, x, y + height - Math.max(1, bar), 2, 1, color);
 		}
-	}
-
-	private static Button button(String name, Runnable action) {
-		var button = new Button().setText(key(name)).setOnClick(_ -> action.run());
-		button.layout(layout -> layout.flex(1).minWidth(0));
-		return button;
-	}
-
-	private static String key(String name) {
-		return PhotonPerformanceTranslations.key(name);
 	}
 }

@@ -6,7 +6,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -14,29 +13,35 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
-import org.jspecify.annotations.Nullable;
-import net.neoforged.neoforge.common.damagesource.DamageContainer;
-import org.unitego.lobecorp.api.ILivingEntityExpand;
-import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
-import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.api.ILivingEntityExpand;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
+import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
+import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
 
 import java.util.Stack;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin implements ILivingEntityExpand {
+	@Shadow
+	protected Stack<DamageContainer> damageContainers;
 	@Unique
 	private boolean lobecorp$shieldBlocked;
 	@Unique
 	private boolean lobecorp$capturingShieldBlock;
+	@Unique
+	@Nullable
+	private LcDamageContext lobecorp$damageContext;
 
 	@Override
 	public boolean lobecorp$isShieldBlocked() {
@@ -57,11 +62,6 @@ public abstract class LivingEntityMixin implements ILivingEntityExpand {
 	public void lobecorp$setCapturingShieldBlock(boolean capture) {
 		lobecorp$capturingShieldBlock = capture;
 	}
-	@Shadow
-	protected Stack<DamageContainer> damageContainers;
-	@Unique
-	@Nullable
-	private LcDamageContext lobecorp$damageContext;
 
 	@Override
 	@Nullable
@@ -182,13 +182,13 @@ public abstract class LivingEntityMixin implements ILivingEntityExpand {
 
 	@WrapOperation(method = "stabAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;hurtServer(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;F)Z"))
 	private boolean lobecorp$captureStabShieldBlock(Entity target, ServerLevel level, DamageSource source, float damage,
-	                                               Operation<Boolean> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
+	                                                Operation<Boolean> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
 		return LcDamageUtil.captureShieldBlock(target, () -> original.call(target, level, source, damage), blocked);
 	}
 
 	@WrapOperation(method = "stabAttack", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;causeExtraKnockback(Lnet/minecraft/world/entity/Entity;FLnet/minecraft/world/phys/Vec3;)V"))
 	private void lobecorp$shieldStabKnockback(LivingEntity entity, Entity target, float strength, Vec3 movement,
-	                                         Operation<Void> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
+	                                          Operation<Void> original, @Share("shieldBlocked") LocalBooleanRef blocked) {
 		original.call(entity, target, blocked.get() ? 0.0F : strength, movement);
 	}
 

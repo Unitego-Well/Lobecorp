@@ -5,20 +5,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
+import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.world.hitbox.HitboxEffectContext;
-import org.unitego.lobecorp.world.hitbox.HitboxHitMode;
-import org.unitego.lobecorp.world.hitbox.HitboxHitPolicy;
-import org.unitego.lobecorp.world.hitbox.HitboxInstance;
-import org.unitego.lobecorp.world.hitbox.HitboxManager;
-import org.unitego.lobecorp.world.hitbox.HitboxPurpose;
-import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.world.hitbox.*;
 import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
-import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
-import org.unitego.lobecorp.util.TypedDataKey;
 
 /// 聚爆在持续阶段吸引敌人，六次强吸引结束后在女皇位置结算爆炸。
 public class ConvergentSkill extends EntitySkill<TheQueenOfHatred> {

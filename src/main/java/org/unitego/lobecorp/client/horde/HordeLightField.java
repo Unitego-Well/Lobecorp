@@ -1,25 +1,19 @@
 package org.unitego.lobecorp.client.horde;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongArrays;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
-import it.unimi.dsi.fastutil.longs.LongSets;
+import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.lighting.LayerLightEventListener;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.lighting.LayerLightEventListener;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.function.Function;
-import java.util.Set;
+import java.util.function.LongPredicate;
 
 /// 按原版方块坐标上传区段光场；GPU 在最终单位位置采样，CPU 不查询逐个单位。
 public class HordeLightField implements AutoCloseable {
@@ -28,16 +22,24 @@ public class HordeLightField implements AutoCloseable {
 	private static final int TILES_PER_ROW = 4;
 	private static final int UPDATE_TICKS = 5;
 	private static final byte[] EMPTY = new byte[0];
-	/// 非当前批次的光照槽位保留 120 个绘制周期，供后续批次复用。
-	private static final int RETAIN_FRAMES = 120;
+	/// 非当前批次的光照槽位保留 120 个游戏刻，供后续批次复用。
+	private static final int RETAIN_TICKS = 120;
+	/// 覆盖十二组轮转并留有余量；每项区段上限同时约束常驻字节数。
+	private static final int MAX_LOOKUPS = 32;
+	private static final int MAX_CACHED_SECTIONS = 16384;
+	private static final int MAX_CACHED_INPUTS = 4096;
 	private final Long2ObjectOpenHashMap<Slot> slots = new Long2ObjectOpenHashMap<>();
 	private final HordeLightCoverage coverage = new HordeLightCoverage();
-	private static final int MAX_LOOKUPS = 8;
 	private final LinkedHashMap<LongSet, Lookup> lookups = new LinkedHashMap<>(16, 0.75f, true);
 	private final List<HordeClient.Block> inputBlocks = new ArrayList<>();
 	private final Set<HordeClient.Block> distinctBlocks = new HashSet<>();
+	private final IntArrayList free = new IntArrayList();
+	private final LongSet required = new LongOpenHashSet();
+	private final LinkedHashMap<List<HordeClient.Block>, Group> groups = new LinkedHashMap<>(32, 0.75f, true);
+	private ClientLevel world;
+	private HordeDataTexture borrowed;
+	private long groupTick = Long.MIN_VALUE;
 	private long slotVersion;
-	private final List<Integer> free = new ArrayList<>();
 	private DynamicTexture atlas;
 	private HordeDataTexture lookup;
 	private int capacity;
@@ -45,14 +47,27 @@ public class HordeLightField implements AutoCloseable {
 	private int mask;
 	private long frame;
 	private boolean mappingDirty = true;
-	private final LongSet required = new LongOpenHashSet();
 	private LongSet previous = LongSets.emptySet();
-	private List<HordeClient.Block> cachedInputs = List.of();
-	private List<HordeClient.Block> cachedBlocks = List.of();
-	private List<HordeClient.Block> preparedBlocks = List.of();
 	private long[] orderedSections = LongArrays.EMPTY_ARRAY;
-	private long preparedTick = Long.MIN_VALUE;
 	private long nextEvictionFrame = Long.MAX_VALUE;
+
+	private static int compareSections(long first, long second) {
+		int x = Integer.compare(SectionPos.x(first), SectionPos.x(second));
+		if (x != 0) {
+			return x;
+		}
+
+		int y = Integer.compare(SectionPos.y(first), SectionPos.y(second));
+		return y != 0 ? y : Integer.compare(SectionPos.z(first), SectionPos.z(second));
+	}
+
+	private static int nibble(byte[] values, int index) {
+		return values.length == 0 ? 0 : values[index >>> 1] >>> ((index & 1) * 4) & 15;
+	}
+
+	private static int hash(int x, int y, int z) {
+		return x * 73856093 ^ y * 19349663 ^ z * 83492791;
+	}
 
 	public void prepare(List<HordeClient.Batch> batches) {
 		prepare(batches, HordeClient.Batch::block);
@@ -60,19 +75,32 @@ public class HordeLightField implements AutoCloseable {
 
 	public <T> void prepare(List<T> batches, Function<T, HordeClient.Block> blockOf) {
 		var level = Minecraft.getInstance().level;
+		if (world != level) {
+			close();
+			world = level;
+		}
 		if (level == null) {
 			return;
 		}
+		// 上次 prepare 的绘制已结束，才释放未驻留的借用纹理。
+		if (borrowed != null) {
+			borrowed.close();
+			borrowed = null;
+		}
 
-		frame++;
+		frame = level.getGameTime();
 		inputBlocks.clear();
 		for (var batch : batches) {
 			inputBlocks.add(blockOf.apply(batch));
 		}
 
-		boolean inputsChanged = !inputBlocks.equals(cachedInputs);
-		if (inputsChanged) {
-			cachedInputs = List.copyOf(inputBlocks);
+		long tick = level.getGameTime();
+		if (groupTick != tick) {
+			groups.clear();
+			groupTick = tick;
+		}
+		var group = groups.get(inputBlocks);
+		if (group == null) {
 			distinctBlocks.clear();
 			var blocks = new ArrayList<HordeClient.Block>();
 			for (var block : inputBlocks) {
@@ -80,25 +108,27 @@ public class HordeLightField implements AutoCloseable {
 					blocks.add(block);
 				}
 			}
-
-			cachedBlocks = List.copyOf(blocks);
+			var sections = LongSets.unmodifiable(new LongOpenHashSet(requiredSections(blocks)));
+			var ordered = sections.toLongArray();
+			LongArrays.quickSort(ordered, HordeLightField::compareSections);
+			group = new Group(sections, ordered);
+			if (inputBlocks.size() <= MAX_CACHED_INPUTS && sections.size() <= MAX_CACHED_SECTIONS) {
+				groups.put(List.copyOf(inputBlocks), group);
+				while (groups.size() > MAX_LOOKUPS) {
+					groups.remove(groups.firstEntry().getKey());
+				}
+			}
 		}
-
-		long tick = level.getGameTime();
-		boolean refresh = preparedTick != tick || !cachedBlocks.equals(preparedBlocks);
-		var required = refresh ? requiredSections(cachedBlocks) : previous;
+		var required = group.sections();
 		int maximumSlots = RenderSystem.getDevice().getMaxTextureSize() / TILE_HEIGHT * TILES_PER_ROW;
 		if (required.size() > maximumSlots) {
 			throw new IllegalArgumentException("群体单批光照区段超过设备纹理容量");
 		}
 
-		preparedTick = tick;
-		preparedBlocks = cachedBlocks;
 		boolean sectionsChanged = !required.equals(previous);
+		previous = required;
+		orderedSections = group.ordered();
 		if (sectionsChanged) {
-			previous = LongSets.unmodifiable(new LongOpenHashSet(required));
-			orderedSections = previous.toLongArray();
-			LongArrays.quickSort(orderedSections, HordeLightField::compareSections);
 			mappingDirty = true;
 		}
 
@@ -131,7 +161,7 @@ public class HordeLightField implements AutoCloseable {
 			}
 		}
 
-		boolean needsSlots = slots.size() + additions > maximumSlots;
+		int shortage = Math.max(0, slots.size() + additions - maximumSlots);
 		nextEvictionFrame = Long.MAX_VALUE;
 		var iterator = slots.long2ObjectEntrySet().fastIterator();
 		while (iterator.hasNext()) {
@@ -141,13 +171,29 @@ public class HordeLightField implements AutoCloseable {
 			}
 
 			var slot = entry.getValue();
-			if (needsSlots || frame - slot.seen > RETAIN_FRAMES) {
+			if (frame - slot.seen > RETAIN_TICKS) {
+				shortage = Math.max(0, shortage - 1);
 				free.add(slot.index);
 				iterator.remove();
 				slotVersion++;
 				mappingDirty = true;
 			} else {
-				nextEvictionFrame = Math.min(nextEvictionFrame, slot.seen + RETAIN_FRAMES + 1);
+				nextEvictionFrame = Math.min(nextEvictionFrame, slot.seen + RETAIN_TICKS + 1);
+			}
+		}
+
+		// 过期槽先释放；缺额仍存在时才回收未过期的非当前槽，避免哈希顺序造成多删。
+		if (shortage > 0) {
+			iterator = slots.long2ObjectEntrySet().fastIterator();
+			while (shortage > 0 && iterator.hasNext()) {
+				var entry = iterator.next();
+				if (!required.contains(entry.getLongKey())) {
+					free.add(entry.getValue().index);
+					iterator.remove();
+					shortage--;
+					slotVersion++;
+					mappingDirty = true;
+				}
 			}
 		}
 
@@ -156,21 +202,11 @@ public class HordeLightField implements AutoCloseable {
 				continue;
 			}
 
-			int index = free.isEmpty() ? nextSlot++ : free.removeLast();
+			int index = free.isEmpty() ? nextSlot++ : free.removeInt(free.size() - 1);
 			slots.put(section, new Slot(index));
 			slotVersion++;
 			mappingDirty = true;
 		}
-	}
-
-	private static int compareSections(long first, long second) {
-		int x = Integer.compare(SectionPos.x(first), SectionPos.x(second));
-		if (x != 0) {
-			return x;
-		}
-
-		int y = Integer.compare(SectionPos.y(first), SectionPos.y(second));
-		return y != 0 ? y : Integer.compare(SectionPos.z(first), SectionPos.z(second));
 	}
 
 	private LongSet requiredSections(List<HordeClient.Block> blocks) {
@@ -182,11 +218,12 @@ public class HordeLightField implements AutoCloseable {
 		long tick = level.getGameTime();
 		long buildsBefore = coverage.builds();
 		long queriesBefore = coverage.queries();
+		LongPredicate loadedColumn = column -> level.getChunkSource().getChunkNow(
+				SectionPos.x(column), SectionPos.z(column)) != null;
 		for (var block : blocks) {
 			for (long key : coverage.candidates(block.bounds(), level.getLightEngine().getMinLightSection(),
 					level.getLightEngine().getMaxLightSection(), tick)) {
-				if (coverage.loaded(key, tick, column -> level.getChunkSource().getChunkNow(
-						SectionPos.x(column), SectionPos.z(column)) != null)) {
+				if (coverage.loaded(key, tick, loadedColumn)) {
 					required.add(key);
 				}
 			}
@@ -234,13 +271,17 @@ public class HordeLightField implements AutoCloseable {
 		}
 		RenderSystem.getDevice().createCommandEncoder().writeToTexture(atlas.getTexture(), pixels,
 				0, 0, tileX, tileY, TILE_WIDTH, TILE_HEIGHT, tileX, tileY);
-		slot.block = blockData.clone();
-		slot.sky = skyData.clone();
+		slot.block = snapshot(slot.block, blockData);
+		slot.sky = snapshot(slot.sky, skyData);
 		slot.uploaded = true;
 	}
 
-	private static int nibble(byte[] values, int index) {
-		return values.length == 0 ? 0 : values[index >>> 1] >>> ((index & 1) * 4) & 15;
+	private static byte[] snapshot(byte[] previous, byte[] source) {
+		if (previous == null || previous.length != source.length) {
+			return source.clone();
+		}
+		System.arraycopy(source, 0, previous, 0, source.length);
+		return previous;
 	}
 
 	private void ensureAtlas(int count) {
@@ -295,6 +336,13 @@ public class HordeLightField implements AutoCloseable {
 			data[at * 4 + 3] = slot.index + 1;
 		}
 		var replacement = new HordeDataTexture("Horde light section index", data);
+		// 超大组只借用至下一次 prepare，不扩大常驻缓存或设备容量。
+		if (previous.size() > MAX_CACHED_SECTIONS) {
+			borrowed = replacement;
+			lookup = replacement;
+			mappingDirty = true;
+			return;
+		}
 		var old = lookups.put(previous, new Lookup(replacement, mask, slotVersion));
 		if (old != null) {
 			old.texture().close();
@@ -306,10 +354,6 @@ public class HordeLightField implements AutoCloseable {
 		}
 		lookup = replacement;
 		mappingDirty = false;
-	}
-
-	private static int hash(int x, int y, int z) {
-		return x * 73856093 ^ y * 19349663 ^ z * 83492791;
 	}
 
 	public DynamicTexture atlas() {
@@ -338,6 +382,13 @@ public class HordeLightField implements AutoCloseable {
 			atlas.close();
 			atlas = null;
 		}
+		if (borrowed != null) {
+			borrowed.close();
+			borrowed = null;
+		}
+		world = null;
+		groups.clear();
+		groupTick = Long.MIN_VALUE;
 		lookups.values().forEach(cached -> cached.texture().close());
 		lookups.clear();
 		lookup = null;
@@ -349,15 +400,14 @@ public class HordeLightField implements AutoCloseable {
 		free.clear();
 		required.clear();
 		previous = LongSets.emptySet();
-		cachedInputs = List.of();
-		cachedBlocks = List.of();
-		preparedBlocks = List.of();
 		orderedSections = LongArrays.EMPTY_ARRAY;
-		preparedTick = Long.MIN_VALUE;
 		nextEvictionFrame = Long.MAX_VALUE;
 		nextSlot = 0;
 		capacity = 0;
 		mappingDirty = true;
+	}
+
+	private record Group(LongSet sections, long[] ordered) {
 	}
 
 	private record Lookup(HordeDataTexture texture, int mask, long version) {
@@ -365,9 +415,9 @@ public class HordeLightField implements AutoCloseable {
 
 	private static class Slot {
 		private final int index;
+		private final byte[] skyFallback = new byte[256];
 		private long seen;
 		private long updated = Long.MIN_VALUE / 2;
-        private final byte[] skyFallback = new byte[256];
 		private byte[] block;
 		private byte[] sky;
 		private boolean uploaded;

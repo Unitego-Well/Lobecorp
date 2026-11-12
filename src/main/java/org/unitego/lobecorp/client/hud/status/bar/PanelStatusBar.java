@@ -8,15 +8,16 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.LcColors;
+import org.unitego.lobecorp.api.LcDamageType;
+import org.unitego.lobecorp.client.hud.RectangleHudRenderer;
 import org.unitego.lobecorp.client.hud.TextHudRenderer;
 import org.unitego.lobecorp.client.hud.TextureHudRenderer;
-import org.unitego.lobecorp.client.hud.RectangleHudRenderer;
 import org.unitego.lobecorp.client.hud.TextureLayer;
 import org.unitego.lobecorp.client.hud.status.StatusBarComponent;
 import org.unitego.lobecorp.config.client.PlayerHudConfig;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
 
@@ -39,14 +40,14 @@ public class PanelStatusBar extends StatusBarComponent {
 	private final boolean rationality;
 	private final int boxWidth;
 	private final int valueWidth;
-	private float frameWidth;
 	private final TextureHudRenderer box;
 	private final TextureHudRenderer icon;
 	private final Segment[] segments;
 	private final TextHudRenderer numbers = new TextHudRenderer();
 	private final StatusBarShake shake = new StatusBarShake();
-	private float absorptionPeak;
 	private final float[] numberAmounts;
+	private float frameWidth;
+	private float absorptionPeak;
 	private float numberMaximum;
 	private float numberTicks;
 	private boolean numbersSampled;
@@ -73,6 +74,18 @@ public class PanelStatusBar extends StatusBarComponent {
 					TextureHudRenderer.sprite(valueTexture(rationality, 0)));
 		}
 		updateFrameVisibility(true);
+	}
+
+	private static Identifier[] textures(String group, String... names) {
+		var textures = new Identifier[names.length];
+		for (int index = 0; index < names.length; index++) {
+			textures[index] = Lobecorp.id("newhud/bar/" + group + "/" + names[index]);
+		}
+		return textures;
+	}
+
+	private static Identifier valueTexture(boolean rationality, int state) {
+		return (rationality ? RATIONALITY_VALUES : HEALTH_VALUES)[state];
 	}
 
 	@Override
@@ -142,12 +155,12 @@ public class PanelStatusBar extends StatusBarComponent {
 		float alpha = Minecraft.getInstance().hasShiftDown() ? 1 : Math.min(1, numberTicks / NUMBER_FADE_TICKS);
 		numbers.setVisible(Math.round(alpha * 255) >= 4);
 		numbers.setColor(Math.round(alpha * 255) << 24 | 0xFFFFFF);
-		ChatFormatting valueColor = rationality ? switch (RationalityBarComponent.textureRow(currentValue, maximumValue)) {
-			case 0 -> ChatFormatting.BLUE;
-			case 1 -> ChatFormatting.RED;
-			default -> ChatFormatting.WHITE;
-		} : ChatFormatting.WHITE;
-		var text = Component.literal(format(currentValue)).withStyle(valueColor);
+		int valueColor = rationality ? switch (RationalityBarComponent.textureRow(currentValue, maximumValue)) {
+			case 0 -> LcColors.LIGHT_BLUE;
+			case 1 -> ChatFormatting.RED.getColor();
+			default -> ChatFormatting.WHITE.getColor();
+		} : ChatFormatting.WHITE.getColor();
+		var text = Component.literal(format(currentValue)).withColor(valueColor);
 		if (absorption > 0) {
 			text.append(Component.literal("+").withStyle(ChatFormatting.DARK_GRAY))
 					.append(Component.literal(format(absorption)).withStyle(ChatFormatting.WHITE));
@@ -240,18 +253,6 @@ public class PanelStatusBar extends StatusBarComponent {
 			segment.clear();
 		}
 		shake.clear();
-	}
-
-	private static Identifier[] textures(String group, String... names) {
-		var textures = new Identifier[names.length];
-		for (int index = 0; index < names.length; index++) {
-			textures[index] = Lobecorp.id("newhud/bar/" + group + "/" + names[index]);
-		}
-		return textures;
-	}
-
-	private static Identifier valueTexture(boolean rationality, int state) {
-		return (rationality ? RATIONALITY_VALUES : HEALTH_VALUES)[state];
 	}
 
 	private static class Segment {

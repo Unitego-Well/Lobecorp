@@ -40,6 +40,9 @@ public class ConductorHudModel {
 	private double clickX;
 	private double clickY;
 	private @Nullable UUID selectionAnchor;
+	private String appliedRosterSearch = "";
+	private String appliedSkillSearch = "";
+	private String previousSearch = "";
 
 	public ConductorHudModel(ConductorHudPreferences preferences) {
 		this.preferences = preferences;
@@ -70,10 +73,6 @@ public class ConductorHudModel {
 	public Map<String, Component> hints() {
 		return hints;
 	}
-
-	private String appliedRosterSearch = "";
-	private String appliedSkillSearch = "";
-	private String previousSearch = "";
 
 	public String appliedRosterSearch() {
 		return appliedRosterSearch;

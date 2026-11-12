@@ -3,9 +3,9 @@ package org.unitego.lobecorp.util.photon.editor;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.gui.ui.event.HoverTooltips;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import net.minecraft.network.chat.Component;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 
 import java.io.File;
 
@@ -19,7 +19,7 @@ public class PhotonEditorTitleUtil {
 		}
 
 		if (file == null) {
-			return original.copy().append(" - ").append(Component.translatable(PhotonEditorTranslations.UNNAMED_EFFECT));
+			return original.copy().append(" - ").append(Component.translatable(PhotonEditorTranslationKeys.UNNAMED_EFFECT));
 		}
 
 		var path = file.getName();

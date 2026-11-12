@@ -2,13 +2,8 @@ package org.unitego.lobecorp.util.photon.compat;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.nbt.ByteArrayTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.nbt.TagParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.nbt.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,33 +18,6 @@ public class PhotonResourceInspection {
 			"lobecorp_model_emitter", "lobecorp_child_animation", "lobecorp_animation_call", "lobecorp_model_animation");
 	private static final Pattern RESOURCE_ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
 	private static final Pattern UUID = Pattern.compile("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}");
-
-	public record Value(String path, String value) {
-	}
-
-	public record Model(String path, int version, int vertices, int faces, int parts, int materials,
-	                    int bones, int morphs, int clips) {
-	}
-
-	public record Report(String origin, PhotonResourceDocument.Kind kind, String sha256, long sourceBytes,
-	                     Map<String, Integer> types, List<Value> legacyFields, List<Value> identities,
-	                     List<Value> references, List<Value> versions, List<Model> models,
-	                     List<Report> entries) {
-		public Report {
-			types = Map.copyOf(types);
-			legacyFields = List.copyOf(legacyFields);
-			identities = List.copyOf(identities);
-			references = List.copyOf(references);
-			versions = List.copyOf(versions);
-			models = List.copyOf(models);
-			entries = List.copyOf(entries);
-		}
-
-		/// 数据被保留与被完整适配是两件事，R0不开放运行门禁。
-		public boolean runtimeReady() {
-			return false;
-		}
-	}
 
 	public static boolean isLegacyType(String value) {
 		int separator = value.indexOf(':');
@@ -88,6 +56,33 @@ public class PhotonResourceInspection {
 				collector.versions, collector.models, children);
 	}
 
+	public record Value(String path, String value) {
+	}
+
+	public record Model(String path, int version, int vertices, int faces, int parts, int materials,
+	                    int bones, int morphs, int clips) {
+	}
+
+	public record Report(String origin, PhotonResourceDocument.Kind kind, String sha256, long sourceBytes,
+	                     Map<String, Integer> types, List<Value> legacyFields, List<Value> identities,
+	                     List<Value> references, List<Value> versions, List<Model> models,
+	                     List<Report> entries) {
+		public Report {
+			types = Map.copyOf(types);
+			legacyFields = List.copyOf(legacyFields);
+			identities = List.copyOf(identities);
+			references = List.copyOf(references);
+			versions = List.copyOf(versions);
+			models = List.copyOf(models);
+			entries = List.copyOf(entries);
+		}
+
+		/// 数据被保留与被完整适配是两件事，R0不开放运行门禁。
+		public boolean runtimeReady() {
+			return false;
+		}
+	}
+
 	private static class Collector {
 		private final PhotonResourceLimits limits;
 		private final Map<String, Integer> types = new LinkedHashMap<>();
@@ -100,6 +95,30 @@ public class PhotonResourceInspection {
 
 		private Collector(PhotonResourceLimits limits) {
 			this.limits = limits;
+		}
+
+		private static Model model(JsonObject object, String path) throws IOException {
+			try {
+				return new Model(path, object.has("version") ? object.get("version").getAsInt() : -1,
+						size(object, "vertices"), size(object, "faces"), size(object, "parts"), size(object, "materials"),
+						size(object, "bones"), size(object, "morphs"), size(object, "clips"));
+			} catch (RuntimeException failure) {
+				throw new IOException("内嵌模型结构无法索引：" + path, failure);
+			}
+		}
+
+		private static int size(JsonObject object, String key) {
+			var value = object.get(key);
+
+			if (value == null || value.isJsonNull()) {
+				return 0;
+			}
+
+			return value.isJsonObject() ? value.getAsJsonObject().size() : value.getAsJsonArray().size();
+		}
+
+		private static String pointer(String parent, String key) {
+			return parent + "/" + key.replace("~", "~0").replace("/", "~1");
 		}
 
 		private void visit(int depth) throws IOException {
@@ -199,30 +218,6 @@ public class PhotonResourceInspection {
 			} else if (RESOURCE_ID.matcher(value).matches() || value.startsWith("file(") || value.startsWith("built-in(")) {
 				references.add(new Value(path, value));
 			}
-		}
-
-		private static Model model(JsonObject object, String path) throws IOException {
-			try {
-				return new Model(path, object.has("version") ? object.get("version").getAsInt() : -1,
-						size(object, "vertices"), size(object, "faces"), size(object, "parts"), size(object, "materials"),
-						size(object, "bones"), size(object, "morphs"), size(object, "clips"));
-			} catch (RuntimeException failure) {
-				throw new IOException("内嵌模型结构无法索引：" + path, failure);
-			}
-		}
-
-		private static int size(JsonObject object, String key) {
-			var value = object.get(key);
-
-			if (value == null || value.isJsonNull()) {
-				return 0;
-			}
-
-			return value.isJsonObject() ? value.getAsJsonObject().size() : value.getAsJsonArray().size();
-		}
-
-		private static String pointer(String parent, String key) {
-			return parent + "/" + key.replace("~", "~0").replace("/", "~1");
 		}
 	}
 }

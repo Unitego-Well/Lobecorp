@@ -2,14 +2,8 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
-import com.lowdragmc.photon.client.fx.fxpack.FXPackExporter;
-import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
-import java.io.ByteArrayInputStream;
 import com.lowdragmc.photon.client.fx.fxpack.FXPacks;
 import net.minecraft.client.Minecraft;
-
-import java.util.concurrent.CompletableFuture;
-
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -18,28 +12,27 @@ import net.minecraft.world.level.Level;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Definition;
-import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
+import org.unitego.lobecorp.mixin.photon.editor.client.FXPackExporterAccessor;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 
-import java.io.IOException;
 import java.io.BufferedInputStream;
-import java.nio.file.Files;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /// 组合包保存实际发布ID与协议；预览环境和运行租约不进入发布清单。
 public class PhotonCompositionExportUtil {
 	private static final String MANIFEST = "assets/lobecorp/compositions/owned_laser.nbt";
 	// 编辑器回读单份压缩定义的解压内存上限，与有限组成件集合共同限定输入规模。
 	private static final long MAX_DEFINITION_BYTES = 64L * 1024 * 1024;
-
-	public record Loaded(PhotonOwnedLaser runtime, Definition definition) {
-	}
 
 	public static void export(FX authoring, Definition composition, String destination) throws IOException {
 		export(PhotonOwnedLaser.exportComponents(authoring), composition, destination);
@@ -62,9 +55,8 @@ public class PhotonCompositionExportUtil {
 		for (var entry : components.entrySet()) {
 			var copy = new FX();
 			copy.deserializeNBT(provider, entry.getValue());
-			PhotonModelPackExportUtil.prepare(copy);
-			var archive = PhotonModelPackExportUtil.capture("lobecorp",
-					"owned_compositions/" + name + "/" + entry.getKey(), copy, provider, false);
+			var archive = PhotonFxPackExportUtil.capture("lobecorp",
+					"owned_compositions/" + name + "/" + entry.getKey(), copy, provider);
 			for (var value : archive.definitions().entrySet()) {
 				var previous = definitions.putIfAbsent(value.getKey(), value.getValue());
 				if (previous != null && !previous.equals(value.getValue())) {
@@ -93,7 +85,7 @@ public class PhotonCompositionExportUtil {
 		manifest.put("definition", PhotonOwnedLaserComposition.serialize(composition));
 		manifest.put("components", ids);
 		definitions.put(MANIFEST, manifest);
-		var archive = new PhotonModelPackExportUtil.Archive(PhotonOwnedLaser.ID, definitions, resources, metadata);
+		var archive = new PhotonFxPackExportUtil.Archive(PhotonOwnedLaser.ID, definitions, resources, metadata);
 		Files.createDirectories(target.getParent());
 		var temporary = target.resolveSibling(".composition-" + UUID.randomUUID() + ".fxpack");
 		try {
@@ -144,9 +136,6 @@ public class PhotonCompositionExportUtil {
 				throw new IOException("组合引用缺失组件：" + cue.component());
 			}
 		}
-	}
-
-	private record Data(Definition definition, Map<String, CompoundTag> components) {
 	}
 
 	private static Data readData(Path path) throws IOException {
@@ -232,5 +221,11 @@ public class PhotonCompositionExportUtil {
 		var runtime = PhotonOwnedLaser.previewComponents(data.components(), revision, level);
 		runtime.composition(data.definition());
 		return new Loaded(runtime, data.definition());
+	}
+
+	public record Loaded(PhotonOwnedLaser runtime, Definition definition) {
+	}
+
+	private record Data(Definition definition, Map<String, CompoundTag> components) {
 	}
 }

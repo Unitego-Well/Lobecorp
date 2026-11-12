@@ -11,8 +11,8 @@ import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorDockedPanel;
 import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslationKeys;
 import org.unitego.lobecorp.util.photon.compat.PhotonEffectInventoryUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 
 import javax.annotation.Nullable;
@@ -28,7 +28,7 @@ import java.util.Map;
 /// 面板本身不创建FX运行态；列表数据来自只读NBT索引，点选条目才调用编辑器工具挂一份预览。
 public class PhotonEffectLibraryPanel {
 	/// 面板标题的翻译键。
-	private static final String TITLE = PhotonEffectLibraryTranslations.TYPE;
+	private static final String TITLE = PhotonEffectLibraryTranslationKeys.TYPE;
 	/// 列表区的最大可见行数，超出滚动。
 	private static final int MAX_ROWS = 64;
 	private final PhotonEffectLibraryProject project;
@@ -48,9 +48,9 @@ public class PhotonEffectLibraryPanel {
 		panel.addContent(summary);
 		rows.layout(layout -> layout.widthPercent(100).flexDirection(FlexDirection.COLUMN));
 		panel.addContent(rows);
-		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslations.RESCAN))
+		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslationKeys.RESCAN))
 				.setOnClick(_ -> rescan()));
-		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslations.CLEAR))
+		panel.addButton(new Button().setText(Component.translatable(PhotonEffectLibraryTranslationKeys.CLEAR))
 				.setOnClick(_ -> select(null)));
 		panel.setOnClose(this::close);
 	}
@@ -62,7 +62,7 @@ public class PhotonEffectLibraryPanel {
 			return;
 		}
 
-		Dialog.showNotification(PhotonEffectLibraryTranslations.TYPE, PhotonEffectLibraryTranslations.TIP, null).show(editor);
+		Dialog.showNotification(PhotonEffectLibraryTranslationKeys.TYPE, PhotonEffectLibraryTranslationKeys.TIP, null).show(editor);
 	}
 
 	/// 打开或切换到当前工程的面板；已存在同工程面板时复用，不重复扫描。
@@ -70,6 +70,36 @@ public class PhotonEffectLibraryPanel {
 		var panel = new PhotonEffectLibraryPanel(editor, project);
 		panel.rescan();
 		panel.panel.show(editor);
+	}
+
+	/// 被两个以上特效共同引用的子特效ID；共享引用优化优先处理这些。
+	private static java.util.Set<String> sharedIds(List<PhotonEffectInventoryUtil.Entry> entries) {
+		Map<String, Integer> counts = new LinkedHashMap<>();
+
+		for (var entry : entries) {
+			for (var link : entry.linkedIds()) {
+				counts.merge(link, 1, Integer::sum);
+			}
+		}
+
+		var shared = new java.util.LinkedHashSet<String>();
+		counts.forEach((id, count) -> {
+			if (count > 1) {
+				shared.add(id);
+			}
+		});
+		return shared;
+	}
+
+	/// 单行的展示文本：ID、对象数、发射器数、估算渲染类型、子特效链接与深度。
+	private static String label(PhotonEffectInventoryUtil.Entry entry) {
+		if (!entry.readable()) {
+			return entry.id() + "  ✗ " + entry.failure();
+		}
+
+		return String.format(java.util.Locale.ROOT, "%s  obj=%d emit=%d spawn=%d rt=%d link=%d d=%d  %dKB",
+				entry.id(), entry.objects(), entry.emitters(), entry.spawners(), entry.estimatedRenderTypes(),
+				entry.linkedEffects(), entry.linkDepth(), entry.decodedBytes() / 1024);
 	}
 
 	/// 重新扫描资源根并把结果写回工程条目；单文件失败只体现在该行的failure上。
@@ -117,25 +147,6 @@ public class PhotonEffectLibraryPanel {
 		return roots.isEmpty() ? null : roots.getFirst();
 	}
 
-	/// 被两个以上特效共同引用的子特效ID；共享引用优化优先处理这些。
-	private static java.util.Set<String> sharedIds(List<PhotonEffectInventoryUtil.Entry> entries) {
-		Map<String, Integer> counts = new LinkedHashMap<>();
-
-		for (var entry : entries) {
-			for (var link : entry.linkedIds()) {
-				counts.merge(link, 1, Integer::sum);
-			}
-		}
-
-		var shared = new java.util.LinkedHashSet<String>();
-		counts.forEach((id, count) -> {
-			if (count > 1) {
-				shared.add(id);
-			}
-		});
-		return shared;
-	}
-
 	private void render() {
 		rows.clearAllChildren();
 		buttons.clear();
@@ -155,7 +166,7 @@ public class PhotonEffectLibraryPanel {
 			}
 		}
 
-		summary.setText(Component.translatable(PhotonEffectLibraryTranslations.SUMMARY,
+		summary.setText(Component.translatable(PhotonEffectLibraryTranslationKeys.SUMMARY,
 				scanned.size(), totalObjects, totalEmitters, totalBytes / 1024, unreadable));
 
 		for (var entry : scanned) {
@@ -167,19 +178,8 @@ public class PhotonEffectLibraryPanel {
 		}
 
 		if (scanned.isEmpty()) {
-			rows.addChild(new TextElement().setText(Component.translatable(PhotonEffectLibraryTranslations.EMPTY)));
+			rows.addChild(new TextElement().setText(Component.translatable(PhotonEffectLibraryTranslationKeys.EMPTY)));
 		}
-	}
-
-	/// 单行的展示文本：ID、对象数、发射器数、估算渲染类型、子特效链接与深度。
-	private static String label(PhotonEffectInventoryUtil.Entry entry) {
-		if (!entry.readable()) {
-			return entry.id() + "  ✗ " + entry.failure();
-		}
-
-		return String.format(java.util.Locale.ROOT, "%s  obj=%d emit=%d spawn=%d rt=%d link=%d d=%d  %dKB",
-				entry.id(), entry.objects(), entry.emitters(), entry.spawners(), entry.estimatedRenderTypes(),
-				entry.linkedEffects(), entry.linkDepth(), entry.decodedBytes() / 1024);
 	}
 
 	/// 选中一行：同一时刻只保留一份运行态，切换时先释放旧的。

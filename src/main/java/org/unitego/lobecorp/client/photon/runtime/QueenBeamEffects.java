@@ -2,29 +2,27 @@ package org.unitego.lobecorp.client.photon.runtime;
 
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import com.lowdragmc.photon.client.gameobject.FXObject;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
 import org.unitego.lobecorp.client.animation.LcClientAnimations;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
-import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
 import org.unitego.lobecorp.client.photon.performance.PhotonRenderPrewarm;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedHandle;
+import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
+import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.render.PhotonFixedRenderAccess;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
-import org.unitego.lobecorp.util.photon.model.PhotonModelSourceUtil;
-import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
@@ -34,15 +32,7 @@ import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
 
 import javax.annotation.Nullable;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /// 只消费现有权威动画快照；不执行服务端回调、不改动作姿态、伤害或技能时序。
 @SuppressWarnings("resource") // 命名接口为借用，实际运行实例由PhotonGeoEffect统一释放。
@@ -51,8 +41,6 @@ public class QueenBeamEffects {
 	private static final Map<UUID, Long> RETIRED = new HashMap<>();
 	/// 首次施放预热：仅预加载 FX 定义（含子 FX 定义），运行态仍按原路径创建；默认开启，可用属性关闭。
 	private static final boolean PREWARM = !"false".equals(System.getProperty("lobecorp.photon.prewarmBeam", "true"));
-	private static @Nullable Level prewarmedLevel;
-	private static boolean prewarmed;
 	private static final boolean LEGACY_RUNTIME_PREWARM = Boolean.getBoolean("lobecorp.photon.legacyRuntimePrewarm");
 	/// 预热好的首次运行态（含已准备的子实例）；只给首个同定义施放使用，用后即移除。
 	private static final Map<Identifier, PhotonGeoEffect> PREPARED = new HashMap<>();
@@ -63,11 +51,13 @@ public class QueenBeamEffects {
 	/// A/B 实测：降到 1 会让深层子模板退回施放时按需构建，帧均值反而上升，因此默认保持 2。
 	private static final int PREWARM_DEPTH = Math.clamp(
 			Integer.getInteger("lobecorp.photon.prewarmDepth", 2), 0, 3);
-	/// 渲染预热的逐 tick 任务队列；预热完成后置空，施放采用壳时不影响。
-	private static @Nullable PhotonRenderPrewarm.Queue prewarmQueue;
 	private static final Map<Identifier, Deque<PhotonGeoEffect>> IDLE = new HashMap<>();
 	/// 历史法阵起点相对身体中心前移一格，服务端命中原点保持原值。
 	private static final double VISUAL_FORWARD = 1;
+	private static @Nullable Level prewarmedLevel;
+	private static boolean prewarmed;
+	/// 渲染预热的逐 tick 任务队列；预热完成后置空，施放采用壳时不影响。
+	private static @Nullable PhotonRenderPrewarm.Queue prewarmQueue;
 
 	/// 只读当前世界的既有预热队列状态，不触发或改变预热。
 	public static boolean prewarmComplete(Level level) {
@@ -306,11 +296,6 @@ public class QueenBeamEffects {
 		}
 	}
 
-	/// 只返回生命周期持有数量，不暴露或延长运行实例和世界的引用。
-	public record RetentionStatistics(int playing, int retired, int prepared, int idle,
-									  boolean queueRetained, boolean levelRetained) {
-	}
-
 	public static RetentionStatistics retentionStatistics() {
 		int idle = IDLE.values().stream().mapToInt(Deque::size).sum();
 		return new RetentionStatistics(PLAYING.size(), RETIRED.size(), PREPARED.size(), idle,
@@ -325,7 +310,6 @@ public class QueenBeamEffects {
 		discardPrepared();
 		prewarmed = false;
 		prewarmedLevel = null;
-		PhotonModelSourceUtil.purgeClearedEmbeddedPreparations();
 	}
 
 	/// 释放未使用的预热/复用运行态；已采用的在 Beam 生命周期内由 effect 自己关闭或归还。
@@ -376,6 +360,11 @@ public class QueenBeamEffects {
 	private static void closeIdle() {
 		IDLE.values().forEach(queue -> queue.forEach(PhotonGeoEffect::close));
 		IDLE.clear();
+	}
+
+	/// 只返回生命周期持有数量，不暴露或延长运行实例和世界的引用。
+	public record RetentionStatistics(int playing, int retired, int prepared, int idle,
+	                                  boolean queueRetained, boolean levelRetained) {
 	}
 
 	private static class Beam {
@@ -452,10 +441,6 @@ public class QueenBeamEffects {
 					if (object instanceof Emitter value) {
 						((PhotonFixedRenderAccess) value.rendererRuntime()).lobecorp$useFixedRendering();
 					}
-					if (object instanceof PhotonModelOutput value) {
-						((PhotonFixedRenderAccess) value.config.renderer).lobecorp$useFixedRendering();
-						((PhotonFixedRenderAccess) value.config.modelRenderer).lobecorp$useFixedRendering();
-					}
 					if (object instanceof PhotonNamedController controller) {
 						controller.preparePlaybackDefinition();
 					}
@@ -503,6 +488,10 @@ public class QueenBeamEffects {
 			}
 		}
 
+		private static double parameter(LcAnimationSnapshot snapshot, String key) {
+			return snapshot.parameters().getOrDefault(key, 0.0);
+		}
+
 		private void release(boolean recycle) {
 			if (recycle && POOL) {
 				QueenBeamEffects.recycle(effectId, effect);
@@ -513,10 +502,6 @@ public class QueenBeamEffects {
 
 		private PhotonNamedRuntime animations() {
 			return Objects.requireNonNull(((PhotonNamedAccess) effect.runtime()).lobecorp$namedRuntime());
-		}
-
-		private static double parameter(LcAnimationSnapshot snapshot, String key) {
-			return snapshot.parameters().getOrDefault(key, 0.0);
 		}
 
 		private Vec3 sourceStart() {

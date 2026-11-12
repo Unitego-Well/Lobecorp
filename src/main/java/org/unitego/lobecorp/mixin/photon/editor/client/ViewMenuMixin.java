@@ -4,9 +4,9 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.lowdraglib2.editor.settings.EditorSettings;
 import com.lowdragmc.lowdraglib2.editor.ui.menu.ViewMenu;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorViewScaleUtil;
 
 @Mixin(ViewMenu.class)

@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.animation.demo;
 
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.attachment.LcTransform;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.attachment.LcTransform;
 
 /// 独立示例的资源契约与可调参数，不持有世界或播放实例。
 public class LcAnimationDemo {

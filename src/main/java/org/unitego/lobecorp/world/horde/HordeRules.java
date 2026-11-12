@@ -37,6 +37,18 @@ public record HordeRules(int duration, double width, double margin,
 				HordeConfig.SPLIT.get(), HordeConfig.SPAWN_DISTANCE.get());
 	}
 
+	public static HordeRules load(CompoundTag tag) {
+		return new HordeRules(Math.max(20, tag.getIntOr("duration", 6000)),
+				Math.clamp(tag.getDoubleOr("width", 128), 1, 512),
+				Math.max(0, tag.getDoubleOr("margin", 8)), Math.max(1, tag.getIntOr("initial", 1)),
+				Math.max(1, tag.getIntOr("multiplier", 3)), Math.max(1, tag.getIntOr("reinforce", 100)),
+				Math.max(1, tag.getIntOr("unreachable", 100)), Math.max(1, tag.getIntOr("retry", 100)),
+				Math.max(1, tag.getIntOr("outside", 40)), Math.max(1, tag.getIntOr("scan", 20)),
+				Math.max(1, tag.getIntOr("fade", 5)), Math.max(1, tag.getIntOr("transition", 20)),
+				Math.max(0, tag.getDoubleOr("region_margin", 8)), Math.max(1, tag.getIntOr("split", 40)),
+				Math.max(1, tag.getDoubleOr("spawn_distance", 4)));
+	}
+
 	public HordeRules withOverrides(int ticks, double blocks) {
 		return new HordeRules(ticks, blocks, margin, initialQuota, maximumMultiplier, reinforceTicks,
 				unreachableTicks, retryTicks, outsideTicks, scanTicks, fadeTicks, transitionTicks,
@@ -61,17 +73,5 @@ public record HordeRules(int duration, double width, double margin,
 		tag.putInt("split", splitTicks);
 		tag.putDouble("spawn_distance", spawnDistance);
 		return tag;
-	}
-
-	public static HordeRules load(CompoundTag tag) {
-		return new HordeRules(Math.max(20, tag.getIntOr("duration", 6000)),
-				Math.clamp(tag.getDoubleOr("width", 128), 1, 512),
-				Math.max(0, tag.getDoubleOr("margin", 8)), Math.max(1, tag.getIntOr("initial", 1)),
-				Math.max(1, tag.getIntOr("multiplier", 3)), Math.max(1, tag.getIntOr("reinforce", 100)),
-				Math.max(1, tag.getIntOr("unreachable", 100)), Math.max(1, tag.getIntOr("retry", 100)),
-				Math.max(1, tag.getIntOr("outside", 40)), Math.max(1, tag.getIntOr("scan", 20)),
-				Math.max(1, tag.getIntOr("fade", 5)), Math.max(1, tag.getIntOr("transition", 20)),
-				Math.max(0, tag.getDoubleOr("region_margin", 8)), Math.max(1, tag.getIntOr("split", 40)),
-				Math.max(1, tag.getDoubleOr("spawn_distance", 4)));
 	}
 }

@@ -10,7 +10,7 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
-import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperVariant;
 

@@ -1,5 +1,7 @@
 package org.unitego.lobecorp.mixin.photon.creation.client;
 
+import com.lowdragmc.photon.client.collision.CollisionScene;
+import com.lowdragmc.photon.client.collision.CollisionWorld;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleRuntime;
 import com.lowdragmc.photon.client.gameobject.forcefield.ForceFieldObject;
@@ -7,23 +9,19 @@ import com.lowdragmc.photon.client.gameobject.particle.SpawnFrame;
 import com.lowdragmc.photon.client.gameobject.particle.renderer.AraTrailParticleRenderer;
 import com.lowdragmc.photon.client.gameobject.particle.renderer.TileParticleRenderer;
 import com.lowdragmc.photon.client.gameobject.particle.renderer.TrailParticleRenderer;
-import org.joml.Matrix4f;
-
-import java.util.List;
-import java.util.Queue;
-import java.util.Map;
-import com.lowdragmc.photon.client.collision.CollisionScene;
-import com.lowdragmc.photon.client.collision.CollisionWorld;
 import net.minecraft.world.level.Level;
-import org.spongepowered.asm.mixin.gen.Invoker;
-
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.gen.Invoker;
 
 import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 /// 配置由主线恢复后丢弃旧 runtime，使下一次访问绑定新配置。
-@Mixin(value = ParticleEmitter.class, remap = false)
+@Mixin(value = ParticleEmitter.class)
 public interface ParticleEmitterLeaseAccessor {
 	@Accessor("runtime")
 	void lobecorp$setLeaseRuntime(@Nullable ParticleRuntime value);
@@ -48,6 +46,7 @@ public interface ParticleEmitterLeaseAccessor {
 
 	@Accessor("araTrailExtractRenderer")
 	void lobecorp$setLeaseAraTrailExtractRenderer(@Nullable AraTrailParticleRenderer value);
+
 	@Invoker("registerLights")
 	void lobecorp$registerLeaseLights(@Nullable Level level);
 

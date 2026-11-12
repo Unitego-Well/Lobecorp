@@ -17,6 +17,8 @@ import java.util.Objects;
 
 /// 仅显式基准用例开启的提交计数；不修改缓冲容量、顶点写入或原生作业生命周期。
 public class PhotonSubmissionDiagnostics {
+	/// 高频提交探针的显式对照开关；与 PhotonBenchMixinPlugin 中的同名字面量必须一致。
+	public static final String PROBES_PROPERTY = "lobecorp.photon.bench.probes";
 	private static @Nullable Sample active;
 	private static @Nullable Submission current;
 	private static @Nullable Drain currentDrain;
@@ -78,9 +80,6 @@ public class PhotonSubmissionDiagnostics {
 	public static boolean enabled() {
 		return active != null && active.thread == Thread.currentThread();
 	}
-
-	/// 高频提交探针的显式对照开关；与 PhotonBenchMixinPlugin 中的同名字面量必须一致。
-	public static final String PROBES_PROPERTY = "lobecorp.photon.bench.probes";
 
 	/// 关闭时基准 Mixin 不注入；生产路径不读取该属性，也不改变提交缓冲。
 	public static boolean probesRequested() {
@@ -391,13 +390,13 @@ public class PhotonSubmissionDiagnostics {
 	}
 
 	private static class Sample {
-		private boolean frameCaptureBound;
 		private final String label;
 		private final Thread thread = Thread.currentThread();
 		private final Counters model = new Counters();
 		private final Counters other = new Counters();
 		private final Matrix4f projection = new Matrix4f();
 		private final float[] matrix = new float[16];
+		private boolean frameCaptureBound;
 		private @Nullable CameraSample cameraFirst;
 		private @Nullable CameraSample cameraLast;
 		private @Nullable WindowSample windowFirst;
@@ -539,9 +538,13 @@ public class PhotonSubmissionDiagnostics {
 	}
 
 	private static class CameraSample {
+		private final float[] matrix = new float[16];
 		private double x, y, z;
 		private float pitch, yaw, roll, fov;
-		private final float[] matrix = new float[16];
+
+		private static boolean differs(float first, float second) {
+			return Float.floatToRawIntBits(first) != Float.floatToRawIntBits(second);
+		}
 
 		private void set(double x, double y, double z, float pitch, float yaw, float roll, float fov, float[] matrix) {
 			this.x = x;
@@ -598,10 +601,6 @@ public class PhotonSubmissionDiagnostics {
 			result.add("view_rotation_projection_matrix", values);
 			result.addProperty("fingerprint", Long.toUnsignedString(fingerprint, 16));
 			return result;
-		}
-
-		private static boolean differs(float first, float second) {
-			return Float.floatToRawIntBits(first) != Float.floatToRawIntBits(second);
 		}
 	}
 

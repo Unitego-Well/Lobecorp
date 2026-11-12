@@ -1,24 +1,23 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.lowdragmc.photon.client.fx.IEffectExecutor;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
-import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.IEffectExecutor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
+import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.photon.performance.PhotonCastProfiler;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimePreviewUtil;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -27,10 +26,12 @@ import java.io.IOException;
 public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 
-
-
-
-
+	@Unique
+	private @Nullable PhotonNamedRuntime lobecorp$named;
+	@Unique
+	private boolean lobecorp$prepared;
+	@Unique
+	private long lobecorp$profileGeneration;
 
 	@Inject(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;ILjava/lang/String;)V", at = @At("RETURN"))
 	private void lobecorp$previewAfterRestart(CallbackInfo ci) {
@@ -40,11 +41,6 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 
 		PhotonRuntimePreviewUtil.apply((FXRuntime) (Object) this);
 	}
-
-	@Unique
-	private @Nullable PhotonNamedRuntime lobecorp$named;
-	@Unique
-	private boolean lobecorp$prepared;
 
 	@Override
 	public @Nullable PhotonNamedRuntime lobecorp$namedRuntime() {
@@ -143,10 +139,6 @@ public abstract class FXRuntimeMixin implements PhotonNamedAccess {
 			lobecorp$named = null;
 		}
 	}
-
-
-	@Unique
-	private long lobecorp$profileGeneration;
 
 	@WrapMethod(method = "emit(Lcom/lowdragmc/photon/client/fx/IEffectExecutor;ILjava/lang/String;)V")
 	private void lobecorp$captureEmission(IEffectExecutor executor, int delay, @Nullable String startSection, Operation<Void> original) {

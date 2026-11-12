@@ -11,11 +11,11 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.NonNull;
+import org.unitego.lobecorp.registry.LcRegistries;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.LcRegistries;
 
 import java.util.List;
 import java.util.Map;

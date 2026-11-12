@@ -24,19 +24,19 @@ public class PhotonLogicRegression {
 	private final UIElement driver = new UIElement();
 	private final UIEventListener tickListener = _ -> tick();
 	private final UIEventListener removedListener = _ -> hostRemoved();
-	private boolean expectingNativeClose;
-	private boolean nativeCloseRemovedHost;
 	private final JsonObject report = new JsonObject();
 	private final JsonArray assertions = new JsonArray();
 	private final PhotonLogicPreparationCheck preparation = new PhotonLogicPreparationCheck(this::check);
 	private final long deadline = System.nanoTime() + TimeUnit.MINUTES.toNanos(10);
 	private final Path output;
-	private boolean finished;
 	private final PhotonLogicLateWorkerCheck lateWorker = new PhotonLogicLateWorkerCheck(this::check);
+	private final PhotonLogicLifecycleCheck lifecycle = new PhotonLogicLifecycleCheck(this::check);
+	private boolean expectingNativeClose;
+	private boolean nativeCloseRemovedHost;
+	private boolean finished;
 	private int checkStage;
 	private PhotonLogicCloseCheck closeCheck;
 	private PhotonLogicWorkspaceCheck workspaceCheck;
-	private final PhotonLogicLifecycleCheck lifecycle = new PhotonLogicLifecycleCheck(this::check);
 	private PhotonEffectProjectUtil.Handle bridgeProject;
 	private FXEditor host;
 

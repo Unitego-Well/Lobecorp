@@ -1,12 +1,7 @@
 package org.unitego.lobecorp.util.photon.playback;
 
 import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.IntTag;
+import net.minecraft.nbt.*;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnShape;

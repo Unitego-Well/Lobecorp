@@ -1,38 +1,10 @@
 package org.unitego.lobecorp.util.photon.compat;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Collections;
+import java.util.*;
 
 /// 只在调用方明确给出的来源集合内解析；同名各版本保留，首个来源为本报告声明的优先项。
 public class PhotonResourceDependencyUtil {
-	public record Source(String key, String origin, String sha256, PhotonResourceDocument document) {
-	}
-
-	public record Edge(String from, String path, String reference, String status, List<String> candidates) {
-		public Edge {
-			candidates = List.copyOf(candidates);
-		}
-	}
-
-	public record Report(Map<String, List<Source>> versions, List<Edge> edges, Set<String> reachable,
-	                     List<List<String>> cycles, boolean closed) {
-		public Report {
-			var copied = new LinkedHashMap<String, List<Source>>();
-			versions.forEach((key, value) -> copied.put(key, List.copyOf(value)));
-			versions = Collections.unmodifiableMap(copied);
-			edges = List.copyOf(edges);
-			reachable = Set.copyOf(reachable);
-			cycles = cycles.stream().map(List::copyOf).toList();
-		}
-	}
-
 	/// 包内逻辑路径由ZIP条目决定，目录文件的逻辑路径由调用方显式声明。
 	public static List<Source> sources(PhotonResourceDocument document, String logicalPath) {
 		var result = new ArrayList<Source>();
@@ -175,5 +147,26 @@ public class PhotonResourceDependencyUtil {
 			throw new IllegalArgumentException("资源逻辑路径无效：" + key);
 		}
 		return result;
+	}
+
+	public record Source(String key, String origin, String sha256, PhotonResourceDocument document) {
+	}
+
+	public record Edge(String from, String path, String reference, String status, List<String> candidates) {
+		public Edge {
+			candidates = List.copyOf(candidates);
+		}
+	}
+
+	public record Report(Map<String, List<Source>> versions, List<Edge> edges, Set<String> reachable,
+	                     List<List<String>> cycles, boolean closed) {
+		public Report {
+			var copied = new LinkedHashMap<String, List<Source>>();
+			versions.forEach((key, value) -> copied.put(key, List.copyOf(value)));
+			versions = Collections.unmodifiableMap(copied);
+			edges = List.copyOf(edges);
+			reachable = Set.copyOf(reachable);
+			cycles = cycles.stream().map(List::copyOf).toList();
+		}
 	}
 }

@@ -1,7 +1,8 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
@@ -9,17 +10,10 @@ import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefiniti
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation.Phase;
-import net.minecraft.util.Mth;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /// 自有激光的生产适配；保留旧路径，默认不启用尚未运行验收的组合版本。
 @SuppressWarnings("resource") // 世界和命名运行时均为借用，组合统一释放子租约。
@@ -33,23 +27,12 @@ public class QueenOwnedLaserEffects {
 					"lobecorp.photon-05-hybrid-laser3", "lobecorp.photon-05-hybrid-blank25",
 					"lobecorp.photon-06-migration-laser3")
 			.contains(System.getProperty("modBench.scenarios", ""));
+	private static final List<ComponentStatistics> COMPONENT_HISTORY = new ArrayList<>();
 	private static long startedCount;
 	private static long fallbackCount;
 	private static long errorCount;
 	private static int maximumConcurrent;
 	private static long overlapCount;
-	private static final List<ComponentStatistics> COMPONENT_HISTORY = new ArrayList<>();
-
-	public record ComponentStatistics(long ordinal, Set<String> created, Set<String> activeObserved) {
-		public ComponentStatistics {
-			created = Set.copyOf(created);
-			activeObserved = Set.copyOf(activeObserved);
-		}
-	}
-
-	public record Statistics(long started, long fallbacks, long errors, int playing, int tails,
-	                         int maximumConcurrent, long overlaps, List<ComponentStatistics> components) {
-	}
 
 	/// 客户端线程只读快照；计数跨世界清理保留，供采集者按起始快照作差。
 	public static Statistics statistics() {
@@ -156,6 +139,17 @@ public class QueenOwnedLaserEffects {
 		TAILS.clear();
 	}
 
+	public record ComponentStatistics(long ordinal, Set<String> created, Set<String> activeObserved) {
+		public ComponentStatistics {
+			created = Set.copyOf(created);
+			activeObserved = Set.copyOf(activeObserved);
+		}
+	}
+
+	public record Statistics(long started, long fallbacks, long errors, int playing, int tails,
+	                         int maximumConcurrent, long overlaps, List<ComponentStatistics> components) {
+	}
+
 	private static class Playing {
 		private final long ordinal = STATISTICS_ENABLED ? ++startedCount : 0;
 		private final Set<String> created = STATISTICS_ENABLED ? new HashSet<>() : Set.of();
@@ -173,6 +167,10 @@ public class QueenOwnedLaserEffects {
 			revision = snapshot.playbackRevision();
 			this.effect = effect;
 			effect.frameAnchor(partial -> anchor(latest, partial));
+		}
+
+		private static double parameter(LcAnimationSnapshot snapshot, String key) {
+			return snapshot.parameters().getOrDefault(key, 0.0);
 		}
 
 		private void update(LcAnimationSnapshot snapshot) {
@@ -232,10 +230,6 @@ public class QueenOwnedLaserEffects {
 					"width", List.of((float) LaserSkill.WIDTH / Math.abs(effect.space().beamScale().x)),
 					"enabled", List.of(distance > 0 ? 1f : 0f));
 			effect.beam(beamStart.toVector3f(), rotation, inputs);
-		}
-
-		private static double parameter(LcAnimationSnapshot snapshot, String key) {
-			return snapshot.parameters().getOrDefault(key, 0.0);
 		}
 	}
 }

@@ -12,10 +12,10 @@ import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 
 public class PhotonEditorNotificationUtil {
 
-	/// 同一 Photon 编辑器最多同时显示的定时通知数量。
-	private static final int MAX_NOTIFICATIONS = 3;
 	/// 导出成功沿用原生保存成功通知的显示时间，单位为秒。
 	public static final float SUCCESS_DURATION_SECONDS = 2;
+	/// 同一 Photon 编辑器最多同时显示的定时通知数量。
+	private static final int MAX_NOTIFICATIONS = 3;
 	/// 同一编辑器内查找通知容器的稳定标识。
 	private static final String STACK_ID = "lobecorp_photon_notifications";
 	/// 通知间距，单位为界面像素。

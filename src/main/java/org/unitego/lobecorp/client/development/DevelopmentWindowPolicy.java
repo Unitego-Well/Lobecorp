@@ -2,18 +2,26 @@ package org.unitego.lobecorp.client.development;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeWin32;
+import org.lwjgl.system.JNI;
+import org.lwjgl.system.windows.WINDOWPLACEMENT;
+import net.neoforged.fml.loading.FMLEnvironment;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.Platform;
 import org.lwjgl.system.windows.MONITORINFOEX;
 import org.lwjgl.system.windows.User32;
 import org.lwjgl.system.windows.WindowProc;
+import org.slf4j.Logger;
 
-/// 显式测试入口的非激活铺满与最小化保护；普通启动默认关闭，不捕获或移动系统鼠标。
+/// 显式测试入口的原生最大化与最小化保护；普通启动默认关闭，不激活窗口或操作实体鼠标。
 public class DevelopmentWindowPolicy {
 	private static final Logger LOGGER = LogUtils.getLogger();
 	private static final String ENABLE_PROPERTY = "lobecorp.developmentWindowTestPolicy";
+	private static final String MODE_PROPERTY = "lobecorp.developmentWindowTestMode";
+	private static boolean creationHintsApplied;
+	private static long foregroundBefore;
+	private boolean visibleChecked;
 	private final long hwnd;
 	private final long previousProc;
 	private final boolean hadMinimizeBox;
@@ -46,7 +54,12 @@ public class DevelopmentWindowPolicy {
 
 		try {
 			User32.SetWindowLongPtr(null, hwnd, User32.GWL_STYLE, style & ~User32.WS_MINIMIZEBOX);
-			if (!fullscreen && !User32.IsIconic(hwnd)) {
+			if (nativeMode()) {
+				User32.SetWindowPos(null, hwnd, 0, 0, 0, 0, 0,
+						User32.SWP_NOMOVE | User32.SWP_NOSIZE | User32.SWP_NOACTIVATE
+								| User32.SWP_NOZORDER | User32.SWP_FRAMECHANGED);
+			} else if ("workarea".equals(System.getProperty(MODE_PROPERTY))
+					&& !fullscreen && !User32.IsIconic(hwnd)) {
 				try (var stack = MemoryStack.stackPush()) {
 					var info = MONITORINFOEX.calloc(stack).cbSize(MONITORINFOEX.SIZEOF);
 					if (!User32.GetMonitorInfo(User32.MonitorFromWindow(hwnd, User32.MONITOR_DEFAULTTONEAREST), info)) {
@@ -70,7 +83,7 @@ public class DevelopmentWindowPolicy {
 	}
 
 	public static DevelopmentWindowPolicy install(long handle, boolean fullscreen) {
-		if (!Boolean.getBoolean(ENABLE_PROPERTY) || Platform.get() != Platform.WINDOWS) {
+		if (!enabled()) {
 			return null;
 		}
 
@@ -79,6 +92,65 @@ public class DevelopmentWindowPolicy {
 		} catch (RuntimeException | LinkageError failure) {
 			LOGGER.warn("开发窗口辅助不可用，跳过窗口操作", failure);
 			return null;
+		}
+	}
+
+	public static boolean enabled() {
+		return !FMLEnvironment.isProduction() && Boolean.getBoolean(ENABLE_PROPERTY)
+				&& Platform.get() == Platform.WINDOWS;
+	}
+
+	public static boolean nativeMode() {
+		return "native".equals(System.getProperty(MODE_PROPERTY, "native"));
+	}
+
+	public static void prepareCreation(long monitor) {
+		creationHintsApplied = false;
+		if (!enabled() || !nativeMode() || monitor != 0L) {
+			return;
+		}
+		foregroundBefore = foregroundWindow();
+		GLFW.glfwWindowHint(GLFW.GLFW_MAXIMIZED, GLFW.GLFW_TRUE);
+		GLFW.glfwWindowHint(GLFW.GLFW_FOCUSED, GLFW.GLFW_FALSE);
+		GLFW.glfwWindowHint(GLFW.GLFW_FOCUS_ON_SHOW, GLFW.GLFW_FALSE);
+		GLFW.glfwWindowHint(GLFW.GLFW_CENTER_CURSOR, GLFW.GLFW_FALSE);
+		creationHintsApplied = true;
+		LOGGER.info("event=creation-hints mode=native foregroundBefore={} pid={}", foregroundBefore, ProcessHandle.current().pid());
+	}
+
+	public static boolean nativeCreated(long handle) {
+		return enabled() && nativeMode() && creationHintsApplied
+				&& GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_MAXIMIZED) == GLFW.GLFW_TRUE;
+	}
+
+	private static long foregroundWindow() {
+		return JNI.callP(User32.getLibrary().getFunctionAddress("GetForegroundWindow"));
+	}
+
+	/// 首次可见时只读验收；不恢复前台、不重试最大化。
+	public void verifyVisible(long handle) {
+		if (visibleChecked || GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_VISIBLE) != GLFW.GLFW_TRUE) {
+			return;
+		}
+		visibleChecked = true;
+		try (var stack = MemoryStack.stackPush()) {
+			var placement = WINDOWPLACEMENT.calloc(stack).length(WINDOWPLACEMENT.SIZEOF);
+			boolean placementRead = User32.GetWindowPlacement(null, hwnd, placement);
+			var width = stack.mallocInt(1);
+			var height = stack.mallocInt(1);
+			var fbWidth = stack.mallocInt(1);
+			var fbHeight = stack.mallocInt(1);
+			GLFW.glfwGetWindowSize(handle, width, height);
+			GLFW.glfwGetFramebufferSize(handle, fbWidth, fbHeight);
+			long after = foregroundWindow();
+			boolean zoomed = User32.IsZoomed(hwnd);
+			int maximized = GLFW.glfwGetWindowAttrib(handle, GLFW.GLFW_MAXIMIZED);
+			LOGGER.info("event=first-visible mode={} creationHints={} foregroundBefore={} foregroundAfter={} foregroundUnchanged={} max={} placementRead={} placement={} glfwMaximized={} glfwSize={}x{} framebuffer={}x{} pid={} success={}",
+					nativeMode() ? "native" : "workarea", creationHintsApplied, foregroundBefore, after,
+					foregroundBefore == after, zoomed, placementRead, placement.showCmd(), maximized,
+					width.get(0), height.get(0), fbWidth.get(0), fbHeight.get(0), ProcessHandle.current().pid(),
+					creationHintsApplied && foregroundBefore == after && zoomed && placementRead
+							&& placement.showCmd() == 3 && maximized == GLFW.GLFW_TRUE);
 		}
 	}
 

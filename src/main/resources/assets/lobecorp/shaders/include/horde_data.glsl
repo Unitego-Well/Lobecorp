@@ -8,6 +8,13 @@ float scalar(sampler2D data, int index) {
     return uintBitsToFloat(rawWord(data, index));
 }
 
+// 与HordeGpuPacking一致：有符号16位相对高度，单位1/8格。
+float packedTerrainHeight(sampler2D data, int index) {
+    uint word = rawWord(data, index / 2);
+    int height = (index & 1) == 0 ? int(word << 16u) >> 16 : int(word) >> 16;
+    return float(height) / 8.0;
+}
+
 int integer(sampler2D data, int index) {
     return int(rawWord(data, index));
 }

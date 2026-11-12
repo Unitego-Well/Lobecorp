@@ -10,9 +10,6 @@ public class PhotonTimelineStateUtil {
 	/// 时间轴回绕行为的配置标识，沿用既有设置序列化键。
 	private static final Field WRAP_MODE = field("wrapMode");
 
-	private record Modes(Object end, Object wrap) {
-	}
-
 	public static Object capture(FXTimelineView view) {
 		try {
 			return new Modes(END_MODE.get(view), WRAP_MODE.get(view));
@@ -42,5 +39,8 @@ public class PhotonTimelineStateUtil {
 		} catch (NoSuchFieldException error) {
 			throw new ExceptionInInitializerError(error);
 		}
+	}
+
+	private record Modes(Object end, Object wrap) {
 	}
 }

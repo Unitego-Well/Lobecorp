@@ -2,12 +2,12 @@ package org.unitego.lobecorp.network.tc;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -23,8 +23,8 @@ import org.unitego.lobecorp.client.conductor.ConductorClient;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.conductor.world.ConductorWorldRuntime;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 
 import java.util.*;
 
@@ -91,11 +91,6 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 		data.runtime.requestedAbilities.keySet().retainAll(online);
 	}
 
-	@Override
-	public void work(IPayloadContext context, AbstractClientPlayer player) {
-		ConductorClient.receive(this);
-	}
-
 	private static ConductorSnapshotPayload create(ServerPlayer player, ConductorData data, boolean full) {
 		MinecraftServer server = player.level().getServer();
 		Set<UUID> requested = data.runtime.requestedAbilities.getOrDefault(player.getUUID(), Set.of());
@@ -147,6 +142,11 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 	}
 
 	@Override
+	public void work(IPayloadContext context, AbstractClientPlayer player) {
+		ConductorClient.receive(this);
+	}
+
+	@Override
 	public @NonNull Type<? extends CustomPacketPayload> type() {
 		return TYPE;
 	}
@@ -154,7 +154,6 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 	public record UnitAbilities(UUID unit, List<Identifier> abilities) {
 		private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 		private static final Codec<Identifier> IDENTIFIER_CODEC = Codec.STRING.xmap(Identifier::parse, Identifier::toString);
-
 		/// 本记录的持久化编解码契约，保持字段名称与默认值兼容。
 		public static final Codec<UnitAbilities> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				UUID_CODEC.fieldOf("unit").forGetter(UnitAbilities::unit),
@@ -165,7 +164,6 @@ public record ConductorSnapshotPayload(boolean full, long baseRevision, long rev
 	public record AbilityCooldown(UUID unit, Identifier ability, int ticks, int totalTicks) {
 		private static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(UUID::fromString, UUID::toString);
 		private static final Codec<Identifier> IDENTIFIER_CODEC = Codec.STRING.xmap(Identifier::parse, Identifier::toString);
-
 		/// 本记录的持久化编解码契约，保持字段名称与默认值兼容。
 		public static final Codec<AbilityCooldown> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				UUID_CODEC.fieldOf("unit").forGetter(AbilityCooldown::unit),

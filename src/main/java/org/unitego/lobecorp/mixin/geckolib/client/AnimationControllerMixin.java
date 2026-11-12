@@ -1,26 +1,26 @@
 package org.unitego.lobecorp.mixin.geckolib.client;
 
 import com.geckolib.animatable.GeoAnimatable;
-import com.geckolib.animation.AnimationController;
-import com.geckolib.model.GeoModel;
-import com.geckolib.renderer.base.GeoRenderState;
 import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.state.ControllerState;
 import com.geckolib.loading.math.MolangQueries;
+import com.geckolib.model.GeoModel;
+import com.geckolib.renderer.base.GeoRenderState;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
+import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.animation.LcAnimationLodAccess;
 import org.unitego.lobecorp.animation.LcAnimationControllerTransitions;
+import org.unitego.lobecorp.animation.LcAnimationLodAccess;
 import org.unitego.lobecorp.client.animation.LcAnimationLodCache;
 import org.unitego.lobecorp.client.animation.LcAnimationLodStateAccess;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
 import org.unitego.lobecorp.util.animation.LcVisualQualityUtil;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
 
 /// 只为显式接入的实体控制器提供远距离姿态采样。
 @Mixin(AnimationController.class)

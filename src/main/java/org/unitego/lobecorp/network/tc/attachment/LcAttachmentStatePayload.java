@@ -21,11 +21,7 @@ import org.unitego.lobecorp.client.attachment.LcClientAttachments;
 import org.unitego.lobecorp.network.tc.IToClientPayload;
 import org.unitego.lobecorp.world.item.animation.LcAttachedItemSnapshot;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /// 全量帧仅替换服务端同步分区；物品描述覆盖本次更新的绑定，缺席表示解除该描述。
 public record LcAttachmentStatePayload(boolean full, long serverTick, List<LcAttachmentSnapshot> updates,

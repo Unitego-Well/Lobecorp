@@ -2,28 +2,25 @@ package org.unitego.lobecorp.util.photon.editor;
 
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.AnimationTrack;
-import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.ExprClip;
+import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.curve.ECBCurves;
 import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
 import com.lowdragmc.photon.gui.editor.view.timeline.AnimationTrackEditor.AnimationTrackUIState;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.curve.ECBCurves;
 import org.joml.Vector2f;
-import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
 import org.unitego.lobecorp.client.photon.editor.PhotonCurveViewAccess;
+import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
 import org.unitego.lobecorp.mixin.photon.editor.client.AnimationTrackUIStateAccessor;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
 import java.math.BigDecimal;
+import java.util.*;
 
 public class PhotonCurveEditUtil {
 	/// 避免曲线时间键重叠的最小 tick 间隔，沿用 Photon 拖动规则。
 	public static final float KEY_GAP = 0.001f;
+	/// 颜色停止点没有贝塞尔通道，用此标记参与统一时间编辑。
+	public static final int COLOR_AXIS = -1;
 	/// 适配视图时在数据上下预留的比例。
 	private static final float VIEW_PADDING = 0.1f;
 	/// 空数值曲线及恒定曲线的默认半幅，单位与属性值一致。
@@ -32,14 +29,6 @@ public class PhotonCurveEditUtil {
 	private static final float DEFAULT_ROTATION_EXTENT = 360f;
 	/// 初始化时每个表达式片段的采样间隔数，避免按片段 tick 长度分配工作量。
 	private static final int EXPRESSION_RANGE_SAMPLES = 64;
-	/// 颜色停止点没有贝塞尔通道，用此标记参与统一时间编辑。
-	public static final int COLOR_AXIS = -1;
-
-	public record Selection(AnimationTrack track, AnimatedProperty property, Set<Long> keys) {
-	}
-
-	public record Key(Selection selection, int axis, int index, Vector2f point, Vector2f in, Vector2f out) {
-	}
 
 	public static List<Selection> selections(FXTimelineView timeline) {
 		var result = new ArrayList<Selection>();
@@ -283,7 +272,7 @@ public class PhotonCurveEditUtil {
 
 	private static void commit(FXTimelineView timeline, List<Selection> selections, Map<AnimatedProperty, AnimatedProperty> before,
 	                           Map<AnimatedProperty, AnimatedProperty> after) {
-		timeline.pushApplied(PhotonEditorTranslations.FEATURE_PRECISE,
+		timeline.pushApplied(PhotonEditorTranslationKeys.FEATURE_PRECISE,
 				() -> {
 					restore(after);
 					syncColorSelection(timeline, selections);
@@ -520,5 +509,11 @@ public class PhotonCurveEditUtil {
 		}
 
 		property.setRange(min, max);
+	}
+
+	public record Selection(AnimationTrack track, AnimatedProperty property, Set<Long> keys) {
+	}
+
+	public record Key(Selection selection, int axis, int index, Vector2f point, Vector2f in, Vector2f out) {
 	}
 }

@@ -12,8 +12,8 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.particle.ParticleOptionsParticleType;
-import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
 import org.unitego.lobecorp.particle.QueenChannelLaserParticleOptions;
+import org.unitego.lobecorp.particle.QueenConvergentParticleOptions;
 import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
 
 import java.util.function.Function;

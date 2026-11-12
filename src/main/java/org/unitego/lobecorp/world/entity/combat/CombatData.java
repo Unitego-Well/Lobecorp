@@ -8,11 +8,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /// 阵营关系和群体成员独立保存，控制状态变化不隐式移除归属。
 public class CombatData extends SavedData {

@@ -26,17 +26,13 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.world.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.registry.world.entity.state.TheQueenOfHatredStates;
 import org.unitego.lobecorp.util.entity.ai.BrainUtil;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillCastRequest;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.SweepSkill;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.StarBeamSkill;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.TeleportSkill;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.RefractionSkill;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.ConvergentSkill;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
-import org.unitego.lobecorp.registry.entity.state.TheQueenOfHatredStates;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.*;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillCastRequest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -157,7 +153,7 @@ public final class TheQueenOfHatredAi {
 	private boolean sittingEdgeFacingLocked;
 	private boolean sittingEdgeApproachingDirectly;
 
-	protected TheQueenOfHatredAi() {
+	TheQueenOfHatredAi() {
 	}
 
 	/// 创建并初始化女皇的 Brain。
@@ -373,7 +369,7 @@ public final class TheQueenOfHatredAi {
 		}));
 	}
 
-	protected void onHurtBy(TheQueenOfHatred queen, LivingEntity attacker) {
+	void onHurtBy(TheQueenOfHatred queen, LivingEntity attacker) {
 		queen.cancelConductorSitting();
 		queen.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, attacker);
 		queen.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
@@ -486,15 +482,15 @@ public final class TheQueenOfHatredAi {
 				: Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(-edgeDirectionX, edgeDirectionZ)));
 	}
 
-	protected void applySittingEdgeFacing(TheQueenOfHatred queen) {
+	void applySittingEdgeFacing(TheQueenOfHatred queen) {
 		queen.applySittingEdgeFacing(sittingEdgeFacingYaw);
 	}
 
-	protected float sittingEdgeFacingYaw() {
+	float sittingEdgeFacingYaw() {
 		return sittingEdgeFacingYaw;
 	}
 
-	protected boolean sittingEdgeFacingLocked() {
+	boolean sittingEdgeFacingLocked() {
 		return sittingEdgeFacingLocked;
 	}
 
@@ -680,7 +676,7 @@ public final class TheQueenOfHatredAi {
 		return false;
 	}
 
-	protected void cancelSitting(TheQueenOfHatred queen) {
+	void cancelSitting(TheQueenOfHatred queen) {
 		scheduleNextIdleAction(queen, Mth.nextInt(queen.getRandom(),
 				MINIMUM_IDLE_ACTION_INTERVAL_TICKS, MAXIMUM_IDLE_ACTION_INTERVAL_TICKS));
 		if (idleAnimationEndGameTime != 0) {
@@ -703,7 +699,7 @@ public final class TheQueenOfHatredAi {
 		hasSittingEdgeFacingYaw = false;
 	}
 
-	protected void updateActivity(TheQueenOfHatred queen) {
+	void updateActivity(TheQueenOfHatred queen) {
 		queen.getBrain().setActiveActivityToFirstValid(List.of(Activity.FIGHT, Activity.IDLE));
 		if (queen.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).isPresent()) {
 			cancelSitting(queen);
@@ -720,7 +716,7 @@ public final class TheQueenOfHatredAi {
 		}
 	}
 
-	protected void tick(TheQueenOfHatred queen) {
+	void tick(TheQueenOfHatred queen) {
 		long gameTime = queen.level().getGameTime();
 		if (EntitySkillUtil.hasActiveSkills(queen)) {
 			cancelSitting(queen);

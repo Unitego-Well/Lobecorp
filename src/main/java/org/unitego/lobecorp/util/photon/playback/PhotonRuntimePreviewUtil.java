@@ -12,11 +12,40 @@ import java.util.WeakHashMap;
 public class PhotonRuntimePreviewUtil {
 	private static final Bindings<FXRuntime, Preview> PREVIEWS = new Bindings<>();
 
+	public static void bind(FXRuntime runtime, Preview preview) {
+		PREVIEWS.put(runtime, preview);
+	}
+
+	public static void unbind(FXRuntime runtime, Preview expected) {
+		PREVIEWS.remove(runtime, expected);
+	}
+
+	public static void apply(FXRuntime runtime) {
+		var preview = PREVIEWS.get(runtime);
+
+		if (preview != null) {
+			preview.applyOverrides(runtime);
+		}
+	}
+
+	public static boolean visible(FXRuntime runtime, IFXObject object) {
+		var preview = PREVIEWS.get(runtime);
+		return preview == null || preview.previewVisible(runtime, object);
+	}
+
+	public static boolean visible(IFXObject object) {
+		if (!(object.getScene() instanceof FXRuntime runtime)) {
+			return true;
+		}
+
+		return visible(runtime, object);
+	}
+
 	/// 编辑器预览行为；实现由编辑器工具持有，弱表不延长其生命周期。
 	public interface Preview {
-		public void applyOverrides(FXRuntime runtime);
+		void applyOverrides(FXRuntime runtime);
 
-		public boolean previewVisible(FXRuntime runtime, IFXObject object);
+		boolean previewVisible(FXRuntime runtime, IFXObject object);
 	}
 
 	/// 弱键弱值绑定核心；不持有 runtime、预览所有者或场景的强引用。
@@ -46,34 +75,5 @@ public class PhotonRuntimePreviewUtil {
 		public @Nullable WeakReference<V> reference(K key) {
 			return values.get(key);
 		}
-	}
-
-	public static void bind(FXRuntime runtime, Preview preview) {
-		PREVIEWS.put(runtime, preview);
-	}
-
-	public static void unbind(FXRuntime runtime, Preview expected) {
-		PREVIEWS.remove(runtime, expected);
-	}
-
-	public static void apply(FXRuntime runtime) {
-		var preview = PREVIEWS.get(runtime);
-
-		if (preview != null) {
-			preview.applyOverrides(runtime);
-		}
-	}
-
-	public static boolean visible(FXRuntime runtime, IFXObject object) {
-		var preview = PREVIEWS.get(runtime);
-		return preview == null || preview.previewVisible(runtime, object);
-	}
-
-	public static boolean visible(IFXObject object) {
-		if (!(object.getScene() instanceof FXRuntime runtime)) {
-			return true;
-		}
-
-		return visible(runtime, object);
 	}
 }

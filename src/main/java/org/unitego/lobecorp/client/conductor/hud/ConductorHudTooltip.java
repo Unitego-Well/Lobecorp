@@ -1,7 +1,5 @@
 package org.unitego.lobecorp.client.conductor.hud;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
@@ -26,15 +24,11 @@ import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
 import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill.LaserSkill;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 import static org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme.*;
@@ -46,6 +40,164 @@ public class ConductorHudTooltip {
 	private final ConductorHudTooltipState state = new ConductorHudTooltipState();
 	private List<Component> preparedLines = List.of();
 	private List<EffectIcon> preparedEffects = List.of();
+
+	private static void appendSkillStatus(List<Component> lines, Mob mob, IConductorAbility ability, int remaining) {
+		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
+		boolean available = ability.isAvailable(mob);
+
+		if (remaining > 0) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
+		}
+
+		if (casting) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
+		}
+
+		if (!available) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
+		}
+
+		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
+			return;
+		}
+
+		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
+
+		if (aim == null || aim.caster() != mob) {
+			return;
+		}
+
+		if (aim.rangeLimited()) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
+		} else if (!aim.valid() && remaining == 0 && available && !casting) {
+			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
+		}
+	}
+
+	/// 共享的纯文本提示绘制入口；不依赖 HUD 宿主状态。
+	public static void drawTooltip(GuiGraphicsExtractor graphics, List<Component> lines) {
+		drawLines(graphics, lines, List.of());
+	}
+
+	private static void drawLines(GuiGraphicsExtractor graphics, List<Component> lines, List<EffectIcon> effects) {
+		Minecraft minecraft = Minecraft.getInstance();
+		int maxWidth = Math.max(1, Math.min(TOOLTIP_WIDTH, graphics.guiWidth() - HOVER_PADDING * 2));
+		List<FormattedCharSequence> wrapped = new ArrayList<>();
+
+		for (Component line : lines) {
+			wrapped.addAll(minecraft.font.split(line, maxWidth - HOVER_PADDING * 2));
+		}
+		int lineHeight = minecraft.font.lineHeight + HOVER_LINE_GAP;
+		int columns = Math.max(1, (maxWidth - HOVER_PADDING * 2) / EFFECT_CELL_WIDTH);
+		int maxEffectRows = Math.max(0, (graphics.guiHeight() - HOVER_PADDING * 4 - lineHeight) / EFFECT_CELL_HEIGHT);
+		int effectCount = Math.min(effects.size(), maxEffectRows * columns);
+		int effectRows = (effectCount + columns - 1) / columns;
+		int effectsHeight = effectRows * EFFECT_CELL_HEIGHT;
+		int maxLines = Math.max(1, (graphics.guiHeight() - HOVER_PADDING * 4 - effectsHeight) / lineHeight);
+
+		if (wrapped.size() > maxLines) {
+			wrapped = new ArrayList<>(wrapped.subList(0, maxLines));
+		}
+		int width = Math.min(maxWidth, wrapped.stream().mapToInt(minecraft.font::width).max().orElse(0) + HOVER_PADDING * 2);
+
+		if (effectCount > 0) {
+			width = maxWidth;
+		}
+		int height = wrapped.size() * lineHeight + HOVER_PADDING * 2 + effectsHeight;
+		int mx = (int) (minecraft.mouseHandler.xpos() * graphics.guiWidth() / minecraft.getWindow().getWidth());
+		int my = (int) (minecraft.mouseHandler.ypos() * graphics.guiHeight() / minecraft.getWindow().getHeight());
+		int x = mx + HOVER_OFFSET + width > graphics.guiWidth() ? mx - HOVER_OFFSET - width : mx + HOVER_OFFSET;
+		int y = my + HOVER_OFFSET + height > graphics.guiHeight() ? my - HOVER_OFFSET - height : my + HOVER_OFFSET;
+		x = Math.max(0, Math.min(x, graphics.guiWidth() - width));
+		y = Math.max(0, Math.min(y, graphics.guiHeight() - height));
+		graphics.nextStratum();
+		graphics.fill(x, y, x + width, y + height, TOOLTIP_BACKGROUND);
+		graphics.outline(x, y, width, height, TOOLTIP_BORDER);
+
+		for (int index = 0; index < wrapped.size(); index++) {
+			graphics.text(minecraft.font, wrapped.get(index), x + HOVER_PADDING,
+					y + HOVER_PADDING + effectsHeight + index * lineHeight, TEXT_COLOR, false);
+		}
+
+		graphics.enableScissor(x + BORDER, y + BORDER, x + width - BORDER, y + height - BORDER);
+
+		for (int index = 0; index < effectCount; index++) {
+			EffectIcon icon = effects.get(index);
+			int effectX = x + HOVER_PADDING + index % columns * EFFECT_CELL_WIDTH;
+			int effectY = y + HOVER_PADDING + index / columns * EFFECT_CELL_HEIGHT;
+			drawEffectIcon(graphics, icon, effectX, effectY);
+		}
+
+		graphics.disableScissor();
+	}
+
+	public static void drawEffectIcon(GuiGraphicsExtractor graphics, EffectIcon icon, int x, int y) {
+		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(icon.effect().getEffect()),
+				x, y, EFFECT_ICON_SIZE, EFFECT_ICON_SIZE);
+		drawTextFit(graphics, Component.literal(Integer.toString(icon.effect().getAmplifier() + 1)),
+				x + EFFECT_ICON_SIZE + HOVER_LINE_GAP, y + (EFFECT_ICON_SIZE - Minecraft.getInstance().font.lineHeight) / 2,
+				EFFECT_CELL_WIDTH - EFFECT_ICON_SIZE - HOVER_LINE_GAP - HOVER_PADDING, TEXT_COLOR);
+		int barY = y + EFFECT_ICON_SIZE + HOVER_LINE_GAP;
+		int barWidth = EFFECT_CELL_WIDTH - HOVER_PADDING;
+		graphics.fill(x, barY, x + barWidth, barY + EFFECT_BAR_HEIGHT, LINE_OUTER);
+		graphics.fill(x, barY, x + Math.round(barWidth * icon.remaining()), barY + EFFECT_BAR_HEIGHT, ORE_GREEN);
+	}
+
+	private static void drawTextFit(GuiGraphicsExtractor graphics, Component text, int x, int y, int width, int color) {
+		if (width <= 0) {
+			return;
+		}
+
+		var font = Minecraft.getInstance().font;
+		String value = text.getString();
+
+		if (font.width(value) > width) {
+			value = font.plainSubstrByWidth(value, Math.max(0, width - font.width(ELLIPSIS))) + ELLIPSIS;
+		}
+
+		graphics.text(font, Component.literal(value), x, y, color, false);
+	}
+
+	private static Component memberDistance(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
+				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
+	}
+
+	private static Component memberDimension(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		ConductorData.Unit unit = ConductorClient.unit(member);
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
+				: unit == null ? UNKNOWN_MARK : unit.dimension());
+	}
+
+	private static Component memberType(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
+		return Component.literal(entity != null ? net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()
+				: info == null ? UNKNOWN_MARK : info.type());
+	}
+
+	private static Component attributes(LivingEntity living) {
+		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
+				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
+		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
+	}
+
+	private static Component memberName(UUID member) {
+		Minecraft minecraft = Minecraft.getInstance();
+		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
+
+		if (entity != null) {
+			return entity.getDisplayName();
+		}
+
+		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
+		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
+	}
 
 	/// 清除悬浮计时；宿主释放时调用。
 	public void clearTransient() {
@@ -292,166 +444,8 @@ public class ConductorHudTooltip {
 		return List.copyOf(details);
 	}
 
-	private static void appendSkillStatus(List<Component> lines, Mob mob, IConductorAbility ability, int remaining) {
-		boolean casting = ability instanceof EntitySkillConductorAbility entitySkill && !entitySkill.canBeginCast(mob);
-		boolean available = ability.isAvailable(mob);
-
-		if (remaining > 0) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_COOLDOWN).withStyle(ChatFormatting.RED));
-		}
-
-		if (casting) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CASTING).withStyle(ChatFormatting.RED));
-		}
-
-		if (!available) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_CONDITION).withStyle(ChatFormatting.RED));
-		}
-
-		if (!ConductorControls.isPendingSkill(ability.id().toString(), mob.getUUID())) {
-			return;
-		}
-
-		ConductorControls.AimPreview aim = ConductorControls.aimPreview(Minecraft.getInstance());
-
-		if (aim == null || aim.caster() != mob) {
-			return;
-		}
-
-		if (aim.rangeLimited()) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_OUT_OF_RANGE).withStyle(ChatFormatting.YELLOW));
-		} else if (!aim.valid() && remaining == 0 && available && !casting) {
-			lines.add(Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_SKILL_UNAVAILABLE_TARGET).withStyle(ChatFormatting.RED));
-		}
-	}
-
 	public void draw(GuiGraphicsExtractor graphics, List<Component> lines) {
 		drawLines(graphics, lines, List.of());
-	}
-
-	/// 共享的纯文本提示绘制入口；不依赖 HUD 宿主状态。
-	public static void drawTooltip(GuiGraphicsExtractor graphics, List<Component> lines) {
-		drawLines(graphics, lines, List.of());
-	}
-
-	private static void drawLines(GuiGraphicsExtractor graphics, List<Component> lines, List<EffectIcon> effects) {
-		Minecraft minecraft = Minecraft.getInstance();
-		int maxWidth = Math.max(1, Math.min(TOOLTIP_WIDTH, graphics.guiWidth() - HOVER_PADDING * 2));
-		List<FormattedCharSequence> wrapped = new ArrayList<>();
-
-		for (Component line : lines) {
-			wrapped.addAll(minecraft.font.split(line, maxWidth - HOVER_PADDING * 2));
-		}
-		int lineHeight = minecraft.font.lineHeight + HOVER_LINE_GAP;
-		int columns = Math.max(1, (maxWidth - HOVER_PADDING * 2) / EFFECT_CELL_WIDTH);
-		int maxEffectRows = Math.max(0, (graphics.guiHeight() - HOVER_PADDING * 4 - lineHeight) / EFFECT_CELL_HEIGHT);
-		int effectCount = Math.min(effects.size(), maxEffectRows * columns);
-		int effectRows = (effectCount + columns - 1) / columns;
-		int effectsHeight = effectRows * EFFECT_CELL_HEIGHT;
-		int maxLines = Math.max(1, (graphics.guiHeight() - HOVER_PADDING * 4 - effectsHeight) / lineHeight);
-
-		if (wrapped.size() > maxLines) {
-			wrapped = new ArrayList<>(wrapped.subList(0, maxLines));
-		}
-		int width = Math.min(maxWidth, wrapped.stream().mapToInt(minecraft.font::width).max().orElse(0) + HOVER_PADDING * 2);
-
-		if (effectCount > 0) {
-			width = maxWidth;
-		}
-		int height = wrapped.size() * lineHeight + HOVER_PADDING * 2 + effectsHeight;
-		int mx = (int) (minecraft.mouseHandler.xpos() * graphics.guiWidth() / minecraft.getWindow().getWidth());
-		int my = (int) (minecraft.mouseHandler.ypos() * graphics.guiHeight() / minecraft.getWindow().getHeight());
-		int x = mx + HOVER_OFFSET + width > graphics.guiWidth() ? mx - HOVER_OFFSET - width : mx + HOVER_OFFSET;
-		int y = my + HOVER_OFFSET + height > graphics.guiHeight() ? my - HOVER_OFFSET - height : my + HOVER_OFFSET;
-		x = Math.max(0, Math.min(x, graphics.guiWidth() - width));
-		y = Math.max(0, Math.min(y, graphics.guiHeight() - height));
-		graphics.nextStratum();
-		graphics.fill(x, y, x + width, y + height, TOOLTIP_BACKGROUND);
-		graphics.outline(x, y, width, height, TOOLTIP_BORDER);
-
-		for (int index = 0; index < wrapped.size(); index++) {
-			graphics.text(minecraft.font, wrapped.get(index), x + HOVER_PADDING,
-					y + HOVER_PADDING + effectsHeight + index * lineHeight, TEXT_COLOR, false);
-		}
-
-		graphics.enableScissor(x + BORDER, y + BORDER, x + width - BORDER, y + height - BORDER);
-
-		for (int index = 0; index < effectCount; index++) {
-			EffectIcon icon = effects.get(index);
-			int effectX = x + HOVER_PADDING + index % columns * EFFECT_CELL_WIDTH;
-			int effectY = y + HOVER_PADDING + index / columns * EFFECT_CELL_HEIGHT;
-			drawEffectIcon(graphics, icon, effectX, effectY);
-		}
-
-		graphics.disableScissor();
-	}
-
-	public static void drawEffectIcon(GuiGraphicsExtractor graphics, EffectIcon icon, int x, int y) {
-		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Gui.getMobEffectSprite(icon.effect().getEffect()),
-				x, y, EFFECT_ICON_SIZE, EFFECT_ICON_SIZE);
-		drawTextFit(graphics, Component.literal(Integer.toString(icon.effect().getAmplifier() + 1)),
-				x + EFFECT_ICON_SIZE + HOVER_LINE_GAP, y + (EFFECT_ICON_SIZE - Minecraft.getInstance().font.lineHeight) / 2,
-				EFFECT_CELL_WIDTH - EFFECT_ICON_SIZE - HOVER_LINE_GAP - HOVER_PADDING, TEXT_COLOR);
-		int barY = y + EFFECT_ICON_SIZE + HOVER_LINE_GAP;
-		int barWidth = EFFECT_CELL_WIDTH - HOVER_PADDING;
-		graphics.fill(x, barY, x + barWidth, barY + EFFECT_BAR_HEIGHT, LINE_OUTER);
-		graphics.fill(x, barY, x + Math.round(barWidth * icon.remaining()), barY + EFFECT_BAR_HEIGHT, ORE_GREEN);
-	}
-
-	private static void drawTextFit(GuiGraphicsExtractor graphics, Component text, int x, int y, int width, int color) {
-		if (width <= 0) {
-			return;
-		}
-
-		var font = Minecraft.getInstance().font;
-		String value = text.getString();
-
-		if (font.width(value) > width) {
-			value = font.plainSubstrByWidth(value, Math.max(0, width - font.width(ELLIPSIS))) + ELLIPSIS;
-		}
-
-		graphics.text(font, Component.literal(value), x, y, color, false);
-	}
-
-	private static Component memberDistance(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DISTANCE, entity == null ? UNKNOWN_MARK
-				: String.format(Locale.ROOT, DECIMAL_FORMAT, entity.position().distanceTo(ConductorCamera.center())));
-	}
-
-	private static Component memberDimension(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		ConductorData.Unit unit = ConductorClient.unit(member);
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_DIMENSION, entity != null ? entity.level().dimension().identifier().toString()
-				: unit == null ? UNKNOWN_MARK : unit.dimension());
-	}
-
-	private static Component memberType(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
-		return Component.literal(entity != null ? net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString()
-				: info == null ? UNKNOWN_MARK : info.type());
-	}
-
-	private static Component attributes(LivingEntity living) {
-		String attack = living.getAttributes().hasAttribute(Attributes.ATTACK_DAMAGE)
-				? String.format(Locale.ROOT, DECIMAL_FORMAT, living.getAttributeValue(Attributes.ATTACK_DAMAGE)) : UNKNOWN_MARK;
-		return Component.translatable(ConductorTranslationKeys.SCREEN_LOBECORP_CONDUCTOR_ATTRIBUTES, attack, living.getArmorValue());
-	}
-
-	private static Component memberName(UUID member) {
-		Minecraft minecraft = Minecraft.getInstance();
-		Entity entity = minecraft.level == null ? null : minecraft.level.getEntity(member);
-
-		if (entity != null) {
-			return entity.getDisplayName();
-		}
-
-		ConductorData.MemberInfo info = ConductorClient.snapshot().memberInfo(member);
-		return Component.literal(info == null || info.name().isBlank() ? member.toString() : info.name());
 	}
 
 	public record EffectIcon(MobEffectInstance effect, float remaining) {

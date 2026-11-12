@@ -4,18 +4,18 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.api.LcDamageType;
+import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
+import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
 import org.unitego.lobecorp.util.entity.damage.LcDamageUtil;
 import org.unitego.lobecorp.util.entity.damage.LcShieldUtil;
-import org.unitego.lobecorp.network.tc.damage.PlayerDamageFilterPayload;
-import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
-import org.unitego.lobecorp.particle.damage.DamageParticles;
 
 import java.util.EnumSet;
 import java.util.Set;
 
 /// 单次命中的运行态；不写入伤害来源、不持久化，并在嵌套受击返回后恢复外层上下文。
 public class LcDamageContext {
-	private Set<LcDamageType> types;
+	private final Set<LcDamageType> types;
 	private float shieldReduction;
 	private float physicsDamage;
 	private float erosionDamage;
@@ -42,6 +42,10 @@ public class LcDamageContext {
 		}
 
 		return types.isEmpty() ? null : new LcDamageContext(types);
+	}
+
+	private static float finiteDamage(double amount) {
+		return (float) Math.min(amount, Float.MAX_VALUE);
 	}
 
 	public boolean hasIndependentResources() {
@@ -102,10 +106,6 @@ public class LcDamageContext {
 		}
 
 		return finiteDamage(Math.max(0.0, scaled - entity.getAttributeValue(type.getDefense())));
-	}
-
-	private static float finiteDamage(double amount) {
-		return (float) Math.min(amount, Float.MAX_VALUE);
 	}
 
 	/// 在原版护甲、保护、抗性及 Pre 阶段完成后合并回血，不向 DamageContainer 写入负伤害。

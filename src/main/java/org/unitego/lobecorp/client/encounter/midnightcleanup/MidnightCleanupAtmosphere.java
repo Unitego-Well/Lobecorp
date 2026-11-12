@@ -1,47 +1,30 @@
 package org.unitego.lobecorp.client.encounter.midnightcleanup;
 
-import com.lowdragmc.kilagraph.rendertype.nodes.input.UVNode;
-import com.lowdragmc.kilagraph.rendertype.nodes.logic.ExpressionNode;
-import com.lowdragmc.lowdraglib2.editor.resource.BuiltinResourceProvider;
+import com.lowdragmc.lowdraglib2.editor.resource.FilePath;
 import com.lowdragmc.lowdraglib2.editor.resource.IResourcePath;
-import com.lowdragmc.lowdraglib2.nodegraphtookit.model.node.NodeModel;
-import com.lowdragmc.lowdraglib2.nodegraphtookit.model.node.NodeOption;
-import com.lowdragmc.lowdraglib2.nodegraphtookit.api.variable.VariableKind;
-import com.lowdragmc.lowdraglib2.nodegraphtookit.model.variable.VariableDeclarationModelBase;
-import com.lowdragmc.lowdraglib2.nodegraphtookit.api.type.TypeHandles;
 import com.lowdragmc.photon.client.postfx.runtime.PostEffectStack;
 import com.lowdragmc.photon.client.postfx.runtime.RenderGraphExecutor;
 import com.lowdragmc.photon.client.postfx.runtime.SceneBlit;
-import com.lowdragmc.photon.client.postfx.shadergraph.FullscreenShaderGraph;
 import com.lowdragmc.photon.client.postfx.shadergraph.runtime.FullscreenGraphRuntime;
 import com.lowdragmc.photon.gui.editor.resource.FullscreenShaderGraphResource;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector2f;
+import org.unitego.lobecorp.util.horde.HordePresenceUtil;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.horde.HordeClient;
 import org.unitego.lobecorp.client.horde.HordeIrisShadows;
-import org.unitego.lobecorp.client.horde.HordeTide;
-import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.client.visual.sky.DirectionalSkyCoverage;
-import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
+import org.unitego.lobecorp.config.client.HordeVisualConfig;
 import org.unitego.lobecorp.util.visual.TimelineUtil;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /// 事件走廊中的持续氛围；标题寿命、当地尾波与全屏后期请求彼此独立。
 public class MidnightCleanupAtmosphere {
-
 	/// 覆盖由24至512格的实际距离推进，横向内缘128格渐强，8刻响应消除位置更新跳变。
 	private static final DirectionalSkyCoverage SKY = new DirectionalSkyCoverage(
 			new DirectionalSkyCoverage.Profile(MidnightCleanupEncounter.SKY_MINIMUM_COVERAGE, MidnightCleanupEncounter.SKY_NEAR_DISTANCE,
@@ -51,11 +34,9 @@ public class MidnightCleanupAtmosphere {
 	private static ClientLevel world;
 	private static double sampledAt = Double.NaN;
 	private static UUID selected;
-	private static float strength, coverage;
+	private static float strength, skyStrength, coverage;
 	private static Vec3 direction = new Vec3(0, 0, 1);
-	private static BuiltinResourceProvider<CompoundTag> provider;
 	private static IResourcePath effect;
-	private static String expressionSource;
 	private static boolean failed;
 
 	public static ResourceManagerReloadListener resourceReloadListener() {
@@ -63,20 +44,18 @@ public class MidnightCleanupAtmosphere {
 	}
 
 	public static void prepare() {
-		if (provider != null || failed) {
+		if (effect != null || failed) {
 			return;
 		}
 
 		try {
-			if (expressionSource == null) {
-				expressionSource = readExpression(Minecraft.getInstance().getResourceManager());
+			var path = new FilePath(MidnightCleanupEncounter.ATMOSPHERE_RESOURCE);
+			if (FullscreenShaderGraphResource.INSTANCE.getResourceInstance().getResource(path) == null) {
+				throw new IllegalStateException("深夜清扫全屏后期图资源不存在：" + MidnightCleanupEncounter.ATMOSPHERE_RESOURCE);
 			}
-			var resource = FullscreenShaderGraphResource.INSTANCE;
-			provider = new BuiltinResourceProvider<>(MidnightCleanupEncounter.ATMOSPHERE_PROVIDER, resource.getResourceInstance());
-			effect = provider.createSubPath(MidnightCleanupEncounter.ATMOSPHERE_PATH);
-			provider.addResource(effect, resource.serializeGraph(new AtmosphereGraph()));
-			resource.getResourceInstance().addUnlistedProvider(provider);
-		} catch (IOException | RuntimeException exception) {
+
+			effect = path;
+		} catch (RuntimeException exception) {
 			failed = true;
 			Lobecorp.LOGGER.error("停止本代际清道夫屏幕后期，天空和开幕继续", exception);
 		}
@@ -150,7 +129,7 @@ public class MidnightCleanupAtmosphere {
 
 	public static Sky sky(float partial) {
 		update(partial);
-		return strength <= 0 ? null : new Sky(direction, strength, coverage, (float) sampledAt);
+		return skyStrength <= 0 ? null : new Sky(direction, skyStrength, coverage, (float) sampledAt);
 	}
 
 	private static void update(float partial) {
@@ -177,10 +156,11 @@ public class MidnightCleanupAtmosphere {
 		HordeClient.ClientHorde chosen = null;
 		DirectionalSkyCoverage.Sample chosenSky = null;
 		double chosenCoverage = -1;
+		boolean insideWave = false;
 		if (HordeVisualConfig.ENABLED.get() && player.isAlive() && !player.isSpectator()) {
 			for (var event : events) {
 				if (!event.ready || event.failed || event.tide == null || !MidnightCleanupEncounter.ID.equals(event.profile)
-						|| event.time(partial) >= event.stop + event.length / event.speed || !inside(event, player.position())) {
+						|| event.time(partial) >= event.stop + event.length / event.speed) {
 					continue;
 				}
 
@@ -193,6 +173,15 @@ public class MidnightCleanupAtmosphere {
 					// 已到达的重连/迟到快照恢复既有氛围，不补播镜头。
 					began = now;
 					started.put(event.id, began);
+				}
+				insideWave |= inside(event, player.position(), partial);
+				double time = event.time(partial);
+				double station = Math.clamp(event.tide.particleStation(player.position()),
+						HordePresenceUtil.tail(time, event.stop, event.speed, event.length),
+						HordePresenceUtil.head(time, event.speed, event.length));
+				if (event.tide.world(station, 0).distanceTo(player.position())
+						> MidnightCleanupEncounter.SKY_FAR_DISTANCE + event.rules.width() / 2) {
+					continue;
 				}
 				var sample = sampleSky(event, player.position(), partial);
 				double value = sample.coverage();
@@ -214,7 +203,10 @@ public class MidnightCleanupAtmosphere {
 				}
 			}
 		}
-		float target = chosen == null && pending == null ? 0 : 1;
+		float skyTarget = chosen == null && pending == null ? 0 : 1;
+		skyStrength = (float) (skyTarget > skyStrength ? Math.min(skyTarget, skyStrength + elapsed / MidnightCleanupEncounter.ATMOSPHERE_ENTER_TICKS)
+				: Math.max(skyTarget, skyStrength - elapsed / MidnightCleanupEncounter.ATMOSPHERE_LEAVE_TICKS));
+		float target = insideWave ? 1 : 0;
 		strength = (float) (target > strength ? Math.min(target, strength + elapsed / MidnightCleanupEncounter.ATMOSPHERE_ENTER_TICKS)
 				: Math.max(target, strength - elapsed / MidnightCleanupEncounter.ATMOSPHERE_LEAVE_TICKS));
 		if (chosen != null) {
@@ -227,7 +219,7 @@ public class MidnightCleanupAtmosphere {
 			var sample = SKY.update(SKY.minimum(direction), elapsed);
 			direction = sample.direction();
 			coverage = sample.coverage();
-		} else if (strength == 0) {
+		} else if (skyStrength == 0) {
 			selected = null;
 			coverage = 0;
 			SKY.reset(direction);
@@ -236,25 +228,23 @@ public class MidnightCleanupAtmosphere {
 
 	private static DirectionalSkyCoverage.Sample sampleSky(HordeClient.ClientHorde event, Vec3 observer, float partial) {
 		double time = event.time(partial);
-		double head = Math.clamp(HordeTide.head(time, event.speed), 0, event.length);
-		double tail = Math.clamp(HordeTide.head(time - event.stop, event.speed), 0, head);
+		double head = HordePresenceUtil.head(time, event.speed, event.length);
+		double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
 		double station = Math.clamp(event.tide.particleStation(observer), tail, head);
 		var sample = SKY.sample(observer, event.tide.world(head, 0), event.tide.world(station, 0),
 				event.tide.forward(station), event.rules.width() / 2);
-		double arrival = event.tide.particleStation(observer) / event.speed - time;
+		double arrival = HordePresenceUtil.arrival(event.tide.particleStation(observer), time, event.speed);
 		float approach = TimelineUtil.phase((float) arrival, MidnightCleanupEncounter.OPENING_WARNING_TICKS, 0);
 		float limit = MidnightCleanupEncounter.SKY_MINIMUM_COVERAGE + MidnightCleanupEncounter.SKY_APPROACH_COVERAGE * approach * approach;
 		return new DirectionalSkyCoverage.Sample(sample.direction(), Math.min(sample.coverage(), limit));
 	}
 
-	private static boolean inside(HordeClient.ClientHorde event, Vec3 point) {
+	private static boolean inside(HordeClient.ClientHorde event, Vec3 point, float partial) {
+		double time = event.time(partial);
 		double station = event.tide.particleStation(point);
-		var center = event.tide.world(station, 0);
-		var forward = event.tide.forward(station);
-		double dx = point.x - center.x, dz = point.z - center.z;
-		double along = dx * forward.x + dz * forward.z;
-		return !(station < MidnightCleanupEncounter.CORRIDOR_END_EPSILON && along < 0 || station > event.length - MidnightCleanupEncounter.CORRIDOR_END_EPSILON && along > 0)
-				&& dx * dx + dz * dz <= event.rules.width() * event.rules.width() / 4;
+		return HordePresenceUtil.contains(point, station, event.tide.world(station, 0), event.tide.forward(station),
+				HordePresenceUtil.tail(time, event.stop, event.speed, event.length),
+				HordePresenceUtil.head(time, event.speed, event.length), event.rules.width() / 2);
 	}
 
 	private static void resetPresence() {
@@ -262,7 +252,7 @@ public class MidnightCleanupAtmosphere {
 		sampledAt = Double.NaN;
 		selected = null;
 		started.clear();
-		strength = coverage = 0;
+		strength = skyStrength = coverage = 0;
 		SKY.reset(new Vec3(0, 0, 1));
 	}
 
@@ -271,25 +261,11 @@ public class MidnightCleanupAtmosphere {
 			resetPresence();
 		}
 		releaseEffect();
-		expressionSource = null;
 	}
 
 	/// 资源代际只替换后期定义，保留活动遭遇的入场起点和天空进度。
 	private static void reload(ResourceManager resources) {
-		try {
-			releaseEffect();
-			expressionSource = readExpression(resources);
-		} catch (IOException | RuntimeException exception) {
-			expressionSource = null;
-			failed = true;
-			Lobecorp.LOGGER.error("深夜清扫大气表达式重载失败，停止本代际屏幕后期，天空和开幕继续", exception);
-		}
-	}
-
-	private static String readExpression(ResourceManager resources) throws IOException {
-		try (var input = resources.open(MidnightCleanupEncounter.ATMOSPHERE_EXPRESSION_RESOURCE)) {
-			return new String(input.readAllBytes(), StandardCharsets.UTF_8);
-		}
+		releaseEffect();
 	}
 
 	private static void releaseEffect() {
@@ -297,10 +273,6 @@ public class MidnightCleanupAtmosphere {
 		if (effect != null) {
 			FullscreenGraphRuntime.invalidate(effect);
 		}
-		if (provider != null) {
-			FullscreenShaderGraphResource.INSTANCE.getResourceInstance().removeUnlistedProvider(provider);
-		}
-		provider = null;
 		effect = null;
 		failed = false;
 	}
@@ -308,25 +280,4 @@ public class MidnightCleanupAtmosphere {
 	public record Sky(Vec3 direction, float strength, float coverage, float time) {
 	}
 
-	/// 使用Photon原生图序列化和后期执行器，不持有主目标或创建另一套全屏渲染器。
-	private static class AtmosphereGraph extends FullscreenShaderGraph {
-		@Override
-		protected void wireDefaultOutput(NodeModel textureSample, NodeModel output) {
-			var uv = createNode(UVNode.class, 200, 100);
-			var time = (VariableDeclarationModelBase) graphModel.createVariable("Time", TypeHandles.FLOAT, 0F, VariableKind.INPUT);
-			var timeNode = graphModel.createVariableNode(time, new Vector2f(200, 220), null, null);
-			var expression = createNode(ExpressionNode.class, 460, 0);
-			var spec = new ExpressionNode.ExpressionSpec(
-					List.of(new ExpressionNode.PortSpec("source", "SAMPLER2D"), new ExpressionNode.PortSpec("uv", "VEC2"),
-							new ExpressionNode.PortSpec("time", "FLOAT")),
-					List.of(new ExpressionNode.PortSpec("result", "VEC4")), Objects.requireNonNull(expressionSource));
-			var option = (NodeOption) expression.getNodeOptionById(ExpressionNode.OPTION);
-			Objects.requireNonNull(option.portModel.getEmbeddedValue()).setValue(ExpressionNode.toJson(spec));
-			expression.defineNode();
-			graphModel.createWire(expression.getInputsById().get("source"), textureSample.getInputsById().get("sampler").getConnectedPorts().getFirst());
-			graphModel.createWire(expression.getInputsById().get("uv"), uv.getOutputsById().get("out"));
-			graphModel.createWire(expression.getInputsById().get("time"), timeNode.getOutputPort());
-			graphModel.createWire(output.getInputsById().get("color"), expression.getOutputsById().get("result"));
-		}
-	}
 }

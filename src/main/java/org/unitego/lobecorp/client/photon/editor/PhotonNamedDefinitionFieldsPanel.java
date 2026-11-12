@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.photon.gui.editor.FXEditor;
@@ -17,9 +17,10 @@ import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.APPLY;
-import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslations.CLOSE;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.INSPECTOR_PANEL;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.APPLY;
+import static org.unitego.lobecorp.registry.translation.photon.editor.PhotonEditorTranslationKeys.CLOSE;
 
 /// 原树高级字段编辑不通过摘要重建条目；应用时与同一制作会话版本一起提交。
 public class PhotonNamedDefinitionFieldsPanel {

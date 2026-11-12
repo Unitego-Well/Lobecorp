@@ -19,12 +19,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
 import org.joml.Vector3f;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
-import org.unitego.lobecorp.client.photon.runtime.creation.CompiledModelConfig;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonCompiledObject;
-import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
-import org.unitego.lobecorp.util.photon.model.PhotonModelPoseSampler;
 
 import java.lang.reflect.Field;
 import java.io.IOException;
@@ -55,9 +51,6 @@ public class PhotonCompiledObjectNativeCheck {
 			var owned = nativeCopy(source);
 			checkEntries(owned, cases);
 
-			if (owned instanceof PhotonModelOutput model) {
-				checkModel(model, cases);
-			}
 		}
 
 		checkOpaque(cases);
@@ -81,12 +74,7 @@ public class PhotonCompiledObjectNativeCheck {
 		source.setName("current_author");
 		source.transform().localPosition(new Vector3f(2, 3, 4));
 
-		if (source instanceof PhotonModelOutput model) {
-			model.config.width = 3.25f;
-			model.config.enabled = false;
-			model.config.animationOffset = 0.75f;
-			model.config.assetDependencies.clear();
-		} else if (source instanceof PhotonChildSpawner spawner) {
+		if (source instanceof PhotonChildSpawner spawner) {
 			spawner.config.enabled = false;
 			spawner.config.maxInstances = 11;
 		}
@@ -104,112 +92,9 @@ public class PhotonCompiledObjectNativeCheck {
 		cases.add(new Case(source.getClass().getSimpleName() + ":four_entries_and_live_edit", plan.fallbackFields(), plan.fallbackReasons()));
 	}
 
-	private static void checkModel(PhotonModelOutput source, List<Case> cases) throws Exception {
-		var plan = PhotonCompiledObject.compile(source);
-		var first = (PhotonModelOutput) plan.instantiate();
-		var second = (PhotonModelOutput) plan.instantiate();
-		var a = (CompiledModelConfig) first.config;
-		var b = (CompiledModelConfig) second.config;
-		require(a != b && a.sharedAsset() == b.sharedAsset(), "配置独占且共享 opaque 资产");
-		require(a.modelRenderer != b.modelRenderer && a.renderer != b.renderer, "renderer 设置独占");
-		require(first.rendererRuntime() != second.rendererRuntime(), "renderer runtime 独占");
-		require(first.slot("width") != second.slot("width"), "运行槽独占");
-		var original = first.source();
-		original.putInt("caller_mutation", 1);
-		require(!first.source().contains("caller_mutation"), "source 每次返回副本");
 
-		if (source.config.source != PhotonModelOutputConfig.Source.FILE) {
-			first.prepare();
-			second.prepare();
-			var firstEnabled = first.config.enabled;
-			var secondEnabled = second.config.enabled;
-			try {
-				first.config.enabled = true;
-				second.config.enabled = true;
-				first.reset();
-				second.reset();
-				var firstSampler = (PhotonModelPoseSampler) field(first, "sampler");
-				var secondSampler = (PhotonModelPoseSampler) field(second, "sampler");
-				require(firstSampler == secondSampler, "不可变 sampler 必须共享");
-				require(firstSampler.prepared() == secondSampler.prepared(), "只共享 Prepared");
-				var firstWorkspace = field(first, "poseWorkspace");
-				var secondWorkspace = field(second, "poseWorkspace");
-				var firstBuffer = field(first, "poseBuffer");
-				var secondBuffer = field(second, "poseBuffer");
-				require(firstWorkspace != null && secondWorkspace != null && firstWorkspace != secondWorkspace,
-						"Workspace 必须按实例独占");
-				require(firstBuffer != null && secondBuffer != null && firstBuffer != secondBuffer,
-						"PoseBuffer 必须按实例独占");
-				first.sampleLocal(0.25f);
-				var firstFrame = first.sampledFrame();
-				require(firstFrame != null, "第一实例采样必须产生 Frame");
-				require(second.sampledFrame() == null, "第一实例采样不得改变第二实例 Frame");
-				second.sampleLocal(0.75f);
-				var secondFrame = second.sampledFrame();
-				require(secondFrame != null && secondFrame != firstFrame, "两实例 Frame 必须独立");
-				require(first.sampledFrame() == firstFrame, "第二实例采样不得替换第一实例 Frame");
-			} finally {
-				first.config.enabled = firstEnabled;
-				second.config.enabled = secondEnabled;
-			}
-		}
 
-		checkPreparationEdits(plan, first, cases);
-		var changed = first.source();
-		changed.putString("opaque_current", "kept");
-		first.rememberSource(changed);
-		first.config.assetMaterialDependencies.putInt("current_dependency", 1);
-		first.config.file = "current_file";
-		first.config.flipObjV = !first.config.flipObjV;
-		var current = (PhotonModelOutput) plan.instantiateFrom(first);
-		require(field(current, "compiledSupplier") == null, "来源变化不能预绑旧 Prepared");
-		equal(encode(nativeCopy(first)), encode(current));
-		equal("kept", current.source().getStringOr("opaque_current", ""));
-		require(current.config.assetMaterialDependencies != first.config.assetMaterialDependencies, "依赖必须独占");
-		var oldAsset = a.sharedAsset();
-		var replacement = new ByteArrayTag(new byte[]{7, 8});
-		a.setAssetSnapshot(replacement);
-		var detached = a.sharedAsset();
-		replacement.getAsByteArray()[0] = 0;
-		require(detached != oldAsset && detached.matches(new ByteArrayTag(new byte[]{7, 8})), "setter 脱离旧资产");
-		require(b.sharedAsset() == oldAsset, "另一实例不得跟随修改");
-		cases.add(new Case("model:source_asset_prepare_and_current_dependencies", plan.fallbackFields(), plan.fallbackReasons()));
-	}
 
-	private static void checkPreparationEdits(PhotonCompiledObject plan, PhotonModelOutput baseline, List<Case> cases) throws Exception {
-		List<Consumer<PhotonModelOutput>> edits = List.of(
-				model -> model.config.source = model.config.source == PhotonModelOutputConfig.Source.FILE
-						? PhotonModelOutputConfig.Source.RESOURCE : PhotonModelOutputConfig.Source.FILE,
-				model -> model.config.resource = Identifier.parse("lobecorp:changed_resource"),
-				model -> model.config.file = model.config.file + "_changed",
-				model -> model.config.flipObjV = !model.config.flipObjV,
-				model -> model.config.snapshotSource = model.config.snapshotSource + "_changed",
-				model -> model.config.setAssetSnapshot(new ByteArrayTag(new byte[]{1, 2, 3})),
-				model -> model.config.assetMaterialDependencies.putInt("changed_material", 1),
-				model -> model.config.assetDependencies.add(Identifier.parse("lobecorp:changed_dependency")));
-		var names = List.of("source", "resource", "file", "flip", "snapshotSource", "asset", "materials", "dependencies");
-
-		for (int index = 0; index < edits.size(); index++) {
-			var live = (PhotonModelOutput) plan.instantiateFrom(baseline);
-			edits.get(index).accept(live);
-			var target = (PhotonModelOutput) plan.instantiateFrom(live);
-			require(field(target, "compiledSupplier") == null, "准备失效字段：" + names.get(index));
-			equal(encode(nativeCopy(live)), encode(target));
-			try {
-				live.prepare();
-			} catch (IOException | IllegalArgumentException expectedForChangedSource) {
-				// 不存在或无效的编辑来源仍应先脱离旧准备结果。
-			}
-			require(field(live, "compiledSupplier") == null, "直接编辑后仍保留旧准备：" + names.get(index));
-			cases.add(new Case("model:current_" + names.get(index), plan.fallbackFields(), plan.fallbackReasons()));
-		}
-
-		var unchanged = (PhotonModelOutput) plan.instantiateFrom(baseline);
-
-		if (baseline.config.source != PhotonModelOutputConfig.Source.FILE) {
-			require(field(unchanged, "compiledSupplier") != null, "来源不变应复用原 Prepared supplier");
-		}
-	}
 
 	private static void checkOpaque(List<Case> cases) {
 		var registry = PhotonRegistries.FX_OBJECTS;
@@ -282,11 +167,7 @@ public class PhotonCompiledObjectNativeCheck {
 		return (CompoundTag) IFXObject.CODEC.encodeStart(NbtOps.INSTANCE, source).getOrThrow();
 	}
 
-	private static Object field(Object owner, String name) throws ReflectiveOperationException {
-		Field field = PhotonModelOutput.class.getDeclaredField(name);
-		field.setAccessible(true);
-		return field.get(owner);
-	}
+
 
 	private static void equal(Object expected, Object actual) {
 		if (Objects.equals(expected, actual)) {

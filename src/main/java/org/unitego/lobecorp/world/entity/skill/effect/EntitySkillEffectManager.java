@@ -1,9 +1,9 @@
 package org.unitego.lobecorp.world.entity.skill.effect;
 
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 
 import java.util.HashSet;
 import java.util.List;

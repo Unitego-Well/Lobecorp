@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+
 import static org.unitego.lobecorp.registry.translation.CommandTranslationKeys.COMMANDS_LOBECORP_ANIMATION_EMPTY_ITEM;
 
 /// 唯一动画调试命令树；玩家选择器和物品参数复用当前版本原版解析。

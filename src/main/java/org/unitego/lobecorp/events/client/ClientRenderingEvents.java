@@ -2,18 +2,19 @@ package org.unitego.lobecorp.events.client;
 
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.*;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
 import org.unitego.lobecorp.client.animation.LcAnimationDisplays;
 import org.unitego.lobecorp.client.conductor.render.ConductorRendering;
-import org.unitego.lobecorp.client.horde.HordeRendering;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupSky;
 import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAtmosphere;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupCinematic;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupSky;
+import org.unitego.lobecorp.client.horde.HordeRendering;
 import org.unitego.lobecorp.client.hud.RuntimeOverlayHud;
+import org.unitego.lobecorp.client.particle.EntityForegroundParticles;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE, value = Dist.CLIENT)
 public class ClientRenderingEvents {
@@ -60,6 +61,16 @@ public class ClientRenderingEvents {
 	@SubscribeEvent
 	public static void onHordeWorld(RenderLevelStageEvent.AfterOpaqueFeatures event) {
 		HordeRendering.render(event);
+	}
+
+	@SubscribeEvent
+	public static void onOpaqueBlocks(RenderLevelStageEvent.AfterOpaqueBlocks event) {
+		EntityForegroundParticles.captureTerrainDepth();
+	}
+
+	@SubscribeEvent
+	public static void onTranslucentFeatures(RenderLevelStageEvent.AfterTranslucentFeatures event) {
+		EntityForegroundParticles.render();
 	}
 
 	@SubscribeEvent

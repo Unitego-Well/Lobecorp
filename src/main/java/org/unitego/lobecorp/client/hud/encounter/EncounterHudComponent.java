@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.client.hud.encounter;
 
-import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 import org.jspecify.annotations.NullMarked;
+import org.unitego.lobecorp.client.hud.ContainerHudRenderer;
 
 /// 每个活动事件独占一个组件；父容器负责定位和堆叠。
 @NullMarked

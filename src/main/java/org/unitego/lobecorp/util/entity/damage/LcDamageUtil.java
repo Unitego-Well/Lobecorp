@@ -2,10 +2,9 @@ package org.unitego.lobecorp.util.entity.damage;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
-import net.minecraft.world.entity.Entity;
-import java.util.function.BooleanSupplier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.attachment.IAttachmentHolder;
 import net.neoforged.neoforge.common.NeoForge;
@@ -14,12 +13,14 @@ import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.api.ILivingEntityExpand;
 import org.unitego.lobecorp.api.LcDamageType;
 import org.unitego.lobecorp.event.damage.LivingResourceChangeEvent;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
-import org.unitego.lobecorp.world.entity.damage.LcResourceState;
 import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
 import org.unitego.lobecorp.particle.damage.DamageParticles;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.world.entity.damage.LcDamageContext;
+import org.unitego.lobecorp.world.entity.damage.LcResourceState;
+
+import java.util.function.BooleanSupplier;
 
 public class LcDamageUtil {
 	/// 调用方只捕获紧邻伤害调用的结果，返回后立即恢复目标的运行态。
@@ -41,6 +42,7 @@ public class LcDamageUtil {
 			living.lobecorp$setShieldBlocked(previousBlocked);
 		}
 	}
+
 	public static LcResourceState fullResources(IAttachmentHolder holder) {
 		if (holder instanceof LivingEntity entity) {
 			float rationality = getMaxRationality(entity);

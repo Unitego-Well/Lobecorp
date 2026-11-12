@@ -1,37 +1,24 @@
 package org.unitego.lobecorp.client.photon.runtime.creation;
 
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.IParticleEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 
-import java.util.Objects;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
-import java.util.function.Predicate;
-
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /// 仅接管具有明确租约的 runtime，配置与 TRS 的完整恢复由调用方提供。
 public class PhotonRuntimePool {
 	private final Predicate<IFXObject> resetSupported;
 	private final Consumer<FXRuntime> idleCleanup;
-    private final Consumer<FXRuntime> disposedCleanup;
+	private final Consumer<FXRuntime> disposedCleanup;
 	// 每个单槽池沿用原排空/fence 状态机；同键容量仍由组内真实活跃峰值决定。
 	private final Map<Object, Group> groups = new HashMap<>();
 	private final Set<FXRuntime> owned = Collections.newSetFromMap(new IdentityHashMap<>());
-	private PhotonLeasePool.Statistics history = new PhotonLeasePool.Statistics(0, 0, 0, 0, 0, 0, 0, 0);
-	private long nextId;
-	private long tick;
-	private long frame;
-	private boolean clearing;
 	private final PhotonLeasePool.Lifecycle<FXRuntime> lifecycle = new PhotonLeasePool.Lifecycle<>() {
 		@Override
 		public void stop(FXRuntime value, boolean force) {
@@ -81,6 +68,11 @@ public class PhotonRuntimePool {
 			}
 		}
 	};
+	private PhotonLeasePool.Statistics history = new PhotonLeasePool.Statistics(0, 0, 0, 0, 0, 0, 0, 0);
+	private long nextId;
+	private long tick;
+	private long frame;
+	private boolean clearing;
 
 	public PhotonRuntimePool() {
 		this(object -> object.getClass() == EmptyFXObject.class || object.getClass() == ParticleEmitter.class);
@@ -103,10 +95,16 @@ public class PhotonRuntimePool {
 	}
 
 	public PhotonRuntimePool(Predicate<IFXObject> resetSupported, Consumer<FXRuntime> idleCleanup,
-							 Consumer<FXRuntime> disposedCleanup) {
+	                         Consumer<FXRuntime> disposedCleanup) {
 		this.resetSupported = Objects.requireNonNull(resetSupported);
 		this.idleCleanup = Objects.requireNonNull(idleCleanup);
 		this.disposedCleanup = Objects.requireNonNull(disposedCleanup);
+	}
+
+	private static PhotonLeasePool.Statistics sum(PhotonLeasePool.Statistics left, PhotonLeasePool.Statistics right) {
+		return new PhotonLeasePool.Statistics(left.hit() + right.hit(), left.miss() + right.miss(),
+				left.reset() + right.reset(), left.created() + right.created(), left.idle() + right.idle(),
+				left.retired() + right.retired(), left.active() + right.active(), left.quarantine() + right.quarantine());
 	}
 
 	public Lease acquire(Object key, Supplier<FXRuntime> create, Consumer<FXRuntime> reset) {
@@ -246,12 +244,6 @@ public class PhotonRuntimePool {
 			}
 		}
 		return result;
-	}
-
-	private static PhotonLeasePool.Statistics sum(PhotonLeasePool.Statistics left, PhotonLeasePool.Statistics right) {
-		return new PhotonLeasePool.Statistics(left.hit() + right.hit(), left.miss() + right.miss(),
-				left.reset() + right.reset(), left.created() + right.created(), left.idle() + right.idle(),
-				left.retired() + right.retired(), left.active() + right.active(), left.quarantine() + right.quarantine());
 	}
 
 	private static class Group {

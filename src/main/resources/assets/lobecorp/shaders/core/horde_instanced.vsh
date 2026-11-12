@@ -34,7 +34,11 @@ void main() {
     int column = int(RowColumns.y) + ordinal % int(RowColumns.z);
     float station = RowColumns.x - float(row) * SpacingLength.x;
     int lodInstance = hordeLodInstance(gl_InstanceID);
+#ifdef HORDE_LAYER_MAP
+    if (lodInstance < 0) {
+#else
     if (lodInstance < 0 || (DebugInfo.z < 0.5 && (station < SegmentRegions.x || station >= SegmentRegions.y || station < 0.0 || station >= SpacingLength.w))) {
+#endif
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         texCoord = UV0;
         lighting = vec4(0.0);
@@ -51,16 +55,26 @@ void main() {
     vec3 position = Position;
     vec3 normal = Normal;
     int frameStart = int(scalar(HordeMotion, cached + 7)) * int(AnimationInfo.x);
+    if (LightRoute.z > 0.5 && FrameLod.z > 0.5) {
+        frameStart = 0;
+    }
     int vertex = gl_VertexID;
+    mat3 rotation = hordeYawRotation(yaw);
     if (FrameLod.z > 0.5) {
         vec3 center = (vector3(HordeAnimation, frameStart * 6)
         + vector3(HordeAnimation, (frameStart + 2) * 6)) * 0.5;
-        vertex = hordeCardVertex(vertex, point, yaw, center * instanceScale);
+#ifdef HORDE_NO_FACING_CACHE
+        vertex = hordeCardVertex(vertex, point, yaw, center * instanceScale, rotation);
+#else
+        vertex = LightRoute.z > 0.5 && FrameLod.z > 1.5
+            ? hordeCachedCardVertex(vertex, lodInstance, point, yaw, center * instanceScale, rotation)
+            : hordeCardVertex(vertex, point, yaw, center * instanceScale, rotation);
+#endif
     }
     animate(vertex, frameStart, position, normal);
     position *= instanceScale;
-    position.xz = yaw * position.xz;
-    normal.xz = yaw * normal.xz;
+    position = rotation * position;
+    normal = rotation * normal;
     normal = length(normal) > 0.0001 ? normalize(normal) : vec3(0.0, 1.0, 0.0);
     vec3 relative = position + point;
     gl_Position = ProjMat * ModelViewMat * vec4(relative, 1.0);
@@ -76,11 +90,11 @@ void main() {
     glowing = AnimationInfo.w;
     texCoord = UV0;
     if (FrameLod.z > 0.5) {
-        // 片图集：UV编码(方向*2+角点)/12，动画帧从运动缓冲的帧基址取。
+        // 片图集：UV编码(方向*2+角点)/16，动画帧从运动缓冲的帧基址取。
         int corner = vertex % 4;
         float face = float(vertex / 4);
         float cornerU = corner == 1 || corner == 2 ? 1.0 : 0.0;
         int frame = int(scalar(HordeMotion, cached + 7));
-        texCoord = vec2((face + cornerU) / 6.0, (float(frame) + (corner >= 2 ? 1.0 : 0.0)) / AnimationInfo.y);
+        texCoord = vec2((face + cornerU) / HORDE_CARD_DIRECTIONS, (float(frame) + (corner >= 2 ? 1.0 : 0.0)) / AnimationInfo.y);
     }
 }

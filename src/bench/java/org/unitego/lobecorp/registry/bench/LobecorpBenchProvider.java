@@ -10,7 +10,7 @@ import com.zhongbai233.bench.api.neoforge.server.BenchServerRegistrar;
 
 import org.unitego.lobecorp.client.bench.SweeperRenderScenario;
 import org.unitego.lobecorp.client.bench.Sweeper30RenderScenario;
-import org.unitego.lobecorp.client.bench.HordeRenderScenario;
+import org.unitego.lobecorp.client.bench.HordeEncounterPerformanceScenario;
 import org.unitego.lobecorp.client.bench.HordeCameraDiagnosticScenario;
 import org.unitego.lobecorp.client.bench.HordeTideAcceptanceScenario;
 import org.unitego.lobecorp.client.bench.CorpseRenderScenario;
@@ -31,10 +31,8 @@ import org.unitego.lobecorp.client.bench.PhotonQuietVisualScenario;
 import org.unitego.lobecorp.client.bench.PhotonGlobalContractScenario;
 import org.unitego.lobecorp.client.bench.PhotonQueenEntryScenario;
 import org.unitego.lobecorp.client.bench.PhotonEntryBlankScenario;
-import org.unitego.lobecorp.client.bench.PhotonModelRenderScenario;
 import org.unitego.lobecorp.client.bench.PhotonNativeControlScenario;
 import org.unitego.lobecorp.client.bench.PhotonRepeatedEffectScenario;
-import org.unitego.lobecorp.client.bench.PhotonModelResourceReloadScenario;
 import org.unitego.lobecorp.config.bench.LobecorpBenchConfig;
 import org.unitego.lobecorp.world.entity.bench.SweeperAiScenario;
 
@@ -151,76 +149,18 @@ public class LobecorpBenchProvider implements BenchServerProvider, BenchClientPr
 					_ -> new PhotonRepeatedEffectScenario());
 		}
 
-		if (LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
-			registrar.register(new ScenarioDescriptor(LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO,
-							"首次释放性能采集：20秒单次真实施放，无截图验收",
-							Set.of("client", "photon", "first-cast", "performance"), Duration.ofSeconds(120)),
-					_ -> System.getProperty(LobecorpBenchConfig.PHOTON_CONTROL_FX_PROPERTY, "").isBlank()
-							? new PhotonModelRenderScenario("photon-02-first-cast-performance", 0, 0, 16, 1, true, true,
-							PhotonModelRenderScenario.EvidenceMode.PERFORMANCE)
-							: new PhotonNativeControlScenario());
-		}
 
-		if (System.getProperty("modBench.scenarios", "").contains(PhotonModelResourceReloadScenario.ID)) {
-			registrar.register(new ScenarioDescriptor(PhotonModelResourceReloadScenario.ID, "资源重载诊断：单次真实激光，非性能 A/B",
-							Set.of("client", "photon", "resource-reload"), Duration.ofSeconds(240)),
-					_ -> new PhotonModelResourceReloadScenario());
-		}
 
-		if (System.getProperty("modBench.scenarios", "").contains("lobecorp.photon-")) {
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-00-first-cast", "首次释放诊断：只施放一次",
-							Set.of("client", "photon", "first-cast"), Duration.ofSeconds(120)),
-					_ -> new PhotonModelRenderScenario("photon-00-first-cast", 0, 0, 16, 1, true, true));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-00-empty", "模型诊断：00-empty",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-00-empty", 0, false, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-10-static-one", "模型诊断：10-static-one",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-10-static-one", 1, false, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-20-animated-one", "模型诊断：20-animated-one",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-20-animated-one", 1, true, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-30-static-sixteen", "模型诊断：30-static-sixteen",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-30-static-sixteen", 16, false, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-40-animated-sixteen", "模型诊断：40-animated-sixteen",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-40-animated-sixteen", 16, true, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-50-cold-sixteen", "模型诊断：50-cold-sixteen",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-50-cold-sixteen", 16, true, true));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-60-static-repeat", "模型诊断：60-static-repeat",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-60-static-repeat", 16, false, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-70-empty-repeat", "模型诊断：70-empty-repeat",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-70-empty-repeat", 0, false, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-80-static-thirtytwo", "模型诊断：32静态",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-80-static-thirtytwo", 32, 0, 16, 0, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-90-animated-thirtytwo", "模型诊断：32动画",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-90-animated-thirtytwo", 0, 32, 16, 0, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-91-mixed-thirtytwo-laser", "极端诊断：E2",
-							Set.of("client", "photon", "extreme"), Duration.ofSeconds(180)),
-					_ -> new PhotonModelRenderScenario("photon-91-mixed-thirtytwo-laser", 16, 16, 16, 1, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-92-mixed-sixtyfour-four-lasers", "极端诊断：E3",
-							Set.of("client", "photon", "extreme"), Duration.ofSeconds(180)),
-					_ -> new PhotonModelRenderScenario("photon-92-mixed-sixtyfour-four-lasers", 32, 32, 16, 4, false));
-			registrar.register(new ScenarioDescriptor("lobecorp.photon-99-empty-extreme-repeat", "模型诊断：极端后空基线",
-							Set.of("client", "photon", "model"), LobecorpBenchConfig.PHASE_TIMEOUT),
-					_ -> new PhotonModelRenderScenario("photon-99-empty-extreme-repeat", 0, false, false));
-		}
 
 		registrar.register(new ScenarioDescriptor(
 						LobecorpBenchConfig.CLIENT_SCENARIO, "Sweeper renderer workload",
 						Set.of("client", "sweeper", "render"), LobecorpBenchConfig.PHASE_TIMEOUT),
 				_ -> new SweeperRenderScenario());
 
-		registrar.register(new ScenarioDescriptor(
-						LobecorpBenchConfig.HORDE_SCENARIO, "GPU horde workload",
-						Set.of("client", "horde", "gpu"), LobecorpBenchConfig.HORDE_PHASE_TIMEOUT),
-				_ -> new HordeRenderScenario());
+		registrar.register(new ScenarioDescriptor(HordeEncounterPerformanceScenario.ID,
+				"Formal midnight cleanup performance", Set.of("client", "horde", "performance"),
+				HordeEncounterPerformanceScenario.TIMEOUT), _ -> new HordeEncounterPerformanceScenario());
+
 		registrar.register(new ScenarioDescriptor(
 						HordeTideAcceptanceScenario.ID, "Seven-part tide visual acceptance capture",
 						Set.of("client", "horde", "visual", "acceptance"), HordeTideAcceptanceScenario.PHASE_TIMEOUT),

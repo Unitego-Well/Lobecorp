@@ -23,11 +23,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.particle.text.TextGlyphMesh;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /// 普通文本跨帧复用字形和轮廓顶点，提交时只冻结二维矩阵与透明度。
 @NullMarked

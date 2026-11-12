@@ -37,7 +37,7 @@ public class VisualQualityConfig {
 			MIN_CUBES = b.comment("少于此立方体数量的GeckoLib模型保持原样。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MINIMUM_ENTITY_CUBES).defineInRange("minimumEntityCubes", 64, 1, 100000);
 			MODEL_EXEMPT = b.comment("不降模型精细度的实体注册ID。")
 					.translation(ClientConfigTranslationKeys.VISUAL_QUALITY_EXEMPT_MODELS).defineListAllowEmpty("exemptModels", List.of(), () -> "", v -> v instanceof String);
-            b.pop().translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE).push("cache");
+			b.pop().translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE).push("cache");
 			CACHE_ENTRIES = b.comment("每个烘焙缓存的最大条目数；资源重载及退出清理。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE_ENTRIES).defineInRange("cacheEntries", 256, 1, 4096);
 			CACHE_MIB = b.comment("每种模型缓存的预算，单位MiB。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_CACHE_MI_B).defineInRange("cacheMiB", 32, 1, 512);
 			MAX_BAKES = b.comment("每种缓存每帧最多新烘焙的模型数，超额临时绘制原模型。").translation(ClientConfigTranslationKeys.VISUAL_QUALITY_MAX_BAKES_PER_FRAME).defineInRange("maxBakesPerFrame", 2, 1, 64);

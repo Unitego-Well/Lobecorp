@@ -5,10 +5,10 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.command.EncounterCommand;
+import org.unitego.lobecorp.registry.command.HordeCommand;
 import org.unitego.lobecorp.registry.command.LcAnimationCommand;
 import org.unitego.lobecorp.registry.command.LcDebugCommand;
-import org.unitego.lobecorp.registry.command.HordeCommand;
-import org.unitego.lobecorp.registry.command.EncounterCommand;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class CommandEvents {

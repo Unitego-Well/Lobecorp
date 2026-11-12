@@ -2,12 +2,7 @@ package org.unitego.lobecorp.util.photon.clipboard;
 
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.math.GradientColor;
-import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
-import com.lowdragmc.photon.client.fx.timeline.CurveClip;
-import com.lowdragmc.photon.client.fx.timeline.ExprClip;
-import com.lowdragmc.photon.client.fx.timeline.GradientClip;
-import com.lowdragmc.photon.client.fx.timeline.SubClip;
-import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.fx.timeline.*;
 import com.lowdragmc.photon.client.fx.timeline.property.ColorAnimatedProperty;
 import com.lowdragmc.photon.client.fx.timeline.property.ConfigAnimatedProperty;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
@@ -25,8 +20,6 @@ import java.util.List;
 public class PhotonSubClipboardUtil {
 	/// 系统剪切板中动画属性子片段的协议类型。
 	public static final String KIND = "animation";
-
-	private enum Selection {GRADIENT, CURVE, EXPR, STOP}
 
 	public static boolean copy(AnimationTrackUIState state) {
 		var access = (AnimationTrackUIStateAccessor) state;
@@ -275,4 +268,6 @@ public class PhotonSubClipboardUtil {
 		access.lobecorp$setPrimaryAxis(-1);
 		access.lobecorp$setPrimaryIndex(-1);
 	}
+
+	private enum Selection {GRADIENT, CURVE, EXPR, STOP}
 }

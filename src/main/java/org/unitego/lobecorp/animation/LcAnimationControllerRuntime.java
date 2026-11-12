@@ -3,9 +3,9 @@ package org.unitego.lobecorp.animation;
 import com.geckolib.animation.AnimationController;
 import com.geckolib.animation.RawAnimation;
 import com.geckolib.cache.animation.Animation;
-import org.jspecify.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.LcAnimationPose.Pose;
 import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil;
 import org.unitego.lobecorp.util.animation.LcRotationTransitionUtil.State;
@@ -30,10 +30,10 @@ public class LcAnimationControllerRuntime {
 
 	/// 重复渲染同一时刻始终读取同一份旧状态，不借额外渲染推进旋转分支。
 	protected static class RotationHistory {
-		private Map<String, State> previous = Map.of();
 		private final Map<String, State> current = new HashMap<>();
-		private Map<String, Vector3f> previousAngles = Map.of();
 		private final Map<String, Vector3f> currentAngles = new HashMap<>();
+		private Map<String, State> previous = Map.of();
+		private Map<String, Vector3f> previousAngles = Map.of();
 		private double age = Double.NaN;
 		private @Nullable LcRotationTransitionMode mode;
 		private boolean additive;

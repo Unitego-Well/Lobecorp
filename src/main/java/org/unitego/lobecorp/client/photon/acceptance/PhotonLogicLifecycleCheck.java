@@ -3,21 +3,17 @@ package org.unitego.lobecorp.client.photon.acceptance;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectAssets;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.Readiness;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.SourceKey;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.SourceKind;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.Readiness;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedPreparationScheduler;
 
-import java.util.Map;
-import java.util.List;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
@@ -49,6 +45,60 @@ public class PhotonLogicLifecycleCheck implements AutoCloseable {
 		this.check = Objects.requireNonNull(check);
 	}
 
+	private static Map<String, CompoundTag> snapshot() {
+		return Map.of("fixture", new FX().serializeNBT(Platform.getFrozenRegistry()));
+	}
+
+	private static CompletableFuture<SourceKey> queue(SourceKey source) {
+		return PhotonOwnedEffectResources.queueSnapshot(source, snapshot());
+	}
+
+	/// 仅在 normalize(prepared) 的真实指定 worker 栈求值，参数为 prepared.source()。
+	public static void atWorkerGate(SourceKey source) {
+		var run = Objects.requireNonNull(active);
+		if (!source.equals(run.late) || Minecraft.getInstance().isSameThread()
+				|| run.stage != 3 || run.workerObserved) {
+			throw new IllegalStateException("需要指定来源的真实 normalize worker，且只能观测一次");
+		}
+		run.workerObserved = true;
+		Minecraft.getInstance().schedule(run::applyGateAction);
+	}
+
+	/// 主线 Debug 在旧 dispatch 客户端回调完成 epoch 检查并返回后调用。
+	/// 必须核对该回调捕获的 task.source() 等于 gateSource；此方法本身不提供独立观测。
+	public static void oldCallbackConsumed(SourceKey source) {
+		client();
+		var run = Objects.requireNonNull(active);
+		if (!run.late.equals(source) || !run.workerObserved || !run.actionApplied) {
+			throw new IllegalStateException("尚未完成指定旧 worker 的门禁动作");
+		}
+		run.callbackConsumed = true;
+	}
+
+	private static Map<String, Integer> pendingState() {
+		try {
+			var result = new HashMap<String, Integer>();
+			for (var name : List.of("PENDING_SNAPSHOTS", "SNAPSHOT_COMPLETIONS")) {
+				var field = PhotonOwnedEffectResources.class.getDeclaredField(name);
+				field.setAccessible(true);
+				result.put(name, ((Map<?, ?>) field.get(null)).size());
+			}
+			return Map.copyOf(result);
+		} catch (ReflectiveOperationException failure) {
+			throw new IllegalStateException("无法读取关闭后的待准备状态", failure);
+		}
+	}
+
+	private static boolean ready(SourceKey source) {
+		return PhotonOwnedEffectResources.lookup(source).readiness() == Readiness.READY;
+	}
+
+	private static void client() {
+		if (!Minecraft.getInstance().isSameThread()) {
+			throw new IllegalStateException("必须在客户端线程调用");
+		}
+	}
+
 	public void begin() {
 		client();
 		if (active != null || stage != 0) {
@@ -69,27 +119,8 @@ public class PhotonLogicLifecycleCheck implements AutoCloseable {
 		stage = 1;
 	}
 
-	private static Map<String, CompoundTag> snapshot() {
-		return Map.of("fixture", new FX().serializeNBT(Platform.getFrozenRegistry()));
-	}
-
-	private static CompletableFuture<SourceKey> queue(SourceKey source) {
-		return PhotonOwnedEffectResources.queueSnapshot(source, snapshot());
-	}
-
 	public SourceKey gateSource() {
 		return late;
-	}
-
-	/// 仅在 normalize(prepared) 的真实指定 worker 栈求值，参数为 prepared.source()。
-	public static void atWorkerGate(SourceKey source) {
-		var run = Objects.requireNonNull(active);
-		if (!source.equals(run.late) || Minecraft.getInstance().isSameThread()
-				|| run.stage != 3 || run.workerObserved) {
-			throw new IllegalStateException("需要指定来源的真实 normalize worker，且只能观测一次");
-		}
-		run.workerObserved = true;
-		Minecraft.getInstance().schedule(run::applyGateAction);
 	}
 
 	private void applyGateAction() {
@@ -111,17 +142,6 @@ public class PhotonLogicLifecycleCheck implements AutoCloseable {
 			reloadFuture = Minecraft.getInstance().reloadResourcePacks();
 		}
 		actionApplied = true;
-	}
-
-	/// 主线 Debug 在旧 dispatch 客户端回调完成 epoch 检查并返回后调用。
-	/// 必须核对该回调捕获的 task.source() 等于 gateSource；此方法本身不提供独立观测。
-	public static void oldCallbackConsumed(SourceKey source) {
-		client();
-		var run = Objects.requireNonNull(active);
-		if (!run.late.equals(source) || !run.workerObserved || !run.actionApplied) {
-			throw new IllegalStateException("尚未完成指定旧 worker 的门禁动作");
-		}
-		run.callbackConsumed = true;
 	}
 
 	public boolean step() {
@@ -214,30 +234,6 @@ public class PhotonLogicLifecycleCheck implements AutoCloseable {
 		return "prepared.source().equals(new org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.SourceKey("
 				+ "net.minecraft.resources.Identifier.parse(\"" + id + "\"), "
 				+ "org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.SourceKind.AUTHORING, 2))";
-	}
-
-	private static Map<String, Integer> pendingState() {
-		try {
-			var result = new HashMap<String, Integer>();
-			for (var name : List.of("PENDING_SNAPSHOTS", "SNAPSHOT_COMPLETIONS")) {
-				var field = PhotonOwnedEffectResources.class.getDeclaredField(name);
-				field.setAccessible(true);
-				result.put(name, ((Map<?, ?>) field.get(null)).size());
-			}
-			return Map.copyOf(result);
-		} catch (ReflectiveOperationException failure) {
-			throw new IllegalStateException("无法读取关闭后的待准备状态", failure);
-		}
-	}
-
-	private static boolean ready(SourceKey source) {
-		return PhotonOwnedEffectResources.lookup(source).readiness() == Readiness.READY;
-	}
-
-	private static void client() {
-		if (!Minecraft.getInstance().isSameThread()) {
-			throw new IllegalStateException("必须在客户端线程调用");
-		}
 	}
 
 	@Override

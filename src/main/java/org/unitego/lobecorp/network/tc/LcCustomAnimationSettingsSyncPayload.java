@@ -8,8 +8,8 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.unitego.lobecorp.animation.LcAnimationTransitionSettings;
 import org.unitego.lobecorp.animation.ILcCustomAnimatable;
+import org.unitego.lobecorp.animation.LcAnimationTransitionSettings;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 

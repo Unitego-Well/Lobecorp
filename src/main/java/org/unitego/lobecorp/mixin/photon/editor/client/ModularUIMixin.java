@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorSaveUtil;
+
 @Mixin(ModularUI.class)
 public abstract class ModularUIMixin {
 	@WrapOperation(method = "refreshHoveredElement(FF)V", at = @At(value = "INVOKE",

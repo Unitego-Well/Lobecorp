@@ -154,7 +154,7 @@ public class LcClientAnimationResources {
 	}
 
 	private static LcClientAnimationResourceIndex.LocalClipBatch localClipBatch(long revision,
-	                                                                             LcAnimationContent content) {
+	                                                                            LcAnimationContent content) {
 		var key = new LcClientAnimationResourceIndex.LocalClipKey(revision, content.animationId(), "");
 		var existing = LOCAL_CLIP_BATCHES.get(key);
 		if (existing != null) {

@@ -17,8 +17,8 @@ import net.minecraft.network.chat.Component;
 import org.joml.Matrix3x2f;
 import org.joml.Matrix3x2fc;
 import org.joml.Matrix4f;
-import org.jspecify.annotations.Nullable;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.particle.screen.ScreenTextContent;
 import org.unitego.lobecorp.client.particle.text.TextGlyphMesh;
@@ -57,6 +57,29 @@ public class CinematicText {
 			builder.withShaderDefine("INTENSITY");
 		}
 		return builder.build();
+	}
+
+	private static void capture(TextRenderable source, List<Piece> target) {
+		var capture = new TextGlyphMesh.Capture();
+		source.render(new Matrix4f(), capture, 0xF000F0, true);
+		var mesh = capture.finish(() -> source.renderType(Font.DisplayMode.NORMAL, false), 0, 0);
+		if (mesh.colors().length == 0) {
+			return;
+		}
+
+		float left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
+		float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
+		for (int i = 0; i < mesh.vertices().length; i += STRIDE) {
+			left = Math.min(left, mesh.vertices()[i]);
+			right = Math.max(right, mesh.vertices()[i]);
+			top = Math.min(top, mesh.vertices()[i + 1]);
+			bottom = Math.max(bottom, mesh.vertices()[i + 1]);
+		}
+		var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+		var texture = TextureSetup.singleTexture(source.textureView(), sampler);
+		boolean intensity = source.guiPipeline() == RenderPipelines.GUI_TEXT_INTENSITY;
+		target.add(new Piece(mesh, texture, intensity, target.size(), left, top,
+				Math.max(0.01F, right - left), Math.max(0.01F, bottom - top)));
 	}
 
 	public void extract(GuiGraphicsExtractor graphics, float x, float y, float scale, float available,
@@ -122,29 +145,6 @@ public class CinematicText {
 			top += font.lineHeight;
 		}
 		pieces = List.copyOf(captured);
-	}
-
-	private static void capture(TextRenderable source, List<Piece> target) {
-		var capture = new TextGlyphMesh.Capture();
-		source.render(new Matrix4f(), capture, 0xF000F0, true);
-		var mesh = capture.finish(() -> source.renderType(Font.DisplayMode.NORMAL, false), 0, 0);
-		if (mesh.colors().length == 0) {
-			return;
-		}
-
-		float left = Float.POSITIVE_INFINITY, top = Float.POSITIVE_INFINITY;
-		float right = Float.NEGATIVE_INFINITY, bottom = Float.NEGATIVE_INFINITY;
-		for (int i = 0; i < mesh.vertices().length; i += STRIDE) {
-			left = Math.min(left, mesh.vertices()[i]);
-			right = Math.max(right, mesh.vertices()[i]);
-			top = Math.min(top, mesh.vertices()[i + 1]);
-			bottom = Math.max(bottom, mesh.vertices()[i + 1]);
-		}
-		var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
-		var texture = TextureSetup.singleTexture(source.textureView(), sampler);
-		boolean intensity = source.guiPipeline() == RenderPipelines.GUI_TEXT_INTENSITY;
-		target.add(new Piece(mesh, texture, intensity, target.size(), left, top,
-				Math.max(0.01F, right - left), Math.max(0.01F, bottom - top)));
 	}
 
 	private record Piece(TextGlyphMesh mesh, TextureSetup texture, boolean intensity, int order,

@@ -5,8 +5,9 @@ import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.configurator.EditAction;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.photon.PhotonRegistries;
-import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.gui.editor.FXProject;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
@@ -14,64 +15,14 @@ import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException;
 import org.unitego.lobecorp.client.photon.editor.automation.PhotonEffectCommandException.Code;
-import com.lowdragmc.photon.client.fx.timeline.Track;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil.Handle;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedTrackAuthoringUtil;
 
-import java.util.Set;
-
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class PhotonEffectEditUtil {
 	/// 防止单个工具调用在客户端主线程累计无界编辑工作。
 	public static final int MAX_OPERATIONS = 256;
-
-	public record Prepared(Handle handle, CompoundTag before, CompoundTag after, boolean dryRun) {
-		public JsonObject commit() {
-            if (handle.editor().getCurrentProject() != handle.project()) {
-                throw new PhotonEffectCommandException(Code.PROJECT_CLOSED);
-            }
-            if (!before.equals(PhotonEffectProjectUtil.snapshot(handle.project()))) {
-                throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
-            }
-			JsonObject result;
-
-			if (!dryRun && !before.equals(after)) {
-				PhotonEffectProjectUtil.apply(handle, after);
-
-				try {
-					result = PhotonEffectProjectUtil.describe(handle);
-					handle.editor().historyView.pushHistory(Component.literal("MCP"),
-							EditAction.of(() -> PhotonEffectProjectUtil.apply(handle, after),
-									() -> PhotonEffectProjectUtil.apply(handle, before)), false);
-					result.addProperty("undoCount", handle.editor().historyView.getUndoStack().size());
-					result.addProperty("redoCount", handle.editor().historyView.getRedoStack().size());
-				} catch (RuntimeException failure) {
-					PhotonEffectProjectUtil.apply(handle, before);
-					throw failure;
-				}
-			} else {
-				result = PhotonEffectProjectUtil.describe(handle);
-			}
-			result.addProperty("dryRun", dryRun);
-			result.addProperty("changed", !before.equals(after));
-
-			if (dryRun) {
-				result.addProperty("proposedSnapshotIncluded", result.has("snapshotSnbt"));
-
-				if (result.has("snapshotSnbt")) {
-					result.addProperty("proposedSnapshotSnbt", after.toString());
-				}
-			}
-
-			return result;
-		}
-	}
 
 	public static Prepared prepare(JsonObject request) throws Exception {
 		var handle = PhotonEffectProjectUtil.require(PhotonEffectJsonUtil.string(request, "projectId"));
@@ -102,16 +53,10 @@ public class PhotonEffectEditUtil {
 	}
 
 	private static void applyOperation(IProject project, JsonObject operation) throws Exception {
-		if (project instanceof PhotonModelProject
-				&& Set.of("add_emitter", "remove_emitter").contains(PhotonEffectJsonUtil.string(operation, "op"))) {
-			throw new PhotonEffectCommandException(Code.UNSUPPORTED_OPERATION, "模型工程只管理一个模型资产，组合对象请使用FX工程。");
-		}
 		switch (PhotonEffectJsonUtil.string(operation, "op")) {
 			case "add_emitter" -> addEmitter(fx(project), operation);
 			case "remove_emitter" -> removeEmitter(fx(project), operation);
 			case "set_parameter" -> setParameter(fx(project), operation);
-			case "set_model_asset", "patch_model_asset", "edit_model_value", "set_model_playback", "set_model_renderer",
-			     "import_model_obj" -> PhotonEffectModelAuthoringUtil.apply(project, operation);
 			case "set_timeline" -> setTimeline(fx(project), operation);
 			case "set_project_data" -> {
 				var data = TagParser.parseCompoundFully(PhotonEffectJsonUtil.string(operation, "snbt"));
@@ -251,10 +196,6 @@ public class PhotonEffectEditUtil {
 		return normalized.equals(actual);
 	}
 
-
-
-
-
 	private static void setTimeline(FXProject project, JsonObject operation) {
 		var timeline = project.getFx().getFxData().timeline();
 		var original = timeline.serializeNBT(Platform.getFrozenRegistry());
@@ -323,5 +264,47 @@ public class PhotonEffectEditUtil {
 		ids.add(FXRuntime.ROOT_UUID);
 		validateTracks(data.timeline().leafTracks(true), ids);
 
+	}
+
+	public record Prepared(Handle handle, CompoundTag before, CompoundTag after, boolean dryRun) {
+		public JsonObject commit() {
+			if (handle.editor().getCurrentProject() != handle.project()) {
+				throw new PhotonEffectCommandException(Code.PROJECT_CLOSED);
+			}
+			if (!before.equals(PhotonEffectProjectUtil.snapshot(handle.project()))) {
+				throw new PhotonEffectCommandException(Code.REVISION_CONFLICT);
+			}
+			JsonObject result;
+
+			if (!dryRun && !before.equals(after)) {
+				PhotonEffectProjectUtil.apply(handle, after);
+
+				try {
+					result = PhotonEffectProjectUtil.describe(handle);
+					handle.editor().historyView.pushHistory(Component.literal("MCP"),
+							EditAction.of(() -> PhotonEffectProjectUtil.apply(handle, after),
+									() -> PhotonEffectProjectUtil.apply(handle, before)), false);
+					result.addProperty("undoCount", handle.editor().historyView.getUndoStack().size());
+					result.addProperty("redoCount", handle.editor().historyView.getRedoStack().size());
+				} catch (RuntimeException failure) {
+					PhotonEffectProjectUtil.apply(handle, before);
+					throw failure;
+				}
+			} else {
+				result = PhotonEffectProjectUtil.describe(handle);
+			}
+			result.addProperty("dryRun", dryRun);
+			result.addProperty("changed", !before.equals(after));
+
+			if (dryRun) {
+				result.addProperty("proposedSnapshotIncluded", result.has("snapshotSnbt"));
+
+				if (result.has("snapshotSnbt")) {
+					result.addProperty("proposedSnapshotSnbt", after.toString());
+				}
+			}
+
+			return result;
+		}
 	}
 }

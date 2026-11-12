@@ -1,20 +1,20 @@
 package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill;
 
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
+import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.skill.EntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.hitbox.HitboxHitPolicy;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
 import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
-import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
 
 /// 在锁定位置展开法阵，对圈内全部敌人施加缓慢。
 public class SlownessSkill extends EntitySkill<TheQueenOfHatred> {

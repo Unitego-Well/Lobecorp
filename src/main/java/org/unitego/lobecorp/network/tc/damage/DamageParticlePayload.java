@@ -27,11 +27,6 @@ public record DamageParticlePayload(ResourceKey<Level> dimension, UUID target, O
                                     boolean melee, int feedbackKind) implements IToClientPayload {
 	public static final int DAMAGE = 0, SHIELD = 1, RECOVERY = 2, RECOVERY_SPIRIT = 3,
 			RECOVERY_SOUL = 4, DAMAGE_SPIRIT = 5, DAMAGE_SOUL = 6;
-
-	public DamageParticlePayload(ResourceKey<Level> dimension, UUID target, Optional<UUID> attacker,
-	                             Identifier damageType, Vec3 position, float amount, float maxHealth, boolean melee) {
-		this(dimension, target, attacker, damageType, position, amount, maxHealth, melee, DAMAGE);
-	}
 	public static final Type<DamageParticlePayload> TYPE = new Type<>(id("damage_particle"));
 	public static final StreamCodec<RegistryFriendlyByteBuf, DamageParticlePayload> STREAM_CODEC = StreamCodec.composite(
 			ResourceKey.streamCodec(Registries.DIMENSION), DamageParticlePayload::dimension,
@@ -45,7 +40,10 @@ public record DamageParticlePayload(ResourceKey<Level> dimension, UUID target, O
 			(dimension, target, attacker, damageType, position, amount, maxHealth, presentation) ->
 					new DamageParticlePayload(dimension, target, attacker, damageType, position, amount, maxHealth,
 							(presentation & 1) != 0, presentation >>> 1));
-
+	public DamageParticlePayload(ResourceKey<Level> dimension, UUID target, Optional<UUID> attacker,
+	                             Identifier damageType, Vec3 position, float amount, float maxHealth, boolean melee) {
+		this(dimension, target, attacker, damageType, position, amount, maxHealth, melee, DAMAGE);
+	}
 
 	@Override
 	public @NonNull Type<? extends CustomPacketPayload> type() {

@@ -18,7 +18,6 @@ import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.Coerce;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.performance.PhotonSubmissionDiagnostics;
 
 import javax.annotation.Nullable;
@@ -32,7 +31,7 @@ public class EmitterMixin {
                                                @Nullable Vector3fc sortOrigin, @Coerce Object baker,
                                                @Nullable MaskWrite mask, boolean backFacesFirst,
                                                @Nullable CpuRecords records, Operation<Void> original) {
-        var submission = PhotonSubmissionDiagnostics.beginSubmission((Object) this instanceof PhotonModelOutput);
+        var submission = PhotonSubmissionDiagnostics.beginSubmission(false);
 
         if (submission == null) {
             original.call(out, renderType, mode, camera, partialTicks, stage, orderInLayer, sortOrigin, baker, mask, backFacesFirst, records);
@@ -68,7 +67,7 @@ public class EmitterMixin {
             return original.call(settings, out, camera, renderer, setting, variant, mesh,
                     instanceFloatCapacity, pointFloatCapacity, positionOffset, filler);
         } finally {
-            PhotonSubmissionDiagnostics.observeInstancedJobs(out, start, (Object) this instanceof PhotonModelOutput);
+            PhotonSubmissionDiagnostics.observeInstancedJobs(out, start, false);
         }
     }
 }

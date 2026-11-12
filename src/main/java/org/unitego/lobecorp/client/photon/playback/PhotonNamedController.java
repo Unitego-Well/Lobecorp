@@ -1,30 +1,34 @@
 package org.unitego.lobecorp.client.photon.playback;
 
+import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
 import com.lowdragmc.photon.client.gameobject.FXObjectType;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import net.minecraft.nbt.CompoundTag;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
 import org.unitego.lobecorp.registry.client.photon.LcPhotonPlaybackTypes;
+import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedPlaybackDefinitionUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 
 import javax.annotation.Nullable;
-
-import com.lowdragmc.lowdraglib2.Platform;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
-import org.unitego.lobecorp.util.photon.playback.PhotonNamedCodecUtil;
-
 import java.io.IOException;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
 /// 制作定义独占保存；播放状态由所属FXRuntime持有，不进入工程或模板复制。
 public class PhotonNamedController extends EmptyFXObject {
 	private static final AtomicLong LIBRARY_DECODES = new AtomicLong();
+	@Persisted
+	private CompoundTag definition = new CompoundTag();
+	private CompoundTag original = new CompoundTag();
+	private @Nullable PhotonNamedRuntime playback;
+	private @Nullable CompiledDefinition compiled;
+	private long definitionRevision;
 
 	public static long libraryDecodeCount() {
 		return LIBRARY_DECODES.get();
@@ -35,97 +39,8 @@ public class PhotonNamedController extends EmptyFXObject {
 		return PhotonNamedCodecUtil.read(source);
 	}
 
-	@Persisted
-	private CompoundTag definition = new CompoundTag();
-	private CompoundTag original = new CompoundTag();
-	private @Nullable PhotonNamedRuntime playback;
-	private @Nullable CompiledDefinition compiled;
-	private long definitionRevision;
-
-	/// 只持有私有制作快照和无目标计划，不持有场景、运行时或播放句柄。
-	public static final class CompiledDefinition {
-		private final CompoundTag definition;
-		private final CompoundTag original;
-		private final PhotonNamedLibrary library;
-		private final Map<UUID, PhotonNamedPlan.Template> templates;
-		private final int decodedTracks;
-		private @Nullable CompiledDefinition playbackVersion;
-
-		private CompiledDefinition(CompoundTag definition, CompoundTag original) throws IOException {
-			this.definition = definition.copy();
-			this.original = original.copy();
-			library = readLibrary(this.definition);
-			var prepared = new LinkedHashMap<UUID, PhotonNamedPlan.Template>();
-
-			for (var animation : library.animations()) {
-				prepared.put(animation.id(), PhotonNamedPlan.compile(Platform.getFrozenRegistry(), animation));
-			}
-
-			templates = Map.copyOf(prepared);
-			decodedTracks = templates.values().stream().mapToInt(PhotonNamedPlan.Template::decodedTracks).sum();
-		}
-
-		private CompiledDefinition playbackVersion() throws IOException {
-			if (playbackVersion == null) {
-				var value = PhotonNamedPlaybackDefinitionUtil.prepare(definition);
-				playbackVersion = definition.equals(value) ? this : new CompiledDefinition(value, original);
-			}
-			return playbackVersion;
-		}
-
-		/// 提前生成不可变播放定义；不安装控制器或执行播放回调。
-		public void prepareStatic() throws IOException {
-			var prepared = playbackVersion();
-			prepared.playbackVersion();
-		}
-
-		public boolean matches(PhotonNamedController controller) {
-			return definition.equals(controller.definition);
-		}
-
-		public boolean matchesDefinition(CompoundTag source) {
-			return definition.equals(source);
-		}
-
-		public PhotonNamedLibrary library() {
-			return library;
-		}
-
-		public PhotonNamedPlan.Template template(UUID animation) {
-			var result = templates.get(animation);
-
-			if (result == null) {
-				throw new IllegalArgumentException("编译命名定义不存在：" + animation);
-			}
-
-			return result;
-		}
-
-		public int libraryDecodeCount() {
-			return 1;
-		}
-
-		public int trackDecodeCount() {
-			return decodedTracks;
-		}
-
-		public List<String> fallbackReasons() {
-			return templates.values().stream().flatMap(template -> template.fallbackReasons().stream()).toList();
-		}
-
-		/// 仅安装命名制作数据；对象身份、变换和其他原生对象数据由外层工厂初始化。
-		public void install(PhotonNamedController target) {
-			target.definition = definition;
-			target.original = original;
-			target.compiled = this;
-			target.definitionRevision++;
-		}
-
-		public PhotonNamedController newController() {
-			var result = new PhotonNamedController();
-			install(result);
-			return result;
-		}
+	public static CompiledDefinition compileDefinition(CompoundTag definition, CompoundTag original) throws IOException {
+		return new CompiledDefinition(definition, original);
 	}
 
 	public CompiledDefinition compileDefinition() throws IOException {
@@ -134,10 +49,6 @@ public class PhotonNamedController extends EmptyFXObject {
 		}
 
 		return compiled;
-	}
-
-	public static CompiledDefinition compileDefinition(CompoundTag definition, CompoundTag original) throws IOException {
-		return new CompiledDefinition(definition, original);
 	}
 
 	public @Nullable CompiledDefinition compiledDefinition() {
@@ -247,5 +158,91 @@ public class PhotonNamedController extends EmptyFXObject {
 		}
 
 		super.remove(force);
+	}
+
+	/// 只持有私有制作快照和无目标计划，不持有场景、运行时或播放句柄。
+	public static final class CompiledDefinition {
+		private final CompoundTag definition;
+		private final CompoundTag original;
+		private final PhotonNamedLibrary library;
+		private final Map<UUID, PhotonNamedPlan.Template> templates;
+		private final int decodedTracks;
+		private @Nullable CompiledDefinition playbackVersion;
+
+		private CompiledDefinition(CompoundTag definition, CompoundTag original) throws IOException {
+			this.definition = definition.copy();
+			this.original = original.copy();
+			library = readLibrary(this.definition);
+			var prepared = new LinkedHashMap<UUID, PhotonNamedPlan.Template>();
+
+			for (var animation : library.animations()) {
+				prepared.put(animation.id(), PhotonNamedPlan.compile(Platform.getFrozenRegistry(), animation));
+			}
+
+			templates = Map.copyOf(prepared);
+			decodedTracks = templates.values().stream().mapToInt(PhotonNamedPlan.Template::decodedTracks).sum();
+		}
+
+		private CompiledDefinition playbackVersion() throws IOException {
+			if (playbackVersion == null) {
+				var value = PhotonNamedPlaybackDefinitionUtil.prepare(definition);
+				playbackVersion = definition.equals(value) ? this : new CompiledDefinition(value, original);
+			}
+			return playbackVersion;
+		}
+
+		/// 提前生成不可变播放定义；不安装控制器或执行播放回调。
+		public void prepareStatic() throws IOException {
+			var prepared = playbackVersion();
+			prepared.playbackVersion();
+		}
+
+		public boolean matches(PhotonNamedController controller) {
+			return definition.equals(controller.definition);
+		}
+
+		public boolean matchesDefinition(CompoundTag source) {
+			return definition.equals(source);
+		}
+
+		public PhotonNamedLibrary library() {
+			return library;
+		}
+
+		public PhotonNamedPlan.Template template(UUID animation) {
+			var result = templates.get(animation);
+
+			if (result == null) {
+				throw new IllegalArgumentException("编译命名定义不存在：" + animation);
+			}
+
+			return result;
+		}
+
+		public int libraryDecodeCount() {
+			return 1;
+		}
+
+		public int trackDecodeCount() {
+			return decodedTracks;
+		}
+
+		public List<String> fallbackReasons() {
+			return templates.values().stream().flatMap(template -> template.fallbackReasons().stream()).toList();
+		}
+
+		/// 仅安装命名制作数据；对象身份、变换和其他原生对象数据由外层工厂初始化。
+		public void install(PhotonNamedController target) {
+			target.definition = definition;
+			target.original = original;
+			target.compiled = this;
+			target.definitionRevision++;
+		}
+
+		public PhotonNamedController newController() {
+			var result = new PhotonNamedController();
+			install(result);
+			return result;
+		}
 	}
 }

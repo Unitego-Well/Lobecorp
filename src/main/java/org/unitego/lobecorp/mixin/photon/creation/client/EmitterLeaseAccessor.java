@@ -1,17 +1,17 @@
 package org.unitego.lobecorp.mixin.photon.creation.client;
 
-import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.client.collision.CollisionScene;
-import javax.annotation.Nullable;
+import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import net.minecraft.core.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
+import javax.annotation.Nullable;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /// 在安全 parked 阶段清理原生 reset 未覆盖的光照缓存及并行查询状态。
-@Mixin(value = Emitter.class, remap = false)
+@Mixin(value = Emitter.class)
 public interface EmitterLeaseAccessor {
 	@Accessor("blockScene")
 	void lobecorp$setLeaseBlockScene(@Nullable CollisionScene value);

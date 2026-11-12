@@ -7,8 +7,8 @@ import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.locale.Language;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix4f;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Matrix4f;
 import org.unitego.lobecorp.particle.text.TextParticleSnapshot;
 import org.unitego.lobecorp.registry.client.particle.TextParticleRegistration;
 

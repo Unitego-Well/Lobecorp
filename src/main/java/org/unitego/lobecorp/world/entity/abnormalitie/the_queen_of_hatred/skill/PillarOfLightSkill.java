@@ -1,20 +1,20 @@
 package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill;
 
 import net.minecraft.server.level.ServerLevel;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
+import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
+import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.skill.EntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.hitbox.HitboxHitPolicy;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
-import org.unitego.lobecorp.particle.QueenMagicCircleParticleOptions;
-import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 
 import java.util.List;
 
@@ -24,14 +24,14 @@ public class PillarOfLightSkill extends EntitySkill<TheQueenOfHatred> {
 	public static final double RANGE = 20.0;
 	/// 命中所需水平半径和垂直半径，单位为格。
 	public static final double RADIUS = 1.5;
+	/// 落空或取消后的冷却，单位为 tick。
+	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 相对女皇攻击属性的伤害倍率。
 	private static final double DAMAGE_MULTIPLIER = 3.0;
 	/// 前摇结束前停止追踪的时间，单位为 tick。
 	private static final int LOCK_BEFORE_ACTIVATION_TICKS = 5;
 	/// 光柱闪光持续时长，单位为 tick。
 	private static final int FLASH_TICKS = 10;
-	/// 落空或取消后的冷却，单位为 tick。
-	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 本次施放开始时选择的目标，和前摇锁定的落点。
 	private static final TypedDataKey<List<LivingEntity>> TARGETS = TypedDataKey.create();
 	/// 光柱技能当前运行实例保存的落点集合。

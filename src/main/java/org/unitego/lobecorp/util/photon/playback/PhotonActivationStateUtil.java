@@ -8,34 +8,6 @@ import java.util.TreeSet;
 
 /// 按制作时间纯求值；区间并集只产生一次入口，单边命令到点后才取得所有权。
 public class PhotonActivationStateUtil {
-	public record Window(double start, double end, int index) {
-		public Window {
-			if (!Double.isFinite(start) || !Double.isFinite(end) || start < 0 || end < start) {
-				throw new IllegalArgumentException("激活片段范围无效。");
-			}
-		}
-	}
-
-	public record Boundary(double time, int index) {
-	}
-
-	public record Prepared(List<Window> windows, List<Double> boundaries) {
-		public Prepared {
-			windows = List.copyOf(windows);
-			boundaries = List.copyOf(boundaries);
-		}
-	}
-
-	public record State(boolean owned, boolean active, boolean stopped, @Nullable Boundary restart,
-	                    @Nullable Boundary clear, @Nullable Boundary event) {
-	}
-
-	public record Contribution(PhotonActivationOptions options, State state) {
-	}
-
-	public record Combined(boolean active, boolean emitting, int command) {
-	}
-
 	/// 普通区间取并集；最新单边命令覆盖持续区间，之后的新区间入口才能恢复。
 	public static Combined combine(List<Contribution> contributions) {
 		boolean active = false;
@@ -172,5 +144,33 @@ public class PhotonActivationStateUtil {
 				!start && options.endBehavior() != PhotonActivationOptions.EndBehavior.ORIGINAL,
 				start && options.startBehavior() == PhotonActivationOptions.StartBehavior.RESTART ? latest : null,
 				!start && options.endBehavior() == PhotonActivationOptions.EndBehavior.CLEAR ? latest : null, latest);
+	}
+
+	public record Window(double start, double end, int index) {
+		public Window {
+			if (!Double.isFinite(start) || !Double.isFinite(end) || start < 0 || end < start) {
+				throw new IllegalArgumentException("激活片段范围无效。");
+			}
+		}
+	}
+
+	public record Boundary(double time, int index) {
+	}
+
+	public record Prepared(List<Window> windows, List<Double> boundaries) {
+		public Prepared {
+			windows = List.copyOf(windows);
+			boundaries = List.copyOf(boundaries);
+		}
+	}
+
+	public record State(boolean owned, boolean active, boolean stopped, @Nullable Boundary restart,
+	                    @Nullable Boundary clear, @Nullable Boundary event) {
+	}
+
+	public record Contribution(PhotonActivationOptions options, State state) {
+	}
+
+	public record Combined(boolean active, boolean emitting, int command) {
 	}
 }

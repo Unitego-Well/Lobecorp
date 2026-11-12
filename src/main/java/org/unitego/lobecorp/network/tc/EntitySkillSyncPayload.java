@@ -12,10 +12,10 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.event.EntitySkillEvent;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.event.EntitySkillEvent;
 
 import static org.unitego.lobecorp.Lobecorp.id;
 
@@ -160,7 +160,7 @@ public record EntitySkillSyncPayload(
 		@Nullable
 		private final RuntimeCallback callback;
 
-		private Callback(@Nullable RuntimeCallback callback) {
+		Callback(@Nullable RuntimeCallback callback) {
 			this.callback = callback;
 		}
 

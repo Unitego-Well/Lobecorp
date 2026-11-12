@@ -1,57 +1,16 @@
 package org.unitego.lobecorp.client.photon.playback;
 
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.fx.timeline.ActivatorTrack;
-import com.lowdragmc.photon.client.fx.timeline.Clip;
-import com.lowdragmc.photon.client.fx.timeline.ControlTrack;
-import com.lowdragmc.photon.client.fx.timeline.TimelineState;
-import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.client.fx.timeline.*;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import org.unitego.lobecorp.util.photon.playback.PhotonActivationStateUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonActivationTargetUtil;
 
-import java.util.LinkedHashMap;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.WeakHashMap;
-import java.util.Set;
-import java.util.HashSet;
 import javax.annotation.Nullable;
+import java.util.*;
 
 /// 统一收集命名轨道的最终激活者；只有胜出的控制片段能够重置子树。
 public class PhotonNamedGates {
-	private record State(boolean active, boolean visible, @Nullable Object owner, boolean stopped) {
-		private static State read(FXObject object) {
-			return new State(object.isSelfActive(), object.isSelfTimelineVisible(),
-					((PhotonActivationOverrideAccess) object).lobecorp$activationOwner(),
-					object instanceof PhotonEmissionAccess emission && emission.lobecorp$emissionStopped());
-		}
-
-		private void apply(FXObject object) {
-			object.setSelfActive(active);
-			object.setSelfTimelineVisible(visible);
-			((PhotonActivationOverrideAccess) object).lobecorp$activationOwner(owner);
-
-			if (object instanceof PhotonEmissionAccess emission) {
-				emission.lobecorp$emissionStopped(stopped);
-			}
-		}
-	}
-
-	private record Control(UUID handle, Clip clip, long loop, double boundary, boolean clear) {
-	}
-
-	private record Selection(boolean active, boolean visible, boolean stopped, Control restart, Control clear) {
-	}
-
-	private record Activation(PhotonActivationStateUtil.State state, Control restart, Control clear) {
-	}
-
-	private record Signals(boolean active, boolean stopped, Control restart, Control clear) {
-	}
-
 	private final FXRuntime runtime;
 	private final boolean named;
 	private final Map<FXObject, State> before = new LinkedHashMap<>();
@@ -66,11 +25,9 @@ public class PhotonNamedGates {
 	private final Set<Control> nextClears = new HashSet<>();
 	private final Map<FXObject, State> nativeBases = new LinkedHashMap<>();
 	private final Set<UUID> previousNativeTargets = new HashSet<>();
-
 	public PhotonNamedGates(FXRuntime runtime) {
 		this(runtime, true);
 	}
-
 	public PhotonNamedGates(FXRuntime runtime, boolean named) {
 		this.runtime = runtime;
 		this.named = named;
@@ -284,7 +241,7 @@ public class PhotonNamedGates {
 				next.put(target, control);
 
 				if (needsRestart) {
-					var executor = ((FXObject) runtime.root).getEffectExecutor();
+					var executor = runtime.root.getEffectExecutor();
 					long seed = control.clip().randomSeed() && executor != null
 							? executor.getRandomSource().nextLong() : control.clip().seed();
 					reset(target, seed, control.clear());
@@ -377,5 +334,35 @@ public class PhotonNamedGates {
 
 	private boolean inherited(FXObject object) {
 		return !selected.containsKey(object) && !((PhotonActivationOverrideAccess) object).lobecorp$ownActivation();
+	}
+
+	private record State(boolean active, boolean visible, @Nullable Object owner, boolean stopped) {
+		private static State read(FXObject object) {
+			return new State(object.isSelfActive(), object.isSelfTimelineVisible(),
+					((PhotonActivationOverrideAccess) object).lobecorp$activationOwner(),
+					object instanceof PhotonEmissionAccess emission && emission.lobecorp$emissionStopped());
+		}
+
+		private void apply(FXObject object) {
+			object.setSelfActive(active);
+			object.setSelfTimelineVisible(visible);
+			((PhotonActivationOverrideAccess) object).lobecorp$activationOwner(owner);
+
+			if (object instanceof PhotonEmissionAccess emission) {
+				emission.lobecorp$emissionStopped(stopped);
+			}
+		}
+	}
+
+	private record Control(UUID handle, Clip clip, long loop, double boundary, boolean clear) {
+	}
+
+	private record Selection(boolean active, boolean visible, boolean stopped, Control restart, Control clear) {
+	}
+
+	private record Activation(PhotonActivationStateUtil.State state, Control restart, Control clear) {
+	}
+
+	private record Signals(boolean active, boolean stopped, Control restart, Control clear) {
 	}
 }

@@ -47,7 +47,7 @@ public record PhotonNamedLibrary(CompoundTag source, String defaultAnimation,
 
 		private final int channels;
 
-		private ParameterType(int channels) {
+		ParameterType(int channels) {
 			this.channels = channels;
 		}
 
@@ -64,10 +64,6 @@ public record PhotonNamedLibrary(CompoundTag source, String defaultAnimation,
 	                        float maximum) {
 		public Parameter {
 			defaults = coerce(type, defaults, minimum, maximum);
-		}
-
-		public List<Float> coerce(List<Float> input) {
-			return coerce(type, input, minimum, maximum);
 		}
 
 		private static List<Float> coerce(ParameterType type, List<Float> input, float minimum, float maximum) {
@@ -103,6 +99,10 @@ public record PhotonNamedLibrary(CompoundTag source, String defaultAnimation,
 			}
 
 			return List.copyOf(result);
+		}
+
+		public List<Float> coerce(List<Float> input) {
+			return coerce(type, input, minimum, maximum);
 		}
 	}
 

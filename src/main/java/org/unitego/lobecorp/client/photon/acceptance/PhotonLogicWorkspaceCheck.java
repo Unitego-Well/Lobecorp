@@ -1,59 +1,45 @@
 package org.unitego.lobecorp.client.photon.acceptance;
 
+import org.unitego.lobecorp.util.photon.editor.PhotonFxPackExportUtil;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvent;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEventDispatcher;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
 import com.lowdragmc.photon.client.fx.FX;
-import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import com.lowdragmc.photon.client.gameobject.emitter.data.MaterialSetting;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
 import com.lowdragmc.photon.client.gameobject.emitter.data.material.TextureMaterial;
-import net.minecraft.resources.Identifier;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.packs.PackType;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
+import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.repository.Pack;
 import org.unitego.lobecorp.client.photon.editor.PhotonCompositionWorkspace;
 import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
-import org.unitego.lobecorp.client.photon.model.project.PhotonModelProject;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
-import org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 import org.unitego.lobecorp.util.photon.editor.PhotonCompositionExportUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectFileUtil;
 import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
-import org.unitego.lobecorp.util.photon.model.PhotonModelPackExportUtil;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.packs.repository.Pack;
-
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -97,6 +83,48 @@ public class PhotonLogicWorkspaceCheck implements AutoCloseable {
 		this.caller = editor;
 	}
 
+	/// 固定长度的合法PNG用于同大小同mtime替换；尾部补零不改变图像内容。
+	private static byte[] textureBytes(boolean alternate) throws IOException {
+		var image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		image.setRGB(0, 0, alternate ? 0xff00ff00 : 0xffff0000);
+		var output = new ByteArrayOutputStream();
+		ImageIO.write(image, "png", output);
+		return Arrays.copyOf(output.toByteArray(), 256);
+	}
+
+	private static Object read(Object owner, String name) throws ReflectiveOperationException {
+		var field = owner.getClass().getDeclaredField(name);
+		field.setAccessible(true);
+		return field.get(owner);
+	}
+
+	private static Object invoke(Object owner, String name, Class<?>[] types, Object... arguments) throws ReflectiveOperationException {
+		Class<?> type = owner.getClass();
+		while (type != null) {
+			try {
+				var method = type.getDeclaredMethod(name, types);
+				method.setAccessible(true);
+				return method.invoke(owner, arguments);
+			} catch (NoSuchMethodException missing) {
+				type = type.getSuperclass();
+			}
+		}
+		throw new NoSuchMethodException(name);
+	}
+
+	private static RuntimeException failure(Exception failure) {
+		if (failure instanceof InvocationTargetException wrapped && wrapped.getCause() instanceof RuntimeException cause) {
+			return cause;
+		}
+		return new IllegalStateException("工作区逻辑检查失败", failure);
+	}
+
+	private static void requireThread() {
+		if (!Minecraft.getInstance().isSameThread()) {
+			throw new IllegalStateException("工作区检查必须在客户端线程执行");
+		}
+	}
+
 	public void begin() {
 		requireThread();
 		if (phase != -1 || closed) {
@@ -119,7 +147,6 @@ public class PhotonLogicWorkspaceCheck implements AutoCloseable {
 			throw failure(failure);
 		}
 	}
-
 
 	private void mountDependencyPack() throws IOException {
 		var game = Minecraft.getInstance().gameDirectory.toPath();
@@ -150,15 +177,6 @@ public class PhotonLogicWorkspaceCheck implements AutoCloseable {
 		Files.createDirectory(path);
 		own(path);
 		return path;
-	}
-
-	/// 固定长度的合法PNG用于同大小同mtime替换；尾部补零不改变图像内容。
-	private static byte[] textureBytes(boolean alternate) throws IOException {
-		var image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-		image.setRGB(0, 0, alternate ? 0xff00ff00 : 0xffff0000);
-		var output = new ByteArrayOutputStream();
-		ImageIO.write(image, "png", output);
-		return Arrays.copyOf(output.toByteArray(), 256);
 	}
 
 	private void openNativeAuthor() throws Exception {
@@ -477,23 +495,20 @@ public class PhotonLogicWorkspaceCheck implements AutoCloseable {
 	}
 
 	private void exportOrdinary() throws Exception {
-		ordinary(project, "native", false);
-		var model = new PhotonModelProject();
-		ordinary(model, "model", true);
+		ordinary(project, "native");
 	}
 
-	private void ordinary(FXProject source, String suffix, boolean model) throws Exception {
+	private void ordinary(FXProject source, String suffix) throws Exception {
 		var before = PhotonEffectProjectUtil.container(source);
 		var copy = PhotonEffectProjectUtil.copy(source);
-		FX fx = copy instanceof PhotonModelProject value ? value.exportFX() : ((FXProject) copy).getFx();
-		PhotonModelPackExportUtil.prepare(fx);
+		FX fx = ((FXProject) copy).getFx();
 		var tag = fx.serializeNBT(Platform.getFrozenRegistry());
 		tag.putInt("version", FXProject.VERSION);
-		var definition = own(directory.resolve(name + "_" + suffix + (model ? ".mfx" : ".fx")));
+		var definition = own(directory.resolve(name + "_" + suffix + ".fx"));
 		NbtIo.writeCompressed(tag, definition);
 		expect("workspace." + suffix + ".definition_roundtrip", Objects.equals(tag, PhotonResourceReader.read(definition).nbt()));
-		var archive = PhotonModelPackExportUtil.capture("lobecorp", name + "_" + suffix, fx, Platform.getFrozenRegistry(), model);
-		var target = own(directory.resolve(name + "_" + suffix + (model ? ".mfxpack" : ".fxpack")));
+		var archive = PhotonFxPackExportUtil.capture("lobecorp", name + "_" + suffix, fx, Platform.getFrozenRegistry());
+		var target = own(directory.resolve(name + "_" + suffix + ".fxpack"));
 		archive.write(target);
 		archive.verify(PhotonResourceReader.read(target), null);
 		expect("workspace." + suffix + ".pack_roundtrip", Files.size(target) > 0);
@@ -551,39 +566,6 @@ public class PhotonLogicWorkspaceCheck implements AutoCloseable {
 
 	private void action(String method, Class<?>[] types, Object... arguments) throws ReflectiveOperationException {
 		invoke(workspace, method, types, arguments);
-	}
-
-	private static Object read(Object owner, String name) throws ReflectiveOperationException {
-		var field = owner.getClass().getDeclaredField(name);
-		field.setAccessible(true);
-		return field.get(owner);
-	}
-
-	private static Object invoke(Object owner, String name, Class<?>[] types, Object... arguments) throws ReflectiveOperationException {
-		Class<?> type = owner.getClass();
-		while (type != null) {
-			try {
-				var method = type.getDeclaredMethod(name, types);
-				method.setAccessible(true);
-				return method.invoke(owner, arguments);
-			} catch (NoSuchMethodException missing) {
-				type = type.getSuperclass();
-			}
-		}
-		throw new NoSuchMethodException(name);
-	}
-
-	private static RuntimeException failure(Exception failure) {
-		if (failure instanceof InvocationTargetException wrapped && wrapped.getCause() instanceof RuntimeException cause) {
-			return cause;
-		}
-		return new IllegalStateException("工作区逻辑检查失败", failure);
-	}
-
-	private static void requireThread() {
-		if (!Minecraft.getInstance().isSameThread()) {
-			throw new IllegalStateException("工作区检查必须在客户端线程执行");
-		}
 	}
 
 	private void startCleanup() throws ReflectiveOperationException {

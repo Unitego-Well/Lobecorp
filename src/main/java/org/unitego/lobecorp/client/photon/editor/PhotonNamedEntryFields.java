@@ -1,36 +1,21 @@
 package org.unitego.lobecorp.client.photon.editor;
 
-import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations;
-
-import com.lowdragmc.lowdraglib2.configurator.ui.BooleanConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.ColorConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
-import com.lowdragmc.lowdraglib2.configurator.ui.NumberConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.SelectorConfigurator;
-import com.lowdragmc.lowdraglib2.configurator.ui.StringConfigurator;
+import com.lowdragmc.lowdraglib2.configurator.ui.*;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.DoubleTag;
-import net.minecraft.nbt.FloatTag;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.LongTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.ShortTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
+import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
+import org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.NEW;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.VALUE;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.NEW;
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.VALUE;
 
 /// 表单逐字段复制原 NBT 类型，未知复合数据保留；不以摘要重建参数、绑定或规则。
 public class PhotonNamedEntryFields {
@@ -171,7 +156,7 @@ public class PhotonNamedEntryFields {
 			case "offsetParameter" -> "offset_parameter";
 			default -> key;
 		};
-		return PhotonAnimationTranslations.key(suffix);
+		return PhotonAnimationTranslationKeys.key(suffix);
 	}
 
 	private static double minimum(Tag type) {

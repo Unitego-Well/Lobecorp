@@ -9,7 +9,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil.
 
 import java.util.function.Supplier;
 
-@Mixin(targets = "com.lowdragmc.lowdraglib2.utils.PersistedParser$1", remap = false)
+@Mixin(targets = "com.lowdragmc.lowdraglib2.utils.PersistedParser$1")
 public abstract class PhotonFactoryDeserializeDiagnosticsMixin {
 	@WrapOperation(method = "decode", at = @At(value = "INVOKE",
 			target = "Ljava/util/function/Supplier;get()Ljava/lang/Object;"))

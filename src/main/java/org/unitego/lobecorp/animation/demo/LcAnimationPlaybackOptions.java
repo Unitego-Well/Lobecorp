@@ -10,10 +10,10 @@ import java.util.Objects;
 
 /// 调试示例共用的播放速度与视觉过渡；时长使用逻辑 tick。
 public record LcAnimationPlaybackOptions(double speed, LcAnimationTransitionSettings transitions) {
-	private static final String INVALID_SPEED = "Animation speed must be finite and non-negative";
 	/// 示例默认用八 tick 进出姿态，速度一对应资源原始时间。
 	public static final LcAnimationPlaybackOptions DEFAULT = of(1, 8, 8,
 			LcTransitionMode.OVERLAP, LcRotationTransitionMode.SHORTEST_PATH);
+	private static final String INVALID_SPEED = "Animation speed must be finite and non-negative";
 
 	public LcAnimationPlaybackOptions {
 		Objects.requireNonNull(transitions);

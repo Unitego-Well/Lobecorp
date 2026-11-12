@@ -5,7 +5,8 @@ public class PresentationTimeline {
 
 	private double began, offset, duration;
 	private boolean running;
-	private Runnable cleanup = () -> {};
+	private Runnable cleanup = () -> {
+	};
 
 	public void start(double now, double length, Runnable onFinish) {
 		cancel();
@@ -40,7 +41,8 @@ public class PresentationTimeline {
 		}
 		running = false;
 		var callback = cleanup;
-		cleanup = () -> {};
+		cleanup = () -> {
+		};
 		callback.run();
 	}
 }

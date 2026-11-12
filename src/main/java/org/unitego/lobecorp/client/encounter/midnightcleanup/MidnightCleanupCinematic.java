@@ -1,28 +1,30 @@
 package org.unitego.lobecorp.client.encounter.midnightcleanup;
 
 import net.minecraft.client.Minecraft;
-import org.unitego.lobecorp.registry.translation.MidnightCleanupTranslationKeys;
-import org.unitego.lobecorp.client.visual.text.CinematicText;
-import org.unitego.lobecorp.client.visual.PresentationTimeline;
-import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
-import org.unitego.lobecorp.client.visual.camera.CameraControl;
-import org.unitego.lobecorp.client.visual.camera.ICameraController;
-import org.unitego.lobecorp.network.ts.encounter.EncounterSkipPayload;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.CompoundTag;
-import net.neoforged.neoforge.client.event.ViewportEvent;
-import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
-import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupOpening;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.util.horde.HordePresenceUtil;
+import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import org.unitego.lobecorp.client.visual.PresentationTimeline;
+import org.unitego.lobecorp.client.visual.camera.CameraControl;
+import org.unitego.lobecorp.client.horde.HordeClient;
+import org.unitego.lobecorp.client.visual.camera.ICameraController;
+import org.unitego.lobecorp.client.visual.input.PlayerInteractionControl;
+import org.unitego.lobecorp.client.visual.text.CinematicText;
+import org.unitego.lobecorp.network.ts.encounter.EncounterSkipPayload;
+import org.unitego.lobecorp.registry.translation.MidnightCleanupTranslationKeys;
 import org.unitego.lobecorp.util.encounter.MidnightCleanupViewUtil;
 import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupOpening;
 
 import java.util.ArrayDeque;
 import java.util.UUID;
@@ -31,6 +33,7 @@ import java.util.UUID;
 public class MidnightCleanupCinematic {
 	private static final CinematicText CHAPTER = new CinematicText(MidnightCleanupTranslationKeys.BANNER_TITLE, MidnightCleanupEncounter.CHAPTER_COLOR);
 	private static final CinematicText NAME = new CinematicText(MidnightCleanupTranslationKeys.BANNER_NAME, MidnightCleanupEncounter.NAME_COLOR);
+	private static final CinematicText COMPLETE_NAME = new CinematicText(MidnightCleanupTranslationKeys.BANNER_COMPLETE_NAME, MidnightCleanupEncounter.NAME_COLOR);
 	private static final CinematicText START = new CinematicText(MidnightCleanupTranslationKeys.BANNER_START, MidnightCleanupEncounter.SUBTITLE_COLOR);
 	private static final CinematicText END = new CinematicText(MidnightCleanupTranslationKeys.BANNER_END, MidnightCleanupEncounter.SUBTITLE_COLOR);
 	private static final PresentationTimeline timeline = new PresentationTimeline();
@@ -95,6 +98,11 @@ public class MidnightCleanupCinematic {
 			startPitch = player.getXRot();
 			targetYaw = Float.isFinite(presentation.yaw()) ? presentation.yaw() : startYaw;
 			targetPitch = Float.isFinite(presentation.pitch()) ? presentation.pitch() : startPitch;
+			player.setYRot(targetYaw);
+			player.setXRot(targetPitch);
+			player.setYHeadRot(targetYaw);
+			player.yRotO = targetYaw;
+			player.xRotO = targetPitch;
 			PlayerInteractionControl.acquire(MidnightCleanupCinematic.class, MidnightCleanupEncounter.CONTROL_PRIORITY, MidnightCleanupCinematic::controlsView,
 					PlayerInteractionControl.Policy.CINEMATIC, MidnightCleanupCinematic::skip);
 			CameraControl.register(MidnightCleanupCinematic.class, MidnightCleanupEncounter.CONTROL_PRIORITY, MidnightCleanupCinematic::controlsView, new ICameraController() {
@@ -132,11 +140,22 @@ public class MidnightCleanupCinematic {
 		if (!released && opening && !bannerOnly && world == Minecraft.getInstance().level) {
 			var player = Minecraft.getInstance().player;
 			if (player != null) {
-				player.setYRot(startYaw);
-				player.setXRot(startPitch);
-				player.setYHeadRot(startYaw);
-				player.yRotO = startYaw;
-				player.xRotO = startPitch;
+				for (var event : HordeClient.events()) {
+					if (event.id.equals(eventId) && event.ready && event.tide != null) {
+						double time = event.time(0);
+						double head = HordePresenceUtil.head(time, event.speed, event.length);
+						double tail = HordePresenceUtil.tail(time, event.stop, event.speed, event.length);
+						var toward = event.tide.world(HordePresenceUtil.center(head, tail), 0).subtract(player.getEyePosition());
+						targetYaw = (float) Math.toDegrees(Math.atan2(toward.z, toward.x)) - 90;
+						targetPitch = (float) -Math.toDegrees(Math.atan2(toward.y, toward.horizontalDistance()));
+						break;
+					}
+				}
+				player.setYRot(targetYaw);
+				player.setXRot(targetPitch);
+				player.setYHeadRot(targetYaw);
+				player.yRotO = targetYaw;
+				player.xRotO = targetPitch;
 			}
 		}
 		released = true;
@@ -242,7 +261,8 @@ public class MidnightCleanupCinematic {
 			return;
 		}
 
-		var unlocked = new AttributeInstance(Attributes.MOVEMENT_SPEED, _ -> {});
+		var unlocked = new AttributeInstance(Attributes.MOVEMENT_SPEED, _ -> {
+		});
 		unlocked.replaceFrom(speed);
 		unlocked.removeModifier(MidnightCleanupOpening.speedModifierId());
 		float actualFactor = ((float) speed.getValue() / walking + 1) / 2;
@@ -291,7 +311,7 @@ public class MidnightCleanupCinematic {
 			float center = width / 2, titleY = height * MidnightCleanupEncounter.BANNER_TITLE_Y;
 			float gap = Math.min(MidnightCleanupEncounter.BANNER_MAX_GAP, height * MidnightCleanupEncounter.TEXT_GAP_HEIGHT);
 			CHAPTER.extract(graphics, center, titleY - gap, MidnightCleanupEncounter.BANNER_CHAPTER_SCALE, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, alpha, dissolve);
-			NAME.extract(graphics, center, titleY, MidnightCleanupEncounter.BANNER_NAME_SCALE, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, alpha, dissolve);
+			(opening ? NAME : COMPLETE_NAME).extract(graphics, center, titleY, MidnightCleanupEncounter.BANNER_NAME_SCALE, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, alpha, dissolve);
 			(opening ? START : END).extract(graphics, center, titleY + gap, MidnightCleanupEncounter.BANNER_SUBTITLE_SCALE,
 					width * MidnightCleanupEncounter.SUBTITLE_MAX_WIDTH, alpha, dissolve);
 			if (alpha > MidnightCleanupEncounter.BANNER_LINE_ALPHA_THRESHOLD) {
@@ -340,7 +360,7 @@ public class MidnightCleanupCinematic {
 		float scale = Math.clamp(height / MidnightCleanupEncounter.TEXT_REFERENCE_HEIGHT, MidnightCleanupEncounter.TEXT_MIN_SCALE, MidnightCleanupEncounter.TEXT_MAX_SCALE);
 		CHAPTER.extract(graphics, center, titleY - gap, scale, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, chapter,
 				MidnightCleanupViewUtil.phase(age, MidnightCleanupEncounter.CHAPTER_LEAVE_START, MidnightCleanupEncounter.CHAPTER_LEAVE_END));
-		NAME.extract(graphics, center, titleY, scale * MidnightCleanupEncounter.FULL_NAME_SCALE, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, name,
+		(opening ? NAME : COMPLETE_NAME).extract(graphics, center, titleY, scale * MidnightCleanupEncounter.FULL_NAME_SCALE, width * MidnightCleanupEncounter.TITLE_MAX_WIDTH, name,
 				MidnightCleanupViewUtil.phase(age, MidnightCleanupViewUtil.DISSOLVE_START, MidnightCleanupEncounter.NAME_LEAVE_END));
 		(opening ? START : END).extract(graphics, center, titleY + gap - rise,
 				scale * MidnightCleanupEncounter.FULL_SUBTITLE_SCALE, width * MidnightCleanupEncounter.SUBTITLE_MAX_WIDTH, subtitle, MidnightCleanupViewUtil.phase(age,

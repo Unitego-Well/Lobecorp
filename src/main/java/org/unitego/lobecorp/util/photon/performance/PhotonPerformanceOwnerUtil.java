@@ -2,35 +2,27 @@ package org.unitego.lobecorp.util.photon.performance;
 
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXRuntime;
+import com.lowdragmc.photon.client.fx.timeline.TimelinePlayer;
+import com.lowdragmc.photon.client.fx.timeline.Track;
 import com.lowdragmc.photon.client.gameobject.FXObject;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
-import com.lowdragmc.photon.client.fx.timeline.Track;
-import com.lowdragmc.photon.client.fx.timeline.TimelinePlayer;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.Job;
 import net.minecraft.client.renderer.rendertype.RenderType;
-
-import java.util.ArrayDeque;
-
+import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Metric;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Node;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 
-import java.util.List;
 import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
+import java.util.*;
 
 /// 将运行对象身份、定义来源和延迟作业关联；不持有世界或运行实例的强引用。
 public class PhotonPerformanceOwnerUtil {
-	private static Map<DrawJob, Integer> jobs = new IdentityHashMap<>();
-	private static ArrayDeque<Map<RenderType, Integer>> drawing = new ArrayDeque<>();
-	private static Map<Integer, WeakReference<IFXObject>> targets = new HashMap<>();
+	private static final Map<DrawJob, Integer> jobs = new IdentityHashMap<>();
+	private static final ArrayDeque<Map<RenderType, Integer>> drawing = new ArrayDeque<>();
+	private static final Map<Integer, WeakReference<IFXObject>> targets = new HashMap<>();
 	private static long targetSession;
 
 	public static int definition(FX effect) {

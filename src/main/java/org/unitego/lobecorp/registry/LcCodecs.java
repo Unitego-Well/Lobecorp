@@ -2,9 +2,9 @@ package org.unitego.lobecorp.registry;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.world.entity.EntityType;
+import org.unitego.lobecorp.serialization.codecs.SetCodec;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillGroup;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.serialization.codecs.SetCodec;
 
 import java.util.Map;
 import java.util.Optional;

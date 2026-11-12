@@ -8,7 +8,6 @@ import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.Tag;
-import org.unitego.lobecorp.util.photon.model.PhotonModelFileValidationUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
@@ -232,47 +231,7 @@ public class PhotonResourceReaderTest {
 		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
 	}
 
-	@Test
-	public void modelDefinitionsAndPacksRejectMissingIdentityAndUnclosedSources() throws Exception {
-		var wrapper = new CompoundTag();
-		wrapper.putString("type", "lobecorp_model_emitter");
-		var emitter = new CompoundTag();
-		emitter.putInt("version", 0);
-		var transform = new CompoundTag();
-		transform.putString("id", "00000000-0000-0000-0000-000000000001");
-		emitter.put("transform", transform);
-		var config = new CompoundTag();
-		config.putString("source", "EMBEDDED");
-		config.putString("assetJson", "{\"version\":1,\"vertices\":[],\"faces\":[]}");
-		config.put("modelRenderer", new CompoundTag());
-		emitter.put("config", config);
-		wrapper.put("data", emitter);
-		var objects = new ListTag();
-		objects.add(wrapper);
-		var data = new CompoundTag();
-		data.put("objects", objects);
-		var definition = new CompoundTag();
-		definition.putInt("version", PhotonModelFileValidationUtil.DEFINITION_VERSION);
-		definition.put("fxData", data);
-		var path = directory.resolve("model.mfx");
-		Files.write(path, nbt(definition, true));
-		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
-		var pack = directory.resolve("model.mfxpack");
-		archive(pack, Map.of("assets/test/fx/model.mfx", nbt(definition, true)));
-		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(pack.toFile()));
-		transform.put("id", new IntArrayTag(new int[]{0, 0, 0, 1}));
-		Files.write(path, nbt(definition, true));
-		assertFalse(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
-		config.putString("source", "FILE");
-		Files.write(path, nbt(definition, true));
-		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
-		archive(pack, Map.of("assets/test/fx/model.mfx", nbt(definition, true)));
-		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(pack.toFile()));
-		config.putString("source", "EMBEDDED");
-		transform.putString("id", "invalid");
-		Files.write(path, nbt(definition, true));
-		assertTrue(PhotonEditorProjectGuardUtil.containsFileExtensions(path.toFile()));
-	}
+
 
 	@Test
 	public void assetOnlyModelProjectKeepsOptionalGroupsAbsentAndRejectsWrongTypes() throws Exception {
@@ -560,38 +519,7 @@ public class PhotonResourceReaderTest {
 		assertTrue(PhotonEditorProjectGuardUtil.containsTag(wrapper));
 	}
 
-	@Test
-	public void generatedModelIdentityOnlyAddsExactEmitterAndSurvivesDiskReadback() throws Exception {
-		var original = modelProject().getCompoundOrEmpty("data");
-		var generated = renderedEmitter("lobecorp_model_emitter").getCompoundOrEmpty("data");
-		generated.getCompoundOrEmpty("config").put("assetJson", Objects.requireNonNull(original.get("asset")).copy());
-		var id = UUID.fromString(generated.getCompoundOrEmpty("transform").getStringOr("id", ""));
-		var normalized = original.copy();
-		normalized.put("emitterData", generated.copy());
-		var before = original.copy();
-		PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, normalized, generated, id);
-		assertEquals(before, original);
-		var project = modelProject();
-		project.put("data", normalized);
-		var file = Files.write(directory.resolve("generated.mfxproj"), nbt(project, false));
-		var reopened = Objects.requireNonNull(PhotonResourceReader.read(file).nbt()).getCompoundOrEmpty("data");
-		assertEquals(normalized, reopened);
-		assertEquals(id.toString(), reopened.getCompoundOrEmpty("emitterData").getCompoundOrEmpty("transform").getStringOr("id", ""));
-		assertEquals(original.get("asset"), reopened.get("asset"));
-		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(reopened, normalized, generated, id));
-		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, normalized, generated, UUID.randomUUID()));
-		var changed = normalized.copy();
-		changed.putInt("extra", 1);
-		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, changed, generated, id));
-		changed.remove("extra");
-		changed.remove("future");
-		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, changed, generated, id));
-		var alteredEmitter = generated.copy();
-		alteredEmitter.getCompoundOrEmpty("config").putString("assetJson", "{\"version\":1,\"vertices\":[],\"faces\":[]}");
-		var altered = original.copy();
-		altered.put("emitterData", alteredEmitter);
-		assertThrows(IOException.class, () -> PhotonModelFileValidationUtil.requireGeneratedEmitterData(original, altered, alteredEmitter, id));
-	}
+
 
 	@Test
 	public void unsafeDependencyReferencesStayUnresolvedWithoutHidingSafeEdges() throws Exception {

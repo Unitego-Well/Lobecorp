@@ -8,32 +8,12 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.client.photon.performance.PhotonPerformanceGpu;
+import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
-import org.unitego.lobecorp.client.photon.render.PhotonIrisPipelineAccess;
 
 @Mixin(PhotonBloom.class)
 public class PhotonBloomMixin {
-	@WrapMethod(method = "run")
-	private void lobecorp$captureBloom(GpuTextureView target, Operation<Void> original) {
-		if (!PhotonPerformanceTraceUtil.enabled(Stage.BLOOM)) {
-			original.call(target);
-			return;
-		}
-		String pass = "bloom@" + target.getWidth(0) + "x" + target.getHeight(0);
-		int node = PhotonPerformanceTraceUtil.namedNode(0, "shared_bloom", pass, pass, "");
-		long scope = PhotonPerformanceTraceUtil.begin(Stage.BLOOM, node);
-		long gpu = PhotonPerformanceGpu.begin(pass, node, true);
-		boolean completed = false;
-		try {
-			original.call(target);
-			completed = true;
-		} finally {
-			PhotonPerformanceGpu.end(gpu, completed);
-			PhotonPerformanceTraceUtil.end(scope, completed);
-		}
-	}
-
 	@WrapMethod(method = "fullscreenPass")
 	private static void lobecorp$captureBloomPass(RenderPipeline pipeline, GpuTextureView target,
 	                                              GpuTextureView input, GpuBufferSlice params,
@@ -61,6 +41,26 @@ public class PhotonBloomMixin {
 			PhotonIrisPipelineAccess.drawFullscreen(draw);
 		} else {
 			draw.run();
+		}
+	}
+
+	@WrapMethod(method = "run")
+	private void lobecorp$captureBloom(GpuTextureView target, Operation<Void> original) {
+		if (!PhotonPerformanceTraceUtil.enabled(Stage.BLOOM)) {
+			original.call(target);
+			return;
+		}
+		String pass = "bloom@" + target.getWidth(0) + "x" + target.getHeight(0);
+		int node = PhotonPerformanceTraceUtil.namedNode(0, "shared_bloom", pass, pass, "");
+		long scope = PhotonPerformanceTraceUtil.begin(Stage.BLOOM, node);
+		long gpu = PhotonPerformanceGpu.begin(pass, node, true);
+		boolean completed = false;
+		try {
+			original.call(target);
+			completed = true;
+		} finally {
+			PhotonPerformanceGpu.end(gpu, completed);
+			PhotonPerformanceTraceUtil.end(scope, completed);
 		}
 	}
 }

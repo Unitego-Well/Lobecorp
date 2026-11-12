@@ -2,40 +2,27 @@ package org.unitego.lobecorp.client.photon.playback;
 
 import com.lowdragmc.photon.client.fx.timeline.AnimatedProperty;
 import com.lowdragmc.photon.client.gameobject.FXObject;
+import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Binding;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import org.unitego.lobecorp.client.photon.editor.PhotonAuthoringPose;
+import java.util.*;
 
 /// 贡献先收集后按优先级/启动顺序统一应用；每个属性在一次提交中只有一个最终写入。
 public class PhotonNamedMixer {
-	public record Key(UUID target, String property) {
-	}
-
-	private record Layer(int priority, long order, long sequence, PhotonValueContribution value) {
-	}
-
 	private static final Comparator<Layer> ORDER = Comparator.comparingInt(Layer::priority)
 			.thenComparingLong(Layer::order).thenComparingLong(Layer::sequence);
 	private final Map<Key, TargetState> targetStates = new LinkedHashMap<>();
 	private long sequence;
 
-	private static final class TargetState {
-		private final PhotonPropertyTarget target;
-		private final List<Layer> layers = new ArrayList<>();
-		private final List<PhotonValueContribution> values = new ArrayList<>();
-		private boolean active;
+	private static List<Float> floats(float[] values) {
+		var result = new ArrayList<Float>();
 
-		private TargetState(PhotonPropertyTarget target) {
-			this.target = target;
+		for (float value : values) {
+			result.add(value);
 		}
+
+		return List.copyOf(result);
 	}
 
 	/// 在原生时间轴求值前释放上一轮临时写入，随后才能读取该轮的新基础值。
@@ -91,16 +78,6 @@ public class PhotonNamedMixer {
 		state.layers.add(new Layer(priority, order, sequence++, contribution));
 	}
 
-	private static List<Float> floats(float[] values) {
-		var result = new ArrayList<Float>();
-
-		for (float value : values) {
-			result.add(value);
-		}
-
-		return List.copyOf(result);
-	}
-
 	public void commit() {
 		for (var state : targetStates.values()) {
 			if (!state.active) {
@@ -123,13 +100,30 @@ public class PhotonNamedMixer {
 		targetStates.clear();
 	}
 
-    public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
-        var result = current;
+	public PhotonAuthoringPose authoredPose(FXObject object, PhotonAuthoringPose current) {
+		var result = current;
 
-        for (var state : targetStates.values()) {
-            result = state.target.authoredPose(object, result);
-        }
+		for (var state : targetStates.values()) {
+			result = state.target.authoredPose(object, result);
+		}
 
-        return result;
-    }
+		return result;
+	}
+
+	public record Key(UUID target, String property) {
+	}
+
+	private record Layer(int priority, long order, long sequence, PhotonValueContribution value) {
+	}
+
+	private static final class TargetState {
+		private final PhotonPropertyTarget target;
+		private final List<Layer> layers = new ArrayList<>();
+		private final List<PhotonValueContribution> values = new ArrayList<>();
+		private boolean active;
+
+		private TargetState(PhotonPropertyTarget target) {
+			this.target = target;
+		}
+	}
 }

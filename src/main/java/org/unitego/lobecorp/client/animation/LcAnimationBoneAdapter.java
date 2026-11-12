@@ -1,15 +1,15 @@
 package org.unitego.lobecorp.client.animation;
 
-import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.constant.DataTickets;
 import com.geckolib.renderer.GeoEntityRenderer;
+import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
-import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import net.minecraft.util.Mth;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
+import org.unitego.lobecorp.animation.pose.LcSkeletalPose;
 import org.unitego.lobecorp.animation.runtime.LcAnimationSnapshot;
+import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
 
 /// 公共姿态使用格和向前 +Z；这里只转换 GeckoLib 5.5.2 的动画增量字段。
 public class LcAnimationBoneAdapter {
@@ -60,22 +60,22 @@ public class LcAnimationBoneAdapter {
 		return (float) LcClientAnimations.beamPoseWeight(beam.ownerEntityId(), partialTick);
 	}
 
-    private static void apply(LcSkeletalPose pose, BoneSnapshots snapshots, float weight) {
-        pose.bones().forEach((name, transform) -> snapshots.get(name).ifPresent(snapshot -> {
-            var position = transform.position();
-            var angles = pose.rotationAngles(name);
-            var scale = transform.scale();
-            var rotation = new Quaternionf().rotationZYX(snapshot.getRotZ(), snapshot.getRotY(), snapshot.getRotX())
-                    .slerp(new Quaternionf().rotationZYX((float) -angles.z, (float) angles.y, (float) -angles.x), weight)
-                    .getEulerAnglesZYX(new Vector3f());
-            snapshot.setTranslation(Mth.lerp(weight, snapshot.getTranslateX(), (float) (position.x * MODEL_UNITS_PER_BLOCK)),
-                    Mth.lerp(weight, snapshot.getTranslateY(), (float) (position.y * MODEL_UNITS_PER_BLOCK)),
-                    Mth.lerp(weight, snapshot.getTranslateZ(), (float) (-position.z * MODEL_UNITS_PER_BLOCK)));
-            snapshot.setRotation(rotation.x, rotation.y, rotation.z);
-            snapshot.setScale(Mth.lerp(weight, snapshot.getScaleX(), (float) scale.x),
-                    Mth.lerp(weight, snapshot.getScaleY(), (float) scale.y), Mth.lerp(weight, snapshot.getScaleZ(), (float) scale.z));
-        }));
-    }
+	private static void apply(LcSkeletalPose pose, BoneSnapshots snapshots, float weight) {
+		pose.bones().forEach((name, transform) -> snapshots.get(name).ifPresent(snapshot -> {
+			var position = transform.position();
+			var angles = pose.rotationAngles(name);
+			var scale = transform.scale();
+			var rotation = new Quaternionf().rotationZYX(snapshot.getRotZ(), snapshot.getRotY(), snapshot.getRotX())
+					.slerp(new Quaternionf().rotationZYX((float) -angles.z, (float) angles.y, (float) -angles.x), weight)
+					.getEulerAnglesZYX(new Vector3f());
+			snapshot.setTranslation(Mth.lerp(weight, snapshot.getTranslateX(), (float) (position.x * MODEL_UNITS_PER_BLOCK)),
+					Mth.lerp(weight, snapshot.getTranslateY(), (float) (position.y * MODEL_UNITS_PER_BLOCK)),
+					Mth.lerp(weight, snapshot.getTranslateZ(), (float) (-position.z * MODEL_UNITS_PER_BLOCK)));
+			snapshot.setRotation(rotation.x, rotation.y, rotation.z);
+			snapshot.setScale(Mth.lerp(weight, snapshot.getScaleX(), (float) scale.x),
+					Mth.lerp(weight, snapshot.getScaleY(), (float) scale.y), Mth.lerp(weight, snapshot.getScaleZ(), (float) scale.z));
+		}));
+	}
 
 	public static void apply(LcSkeletalPose pose, BoneSnapshots snapshots) {
 		apply(pose, snapshots, 1);

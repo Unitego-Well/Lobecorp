@@ -1,13 +1,12 @@
 package org.unitego.lobecorp.world.entity.combat;
 
-import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
-import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.world.tag.LcDamageTypeTags;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 
 /// 由现有唯一事件入口分发，目标与伤害使用同一战斗关系规则。
@@ -15,7 +14,7 @@ import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 @SuppressWarnings("resource")
 public class CombatEvents {
 	private static final TagKey<DamageType> CAN_HURT_ALLIES =
-			TagKey.create(Registries.DAMAGE_TYPE, Lobecorp.id("can_hurt_allies"));
+			LcDamageTypeTags.CAN_HURT_ALLIES;
 
 	public static void onTargetChange(LivingChangeTargetEvent event) {
 		LivingEntity target = event.getNewAboutToBeSetTarget();

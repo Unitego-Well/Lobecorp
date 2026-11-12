@@ -2,16 +2,16 @@ package org.unitego.lobecorp.client.horde;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderPass;
-import net.irisshaders.iris.vertices.ImmediateState;
-import net.irisshaders.iris.api.v0.IrisApi;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import net.irisshaders.iris.Iris;
-import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
+import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.shaderpack.materialmap.NamespacedId;
+import net.irisshaders.iris.shaderpack.materialmap.WorldRenderingSettings;
+import net.irisshaders.iris.vertices.ImmediateState;
+import net.irisshaders.iris.vertices.IrisVertexFormats;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
-import net.irisshaders.iris.vertices.IrisVertexFormats;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.neoforged.fml.ModList;
 
 /// 隔离可选Iris依赖，核对实际顶点布局、阴影阶段和深度方向。

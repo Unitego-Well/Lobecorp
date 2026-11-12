@@ -18,25 +18,6 @@ public record PhotonActivationOptions(boolean startControl, StartBehavior startB
 		Objects.requireNonNull(endBehavior);
 	}
 
-	public enum StartBehavior {RESTART, CONTINUE}
-
-	public enum EndBehavior {ORIGINAL, STOP_EMISSION, CLEAR}
-
-	public boolean pointControl() {
-		return startControl != endControl;
-	}
-
-	public CompoundTag merge(CompoundTag original) {
-		var result = original.copy();
-		result.remove("singleFrame");
-		result.putBoolean("startControl", startControl);
-		result.putString("startBehavior", startBehavior.name());
-		result.putBoolean("endControl", endControl);
-		result.putString("endBehavior", endBehavior.name());
-		result.putBoolean("clearOnRestart", clearOnRestart);
-		return result;
-	}
-
 	public static PhotonActivationOptions read(CompoundTag source) {
 		for (var key : new String[]{"startControl", "endControl", "clearOnRestart", "singleFrame"}) {
 			if (source.contains(key) && !(source.get(key) instanceof ByteTag)) {
@@ -57,4 +38,23 @@ public record PhotonActivationOptions(boolean startControl, StartBehavior startB
 				EndBehavior.valueOf(source.getStringOr("endBehavior", LEGACY.endBehavior.name())),
 				source.getBooleanOr("clearOnRestart", LEGACY.clearOnRestart));
 	}
+
+	public boolean pointControl() {
+		return startControl != endControl;
+	}
+
+	public CompoundTag merge(CompoundTag original) {
+		var result = original.copy();
+		result.remove("singleFrame");
+		result.putBoolean("startControl", startControl);
+		result.putString("startBehavior", startBehavior.name());
+		result.putBoolean("endControl", endControl);
+		result.putString("endBehavior", endBehavior.name());
+		result.putBoolean("clearOnRestart", clearOnRestart);
+		return result;
+	}
+
+	public enum StartBehavior {RESTART, CONTINUE}
+
+	public enum EndBehavior {ORIGINAL, STOP_EMISSION, CLEAR}
 }

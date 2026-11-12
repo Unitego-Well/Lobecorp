@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.util.resource;
 
-import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.LDLib2;
+import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.lowdraglib2.utils.CustomResourcePack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
@@ -38,11 +38,6 @@ public class DevelopmentResourceUtil {
 	private static final String INVALID_SOURCE_DIRECTORY = "Invalid development resources directory: ";
 	private static final String FX_PACK_ID_PREFIX = "fxpack/";
 	private static final String INVALID_ISOLATED_PACK = "Isolated FX pack requires disabled development resources and a complete fxpack/ ID";
-
-	private static final class Paths {
-		private static final Path GAME = Platform.getGamePath().toAbsolutePath().normalize();
-		private static final @Nullable Path SOURCE = findSourceDirectory();
-	}
 
 	private static @Nullable Path findSourceDirectory() {
 		if (Boolean.getBoolean(DISABLE_SOURCE_PROPERTY)) {
@@ -173,5 +168,10 @@ public class DevelopmentResourceUtil {
 		}
 
 		return original;
+	}
+
+	private static final class Paths {
+		private static final Path GAME = Platform.getGamePath().toAbsolutePath().normalize();
+		private static final @Nullable Path SOURCE = findSourceDirectory();
 	}
 }

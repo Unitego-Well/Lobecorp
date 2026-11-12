@@ -1,10 +1,8 @@
 package org.unitego.lobecorp.world.entity.projectile;
 
 import com.mojang.serialization.Codec;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.core.UUIDUtil;
-import net.minecraft.network.Connection;
-import net.minecraft.network.chat.Component;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -25,11 +23,11 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.particle.damage.DamageParticles;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
 import org.jspecify.annotations.Nullable;
+import org.unitego.lobecorp.registry.world.damage.LcDamageTypes;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 
 import java.util.Comparator;
 import java.util.UUID;
@@ -44,7 +42,7 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 			SynchedEntityData.defineId(MagicStarProjectile.class, EntityDataSerializers.INT);
 	/// 魔法星命中时使用的伤害类型资源键。
 	private static final ResourceKey<DamageType> DAMAGE_TYPE =
-			ResourceKey.create(Registries.DAMAGE_TYPE, Lobecorp.id("magic_star"));
+			LcDamageTypes.MAGIC_STAR;
 	/// 普通飞行星星的速度，单位为格/游戏刻。
 	private static final double SPEED = 1.0;
 	/// 普通飞行星星的寿命，单位为游戏刻；路径星星使用独立寿命。
@@ -111,6 +109,10 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 				.add(desired.scale(Math.sin(ratio * angle) / sine)).normalize();
 	}
 
+	public static double homingRange() {
+		return HOMING_RANGE;
+	}
+
 	public void configure(TheQueenOfHatred queen, StarSize size, StarVariant variant, Vec3 position, Vec3 direction) {
 		setOwner(queen);
 		setStarSize(size);
@@ -133,10 +135,6 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 	public void setRefraction(int remaining, @Nullable UUID excluded) {
 		splitsRemaining = remaining;
 		excludedTarget = excluded;
-	}
-
-	public static double homingRange() {
-		return HOMING_RANGE;
 	}
 
 	/// 覆盖单枚星星的寿命、攻击属性伤害倍率和爆炸半径，不改变其他技能的默认星星。
@@ -323,7 +321,7 @@ public class MagicStarProjectile extends ThrowableItemProjectile {
 
 		private final float width;
 
-		private StarSize(float width) {
+		StarSize(float width) {
 			this.width = width;
 		}
 

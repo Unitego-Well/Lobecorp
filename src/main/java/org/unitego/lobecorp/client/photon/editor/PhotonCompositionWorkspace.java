@@ -2,39 +2,24 @@ package org.unitego.lobecorp.client.photon.editor;
 
 import com.lowdragmc.lowdraglib2.editor.ui.View;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.Label;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextElement;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.TextField;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.*;
 import com.lowdragmc.lowdraglib2.gui.ui.event.UIEvents;
 import com.lowdragmc.photon.gui.editor.FXProject;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
-import org.joml.Vector3f;
 import org.joml.Quaternionf;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Binding;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Cue;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Definition;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Phase;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.Pose;
-import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.StopPolicy;
+import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectAssets;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaser;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
+import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition.*;
 import org.unitego.lobecorp.util.photon.editor.PhotonCompositionExportUtil;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.io.IOException;
-
-import net.minecraft.client.Minecraft;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 /// 只提供制作输入和宿主传输控制；组成件触发统一交给生产组合执行核心。
@@ -49,7 +34,6 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	private final TextElement status = new Label().setText("请选择激光作者工程");
 	private final UIElement rows = new UIElement();
 	private final Map<String, TextField> fields = new LinkedHashMap<>();
-	private boolean restoring;
 	private final HashSet<Integer> disabled = new HashSet<>();
 	private final TextField seekField = new TextField().setText("0");
 	private final TextField exportPath = new TextField().setText("");
@@ -59,6 +43,7 @@ public class PhotonCompositionWorkspace extends View implements AutoCloseable {
 	private final float[] beamParameters = {16, 1};
 	private final Map<String, float[]> poseOffsets = new LinkedHashMap<>();
 	private final Map<String, float[]> poseRotations = new LinkedHashMap<>();
+	private boolean restoring;
 	private Definition definition = PhotonOwnedLaserComposition.defaults();
 	private FXProject project;
 	private PhotonOwnedLaser preview;

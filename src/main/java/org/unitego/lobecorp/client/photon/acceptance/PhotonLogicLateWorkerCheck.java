@@ -3,8 +3,8 @@ package org.unitego.lobecorp.client.photon.acceptance;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectAssets;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedEffectResources.SourceKey;
@@ -32,25 +32,6 @@ public class PhotonLogicLateWorkerCheck implements AutoCloseable {
 		this.check = check;
 	}
 
-	public void begin() {
-		if (active != null) {
-			throw new IllegalStateException("已有晚到检查");
-		}
-		active = this;
-		var components = Map.of("fixture", Identifier.parse("lobecorp:logic_late_worker/component"));
-		PhotonOwnedEffectResources.register(ID, components);
-		PhotonOwnedEffectResources.registerSnapshotComponents(ID, components);
-		PhotonOwnedEffectResources.registerDefinitionPreparation(ID, prepared -> {
-			if (prepared.source().equals(old)) {
-				oldPublished++;
-			}
-			var definition = new FX();
-			definition.deserializeNBT(Platform.getFrozenRegistry(), prepared.components().get("fixture").definition());
-			PhotonOwnedEffectAssets.prepare(definition, prepared.source());
-		}, PhotonOwnedEffectAssets::invalidate);
-		oldFuture = PhotonOwnedEffectResources.queueSnapshot(old, snapshot());
-	}
-
 	/// 只在真实 worker 的 normalize 入口暂停后调用；不会阻塞客户端线程。
 	public static void cancelAtWorkerGate(SourceKey source) {
 		var run = active;
@@ -68,6 +49,25 @@ public class PhotonLogicLateWorkerCheck implements AutoCloseable {
 
 	private static Map<String, CompoundTag> snapshot() {
 		return Map.of("fixture", new FX().serializeNBT(Platform.getFrozenRegistry()));
+	}
+
+	public void begin() {
+		if (active != null) {
+			throw new IllegalStateException("已有晚到检查");
+		}
+		active = this;
+		var components = Map.of("fixture", Identifier.parse("lobecorp:logic_late_worker/component"));
+		PhotonOwnedEffectResources.register(ID, components);
+		PhotonOwnedEffectResources.registerSnapshotComponents(ID, components);
+		PhotonOwnedEffectResources.registerDefinitionPreparation(ID, prepared -> {
+			if (prepared.source().equals(old)) {
+				oldPublished++;
+			}
+			var definition = new FX();
+			definition.deserializeNBT(Platform.getFrozenRegistry(), prepared.components().get("fixture").definition());
+			PhotonOwnedEffectAssets.prepare(definition, prepared.source());
+		}, PhotonOwnedEffectAssets::invalidate);
+		oldFuture = PhotonOwnedEffectResources.queueSnapshot(old, snapshot());
 	}
 
 	public boolean step() {

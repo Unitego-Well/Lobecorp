@@ -41,9 +41,9 @@ public record PlayerDamageFilterPayload(ResourceKey<Level> dimension, UUID targe
 	}
 
 	@Override
-    public void work(IPayloadContext context, AbstractClientPlayer player) {
-        if (player.getUUID().equals(target) && player.level().dimension().equals(dimension)) {
-            DamageFilter.INSTANCE.receiveHit(channels);
-        }
+	public void work(IPayloadContext context, AbstractClientPlayer player) {
+		if (player.getUUID().equals(target) && player.level().dimension().equals(dimension)) {
+			DamageFilter.INSTANCE.receiveHit(channels);
+		}
 	}
 }

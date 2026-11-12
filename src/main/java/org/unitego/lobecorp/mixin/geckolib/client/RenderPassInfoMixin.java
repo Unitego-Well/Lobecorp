@@ -8,8 +8,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.unitego.lobecorp.animation.LcAnimationControllerIntegration;
 import org.unitego.lobecorp.animation.ILcCustomAnimatable;
+import org.unitego.lobecorp.animation.LcAnimationControllerIntegration;
 import org.unitego.lobecorp.client.animation.LcAnimationBoneAdapter;
 
 @Mixin(RenderPassInfo.class)

@@ -4,28 +4,22 @@ import net.minecraft.world.phys.Vec3;
 
 /// 世界空间天空覆盖场；不依赖事件、相机朝向或渲染资源。每个调用方独立持有平滑状态。
 public class DirectionalSkyCoverage {
-	/// 距离单位为格，响应时间单位为游戏刻；覆盖下限供路线尚未就绪时使用。
-	public record Profile(float minimumCoverage, double nearDistance, double farDistance,
-						  double edgeDistance, double responseTicks) {
-		public Profile {
-			if (!(minimumCoverage >= 0 && minimumCoverage <= 1 && nearDistance >= 0
-					&& farDistance > nearDistance && edgeDistance > 0 && responseTicks > 0)) {
-				throw new IllegalArgumentException("天空覆盖参数超出有效范围");
-			}
-		}
-	}
-
-	/// 水平单位世界方向和零到一覆盖；Vec3 不可变，不持有调用方可变对象。
-	public record Sample(Vec3 direction, float coverage) {
-	}
-
 	private final Profile profile;
 	private double yaw;
 	private float coverage;
-
 	public DirectionalSkyCoverage(Profile profile) {
 		this.profile = profile;
 		reset(new Vec3(0, 0, 1));
+	}
+
+	private static Vec3 horizontal(Vec3 direction) {
+		double length = Math.hypot(direction.x, direction.z);
+		return length > 0.0001 ? new Vec3(direction.x / length, 0, direction.z / length) : new Vec3(0, 0, 1);
+	}
+
+	private static double smooth(double value) {
+		double t = Math.clamp(value, 0, 1);
+		return t * t * (3 - 2 * t);
 	}
 
 	/// headCenter 为当前波头，bandCenter 为离观察者最近的已占据波带中心；方向和半宽属于该波带。
@@ -73,13 +67,18 @@ public class DirectionalSkyCoverage {
 		return new Sample(horizontal(direction), profile.minimumCoverage());
 	}
 
-	private static Vec3 horizontal(Vec3 direction) {
-		double length = Math.hypot(direction.x, direction.z);
-		return length > 0.0001 ? new Vec3(direction.x / length, 0, direction.z / length) : new Vec3(0, 0, 1);
+	/// 距离单位为格，响应时间单位为游戏刻；覆盖下限供路线尚未就绪时使用。
+	public record Profile(float minimumCoverage, double nearDistance, double farDistance,
+	                      double edgeDistance, double responseTicks) {
+		public Profile {
+			if (!(minimumCoverage >= 0 && minimumCoverage <= 1 && nearDistance >= 0
+					&& farDistance > nearDistance && edgeDistance > 0 && responseTicks > 0)) {
+				throw new IllegalArgumentException("天空覆盖参数超出有效范围");
+			}
+		}
 	}
 
-	private static double smooth(double value) {
-		double t = Math.clamp(value, 0, 1);
-		return t * t * (3 - 2 * t);
+	/// 水平单位世界方向和零到一覆盖；Vec3 不可变，不持有调用方可变对象。
+	public record Sample(Vec3 direction, float coverage) {
 	}
 }

@@ -1,11 +1,15 @@
 package org.unitego.lobecorp.client.entity.ordeal.indigo.renderer;
 
+import com.geckolib.constant.DataTickets;
 import com.geckolib.renderer.GeoEntityRenderer;
 import com.geckolib.renderer.base.BoneSnapshots;
 import com.geckolib.renderer.base.RenderPassInfo;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -13,17 +17,13 @@ import org.unitego.lobecorp.client.conductor.render.ConductorGeoOutlineLayer;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
 import org.unitego.lobecorp.client.renderer.AutoGlowingRenderLayer;
 import org.unitego.lobecorp.client.renderer.DynamicCubeGeoLayer;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 import org.unitego.lobecorp.util.animation.LcModelLodUtil;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 
 import java.util.List;
 import java.util.Map;
-import org.unitego.lobecorp.world.horde.HordeParticipant;
-import com.geckolib.constant.DataTickets;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.resources.Identifier;
 
 public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRenderState> {
 
@@ -75,7 +75,7 @@ public class SweeperRenderer extends GeoEntityRenderer<Sweeper, LivingEntityRend
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_VARIANT, animatable.getVariant());
 		renderState.addGeckolibData(LcDataTickets.SWEEPER_BIOMASS_RATIO,
 				animatable.getBiomass() / animatable.getBiomassCapacity());
-        renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 1f);
+		renderState.addGeckolibData(LcDataTickets.SWEEPER_GLOW_STRENGTH, 1f);
 	}
 
 	@Override

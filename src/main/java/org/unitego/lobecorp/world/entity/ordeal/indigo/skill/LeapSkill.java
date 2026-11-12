@@ -15,32 +15,32 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
+import org.unitego.lobecorp.registry.world.entity.state.SweeperStates;
+import org.unitego.lobecorp.registry.particle.LcParticleTypes;
 import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
-import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.EntityGrabUtil;
 import org.unitego.lobecorp.util.entity.EntityLeapUtil;
 import org.unitego.lobecorp.util.entity.EntityLeapUtil.Trajectory;
-import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
+import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAnim;
+import org.unitego.lobecorp.world.entity.skill.EntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.world.hitbox.HitboxEffectContext;
 import org.unitego.lobecorp.world.hitbox.HitboxInstance;
 import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
-import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
 import org.unitego.lobecorp.world.hitbox.geometry.BoxSize;
-import org.unitego.lobecorp.world.hitbox.HitboxEffectContext;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
-import org.unitego.lobecorp.registry.entity.state.SweeperStates;
-import org.unitego.lobecorp.registry.particle.LcParticleTypes;
-import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.world.hitbox.geometry.SphereSize;
 
 import java.util.HashSet;
 import java.util.List;
@@ -189,6 +189,31 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 
 	public static double conductorDamageRadius() {
 		return DAMAGE_RADIUS;
+	}
+
+	private static boolean onFlightContact(HitboxEffectContext context) {
+		if (!(context.source() instanceof Sweeper entity)
+				|| !(context.target() instanceof LivingEntity target)) {
+			return false;
+		}
+
+		EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
+		Set<UUID> contacts = runtime == null ? null : runtime.getData(FLIGHT_CONTACTS);
+		if (contacts == null || !contacts.add(target.getUUID())) {
+			return false;
+		}
+
+		boolean hurt = target.hurtServer(context.level(), entity.damageSources().mobAttack(entity),
+				(float) entity.getAttributeValue(Attributes.ATTACK_DAMAGE) * FLIGHT_DAMAGE_RATIO);
+		if (hurt) {
+			entity.markCombat();
+			runtime.markSuccessful();
+		}
+
+		// 接触判定后的抓取不依赖伤害成功，伤害无敌帧不会阻止抓取。
+		boolean grabbed = target.getBbWidth() <= MAX_GRAB_SIZE && target.getBbHeight() <= MAX_GRAB_SIZE
+				&& EntityGrabUtil.grab(entity, target, GRAB_ESCAPE_DISTANCE);
+		return hurt || grabbed;
 	}
 
 	@Override
@@ -555,9 +580,6 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 		aimToMovement(entity, Vec3.directionFromRotation(0.0F, entity.getYRot()));
 	}
 
-	private record LaunchSolution(Vec3 landingPosition, Trajectory trajectory) {
-	}
-
 	private double horizontalDistanceSqr(Sweeper entity, Vec3 target) {
 		double dx = target.x - entity.getX();
 		double dz = target.z - entity.getZ();
@@ -633,31 +655,6 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 		}
 	}
 
-	private static boolean onFlightContact(HitboxEffectContext context) {
-		if (!(context.source() instanceof Sweeper entity)
-				|| !(context.target() instanceof LivingEntity target)) {
-			return false;
-		}
-
-		EntitySkillRuntime<?> runtime = context.instance().skillRuntime();
-		Set<UUID> contacts = runtime == null ? null : runtime.getData(FLIGHT_CONTACTS);
-		if (contacts == null || !contacts.add(target.getUUID())) {
-			return false;
-		}
-
-		boolean hurt = target.hurtServer(context.level(), entity.damageSources().mobAttack(entity),
-				(float) entity.getAttributeValue(Attributes.ATTACK_DAMAGE) * FLIGHT_DAMAGE_RATIO);
-		if (hurt) {
-			entity.markCombat();
-			runtime.markSuccessful();
-		}
-
-		// 接触判定后的抓取不依赖伤害成功，伤害无敌帧不会阻止抓取。
-		boolean grabbed = target.getBbWidth() <= MAX_GRAB_SIZE && target.getBbHeight() <= MAX_GRAB_SIZE
-				&& EntityGrabUtil.grab(entity, target, GRAB_ESCAPE_DISTANCE);
-		return hurt || grabbed;
-	}
-
 	private HitboxInstance getHitbox(ServerLevel level, EntitySkillRuntime<Sweeper> runtime) {
 		Integer id = runtime.getData(HITBOX_ID);
 		if (id == null) {
@@ -706,5 +703,8 @@ public class LeapSkill extends EntitySkill<Sweeper> {
 		if (attribute != null) {
 			attribute.removeModifier(SAFE_FALL_DISTANCE_MODIFIER);
 		}
+	}
+
+	private record LaunchSolution(Vec3 landingPosition, Trajectory trajectory) {
 	}
 }

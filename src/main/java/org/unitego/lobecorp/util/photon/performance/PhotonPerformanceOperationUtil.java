@@ -3,16 +3,12 @@ package org.unitego.lobecorp.util.photon.performance;
 import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 
-import java.util.ArrayDeque;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /// 仅在同 JVM 内按现有字段和 FIFO 推断请求关联；不修改业务包，不把推断当成线上 request ID。
 public class PhotonPerformanceOperationUtil {
 	private static final int MAX_PENDING = 1024;
-	private static Map<Key, ArrayDeque<Request>> pending = new LinkedHashMap<>();
+	private static final Map<Key, ArrayDeque<Request>> pending = new LinkedHashMap<>();
 	private static long session;
 	private static long sequence;
 	private static int pendingCount;
@@ -20,16 +16,6 @@ public class PhotonPerformanceOperationUtil {
 	private static long received;
 	private static long unmatched;
 	private static long evicted;
-
-	private record Key(@Nullable UUID player, String action, List<UUID> units, String skill) {
-	}
-
-	private record Request(long id, long sentNs) {
-	}
-
-	public record Summary(long sessionId, long sent, long received, long unmatched, long evicted,
-	                      int pending, String correlation) {
-	}
 
 	public static int entity(UUID entity) {
 		String identity = entity.toString();
@@ -90,7 +76,6 @@ public class PhotonPerformanceOperationUtil {
 		return node;
 	}
 
-
 	private static void requestMark(Stage stage, int node, String code, String detail, String action, double value, double secondary) {
 		if (action.equals("CAST") || action.equals("END_MANUAL_CONTROL")) {
 			PhotonPerformanceTraceUtil.important(stage, node, code, detail, value, secondary);
@@ -122,5 +107,15 @@ public class PhotonPerformanceOperationUtil {
 			unmatched = 0;
 			evicted = 0;
 		}
+	}
+
+	private record Key(@Nullable UUID player, String action, List<UUID> units, String skill) {
+	}
+
+	private record Request(long id, long sentNs) {
+	}
+
+	public record Summary(long sessionId, long sent, long received, long unmatched, long evicted,
+	                      int pending, String correlation) {
 	}
 }

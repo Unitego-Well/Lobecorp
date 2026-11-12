@@ -14,16 +14,18 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
 /// 仅供精确性能 profile 装载；阻止 Bench 主动和失败取证入队，不干预游戏世界图标。
-@Mixin(targets = "com.zhongbai233.bench.runtime.client.ClientAutomationController", remap = false)
+@Mixin(targets = "com.zhongbai233.bench.runtime.client.ClientAutomationController")
 public class ClientAutomationNoScreenshotMixin {
 	@Unique
 	private static final Logger lobecorp$logger = LoggerFactory.getLogger("LobecorpBenchNoScreenshot");
 
 	@Inject(method = "captureScreenshot(Ljava/lang/String;Lcom/zhongbai233/bench/api/neoforge/client/BenchCaptureOptions;)Ljava/util/concurrent/CompletableFuture;",
-			at = @At("HEAD"), cancellable = true, require = 1, remap = false)
+			at = @At("HEAD"), cancellable = true, require = 1)
 	private void lobecorp$rejectScreenshot(String name, BenchCaptureOptions options,
 	                                       CallbackInfoReturnable<CompletableFuture<Path>> callback) {
-		if (!LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(System.getProperty("modBench.scenarios", ""))) {
+		String scenario = System.getProperty("modBench.scenarios", "");
+		if (!LobecorpBenchConfig.PHOTON_FIRST_CAST_PERFORMANCE_SCENARIO.equals(scenario)
+				&& !"lobecorp.horde-encounter-performance".equals(scenario)) {
 			return;
 		}
 

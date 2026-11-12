@@ -1,21 +1,21 @@
 package org.unitego.lobecorp.events;
 
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
-import org.unitego.lobecorp.attachment.LcAttachments;
-import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
-import org.unitego.lobecorp.network.tc.animation.LcAnimationSync;
-import org.unitego.lobecorp.particle.text.TextParticles;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
+import org.unitego.lobecorp.attachment.LcAttachments;
 import org.unitego.lobecorp.conductor.world.ConductorChunkLoading;
+import org.unitego.lobecorp.network.tc.animation.LcAnimationSync;
+import org.unitego.lobecorp.particle.text.TextParticles;
+import org.unitego.lobecorp.api.encounter.Encounters;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
-import org.unitego.lobecorp.world.encounter.Encounters;
+import org.unitego.lobecorp.world.item.animation.LcAttachedItems;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class WorldTickEvents {

@@ -24,8 +24,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
-import org.unitego.lobecorp.registry.entity.skill.TheQueenOfHatredSkills;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.TheQueenOfHatredSkills;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
 
 import java.lang.management.ManagementFactory;

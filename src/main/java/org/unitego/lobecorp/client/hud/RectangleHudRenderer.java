@@ -1,8 +1,7 @@
 package org.unitego.lobecorp.client.hud;
 
-import org.jspecify.annotations.NullMarked;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public class RectangleHudRenderer extends BasicHudRenderer {

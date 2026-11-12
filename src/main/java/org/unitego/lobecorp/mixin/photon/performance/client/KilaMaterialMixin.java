@@ -9,7 +9,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 
 import java.util.Map;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.kila.KilaMaterial", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.kila.KilaMaterial")
 public class KilaMaterialMixin {
 	@WrapOperation(method = "renderType", at = @At(value = "INVOKE",
 			target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))

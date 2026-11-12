@@ -25,6 +25,11 @@ public interface FXPackExporterAccessor {
 		throw new UnsupportedOperationException();
 	}
 
+	@Accessor("PACK_MCMETA")
+	static String lobecorp$metadata() {
+		throw new UnsupportedOperationException();
+	}
+
 	@Invoker("walk")
 	void lobecorp$walk(CompoundTag data);
 
@@ -36,9 +41,4 @@ public interface FXPackExporterAccessor {
 
 	@Accessor("warnings")
 	List<String> lobecorp$warnings();
-
-	@Accessor("PACK_MCMETA")
-	static String lobecorp$metadata() {
-		throw new UnsupportedOperationException();
-	}
 }

@@ -7,24 +7,18 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
-import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
-import org.unitego.lobecorp.world.entity.skill.EntitySkill;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillManualControl;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
-import org.unitego.lobecorp.world.hitbox.HitboxEffectContext;
-import org.unitego.lobecorp.world.hitbox.HitboxHitMode;
-import org.unitego.lobecorp.world.hitbox.HitboxHitPolicy;
-import org.unitego.lobecorp.world.hitbox.HitboxInstance;
-import org.unitego.lobecorp.world.hitbox.HitboxLineOfSightMode;
-import org.unitego.lobecorp.world.hitbox.HitboxManager;
-import org.unitego.lobecorp.world.hitbox.HitboxTemplate;
+import org.unitego.lobecorp.util.TypedDataKey;
 import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.util.entity.skill.QueenSkillUtil;
-import org.unitego.lobecorp.util.TypedDataKey;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
+import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredBeamAnimation;
+import org.unitego.lobecorp.world.entity.skill.EntitySkill;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillManualControl;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
+import org.unitego.lobecorp.world.hitbox.*;
+import org.unitego.lobecorp.world.hitbox.geometry.CylinderSize;
 
 /// 从女皇身体中心发射的持续激光；强化只改变转速，接触敌人的累计 tick 与实际伤害成功分开记录。
 public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
@@ -34,6 +28,8 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	public static final double RANGE = 20.0;
 	/// 激光完整直径，单位为格，强化后不改变。
 	public static final double WIDTH = 1.5;
+	/// 取消或首次命中超时后的冷却，单位为 tick。
+	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 每次伤害相对攻击属性的倍率，强化后不改变。
 	private static final double DAMAGE_MULTIPLIER = 0.5;
 	/// 发射后首次接触敌人的最长等待时间，单位为 tick。
@@ -46,8 +42,6 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 	private static final float ENHANCED_TURN_RATIO = 0.5F;
 	/// 激光允许的最大上下瞄准角度，单位为度。
 	private static final float MAXIMUM_PITCH = 45.0F;
-	/// 取消或首次命中超时后的冷却，单位为 tick。
-	public static final int SHORT_COOLDOWN_TICKS = 60;
 	/// 当前持续命中框编号及累计接触时间，均属于本次施放。
 	private static final TypedDataKey<Integer> HITBOX_ID = TypedDataKey.create();
 	/// 持续激光与目标接触的累计 tick 数。
@@ -155,6 +149,28 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 		return hurt;
 	}
 
+	private static boolean aim(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
+		Integer ticks = runtime.getData(CONTACT_TICKS);
+		float ratio = ticks != null && ticks >= ENHANCEMENT_CONTACT_TICKS ? ENHANCED_TURN_RATIO : INITIAL_TURN_RATIO;
+		boolean aligned = aim(queen, runtime, ratio);
+		queen.lockSkillFacing();
+		return aligned;
+	}
+
+	private static void updateBeam(TheQueenOfHatred queen, HitboxInstance hitbox) {
+		Vec3 start = origin(queen);
+		Vec3 beam = endpoint(queen, start.add(queen.getLookAngle())).subtract(start);
+		if (beam.lengthSqr() == 0.0) {
+			hitbox.deactivate();
+			return;
+		}
+
+		hitbox.setPosition(start.add(beam.scale(0.5)));
+		hitbox.setSize(new CylinderSize(WIDTH / 2.0, beam.length()));
+		hitbox.setRotation(new Vec3(queen.getXRot() + 90.0, -queen.getYRot(), 0.0));
+		hitbox.activate();
+	}
+
 	@Override
 	public boolean canUse(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
 		LivingEntity target = QueenSkillUtil.primaryTarget(queen, runtime, RANGE);
@@ -164,14 +180,6 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 		Vec3 position = runtime.targetPosition();
 		return QueenSkillUtil.validTargetPosition(queen, runtime, RANGE) && position != null
 				&& queen.position().distanceToSqr(position) >= MINIMUM_RANGE * MINIMUM_RANGE;
-	}
-
-	private static boolean aim(TheQueenOfHatred queen, EntitySkillRuntime<TheQueenOfHatred> runtime) {
-		Integer ticks = runtime.getData(CONTACT_TICKS);
-		float ratio = ticks != null && ticks >= ENHANCEMENT_CONTACT_TICKS ? ENHANCED_TURN_RATIO : INITIAL_TURN_RATIO;
-		boolean aligned = aim(queen, runtime, ratio);
-		queen.lockSkillFacing();
-		return aligned;
 	}
 
 	@Override
@@ -203,20 +211,6 @@ public class LaserSkill extends EntitySkill<TheQueenOfHatred> {
 		hitbox.setLineOfSightMode(HitboxLineOfSightMode.UNRESTRICTED);
 		runtime.setData(HITBOX_ID, hitbox.id());
 		updateBeam(queen, hitbox);
-	}
-
-	private static void updateBeam(TheQueenOfHatred queen, HitboxInstance hitbox) {
-		Vec3 start = origin(queen);
-		Vec3 beam = endpoint(queen, start.add(queen.getLookAngle())).subtract(start);
-		if (beam.lengthSqr() == 0.0) {
-			hitbox.deactivate();
-			return;
-		}
-
-		hitbox.setPosition(start.add(beam.scale(0.5)));
-		hitbox.setSize(new CylinderSize(WIDTH / 2.0, beam.length()));
-		hitbox.setRotation(new Vec3(queen.getXRot() + 90.0, -queen.getYRot(), 0.0));
-		hitbox.activate();
 	}
 
 	@Override

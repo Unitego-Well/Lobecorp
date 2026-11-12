@@ -2,8 +2,8 @@ package org.unitego.lobecorp.util.animation;
 
 import com.geckolib.cache.model.BakedGeoModel;
 import com.geckolib.cache.model.GeoBone;
-import com.geckolib.cache.model.cuboid.GeoCube;
 import com.geckolib.cache.model.cuboid.CuboidGeoBone;
+import com.geckolib.cache.model.cuboid.GeoCube;
 import com.geckolib.renderer.base.GeoRenderState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -12,31 +12,16 @@ import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.config.client.VisualQualityConfig;
 import org.unitego.lobecorp.registry.client.animation.LcDataTickets;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 
 /// 复杂立方体模型只简化面片，不替换骨架、骨骼名称、动画或定位器。
 public class LcModelLodUtil {
 	private static final Map<Entity, State> STATES = new WeakHashMap<>();
 	private static final LinkedHashMap<BakedGeoModel, Bake> CACHE = new LinkedHashMap<>(16, 0.75f, true);
-	private static long bytes;
-	private static int bakedThisFrame;
 	/// 两档代理数组、映射与引用的保守预算，不含GeckoLib自己持有的原模型。
 	private static final int BYTES_PER_CUBE = 256;
-
-	private static class State {
-		private int band;
-		private boolean exempt;
-	}
-
-	private record Bake(int cubes, int minimum, double mediumSize, double farSize, Set<GeoCube> medium,
-	                    Set<GeoCube> far) {
-	}
+	private static long bytes;
+	private static int bakedThisFrame;
 
 	public static void setExempt(Entity entity, boolean exempt) {
 		STATES.computeIfAbsent(entity, _ -> new State()).exempt = exempt;
@@ -150,5 +135,14 @@ public class LcModelLodUtil {
 		CACHE.clear();
 		bytes = 0;
 		bakedThisFrame = 0;
+	}
+
+	private static class State {
+		private int band;
+		private boolean exempt;
+	}
+
+	private record Bake(int cubes, int minimum, double mediumSize, double farSize, Set<GeoCube> medium,
+	                    Set<GeoCube> far) {
 	}
 }

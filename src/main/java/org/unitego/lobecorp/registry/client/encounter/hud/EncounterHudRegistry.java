@@ -4,11 +4,7 @@ import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
@@ -104,7 +100,7 @@ public class EncounterHudRegistry<C> {
 	}
 
 	public record Definition<C>(String englishName, String chineseName,
-	                             @Nullable Identifier wrapperId, Supplier<? extends C> factory) {
+	                            @Nullable Identifier wrapperId, Supplier<? extends C> factory) {
 	}
 
 }

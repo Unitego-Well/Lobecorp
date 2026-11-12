@@ -1,41 +1,22 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
-
-import net.minecraft.resources.Identifier;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /// 自有资源准备的最小任务账本；只记录任务、失败到期和提交代次，不创建线程。
 ///
 /// 稳态只检查最早到期时间；成功或取消只移除对应任务，不撤销其他来源的重试。
 public final class PhotonOwnedPreparationScheduler {
-	public enum Kind {EXPORTED, AUTHORING, PUBLISHED_PREVIEW, DEVICE, QUEEN_BEAM}
-
-	public enum State {QUEUED, PREPARING, READY_TO_COMMIT, COMMITTED, FAILED_WAIT, CANCELLED, CLOSED}
-
-	public record Task(long id, Kind kind, PhotonOwnedEffectResources.SourceKey source, long revision,
-	                   long generation, long dueAt, State state, String failure) {
-		public Task {
-			if (kind != Kind.QUEEN_BEAM && kind != Kind.EXPORTED && source == null) {
-				throw new IllegalArgumentException("该任务必须带来源");
-			}
-		}
-
-		public Task with(State next) {
-			return new Task(id, kind, source, revision, generation, dueAt, next, failure);
-		}
-	}
-
 	private static final Map<Long, Task> TASKS = new LinkedHashMap<>();
 	private static long nextDue = Long.MAX_VALUE;
 	private static long nextId;
 	private static long nextGeneration;
 	private static boolean closed;
-
 	private PhotonOwnedPreparationScheduler() {
 	}
 
@@ -169,5 +150,22 @@ public final class PhotonOwnedPreparationScheduler {
 			throw new IllegalStateException("准备任务已取消或关闭");
 		}
 		return current;
+	}
+
+	public enum Kind {EXPORTED, AUTHORING, PUBLISHED_PREVIEW, DEVICE, QUEEN_BEAM}
+
+	public enum State {QUEUED, PREPARING, READY_TO_COMMIT, COMMITTED, FAILED_WAIT, CANCELLED, CLOSED}
+
+	public record Task(long id, Kind kind, PhotonOwnedEffectResources.SourceKey source, long revision,
+	                   long generation, long dueAt, State state, String failure) {
+		public Task {
+			if (kind != Kind.QUEEN_BEAM && kind != Kind.EXPORTED && source == null) {
+				throw new IllegalArgumentException("该任务必须带来源");
+			}
+		}
+
+		public Task with(State next) {
+			return new Task(id, kind, source, revision, generation, dueAt, next, failure);
+		}
 	}
 }

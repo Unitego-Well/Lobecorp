@@ -31,7 +31,6 @@ public class PhotonPersistedMetadataBenchmark {
 	private static final int MEASUREMENT_GROUPS = 6;
 	private static final long BUDGET_NS = 25_000_000_000L;
 	private static final List<String> SEEDS = List.of(
-			"org.unitego.lobecorp.config.photon.model.PhotonModelOutputConfig",
 			"com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleConfig",
 			"org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig",
 			"com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.TransformRef",

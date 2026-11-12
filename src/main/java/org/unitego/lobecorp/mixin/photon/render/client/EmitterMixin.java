@@ -1,30 +1,28 @@
 package org.unitego.lobecorp.mixin.photon.render.client;
 
-import com.lowdragmc.photon.client.render.PhotonFXRenderState;
-import com.lowdragmc.photon.client.render.IPhotonFXCollector.BakeTask;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
-import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
+import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import com.lowdragmc.photon.client.gameobject.emitter.data.RendererSetting;
+import com.lowdragmc.photon.client.render.IPhotonFXCollector.BakeTask;
+import com.lowdragmc.photon.client.render.PhotonFXRenderState;
 import com.lowdragmc.photon.client.render.PhotonWorldRenderState.DrawJob;
 import net.minecraft.client.Camera;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceOwnerUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil;
+import org.unitego.lobecorp.util.photon.performance.PhotonPerformanceTraceUtil.Stage;
 import org.unitego.lobecorp.util.photon.render.PhotonOcclusionUtil;
 import org.unitego.lobecorp.util.photon.render.PhotonViewDepthSortUtil;
 
 import java.util.List;
-
-
 
 
 @Mixin(Emitter.class)

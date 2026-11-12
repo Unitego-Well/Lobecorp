@@ -5,22 +5,25 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import javax.annotation.Nullable;
-import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
-import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.editor.PhotonCompositionProjectAccess;
+import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonOwnedLaserComposition;
+import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
+
+import javax.annotation.Nullable;
 
 
 @Mixin(FXProject.class)
 public abstract class FXProjectMixin implements PhotonProjectPreviewAccess, PhotonCompositionProjectAccess {
 	@Unique
 	private CompoundTag lobecorp$composition;
+	@Unique
+	private @Nullable CompoundTag lobecorp$projectPreview;
 
 	@Override
 	public CompoundTag lobecorp$composition() {
@@ -34,9 +37,6 @@ public abstract class FXProjectMixin implements PhotonProjectPreviewAccess, Phot
 		}
 		lobecorp$composition = value == null ? null : value.copy();
 	}
-
-	@Unique
-	private @Nullable CompoundTag lobecorp$projectPreview;
 
 	@Override
 	public @Nullable CompoundTag lobecorp$projectPreview() {

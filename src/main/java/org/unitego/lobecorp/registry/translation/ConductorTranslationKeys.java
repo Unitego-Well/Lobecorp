@@ -3,7 +3,7 @@ package org.unitego.lobecorp.registry.translation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.conductor.ability.WardenSonicBoomAbility;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
 
 import static org.unitego.lobecorp.registry.translation.TranslationRegistry.register;
 

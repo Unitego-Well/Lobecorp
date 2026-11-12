@@ -1,11 +1,12 @@
 package org.unitego.lobecorp.world.horde;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.api.horde.Hordes;
 import org.unitego.lobecorp.util.horde.HordeTimingUtil;
 
 import java.util.UUID;

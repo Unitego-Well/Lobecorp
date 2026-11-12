@@ -7,89 +7,93 @@ import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.fx.FXRuntime;
-import com.lowdragmc.photon.client.gameobject.FXObject;
-import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
-import com.lowdragmc.photon.client.gameobject.IFXObject;
-import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
-import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
-import org.unitego.lobecorp.mixin.photon.creation.client.EmitterLeaseAccessor;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
+import com.lowdragmc.photon.client.gameobject.EmptyFXObject;
+import com.lowdragmc.photon.client.gameobject.FXObject;
+import com.lowdragmc.photon.client.gameobject.IFXObject;
+import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
+import com.lowdragmc.photon.client.gameobject.emitter.particle.ParticleEmitter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
-import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
-
-import java.util.stream.Collectors;
-
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.photon.model.PhotonModelOutput;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
+import org.unitego.lobecorp.mixin.photon.creation.client.EmitterLeaseAccessor;
 import org.unitego.lobecorp.mixin.photon.creation.client.FXObjectLeaseAccessor;
 import org.unitego.lobecorp.mixin.photon.creation.client.ParticleEmitterLeaseAccessor;
 import org.unitego.lobecorp.mixin.photon.creation.client.TimelinePlayerLeaseAccessor;
 import org.unitego.lobecorp.util.photon.creation.PhotonFrozenTag;
 import org.unitego.lobecorp.util.photon.creation.PhotonIndexedObjectMap;
 import org.unitego.lobecorp.util.photon.creation.PhotonLeasePrivateResetUtil;
-import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectDefinitionUtil;
+import org.unitego.lobecorp.util.photon.playback.PhotonRuntimeCopyUtil;
 
-import java.lang.ref.WeakReference;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.WeakHashMap;
+import java.lang.ref.WeakReference;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /// 定义准备、独占实例创建与受管租约的统一边界；未托管作者数据不跨调用缓存。
 public class PhotonRuntimeFactory {
 	public static final String MODE_PROPERTY = "lobecorp.photon.creation.mode";
-
-	public enum Mode {
-		NATIVE, COMPILED, POOLED, INDEXED, HYBRID
-	}
-
 	private static final Mode MODE = Mode.valueOf(System.getProperty(MODE_PROPERTY, "native").toUpperCase(Locale.ROOT));
-    private static final PhotonRuntimePool POOL = new PhotonRuntimePool(PhotonRuntimeFactory::resetSupported,
-            PhotonRuntimeFactory::parked, PhotonRuntimeFactory::retireScope);
+	private static final PhotonRuntimePool POOL = new PhotonRuntimePool(PhotonRuntimeFactory::resetSupported,
+			PhotonRuntimeFactory::parked, PhotonRuntimeFactory::retireScope);
 	private static final Map<FX, String> RESOURCE_SOURCES = new WeakHashMap<>();
 	private static final Map<FX, CachedDefinition> DEFINITIONS = new WeakHashMap<>();
 	// 值不持有作为 key 的 runtime、scene 或其对象，避免弱键经值重新强可达。
 	private static final Map<FXRuntime, Scope> SCOPES = new WeakHashMap<>();
 	private static final ThreadLocal<Integer> COMPILING = ThreadLocal.withInitial(() -> 0);
 	private static final ThreadLocal<Construction> CONSTRUCTION = new ThreadLocal<>();
-	private static long generation;
-	private static long definitionGeneration;
 	private static final Map<FX, PreparedSourceKey> PREPARED_SOURCES = new WeakHashMap<>();
 	private static final Map<FX, PhotonTemplateProgram> ROOT_PROGRAMS = new WeakHashMap<>();
 	private static final Map<Object, ObjectIdentity> OBJECT_IDENTITIES = new WeakHashMap<>();
+	private static long generation;
+	private static long definitionGeneration;
 	private static long identitySequence;
-
-	/// 调用方保证发布后 FX 不再原地修改；来源身份不写入 Photon 通用缓存。
-	public record PreparedSourceKey(String source, long revision) {
-		public PreparedSourceKey {
-			Objects.requireNonNull(source);
-			if (source.isBlank()) {
-				throw new IllegalArgumentException("准备来源身份不能为空。");
-			}
-		}
-	}
+	private static long tick;
+	private static long frame;
+	private static long sequence;
+	private static long preparedDefinitions;
+	private static long preparedSourceCacheHits;
+	private static long preparedSourceCompilations;
+	private static long compiledNodes;
+	private static long createdRuntimes;
+	private static long projectRequests;
+	private static long projectCompilations;
+	private static long preparedProjectViews;
+	private static long preparedProjectHits;
+	private static long preparedProjectFallbacks;
+	private static long indexedRuntimes;
+	private static long hybridLeaseAcquires;
+	private static long hybridFreshIndexedCreates;
+	private static long hybridIndexedResets;
+	private static long hybridReuseTypeRejections;
+	private static long hybridLayoutFallbacks;
+	private static long unmanagedCreates;
+	private static long nativeCreates;
+	private static long resetFailures;
+	private static long definitionNanos;
+	private static long instanceNanos;
+	private static long maxInstanceNanos;
+	private static long resetNanos;
+	private static long maxResetNanos;
+	private static boolean measurementWindow;
+	private static long windowMaxResetNanos;
+	private static long windowMaxInstanceNanos;
+	private static long initializedNodes;
+	private static long nativeNodeFallbacks;
+	private static long templatePrograms;
+	private static long templateProgramHits;
+	private static long templateLeaseAcquires;
+	private static @Nullable Object observedLevel;
 
 	public static Definition registerPreparedSource(FX source, PreparedSourceKey key) {
 		Objects.requireNonNull(source);
@@ -141,80 +145,6 @@ public class PhotonRuntimeFactory {
 			if (previous != null) {
 				invalidateDefinition(previous.definition);
 			}
-		}
-	}
-	private static long tick;
-	private static long frame;
-	private static long sequence;
-	private static long preparedDefinitions;
-	private static long preparedSourceCacheHits;
-	private static long preparedSourceCompilations;
-	private static long compiledNodes;
-	private static long createdRuntimes;
-	private static long projectRequests;
-	private static long projectCompilations;
-	private static long preparedProjectViews;
-	private static long preparedProjectHits;
-	private static long preparedProjectFallbacks;
-	private static long indexedRuntimes;
-	private static long hybridLeaseAcquires;
-	private static long hybridFreshIndexedCreates;
-	private static long hybridIndexedResets;
-	private static long hybridReuseTypeRejections;
-	private static long hybridLayoutFallbacks;
-	private static long unmanagedCreates;
-	private static long nativeCreates;
-	private static long resetFailures;
-	private static long definitionNanos;
-	private static long instanceNanos;
-	private static long maxInstanceNanos;
-	private static long resetNanos;
-	private static long maxResetNanos;
-	private static boolean measurementWindow;
-	private static long windowMaxResetNanos;
-	private static long windowMaxInstanceNanos;
-	private static long initializedNodes;
-	private static long nativeNodeFallbacks;
-	private static long templatePrograms;
-	private static long templateProgramHits;
-	private static long templateLeaseAcquires;
-	private static @Nullable Object observedLevel;
-
-	private record CachedDefinition(WeakReference<FXData> data, Definition definition) {
-	}
-
-	private record Construction(FXData data, Definition definition, Mode mode) {
-	}
-
-	private record PoolKey(Definition definition, Object world, long generation, Mode mode) {
-	}
-
-	/// 结构键不包含动态 TRS；对象身份摘要用于发现同 UUID 数据替换。
-	private record ProjectKey(List<UUID> ids, List<ObjectIdentity> identities, UUID target, boolean children,
-	                          long controllerRevision, @Nullable ObjectIdentity controllerIdentity) {
-	}
-
-	private record ProjectProgramKey(ProjectKey structureKey, String definitionKey) {
-	}
-
-	private record StaticProjectKey(UUID target, boolean children) {
-	}
-
-	private record StaticProject(Definition definition, List<UUID> selected, @Nullable UUID controller) {
-	}
-
-	/// 同一对象在本次进程内保持同一 token；token 不持有来源对象。
-	private record ObjectIdentity(long serial) {
-	}
-
-	private static class Scope {
-		private final Definition definition;
-		private final Mode mode;
-		private final Map<ProjectKey, Definition> projects = new HashMap<>();
-
-		private Scope(Definition definition, Mode mode) {
-			this.definition = definition;
-			this.mode = mode;
 		}
 	}
 
@@ -321,16 +251,16 @@ public class PhotonRuntimeFactory {
 
 	/// PROJECT 程序的结构键必须仍与当前场景、目标和编译定义一致。
 	public static boolean projectProgramCurrent(PhotonTemplateProgram program) {
-		if (!(program.structureKey() instanceof ProjectProgramKey key)) {
+		if (!(program.structureKey() instanceof ProjectProgramKey(ProjectKey structureKey, String definitionKey))) {
 			return false;
 		}
 		var scope = program.sourceScopeValue();
 		var target = program.projectTarget();
-		if (scope == null || target == null || !key.definitionKey().equals(program.definition().key())
+		if (scope == null || target == null || !definitionKey.equals(program.definition().key())
 				|| !definitionCurrent(program.definition())) {
 			return false;
 		}
-		return key.structureKey().equals(projectStructureKey(scope, target, program.includeChildren()));
+		return structureKey.equals(projectStructureKey(scope, target, program.includeChildren()));
 	}
 
 	public static Lease acquire(PhotonTemplateProgram program, Object world) {
@@ -756,8 +686,8 @@ public class PhotonRuntimeFactory {
 	}
 
 	private static @Nullable List<IFXObject> staticProjectSelection(IFXObject target,
-	                                                               Map<UUID, List<IFXObject>> children,
-	                                                               PhotonChildSpawner owner, boolean includeChildren) {
+	                                                                Map<UUID, List<IFXObject>> children,
+	                                                                PhotonChildSpawner owner, boolean includeChildren) {
 		var pending = new ArrayDeque<IFXObject>();
 		var selected = new ArrayList<IFXObject>();
 		var seen = new HashSet<UUID>();
@@ -777,8 +707,8 @@ public class PhotonRuntimeFactory {
 	}
 
 	private static @Nullable Definition preparedProject(Definition parent, List<IFXObject> selected,
-	                                                     @Nullable PhotonNamedController controller,
-	                                                     UUID target, boolean includeChildren) {
+	                                                    @Nullable PhotonNamedController controller,
+	                                                    UUID target, boolean includeChildren) {
 		var prepared = parent.staticProjects.get(new StaticProjectKey(target, includeChildren));
 		if (prepared == null || !definitionCurrent(prepared.definition())
 				|| !prepared.selected().equals(selected.stream().map(IFXObject::id).toList())
@@ -890,7 +820,7 @@ public class PhotonRuntimeFactory {
 
 	/// 每次校验后只对齐一次；空槽沿用原来的冻结定义初始化语义。
 	private static List<IFXObject> orderedProjectInputs(Definition definition, List<IFXObject> selected,
-	                                                   @Nullable PhotonNamedController controller) {
+	                                                    @Nullable PhotonNamedController controller) {
 		var byId = new HashMap<UUID, IFXObject>();
 		for (var object : selected) {
 			byId.putIfAbsent(object.id(), object);
@@ -1029,7 +959,7 @@ public class PhotonRuntimeFactory {
 	private static boolean resetSupported(IFXObject actor) {
 		var type = actor.getClass();
 		return type == EmptyFXObject.class
-				|| type == ParticleEmitter.class || type == PhotonModelOutput.class
+				|| type == ParticleEmitter.class
 				|| type == PhotonNamedController.class || type == PhotonChildSpawner.class;
 	}
 
@@ -1280,16 +1210,68 @@ public class PhotonRuntimeFactory {
 		return Map.copyOf(result);
 	}
 
+	public enum Mode {
+		NATIVE, COMPILED, POOLED, INDEXED, HYBRID
+	}
+
+	/// 调用方保证发布后 FX 不再原地修改；来源身份不写入 Photon 通用缓存。
+	public record PreparedSourceKey(String source, long revision) {
+		public PreparedSourceKey {
+			Objects.requireNonNull(source);
+			if (source.isBlank()) {
+				throw new IllegalArgumentException("准备来源身份不能为空。");
+			}
+		}
+	}
+
+	private record CachedDefinition(WeakReference<FXData> data, Definition definition) {
+	}
+
+	private record Construction(FXData data, Definition definition, Mode mode) {
+	}
+
+	private record PoolKey(Definition definition, Object world, long generation, Mode mode) {
+	}
+
+	/// 结构键不包含动态 TRS；对象身份摘要用于发现同 UUID 数据替换。
+	private record ProjectKey(List<UUID> ids, List<ObjectIdentity> identities, UUID target, boolean children,
+	                          long controllerRevision, @Nullable ObjectIdentity controllerIdentity) {
+	}
+
+	private record ProjectProgramKey(ProjectKey structureKey, String definitionKey) {
+	}
+
+	private record StaticProjectKey(UUID target, boolean children) {
+	}
+
+	private record StaticProject(Definition definition, List<UUID> selected, @Nullable UUID controller) {
+	}
+
+	/// 同一对象在本次进程内保持同一 token；token 不持有来源对象。
+	private record ObjectIdentity(long serial) {
+	}
+
+	private static class Scope {
+		private final Definition definition;
+		private final Mode mode;
+		private final Map<ProjectKey, Definition> projects = new HashMap<>();
+
+		private Scope(Definition definition, Mode mode) {
+			this.definition = definition;
+			this.mode = mode;
+		}
+	}
+
 	public static class Definition {
 		private final String key;
-		private boolean valid = true;
-		private @Nullable Definition parent;
 		private final long generation;
 		private final List<PhotonCompiledObject> nodes;
 		private final Map<UUID, PhotonCompiledObject> byId;
 		private final PhotonTimelineProgram timeline;
 		private final @Nullable PhotonFrozenTag snapshot;
 		private final PhotonIndexedObjectMap.Layout layout;
+		private boolean valid = true;
+		private @Nullable Definition parent;
 		private Map<StaticProjectKey, StaticProject> staticProjects = Map.of();
 		private @Nullable UUID projectTarget;
 		private @Nullable UUID projectControllerId;

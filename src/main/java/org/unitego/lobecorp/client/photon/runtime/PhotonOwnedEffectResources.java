@@ -1,43 +1,39 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.LoadingOverlay;
-import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.client.fx.FX;
+import com.lowdragmc.photon.client.fx.FXHelper;
+import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
+import com.lowdragmc.photon.gui.editor.FXProject;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.LoadingOverlay;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.profiling.Profiler;
+import net.minecraft.util.profiling.ProfilerFiller;
+import net.neoforged.neoforge.resource.ContextAwareReloadListener;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceDocument;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceLimits;
 import org.unitego.lobecorp.util.photon.compat.PhotonResourceReader;
 
-import java.io.UncheckedIOException;
-
-import com.lowdragmc.photon.gui.editor.FXProject;
-import com.lowdragmc.photon.client.gameobject.emitter.data.fixer.PhotonFXProjectDataFixer;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.PreparableReloadListener;
-import net.neoforged.neoforge.resource.ContextAwareReloadListener;
-import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-
-import net.minecraft.util.profiling.Profiler;
-import net.minecraft.util.profiling.ProfilerFiller;
-
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 /// 仅准备显式登记的自有组件数据；不持有世界、实体或运行租约。
 @NullMarked
@@ -45,15 +41,17 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static final Map<Identifier, Map<String, Identifier>> REGISTRATIONS = new LinkedHashMap<>();
 	private static final Map<SourceKey, Prepared> AUTHORING = new ConcurrentHashMap<>();
 	private static final Map<SourceKey, Map<Identifier, String>> DEPENDENCY_SOURCES = new LinkedHashMap<>();
-	private static volatile Map<Identifier, Result> exported = Map.of();
-	// 设备失败不丢弃已读取的独占CPU快照；对外Result仍只有READY携带成果。
-	private static Map<Identifier, Prepared> exportedDefinitions = Map.of();
 	private static final Map<SourceKey, Prepared> PENDING_SNAPSHOTS = new LinkedHashMap<>();
 	private static final Map<SourceKey, CompletableFuture<SourceKey>> SNAPSHOT_COMPLETIONS = new LinkedHashMap<>();
 	private static final long DEVICE_RETRY_DELAY_NANOS = 1_000_000_000L;
-
 	private static final Map<SourceKey, Map<Identifier, FX>> RESOLVED = new LinkedHashMap<>();
 	private static final Map<Identifier, Map<String, Identifier>> SNAPSHOT_COMPONENTS = new LinkedHashMap<>();
+	private static final AtomicLong DISPATCH_GENERATION = new AtomicLong();
+	private static final Map<Identifier, Consumer<Prepared>> DEFINITION_PREPARERS = new LinkedHashMap<>();
+	private static final Map<Identifier, Consumer<SourceKey>> DEFINITION_INVALIDATORS = new LinkedHashMap<>();
+	private static volatile Map<Identifier, Result> exported = Map.of();
+	// 设备失败不丢弃已读取的独占CPU快照；对外Result仍只有READY携带成果。
+	private static Map<Identifier, Prepared> exportedDefinitions = Map.of();
 	private static @Nullable SourceKey resolvingSource;
 	private static volatile boolean preparing;
 	private static volatile String reloadFailure = "";
@@ -65,9 +63,6 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static long authoringRevision;
 	private static volatile boolean dispatchInFlight;
 	private static boolean exportedDataRetry;
-	private static final AtomicLong DISPATCH_GENERATION = new AtomicLong();
-	private static final Map<Identifier, Consumer<Prepared>> DEFINITION_PREPARERS = new LinkedHashMap<>();
-	private static final Map<Identifier, Consumer<SourceKey>> DEFINITION_INVALIDATORS = new LinkedHashMap<>();
 
 	public static synchronized void registerDefinitionPreparation(Identifier id, Consumer<Prepared> prepare, Consumer<SourceKey> invalidate) {
 		DEFINITION_PREPARERS.putIfAbsent(id, prepare);
@@ -156,59 +151,6 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 	public static Map<Identifier, String> dependencySources(SourceKey source) {
 		return Map.copyOf(DEPENDENCY_SOURCES.getOrDefault(source, Map.of()));
-	}
-
-	public enum SourceKind {AUTHORING, EXPORTED_FX, PUBLISHED_PREVIEW}
-
-	public enum Readiness {UNREGISTERED, PREPARING, READY, FAILED}
-
-	public record SourceKey(Identifier effectId, SourceKind kind, long revision) {
-		public SourceKey {
-			Objects.requireNonNull(effectId);
-			Objects.requireNonNull(kind);
-		}
-	}
-
-	/// 每个组件保存序列化定义的独占副本；访问时再次复制，禁止修改发布成果。
-	public static class Component {
-		private final Identifier resource;
-		private final String sourcePack;
-		private final CompoundTag definition;
-
-		private Component(Identifier resource, String sourcePack, CompoundTag definition) {
-			this.resource = resource;
-			this.sourcePack = sourcePack;
-			this.definition = definition.copy();
-		}
-
-		public Identifier resource() {
-			return resource;
-		}
-
-		public String sourcePack() {
-			return sourcePack;
-		}
-
-		public CompoundTag definition() {
-			return definition.copy();
-		}
-	}
-
-	public record Prepared(SourceKey source, Map<String, Component> components) {
-		public Prepared {
-			Objects.requireNonNull(source);
-			components = Map.copyOf(components);
-		}
-	}
-
-	public record Result(Readiness readiness, @Nullable Prepared prepared, String failure) {
-		public Result {
-			Objects.requireNonNull(readiness);
-			Objects.requireNonNull(failure);
-			if ((readiness == Readiness.READY) != (prepared != null)) {
-				throw new IllegalArgumentException("仅数据就绪状态允许且必须提供准备成果");
-			}
-		}
 	}
 
 	/// 应在客户端初始化、首次资源重载之前登记，值为不含 fx/ 和后缀的组件 FX ID。
@@ -327,7 +269,7 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	}
 
 	private static <T> void dispatch(PhotonOwnedPreparationScheduler.Task task,
-	                                Supplier<T> worker, Consumer<T> commit) {
+	                                 Supplier<T> worker, Consumer<T> commit) {
 		dispatchInFlight = true;
 		long epoch = DISPATCH_GENERATION.get();
 		var device = PhotonOwnedEffectAssets.deviceIdentity();
@@ -369,12 +311,12 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 	private static void startExported(PhotonOwnedPreparationScheduler.Task task) {
 		var manager = Minecraft.getInstance().getResourceManager();
 		dispatch(task, () -> prepare(manager, Profiler.get()), preparations ->
-				{
-					apply(preparations, manager, Profiler.get());
-					if (exportedDataRetry) {
-						throw new IllegalStateException("部分导出数据读取失败");
-					}
-				});
+		{
+			apply(preparations, manager, Profiler.get());
+			if (exportedDataRetry) {
+				throw new IllegalStateException("部分导出数据读取失败");
+			}
+		});
 	}
 
 	private static void startQueen(PhotonOwnedPreparationScheduler.Task task) {
@@ -596,47 +538,6 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		}
 	}
 
-	@Override
-	public CompletableFuture<Void> reload(SharedState currentReload, Executor taskExecutor,
-	                                      PreparationBarrier barrier, Executor reloadExecutor) {
-		long epoch = DISPATCH_GENERATION.incrementAndGet();
-		dispatchInFlight = false;
-		observedDeviceIdentity = null;
-		PhotonOwnedPreparationScheduler.reset();
-		preparing = true;
-		reloadFailure = "";
-		try {
-			return CompletableFuture.supplyAsync(() -> prepare(currentReload.resourceManager(), Profiler.get()), taskExecutor).thenCompose(barrier::wait).thenAcceptAsync(preparations ->
-							{
-								if (epoch == DISPATCH_GENERATION.get()) {
-									apply(preparations, currentReload.resourceManager(), Profiler.get());
-									if (exportedDataRetry) {
-										var task = PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.EXPORTED, null, epoch);
-										PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, "资源读取失败");
-									}
-									for (var source : PENDING_SNAPSHOTS.keySet()) {
-										var kind = source.kind() == SourceKind.AUTHORING
-												? PhotonOwnedPreparationScheduler.Kind.AUTHORING : PhotonOwnedPreparationScheduler.Kind.PUBLISHED_PREVIEW;
-										PhotonOwnedPreparationScheduler.enqueue(kind, source, source.revision());
-									}
-								}
-							}, reloadExecutor)
-					.whenComplete((_, failure) -> {
-						if (epoch != DISPATCH_GENERATION.get()) {
-							return;
-						}
-						preparing = false;
-						if (failure != null) {
-							reloadFailure = "自有特效资源重载失败：" + failure;
-						}
-					});
-		} catch (RuntimeException exception) {
-			preparing = false;
-			reloadFailure = "自有特效资源重载提交失败：" + exception;
-			throw exception;
-		}
-	}
-
 	private static Map<Identifier, Result> prepare(ResourceManager manager, ProfilerFiller profiler) {
 		var results = new LinkedHashMap<Identifier, Result>();
 		for (var entry : registrations().entrySet()) {
@@ -659,13 +560,8 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 
 	private static Component readComponent(ResourceManager manager, Identifier effectId) throws IOException {
 		var nativePath = Identifier.fromNamespaceAndPath(effectId.getNamespace(), "fx/" + effectId.getPath() + ".fx");
-		var fallbackPath = Identifier.fromNamespaceAndPath(effectId.getNamespace(), "fx/" + effectId.getPath() + ".mfx");
 		var selected = manager.getResource(nativePath);
 		var actualPath = nativePath;
-		if (selected.isEmpty()) {
-			selected = manager.getResource(fallbackPath);
-			actualPath = fallbackPath;
-		}
 
 		var resource = selected.orElseThrow(() -> new IOException("缺少自有特效资源：" + effectId));
 		try (var stream = new BufferedInputStream(resource.open())) {
@@ -730,5 +626,99 @@ public class PhotonOwnedEffectResources extends ContextAwareReloadListener imple
 		}
 		preparing = false;
 		PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.QUEEN_BEAM, null, generation);
+	}
+
+	@Override
+	public CompletableFuture<Void> reload(SharedState currentReload, Executor taskExecutor,
+	                                      PreparationBarrier barrier, Executor reloadExecutor) {
+		long epoch = DISPATCH_GENERATION.incrementAndGet();
+		dispatchInFlight = false;
+		observedDeviceIdentity = null;
+		PhotonOwnedPreparationScheduler.reset();
+		preparing = true;
+		reloadFailure = "";
+		try {
+			return CompletableFuture.supplyAsync(() -> prepare(currentReload.resourceManager(), Profiler.get()), taskExecutor).thenCompose(barrier::wait).thenAcceptAsync(preparations ->
+					{
+						if (epoch == DISPATCH_GENERATION.get()) {
+							apply(preparations, currentReload.resourceManager(), Profiler.get());
+							if (exportedDataRetry) {
+								var task = PhotonOwnedPreparationScheduler.enqueue(PhotonOwnedPreparationScheduler.Kind.EXPORTED, null, epoch);
+								PhotonOwnedPreparationScheduler.fail(task, System.nanoTime() + DEVICE_RETRY_DELAY_NANOS, "资源读取失败");
+							}
+							for (var source : PENDING_SNAPSHOTS.keySet()) {
+								var kind = source.kind() == SourceKind.AUTHORING
+										? PhotonOwnedPreparationScheduler.Kind.AUTHORING : PhotonOwnedPreparationScheduler.Kind.PUBLISHED_PREVIEW;
+								PhotonOwnedPreparationScheduler.enqueue(kind, source, source.revision());
+							}
+						}
+					}, reloadExecutor)
+					.whenComplete((_, failure) -> {
+						if (epoch != DISPATCH_GENERATION.get()) {
+							return;
+						}
+						preparing = false;
+						if (failure != null) {
+							reloadFailure = "自有特效资源重载失败：" + failure;
+						}
+					});
+		} catch (RuntimeException exception) {
+			preparing = false;
+			reloadFailure = "自有特效资源重载提交失败：" + exception;
+			throw exception;
+		}
+	}
+
+	public enum SourceKind {AUTHORING, EXPORTED_FX, PUBLISHED_PREVIEW}
+
+	public enum Readiness {UNREGISTERED, PREPARING, READY, FAILED}
+
+	public record SourceKey(Identifier effectId, SourceKind kind, long revision) {
+		public SourceKey {
+			Objects.requireNonNull(effectId);
+			Objects.requireNonNull(kind);
+		}
+	}
+
+	/// 每个组件保存序列化定义的独占副本；访问时再次复制，禁止修改发布成果。
+	public static class Component {
+		private final Identifier resource;
+		private final String sourcePack;
+		private final CompoundTag definition;
+
+		private Component(Identifier resource, String sourcePack, CompoundTag definition) {
+			this.resource = resource;
+			this.sourcePack = sourcePack;
+			this.definition = definition.copy();
+		}
+
+		public Identifier resource() {
+			return resource;
+		}
+
+		public String sourcePack() {
+			return sourcePack;
+		}
+
+		public CompoundTag definition() {
+			return definition.copy();
+		}
+	}
+
+	public record Prepared(SourceKey source, Map<String, Component> components) {
+		public Prepared {
+			Objects.requireNonNull(source);
+			components = Map.copyOf(components);
+		}
+	}
+
+	public record Result(Readiness readiness, @Nullable Prepared prepared, String failure) {
+		public Result {
+			Objects.requireNonNull(readiness);
+			Objects.requireNonNull(failure);
+			if ((readiness == Readiness.READY) == (prepared == null)) {
+				throw new IllegalArgumentException("仅数据就绪状态允许且必须提供准备成果");
+			}
+		}
 	}
 }

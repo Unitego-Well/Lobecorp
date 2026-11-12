@@ -9,12 +9,12 @@ import java.util.Random;
 
 /// 粒子专用稀疏流场；固定槽位保存短时横移速度，不保存全部单位状态或读回 GPU。
 public class HordeParticleFlow {
+	public static final int SAMPLE_LIMIT = 128;
+	public static final double RANGE = HordeVisualConfig.MAXIMUM_PARTICLE_RANGE;
 	private static final int ROW_SAMPLES = 14;
 	private static final int COLUMN_SAMPLES = 16;
 	/// 每行含两个外包络代表点，候选与包络代表点合计不超过 252。
 	public static final int CANDIDATE_LIMIT = ROW_SAMPLES * (COLUMN_SAMPLES + 2);
-	public static final int SAMPLE_LIMIT = 128;
-	public static final double RANGE = HordeVisualConfig.MAXIMUM_PARTICLE_RANGE;
 	private static final double DRIFT_MARGIN = 1.8;
 	private static final double SWAY_MARGIN = 1.5;
 	private static final double MAXIMUM_OFFSET = 16;
@@ -28,89 +28,6 @@ public class HordeParticleFlow {
 	private static final double WARMUP_TICKS = 4;
 	private final Slot[] slots = new Slot[CANDIDATE_LIMIT];
 	private double lastTime = Double.NaN;
-
-	public record Field(HordeTide tide, Vec3 origin, List<HordeSplitState.Circle> circles,
-	                    double time, double speed, long stop, int columns,
-	                    double rowSpacing, double columnSpacing, double entityHeight) {
-	}
-
-	public List<HordeParticleSamples.Sample> sample(Field field, Vec3 camera, long phase) {
-		double dt = field.time() - lastTime;
-		if (!Double.isFinite(dt) || dt < 0 || dt > MAXIMUM_DELTA_TICKS) {
-			clear();
-			dt = 0;
-		}
-
-		lastTime = field.time();
-		double head = Math.min(field.tide().length(), HordeTide.head(field.time(), field.speed()));
-		double tail = Math.max(0, (field.time() - field.stop()) * field.speed());
-		if (head < tail || field.columns() <= 0) {
-			return List.of();
-		}
-
-		double cameraStation = field.tide().particleStation(camera);
-		double progressed = HordeTide.head(field.time(), field.speed());
-		long firstRow = Math.max(Math.max(0, (long) Math.floor((progressed - field.tide().length())
-				/ field.rowSpacing()) + 1), (long) Math.ceil((progressed
-				- Math.min(head, cameraStation + RANGE + DRIFT_MARGIN)) / field.rowSpacing()));
-		long lastRow = Math.min((long) Math.floor(Math.min(field.stop(), field.time()) * field.speed()
-				/ field.rowSpacing()), (long) Math.floor((progressed
-				- Math.max(tail, cameraStation - RANGE - DRIFT_MARGIN)) / field.rowSpacing()));
-		var direction = field.tide().forward(cameraStation);
-		var center = field.tide().world(cameraStation, 0);
-		double cameraLateral = -(camera.x - center.x) * direction.z + (camera.z - center.z) * direction.x;
-		double reach = RANGE + MAXIMUM_OFFSET + SWAY_MARGIN;
-		int firstColumn = Math.max(0, (int) Math.ceil((cameraLateral - reach) / field.columnSpacing()
-				+ (field.columns() - 1) * 0.5));
-		int lastColumn = Math.min(field.columns() - 1, (int) Math.floor((cameraLateral + reach)
-				/ field.columnSpacing() + (field.columns() - 1) * 0.5));
-		if (lastRow < firstRow || lastColumn < firstColumn) {
-			return List.of();
-		}
-
-		int rows = (int) Math.min(ROW_SAMPLES, lastRow - firstRow + 1);
-		int columns = Math.min(COLUMN_SAMPLES, lastColumn - firstColumn + 1);
-		var result = new ArrayList<HordeParticleSamples.Sample>(SAMPLE_LIMIT);
-		var random = new Random(phase);
-		int accepted = 0;
-		for (int r = 0; r < rows; r++) {
-			long row = select(firstRow, lastRow, r, rows, phase);
-			double station = HordeTide.station(HordeTide.head(field.time(), field.speed()), row, field.rowSpacing());
-			var forward = field.tide().forward(station);
-			var side = new Vec3(-forward.z, 0, forward.x);
-			var line = field.tide().world(station, 0);
-			int base = r * (COLUMN_SAMPLES + 2);
-			var left = position(field, row, 0, base + COLUMN_SAMPLES, dt);
-			var right = position(field, row, field.columns() - 1, base + COLUMN_SAMPLES + 1, dt);
-			double low = left.subtract(line).dot(side) - field.columnSpacing() * 0.5;
-			double high = right.subtract(line).dot(side) + field.columnSpacing() * 0.5;
-			for (int c = 0; c < columns; c++) {
-				int column = (int) select(firstColumn, lastColumn, c, columns, phase);
-				var point = position(field, row, column, base + c, dt);
-				double actualStation = station + point.subtract(line).dot(forward);
-				double lateral = point.subtract(line).dot(side);
-				if (!slots[base + c].warm() || !slots[base + COLUMN_SAMPLES].warm()
-						|| !slots[base + COLUMN_SAMPLES + 1].warm()
-						|| point.distanceToSqr(camera) > RANGE * RANGE || actualStation < tail || actualStation > head
-						|| lateral < low || lateral > high
-						|| !clear(field.circles(), field.origin(), point, field.entityHeight())) {
-					continue;
-				}
-
-				int mask = occupancy(field, point, actualStation, lateral, low, high, tail, head, forward);
-				var envelope = new HordeParticleSamples.Envelope(line, forward, station, low, high, tail, head);
-				var value = new HordeParticleSamples.Sample(row, column, point, mask, actualStation, envelope);
-				int index = random.nextInt(++accepted);
-				if (result.size() < SAMPLE_LIMIT) {
-					result.add(value);
-				} else if (index < SAMPLE_LIMIT) {
-					result.set(index, value);
-				}
-			}
-		}
-
-		return result;
-	}
 
 	/// 先选行列再求位置；保留两端，内部按采样轮次在各自分层内轮换，不排序格点。
 	public static long select(long first, long last, int index, int count, long phase) {
@@ -127,38 +44,19 @@ public class HordeParticleFlow {
 		}
 
 		// 在分层内部往返轮换，避免 7→0 回绕使全部代表点同时重新预热。
-        long turn = Math.floorMod(phase, 16);
-        double fraction = ((turn < 8 ? turn : 15 - turn) + 0.5) / 8.0;
+		long turn = Math.floorMod(phase, 16);
+		double fraction = ((turn < 8 ? turn : 15 - turn) + 0.5) / 8.0;
 		long low = first + 1 + (index - 1) * (span - 1) / (count - 2);
 		long high = first + index * (span - 1) / (count - 2);
 		return low + (long) ((high - low + 1) * fraction);
 	}
 
-    private Vec3 position(Field field, long row, int column, int index, double dt) {
-        double seed = HordeTide.seed(row, column);
-        double station = HordeTide.station(HordeTide.head(field.time(), field.speed()), row, field.rowSpacing())
-                + HordeTide.drift(field.time(), seed) * Math.min(1, field.speed() / 0.25);
-        double lateral = HordeTide.lateral(column, field.columns(), field.columnSpacing());
-        var anchor = field.tide().world(station, lateral);
-        double natural = HordeTide.sway(field.time(), seed);
-        var slot = slots[index];
-        if (slot == null || slot.anchor.distanceToSqr(anchor) > RESET_DISTANCE * RESET_DISTANCE) {
-            slot = new Slot();
-            slot.total = natural;
-            slot.previousNatural = natural;
-            slots[index] = slot;
-            dt = 0;
-        }
-
-        slot.anchor = anchor;
-        var forward = field.tide().forward(station);
-        double target = target(field, anchor, forward, seed, slot);
-        slot.advance(natural + target, natural, field.speed() * SPEED_RATIO, dt);
-        return field.tide().world(station, lateral + slot.total);
-    }
-
 	/// 与 GLSL 相同类型的纵横软压力、柔和正部和并集；省略地形流和个体精确半径。
 	private static double target(Field field, Vec3 anchor, Vec3 forward, double seed, Slot slot) {
+		if (field.circles().isEmpty()) {
+			return 0;
+		}
+
 		double left = 0;
 		double right = 0;
 		var local = anchor.subtract(field.origin());
@@ -263,6 +161,108 @@ public class HordeParticleFlow {
 		return true;
 	}
 
+	public List<HordeParticleSamples.Sample> sample(Field field, Vec3 camera, long phase) {
+		double dt = field.time() - lastTime;
+		if (!Double.isFinite(dt) || dt < 0 || dt > MAXIMUM_DELTA_TICKS) {
+			clear();
+			dt = 0;
+		}
+
+		lastTime = field.time();
+		double head = Math.min(field.tide().length(), HordeTide.head(field.time(), field.speed()));
+		double tail = Math.max(0, (field.time() - field.stop()) * field.speed());
+		if (head < tail || field.columns() <= 0) {
+			return List.of();
+		}
+
+		double cameraStation = field.tide().particleStation(camera);
+		double progressed = HordeTide.head(field.time(), field.speed());
+		long firstRow = Math.max(Math.max(0, (long) Math.floor((progressed - field.tide().length())
+				/ field.rowSpacing()) + 1), (long) Math.ceil((progressed
+				- Math.min(head, cameraStation + RANGE + DRIFT_MARGIN)) / field.rowSpacing()));
+		long lastRow = Math.min((long) Math.floor(Math.min(field.stop(), field.time()) * field.speed()
+				/ field.rowSpacing()), (long) Math.floor((progressed
+				- Math.max(tail, cameraStation - RANGE - DRIFT_MARGIN)) / field.rowSpacing()));
+		var direction = field.tide().forward(cameraStation);
+		var center = field.tide().world(cameraStation, 0);
+		double cameraLateral = -(camera.x - center.x) * direction.z + (camera.z - center.z) * direction.x;
+		double reach = RANGE + MAXIMUM_OFFSET + SWAY_MARGIN;
+		int firstColumn = Math.max(0, (int) Math.ceil((cameraLateral - reach) / field.columnSpacing()
+				+ (field.columns() - 1) * 0.5));
+		int lastColumn = Math.min(field.columns() - 1, (int) Math.floor((cameraLateral + reach)
+				/ field.columnSpacing() + (field.columns() - 1) * 0.5));
+		if (lastRow < firstRow || lastColumn < firstColumn) {
+			return List.of();
+		}
+
+		int rows = (int) Math.min(ROW_SAMPLES, lastRow - firstRow + 1);
+		int columns = Math.min(COLUMN_SAMPLES, lastColumn - firstColumn + 1);
+		var result = new ArrayList<HordeParticleSamples.Sample>(SAMPLE_LIMIT);
+		var random = new Random(phase);
+		int accepted = 0;
+		for (int r = 0; r < rows; r++) {
+			long row = select(firstRow, lastRow, r, rows, phase);
+			double station = HordeTide.station(HordeTide.head(field.time(), field.speed()), row, field.rowSpacing());
+			var forward = field.tide().forward(station);
+			var side = new Vec3(-forward.z, 0, forward.x);
+			var line = field.tide().world(station, 0);
+			int base = r * (COLUMN_SAMPLES + 2);
+			var left = position(field, row, 0, base + COLUMN_SAMPLES, dt);
+			var right = position(field, row, field.columns() - 1, base + COLUMN_SAMPLES + 1, dt);
+			double low = left.subtract(line).dot(side) - field.columnSpacing() * 0.5;
+			double high = right.subtract(line).dot(side) + field.columnSpacing() * 0.5;
+			var envelope = new HordeParticleSamples.Envelope(line, forward, station, low, high, tail, head);
+			for (int c = 0; c < columns; c++) {
+				int column = (int) select(firstColumn, lastColumn, c, columns, phase);
+				var point = position(field, row, column, base + c, dt);
+				var relative = point.subtract(line);
+				double actualStation = station + relative.dot(forward);
+				double lateral = relative.dot(side);
+				if (!slots[base + c].warm() || !slots[base + COLUMN_SAMPLES].warm()
+						|| !slots[base + COLUMN_SAMPLES + 1].warm()
+						|| point.distanceToSqr(camera) > RANGE * RANGE || actualStation < tail || actualStation > head
+						|| lateral < low || lateral > high
+						|| !clear(field.circles(), field.origin(), point, field.entityHeight())) {
+					continue;
+				}
+
+				int mask = occupancy(field, point, actualStation, lateral, low, high, tail, head, forward);
+				var value = new HordeParticleSamples.Sample(row, column, point, mask, actualStation, envelope);
+				int index = random.nextInt(++accepted);
+				if (result.size() < SAMPLE_LIMIT) {
+					result.add(value);
+				} else if (index < SAMPLE_LIMIT) {
+					result.set(index, value);
+				}
+			}
+		}
+
+		return result;
+	}
+
+	private Vec3 position(Field field, long row, int column, int index, double dt) {
+		double seed = HordeTide.seed(row, column);
+		double station = HordeTide.station(HordeTide.head(field.time(), field.speed()), row, field.rowSpacing())
+				+ HordeTide.drift(field.time(), seed) * Math.min(1, field.speed() / 0.25);
+		double lateral = HordeTide.lateral(column, field.columns(), field.columnSpacing());
+		var anchor = field.tide().world(station, lateral);
+		double natural = HordeTide.sway(field.time(), seed);
+		var slot = slots[index];
+		if (slot == null || slot.anchor.distanceToSqr(anchor) > RESET_DISTANCE * RESET_DISTANCE) {
+			slot = new Slot();
+			slot.total = natural;
+			slot.previousNatural = natural;
+			slots[index] = slot;
+			dt = 0;
+		}
+
+		slot.anchor = anchor;
+		var forward = field.tide().forward(station);
+		double target = target(field, anchor, forward, seed, slot);
+		slot.advance(natural + target, natural, field.speed() * SPEED_RATIO, dt);
+		return field.tide().world(station, lateral + slot.total);
+	}
+
 	public void clear() {
 		for (int index = 0; index < slots.length; index++) {
 			slots[index] = null;
@@ -270,46 +270,51 @@ public class HordeParticleFlow {
 		lastTime = Double.NaN;
 	}
 
-    private static class Slot {
-        private Vec3 anchor = Vec3.ZERO;
-        private double total;
-        private double previousNatural;
-        private double velocity;
-        private double side;
-        private double age;
+	public record Field(HordeTide tide, Vec3 origin, List<HordeSplitState.Circle> circles,
+	                    double time, double speed, long stop, int columns,
+	                    double rowSpacing, double columnSpacing, double entityHeight) {
+	}
 
-        private boolean warm() {
-            return age >= WARMUP_TICKS;
-        }
+	private static class Slot {
+		private Vec3 anchor = Vec3.ZERO;
+		private double total;
+		private double previousNatural;
+		private double velocity;
+		private double side;
+		private double age;
 
-        /// 避让与退场约束总横移；无避让时直接保留自然 sway。
-        private void advance(double target, double natural, double limit, double dt) {
-            if (dt <= 0) {
-                return;
-            }
+		private boolean warm() {
+			return age >= WARMUP_TICKS;
+		}
 
-            age += dt;
-            double naturalVelocity = (natural - previousNatural) / dt;
-            previousNatural = natural;
-            if (side == 0) {
-                total = natural;
-                velocity = naturalVelocity;
-                return;
-            }
+		/// 避让与退场约束总横移；无避让时直接保留自然 sway。
+		private void advance(double target, double natural, double limit, double dt) {
+			if (dt <= 0) {
+				return;
+			}
 
-            double error = target - total;
-            double acceleration = limit / ACCELERATION_TICKS;
-            double desired = Math.signum(error) * Math.min(limit, Math.sqrt(2 * acceleration * Math.abs(error)));
-            double previousVelocity = Math.clamp(velocity, -limit, limit);
-            velocity = Math.clamp(desired, Math.max(-limit, previousVelocity - acceleration * dt),
-                    Math.min(limit, previousVelocity + acceleration * dt));
-            double budget = Math.min(limit * dt, Math.abs(error));
-            double step = Math.clamp(velocity * dt, -budget, budget);
-            total = Math.clamp(total + step, -MAXIMUM_OFFSET, MAXIMUM_OFFSET);
-            if (target == natural && total == natural
-                    && Math.abs(velocity - naturalVelocity) <= acceleration * dt) {
-                side = 0;
-            }
-        }
-    }
+			age += dt;
+			double naturalVelocity = (natural - previousNatural) / dt;
+			previousNatural = natural;
+			if (side == 0) {
+				total = natural;
+				velocity = naturalVelocity;
+				return;
+			}
+
+			double error = target - total;
+			double acceleration = limit / ACCELERATION_TICKS;
+			double desired = Math.signum(error) * Math.min(limit, Math.sqrt(2 * acceleration * Math.abs(error)));
+			double previousVelocity = Math.clamp(velocity, -limit, limit);
+			velocity = Math.clamp(desired, Math.max(-limit, previousVelocity - acceleration * dt),
+					Math.min(limit, previousVelocity + acceleration * dt));
+			double budget = Math.min(limit * dt, Math.abs(error));
+			double step = Math.clamp(velocity * dt, -budget, budget);
+			total = Math.clamp(total + step, -MAXIMUM_OFFSET, MAXIMUM_OFFSET);
+			if (target == natural && total == natural
+					&& Math.abs(velocity - naturalVelocity) <= acceleration * dt) {
+				side = 0;
+			}
+		}
+	}
 }

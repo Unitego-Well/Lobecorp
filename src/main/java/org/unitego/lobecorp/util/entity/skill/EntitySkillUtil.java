@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.util.entity.skill;
 
-import net.minecraft.tags.TagKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -9,16 +9,16 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
-import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectManager;
 import org.unitego.lobecorp.event.EntitySkillEvent;
-import org.unitego.lobecorp.world.hitbox.HitboxManager;
 import org.unitego.lobecorp.network.tc.EntitySkillSyncPayload;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.registry.entity.skill.LcEntitySkillGroups;
-import org.unitego.lobecorp.registry.entity.skill.EntitySkillDefaults;
-import org.unitego.lobecorp.world.entity.skill.*;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.skill.EntitySkillDefaults;
+import org.unitego.lobecorp.registry.world.entity.skill.LcEntitySkillGroups;
 import org.unitego.lobecorp.world.effect.StunMobEffect;
+import org.unitego.lobecorp.world.entity.skill.*;
+import org.unitego.lobecorp.world.entity.skill.effect.EntitySkillEffectManager;
+import org.unitego.lobecorp.world.hitbox.HitboxManager;
 
 import java.util.*;
 

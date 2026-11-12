@@ -10,7 +10,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 import java.util.Map;
 import java.util.function.Function;
 
-@Mixin(targets = "com.lowdragmc.photon.client.render.PhotonPipelines", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.render.PhotonPipelines")
 public class PhotonPipelinesMixin {
 	@WrapOperation(method = {"hdrParticle(Lnet/minecraft/resources/Identifier;Lcom/lowdragmc/photon/client/render/PhotonPipelines$ParticlePipelineKey;)Lcom/mojang/blaze3d/pipeline/RenderPipeline;", "instancedHdrParticle(Lcom/lowdragmc/photon/client/render/PhotonPipelines$InstancedVariant;Lnet/minecraft/resources/Identifier;Lcom/lowdragmc/photon/client/render/PhotonPipelines$ParticlePipelineKey;)Lcom/mojang/blaze3d/pipeline/RenderPipeline;", "customShader", "instancedCustomShader", "graphShader"},
 			at = @At(value = "INVOKE", target = "Ljava/util/Map;computeIfAbsent(Ljava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"))

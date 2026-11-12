@@ -14,6 +14,18 @@ public class PhotonOcclusionConfig extends ToggleGroup {
 	@ConfigNumber(range = {0, 1})
 	protected float alphaCutoff = DEFAULT_ALPHA_CUTOFF;
 
+	private static float normalizeAlphaCutoff(float value) {
+		if (!Float.isFinite(value)) {
+			return DEFAULT_ALPHA_CUTOFF;
+		}
+
+		if (value <= 0f) {
+			return 0f;
+		}
+
+		return Math.clamp(value, 0f, 1f);
+	}
+
 	public float getAlphaCutoff() {
 		return normalizeAlphaCutoff(alphaCutoff);
 	}
@@ -39,17 +51,5 @@ public class PhotonOcclusionConfig extends ToggleGroup {
 	@Override
 	public int hashCode() {
 		return isEnable() ? Float.hashCode(getAlphaCutoff()) : 0;
-	}
-
-	private static float normalizeAlphaCutoff(float value) {
-		if (!Float.isFinite(value)) {
-			return DEFAULT_ALPHA_CUTOFF;
-		}
-
-		if (value <= 0f) {
-			return 0f;
-		}
-
-		return Math.clamp(value, 0f, 1f);
 	}
 }

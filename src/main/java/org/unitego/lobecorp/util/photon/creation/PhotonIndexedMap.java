@@ -2,25 +2,10 @@ package org.unitego.lobecorp.util.photon.creation;
 
 import org.jetbrains.annotations.NotNull;
 
-import java.util.AbstractCollection;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.IntFunction;
-import java.util.function.Function;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /// 对等当前 Photon 原生 LinkedHashMap；布局按首次插入顺序以 O(n) 空间编译。
@@ -383,6 +368,21 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		};
 	}
 
+	/// 所有数组和 UUID 到槽位的映射只在编译阶段创建，不向实例调用者暴露。
+	public static class Layout {
+		private final UUID[] keys;
+		private final Map<UUID, Integer> slots;
+
+		private Layout(UUID[] keys, Map<UUID, Integer> slots) {
+			this.keys = keys;
+			this.slots = slots;
+		}
+
+		public int size() {
+			return keys.length;
+		}
+	}
+
 	private class ObjectIterator implements Iterator<Entry<UUID, V>> {
 		private int limit;
 		private Iterator<Entry<UUID, V>> delegate;
@@ -499,21 +499,6 @@ public class PhotonIndexedMap<V> extends AbstractMap<UUID, V> {
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(key) ^ Objects.hashCode(getValue());
-		}
-	}
-
-	/// 所有数组和 UUID 到槽位的映射只在编译阶段创建，不向实例调用者暴露。
-	public static class Layout {
-		private final UUID[] keys;
-		private final Map<UUID, Integer> slots;
-
-		private Layout(UUID[] keys, Map<UUID, Integer> slots) {
-			this.keys = keys;
-			this.slots = slots;
-		}
-
-		public int size() {
-			return keys.length;
 		}
 	}
 }

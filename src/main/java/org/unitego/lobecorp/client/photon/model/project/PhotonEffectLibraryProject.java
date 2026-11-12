@@ -8,8 +8,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslationKeys;
 import org.unitego.lobecorp.util.photon.compat.PhotonEffectInventoryUtil;
-import org.unitego.lobecorp.registry.translation.photon.editor.PhotonEffectLibraryTranslations;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -21,7 +21,7 @@ import java.util.Set;
 /// 与FX工程、模型特效工程的区别是它自身不含对象树：预览在选中条目时才按需建立，
 /// 因此同时存在的预览实例至多一个，避免打开一个工程就初始化全部内容。
 public class PhotonEffectLibraryProject extends FXProject {
-	public static final ProjectType TYPE = ProjectType.of(PhotonEffectLibraryTranslations.TYPE, ".mfxlib", PhotonEffectLibraryProject::new);
+	public static final ProjectType TYPE = ProjectType.of(PhotonEffectLibraryTranslationKeys.TYPE, ".mfxlib", PhotonEffectLibraryProject::new);
 	/// 条目列表的容器键。
 	private static final String ENTRIES_KEY = "entries";
 	/// 共享引用的容器键。
@@ -35,18 +35,20 @@ public class PhotonEffectLibraryProject extends FXProject {
 	private List<Entry> entries = new ArrayList<>();
 	private Set<String> shared = new LinkedHashSet<>();
 
-	/// 一条被管理的特效记录；只保存引用，不保存对象树副本。
-	public record Entry(String id, String path) {
-		public Entry {
-			if (id == null || id.isBlank()) {
-				throw new IllegalArgumentException("特效管理条目缺少ID。");
-			}
-			path = path == null ? "" : path;
-		}
-	}
-
 	public PhotonEffectLibraryProject() {
 		super();
+	}
+
+	/// 把条目与共享引用包装成可写入ValueOutput的容器；ValueOutput只接受顶层CompoundTag。
+	private static CompoundTag wrap(ListTag list, ListTag sharedList) {
+		var container = new CompoundTag();
+		container.put(ENTRIES_KEY, list);
+		container.put(SHARED_KEY, sharedList);
+		return container;
+	}
+
+	public static String suffix() {
+		return TYPE.getSuffix();
 	}
 
 	public List<Entry> entries() {
@@ -143,15 +145,13 @@ public class PhotonEffectLibraryProject extends FXProject {
 		super.onClosed(editor);
 	}
 
-	/// 把条目与共享引用包装成可写入ValueOutput的容器；ValueOutput只接受顶层CompoundTag。
-	private static CompoundTag wrap(ListTag list, ListTag sharedList) {
-		var container = new CompoundTag();
-		container.put(ENTRIES_KEY, list);
-		container.put(SHARED_KEY, sharedList);
-		return container;
-	}
-
-	public static String suffix() {
-		return TYPE.getSuffix();
+	/// 一条被管理的特效记录；只保存引用，不保存对象树副本。
+	public record Entry(String id, String path) {
+		public Entry {
+			if (id == null || id.isBlank()) {
+				throw new IllegalArgumentException("特效管理条目缺少ID。");
+			}
+			path = path == null ? "" : path;
+		}
 	}
 }

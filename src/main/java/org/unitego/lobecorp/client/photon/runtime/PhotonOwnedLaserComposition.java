@@ -1,85 +1,17 @@
 package org.unitego.lobecorp.client.photon.runtime;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Map;
-import java.util.LinkedHashMap;
-
 import net.minecraft.nbt.FloatTag;
-import org.joml.Vector3f;
+import net.minecraft.nbt.ListTag;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
+import java.util.*;
 
 /// 组合阶段以技能快照推进；延时单位为游戏 tick，局部动画不控制实例存在。
 public class PhotonOwnedLaserComposition {
 	/// 原激光局部进入与结束动画均为20 tick，缩放触发沿用同一作者相位标尺。
 	public static final double AUTHORED_PHASE_TICKS = 20;
-
-	public enum Phase {CHARGE, OUTPUT, RECOVERY}
-
-	public enum Binding {ROOT, BEAM}
-
-	public enum StopPolicy {NATURAL, IMMEDIATE}
-
-	public record Cue(String component, Phase phase, double delayTicks, String animation, Binding binding,
-	                  StopPolicy stopPolicy, boolean scaleToPhase) {
-		public Cue(String component, Phase phase, double delayTicks, String animation, Binding binding, StopPolicy stopPolicy) {
-			this(component, phase, delayTicks, animation, binding, stopPolicy, false);
-		}
-
-		public Cue {
-			Objects.requireNonNull(component);
-			Objects.requireNonNull(phase);
-			Objects.requireNonNull(animation);
-			Objects.requireNonNull(binding);
-			Objects.requireNonNull(stopPolicy);
-			if (component.isBlank() || !Double.isFinite(delayTicks) || delayTicks < 0) {
-				throw new IllegalArgumentException("无效组合触发");
-			}
-		}
-	}
-
-	public record Pose(Vector3f offset, Quaternionf rotation, Map<String, List<Float>> inputs) {
-		public Pose {
-			offset = new Vector3f(offset);
-			rotation = new Quaternionf(rotation);
-			var copy = new LinkedHashMap<String, List<Float>>();
-			inputs.forEach((key, value) -> copy.put(key, List.copyOf(value)));
-			inputs = Map.copyOf(copy);
-			if (!offset.isFinite() || !Float.isFinite(rotation.x) || !Float.isFinite(rotation.y)
-					|| !Float.isFinite(rotation.z) || !Float.isFinite(rotation.w) || rotation.lengthSquared() == 0) {
-				throw new IllegalArgumentException("无效组成件变换");
-			}
-			rotation.normalize();
-		}
-
-		@Override
-		public Vector3f offset() {
-			return new Vector3f(offset);
-		}
-
-		@Override
-		public Quaternionf rotation() {
-			return new Quaternionf(rotation);
-		}
-	}
-
-	public record Definition(int version, List<Cue> cues, Map<String, Pose> poses) {
-		public Definition(int version, List<Cue> cues) {
-			this(version, cues, Map.of());
-		}
-
-		public Definition {
-			if (version != 1) {
-				throw new IllegalArgumentException("不支持的组合版本：" + version);
-			}
-			cues = List.copyOf(cues);
-			poses = Map.copyOf(poses);
-		}
-	}
 
 	public static CompoundTag serialize(Definition definition) {
 		var tag = new CompoundTag();
@@ -173,5 +105,68 @@ public class PhotonOwnedLaserComposition {
 			cues.add(new Cue(name, Phase.RECOVERY, 20, "", Binding.ROOT, StopPolicy.IMMEDIATE, true));
 		}
 		return new Definition(1, cues);
+	}
+
+	public enum Phase {CHARGE, OUTPUT, RECOVERY}
+
+	public enum Binding {ROOT, BEAM}
+
+	public enum StopPolicy {NATURAL, IMMEDIATE}
+
+	public record Cue(String component, Phase phase, double delayTicks, String animation, Binding binding,
+	                  StopPolicy stopPolicy, boolean scaleToPhase) {
+		public Cue(String component, Phase phase, double delayTicks, String animation, Binding binding, StopPolicy stopPolicy) {
+			this(component, phase, delayTicks, animation, binding, stopPolicy, false);
+		}
+
+		public Cue {
+			Objects.requireNonNull(component);
+			Objects.requireNonNull(phase);
+			Objects.requireNonNull(animation);
+			Objects.requireNonNull(binding);
+			Objects.requireNonNull(stopPolicy);
+			if (component.isBlank() || !Double.isFinite(delayTicks) || delayTicks < 0) {
+				throw new IllegalArgumentException("无效组合触发");
+			}
+		}
+	}
+
+	public record Pose(Vector3f offset, Quaternionf rotation, Map<String, List<Float>> inputs) {
+		public Pose {
+			offset = new Vector3f(offset);
+			rotation = new Quaternionf(rotation);
+			var copy = new LinkedHashMap<String, List<Float>>();
+			inputs.forEach((key, value) -> copy.put(key, List.copyOf(value)));
+			inputs = Map.copyOf(copy);
+			if (!offset.isFinite() || !Float.isFinite(rotation.x) || !Float.isFinite(rotation.y)
+					|| !Float.isFinite(rotation.z) || !Float.isFinite(rotation.w) || rotation.lengthSquared() == 0) {
+				throw new IllegalArgumentException("无效组成件变换");
+			}
+			rotation.normalize();
+		}
+
+		@Override
+		public Vector3f offset() {
+			return new Vector3f(offset);
+		}
+
+		@Override
+		public Quaternionf rotation() {
+			return new Quaternionf(rotation);
+		}
+	}
+
+	public record Definition(int version, List<Cue> cues, Map<String, Pose> poses) {
+		public Definition(int version, List<Cue> cues) {
+			this(version, cues, Map.of());
+		}
+
+		public Definition {
+			if (version != 1) {
+				throw new IllegalArgumentException("不支持的组合版本：" + version);
+			}
+			cues = List.copyOf(cues);
+			poses = Map.copyOf(poses);
+		}
 	}
 }

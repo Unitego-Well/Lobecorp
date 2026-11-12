@@ -1,29 +1,11 @@
 package org.unitego.lobecorp.util.photon.playback;
 
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NumericTag;
-import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.*;
 import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Binding;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Blend;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Completion;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Definition;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Event;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Input;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Marker;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Parameter;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ParameterType;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.Rule;
-import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.ValueSource;
+import org.unitego.lobecorp.config.photon.playback.PhotonNamedLibrary.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-import java.util.Collections;
+import java.util.*;
 
 /// 只适配当前第六版库，保留完整原树；未知版本和失效身份不能用随机UUID替换。
 public class PhotonNamedCodecUtil {

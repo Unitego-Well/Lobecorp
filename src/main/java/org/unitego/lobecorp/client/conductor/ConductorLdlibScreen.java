@@ -1,7 +1,5 @@
 package org.unitego.lobecorp.client.conductor;
 
-import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
-
 import com.lowdragmc.lowdraglib2.gui.holder.ModularUIScreen;
 import com.lowdragmc.lowdraglib2.gui.texture.ColorBorderTexture;
 import com.lowdragmc.lowdraglib2.gui.texture.ColorRectTexture;
@@ -22,15 +20,16 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
 import org.unitego.lobecorp.client.conductor.hud.ConductorHudTheme;
+import org.unitego.lobecorp.client.conductor.hud.ConductorHudTooltip;
+import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorAbility;
 import org.unitego.lobecorp.conductor.ability.IConductorTargeting;
-import org.unitego.lobecorp.conductor.ability.EntitySkillConductorAbility;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 import org.unitego.lobecorp.conductor.data.ConductorDirectory;
-import org.unitego.lobecorp.util.conductor.ConductorUtil;
 import org.unitego.lobecorp.network.ts.ConductorCommandPayload;
+import org.unitego.lobecorp.registry.translation.ConductorTranslationKeys;
+import org.unitego.lobecorp.util.conductor.ConductorUtil;
 
 import java.util.*;
 

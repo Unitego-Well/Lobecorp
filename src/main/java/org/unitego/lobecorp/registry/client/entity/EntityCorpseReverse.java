@@ -1,7 +1,7 @@
 package org.unitego.lobecorp.registry.client.entity;
 
 import org.unitego.lobecorp.event.EntityCorpseReverseEvent;
-import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
 
 public class EntityCorpseReverse {
 	public static void onRegister(EntityCorpseReverseEvent event) {

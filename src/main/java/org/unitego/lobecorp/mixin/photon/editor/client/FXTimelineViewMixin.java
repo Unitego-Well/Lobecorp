@@ -1,59 +1,36 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
-import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
-import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 import com.lowdragmc.photon.client.fx.timeline.Clip;
 import com.lowdragmc.photon.client.fx.timeline.Marker;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
+import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.gui.editor.FXEditor;
+import com.lowdragmc.photon.gui.editor.view.FXTimelineView;
+import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackEditor;
 import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
-import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
-import org.unitego.lobecorp.client.photon.editor.PhotonTimelineEditAccess;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.LinkedHashSet;
-
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
-import org.unitego.lobecorp.client.photon.editor.PhotonEffectEditor;
-
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Final;
-import org.unitego.lobecorp.client.photon.editor.PhotonTimelinePanAccess;
+import org.unitego.lobecorp.client.photon.editor.*;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonKeyClipboardUtil;
-import com.lowdragmc.photon.gui.editor.FXEditor;
-
-import java.util.List;
-import java.util.Collection;
-
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonSystemClipboardUtil;
 import org.unitego.lobecorp.util.photon.clipboard.PhotonTimelineClipboardUtil;
-import org.unitego.lobecorp.util.photon.clipboard.PhotonSubClipboardUtil;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorTimelineUtil;
-import org.unitego.lobecorp.client.photon.editor.PhotonTimelineViewState;
 import org.unitego.lobecorp.util.photon.editor.PhotonTimelineStateUtil;
-import com.lowdragmc.lowdraglib2.gui.ui.elements.ScrollerView;
 
-import java.util.HashMap;
-
-
-
-
-
-
+import java.util.*;
 
 
 @Mixin(FXTimelineView.class)
 public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, PhotonTimelineEditAccess {
-	@Shadow
-	@Final
-	public FXEditor fxEditor;
 	@Shadow
 	private static int clipboardKind;
 	@Shadow
@@ -62,6 +39,42 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 	@Shadow
 	@Final
 	private static List<Track> clipboardTracks;
+	@Shadow
+	@Final
+	public FXEditor fxEditor;
+	@Shadow
+	private Track selectedTrack;
+	@Shadow
+	private Clip selectedClip;
+	@Shadow
+	private Track selectedClipTrack;
+	@Shadow
+	@Final
+	private LinkedHashSet<Clip> selectedClips;
+	@Shadow
+	private Marker selectedMarker;
+	@Shadow
+	private Marker dragMarker;
+	@Shadow
+	private float scale;
+	@Shadow
+	private float scrollTicks;
+	@Shadow
+	@Final
+	private Map<Track, TrackUIState> states;
+	@Shadow
+	@Final
+	private LinkedHashSet<Track> selectedTracks;
+	@Shadow
+	private int rowHeight;
+	@Shadow
+	private boolean markersVisible;
+	@Shadow
+	@Final
+	private ScrollerView leftScroller;
+	@Shadow
+	@Final
+	private ScrollerView rightScroller;
 
 	@Inject(method = "copySelection", at = @At("RETURN"))
 	private void lobecorp$isolateClipboard(CallbackInfo ci) {
@@ -101,21 +114,6 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 			}
 		}
 	}
-
-	@Shadow
-	private Track selectedTrack;
-	@Shadow
-	private Clip selectedClip;
-	@Shadow
-	private Track selectedClipTrack;
-	@Shadow
-	@Final
-	private LinkedHashSet<Clip> selectedClips;
-	@Shadow
-	private Marker selectedMarker;
-	@Shadow
-	private Marker dragMarker;
-
 
 	@Inject(method = "pasteClipboard", at = @At("HEAD"), cancellable = true)
 	private void lobecorp$pasteSystem(CallbackInfo ci) {
@@ -159,11 +157,6 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 	}
 
 	@Shadow
-	private float scale;
-	@Shadow
-	private float scrollTicks;
-
-	@Shadow
 	private void updateHScroller() {
 		throw new AssertionError();
 	}
@@ -172,13 +165,6 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 	private void repositionLaneItems() {
 		throw new AssertionError();
 	}
-
-	@Shadow
-	@Final
-	private Map<Track, TrackUIState> states;
-	@Shadow
-	@Final
-	private LinkedHashSet<Track> selectedTracks;
 
 	@Shadow
 	private TrackEditor editorFor(Track track) {
@@ -255,17 +241,6 @@ public abstract class FXTimelineViewMixin implements PhotonTimelinePanAccess, Ph
 			dragMarker = null;
 		}
 	}
-
-	@Shadow
-	private int rowHeight;
-	@Shadow
-	private boolean markersVisible;
-	@Shadow
-	@Final
-	private ScrollerView leftScroller;
-	@Shadow
-	@Final
-	private ScrollerView rightScroller;
 
 	@Shadow
 	private void setMarkersVisible(boolean visible) {

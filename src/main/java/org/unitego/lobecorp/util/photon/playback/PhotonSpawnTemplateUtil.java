@@ -1,27 +1,21 @@
 package org.unitego.lobecorp.util.photon.playback;
 
-import com.lowdragmc.lowdraglib2.math.Transform;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.IScene;
+import com.lowdragmc.lowdraglib2.math.Transform;
 import com.lowdragmc.photon.client.fx.FXData;
 import com.lowdragmc.photon.client.fx.FXRuntime;
 import com.lowdragmc.photon.client.fx.timeline.Timeline;
 import com.lowdragmc.photon.client.gameobject.IFXObject;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
-import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
-import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.jetbrains.annotations.Nullable;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
+import org.unitego.lobecorp.client.photon.runtime.creation.PhotonTemplateProgram;
+import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 
+import java.util.*;
 import java.util.stream.Collectors;
 
 /// 从已有定义或项目子树制作独占实例；只过滤未复制目标的贡献，不修改原库和原文件。
@@ -149,26 +143,6 @@ public class PhotonSpawnTemplateUtil {
 			return nativeProjectTemplate(owner, scope, selectProject(owner, target), program.path());
 		}
 		return ownedTemplate(owner, lease, scope, program.path());
-	}
-
-	/// 一次准备的独占 runtime；消费后所有权转移给实例，未消费则由生成器销毁。
-	public record Template(FXRuntime runtime, IScene scope, Set<String> path,
-						   @Nullable PhotonRuntimeFactory.Lease lease) {
-		public Template(FXRuntime runtime, IScene scope, Set<String> path) {
-			this(runtime, scope, path, null);
-		}
-
-		public void close(boolean force) {
-			if (lease == null) {
-				runtime.destroy(force);
-			} else {
-				lease.close(force);
-			}
-		}
-
-		public Template {
-			path = Set.copyOf(path);
-		}
 	}
 
 	public static Template create(PhotonChildSpawner owner) {
@@ -365,6 +339,26 @@ public class PhotonSpawnTemplateUtil {
 		}
 
 		controller.definition(definition);
+	}
+
+	/// 一次准备的独占 runtime；消费后所有权转移给实例，未消费则由生成器销毁。
+	public record Template(FXRuntime runtime, IScene scope, Set<String> path,
+	                       @Nullable PhotonRuntimeFactory.Lease lease) {
+		public Template(FXRuntime runtime, IScene scope, Set<String> path) {
+			this(runtime, scope, path, null);
+		}
+
+		public Template {
+			path = Set.copyOf(path);
+		}
+
+		public void close(boolean force) {
+			if (lease == null) {
+				runtime.destroy(force);
+			} else {
+				lease.close(force);
+			}
+		}
 	}
 
 

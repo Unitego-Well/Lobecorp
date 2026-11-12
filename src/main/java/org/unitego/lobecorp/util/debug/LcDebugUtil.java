@@ -8,18 +8,10 @@ import java.util.Set;
 
 /// 非 Photon 游戏调试日志的唯一类别开关；默认关闭，生产环境始终关闭。
 public class LcDebugUtil {
-	/// 可独立开启的调试日志类别。
-	public enum Category {
-		SKILL,
-		ANIMATION,
-		ATTACHMENT
-	}
-
 	private static final String GLOBAL_PROPERTY = "lobecorp.debug";
 	private static final String SKILL_PROPERTY = "lobecorp.debug.skill";
 	private static final String ANIMATION_PROPERTY = "lobecorp.debug.animation";
 	private static final String ATTACHMENT_PROPERTY = "lobecorp.debug.attachment";
-
 	private static volatile Set<Category> enabled = readProperties();
 
 	private LcDebugUtil() {
@@ -76,5 +68,12 @@ public class LcDebugUtil {
 	private static boolean parseBoolean(String property, boolean fallback) {
 		String value = System.getProperty(property);
 		return value == null ? fallback : Boolean.parseBoolean(value);
+	}
+
+	/// 可独立开启的调试日志类别。
+	public enum Category {
+		SKILL,
+		ANIMATION,
+		ATTACHMENT
 	}
 }

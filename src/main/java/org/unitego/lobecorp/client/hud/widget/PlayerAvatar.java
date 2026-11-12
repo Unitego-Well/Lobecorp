@@ -1,18 +1,17 @@
 package org.unitego.lobecorp.client.hud.widget;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.unitego.lobecorp.client.hud.BasicHudRenderer;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.RenderPipelines;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import net.minecraft.client.renderer.RenderPipelines;
+import org.unitego.lobecorp.client.hud.BasicHudRenderer;
 
 /// 皮肤脸部与外层独立居中
 @NullMarked
 public class PlayerAvatar extends BasicHudRenderer {
-	private @Nullable LocalPlayer player;
 	private final float hatScale;
+	private @Nullable LocalPlayer player;
 
 	public PlayerAvatar(int headSize, float hatScale) {
 		setSize(headSize * hatScale, headSize * hatScale);

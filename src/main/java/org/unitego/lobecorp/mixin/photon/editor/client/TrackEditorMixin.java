@@ -1,12 +1,8 @@
 package org.unitego.lobecorp.mixin.photon.editor.client;
 
-import com.lowdragmc.photon.client.fx.timeline.Track;
-import com.lowdragmc.photon.gui.editor.view.timeline.ControlTrackEditor;
-import com.lowdragmc.photon.gui.editor.view.timeline.SignalTrackEditor;
-import com.lowdragmc.photon.gui.editor.view.timeline.TrackGroupEditor;
-import com.lowdragmc.photon.gui.editor.view.timeline.TimelineContext;
-import com.lowdragmc.photon.gui.editor.view.timeline.TrackUIState;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.photon.client.fx.timeline.Track;
+import com.lowdragmc.photon.gui.editor.view.timeline.*;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

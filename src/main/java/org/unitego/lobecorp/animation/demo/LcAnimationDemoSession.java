@@ -9,19 +9,15 @@ import org.joml.Quaternionf;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.animation.LcTransitionMode;
 import org.unitego.lobecorp.animation.runtime.LcAnimationContext;
-import org.unitego.lobecorp.attachment.ILcTransformTarget;
-import org.unitego.lobecorp.attachment.LcAttachmentAnchors;
-import org.unitego.lobecorp.attachment.LcAttachmentBinding;
-import org.unitego.lobecorp.attachment.LcRenderAnchorReference;
-import org.unitego.lobecorp.attachment.adapter.EntityAnimationTarget;
-import org.unitego.lobecorp.attachment.LcTransform;
 import org.unitego.lobecorp.animation.runtime.LcAnimationInstance;
 import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
+import org.unitego.lobecorp.attachment.*;
+import org.unitego.lobecorp.attachment.adapter.EntityAnimationTarget;
 import org.unitego.lobecorp.world.item.animation.LcItemAnimationSession;
 
-import java.util.Objects;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /// 真实玩家的附着示例；切锚不重建物品，也不重启物品自身的动画。
@@ -150,18 +146,6 @@ public class LcAnimationDemoSession implements ILcTransformTarget {
 		return (LcAnimationDemoSession) instance.ownerTarget();
 	}
 
-	private LcAttachmentBinding binding() {
-		return blade().binding();
-	}
-
-	private LcItemAnimationSession blade() {
-		return Objects.requireNonNull(blade, MISSING_BINDING);
-	}
-
-	private boolean hasBlade() {
-		return blade != null && blade.isAvailable() && !blade.binding().isReleased();
-	}
-
 	public static boolean pauseItem(ServerPlayer player, boolean paused) {
 		var session = PLAYING.get(player);
 		return session != null && session.hasBlade() && session.blade().setPaused(paused);
@@ -180,20 +164,6 @@ public class LcAnimationDemoSession implements ILcTransformTarget {
 
 		session.blade().requestStop();
 		return true;
-	}
-
-	private LcRenderAnchorReference renderAnchor(String node) {
-		return new LcRenderAnchorReference(LcAnimationDemo.PLAYER_RENDER_PROVIDER,
-				player.getUUID(), player.getId(), node);
-	}
-
-	private double handX() {
-		return player.getMainArm() == HumanoidArm.RIGHT ? -LcAnimationDemo.HAND_X : LcAnimationDemo.HAND_X;
-	}
-
-	private LcTransform handOffset() {
-		return new LcTransform(new Vec3(handX(), LcAnimationDemo.HAND_HEIGHT, 0),
-				new Quaternionf(), LcTransform.identity().scale());
 	}
 
 	public static void stop(ServerPlayer player) {
@@ -246,8 +216,30 @@ public class LcAnimationDemoSession implements ILcTransformTarget {
 		return true;
 	}
 
-	public enum Anchor {
-		BACK, HAND, WORLD
+	private LcAttachmentBinding binding() {
+		return blade().binding();
+	}
+
+	private LcItemAnimationSession blade() {
+		return Objects.requireNonNull(blade, MISSING_BINDING);
+	}
+
+	private boolean hasBlade() {
+		return blade != null && blade.isAvailable() && !blade.binding().isReleased();
+	}
+
+	private LcRenderAnchorReference renderAnchor(String node) {
+		return new LcRenderAnchorReference(LcAnimationDemo.PLAYER_RENDER_PROVIDER,
+				player.getUUID(), player.getId(), node);
+	}
+
+	private double handX() {
+		return player.getMainArm() == HumanoidArm.RIGHT ? -LcAnimationDemo.HAND_X : LcAnimationDemo.HAND_X;
+	}
+
+	private LcTransform handOffset() {
+		return new LcTransform(new Vec3(handX(), LcAnimationDemo.HAND_HEIGHT, 0),
+				new Quaternionf(), LcTransform.identity().scale());
 	}
 
 	@Override
@@ -274,5 +266,9 @@ public class LcAnimationDemoSession implements ILcTransformTarget {
 	@SuppressWarnings("resource")
 	public boolean isAvailable() {
 		return available && owner.isAvailable() && player.level() == level;
+	}
+
+	public enum Anchor {
+		BACK, HAND, WORLD
 	}
 }

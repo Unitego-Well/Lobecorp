@@ -7,6 +7,6 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(WorldSceneRenderer.class)
 public interface WorldSceneRendererProjectionAccessor {
-    @Accessor("projectionMatrix")
-    Matrix4f lobecorp$projectionMatrix();
+	@Accessor("projectionMatrix")
+	Matrix4f lobecorp$projectionMatrix();
 }

@@ -5,10 +5,10 @@ import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.photon.client.gameobject.emitter.data.ColorOverLifetimeSetting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
-import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
+import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
+import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 @Mixin(ColorOverLifetimeSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})

@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.client.conductor.world;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.SectionPos;
@@ -14,9 +15,9 @@ import net.neoforged.neoforge.event.level.ChunkEvent;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.client.conductor.ConductorControls;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.LongFunction;
 import java.util.function.Supplier;
 
 /// 缓存原版玩家区块缓存范围之外的观察区块，沿用原版区块包、光照和生命周期。
@@ -25,7 +26,7 @@ public class ConductorClientChunks {
 	private static final int CACHE_BORDER_CHUNKS = 3;
 	private final ClientLevel level;
 	private final Supplier<LongOpenHashSet> emptySections;
-	private final Map<Long, LevelChunk> chunks = new HashMap<>();
+	private final Long2ObjectOpenHashMap<LevelChunk> chunks = new Long2ObjectOpenHashMap<>();
 	private int centerX;
 	private int centerZ;
 	private int radius;
@@ -60,7 +61,7 @@ public class ConductorClientChunks {
 	public LevelChunk replace(int x, int z, FriendlyByteBuf buffer, Map<Heightmap.Types, long[]> heightmaps,
 	                          Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> blockEntities) {
 		var pos = new ChunkPos(x, z);
-		LevelChunk chunk = chunks.computeIfAbsent(pos.pack(), _ -> new LevelChunk(level, pos));
+		LevelChunk chunk = chunks.computeIfAbsent(pos.pack(), (LongFunction<LevelChunk>) _ -> new LevelChunk(level, pos));
 		chunk.replaceWithPacketData(buffer, heightmaps, blockEntities);
 		refreshEmptySections(chunk);
 		level.onChunkLoaded(pos);

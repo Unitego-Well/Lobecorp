@@ -3,15 +3,15 @@ package org.unitego.lobecorp.world.entity.ordeal.indigo;
 import com.geckolib.animatable.GeoEntity;
 import com.geckolib.animatable.instance.AnimatableInstanceCache;
 import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.keyframehandler.AutoPlayingSoundKeyframeHandler;
 import com.geckolib.animation.object.PlayState;
 import com.geckolib.util.GeckoLibUtil;
 import com.mojang.serialization.Codec;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.Profiler;
@@ -28,6 +28,7 @@ import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -36,23 +37,23 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.animation.*;
+import org.unitego.lobecorp.conductor.control.ConductorWork;
+import org.unitego.lobecorp.registry.world.entity.LcAttributes;
+import org.unitego.lobecorp.registry.world.entity.LcEntityDataSerializers;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
 import org.unitego.lobecorp.registry.sound.SweeperSoundEvents;
 import org.unitego.lobecorp.util.animation.LcAnimationControllerUtil;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
-import org.unitego.lobecorp.world.horde.HordeParticipant;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
+import org.unitego.lobecorp.world.entity.IEntityTarget;
 import org.unitego.lobecorp.world.entity.combat.CombatPolicy;
 import org.unitego.lobecorp.world.entity.combat.ICombatant;
-import org.unitego.lobecorp.conductor.control.ConductorWork;
-import org.unitego.lobecorp.world.entity.IEntityTarget;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkillHolder;
 import org.unitego.lobecorp.world.entity.skill.IEntitySkillAccess;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkillHolder;
 import org.unitego.lobecorp.world.entity.state.EntityState;
 import org.unitego.lobecorp.world.entity.state.IEntityStateHolder;
-import org.unitego.lobecorp.registry.entity.LcAttributes;
-import org.unitego.lobecorp.registry.entity.LcEntityDataSerializers;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.world.horde.HordeParticipant;
 
 import java.util.List;
 
@@ -61,22 +62,14 @@ import static net.minecraft.SharedConstants.TICKS_PER_SECOND;
 /// 清道夫
 public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCustomAnimatable, IIndigoOrdeal,
 		IEntityTarget, IEntityStateHolder, IEntitySkillHolder, ICombatant {
-	@Override
-	protected void playStepSound(BlockPos position, BlockState state) {
-		if (level() instanceof ServerLevel) {
-			playSound(SweeperSoundEvents.SWEEPER_MOVE.get(), 0.65F, 1);
-		}
-	}
-
-	// 攻击属性标识
-
 	/// 普通攻击临时伤害倍率属性的唯一标识
 	public static final Identifier ATTACK_MULTIPLIER = Lobecorp.id("attack_multiplier");
 
-	// 同步数据与存档字段
-
+	// 攻击属性标识
 	/// 同步清道夫外观变种的数据字段
 	private static final EntityDataAccessor<Integer> DATA_VARIANT = SynchedEntityData.defineId(Sweeper.class, EntityDataSerializers.INT);
+
+	// 同步数据与存档字段
 	/// 同步清道夫当前生物质的数据字段
 	private static final EntityDataAccessor<Float> DATA_BIOMASS = SynchedEntityData.defineId(Sweeper.class, EntityDataSerializers.FLOAT);
 	/// 同步清道夫当前实体状态的数据字段
@@ -84,11 +77,10 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 			SynchedEntityData.defineId(Sweeper.class, LcEntityDataSerializers.ENTITY_STATES.get());
 	/// 生物质存档字段名称
 	private static final String BIOMASS_SAVE_KEY = "Biomass";
-
-	// 生物质数值参数
-
 	/// 生物质上限相对最大生命值的倍率
 	private static final float BIOMASS_CAPACITY_MULTIPLIER = 1.0F;
+
+	// 生物质数值参数
 	/// 治疗溢出转换为生物质的比例分母
 	private static final float OVERHEAL_TO_BIOMASS_DIVISOR = 5.0F;
 	/// 每秒使用生物质恢复的最大生命比例
@@ -100,7 +92,6 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 	private long lastCombatGameTime;
 	@Nullable
 	private Entity entityTarget;
-
 	public Sweeper(EntityType<? extends PathfinderMob> type, Level level) {
 		super(type, level);
 		setPathfindingMalus(PathType.LAVA, -1);
@@ -121,6 +112,13 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 				.add(Attributes.MOVEMENT_SPEED, 0.23)
 				.add(Attributes.ATTACK_KNOCKBACK, 1.0)
 				.add(Attributes.KNOCKBACK_RESISTANCE, 0.4);
+	}
+
+	@Override
+	protected void playStepSound(BlockPos position, BlockState state) {
+		if (level() instanceof ServerLevel) {
+			playSound(SweeperSoundEvents.SWEEPER_MOVE.get(), 0.65F, 1);
+		}
 	}
 
 	@Override
@@ -400,7 +398,7 @@ public class Sweeper extends PathfinderMob implements Enemy, GeoEntity, ILcCusto
 				.triggerableAnim(SweeperAnim.CLEAR1.name(), SweeperAnim.CLEAR1.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR2.name(), SweeperAnim.CLEAR2.getAnimation())
 				.triggerableAnim(SweeperAnim.CLEAR3.name(), SweeperAnim.CLEAR3.getAnimation())
-				.build()));
+				.build().setSoundKeyframeHandler(new AutoPlayingSoundKeyframeHandler<>())));
 	}
 
 	public void playActionAnimation(SweeperAnim animation) {

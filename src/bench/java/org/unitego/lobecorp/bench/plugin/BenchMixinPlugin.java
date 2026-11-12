@@ -13,6 +13,7 @@ public class BenchMixinPlugin implements IMixinConfigPlugin {
 	public static final String PRESERVE_WINDOW_PROPERTY = "lobecorp.photon.bench.preserveWindow";
 	private static final String WINDOW_MIXIN = "org.unitego.lobecorp.mixin.bench.BenchWindowPreservationMixin";
 	private static boolean preservedWindowApplied;
+	private static boolean controlledDebugOverlayApplied;
 	private static final Set<String> FAST_RUN_SCENARIOS = Set.of(
 			"lobecorp.photon-12-run-cow25", "lobecorp.photon-12-run-queen25",
 			"lobecorp.photon-12-run-laser3", "lobecorp.photon-12-run-blank45");
@@ -74,7 +75,8 @@ public class BenchMixinPlugin implements IMixinConfigPlugin {
 		}
 		// 与 Bench 注册项对应；Mixin 插件不能提前加载 Bench 类。
 		boolean performanceOnly = scenario.equals("lobecorp.photon-02-first-cast-performance")
-				|| scenario.equals("lobecorp.photon-03-repeat-performance");
+				|| scenario.equals("lobecorp.photon-03-repeat-performance")
+				|| scenario.equals("lobecorp.horde-encounter-performance");
 
 		if (!scenario.equals("lobecorp.photon-00-first-cast")
 				&& !scenario.equals("lobecorp.photon-01-resource-reload") && !performanceOnly) {
@@ -85,6 +87,10 @@ public class BenchMixinPlugin implements IMixinConfigPlugin {
 			throw new IllegalStateException("首次释放基准要求显式开启 " + PRESERVE_WINDOW_PROPERTY + "，禁止启动时修改窗口尺寸或全屏状态。");
 		}
 
+		if (scenario.equals("lobecorp.horde-encounter-performance")) {
+			return List.of("bench.BenchWindowPreservationMixin", "bench.ClientAutomationNoScreenshotMixin",
+					"bench.BenchControlledDebugOverlayMixin");
+		}
 		return performanceOnly
 				? List.of("bench.BenchWindowPreservationMixin", "bench.ClientAutomationNoScreenshotMixin")
 				: List.of("bench.BenchWindowPreservationMixin");
@@ -128,6 +134,10 @@ public class BenchMixinPlugin implements IMixinConfigPlugin {
 	public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
 	}
 
+	public static boolean controlledDebugOverlayApplied() {
+		return controlledDebugOverlayApplied;
+	}
+
 	public static boolean preservedWindowApplied() {
 		return preservedWindowApplied;
 	}
@@ -140,6 +150,9 @@ public class BenchMixinPlugin implements IMixinConfigPlugin {
 	public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
 		if (WINDOW_MIXIN.equals(mixinClassName)) {
 			preservedWindowApplied = true;
+		}
+		if ("org.unitego.lobecorp.mixin.bench.BenchControlledDebugOverlayMixin".equals(mixinClassName)) {
+			controlledDebugOverlayApplied = true;
 		}
 	}
 

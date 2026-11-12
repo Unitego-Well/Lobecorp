@@ -8,21 +8,15 @@ import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.TransformRef;
 import com.lowdragmc.lowdraglib2.math.GradientColor;
 import com.lowdragmc.lowdraglib2.syncdata.IPersistedSerializable;
 import com.lowdragmc.lowdraglib2.syncdata.ManagedFieldUtils;
+import com.lowdragmc.lowdraglib2.syncdata.accessor.IAccessor;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.CustomDirectAccessor;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.EnumAccessor;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.IDirectAccessor;
-import com.lowdragmc.lowdraglib2.syncdata.accessor.IAccessor;
-import com.lowdragmc.lowdraglib2.syncdata.var.ManagedHolderVar;
-import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DynamicOps;
-import com.mojang.serialization.MapLike;
-import com.mojang.serialization.RecordBuilder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.util.ExtraCodecs;
 import com.lowdragmc.lowdraglib2.syncdata.accessor.direct.PrimitiveAccessor;
 import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib2.syncdata.field.ManagedKey;
+import com.lowdragmc.lowdraglib2.syncdata.var.ManagedHolderVar;
+import com.lowdragmc.lowdraglib2.utils.LDLibExtraCodecs;
 import com.lowdragmc.lowdraglib2.utils.PersistedParser;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.Constant;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction;
@@ -30,11 +24,17 @@ import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.RandomConstant;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Color;
 import com.lowdragmc.photon.client.gameobject.emitter.data.number.color.Gradient;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.MapLike;
+import com.mojang.serialization.RecordBuilder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.EndTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -49,16 +49,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 /// 只编译持久化配置初始化指令；不保存原型，也不复制运行时私有对象图。
@@ -112,21 +104,6 @@ public class PhotonStatePlanUtil {
 
 	public static IStatePlan compile(Object canonicalPrototype, CompoundTag canonicalTag, Supplier<?> constructor) {
 		return compile(canonicalPrototype, canonicalTag, constructor, Set.of());
-	}
-
-	public interface IStatePlan {
-		Object create();
-
-		void apply(Object target);
-
-		/// 将调用时的注解字段复制到独占目标；不读取冻结配置。失败字段会报告路径并抛出异常。
-		void transfer(Object source, Object target);
-
-		int fallbackFields();
-
-		List<String> fallbackReasons();
-
-		int assignmentCount();
 	}
 
 	private static Schema compileSchema(Class<?> type, Object prototype, CompoundTag tag, Set<String> excluded,
@@ -419,7 +396,7 @@ public class PhotonStatePlanUtil {
 
 	private static boolean supportedNumberFunction(Object value) {
 		if (value instanceof NumberFunction3 function) {
-			return function.x != null && function.y != null && function.z != null
+			return function.y != null && function.z != null
 					&& supportedNumberFunction(function.x) && supportedNumberFunction(function.y)
 					&& supportedNumberFunction(function.z);
 		}
@@ -691,6 +668,21 @@ public class PhotonStatePlanUtil {
 		} catch (Throwable exception) {
 			throw new IllegalStateException("State-plan instruction failed", exception);
 		}
+	}
+
+	public interface IStatePlan {
+		Object create();
+
+		void apply(Object target);
+
+		/// 将调用时的注解字段复制到独占目标；不读取冻结配置。失败字段会报告路径并抛出异常。
+		void transfer(Object source, Object target);
+
+		int fallbackFields();
+
+		List<String> fallbackReasons();
+
+		int assignmentCount();
 	}
 
 	private interface Step {

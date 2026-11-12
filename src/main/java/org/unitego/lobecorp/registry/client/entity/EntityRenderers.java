@@ -1,13 +1,13 @@
 package org.unitego.lobecorp.registry.client.entity;
 
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
 import org.unitego.lobecorp.client.entity.abnormalitie.the_queen_of_hatred.renderer.TheQueenOfHatredRenderer;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.renderer.SweeperRenderer;
 import org.unitego.lobecorp.client.entity.projectile.renderer.MagicStarRenderer;
-import org.unitego.lobecorp.registry.entity.AbnormalitieEntityTypes;
-import org.unitego.lobecorp.registry.entity.LcEntityTypes;
-import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.client.entity.renderer.EntityCorpseRenderer;
+import org.unitego.lobecorp.registry.world.entity.AbnormalitieEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.LcEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
 
 public class EntityRenderers {
 	public static void onRegister(EntityRenderersEvent.RegisterRenderers event) {

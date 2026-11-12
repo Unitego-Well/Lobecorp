@@ -1,36 +1,31 @@
 package org.unitego.lobecorp.world.encounter.midnightcleanup;
 
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import org.unitego.lobecorp.world.encounter.IEncounterDefinition;
-import org.unitego.lobecorp.world.horde.HordeInstance;
-import org.unitego.lobecorp.world.horde.HordeSavedData;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.UUID;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.EntityDimensions;
-import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
-import org.unitego.lobecorp.registry.entity.skill.SweeperSkills;
-import net.minecraft.world.entity.EntitySpawnReason;
+import net.neoforged.neoforge.event.EventHooks;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.registry.entity.OrdealEntityTypes;
-import org.unitego.lobecorp.registry.tag.LcEntityTypeTags;
+import org.unitego.lobecorp.registry.world.entity.OrdealEntityTypes;
+import org.unitego.lobecorp.registry.world.entity.skill.SweeperSkills;
+import org.unitego.lobecorp.registry.world.tag.LcEntityTypeTags;
 import org.unitego.lobecorp.util.entity.combat.CombatUtil;
 import org.unitego.lobecorp.util.visual.TimelineUtil;
+import org.unitego.lobecorp.world.encounter.IEncounterDefinition;
 import org.unitego.lobecorp.world.entity.EntityCorpse;
 import org.unitego.lobecorp.world.entity.combat.CombatData;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.IIndigoOrdeal;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.SweeperAi;
-import org.unitego.lobecorp.world.horde.IHordeProfile;
-import org.unitego.lobecorp.world.horde.HordeRules;
-import org.unitego.lobecorp.world.horde.HordeTargetContext;
-import org.unitego.lobecorp.world.horde.HordeSpawnContext;
-import org.unitego.lobecorp.world.horde.HordeVisualDefinition;
-import net.neoforged.neoforge.event.EventHooks;
+import org.unitego.lobecorp.world.entity.skill.IEntitySkill;
+import org.unitego.lobecorp.world.horde.*;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.WeakHashMap;
 
 @SuppressWarnings("resource")
 public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefinition {
@@ -53,19 +48,6 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	public static final int TEXT_READY = 188, DISSOLVE_START = 212;
 	public static final int RECOVERY_START = 220;
 	public static final float BASE_FOV = 68;
-	/// 曲线键保持原顺序，外部只能采样，不能修改控制点。
-	private static final float[][] YAW = {{0, 2}, {24, 5}, {48, -8}, {72, 8}, {96, -3}, {132, 0}, {220, 0}};
-	private static final float[][] PITCH = {{0, 24}, {24, 18}, {48, -7}, {72, -9}, {96, -5}, {132, 0}, {220, 0}};
-	private static final float[][] ROLL = {{0, 0}, {48, -1.72F}, {72, 3.15F}, {96, -2.58F}, {124, 3.44F},
-			{160, 1.72F}, {196, 1.03F}, {228, 0.46F}, {252, 0.11F}, {276, 0}};
-	private static final float[][] FOV = {{0, 62}, {28, 64}, {56, 74}, {88, 79}, {120, 58}, {CENTER_AIM_END, 34},
-			{176, 30}, {204, 38}, {236, 56}, {260, 65}, {276, BASE_FOV}};
-	private static final float[][] SIDE = {{0, 0}, {26, 0.06F}, {52, 0.22F}, {84, 0.72F}, {116, 1.14F},
-			{144, 0.98F}, {176, 0.74F}, {208, 0.42F}, {236, 0.20F}, {256, 0.05F}, {276, 0}};
-	private static final float[][] HEIGHT = {{0, -0.53F}, {26, -0.35F}, {52, -0.07F}, {84, 0.14F},
-			{116, 0.25F}, {144, 0.17F}, {176, 0.09F}, {208, 0.04F}, {236, 0.02F}, {256, 0.01F}, {276, 0}};
-	private static final float[][] FORWARD = {{0, 0.34F}, {26, 0.22F}, {52, -0.08F}, {84, -0.62F},
-			{116, -1.18F}, {144, -1.58F}, {176, -1.20F}, {208, -0.64F}, {236, -0.26F}, {256, -0.06F}, {276, 0}};
 	/// 黑边加宽节点，单位为游戏刻。
 	public static final int LETTERBOX_GROW_START = 120;
 	public static final int LETTERBOX_GROW_END = 176;
@@ -79,6 +61,9 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	public static final Identifier SPEED_ID = Lobecorp.id("midnight_cleanup/opening_speed");
 	/// 补播与闭幕横幅持续刻数，不接管镜头。
 	public static final int CLOSING_TICKS = 50;
+	/// 完成时将当前音乐淡至静音，单位为游戏刻（20刻约一秒）。
+	public static final int MUSIC_FADE_OUT_TICKS = 20;
+	public static final int MUSIC_LOOP_RESTART_TICKS = 47 * 20;
 	/// 演出字形基础颜色，透明度由原时间轴驱动。
 	public static final int CHAPTER_COLOR = 0x8E85CF;
 	/// 演出字形基础颜色，透明度由原时间轴驱动。
@@ -140,19 +125,10 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	public static final int BLACKOUT_COLOR = 0;
 	/// 聚合音效保持原有音高。
 	public static final int SOUND_PITCH = 1;
-	/// 倒计时精灵资源及字形布局，位置数组只允许按索引读取。
-	public static final Identifier DIGITS = hudTexture(false, "digits");
-	public static final Identifier TEXT_BOX = hudTexture(false, "text_box");
-	public static final Identifier TIMER = hudTexture(false, "timer");
-	public static final Identifier NEW_DIGITS = hudTexture(true, "digits");
-	public static final Identifier NEW_TIMER = hudTexture(true, "timer_box");
 	/// 精灵按冒号、0至9排列，格宽7、间隔1，纹理总宽87。
 	public static final int GLYPH_WIDTH = 7, GLYPH_STEP = 8, SHEET_WIDTH = 87;
-	private static final int[] DEFAULT_X = {20, 27, 34, 37, 44};
-	private static final int[] NEW_X = {12, 22, 30, 38, 48};
 	/// 两位分钟的显示上限；超过时保持99:59，不回绕成00:00。
 	public static final int MAX_SECONDS = 99 * 60 + 59;
-
 	/// 冒号按游戏刻闪烁，前半周期显示。
 	public static final int HUD_COLON_PERIOD_TICKS = 20;
 	public static final int HUD_COLON_VISIBLE_TICKS = 10;
@@ -180,15 +156,8 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	public static final int SKY_RESPONSE_TICKS = 8;
 	public static final float SKY_APPROACH_COVERAGE = 0.975F;
 	public static final int ATMOSPHERE_MAX_ELAPSED_TICKS = 5;
-	public static final String ATMOSPHERE_PROVIDER = "lobecorp_midnight_cleanup";
-	public static final String ATMOSPHERE_PATH = "atmosphere";
-	/// 深夜清扫CRT表达式的客户端资源位置，正文由资源包提供。
-	public static final Identifier ATMOSPHERE_EXPRESSION_RESOURCE = Lobecorp.id("shaders/encounter/midnight_cleanup/atmosphere.glsl");
-	private static final String HUD_TEXTURE_ROOT = "textures/gui/sprites/";
-	private static final String HUD_NEW_TEXTURE_STYLE = "newhud";
-	private static final String HUD_DEFAULT_TEXTURE_STYLE = "hud";
-	private static final String HUD_TEXTURE_DIRECTORY = "/event/midnight_cleanup/";
-	private static final String HUD_TEXTURE_EXTENSION = ".png";
+	/// Photon全屏后期图资源，包含CRT表达式、输入变量和节点接线。
+	public static final Identifier ATMOSPHERE_RESOURCE = Lobecorp.id("shaders/photon/encounter/midnight_cleanup/atmosphere.fullscreen_graph.nbt");
 	/// 天空最大不透明度。
 	public static final double MAXIMUM_OPACITY = 0.92;
 	/// 事件云色与雾色。
@@ -203,14 +172,12 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	/// 每组在代表点周围三个行列间距内独立选点；失败不退回重复中心。
 	public static final int PARTICLE_SCATTER_CELLS = 3, PARTICLE_SCATTER_ATTEMPTS = 6;
 	public static final int SOUND_BATCH_MULTIPLIER = 3;
-	public static final int SOUND_FREQUENCY_MULTIPLIER = 10;
+	public static final int SOUND_FREQUENCY_MULTIPLIER = 2;
+	/// 事件环境音效相对原分类增益的整体音量倍率。
+	private static final float SOUND_VOLUME_MULTIPLIER = 0.3F;
 	/// 每次在最近事件内取声源，区域半径与最大可听距离均以格为单位。
 	public static final double SOUND_REGION_RADIUS = 32;
 	public static final double MAX_SOUND_RANGE = 256;
-	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
-	private static final String[] SOUND_TYPES = {"move", "attack", "clear_start", "clear_loop", "clear_end", "jump", "land"};
-	/// 既有音效事件资源前缀。
-	private static final String SOUND_PREFIX = "event.midnight_cleanup.";
 	/// 震动包络的逐刻响应系数。
 	public static final float RUMBLE_RESPONSE = 0.25F;
 	/// 声音实例启动后的失效回收等待刻数。
@@ -261,7 +228,36 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	public static final Identifier SWEEPER_TEXTURE = Lobecorp.id("textures/entity/sweeper_a.png");
 	/// 走廊端点判定阈值，单位为格。
 	public static final double CORRIDOR_END_EPSILON = 0.001;
-
+	/// 曲线键保持原顺序，外部只能采样，不能修改控制点。
+	private static final float[][] YAW = {{0, 2}, {24, 5}, {48, -8}, {72, 8}, {96, -3}, {132, 0}, {220, 0}};
+	private static final float[][] PITCH = {{0, 24}, {24, 18}, {48, -7}, {72, -9}, {96, -5}, {132, 0}, {220, 0}};
+	private static final float[][] ROLL = {{0, 0}, {48, -1.72F}, {72, 3.15F}, {96, -2.58F}, {124, 3.44F},
+			{160, 1.72F}, {196, 1.03F}, {228, 0.46F}, {252, 0.11F}, {276, 0}};
+	private static final float[][] FOV = {{0, 62}, {28, 64}, {56, 74}, {88, 79}, {120, 58}, {CENTER_AIM_END, 34},
+			{176, 30}, {204, 38}, {236, 56}, {260, 65}, {276, BASE_FOV}};
+	private static final float[][] SIDE = {{0, 0}, {26, 0.06F}, {52, 0.22F}, {84, 0.72F}, {116, 1.14F},
+			{144, 0.98F}, {176, 0.74F}, {208, 0.42F}, {236, 0.20F}, {256, 0.05F}, {276, 0}};
+	private static final float[][] HEIGHT = {{0, -0.53F}, {26, -0.35F}, {52, -0.07F}, {84, 0.14F},
+			{116, 0.25F}, {144, 0.17F}, {176, 0.09F}, {208, 0.04F}, {236, 0.02F}, {256, 0.01F}, {276, 0}};
+	private static final float[][] FORWARD = {{0, 0.34F}, {26, 0.22F}, {52, -0.08F}, {84, -0.62F},
+			{116, -1.18F}, {144, -1.58F}, {176, -1.20F}, {208, -0.64F}, {236, -0.26F}, {256, -0.06F}, {276, 0}};
+	private static final int[] DEFAULT_X = {20, 27, 34, 37, 44};
+	private static final int[] NEW_X = {12, 22, 30, 38, 48};
+	private static final String HUD_TEXTURE_ROOT = "textures/gui/sprites/";
+	private static final String HUD_NEW_TEXTURE_STYLE = "newhud";
+	private static final String HUD_DEFAULT_TEXTURE_STYLE = "hud";
+	private static final String HUD_TEXTURE_DIRECTORY = "/event/midnight_cleanup/";
+	private static final String HUD_TEXTURE_EXTENSION = ".png";
+	/// 倒计时精灵资源及字形布局，位置数组只允许按索引读取。
+	public static final Identifier DIGITS = hudTexture(false, "digits");
+	public static final Identifier TEXT_BOX = hudTexture(false, "text_box");
+	public static final Identifier TIMER = hudTexture(false, "timer");
+	public static final Identifier NEW_DIGITS = hudTexture(true, "digits");
+	public static final Identifier NEW_TIMER = hudTexture(true, "timer_box");
+	private static final float[] VOICE_GAIN = {0.55F, 0.65F, 0.55F, 0.5F, 0.6F, 0.55F, 0.75F};
+	private static final String[] SOUND_TYPES = {"move", "attack", "clear_start", "clear_loop", "clear_end", "jump", "land"};
+	/// 既有音效事件资源前缀。
+	private static final String SOUND_PREFIX = "event.midnight_cleanup.";
 	private final Map<MinecraftServer, MidnightCleanupOpening> presentations = new WeakHashMap<>();
 
 	public static float viewYaw(float age) {
@@ -302,7 +298,7 @@ public class MidnightCleanupEncounter implements IHordeProfile, IEncounterDefini
 	}
 
 	public static float voiceGain(int index) {
-		return VOICE_GAIN[index];
+		return VOICE_GAIN[index] * SOUND_VOLUME_MULTIPLIER;
 	}
 
 	public static Identifier soundId(int index) {

@@ -8,11 +8,11 @@ import org.unitego.lobecorp.api.LcDamageType;
 
 /// 服务端资源实际改变后发出；SPIRIT 表示理智，THE_SOUL 表示灵魂。上限变化或直接设置时 source 可为空。
 public class LivingResourceChangeEvent extends LivingEvent {
-	private LcDamageType damageType;
-	private float oldValue;
-	private float newValue;
+	private final LcDamageType damageType;
+	private final float oldValue;
+	private final float newValue;
 	@Nullable
-	private DamageSource source;
+	private final DamageSource source;
 
 	public LivingResourceChangeEvent(LivingEntity entity, LcDamageType damageType, float oldValue,
 	                                 float newValue, @Nullable DamageSource source) {

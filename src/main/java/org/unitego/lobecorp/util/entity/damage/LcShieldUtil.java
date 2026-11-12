@@ -5,11 +5,11 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import org.unitego.lobecorp.api.LcDamageType;
-import org.unitego.lobecorp.particle.damage.DamageParticles;
-import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
 import org.unitego.lobecorp.config.server.ShieldConfig;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
-import org.unitego.lobecorp.registry.effect.LcMobEffects;
+import org.unitego.lobecorp.network.tc.damage.DamageParticlePayload;
+import org.unitego.lobecorp.particle.damage.DamageParticles;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.effect.LcMobEffects;
 import org.unitego.lobecorp.world.entity.damage.LcShieldState;
 
 /// 服务端拥有护盾结算；效果负责期限，附件负责剩余量及授予时容量。

@@ -3,13 +3,9 @@ package org.unitego.lobecorp.client.photon.editor;
 import com.lowdragmc.lowdraglib2.Platform;
 import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.photon.gui.editor.FXProject;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedController;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedPlan;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedRuntime;
-import org.unitego.lobecorp.client.photon.playback.PhotonNamedAccess;
-import org.unitego.lobecorp.client.photon.playback.PhotonProjectPreviewAccess;
-import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
+import org.unitego.lobecorp.client.photon.playback.*;
 import org.unitego.lobecorp.util.photon.editor.PhotonEditorProjectGuardUtil;
+import org.unitego.lobecorp.util.photon.editor.automation.PhotonEffectProjectUtil;
 import org.unitego.lobecorp.util.photon.playback.PhotonNamedAuthoringUtil.Document;
 import org.unitego.lobecorp.util.photon.playback.PhotonProjectPreviewUtil;
 
@@ -17,7 +13,8 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
-import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslations.INSPECTOR_PANEL;
+
+import static org.unitego.lobecorp.registry.translation.photon.animation.PhotonAnimationTranslationKeys.INSPECTOR_PANEL;
 
 /// 草稿只在提交时写入当前工程；播放实例继续持有原有不可变定义，不由制作事务重启。
 public class PhotonNamedAuthoringSession {
@@ -41,6 +38,50 @@ public class PhotonNamedAuthoringSession {
 		projectRevision = PhotonEffectProjectUtil.revision(project);
 		original = read(project, controller);
 		draft = original;
+	}
+
+	private static Document read(FXProject project, UUID controller) {
+		return new Document(resolve(project, controller).definition(), ((PhotonProjectPreviewAccess) project).lobecorp$projectPreview());
+	}
+
+	private static PhotonNamedController resolve(FXProject project, UUID controller) {
+		PhotonNamedController found = null;
+		for (var object : project.getFx().getFxData().objects()) {
+			if (object instanceof PhotonNamedController current && current.id().equals(controller)) {
+				if (found != null) {
+					throw new IllegalStateException("命名控制器身份重复。");
+				}
+
+				found = current;
+			}
+		}
+
+		if (found == null) {
+			throw new IllegalStateException("命名控制器已不属于当前工程。");
+		}
+
+		return found;
+	}
+
+	private static void restore(FXEditor editor, FXProject project, UUID controller, Document source) {
+		if (editor.getCurrentProject() != project) {
+			throw new IllegalStateException("命名制作历史已失效。");
+		}
+
+		var target = resolve(project, controller);
+		if (editor.runtime instanceof PhotonNamedAccess access) {
+			var playback = access.lobecorp$namedRuntime();
+			if (playback != null && !playback.closed() && playback.controllerId().equals(controller)) {
+				try {
+					playback.redefine(source.library());
+				} catch (IOException invalid) {
+					throw new IllegalArgumentException("命名运行库无法刷新。", invalid);
+				}
+			}
+		}
+
+		target.definition(source.library());
+		((PhotonProjectPreviewAccess) project).lobecorp$projectPreview(source.preview());
 	}
 
 	public long revision() {
@@ -122,49 +163,5 @@ public class PhotonNamedAuthoringSession {
 		} catch (IOException invalid) {
 			throw new IllegalArgumentException("制作定义无法按当前协议读取。", invalid);
 		}
-	}
-
-	private static Document read(FXProject project, UUID controller) {
-		return new Document(resolve(project, controller).definition(), ((PhotonProjectPreviewAccess) project).lobecorp$projectPreview());
-	}
-
-	private static PhotonNamedController resolve(FXProject project, UUID controller) {
-		PhotonNamedController found = null;
-		for (var object : project.getFx().getFxData().objects()) {
-			if (object instanceof PhotonNamedController current && current.id().equals(controller)) {
-				if (found != null) {
-					throw new IllegalStateException("命名控制器身份重复。");
-				}
-
-				found = current;
-			}
-		}
-
-		if (found == null) {
-			throw new IllegalStateException("命名控制器已不属于当前工程。");
-		}
-
-		return found;
-	}
-
-	private static void restore(FXEditor editor, FXProject project, UUID controller, Document source) {
-		if (editor.getCurrentProject() != project) {
-			throw new IllegalStateException("命名制作历史已失效。");
-		}
-
-		var target = resolve(project, controller);
-		if (editor.runtime instanceof PhotonNamedAccess access) {
-			var playback = access.lobecorp$namedRuntime();
-			if (playback != null && !playback.closed() && playback.controllerId().equals(controller)) {
-				try {
-					playback.redefine(source.library());
-				} catch (IOException invalid) {
-					throw new IllegalArgumentException("命名运行库无法刷新。", invalid);
-				}
-			}
-		}
-
-		target.definition(source.library());
-		((PhotonProjectPreviewAccess) project).lobecorp$projectPreview(source.preview());
 	}
 }

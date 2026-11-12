@@ -10,10 +10,10 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.generator.ModGenerator;
-import org.unitego.lobecorp.registry.conductor.ConductorTicketControllers;
 import org.unitego.lobecorp.registry.LcPayloads;
 import org.unitego.lobecorp.registry.LcRegistries;
-import org.unitego.lobecorp.registry.entity.EntityAttributeCreation;
+import org.unitego.lobecorp.registry.conductor.ConductorTicketControllers;
+import org.unitego.lobecorp.registry.world.entity.EntityAttributeCreation;
 
 @EventBusSubscriber(modid = Lobecorp.NAMESPACE)
 public class LobecorpEvents {

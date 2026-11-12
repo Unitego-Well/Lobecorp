@@ -2,11 +2,11 @@ package org.unitego.lobecorp.registry.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.server.level.ServerPlayer;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.neoforged.neoforge.server.command.EnumArgument;
 import org.unitego.lobecorp.animation.demo.LcAnimationDemoSession;
 import org.unitego.lobecorp.world.item.animation.LcItemAnimationSession;

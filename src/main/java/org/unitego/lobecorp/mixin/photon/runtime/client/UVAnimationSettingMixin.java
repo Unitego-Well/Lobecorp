@@ -1,15 +1,15 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
-import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigNumber;
-import com.lowdragmc.photon.client.gameobject.emitter.data.UVAnimationSetting;
+import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.photon.client.gameobject.emitter.data.ToggleGroup;
+import com.lowdragmc.photon.client.gameobject.emitter.data.UVAnimationSetting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
-import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
+import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
+import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 @Mixin(UVAnimationSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})

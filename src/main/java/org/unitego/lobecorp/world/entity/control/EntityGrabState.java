@@ -4,8 +4,8 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -36,10 +36,9 @@ public class EntityGrabState {
 			}
 		}
 	};
-
+	private final Set<UUID> heldTargets = new LinkedHashSet<>();
 	@Nullable
 	private Relation relation;
-	private final Set<UUID> heldTargets = new LinkedHashSet<>();
 
 	@Nullable
 	public Relation relation() {

@@ -1,18 +1,18 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
+import com.lowdragmc.lowdraglib2.configurator.IToggleConfigurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigNumber;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
-import com.lowdragmc.lowdraglib2.configurator.IToggleConfigurable;
 import com.lowdragmc.lowdraglib2.configurator.ui.ConfiguratorGroup;
-import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.data.SizeOverLifetimeSetting;
+import com.lowdragmc.photon.client.gameobject.emitter.data.number.NumberFunction3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.client.photon.runtime.PhotonCycleOffsetAccess;
-import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
+import org.unitego.lobecorp.client.photon.runtime.PhotonLifetimeCycleAccess;
 import org.unitego.lobecorp.registry.translation.PhotonTranslationKeys;
+import org.unitego.lobecorp.util.photon.runtime.PhotonLifetimeCycleUtil;
 
 @Mixin(SizeOverLifetimeSetting.class)
 @SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "unused"})

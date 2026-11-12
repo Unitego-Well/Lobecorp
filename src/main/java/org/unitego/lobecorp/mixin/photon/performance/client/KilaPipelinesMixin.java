@@ -10,7 +10,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 import java.util.Map;
 import java.util.function.Function;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.kila.KilaPipelines", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.kila.KilaPipelines")
 public class KilaPipelinesMixin {
 	@WrapOperation(method = "get", at = @At(value = "INVOKE",
 			target = "Ljava/util/Map;computeIfAbsent(Ljava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"))

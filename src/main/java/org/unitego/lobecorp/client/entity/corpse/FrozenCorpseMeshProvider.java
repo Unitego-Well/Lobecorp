@@ -2,15 +2,15 @@ package org.unitego.lobecorp.client.entity.corpse;
 
 import com.geckolib.cache.GeckoLibResources;
 import com.geckolib.constant.DataTickets;
-import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import org.unitego.lobecorp.client.entity.ordeal.indigo.renderer.SweeperRenderer;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.entity.ordeal.indigo.model.SweeperModel;
+import org.unitego.lobecorp.client.entity.ordeal.indigo.renderer.SweeperRenderer;
 import org.unitego.lobecorp.client.horde.HordeMeshCache;
 import org.unitego.lobecorp.world.entity.ordeal.indigo.Sweeper;
 import org.unitego.lobecorp.world.horde.HordeVisualDefinition;

@@ -16,13 +16,12 @@ public final class RationalityFilter extends AbstractScreenFilter {
 	public static final RationalityFilter INSTANCE = new RationalityFilter();
 	private static final float LOW_RATIO = 1.0F / 3.0F;
 	private static final float LERP_SPEED = 0.5F;
-	private float intensity;
-
 	private final ScreenFilter[] filters = {
 			new ScreenFilter(ScreenFilter.texture("rationality")),
 			new ScreenFilter(ScreenFilter.texture("rationality1")),
 			new ScreenFilter(ScreenFilter.texture("rationality2"))
 	};
+	private float intensity;
 
 	/// 按当帧理智值和最大值推进平滑强度；最大值异常时清空全部透明度。
 	public void advance(float rationality, float maximum, float delta) {

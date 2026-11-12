@@ -12,13 +12,7 @@ import net.minecraft.world.phys.Vec3;
 import org.unitego.lobecorp.conductor.config.ConductorRules;
 import org.unitego.lobecorp.conductor.data.ConductorData;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /// 指挥队形移动的领域实现，负责按维度分组、排序和分配可达槽位。
 public class ConductorFormation {

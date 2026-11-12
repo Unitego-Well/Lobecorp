@@ -14,6 +14,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
+import org.unitego.lobecorp.config.HordePathVariant;
 
 import java.nio.ByteBuffer;
 import java.util.OptionalInt;
@@ -34,6 +35,17 @@ public class HordeAvoidanceState implements AutoCloseable {
 			.withUniform("HordeNearTerrainParameters", UniformType.UNIFORM_BUFFER)
 			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)
 			.withCull(false).withColorTargetState(ColorTargetState.DEFAULT).build();
+	private static final RenderPipeline UPDATE_LINES = RenderPipeline.builder()
+			.withLocation(Lobecorp.id("pipeline/horde_avoidance_lines"))
+			.withVertexShader(Lobecorp.id("core/horde_avoidance_lines"))
+			.withFragmentShader(Lobecorp.id("core/horde_avoidance_lines"))
+			.withSampler("HordeRoute").withSampler("HordeTerrain").withSampler("HordeSplit")
+			.withSampler("AvoidancePrevious").withSampler("HordeNearTerrain")
+			.withUniform("HordeParameters", UniformType.UNIFORM_BUFFER)
+			.withUniform("AvoidanceWindow", UniformType.UNIFORM_BUFFER)
+			.withUniform("HordeNearTerrainParameters", UniformType.UNIFORM_BUFFER)
+			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.DEBUG_LINES)
+			.withCull(false).withColorTargetState(ColorTargetState.DEFAULT).build();
 	private GpuTexture read;
 	private GpuTexture write;
 	private GpuTextureView readView;
@@ -51,7 +63,7 @@ public class HordeAvoidanceState implements AutoCloseable {
 	private double updatedTime = Double.NaN;
 
 	public static boolean precompile() {
-		return RenderSystem.getDevice().precompilePipeline(UPDATE).isValid();
+		return RenderSystem.getDevice().precompilePipeline(HordePathVariant.avoidanceKernel() ? UPDATE_LINES : UPDATE).isValid();
 	}
 
 	/// 与 Batch 抽取一致，线路末端不重复提交恰好落在上一段末端的单位。
@@ -77,8 +89,8 @@ public class HordeAvoidanceState implements AutoCloseable {
 			throw new IllegalStateException("群体固定列数变化需要新的事件资源");
 		}
 
-        long first = firstRow(time, event.speed, event.length, event.rowSpacing());
-        long last = lastRow(time, event.speed, event.stop, event.rowSpacing());
+		long first = firstRow(time, event.speed, event.length, event.rowSpacing());
+		long last = lastRow(time, event.speed, event.stop, event.rowSpacing());
 		int count = last < first ? 0 : Math.toIntExact(last - first + 1);
 		int capacityRows = Math.max(count, Math.toIntExact((long) Math.ceil(event.length / event.rowSpacing()) + 1));
 		ensureWrite(event.columns, capacityRows);
@@ -91,7 +103,10 @@ public class HordeAvoidanceState implements AutoCloseable {
 	private void ensureWrite(int columnCount, int rowCount) {
 		long words = Math.multiplyExact(Math.multiplyExact((long) columnCount, rowCount), WORDS);
 		var device = RenderSystem.getDevice();
-		int limit = device.getMaxTextureSize();
+		int limit = device.getMaxTextureSize() / WORDS * WORDS;
+		if (limit < WORDS) {
+			throw new IllegalStateException("设备纹理宽度无法容纳完整避让状态");
+		}
 		int width = Math.min(ROW_WIDTH, limit);
 		while (Math.ceilDiv(words, width) > limit && width < limit) {
 			width = (int) Math.min((long) width * 2, limit);
@@ -159,13 +174,13 @@ public class HordeAvoidanceState implements AutoCloseable {
 		memory.putInt(relative).putInt(previousRows).putInt(columns).putInt(rows)
 				.putFloat(Double.isNaN(updatedTime) ? (float) time : (float) updatedTime)
 				.putFloat(Double.isNaN(updatedTime) ? 0 : (float) Math.max(0, time - updatedTime))
-				.putFloat(writeWidth).putFloat(0).flip();
+				.putFloat(writeWidth).putFloat(writeHeight).flip();
 		var encoder = RenderSystem.getDevice().createCommandEncoder();
 		encoder.writeToBuffer(window.slice(), memory);
 		HordeRenderMetrics.add(HordeRenderMetrics.Counter.UPLOAD_BYTES, WINDOW_BYTES);
 		var sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
 		try (var pass = encoder.createRenderPass(() -> "Horde avoidance integration", writeView, OptionalInt.empty())) {
-			HordeIrisShadows.setNativePipeline(pass, UPDATE);
+			HordeIrisShadows.setNativePipeline(pass, HordePathVariant.avoidanceKernel() ? UPDATE_LINES : UPDATE);
 			pass.setViewport(0, 0, writeWidth, writeHeight);
 			pass.setUniform("HordeParameters", batchParameters);
 			pass.setUniform("AvoidanceWindow", window.slice());
@@ -175,7 +190,7 @@ public class HordeAvoidanceState implements AutoCloseable {
 			pass.bindTexture("HordeTerrain", terrain, sampler);
 			pass.bindTexture("HordeSplit", split, sampler);
 			pass.bindTexture("AvoidancePrevious", readView, sampler);
-			pass.draw(0, 3);
+			pass.draw(0, HordePathVariant.avoidanceKernel() ? Math.multiplyExact(Math.multiplyExact(rows, columns), 2) : 3);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.DRAWS, 1);
 			HordeRenderMetrics.add(HordeRenderMetrics.Counter.PASSES, 1);
 		}

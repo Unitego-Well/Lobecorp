@@ -2,12 +2,12 @@ package org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.skill
 
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
+import org.unitego.lobecorp.util.entity.EntityFacingUtil;
+import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatred;
 import org.unitego.lobecorp.world.entity.abnormalitie.the_queen_of_hatred.TheQueenOfHatredAnim;
 import org.unitego.lobecorp.world.entity.skill.EntitySkill;
 import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
-import org.unitego.lobecorp.util.entity.EntityFacingUtil;
-import org.unitego.lobecorp.util.entity.skill.EntitySkillUtil;
 
 /// 瞬步沿已瞄准的水平方向冲刺，由原版实体移动处理方块碰撞。
 public class BlinkSkill extends EntitySkill<TheQueenOfHatred> {

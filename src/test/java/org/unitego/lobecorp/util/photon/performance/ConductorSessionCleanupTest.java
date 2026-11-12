@@ -43,8 +43,6 @@ public class ConductorSessionCleanupTest {
 		var unload = calls("org/unitego/lobecorp/events/client/ClientRuntimeEvents").get("onClientLevelUnload");
 		assertTrue(unload.contains("org/unitego/lobecorp/client/conductor/ConductorControls#clearSession"));
 		assertTrue(unload.contains("org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects#clear"));
-		assertTrue(calls("org/unitego/lobecorp/client/photon/runtime/QueenBeamEffects").get("clear")
-				.contains("org/unitego/lobecorp/util/photon/model/PhotonModelSourceUtil#purgeClearedEmbeddedPreparations"));
 	}
 
 	private static Map<String, List<String>> calls(String type) throws IOException {

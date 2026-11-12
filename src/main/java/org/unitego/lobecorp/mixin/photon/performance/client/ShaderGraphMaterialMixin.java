@@ -9,7 +9,7 @@ import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUti
 
 import java.util.Map;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.ShaderGraphMaterial", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.material.ShaderGraphMaterial")
 public class ShaderGraphMaterialMixin {
 	@WrapOperation(method = "getRenderType", at = @At(value = "INVOKE",
 			target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))

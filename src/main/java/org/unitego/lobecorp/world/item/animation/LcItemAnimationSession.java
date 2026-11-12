@@ -16,13 +16,7 @@ import org.unitego.lobecorp.animation.demo.LcAnimationPlaybackOptions;
 import org.unitego.lobecorp.animation.runtime.LcAnimationContext;
 import org.unitego.lobecorp.animation.runtime.LcAnimationInstance;
 import org.unitego.lobecorp.animation.runtime.LcServerAnimations;
-import org.unitego.lobecorp.attachment.ILcAttachmentAnchor;
-import org.unitego.lobecorp.attachment.ILcTransformTarget;
-import org.unitego.lobecorp.attachment.LcAttachmentAnchors;
-import org.unitego.lobecorp.attachment.LcAttachmentBinding;
-import org.unitego.lobecorp.attachment.LcAttachments;
-import org.unitego.lobecorp.attachment.LcRenderAnchorReference;
-import org.unitego.lobecorp.attachment.LcTransform;
+import org.unitego.lobecorp.attachment.*;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -128,6 +122,25 @@ public class LcItemAnimationSession implements ILcTransformTarget {
 		return session != null && session.setSpeed(speed);
 	}
 
+	/// 逻辑 tick 回调在暂停时仍运行，淡出只使用世界时钟，不能被 speed=0 或暂停阻塞。
+	public static void tick(LcAnimationContext context) {
+		var session = (LcItemAnimationSession) context.instance().ownerTarget();
+		if (session.binding().isReleased()
+				|| session.stopping && LcAttachedItems.fadeFinished(session.level, session.binding().id())) {
+			context.instance().stop();
+			return;
+		}
+
+		if (!session.started && session.level.getGameTime() >= session.startedTick) {
+			session.started = true;
+			context.instance().setPaused(session.requestedPaused);
+		}
+	}
+
+	public static void finish(LcAnimationInstance instance) {
+		((LcItemAnimationSession) instance.ownerTarget()).close();
+	}
+
 	public LcAttachmentBinding binding() {
 		return Objects.requireNonNull(binding, MISSING_BINDING);
 	}
@@ -173,25 +186,6 @@ public class LcItemAnimationSession implements ILcTransformTarget {
 
 		animation().setSpeed(speed);
 		return true;
-	}
-
-	/// 逻辑 tick 回调在暂停时仍运行，淡出只使用世界时钟，不能被 speed=0 或暂停阻塞。
-	public static void tick(LcAnimationContext context) {
-		var session = (LcItemAnimationSession) context.instance().ownerTarget();
-		if (session.binding().isReleased()
-				|| session.stopping && LcAttachedItems.fadeFinished(session.level, session.binding().id())) {
-			context.instance().stop();
-			return;
-		}
-
-		if (!session.started && session.level.getGameTime() >= session.startedTick) {
-			session.started = true;
-			context.instance().setPaused(session.requestedPaused);
-		}
-	}
-
-	public static void finish(LcAnimationInstance instance) {
-		((LcItemAnimationSession) instance.ownerTarget()).close();
 	}
 
 	public void close() {

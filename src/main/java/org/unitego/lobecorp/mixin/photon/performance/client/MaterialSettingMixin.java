@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonMaterialDiagnosticsUtil.Stage;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.MaterialSetting", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.emitter.data.MaterialSetting")
 public class MaterialSettingMixin {
 	@WrapMethod(method = "getRenderType")
 	private RenderType lobecorp$material(VertexFormat.Mode mode, Operation<RenderType> original) {

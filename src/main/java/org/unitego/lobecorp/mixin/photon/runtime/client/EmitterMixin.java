@@ -1,5 +1,6 @@
 package org.unitego.lobecorp.mixin.photon.runtime.client;
 
+import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 import com.lowdragmc.photon.client.gameobject.emitter.Emitter;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
@@ -9,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.unitego.lobecorp.client.photon.runtime.PhotonParticleAgeAccess;
-import com.lowdragmc.lowdraglib2.syncdata.annotation.Persisted;
 
 @Mixin(Emitter.class)
 @SuppressWarnings("unused")

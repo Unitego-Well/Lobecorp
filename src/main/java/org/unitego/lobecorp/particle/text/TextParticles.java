@@ -7,7 +7,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.network.tc.text.TextParticleStatePayload;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
 
 import java.util.List;
 import java.util.UUID;

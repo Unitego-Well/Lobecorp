@@ -2,16 +2,16 @@ package org.unitego.lobecorp.registry.client.encounter.hud;
 
 import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
-import org.unitego.lobecorp.client.hud.encounter.EncounterHud;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupHud;
-import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
-import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupDisplay;
-import org.unitego.lobecorp.registry.client.encounter.EncounterDisplays;
-import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
 import org.unitego.lobecorp.client.encounter.EncounterClient;
 import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupAmbient;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupDisplay;
+import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupHud;
 import org.unitego.lobecorp.client.encounter.midnightcleanup.MidnightCleanupSky;
 import org.unitego.lobecorp.client.horde.HordeRenderMetrics;
+import org.unitego.lobecorp.client.hud.encounter.EncounterHud;
+import org.unitego.lobecorp.registry.client.encounter.EncounterDisplays;
+import org.unitego.lobecorp.registry.client.horde.HordeClientHooks;
+import org.unitego.lobecorp.world.encounter.midnightcleanup.MidnightCleanupEncounter;
 
 public class EncounterHudRegistration {
 	private static final Identifier EVENT_STACK_WRAPPER = Lobecorp.id("event_hud/top_left/events");

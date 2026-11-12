@@ -10,12 +10,12 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
-import org.unitego.lobecorp.world.hitbox.geometry.HitboxGeometry;
-import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
 import org.unitego.lobecorp.network.tc.HitboxCreatePayload;
 import org.unitego.lobecorp.network.tc.HitboxRemovePayload;
 import org.unitego.lobecorp.network.tc.HitboxUpdatePayload;
-import org.unitego.lobecorp.registry.LcAttachmentTypes;
+import org.unitego.lobecorp.registry.world.LcAttachmentTypes;
+import org.unitego.lobecorp.world.entity.skill.EntitySkillRuntime;
+import org.unitego.lobecorp.world.hitbox.geometry.HitboxGeometry;
 
 import java.util.ArrayList;
 import java.util.Comparator;

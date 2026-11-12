@@ -3,7 +3,6 @@ package org.unitego.lobecorp.launch.plugin;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
-import org.unitego.lobecorp.util.photon.model.PhotonPackedVertexUtil;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -46,9 +45,6 @@ public class PhotonMixinPlugin implements IMixinConfigPlugin {
 			return Boolean.getBoolean("lobecorp.photon.diag.cast");
 		}
 
-		if (mixinClassName.equals("org.unitego.lobecorp.mixin.minecraft.client.BufferBuilderMixin")) {
-			return Boolean.getBoolean(PhotonPackedVertexUtil.ENABLE_PROPERTY);
-		}
 
 		return true;
 	}

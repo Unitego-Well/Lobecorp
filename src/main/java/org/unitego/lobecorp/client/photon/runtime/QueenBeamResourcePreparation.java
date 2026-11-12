@@ -3,13 +3,13 @@ package org.unitego.lobecorp.client.photon.runtime;
 import com.lowdragmc.photon.client.fx.FX;
 import com.lowdragmc.photon.client.fx.FXHelper;
 import com.lowdragmc.photon.client.gameobject.FXInstanceObject;
+import net.minecraft.resources.Identifier;
 import org.unitego.lobecorp.Lobecorp;
 import org.unitego.lobecorp.client.photon.playback.spawn.PhotonChildSpawner;
 import org.unitego.lobecorp.client.photon.runtime.creation.PhotonRuntimeFactory;
 import org.unitego.lobecorp.config.photon.playback.PhotonSpawnConfig;
 import org.unitego.lobecorp.registry.animation.LcAnimationDefinitions;
 import org.unitego.lobecorp.registry.animation.TheQueenOfHatredAnimationDefinitions;
-import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -20,54 +20,15 @@ import java.util.concurrent.CompletableFuture;
 /// 只预热本模组声明的旧技能资源，不在女皇出现时创建持有世界的整棵运行树。
 public class QueenBeamResourcePreparation {
 	private static final boolean ENABLED = !"false".equals(System.getProperty("lobecorp.photon.prewarmBeam", "true"));
-    // 失败后最多每秒重试一次，避免维护入口每帧重复加载和刷日志。
-    private static final long RETRY_DELAY_NANOS = 1_000_000_000L;
-    private static final PreparationGate GATE = new PreparationGate();
-
-    public static class PreparationGate {
-        private String attempted = "";
-        private String completed = "";
-        private long lastAttempt;
-
-        public boolean begin(String stamp, long now) {
-            if (completed.equals(stamp) || attempted.equals(stamp) && now - lastAttempt < RETRY_DELAY_NANOS) {
-                return false;
-            }
-            attempted = stamp;
-            lastAttempt = now;
-            completed = "";
-            return true;
-        }
-
-        public void complete(String stamp) {
-            completed = stamp;
-        }
-
-        public boolean ready(String stamp) {
-            return completed.equals(stamp);
-        }
-
-        public void fail(String stamp, long dueAt) {
-            attempted = stamp;
-            lastAttempt = dueAt - RETRY_DELAY_NANOS;
-            completed = "";
-        }
-
-        public boolean retryDue(long now) {
-            return completed.isEmpty() && !attempted.isEmpty() && now >= lastAttempt + RETRY_DELAY_NANOS;
-        }
-    }
-
+	// 失败后最多每秒重试一次，避免维护入口每帧重复加载和刷日志。
+	private static final long RETRY_DELAY_NANOS = 1_000_000_000L;
+	private static final PreparationGate GATE = new PreparationGate();
 	private static String failure = "";
 	private static List<Identifier> cachedEffects = List.of();
 	private static long cachedEffectsRevision = Long.MIN_VALUE;
 	private static PhotonRuntimeFactory.Mode cachedEffectsMode;
 	private static boolean cachedEffectsOwned;
 	private static PreparationStamp cachedPreparationStamp;
-
-	private record PreparationStamp(long revision, PhotonRuntimeFactory.Mode mode, String device,
-	                                List<Identifier> resources, String value) {
-	}
 
 	private static List<Identifier> effects() {
 		long revision = PhotonOwnedEffectResources.resourceRevision();
@@ -190,5 +151,43 @@ public class QueenBeamResourcePreparation {
 
 	public static String failure() {
 		return failure;
+	}
+
+	public static class PreparationGate {
+		private String attempted = "";
+		private String completed = "";
+		private long lastAttempt;
+
+		public boolean begin(String stamp, long now) {
+			if (completed.equals(stamp) || attempted.equals(stamp) && now - lastAttempt < RETRY_DELAY_NANOS) {
+				return false;
+			}
+			attempted = stamp;
+			lastAttempt = now;
+			completed = "";
+			return true;
+		}
+
+		public void complete(String stamp) {
+			completed = stamp;
+		}
+
+		public boolean ready(String stamp) {
+			return completed.equals(stamp);
+		}
+
+		public void fail(String stamp, long dueAt) {
+			attempted = stamp;
+			lastAttempt = dueAt - RETRY_DELAY_NANOS;
+			completed = "";
+		}
+
+		public boolean retryDue(long now) {
+			return completed.isEmpty() && !attempted.isEmpty() && now >= lastAttempt + RETRY_DELAY_NANOS;
+		}
+	}
+
+	private record PreparationStamp(long revision, PhotonRuntimeFactory.Mode mode, String device,
+	                                List<Identifier> resources, String value) {
 	}
 }

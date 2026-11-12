@@ -25,7 +25,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.function.Consumer;
 
-@Mixin(value = PersistedParser.class, remap = false)
+@Mixin(value = PersistedParser.class)
 public abstract class PhotonPersistedDeserializeDiagnosticsMixin {
 	@WrapMethod(method = "deserializeInternal")
 	private static <T> void lobecorp$class(boolean root, MapLike<T> map, DynamicOps<T> op,

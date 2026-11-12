@@ -9,26 +9,6 @@ import java.util.List;
 
 /// 冻结调用方指定来源的读取清单；来源顺序由调用方声明，不替代游戏内资源优先级验收。
 public class PhotonResourceInventory {
-	public record Root(String name, Path directory) {
-		public Root {
-			directory = directory.toAbsolutePath().normalize();
-		}
-	}
-
-	public record Source(String root, String path, PhotonResourceInspection.Report report) {
-	}
-
-	public record Failure(String root, String path, String reason) {
-	}
-
-	public record Manifest(List<Root> roots, List<Source> sources, List<Failure> failures) {
-		public Manifest {
-			roots = List.copyOf(roots);
-			sources = List.copyOf(sources);
-			failures = List.copyOf(failures);
-		}
-	}
-
 	public static Manifest scan(List<Root> roots, PhotonResourceLimits limits) throws IOException {
 		var sources = new ArrayList<Source>();
 		var failures = new ArrayList<Failure>();
@@ -67,5 +47,25 @@ public class PhotonResourceInventory {
 		}
 
 		return new Manifest(roots, sources, failures);
+	}
+
+	public record Root(String name, Path directory) {
+		public Root {
+			directory = directory.toAbsolutePath().normalize();
+		}
+	}
+
+	public record Source(String root, String path, PhotonResourceInspection.Report report) {
+	}
+
+	public record Failure(String root, String path, String reason) {
+	}
+
+	public record Manifest(List<Root> roots, List<Source> sources, List<Failure> failures) {
+		public Manifest {
+			roots = List.copyOf(roots);
+			sources = List.copyOf(sources);
+			failures = List.copyOf(failures);
+		}
 	}
 }

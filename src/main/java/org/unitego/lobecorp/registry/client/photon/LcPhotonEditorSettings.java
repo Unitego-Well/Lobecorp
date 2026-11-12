@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.registry.client.photon;
 
-import com.lowdragmc.photon.gui.editor.FXEditor;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
+import com.lowdragmc.photon.gui.editor.FXEditor;
+import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 import org.unitego.lobecorp.config.photon.PhotonEditorSettings;
 import org.unitego.lobecorp.config.photon.VisualQualitySettings;
-import org.unitego.lobecorp.client.photon.editor.PhotonEditorTools;
 
 public class LcPhotonEditorSettings {
 	public static void register(FXEditor editor) {

@@ -1,24 +1,20 @@
 package org.unitego.lobecorp.client.hud;
 
-import org.jspecify.annotations.NullMarked;
-
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NullMarked;
 
 /// 图集 ID 与完整原始纹理路径明确区分；精灵默认保留缩放元数据。
 @NullMarked
 public class TextureHudRenderer extends BasicHudRenderer {
-	public enum Type {SPRITE, TEXTURE}
-
-	private Identifier texture;
 	private final Type type;
+	private Identifier texture;
 	private int color = -1;
 	private float alpha = 1;
 	private boolean region;
 	private float textureWidth = 1, textureHeight = 1, sourceWidth = 1, sourceHeight = 1;
 	private int u, v;
-
 	protected TextureHudRenderer(Identifier texture, Type type) {
 		this.texture = texture;
 		this.type = type;
@@ -44,12 +40,12 @@ public class TextureHudRenderer extends BasicHudRenderer {
 		this.color = color;
 	}
 
-	public void setAlpha(float alpha) {
-		this.alpha = Float.isFinite(alpha) ? Math.clamp(alpha, 0, 1) : 0;
-	}
-
 	public float getAlpha() {
 		return alpha;
+	}
+
+	public void setAlpha(float alpha) {
+		this.alpha = Float.isFinite(alpha) ? Math.clamp(alpha, 0, 1) : 0;
 	}
 
 	public void setRegion(float textureWidth, float textureHeight, int u, int v, float sourceWidth, float sourceHeight) {
@@ -79,4 +75,6 @@ public class TextureHudRenderer extends BasicHudRenderer {
 					sourceWidth, sourceHeight, (int) textureWidth, (int) textureHeight, tint);
 		}
 	}
+
+	public enum Type {SPRITE, TEXTURE}
 }

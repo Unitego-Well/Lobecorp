@@ -1,10 +1,10 @@
 package org.unitego.lobecorp.util.animation;
 
-import org.jspecify.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 
 /// 在一次混合内延续相对旋转分支；调用方分别管理骨骼、阶段和播放修订的状态。
 public class LcRotationTransitionUtil {

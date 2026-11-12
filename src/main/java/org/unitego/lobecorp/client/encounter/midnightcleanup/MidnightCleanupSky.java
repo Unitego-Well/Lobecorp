@@ -5,22 +5,22 @@ import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.shaders.UniformType;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.RenderPass;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.ARGB;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.level.material.FogType;
-import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.dimension.DimensionType;
+import net.minecraft.world.level.material.FogType;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.ViewportEvent;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 import org.unitego.lobecorp.Lobecorp;
@@ -133,10 +133,26 @@ public class MidnightCleanupSky {
 				&& !HordeIrisShadows.shadowPass();
 	}
 
-	public static void drawCloudRim(RenderPass pass, int cellX, int cellZ, int baseVertex, int firstIndex, int indexCount, int instanceCount) {
+	/// 由云pass创建前的hook调用，坐标取自本次原版云网格，不重新计算天空时间。
+	public static boolean prepareCloudRim(int cellX, int cellZ) {
+		if (!cloudRimActive()) {
+			return false;
+		}
+
 		try {
-			HordeCloudRim.draw(pass, frameAtmosphere.direction(), frameAtmosphere.strength() * frameAtmosphere.coverage(), frameAtmosphere.time(),
-					cellX, cellZ, baseVertex, firstIndex, indexCount, instanceCount);
+			HordeCloudRim.upload(frameAtmosphere.direction(), frameAtmosphere.strength() * frameAtmosphere.coverage(),
+					frameAtmosphere.time(), cellX, cellZ);
+			return true;
+		} catch (RuntimeException exception) {
+			HordeCloudRim.clear();
+			Lobecorp.LOGGER.error("停止本代际事件云缘，原云继续绘制", exception);
+			return false;
+		}
+	}
+
+	public static void drawCloudRim(RenderPass pass, int baseVertex, int firstIndex, int indexCount, int instanceCount) {
+		try {
+			HordeCloudRim.draw(pass, baseVertex, firstIndex, indexCount, instanceCount);
 		} catch (RuntimeException exception) {
 			HordeCloudRim.clear();
 			Lobecorp.LOGGER.error("停止本代际事件云缘，原云继续绘制", exception);

@@ -7,23 +7,18 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 import org.unitego.lobecorp.config.server.HordeConfig;
 import org.unitego.lobecorp.network.tc.horde.HordeStatePayload;
-import org.unitego.lobecorp.world.horde.Hordes;
 import org.unitego.lobecorp.world.horde.HordeInstance;
 import org.unitego.lobecorp.world.horde.HordeRuntime;
 import org.unitego.lobecorp.world.horde.HordeSavedData;
+import org.unitego.lobecorp.api.horde.Hordes;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.WeakHashMap;
-import java.util.Comparator;
+import java.util.*;
 
 /// 订阅独立排序；未订阅路段的修订不被误判成网络缺包。
 public class HordeSync {
 	private static final Map<ServerPlayer, Map<UUID, Long>> REQUESTS = new WeakHashMap<>();
-	private final Map<UUID, Map<UUID, Subscription>> players = new HashMap<>();
 	private static final int ENVELOPE_BUDGET = 512;
+	private final Map<UUID, Map<UUID, Subscription>> players = new HashMap<>();
 
 	public static void request(ServerPlayer player, UUID eventId) {
 		var data = HordeSavedData.get(player.level().getServer());
@@ -37,6 +32,36 @@ public class HordeSync {
 		if (now - events.getOrDefault(eventId, Long.MIN_VALUE / 2) >= 40) {
 			events.put(eventId, now);
 		}
+	}
+
+	private static Projection projection(ServerPlayer player, HordeInstance event, @Nullable Map<UUID, Projection> cache) {
+		if (cache != null) {
+			return cache.computeIfAbsent(event.id(), _ -> projection(player, event, null));
+		}
+
+		double station = event.route().nearest(player.position(), 0, event.route().length());
+		return new Projection(station, event.route().point(station, 0).distanceTo(player.position()));
+	}
+
+	private static double subscriptionDistance(ServerPlayer player) {
+		return Math.max(HordeConfig.SUBSCRIBE_DISTANCE.get(), player.requestedViewDistance() * 16d);
+	}
+
+	private static boolean interested(ServerPlayer player, HordeInstance event, boolean already,
+	                                  @Nullable Map<UUID, Projection> cache) {
+		return player.level().dimension().equals(event.dimension()) && projection(player, event, cache).distance()
+				<= subscriptionDistance(player) + event.rules().width() / 2
+				+ (already ? HordeConfig.SUBSCRIBE_HYSTERESIS.get() : 0);
+	}
+
+	private static void send(ServerPlayer player, UUID id, Subscription subscription, String kind, CompoundTag body, long clock) {
+		var tag = new CompoundTag();
+		tag.putString("id", id.toString());
+		tag.putString("kind", kind);
+		tag.putLong("sequence", ++subscription.sequence);
+		tag.putLong("clock", clock);
+		tag.put("body", body);
+		PacketDistributor.sendToPlayer(player, new HordeStatePayload(tag));
 	}
 
 	public void tick(MinecraftServer server, HordeSavedData data, HordeRuntime runtime) {
@@ -61,6 +86,13 @@ public class HordeSync {
 					break;
 				}
 				var subscription = subscriptions.computeIfAbsent(event.id(), _ -> new Subscription());
+				if (subscription.geometryRevision != event.route().geometryRevision()) {
+					subscription.geometryRevision = event.route().geometryRevision();
+					subscription.sent.clear();
+					subscription.scanRevision = Long.MIN_VALUE;
+					subscription.first = 0;
+					subscription.last = event.route().size() - 1;
+				}
 				if (subscription.reset || data.clock() - subscription.lastHeader >= 20) {
 					subscription.first = 0;
 					subscription.last = event.route().size() - 1;
@@ -89,8 +121,8 @@ public class HordeSync {
 						header.putString("animation", profile.visuals().animation().toString());
 						header.putString("run", profile.visuals().runAnimation());
 						header.putString("texture", profile.visuals().texture().toString());
-                        header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
-                        header.putDouble("entity_height", profile.dimensions().height());
+						header.putDouble("light_probe_height", profile.dimensions().eyeHeight());
+						header.putDouble("entity_height", profile.dimensions().height());
 					}
 					// 低预算先减少粗略锚点，范围和端点仍在首包中。
 					if (subscription.reset) {
@@ -163,40 +195,11 @@ public class HordeSync {
 		}
 	}
 
-	private static Projection projection(ServerPlayer player, HordeInstance event, @Nullable Map<UUID, Projection> cache) {
-		if (cache != null) {
-			return cache.computeIfAbsent(event.id(), _ -> projection(player, event, null));
-		}
-
-		double station = event.route().nearest(player.position(), 0, event.route().length());
-		return new Projection(station, event.route().point(station, 0).distanceTo(player.position()));
-	}
-
-	private static double subscriptionDistance(ServerPlayer player) {
-		return Math.max(HordeConfig.SUBSCRIBE_DISTANCE.get(), player.requestedViewDistance() * 16d);
-	}
-
-	private static boolean interested(ServerPlayer player, HordeInstance event, boolean already,
-	                                  @Nullable Map<UUID, Projection> cache) {
-		return player.level().dimension().equals(event.dimension()) && projection(player, event, cache).distance()
-				<= subscriptionDistance(player) + event.rules().width() / 2
-				+ (already ? HordeConfig.SUBSCRIBE_HYSTERESIS.get() : 0);
-	}
-
 	private record Projection(double station, double distance) {
 	}
 
-	private static void send(ServerPlayer player, UUID id, Subscription subscription, String kind, CompoundTag body, long clock) {
-		var tag = new CompoundTag();
-		tag.putString("id", id.toString());
-		tag.putString("kind", kind);
-		tag.putLong("sequence", ++subscription.sequence);
-		tag.putLong("clock", clock);
-		tag.put("body", body);
-		PacketDistributor.sendToPlayer(player, new HordeStatePayload(tag));
-	}
-
 	private static class Subscription {
+		private final Map<Integer, Long> sent = new HashMap<>();
 		private long sequence;
 		private long scanRevision = Long.MIN_VALUE;
 		private int scanOffset;
@@ -204,8 +207,8 @@ public class HordeSync {
 		private long requestSeen = Long.MIN_VALUE;
 		private boolean wasRunning;
 		private long lastHeader;
+		private long geometryRevision;
 		private boolean reset = true;
-		private final Map<Integer, Long> sent = new HashMap<>();
 		private int first;
 		private int last;
 	}

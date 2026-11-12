@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil;
 import org.unitego.lobecorp.util.photon.performance.PhotonFXLoadDiagnosticsUtil.Stage;
 
-@Mixin(targets = "com.lowdragmc.photon.client.gameobject.FXObjectType$1", remap = false)
+@Mixin(targets = "com.lowdragmc.photon.client.gameobject.FXObjectType$1")
 public abstract class PhotonVersionDeserializeDiagnosticsMixin {
 	@WrapOperation(method = "decode", at = @At(value = "INVOKE",
 			target = "Lcom/lowdragmc/photon/client/gameobject/FXObjectType;fixData(Lnet/minecraft/nbt/CompoundTag;I)Lnet/minecraft/nbt/CompoundTag;"))

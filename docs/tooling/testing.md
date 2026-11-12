@@ -24,4 +24,4 @@ compileTestJava只编译，不代表JUnit执行；compileBenchJava不启动游�
 
 普通Client默认不铺满、不限制最小化。专项策略仅由-Dlobecorp.developmentWindowTestPolicy=true启用；Gradle bench运行显式设置，手写IDE/profile需明确传入。不抢焦点、不控制实体鼠标，不改maxFps/VSync/Options；窗口和后台帧率须独立验收。
 
-默认关闭的类别、Photon诊断与保留失败日志见[调试入口](../systems/debugging.md)。功能预热与诊断是不同开关。构建/静态检查不证明游戏画面、帧率、鼠标和窗口行为。
+默认关闭的类别、Photon诊断与保留失败日志见[调试入口](debugging.md)。功能预热与诊断是不同开关。构建/静态检查不证明游戏画面、帧率、鼠标和窗口行为。

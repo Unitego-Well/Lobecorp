@@ -21,3 +21,7 @@ description: 使用独立标准 MCP 为 Lobecorp 或明确指定的单个仓库�
 用户要求伴随开发时，可使用 change_open → brief → check → 实施 → module_refresh → change_close。架构计划和工具诊断不能扩大业务代码修改授权。sync 是只读漂移报告；只更新实际受影响模块，禁止用新工作区源码刷新另一工作区的指纹。
 
 模块移动保留 uid，使用 module_move 的 dry_run 预览；删除前保留可恢复版本。记录实际执行过的校验和渲染，不把仅注册服务、静态诊断或历史结果当作架构数据验收。
+
+## 输入、输出与边界
+
+输入：已授权的单仓库和建图范围。输出：架构数据、HTML 与实际校验回执；普通文档分类不调用建图。包说明见[Normify 手册](../../../tools/lobecorp-normify/README.md)。

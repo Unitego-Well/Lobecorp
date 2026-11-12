@@ -5,10 +5,10 @@ description: 将原始 Lobecorp dev 的已提交工具、规范与业务代码�
 
 # 工作区共同地基同步
 
-先读 [同步方案](../../../docs/systems/workspace-sync.md) 和 dev-standards。原始 dev 是成果汇合处和地基，仅同步已提交内容；任务成果须审查后合入
+先读 [同步方案](../../../docs/tooling/workspaces/workspace-sync.md) 和 dev-standards。原始 dev 是成果汇合处和地基，仅同步已提交内容；任务成果须审查后合入
 dev，不自动提交任务 WIP 或反向合并所有分支。
 
-通过 IDEA 集成终端运行 [Sync-Workspaces.ps1](scripts/Sync-Workspaces.ps1)。默认只列计划；用户授权同步时加 -Apply，安装提交触发加
+通过当前真实工作区的 CLI 运行 [Sync-Workspaces.ps1](scripts/Sync-Workspaces.ps1)。默认只列计划；用户授权同步时加 -Apply，安装提交触发加
 -InstallHook。冲突暂停后先读原始 Git common-dir/workspace-sync/state 的原因、备份和详情，解决后才用 -Resume 重试。它不会强选
 ours/theirs、丢弃 stash、reset 或清理工作区。
 
@@ -23,3 +23,7 @@ ours/theirs、丢弃 stash、reset 或清理工作区。
   IDE。
 
 完成报告每个工作区 Synced／Paused、源提交、原 HEAD、恢复位置和实际验证；保留备份至负责人确认。
+
+## 输入、输出与边界
+
+输入：明确授权的源提交、现有目标工作区和同步阶段。输出：逐工作区 Synced／Paused 与恢复位置；普通文档整理不运行同步或安装钩子。

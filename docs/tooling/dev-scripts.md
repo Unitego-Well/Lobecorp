@@ -11,7 +11,7 @@ python tools/dev/dev.py doctor
 python tools/dev/dev.py files '*.java' --limit 10
 python tools/dev/dev.py search LcDebugUtil --limit 5
 python tools/dev/dev.py members org.unitego.lobecorp.util.debug.LcDebugUtil
-.\tools\dev\dev.ps1 read docs/systems/debugging.md
+.\tools\dev\dev.ps1 read docs/tooling/debugging.md
 # 任意目录指定完整脚本位置和工程根。
 python E:/xm/mc/mod/Unitego-Well/Lobecorp/tools/dev/dev.py doctor --root E:/xm/mc/mod/Unitego-Well/Lobecorp
 ```
@@ -108,7 +108,7 @@ apply写入前在.local/dev-script-writes/<唯一ID>/保存原字节及计划；
 {"op":"write","args":{"path":"docs/example.md","text":"# 示例\n"},"apply":false}
 ```
 
-通用规则引用[项目规范](../../AGENTS.md)、[工作流程](../standards/workflow.md)，不另建授权制度。过程计划与证据位于忽略的.agent和.local，不随Git发布。
+通用规则引用[项目规范](../../AGENTS.md)、[工作流程](../standards/workflow/README.md)，不另建授权制度。过程计划与证据位于忽略的.agent和.local，不随Git发布。
 
 ## 故障与证据边界
 
